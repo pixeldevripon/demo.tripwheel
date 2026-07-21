@@ -28,11 +28,25 @@ export interface PublicHomePageFaq {
     answer: string;
 }
 
+/**
+ * One fanned editorial CTA card.
+ *
+ * `name` is the linked island's name in THIS locale (never admin-typed), and is
+ * null when the card is a plain photo - keep the bundled dictionary label then.
+ * `href` is null whenever the card should not be clickable: no island, the link
+ * switched off, or the island archived since.
+ */
+export interface PublicEditorialCard {
+    image: string;
+    name: string | null;
+    href: string | null;
+}
+
 export interface PublicHomePage {
     locale: Locale;
     heroImage: string | null;
     /** Fanned editorial CTA cards, in fan order. Short arrays keep bundled defaults. */
-    editorialImages: string[];
+    editorialCards: PublicEditorialCard[];
     /** Null = let the frontend resolve the CTA target itself. */
     editorialDestinationSlug: string | null;
     ogImage: string | null;
@@ -67,7 +81,7 @@ function emptyHomePage(locale: Locale): PublicHomePage {
     return {
         locale,
         heroImage: null,
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationSlug: null,
         ogImage: null,
         heroTitle: null,

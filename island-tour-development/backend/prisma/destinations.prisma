@@ -39,6 +39,8 @@ model Destination {
   forceMajeurePardons ForceMajeurePardon[]
   // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
   homePages           HomePage[]
+  // Fanned CTA cards pointing at this island (onDelete: SetNull).
+  homeEditorialCards  HomePageEditorialCard[]
   // Featured experiences pinned to this destination (onDelete: Cascade).
   featuredExperiences FeaturedExperience[]
 
@@ -298,6 +300,13 @@ model FeaturedExperience {
   destinationId String?
   destination   Destination?       @relation(fields: [destinationId], references: [id], onDelete: Cascade)
   videoUrl      String?
+  // Card poster. Null → the card falls back to the target entity's hero (then
+  // og) image, which is the original behaviour and still the default. It exists
+  // because the carousel slot is a 250x440 PORTRAIT crop while a category hero
+  // is landscape and an ogImage is 1200x630 — the fallback fits badly often
+  // enough that curation needs a per-card override. It doubles as the <video>
+  // poster, so a card with a video no longer flashes black before it plays.
+  posterUrl     String?
   displayOrder  Int                @default(0)
   isActive      Boolean            @default(true)
 

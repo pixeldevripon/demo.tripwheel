@@ -41,7 +41,13 @@ export class ResolvedExperienceResponseDto {
   @ApiProperty({ example: 'Snorkeling' })
   title!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "The card photo, already resolved: the card's own poster when set, " +
+      "otherwise the target entity's hero (then og) image. Doubles as the " +
+      'poster for `videoUrl`.',
+  })
   image!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
@@ -74,6 +80,14 @@ export class FeaturedExperienceResponseDto {
   @ApiPropertyOptional({ nullable: true })
   videoUrl!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Card poster override. Null = the card uses the target entity image ' +
+      '(see `entityImage`).',
+  })
+  posterUrl!: string | null;
+
   @ApiProperty({ example: 0 })
   displayOrder!: number;
 
@@ -88,6 +102,15 @@ export class FeaturedExperienceResponseDto {
       'exists - the public side drops such a row, so the admin list surfaces it.',
   })
   entityName!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "The target entity's own photo (hero, else og). This is what the card " +
+      'falls back to when `posterUrl` is null, so the editor can preview the ' +
+      'real card without a second round of lookups.',
+  })
+  entityImage!: string | null;
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
@@ -131,6 +154,15 @@ export class CreateFeaturedExperienceDto {
   @MaxLength(URL_MAX_LENGTH)
   videoUrl?: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "Card poster. Null falls back to the target entity's image.",
+  })
+  @IsOptional()
+  @IsUrl(URL_RULES)
+  @MaxLength(URL_MAX_LENGTH)
+  posterUrl?: string | null;
+
   @ApiPropertyOptional({ example: 0, default: 0 })
   @IsOptional()
   @Type(() => Number)
@@ -165,6 +197,15 @@ export class UpdateFeaturedExperienceDto {
   @IsUrl(URL_RULES)
   @MaxLength(URL_MAX_LENGTH)
   videoUrl?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "Card poster. Null falls back to the target entity's image.",
+  })
+  @IsOptional()
+  @IsUrl(URL_RULES)
+  @MaxLength(URL_MAX_LENGTH)
+  posterUrl?: string | null;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()

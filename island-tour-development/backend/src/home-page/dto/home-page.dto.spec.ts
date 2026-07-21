@@ -49,25 +49,42 @@ describe('UpdateHomePageDto - media URL validation', () => {
     ).toEqual(['heroImage']);
   });
 
-  it('validates every editorial image, not just the first', async () => {
+  it('validates every editorial card, not just the first', async () => {
     expect(
       await errorsFor({
-        editorialImages: ['https://res.cloudinary.com/ok.jpg', 'nope'],
+        editorialCards: [
+          { imageUrl: 'https://res.cloudinary.com/ok.jpg' },
+          { imageUrl: 'nope' },
+        ],
       }),
-    ).toEqual(['editorialImages']);
+    ).toEqual(['editorialCards']);
   });
 
   it('rejects more than the three cards the design renders', async () => {
     expect(
       await errorsFor({
-        editorialImages: [
-          'https://a.com/1.jpg',
-          'https://a.com/2.jpg',
-          'https://a.com/3.jpg',
-          'https://a.com/4.jpg',
+        editorialCards: [
+          { imageUrl: 'https://a.com/1.jpg' },
+          { imageUrl: 'https://a.com/2.jpg' },
+          { imageUrl: 'https://a.com/3.jpg' },
+          { imageUrl: 'https://a.com/4.jpg' },
         ],
       }),
-    ).toEqual(['editorialImages']);
+    ).toEqual(['editorialCards']);
+  });
+
+  it('accepts a card with a destination link', async () => {
+    expect(
+      await errorsFor({
+        editorialCards: [
+          {
+            imageUrl: 'https://a.com/1.jpg',
+            destinationId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+            isLink: true,
+          },
+        ],
+      }),
+    ).toEqual([]);
   });
 
   it('rejects a bad ogImage', async () => {

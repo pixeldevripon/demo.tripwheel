@@ -38,6 +38,7 @@ function featuredRow(over: Partial<Record<string, unknown>> = {}) {
     entityId: 'cat-1',
     destinationId: null,
     videoUrl: null,
+    posterUrl: null,
     displayOrder: 0,
     ...over,
   };
@@ -198,6 +199,25 @@ describe('FeaturedExperiencesService', () => {
 
       expect(card.image).toBe('https://cdn/og.jpg');
     });
+
+    it("the card poster beats the entity's own images", async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({
+          heroImage: 'https://cdn/hero.jpg',
+          ogImage: 'https://cdn/og.jpg',
+        }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const [card] = await service.resolvePublic(Locale.en);
+
+      expect(card.image).toBe('https://cdn/poster.jpg');
+    });
   });
 
   describe('resolvePublic - hubs', () => {
@@ -340,6 +360,51 @@ describe('FeaturedExperiencesService', () => {
           'admin-1',
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  /**
+   * The admin list carries what the EDITOR needs to draw the real card: the
+   * target's name and the photo the card falls back to when it has no poster.
+   * Without those, curating a visual carousel means reading a list of ids.
+   */
+  describe('list', () => {
+    it("labels each row and carries the target's fallback photo", async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: 'https://cdn/hero.jpg' }),
+      ]);
+
+      const [row] = await service.list();
+
+      expect(row.entityName).toBe('Snorkeling');
+      expect(row.entityImage).toBe('https://cdn/hero.jpg');
+    });
+
+    it('carries the poster untouched - the editor resolves the preference itself', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: 'https://cdn/hero.jpg' }),
+      ]);
+
+      const [row] = await service.list();
+
+      expect(row.posterUrl).toBe('https://cdn/poster.jpg');
+      // NOT collapsed into entityImage: the editor has to show that the
+      // fallback exists and what it is, or "clear the poster" is a blind move.
+      expect(row.entityImage).toBe('https://cdn/hero.jpg');
+    });
+
+    it('surfaces a deleted target as nulls rather than hiding the row', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      prisma.category.findMany.mockResolvedValue([]);
+
+      const [row] = await service.list();
+
+      expect(row.entityName).toBeNull();
+      expect(row.entityImage).toBeNull();
     });
   });
 });

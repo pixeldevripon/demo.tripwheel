@@ -43,9 +43,20 @@ const TRANSLATION_SELECT = {
 
 const BASE_SELECT = {
   heroImage: true,
-  editorialImages: true,
   editorialDestinationId: true,
   ogImage: true,
+} as const;
+
+/** The fanned CTA deck, always in fan order. */
+const EDITORIAL_CARDS = {
+  select: {
+    id: true,
+    imageUrl: true,
+    destinationId: true,
+    isLink: true,
+    displayOrder: true,
+  },
+  orderBy: { displayOrder: 'asc' },
 } as const;
 
 /** Shape returned when no row (or no translation) exists yet - all defaults. */
@@ -91,6 +102,22 @@ export class HomePageService {
         select: {
           ...BASE_SELECT,
           editorialDestination: { select: { slug: true, isActive: true } },
+          editorialCards: {
+            select: {
+              ...EDITORIAL_CARDS.select,
+              // The card's caption and href both come from the island itself,
+              // in the requested locale - never from an admin-typed string.
+              destination: {
+                select: {
+                  slug: true,
+                  name: true,
+                  isActive: true,
+                  translations: { where: { locale }, select: { name: true } },
+                },
+              },
+            },
+            orderBy: EDITORIAL_CARDS.orderBy,
+          },
           translations: {
             where: { locale },
             select: TRANSLATION_SELECT,
@@ -104,7 +131,7 @@ export class HomePageService {
       return {
         locale,
         heroImage: null,
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationSlug: null,
         ogImage: null,
         ...EMPTY_COPY,
@@ -112,13 +139,23 @@ export class HomePageService {
       };
     }
 
-    const { editorialDestination, translations, ...base } = row;
+    const { editorialDestination, editorialCards, translations, ...base } = row;
     const copy = translations[0];
 
     return {
       locale,
       heroImage: base.heroImage,
-      editorialImages: base.editorialImages,
+      editorialCards: editorialCards.map((card) => {
+        // An archived island must not be advertised, exactly as with the CTA
+        // button below: the card degrades to a plain photo rather than naming
+        // and linking a page that 404s.
+        const live = card.destination?.isActive ? card.destination : null;
+        return {
+          image: card.imageUrl,
+          name: live ? live.translations[0]?.name || live.name : null,
+          href: live && card.isLink ? `/${live.slug}` : null,
+        };
+      }),
       // An archived island must not be advertised on the homepage - fall back to
       // the frontend's own resolution rather than linking somewhere that 404s.
       editorialDestinationSlug: editorialDestination?.isActive
@@ -172,6 +209,7 @@ export class HomePageService {
       create: { id: HOME_ID },
       select: {
         ...BASE_SELECT,
+        editorialCards: EDITORIAL_CARDS,
         translations: {
           select: TRANSLATION_SELECT,
           orderBy: { locale: 'asc' },
@@ -195,30 +233,88 @@ export class HomePageService {
       }
     }
 
-    const result = await this.prisma.homePage.upsert({
-      where: { id: HOME_ID },
-      create: {
-        id: HOME_ID,
-        heroImage: dto.heroImage,
-        editorialImages: dto.editorialImages ?? [],
-        editorialDestinationId: dto.editorialDestinationId,
-        ogImage: dto.ogImage,
-      },
-      update: {
-        ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
-        ...(dto.editorialImages !== undefined && {
-          editorialImages: dto.editorialImages,
-        }),
-        ...(dto.editorialDestinationId !== undefined && {
+    // Every island a card points at must exist, for the same reason the CTA
+    // target is checked: the FK would raise a 500-shaped Prisma error where the
+    // admin needs a sentence.
+    if (dto.editorialCards?.length) {
+      await this.assertCardDestinationsExist(dto.editorialCards);
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const home = await tx.homePage.upsert({
+        where: { id: HOME_ID },
+        create: {
+          id: HOME_ID,
+          heroImage: dto.heroImage,
           editorialDestinationId: dto.editorialDestinationId,
+          ogImage: dto.ogImage,
+        },
+        update: {
+          ...(dto.heroImage !== undefined && { heroImage: dto.heroImage }),
+          ...(dto.editorialDestinationId !== undefined && {
+            editorialDestinationId: dto.editorialDestinationId,
+          }),
+          ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
+        },
+        select: BASE_SELECT,
+      });
+
+      // The deck is a WHOLESALE REPLACE, in one transaction with the base row.
+      // Three fixed slots have no stable identity to diff against - "the middle
+      // card" is a position, not a thing - so replacing is both simpler and
+      // exactly what the editor means when it saves the deck.
+      if (dto.editorialCards !== undefined) {
+        await tx.homePageEditorialCard.deleteMany({
+          where: { homeId: HOME_ID },
+        });
+        if (dto.editorialCards.length) {
+          await tx.homePageEditorialCard.createMany({
+            data: dto.editorialCards.map((card, index) => ({
+              homeId: HOME_ID,
+              imageUrl: card.imageUrl,
+              destinationId: card.destinationId ?? null,
+              // A link with nowhere to go is not a link. Normalising here means
+              // the public resolver never has to special-case the pair.
+              isLink: card.destinationId ? (card.isLink ?? true) : false,
+              displayOrder: index,
+            })),
+          });
+        }
+      }
+
+      return {
+        ...home,
+        editorialCards: await tx.homePageEditorialCard.findMany({
+          where: { homeId: HOME_ID },
+          ...EDITORIAL_CARDS,
         }),
-        ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
-      },
-      select: BASE_SELECT,
+      };
     });
 
     this.logger.log(`Admin ${adminId} updated homepage content`);
     return result;
+  }
+
+  /** One query for the whole deck rather than one per card. */
+  private async assertCardDestinationsExist(
+    cards: { destinationId?: string | null }[],
+  ) {
+    const ids = [
+      ...new Set(cards.map((c) => c.destinationId).filter((id) => !!id)),
+    ] as string[];
+    if (!ids.length) return;
+
+    const found = await this.prisma.destination.findMany({
+      where: { id: { in: ids } },
+      select: { id: true },
+    });
+
+    const missing = ids.find((id) => !found.some((d) => d.id === id));
+    if (missing) {
+      throw new BadRequestException(
+        `No destination found with id "${missing}"`,
+      );
+    }
   }
 
   async getTranslations() {

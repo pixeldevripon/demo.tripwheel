@@ -47,6 +47,38 @@ export class HomePageFaqDto {
 }
 
 /**
+ * One fanned CTA card, resolved for the public site.
+ *
+ * `name` is the linked island's name IN THE REQUESTED LOCALE, never an
+ * admin-typed string - that is what keeps all 7 locales correct with no
+ * translation work and stops a card disagreeing with the page it opens. Null
+ * name means the frontend keeps the bundled dictionary label for that slot.
+ */
+export class PublicEditorialCardDto {
+  @ApiProperty({
+    example: 'https://res.cloudinary.com/demo/image/upload/buggy.jpg',
+  })
+  image!: string;
+
+  @ApiPropertyOptional({
+    example: 'Curaçao',
+    nullable: true,
+    description: "The linked island's localized name; null = bundled label.",
+  })
+  name!: string | null;
+
+  @ApiPropertyOptional({
+    example: '/curacao',
+    nullable: true,
+    description:
+      'Locale-less path; the frontend localizes it. Null when the card is a ' +
+      'plain photo - either no island is linked, the admin switched the link ' +
+      'off, or the island has since been archived.',
+  })
+  href!: string | null;
+}
+
+/**
  * The public homepage payload for one locale: the locale-agnostic base row
  * flattened together with that locale's copy.
  *
@@ -65,13 +97,12 @@ export class PublicHomePageResponseDto {
   heroImage!: string | null;
 
   @ApiProperty({
-    type: [String],
-    example: ['https://res.cloudinary.com/demo/image/upload/buggy.jpg'],
+    type: [PublicEditorialCardDto],
     description:
       'The fanned editorial CTA cards, in fan order. Fewer than three entries ' +
       'leaves the remaining cards on their bundled defaults.',
   })
-  editorialImages!: string[];
+  editorialCards!: PublicEditorialCardDto[];
 
   @ApiPropertyOptional({
     example: 'curacao',
@@ -193,13 +224,36 @@ export class HomePageTranslationEntryDto {
   isMachineTranslated!: boolean;
 }
 
+/** One fanned CTA card as stored, for the editor. */
+export class EditorialCardResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  imageUrl!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  destinationId!: string | null;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the card is clickable. Independent of destinationId so an ' +
+      'island can be named on a card without sending traffic to it.',
+  })
+  isLink!: boolean;
+
+  @ApiProperty({ example: 0, description: '0, 1, 2 - left, middle, front.' })
+  displayOrder!: number;
+}
+
 /** The admin view: base row plus every stored locale. */
 export class HomePageResponseDto {
   @ApiPropertyOptional({ nullable: true })
   heroImage!: string | null;
 
-  @ApiProperty({ type: [String] })
-  editorialImages!: string[];
+  @ApiProperty({ type: [EditorialCardResponseDto] })
+  editorialCards!: EditorialCardResponseDto[];
 
   @ApiPropertyOptional({ nullable: true })
   editorialDestinationId!: string | null;
@@ -222,6 +276,36 @@ export class HomePageLocaleQueryDto {
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
+/** One fanned CTA card on the way in. Its slot is its index in the array. */
+export class EditorialCardInputDto {
+  @ApiProperty({
+    example: 'https://res.cloudinary.com/demo/image/upload/buggy.jpg',
+  })
+  @IsUrl(URL_RULES)
+  @MaxLength(URL_MAX_LENGTH)
+  imageUrl!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The island this card advertises. Null = a plain photo keeping its ' +
+      'bundled label.',
+  })
+  @IsOptional()
+  @IsUUID()
+  destinationId?: string | null;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Whether the card is clickable. Ignored without a destination - there ' +
+      'would be nowhere to click to.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isLink?: boolean;
+}
+
 /**
  * Locale-agnostic homepage fields. Every property is optional so a PATCH only
  * touches what it names; an explicit `null` clears a field back to its
@@ -238,18 +322,19 @@ export class UpdateHomePageDto {
   heroImage?: string | null;
 
   @ApiPropertyOptional({
-    type: [String],
+    type: [EditorialCardInputDto],
     description:
-      'Up to three fanned CTA card images, in fan order. The design renders ' +
-      'exactly three cards, so more than three is rejected rather than silently ' +
-      'truncated.',
+      'The fanned CTA cards, in fan order - a WHOLESALE REPLACE of the deck ' +
+      '(array index becomes displayOrder). The design renders exactly three ' +
+      'cards, so more than three is rejected rather than silently truncated. ' +
+      'Send [] to clear the deck back to its bundled photos.',
   })
   @IsOptional()
   @IsArray()
-  @IsUrl(URL_RULES, { each: true })
-  @MaxLength(URL_MAX_LENGTH, { each: true })
   @ArrayMaxSize(3)
-  editorialImages?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => EditorialCardInputDto)
+  editorialCards?: EditorialCardInputDto[];
 
   @ApiPropertyOptional({
     example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',

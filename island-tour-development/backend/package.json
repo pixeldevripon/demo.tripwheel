@@ -29,6 +29,7 @@
     "prisma:seed": "prisma db seed",
     "email:icons:upload": "ts-node -r tsconfig-paths/register scripts/upload-email-icons.ts",
     "media:backfill": "ts-node -r tsconfig-paths/register scripts/backfill-media-metadata.ts",
+    "home:media:seed": "ts-node -r tsconfig-paths/register scripts/seed-home-page-media.ts",
     "prisma:seed:demo": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts",
     "prisma:seed:demo:clean": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts --clean",
     "prisma:format": "prisma format",

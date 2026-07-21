@@ -538,6 +538,91 @@ translation row appears in `GET /home-page/public`, and clearing it returns null
 307 to `/portal` without a session, the Chrome extension was not connected this
 session, and signing in is not something I do. It needs a human pass.
 
+## Phase 4c - Experiences deck, CTA card links, real media `[x]`
+
+**EXECUTED 2026-07-21.** Three user requests in one pass, all on top of 4b.
+
+### 1. Featured Cards, redesigned - and a poster per card
+
+The curation UI was a list of names with a number input for ordering. It is now a
+**grid of the cards themselves** at the carousel's own 3:4 portrait ratio, with
+hover controls (move earlier/later, edit media, show/hide, remove), following
+`trip-images-tab.tsx` - the dashboard's existing idiom for an ordered visual
+collection. Curating a visual section from a list of names was the actual defect.
+
+**`FeaturedExperience.posterUrl` added** (migration
+`20260721064945_featured_experience_poster`). It wins over the target entity's
+hero/og image, because the slot is a 250x440 portrait crop and neither fallback
+is that shape. It doubles as the `<video poster>`, so a card with a video no
+longer flashes black before it plays. The title is deliberately NOT overridable
+the same way - it stays the entity's translated name, so a card can never
+disagree with the page it opens in any language. A photo carries no such promise.
+
+The admin list endpoint now also returns **`entityImage`** (the target's own
+photo). Without it the editor could not draw the real card, and "clear the
+poster" would be a blind move.
+
+Ordering moved from a `displayOrder` number input to arrow controls backed by
+`useReorderFeaturedExperiences`, which writes POSITIONS rather than swapping two
+neighbours: every seeded row shares `displayOrder = 0`, and a swap between equal
+values is a no-op - the bug the obvious implementation would have shipped.
+
+### 2. CTA card photos link to islands
+
+`home_page.editorialImages` (a `String[]`) became **`HomePageEditorialCard`**
+(migration `20260721125741_home_page_editorial_cards`, hand-written so the
+existing photos are carried across BEFORE the column is dropped - the generated
+version would have created and dropped with nothing in between).
+
+Per card: photo, an optional island, and `isLink`. Three states, all editable in
+the Details tab: photo only (bundled caption), island named and clickable, island
+named but not clickable. `isLink` is separate from `destinationId` on purpose -
+an admin can name an island without shipping traffic to it, and switch that off
+for a season without losing which island it was.
+
+**The caption is not stored.** It is the linked island's own translated name, so
+all 7 locales come for free and a card can never disagree with the page it opens.
+An archived island degrades the card to a plain photo - neither named nor linked -
+exactly as the CTA button already did.
+
+The deck saves as a wholesale replace in one transaction with the base row: three
+fixed slots have no stable identity to diff ("the middle card" is a position, not
+a thing). The dashboard renders three fixed slots rather than a `useFieldArray`,
+for the same reason.
+
+### 3. The homepage now runs on library assets
+
+`pnpm home:media:seed` (`backend/scripts/seed-home-page-media.ts`, `--dry-run`
+supported) - **16 assets published, and the homepage record pointed at them.**
+
+The fallback contract made the CMS safe to ship but left the editor showing empty
+fields describing images an admin could not see, swap or reuse, because they were
+files in the frontend bundle. This closes that once:
+
+- **10 bundled files uploaded** from `frontend/public/` (hero, the 3 CTA
+  category photos, 4 island photos, the FAQ host avatar).
+- **6 registered, not re-uploaded**: the reel's images and videos are already in
+  this Cloudinary account (hard-coded in `top-experiences.tsx`), so the script
+  reads their metadata via the Admin API instead of duplicating ~100 MB of video.
+- Wired: hero image; the CTA deck as Curaçao / Aruba / Sint Maarten, each with
+  its island photo, name and link; posters + real footage on the three
+  experiences that have it.
+- **Placeholder video cleared** on four featured rows that pointed at a Google
+  Chromecast sample clip (`ForBiggerJoyrides.mp4`). Falling back to a real photo
+  beats playing someone else's demo.
+
+Idempotent throughout: deterministic public_ids with overwrite+invalidate, and
+every DB write upserts on `publicId`. URL policy comes from instantiating the
+app's own `CloudinaryService`, never a restatement of it.
+
+**Verification:** backend `tsc` clean, **1342/1342 tests pass**; both new
+contracts were checked against the RUNNING API - `GET /home-page/public` returns
+the three cards with translated names and hrefs, and
+`GET /featured-experiences/public` shows posters and the three real videos.
+Dashboard `tsc`, 0 lint errors, `next build` green; public frontend `tsc` clean.
+
+**Unverified, as before: the rendered dashboard UI** (no session, no browser).
+
 ## Phase 5 - Pages system `[ ]`
 
 `Page { slug @unique, pageType, status DRAFT|PUBLISHED|ARCHIVED, publishedAt,

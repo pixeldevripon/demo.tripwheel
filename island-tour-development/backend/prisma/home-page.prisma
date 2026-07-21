@@ -20,9 +20,9 @@ model HomePage {
   // Hero background photo. Null → the bundled /images/kc-powerboat.jpg.
   heroImage String?
 
-  // The three fanned category cards in the editorial CTA banner, in fan order.
-  // Fewer than three entries falls back to the bundled images for the remainder.
-  editorialImages String[] @default([])
+  // The three fanned cards in the editorial CTA banner live in
+  // HomePageEditorialCard (one row per slot) — they carry a destination link and
+  // a clickable flag, not just a URL, so a bare String[] could not hold them.
 
   // Destination the editorial CTA links to. Null → the frontend's existing
   // "launch island, else first active destination, else /search" resolution.
@@ -35,9 +35,45 @@ model HomePage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  translations HomePageTranslation[]
+  translations   HomePageTranslation[]
+  editorialCards HomePageEditorialCard[]
 
   @@map("home_page")
+}
+
+// One fanned card in the editorial CTA banner. Three rows, one per fan slot
+// (left, middle, front) — the design renders exactly three, so this is a fixed
+// set of slots rather than a growable list.
+//
+// It is a table and not the String[] it replaced because a card is no longer
+// just a photo: it carries WHERE it points and WHETHER it points anywhere. The
+// caption is deliberately not stored — it is the linked destination's own
+// translated name, so all 7 locales come for free and a card can never disagree
+// with the island it links to. A slot with no destination keeps the bundled
+// dictionary label, which is translated too.
+model HomePageEditorialCard {
+  id     String   @id @default(uuid())
+  homeId String
+  home   HomePage @relation(fields: [homeId], references: [id], onDelete: Cascade)
+
+  imageUrl String
+
+  // The island this card advertises. Null → the slot is a plain photo with its
+  // bundled label. SetNull (not Cascade): deleting an island must degrade the
+  // card to a static photo, never delete the slot.
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  // Whether the card is CLICKABLE. Separate from destinationId on purpose: an
+  // admin can name an island on a card without shipping traffic to it, and can
+  // switch that off for a season without losing which island it was.
+  isLink Boolean @default(true)
+
+  // 0, 1, 2 — left, middle, front in fan order.
+  displayOrder Int @default(0)
+
+  @@unique([homeId, displayOrder])
+  @@map("home_page_editorial_cards")
 }
 
 // Per-locale homepage copy. Mirrors the *Translation pattern used by every other
