@@ -249,6 +249,16 @@ export class EditorialCardResponseDto {
 
   @ApiProperty({ example: 0, description: '0, 1, 2 - left, middle, front.' })
   displayOrder!: number;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether this category has a LIVE tour on the island the banner points ' +
+      'at. False means the public site serves the card without its link, ' +
+      'because the category page would 404 - the editor shows that rather ' +
+      'than leaving an admin to discover it.',
+  })
+  hasLiveTours!: boolean;
 }
 
 /** The admin view: base row plus every stored locale. */
@@ -258,6 +268,15 @@ export class HomePageResponseDto {
 
   @ApiProperty({ type: [EditorialCardResponseDto] })
   editorialCards!: EditorialCardResponseDto[];
+
+  @ApiPropertyOptional({
+    example: 'curacao',
+    nullable: true,
+    description:
+      'The island the cards are gated against: the pinned one, else the ' +
+      'fallback the public site resolves. Null only when nothing is active.',
+  })
+  resolvedDestinationSlug!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   editorialDestinationId!: string | null;

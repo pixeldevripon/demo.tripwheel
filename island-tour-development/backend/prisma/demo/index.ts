@@ -110,6 +110,12 @@ export async function cleanDemo(): Promise<void> {
   await prisma.featuredExperience.deleteMany({});
   await prisma.forceMajeurePardon.deleteMany({});
 
+  // 3b) Seeded Instagram tiles only (demo/ig- prefix). Tiles an admin curated
+  //     by hand carry a media-library publicId and are deliberately left alone.
+  await prisma.instagramPost.deleteMany({
+    where: { imagePublicId: { startsWith: 'demo/ig-' } },
+  });
+
   // 4) TOUR slug_registry rows, then the demo tours (cascades all tour children,
   //    schedules, exceptions, departures, spotlight requests, wishlists, etc.).
   for (const t of demoTours) {

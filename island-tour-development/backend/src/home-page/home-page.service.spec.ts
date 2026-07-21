@@ -27,6 +27,10 @@ function createMockPrismaService() {
     category: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    // The card gate: which categories have a LIVE tour on the banner's island.
+    tourCategory: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     faq: {
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -166,11 +170,23 @@ describe('HomePageService', () => {
     });
 
     /**
-     * The fanned deck. Its caption and link both come from the island, so these
-     * cover the three states an admin can put a card in - plus the one the
-     * system can put it in behind their back (island archived).
+     * The fanned deck. Caption and slug come from the CATEGORY; the link is
+     * additionally gated on that category having something bookable on the
+     * banner's island. These cover every state an admin can put a card in, plus
+     * the two the system can put it in behind their back (category archived,
+     * last tour on that island going dark).
      */
     describe('editorial cards', () => {
+      const CURACAO = { id: 'dest-1', slug: 'curacao' };
+
+      /** An island to resolve, and a category that is bookable on it. */
+      function islandWithLiveTour() {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        prisma.tourCategory.findMany.mockResolvedValue([
+          { categoryId: 'cat-1' },
+        ]);
+      }
+
       function homeWithCards(cards: unknown[]) {
         return {
           heroImage: null,
@@ -190,6 +206,7 @@ describe('HomePageService', () => {
       };
 
       it('names a card from its category and hands back the slug', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -215,6 +232,7 @@ describe('HomePageService', () => {
       });
 
       it('prefers the locale translation for the card name', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -237,6 +255,7 @@ describe('HomePageService', () => {
       });
 
       it('keeps the name but drops the slug when the link is switched off', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -257,6 +276,7 @@ describe('HomePageService', () => {
       });
 
       it('degrades an archived category to a plain photo', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -276,6 +296,61 @@ describe('HomePageService', () => {
         expect(card.name).toBeNull();
         expect(card.categorySlug).toBeNull();
         expect(card.image).toBe('https://cdn/buggy.jpg');
+      });
+
+      it('drops the link when the category has no live tour on that island', async () => {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        // The island resolves, the category is active and the admin asked for a
+        // link - but nothing is bookable, so the category page would 404.
+        prisma.tourCategory.findMany.mockResolvedValue([]);
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              categoryId: 'cat-1',
+              isLink: true,
+              displayOrder: 0,
+              category: buggy,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        // Still a card - photo and caption survive, only the door closes.
+        expect(card.image).toBe('https://cdn/buggy.jpg');
+        expect(card.name).toBe('Buggy Tours');
+        expect(card.categorySlug).toBeNull();
+      });
+
+      it('gates against the island the banner actually points at', async () => {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        prisma.tourCategory.findMany.mockResolvedValue([
+          { categoryId: 'cat-1' },
+        ]);
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              categoryId: 'cat-1',
+              isLink: true,
+              displayOrder: 0,
+              category: buggy,
+            },
+          ]),
+        );
+
+        const result = await service.getPublic(Locale.en);
+
+        // The resolved island is reported, and the gate was asked about THAT
+        // island - if the two ever diverged the gate would be meaningless.
+        expect(result.editorialDestinationSlug).toBe('curacao');
+        expect(
+          prisma.tourCategory.findMany.mock.calls[0][0].where.tour
+            .destinationId,
+        ).toBe(CURACAO.id);
       });
 
       it('leaves a category-less photo unnamed so the bundled label survives', async () => {

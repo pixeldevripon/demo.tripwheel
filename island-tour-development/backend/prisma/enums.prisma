@@ -564,6 +564,23 @@ enum FaqPageType {
   homepage
 }
 
+// ── Instagram feed (see instagram.prisma) ─────────────────────────────────────
+
+// How a tile got here. MANUAL rows are admin-curated from the media library and
+// are never touched by the phase-2 sync; API rows are owned by it.
+enum InstagramSource {
+  MANUAL
+  API
+}
+
+// Mirrors Instagram's own media_type values, so the phase-2 sync maps straight
+// across without a translation table.
+enum InstagramMediaType {
+  IMAGE
+  VIDEO
+  CAROUSEL_ALBUM
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

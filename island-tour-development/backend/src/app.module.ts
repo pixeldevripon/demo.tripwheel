@@ -13,6 +13,7 @@ import { SettingsModule } from './settings/settings.module';
 import { HomePageModule } from './home-page/home-page.module';
 import { FeaturedExperiencesModule } from './featured-experiences/featured-experiences.module';
 import { PlatformReviewsModule } from './platform-reviews/platform-reviews.module';
+import { InstagramModule } from './instagram/instagram.module';
 import { OperatorsModule } from './operators/operators.module';
 import { MediaGalleryModule } from './media-gallery/media-gallery.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -56,6 +57,7 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     HomePageModule,
     FeaturedExperiencesModule,
     PlatformReviewsModule,
+    InstagramModule,
     OperatorsModule,
     MediaGalleryModule,
     CategoriesModule,

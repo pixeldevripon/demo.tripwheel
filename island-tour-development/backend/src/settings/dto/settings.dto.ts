@@ -53,10 +53,12 @@ export class SiteInfoResponseDto {
   @ApiProperty({ example: '+1234567890', nullable: true })
   whatsappNumber!: string | null;
 
-  @ApiProperty({ example: 'widget_id', nullable: true })
-  instagramWidgetId!: string | null;
-
-  @ApiProperty({ example: false })
+  @ApiProperty({
+    example: false,
+    description:
+      'Kill switch for the Instagram grid. The feed itself is managed by the ' +
+      'Instagram module, not here.',
+  })
   enableInstagram!: boolean;
 
   @ApiPropertyOptional({
@@ -116,11 +118,13 @@ export class PublicSiteInfoResponseDto {
   })
   whatsappNumber!: string | null;
 
-  @ApiProperty({ example: false })
+  @ApiProperty({
+    example: false,
+    description:
+      'Gates the Instagram grid on the public site. The tiles come from ' +
+      'GET /instagram/public/feed, which applies this same switch.',
+  })
   enableInstagram!: boolean;
-
-  @ApiProperty({ example: 'widget_id', nullable: true })
-  instagramWidgetId!: string | null;
 
   @ApiProperty({
     example: 'https://res.cloudinary.com/demo/image/upload/host.jpg',
@@ -488,11 +492,6 @@ export class UpdateSiteInfoDto {
   @IsOptional()
   @IsString()
   whatsappNumber?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  instagramWidgetId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

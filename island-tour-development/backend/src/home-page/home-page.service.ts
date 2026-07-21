@@ -7,6 +7,7 @@ import {
 } from '@/common/faq/dto/faq-group.dto';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { TourStatus } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
@@ -24,6 +25,13 @@ import {
  * models: a fixed primary key, self-seeded on first admin read.
  */
 const HOME_ID = 'default';
+
+/**
+ * The island the editorial banner falls back to before "whatever is first".
+ * The banner copy is themed to the launch island, so it is the sensible default
+ * when an admin has not pinned one.
+ */
+const LAUNCH_ISLAND_SLUG = 'curacao';
 
 const TRANSLATION_SELECT = {
   locale: true,
@@ -142,6 +150,21 @@ export class HomePageService {
     const { editorialDestination, editorialCards, translations, ...base } = row;
     const copy = translations[0];
 
+    // The island the whole banner points at - button AND cards.
+    const island = await this.resolveEditorialIsland(
+      base.editorialDestinationId,
+      editorialDestination,
+    );
+
+    // Which of these categories actually has something bookable on that island.
+    const bookable = await this.categoriesWithLiveTours(
+      editorialCards
+        .filter((c) => c.isLink && c.category?.isActive)
+        .map((c) => c.categoryId)
+        .filter((id): id is string => !!id),
+      island?.id ?? null,
+    );
+
     return {
       locale,
       heroImage: base.heroImage,
@@ -150,19 +173,28 @@ export class HomePageService {
         // button below: the card degrades to a plain photo rather than naming
         // and linking a page that 404s.
         const live = card.category?.isActive ? card.category : null;
+        // THE GATE: a category page 404s unless that category has a live tour
+        // on this island, so a card that would land on one is served without a
+        // link. It keeps its photo and its caption - the never-blank rule - it
+        // simply stops being a door to a missing page.
+        const linkable =
+          !!live &&
+          card.isLink &&
+          !!card.categoryId &&
+          bookable.has(card.categoryId);
         return {
           image: card.imageUrl,
           name: live ? live.translations[0]?.name || live.name : null,
-          // Slug only - the frontend joins it to the island it resolved for
-          // the button, so a card can never open a different island from it.
-          categorySlug: live && card.isLink ? live.slug : null,
+          // Slug only - the frontend joins it to the island below, so a card
+          // can never open a different island from the button beside it.
+          categorySlug: linkable ? live.slug : null,
         };
       }),
-      // An archived island must not be advertised on the homepage - fall back to
-      // the frontend's own resolution rather than linking somewhere that 404s.
-      editorialDestinationSlug: editorialDestination?.isActive
-        ? editorialDestination.slug
-        : null,
+      // The RESOLVED island, not the raw admin choice: the cards are gated
+      // against this island, so the frontend must land on the same one or the
+      // gate would have been computed for a different page. An archived pick
+      // resolves to the fallback rather than being advertised.
+      editorialDestinationSlug: island?.slug ?? null,
       ogImage: base.ogImage,
       heroTitle: copy?.heroTitle ?? null,
       heroSubtitle: copy?.heroSubtitle ?? null,
@@ -205,12 +237,13 @@ export class HomePageService {
 
   /** Admin view: the base row plus every stored locale. Self-seeds on first read. */
   async get() {
-    return this.prisma.homePage.upsert({
+    const row = await this.prisma.homePage.upsert({
       where: { id: HOME_ID },
       update: {},
       create: { id: HOME_ID },
       select: {
         ...BASE_SELECT,
+        editorialDestination: { select: { slug: true, isActive: true } },
         editorialCards: EDITORIAL_CARDS,
         translations: {
           select: TRANSLATION_SELECT,
@@ -218,6 +251,31 @@ export class HomePageService {
         },
       },
     });
+
+    // The editor is told the same thing the public resolver decided, rather
+    // than being left to discover that a card it shows as linked is served
+    // without its link. Same island, same gate - computed once, here.
+    const island = await this.resolveEditorialIsland(
+      row.editorialDestinationId,
+      row.editorialDestination,
+    );
+    const bookable = await this.categoriesWithLiveTours(
+      row.editorialCards
+        .map((c) => c.categoryId)
+        .filter((id): id is string => !!id),
+      island?.id ?? null,
+    );
+
+    const { editorialDestination, ...base } = row;
+    return {
+      ...base,
+      /** The island the cards are gated against - the fallback, if none is pinned. */
+      resolvedDestinationSlug: island?.slug ?? null,
+      editorialCards: row.editorialCards.map((card) => ({
+        ...card,
+        hasLiveTours: card.categoryId ? bookable.has(card.categoryId) : false,
+      })),
+    };
   }
 
   async update(dto: UpdateHomePageDto, adminId: string) {
@@ -295,6 +353,68 @@ export class HomePageService {
 
     this.logger.log(`Admin ${adminId} updated homepage content`);
     return result;
+  }
+
+  /**
+   * The island the editorial banner points at.
+   *
+   * Resolved HERE rather than left to the frontend, which is a change of
+   * ownership worth stating: the card gate ("does this category have a live
+   * tour on this island") is meaningless without knowing the island, and if the
+   * two sides resolved it independently they could disagree - the backend would
+   * gate against one island while the frontend linked to another.
+   *
+   * The order mirrors what the frontend used to do on its own, including the
+   * `name: asc` that `GET /destinations/active` sorts by, so the resolved island
+   * is the same one as before this moved: the admin's pick if it is still
+   * active, else the launch island, else the first active one.
+   */
+  private async resolveEditorialIsland(
+    pinnedId: string | null,
+    pinned: { slug: string; isActive: boolean } | null,
+  ): Promise<{ id: string; slug: string } | null> {
+    if (pinnedId && pinned?.isActive)
+      return { id: pinnedId, slug: pinned.slug };
+
+    const active = await this.prisma.destination.findMany({
+      where: { isActive: true },
+      select: { id: true, slug: true },
+      orderBy: { name: 'asc' },
+    });
+
+    return (
+      active.find((d) => d.slug === LAUNCH_ISLAND_SLUG) ?? active[0] ?? null
+    );
+  }
+
+  /**
+   * Of these categories, the ones with at least one LIVE tour on that island.
+   *
+   * This is the category page's own 404 condition (`categories.service
+   * .getByDestinationSlug`), so passing it is exactly "this link resolves".
+   * One query for the whole deck, `distinct` because a category with forty
+   * tours is still just one answer.
+   */
+  private async categoriesWithLiveTours(
+    categoryIds: string[],
+    destinationId: string | null,
+  ): Promise<Set<string>> {
+    if (!categoryIds.length || !destinationId) return new Set();
+
+    const rows = await this.prisma.tourCategory.findMany({
+      where: {
+        categoryId: { in: categoryIds },
+        tour: {
+          status: TourStatus.LIVE,
+          isActive: true,
+          destinationId,
+        },
+      },
+      select: { categoryId: true },
+      distinct: ['categoryId'],
+    });
+
+    return new Set(rows.map((r) => r.categoryId));
   }
 
   /** One query for the whole deck rather than one per card. */

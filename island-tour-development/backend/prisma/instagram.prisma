@@ -1,0 +1,102 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Instagram feed — the brand handle row + photo grid on destination pages
+// (master §3.9: "Instagram grid: brand handle row per review").
+//
+// FIRST-PARTY BY DESIGN. The site renders this grid from our own rows, never
+// from an embedded third-party widget: an iframe cannot be server-rendered into
+// the `'use cache'` + PPR pipeline, drags in consent-banner cookies across six
+// EU locales, and cannot be styled to the Figma grid. The old
+// `SiteInfo.instagramWidgetId` was the abandoned start of that approach and is
+// dropped in the same migration that adds these tables.
+//
+// PHASE 1 (here): posts are admin-curated — an image picked from the media
+// library plus the permalink it should link out to. PHASE 2 syncs the same rows
+// from the Instagram API (`source = API`), which is why `igMediaId`, `postedAt`
+// and `syncedAt` already exist: the sync fills columns rather than migrating a
+// second table, and the frontend never changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The connected brand account (singleton, id 'default'). Phase 1 stores only
+/// what the header row renders; Phase 2 adds the OAuth columns (igUserId,
+/// encrypted accessToken, tokenExpiresAt, lastSyncedAt/Status/Error).
+///
+/// Separate from SocialMedia.instagramUrl on purpose: that row is the footer's
+/// social icon list, a plain link set an admin can point anywhere. This is the
+/// account the feed belongs to, and in Phase 2 it holds a credential.
+model InstagramAccount {
+  id String @id @default("default")
+
+  /// Handle WITHOUT the leading '@' (e.g. "island.tours_"). The section header
+  /// renders '@' + this; storing it bare keeps the display decision in the UI.
+  username String? @default("")
+
+  /// Profile URL for the "View more on Instagram" link. Empty → the service
+  /// derives https://www.instagram.com/{username}, so a correct username is
+  /// enough on its own.
+  profileUrl String? @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("instagram_account")
+}
+
+/// One tile in the grid.
+model InstagramPost {
+  id     String          @id @default(uuid())
+  source InstagramSource @default(MANUAL)
+
+  /// Instagram's media id — null for MANUAL rows. Unique so a re-sync updates
+  /// the existing tile instead of duplicating it.
+  igMediaId String? @unique
+
+  mediaType InstagramMediaType @default(IMAGE)
+
+  /// Where the tile links. For MANUAL rows an admin pastes the post URL; empty
+  /// is allowed and falls back to the account profile, so a tile is never a
+  /// dead link.
+  permalink String? @default("")
+
+  caption String?
+
+  /// The rendered image, always a URL WE control (media-library asset in phase
+  /// 1, Cloudinary mirror in phase 2). Instagram's own `media_url` CDN links
+  /// expire within days and hotlinking them is against their terms, so they are
+  /// deliberately never stored here.
+  imageUrl      String
+  /// Cloudinary public id, when the asset came from our gallery/mirror. Kept so
+  /// phase 2 can clean up mirrored derivatives it created.
+  imagePublicId String?
+
+  /// Video poster (phase 2). Videos render as a still with a play affordance —
+  /// nothing autoplays in the grid.
+  thumbnailUrl String?
+
+  width  Int?
+  height Int?
+
+  /// Overrides the caption-derived alt text. Captions are marketing copy full of
+  /// emoji and hashtags, which makes miserable alt text.
+  altText String?
+
+  /// When the post went up on Instagram (phase 2). Null for manual rows, which
+  /// order purely by displayOrder.
+  postedAt DateTime?
+  /// Last time the API sync touched this row. Null for manual rows.
+  syncedAt DateTime?
+
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  /// null = brand-wide, shown on every destination page. A pinned row shows
+  /// only on its own destination (same rule as FeaturedExperience).
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@index([destinationId])
+  @@map("instagram_posts")
+}

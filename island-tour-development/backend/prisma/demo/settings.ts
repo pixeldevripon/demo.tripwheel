@@ -36,7 +36,6 @@ export async function seedSettings(): Promise<void> {
       enableWhatsappChat: true,
       whatsappNumber: '+59995601234',
       enableInstagram: true,
-      instagramWidgetId: 'demo-widget',
       faqs: homeFaqs,
     },
   });
@@ -178,7 +177,56 @@ export async function seedSettings(): Promise<void> {
     }
   }
 
+  // ── Instagram grid (handle row + curated tiles, all brand-wide) ──
+  await prisma.instagramAccount.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      username: 'island.tours_',
+      // Left empty on purpose: the service derives the profile link from the
+      // handle, and the demo data should exercise that path.
+      profileUrl: '',
+    },
+  });
+
+  const igTiles: [
+    slot: string,
+    photoName: Parameters<typeof photo>[0],
+    caption: string,
+  ][] = [
+    ['01', 'willemstad', 'Sunrise over the Handelskade, Willemstad'],
+    ['02', 'catamaranDeck', 'Deck days on the west-coast catamaran run'],
+    ['03', 'turtleReef', 'Playa Piskado regulars #turtles'],
+    ['04', 'jeepTrail', 'Dust, cactus and coastline on the buggy trail'],
+    ['05', 'beachChairs', 'Slow afternoon at Cas Abao'],
+    ['06', 'sunsetSea', 'Last light off the south shore'],
+  ];
+
+  let igCount = 0;
+  for (const [slot, photoName, caption] of igTiles) {
+    const imagePublicId = `demo/ig-${slot}`;
+    const existing = await prisma.instagramPost.findFirst({
+      where: { imagePublicId },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.instagramPost.create({
+      data: {
+        imageUrl: photo(photoName, 768, 674), // the grid tile is 384x337 at 2x
+        imagePublicId,
+        // No permalink: demo tiles fall back to the profile link, which is the
+        // same path a real tile takes when an admin leaves the field empty.
+        caption,
+        width: 768,
+        height: 674,
+        displayOrder: igCount,
+      },
+    });
+    igCount++;
+  }
+
   log(
-    `Settings singletons + 2 webhook points + ${mediaCount} media rows seeded.`,
+    `Settings singletons + 2 webhook points + ${mediaCount} media rows + ${igCount} Instagram tiles seeded.`,
   );
 }
