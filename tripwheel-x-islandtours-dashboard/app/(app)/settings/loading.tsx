@@ -5,6 +5,6 @@ import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
  * card), so it reuses that skeleton.
  */
 export default function SettingsLoading() {
-  return <EntityEditSkeleton />;
+    return <EntityEditSkeleton />;
 }
 
