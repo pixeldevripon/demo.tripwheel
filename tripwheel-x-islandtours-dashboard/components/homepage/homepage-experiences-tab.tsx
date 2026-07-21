@@ -4,14 +4,12 @@ import {
   Alert02Icon,
   ArrowDown02Icon,
   ArrowUp02Icon,
-  Delete02Icon,
+  Cancel01Icon,
   Image02Icon,
   ImageAdd02Icon,
   PencilEdit02Icon,
   PlayIcon,
   PlusSignIcon,
-  ViewIcon,
-  ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useState } from 'react';
@@ -150,30 +148,18 @@ function ExperiencesCurationCard() {
     });
   }
 
-  function handleToggle(exp: FeaturedExperience) {
-    update.mutate(
-      { id: exp.id, payload: { isActive: !exp.isActive } },
-      {
-        onSuccess: () =>
-          toast.success(exp.isActive ? 'Card hidden.' : 'Card is live.'),
-        onError: err =>
-          toast.error(
-            err instanceof Error ? err.message : 'Failed to update the card.',
-          ),
-      },
-    );
-  }
 
   function handleSaveMedia(payload: {
     posterUrl: string | null;
     videoUrl: string | null;
+    isLink: boolean;
   }) {
     if (!editing) return;
     update.mutate(
       { id: editing.id, payload },
       {
         onSuccess: () => {
-          toast.success('Card media updated.');
+          toast.success('Card updated.');
           setEditing(null);
         },
         onError: err =>
@@ -253,7 +239,6 @@ function ExperiencesCurationCard() {
                     total={ordered.length}
                     disabled={isBusy}
                     onMove={handleMove}
-                    onToggle={() => handleToggle(exp)}
                     onEdit={() => setEditing(exp)}
                     onDelete={() => setPendingDelete(exp)}
                   />
@@ -359,7 +344,6 @@ function ExperienceCard({
   total,
   disabled,
   onMove,
-  onToggle,
   onEdit,
   onDelete,
 }: {
@@ -368,7 +352,6 @@ function ExperienceCard({
   total: number;
   disabled: boolean;
   onMove: (index: number, direction: 'up' | 'down') => void;
-  onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -474,39 +457,35 @@ function ExperienceCard({
           </Button>
         </div>
 
-        {/* Edit / show-hide / remove (top-right on hover). */}
-        <div className='absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
-          <Button
-            size='icon-sm'
-            variant='secondary'
-            onClick={onEdit}
-            disabled={disabled}
-            title='Poster and video'>
-            <HugeiconsIcon icon={PencilEdit02Icon} className='size-3' />
-          </Button>
-          <Button
-            size='icon-sm'
-            variant='secondary'
-            onClick={onToggle}
-            disabled={disabled}
-            title={
-              experience.isActive
-                ? 'Hide from the homepage'
-                : 'Show on the homepage'
-            }>
+        {/* Remove: always visible, not hover-revealed - the same corner control
+            every other media field in this dashboard uses (ImageSelectorField,
+            the Instagram tiles), so removing a card works the way removing a
+            picked image already does. */}
+        <button
+          type='button'
+          onClick={onDelete}
+          title='Remove card'
+          className='absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center bg-black/60 text-white transition-colors hover:bg-destructive'>
+          <HugeiconsIcon icon={Cancel01Icon} className='size-3' />
+          <span className='sr-only'>Remove card</span>
+        </button>
+
+        {/* Edit affordance: centred, revealed on hover, with no chip or surface
+            of its own - the icon sits straight on the image so the card reads as
+            one target rather than a photo with a button parked on it.
+            `pointer-events-none` on purpose: the whole card is ALREADY the edit
+            button (the <button inset-0> above), so this must not intercept the
+            click, and a second nested button would be invalid markup anyway.
+            Only over a real poster - the empty slot has its own "Add poster and
+            video" prompt, which says more than a pencil would. */}
+        {poster && (
+          <span className='pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-white opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
             <HugeiconsIcon
-              icon={experience.isActive ? ViewOffIcon : ViewIcon}
-              className='size-3'
+              icon={PencilEdit02Icon}
+              className='size-7 drop-shadow-lg'
             />
-          </Button>
-          <Button
-            size='icon-sm'
-            variant='destructive'
-            onClick={onDelete}
-            title='Remove card'>
-            <HugeiconsIcon icon={Delete02Icon} className='size-3' />
-          </Button>
-        </div>
+          </span>
+        )}
       </div>
 
       <div className='space-y-1.5 p-3'>
@@ -554,14 +533,17 @@ function CardMediaDialog({
   onSave: (payload: {
     posterUrl: string | null;
     videoUrl: string | null;
+    isLink: boolean;
   }) => void;
 }) {
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isLink, setIsLink] = useState(true);
 
   useEffect(() => {
     setPosterUrl(experience?.posterUrl ?? null);
     setVideoUrl(experience?.videoUrl ?? null);
+    setIsLink(experience?.isLink ?? true);
   }, [experience]);
 
   const fallback = experience?.entityImage ?? null;
@@ -571,11 +553,11 @@ function CardMediaDialog({
       <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>
-            {experience?.entityName ?? 'Card'} media
+            {experience?.entityName ?? 'Card'}
           </DialogTitle>
           <DialogDescription>
-            The photo and video for this card only. Neither changes the category
-            or hub page itself.
+            The photo, video and link for this card only. None of it changes the
+            category or hub page itself.
           </DialogDescription>
         </DialogHeader>
 
@@ -602,6 +584,29 @@ function CardMediaDialog({
             </FieldDescription>
             <VideoSelectorField value={videoUrl} onChange={setVideoUrl} />
           </Field>
+
+          <Field>
+            <Label>Link</Label>
+            <FieldDescription>
+              Whether the card opens the page it names. Not the same as removing
+              it: a non-clickable card still shows, with its title.
+            </FieldDescription>
+            <Select
+              value={isLink ? 'link' : 'static'}
+              onValueChange={v => setIsLink(v === 'link')}>
+              <SelectTrigger className='w-full'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='link'>
+                  Clickable - opens {experience?.entityName ?? 'the page'}
+                </SelectItem>
+                <SelectItem value='static'>
+                  Name only - not clickable
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
 
         <DialogFooter>
@@ -614,8 +619,8 @@ function CardMediaDialog({
           <Button
             type='button'
             disabled={isSaving}
-            onClick={() => onSave({ posterUrl, videoUrl })}>
-            {isSaving ? 'Saving...' : 'Save media'}
+            onClick={() => onSave({ posterUrl, videoUrl, isLink })}>
+            {isSaving ? 'Saving...' : 'Save card'}
           </Button>
         </DialogFooter>
       </DialogContent>

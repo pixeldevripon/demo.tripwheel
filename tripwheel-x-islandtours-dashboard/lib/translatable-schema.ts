@@ -1,3 +1,4 @@
+import type { PermissionKey } from '@/lib/config/rbac';
 import type { Locale } from '@/lib/constants/locales';
 import { HOMEPAGE_DEFAULTS } from '@/lib/home-page/defaults';
 
@@ -43,6 +44,31 @@ export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
     category: 'Categories',
     collection: 'Collections',
     homepage: 'Homepage',
+};
+
+/**
+ * What a session must hold to translate each entity type. Translating is a WRITE,
+ * so these are the same permissions that gate the entity's own edit form (see the
+ * RBAC table in CLAUDE.md) - not the VIEW_* ones. That distinction matters:
+ * TOUR_OPERATOR holds `VIEW_CATEGORIES` but must not be able to rewrite category
+ * copy, so the gate keys on `EDIT_CATEGORY`.
+ *
+ * Net effect for an operator: Tours only (scoped to their own by `useMyTrips`).
+ * Destinations, Hubs, Categories, Collections and Homepage disappear entirely.
+ *
+ * The backend guards each endpoint regardless - this keeps the UI from offering
+ * a tab whose every save would 403.
+ */
+export const TRANSLATABLE_ENTITY_PERMISSIONS: Record<
+    TranslatableEntityType,
+    PermissionKey[]
+> = {
+    tour: ['EDIT_TRIP', 'MANAGE_TRIPS'],
+    destination: ['EDIT_DESTINATION'],
+    hub: ['MANAGE_HUBS'],
+    category: ['EDIT_CATEGORY'],
+    collection: ['EDIT_COLLECTION'],
+    homepage: ['MANAGE_EDITORIAL'],
 };
 
 export interface TranslatableFieldDef {

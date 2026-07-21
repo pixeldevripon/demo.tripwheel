@@ -118,6 +118,12 @@ export interface FeaturedExperience {
    * which is why a per-card poster exists at all.
    */
   posterUrl: string | null;
+  /**
+   * Whether the card opens the page it names. False = the card still shows,
+   * with its title, but is not clickable. Distinct from `isActive`, which
+   * removes it from the carousel entirely.
+   */
+  isLink: boolean;
   displayOrder: number;
   isActive: boolean;
   /**
@@ -136,6 +142,7 @@ export interface CreateFeaturedExperiencePayload {
   destinationId?: string | null;
   videoUrl?: string | null;
   posterUrl?: string | null;
+  isLink?: boolean;
   displayOrder?: number;
   isActive?: boolean;
 }

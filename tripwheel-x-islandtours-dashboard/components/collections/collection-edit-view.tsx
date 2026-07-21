@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
 import { EntityTabs } from '@/components/common/entity-tabs';
 import { useRole } from '@/contexts/role-context';
 import {
@@ -90,13 +90,7 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
 
  if (isLoading) {
  return (
- <CollectionDetailShell id={id} name={undefined} isLoading subtitle="Edit collection">
- <div className="space-y-4">
- {Array.from({ length: 4 }).map((_, i) => (
- <Skeleton key={i} className="h-12 w-full rounded-none" />
- ))}
- </div>
- </CollectionDetailShell>
+      <EntityEditSkeleton />
  );
  }
 

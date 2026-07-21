@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
 import { EntityTabs, type EntityTab } from '@/components/common/entity-tabs';
 import { FaqManager } from '@/components/common/faq-manager';
 import { useCategory } from '@/hooks/categories/use-categories';
@@ -22,13 +22,7 @@ export function CategoryEditView({ id, initialTab }: CategoryEditViewProps) {
 
   if (isLoading) {
     return (
-      <CategoryDetailShell id={id} name={undefined} isLoading subtitle="Edit category">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </CategoryDetailShell>
+      <EntityEditSkeleton />
     );
   }
 
