@@ -718,10 +718,25 @@ The editor reflects the dependency: the island select moved ABOVE the deck,
 because every card below it opens a category on that island, so it is the first
 decision rather than a footnote after them.
 
-Known and accepted: a category page 404s unless that (category, island) pair has
-a live tour, and this deck does not check that - unlike the Top Experiences
-resolver, which does. The check needs the island, which is only resolved on the
-frontend when the admin left it automatic.
+**The live-tour gate (added straight after).** A category page 404s unless that
+category has a LIVE tour on the island, so a card could link into a missing
+page. `getPublic` now applies that exact condition and serves a failing card
+WITHOUT its link - photo and caption intact, so the never-blank rule holds; the
+card simply stops being a door to nothing.
+
+That forced island resolution INTO the backend. It lived in the page (pinned →
+`curacao` → first active, `name asc`) and is mirrored here, so
+`editorialDestinationSlug` is now the RESOLVED island rather than the raw admin
+pick. The reason is not tidiness: two independent resolutions can disagree, and
+then the backend gates against one island while the frontend links to another.
+
+The admin read carries `hasLiveTours` per card plus the island it gated against,
+so the editor names a closed link instead of leaving an admin to discover it on
+the live site.
+
+Verified against real data both ways: a card on a stocked category returns its
+slug, and one pointed at a category with nothing live on that island comes back
+named, photographed and unlinked.
 
 ### The save that produced "destinationId must be a UUID"
 
