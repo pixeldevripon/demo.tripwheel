@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
 import { EntityTabs } from '@/components/common/entity-tabs';
 import { useDestination } from '@/hooks/destinations/use-destinations';
 import { DestinationDetailShell } from './destination-detail-shell';
@@ -22,13 +22,7 @@ export function DestinationEditView({ id, initialTab }: DestinationEditViewProps
 
   if (isLoading) {
     return (
-      <DestinationDetailShell id={id} name={undefined} isLoading subtitle="Edit destination">
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-none" />
-          ))}
-        </div>
-      </DestinationDetailShell>
+      <EntityEditSkeleton />
     );
   }
 
