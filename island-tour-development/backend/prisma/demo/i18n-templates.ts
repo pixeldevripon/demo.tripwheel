@@ -179,8 +179,82 @@ export function categoryName(slug: string, locale: Locale, en: string): string {
   return CATEGORY_NAME_I18N[slug]?.[locale] ?? en;
 }
 
+// ── Destination About-band sections ─────────────────────────────────────────────
+// The three blocks under the destination About copy. They are authored CMS rows
+// (PageContentSection), not dictionary strings, precisely because the copy names
+// real places on each island.
+//
+// The place names below are proper nouns, so they are identical in every locale -
+// which is what lets ONE hand-written sentence set per locale produce genuinely
+// island-specific copy for all five islands, the same trick CATEGORY_NAME_I18N
+// plays for category labels.
+
+export type IslandFacts = {
+  /** The island's signature boat trip / landmark you sail out to. */
+  signature: string;
+  /** A second well-known nature or snorkel spot. */
+  nature: string;
+  /** Main town or harbour front where the day ends. */
+  gateway: string;
+  /** Roughly how long the crossing to `signature` takes, one way, in minutes. */
+  crossingMinutes: number;
+};
+
+/** Keyed by destination slug (see the destination list in prisma/seed.ts). */
+export const ISLAND_FACTS: Record<string, IslandFacts> = {
+  curacao: {
+    signature: 'Klein Curaçao',
+    nature: 'Playa Piskado',
+    gateway: 'Willemstad',
+    crossingMinutes: 90,
+  },
+  aruba: {
+    signature: 'the Antilla wreck',
+    nature: 'Arikok National Park',
+    gateway: 'Oranjestad',
+    crossingMinutes: 30,
+  },
+  'sint-maarten': {
+    signature: 'Tintamarre',
+    nature: 'Mullet Bay',
+    gateway: 'Philipsburg',
+    crossingMinutes: 45,
+  },
+  'saint-lucia': {
+    signature: 'the Pitons',
+    nature: 'Sulphur Springs',
+    gateway: 'Castries',
+    crossingMinutes: 60,
+  },
+  bahamas: {
+    signature: 'the Exuma Cays',
+    nature: 'Blue Lagoon',
+    gateway: 'Nassau',
+    crossingMinutes: 75,
+  },
+};
+
+/**
+ * Identity of the three sections, shared by every locale. `destSections` returns
+ * heading + body INDEX-ALIGNED with this array (same convention as the FAQ sets),
+ * so the seed can pair them up without threading keys through each translation.
+ *
+ * `anchor` targets sections that already exist further down the destination page -
+ * these blocks are in-page navigation as well as copy, so the targets must keep
+ * matching the ids the page renders.
+ *
+ * `dictKey` names the bundled `destination.about.*` label each block replaces. The
+ * frontend falls back to it when an island has no authored rows yet.
+ */
+export const DEST_SECTIONS = [
+  { key: 'top-things', anchor: 'experiences', dictKey: 'topThings' },
+  { key: 'planning', anchor: 'planning', dictKey: 'planning' },
+  { key: 'why-book', anchor: 'faq', dictKey: 'whyBook' },
+] as const;
+
 // ── Per-locale prose templates ──────────────────────────────────────────────────
 type Faq = { q: string; a: string };
+type Section = { heading: string; body: string };
 
 export interface LocaleTemplates {
   destOverview: (name: string) => string;
@@ -204,7 +278,25 @@ export interface LocaleTemplates {
   hubFaqs: (name: string) => Faq[];
   /** 6 collection FAQs (Figma 47433:2306), parameterized by destination name. */
   collFaqs: (destName: string) => Faq[];
+  /** 3 About-band sections, INDEX-ALIGNED with DEST_SECTIONS. */
+  destSections: (name: string, f: IslandFacts) => Section[];
 }
+
+/** English base for the three About-band sections. */
+export const DEST_SECTIONS_EN = (name: string, f: IslandFacts): Section[] => [
+  {
+    heading: 'Top things to do',
+    body: `Sail out to ${f.signature}, make time for ${f.nature}, then finish the day on the ${f.gateway} waterfront. The crossing runs about ${f.crossingMinutes} minutes each way, so most boats are back well before sunset.`,
+  },
+  {
+    heading: 'Planning your trip',
+    body: `Boats fill up fastest between December and April, and the water is calmest first thing in the morning. Book two or three days ahead in high season, and pick a departure before 10:00 if anyone in your group gets seasick.`,
+  },
+  {
+    heading: 'Why book with Island Tours',
+    body: `We live on ${name} and know every operator here by name, so nothing gets listed that we would not send our own friends on. You hold your place with a small deposit rather than the full amount, and the price on the page is the price you pay.`,
+  },
+];
 
 export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
   // ── Nederlands ──────────────────────────────────────────────────────────────
@@ -326,6 +418,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       {
         q: 'Hoe bepaalt Island Tours welke tours hier staan?',
         a: 'Ons lokale team selecteert op ervaring, beoordelingen en eigen indrukken ter plaatse. Een plek in deze lijst is niet te koop: een tour verdient hem.',
+      },
+    ],
+    destSections: (n, f) => [
+      {
+        heading: 'Top dingen om te doen',
+        body: `Vaar naar ${f.signature}, neem de tijd voor ${f.nature} en sluit de dag af aan de boulevard van ${f.gateway}. De overtocht duurt ongeveer ${f.crossingMinutes} minuten enkele reis, dus de meeste boten zijn ruim voor zonsondergang terug.`,
+      },
+      {
+        heading: 'Plan je reis',
+        body: "Tussen december en april zitten de boten het snelst vol en is het water 's ochtends vroeg het rustigst. Boek in het hoogseizoen twee tot drie dagen van tevoren en kies een vertrek voor 10:00 als iemand in je gezelschap snel zeeziek wordt.",
+      },
+      {
+        heading: 'Waarom boeken bij Island Tours',
+        body: `We wonen op ${n} en kennen elke aanbieder hier persoonlijk; we plaatsen niets waar we onze eigen vrienden niet naartoe zouden sturen. Je legt je plek vast met een kleine aanbetaling in plaats van het hele bedrag, en de prijs op de pagina is de prijs die je betaalt.`,
       },
     ],
   },
@@ -451,6 +557,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
         a: 'Unser lokales Team wählt nach Erfahrung, Bewertungen und eigenen Eindrücken vor Ort aus. Ein Platz auf dieser Liste ist nicht käuflich - eine Tour muss ihn sich verdienen.',
       },
     ],
+    destSections: (n, f) => [
+      {
+        heading: 'Top-Aktivitäten',
+        body: `Segeln Sie hinaus nach ${f.signature}, nehmen Sie sich Zeit für ${f.nature} und lassen Sie den Tag an der Uferpromenade von ${f.gateway} ausklingen. Die Überfahrt dauert etwa ${f.crossingMinutes} Minuten pro Strecke, sodass die meisten Boote lange vor Sonnenuntergang zurück sind.`,
+      },
+      {
+        heading: 'Planen Sie Ihre Reise',
+        body: 'Zwischen Dezember und April sind die Boote am schnellsten ausgebucht, und am ruhigsten ist das Wasser früh am Morgen. Buchen Sie in der Hochsaison zwei bis drei Tage im Voraus und wählen Sie eine Abfahrt vor 10:00 Uhr, wenn jemand in Ihrer Gruppe schnell seekrank wird.',
+      },
+      {
+        heading: 'Warum bei Island Tours buchen',
+        body: `Wir leben auf ${n} und kennen hier jeden Anbieter persönlich - wir listen nichts, wohin wir nicht auch unsere eigenen Freunde schicken würden. Sie sichern sich Ihren Platz mit einer kleinen Anzahlung statt des vollen Betrags, und der Preis auf der Seite ist der Preis, den Sie zahlen.`,
+      },
+    ],
   },
 
   // ── Français ────────────────────────────────────────────────────────────────
@@ -572,6 +692,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       {
         q: 'Comment Island Tours choisit-il les excursions mises en avant ?',
         a: "Notre équipe locale sélectionne selon l'expérience, les avis et ses propres impressions sur place. Une place dans cette liste ne s'achète pas : elle se mérite.",
+      },
+    ],
+    destSections: (n, f) => [
+      {
+        heading: 'Meilleures choses à faire',
+        body: `Naviguez jusqu'à ${f.signature}, prenez le temps de découvrir ${f.nature}, puis terminez la journée sur le front de mer de ${f.gateway}. La traversée dure environ ${f.crossingMinutes} minutes par trajet : la plupart des bateaux sont rentrés bien avant le coucher du soleil.`,
+      },
+      {
+        heading: 'Planifier votre voyage',
+        body: "Les bateaux se remplissent le plus vite entre décembre et avril, et la mer est la plus calme en tout début de matinée. En haute saison, réservez deux à trois jours à l'avance et choisissez un départ avant 10h00 si quelqu'un de votre groupe a le mal de mer.",
+      },
+      {
+        heading: 'Pourquoi réserver avec Island Tours',
+        body: `Nous vivons à ${n} et connaissons personnellement chaque prestataire d'ici : nous ne référençons rien où nous n'enverrions pas nos propres amis. Vous réservez votre place avec un petit acompte plutôt que la totalité, et le prix affiché est le prix que vous payez.`,
       },
     ],
   },
@@ -697,6 +831,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
         a: 'Nuestro equipo local selecciona por experiencia, valoraciones y sus propias impresiones sobre el terreno. Un puesto en esta lista no se compra: se gana.',
       },
     ],
+    destSections: (n, f) => [
+      {
+        heading: 'Las mejores cosas para hacer',
+        body: `Navega hasta ${f.signature}, dedica tiempo a ${f.nature} y termina el día en el paseo marítimo de ${f.gateway}. La travesía dura unos ${f.crossingMinutes} minutos por trayecto, así que la mayoría de los barcos vuelven mucho antes del atardecer.`,
+      },
+      {
+        heading: 'Planificando tu viaje',
+        body: 'Los barcos se llenan más rápido entre diciembre y abril, y el mar está más tranquilo a primera hora de la mañana. En temporada alta reserva con dos o tres días de antelación y elige una salida antes de las 10:00 si alguien de tu grupo se marea.',
+      },
+      {
+        heading: 'Por qué reservar con Island Tours',
+        body: `Vivimos en ${n} y conocemos por su nombre a cada operador de aquí: no publicamos nada a lo que no enviaríamos a nuestros propios amigos. Reservas tu plaza con un pequeño depósito en lugar del importe completo, y el precio de la página es el precio que pagas.`,
+      },
+    ],
   },
 
   // ── Português ───────────────────────────────────────────────────────────────
@@ -820,6 +968,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
         a: 'Nossa equipe local seleciona por experiência, avaliações e impressões próprias no local. Um lugar nesta lista não se compra: se conquista.',
       },
     ],
+    destSections: (n, f) => [
+      {
+        heading: 'Principais coisas para fazer',
+        body: `Navegue até ${f.signature}, reserve tempo para ${f.nature} e termine o dia na marginal de ${f.gateway}. A travessia demora cerca de ${f.crossingMinutes} minutos em cada sentido, por isso a maioria dos barcos regressa muito antes do pôr do sol.`,
+      },
+      {
+        heading: 'Planejando sua viagem',
+        body: 'Os barcos enchem mais depressa entre dezembro e abril, e o mar está mais calmo logo de manhã cedo. Na época alta, reserve com dois ou três dias de antecedência e escolha uma partida antes das 10:00 se alguém do seu grupo enjoar facilmente.',
+      },
+      {
+        heading: 'Por que reservar com a Island Tours',
+        body: `Vivemos em ${n} e conhecemos cada operador daqui pelo nome - não publicamos nada para onde não mandaríamos os nossos próprios amigos. Garante o seu lugar com um pequeno depósito em vez do valor total, e o preço da página é o preço que paga.`,
+      },
+    ],
   },
 
   // ── 简体中文 ─────────────────────────────────────────────────────────────────
@@ -941,6 +1103,20 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       {
         q: 'Island Tours 如何决定推荐哪些行程？',
         a: '我们的本地团队根据体验质量、真实评价和实地考察来甄选。榜单位置无法购买，只能靠品质赢得。',
+      },
+    ],
+    destSections: (n, f) => [
+      {
+        heading: '最热门的活动',
+        body: `乘船前往${f.signature}，留出时间游览${f.nature}，最后在${f.gateway}的海滨漫步结束这一天。单程航行约 ${f.crossingMinutes} 分钟，因此大多数船只都会在日落前很久返回。`,
+      },
+      {
+        heading: '规划您的行程',
+        body: '12 月至次年 4 月的船位最紧张，而清晨的海面最为平静。旺季请提前两到三天预订；如果同行有人容易晕船，建议选择上午 10:00 之前出发的班次。',
+      },
+      {
+        heading: '为什么选择 Island Tours 预订',
+        body: `我们就住在${n}，与这里的每一位供应商都相熟；不会送自己朋友去的行程，我们也不会上架。您只需支付少量订金即可锁定名额，无需全额付款，页面上标示的价格就是您实际支付的价格。`,
       },
     ],
   },

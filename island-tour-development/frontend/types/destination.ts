@@ -56,11 +56,31 @@ export interface DestinationTranslation {
   isMachineTranslated: boolean;
 }
 
+/**
+ * One authored block in the destination About band. The backend has already
+ * collapsed these to the requested locale (English per section where a
+ * translation is missing) and ordered them, so the page renders them as they
+ * arrive.
+ */
+export interface DestinationContentSection {
+  /** Stable slug on seeded sections; null on admin-created ones. */
+  sectionKey: string | null;
+  /** In-page jump target WITHOUT the leading '#'. Null renders plain copy. */
+  anchor: string | null;
+  heading: string;
+  body: string;
+}
+
 export interface DestinationPageContent {
   locale: Locale;
   aboutText: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
+  /**
+   * Empty when the island has no authored sections - the About band then falls
+   * back to its bundled `destination.about.*` labels.
+   */
+  sections: DestinationContentSection[];
 }
 
 export interface DestinationFaq {

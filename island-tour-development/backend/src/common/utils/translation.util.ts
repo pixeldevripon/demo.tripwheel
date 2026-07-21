@@ -18,29 +18,33 @@ export const faqSelect = {
   faqGroupId: true,
 } as const;
 
-/** Minimum row shape `resolveFaqLocale` needs - a subset of `faqSelect`. */
-type LocalizableFaq = {
+/** Minimum row shape the grouped resolver needs - a subset of `faqSelect`. */
+type LocalizableGrouped = {
   locale: Locale;
-  faqGroupId: string | null;
   displayOrder: number;
 };
 
 /**
- * Collapses a mixed `locale` + English FAQ row set down to one row per logical
- * FAQ, preferring the requested locale.
+ * Collapses a mixed `locale` + English row set down to one row per logical item,
+ * preferring the requested locale. Shared by every polymorphic per-locale table
+ * whose rows carry a group key (`Faq.faqGroupId`,
+ * `PageContentSection.sectionGroupId`).
  *
  * Query with `where: { locale: { in: [locale, Locale.en] } }` and pass the rows
- * here. Filtering on `locale` alone instead empties the whole FAQ block on any
- * page that has not been translated yet - in six of the seven locales.
+ * here. Filtering on `locale` alone instead empties the whole block on any page
+ * that has not been translated yet - in six of the seven locales.
  *
- * Grouped rows (`faqGroupId` set) fall back per group, so a page with three of
- * its five questions translated still renders all five. Legacy ungrouped rows
- * have no counterpart to match on, so they fall back as a set: the English ones
- * are used only when the locale has no ungrouped rows at all.
+ * Grouped rows fall back PER GROUP, so a page with three of its five items
+ * translated still renders all five. Rows whose `getGroupId` returns null have no
+ * counterpart to match on, so they fall back as a set: the English ones are used
+ * only when the locale has no ungrouped rows at all. (`PageContentSection` has a
+ * NOT NULL group key, so that branch is dead for sections - it exists for `Faq`'s
+ * legacy pre-grouping rows.)
  */
-export function resolveFaqLocale<T extends LocalizableFaq>(
+export function resolveGroupedLocale<T extends LocalizableGrouped>(
   rows: T[],
   locale: Locale,
+  getGroupId: (row: T) => string | null,
 ): T[] {
   if (locale === Locale.en) return rows;
 
@@ -48,14 +52,15 @@ export function resolveFaqLocale<T extends LocalizableFaq>(
   const ungrouped: T[] = [];
 
   for (const row of rows) {
-    if (row.faqGroupId === null) {
+    const groupId = getGroupId(row);
+    if (groupId === null) {
       ungrouped.push(row);
       continue;
     }
     // The unique constraint allows one row per (group, locale), so the only
     // contest is locale vs en - and the locale row always wins it.
-    const held = grouped.get(row.faqGroupId);
-    if (!held || row.locale === locale) grouped.set(row.faqGroupId, row);
+    const held = grouped.get(groupId);
+    if (!held || row.locale === locale) grouped.set(groupId, row);
   }
 
   const localeUngrouped = ungrouped.filter((r) => r.locale === locale);
@@ -64,6 +69,13 @@ export function resolveFaqLocale<T extends LocalizableFaq>(
     ...grouped.values(),
     ...(localeUngrouped.length > 0 ? localeUngrouped : ungrouped),
   ].sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+/** `resolveGroupedLocale` keyed on `faqGroupId`. See it for the fallback rules. */
+export function resolveFaqLocale<
+  T extends LocalizableGrouped & { faqGroupId: string | null },
+>(rows: T[], locale: Locale): T[] {
+  return resolveGroupedLocale(rows, locale, (row) => row.faqGroupId);
 }
 
 /**

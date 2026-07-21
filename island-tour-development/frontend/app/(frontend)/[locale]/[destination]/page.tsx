@@ -1,4 +1,7 @@
-import { DestinationAbout } from '@/components/frontend/destination/destination-about';
+import {
+    DestinationAbout,
+    fallbackAboutSections,
+} from '@/components/frontend/destination/destination-about';
 import { InstagramSection } from '@/components/frontend/instagram/instagram-section';
 import {
     DestinationCollectionsSection,
@@ -144,6 +147,13 @@ async function DestinationContent({
             destinationName
         );
 
+    // Authored per-island blocks when they exist, otherwise the three bundled
+    // label links. Same rule as `aboutDescription`: the CMS wins, and an island
+    // nobody has authored yet still renders the band it renders today.
+    const aboutSections = pageContent?.sections?.length
+        ? pageContent.sections
+        : fallbackAboutSections(dict.destination.about);
+
     // Per-island questions when authored, otherwise the bundled generic set.
     // Only `items` is swapped - the surrounding chrome (title, WhatsApp prompt,
     // guarantees) is shared with the homepage on purpose.
@@ -188,6 +198,7 @@ async function DestinationContent({
             <DestinationAbout
                 destinationName={destinationName}
                 description={aboutDescription}
+                sections={aboutSections}
                 dict={dict.destination.about}
             />
         </>

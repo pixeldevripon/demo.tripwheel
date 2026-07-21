@@ -4,6 +4,7 @@ import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { FaqModule } from '@/common/faq/faq.module';
+import { PageContentSectionModule } from '@/common/page-content-sections/page-content-section.module';
 import { AuthModule } from '@/auth/auth.module';
 import { StaffPermissionsModule } from '@/staff/staff-permissions.module';
 import { StaffModule } from '@/staff/staff.module';
@@ -46,6 +47,7 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     ScheduleModule.forRoot(),
     PrismaModule,
     FaqModule,
+    PageContentSectionModule,
     // Global effective-permission resolver - must precede AuthModule's guards
     // conceptually, but being @Global the order here does not matter.
     StaffPermissionsModule,

@@ -66,11 +66,11 @@ The answer was no, with wide variance.
   content sections and collection translations; put `aboutText` + meta into both
   `render` payloads; add the missing `isActive`/`status` guards on
   `getBySlug` (DRAFT hubs and collections were public). EXECUTED block below.
-- **Phase 3 `[ ]`** - generic `PageContentSection` model + admin tab, so the
+- **Phase 3 `[x]`** - generic `PageContentSection` model + admin tab, so the
   destination About block can carry the three authored columns ("Top things to
   do" / "Planning your trip" / "Why book with us"). Requested with a design
   reference on 2026-07-21; the sample copy is island-specific, which is why it
-  cannot be a `{destination}` dictionary template.
+  cannot be a `{destination}` dictionary template. EXECUTED block below.
 - **Phase 4 `[-]` DROPPED** - tour FAQs. Built, then removed the same day:
   **tours do not have FAQs at all** (user, 2026-07-21). A tour already answers
   those questions with structured fields. Nothing to resume. DROPPED block below.
@@ -285,91 +285,151 @@ or treat a title that names the wrong entity as this, not as a routing bug.
 
 ---
 
-## Phase 3 - DESIGN DECIDED, not yet written (2026-07-21)
+## Phase 3 - destination About sections become CMS rows `[x]`  EXECUTED
 
-Nothing is implemented yet. These are the decisions made before starting, so the
-work resumes without re-deriving them.
+Executed 2026-07-21. Schema + migration, shared backend service, seed in all 7
+locales, public render with the dict fallback intact, dashboard editor, and
+Translation Console coverage.
 
-**Model: mirror `Faq`, not `HubContentSection`.** `prisma/faq.prisma` is already
-the codebase's polymorphic pattern and it has the group key
-`HubContentSection` lacks:
+### The model
 
-```prisma
-model PageContentSection {
-  id           String   @id @default(uuid())
-  pageType     FaqPageType   // reuse the existing discriminator
-  entityId     String
-  sectionGroupId String      // links the 7 per-locale rows of ONE section
-  locale       Locale
-  sectionKey   String        // 'top-things' | 'planning' | 'why-book'
-  heading      String
-  body         String
-  displayOrder Int      @default(0)
-  isActive     Boolean  @default(true)
+`backend/prisma/page-content-sections.prisma` - new file, mirrors `Faq`
+(`faq.prisma`), NOT `HubContentSection`. `HubContentSection` has no key linking
+its per-locale rows, which is exactly why Phase 2 had to fall back all-or-nothing
+via `resolveLocaleSet`; the group key fixes that class of bug at the source.
 
+```
+PageContentSection
+  pageType (FaqPageType) - entityId - sectionGroupId (NOT NULL) - locale
+  sectionKey? - heading - body - anchor? - displayOrder - isActive
   @@unique([pageType, entityId, sectionGroupId, locale])
-  @@index([pageType, entityId, locale, displayOrder])
   @@map("page_content_sections")
-}
 ```
 
-`sectionGroupId` is NOT nullable here (unlike `Faq.faqGroupId`, which is only
-nullable for legacy rows) - there are no legacy rows to protect, so the per-group
-locale fallback works from day one and `resolveFaqLocale`'s logic applies
-directly.
+Migration `20260721145030_page_content_sections`.
 
-**What the frontend has today** (`components/frontend/destination/
-destination-about.tsx:53-101`): three `<a>` elements - check icon + a one-line
-label from `dict.destination.about.{topThings,planning,whyBook}` - anchoring to
-`#experiences` / `#planning` / `#faq`. Identical on every island, no body copy.
-Each becomes heading + description. **The anchors must survive** - they are
-in-page navigation, not decoration.
+Three fields earn their place, and each has ONE job - worth stating because two
+of them look redundant next to each other:
 
-**Order of work:** schema + migration -> backend (admin CRUD + the section into
-the destination render payload) -> seed all 7 locales with REAL island copy ->
-frontend render keeping the `dict` fallback -> dashboard tab.
+- **`sectionGroupId`** (uuid, NOT NULL) - links the 7 locale rows. Not nullable
+  unlike `Faq.faqGroupId`, which is only nullable to protect pre-grouping rows;
+  there are none here, so per-section locale fallback works from the first write.
+- **`sectionKey`** (nullable) - stable editorial slug, ONLY so the seed can find
+  and re-upsert its own rows and the frontend can map a seeded section back to
+  the bundled label it replaced. Null on admin-created sections, which need
+  neither.
+- **`anchor`** (nullable) - the in-page jump target, stored WITHOUT the leading
+  `#`. Not in the original design sketch, added because the three items are
+  in-page navigation, not decoration: dropping the anchors would have silently
+  broken `#experiences` / `#planning` / `#faq`.
+  **Not admin-editable** (user, 2026-07-21: "no need anchor"). The column, the
+  API and the seed all still carry it, so the three seeded sections keep the jump
+  links the public band has always had - it is simply not a field an admin has to
+  think about while writing copy. A section added from the dashboard has no
+  anchor and renders as plain copy. If the three blocks should stop being links
+  altogether, drop `anchor` from `DEST_SECTIONS` in the seed; the column can then
+  go in a follow-up migration.
 
-**Still needs the design screenshot** for layout only; the data layer above does
-not depend on it.
+`FaqPageType` is now the discriminator on TWO tables. The name lies slightly, but
+a second enum with identical members could only drift; the enum comment says so.
 
----
+### Backend
 
-## Phase 3 work list `[ ]` - pointers
+- `src/common/page-content-sections/` - `PageContentSectionService` (+ module,
+  registered in `AppModule`, `@Global` like `FaqModule`) and its DTOs. A direct
+  parallel of `FaqGroupService`, minus the legacy-row migration it does not need.
+- `translation.util.ts` - `resolveFaqLocale` generalized into
+  `resolveGroupedLocale(rows, locale, getGroupId)`; `resolveFaqLocale` is now a
+  thin wrapper keyed on `faqGroupId`. One resolver, two tables, no fork.
+- Admin CRUD at `/destinations/:id/content-sections[/...]`, permission
+  `EDIT_DESTINATION`, mirroring the grouped-FAQ routes.
+- **Public read rides on `GET /destinations/:id/page-content`** as a `sections`
+  array rather than a new endpoint: the blocks render in the same About band as
+  `aboutText`, so one fetch and one cache tag covers the whole strip.
 
-Line numbers are as of 2026-07-21; re-grep rather than trusting them blind.
+### Cache busting
 
-**What exists today.** `components/frontend/destination/destination-about.tsx`
-renders the three items at `:55`, `:71`, `:87` as bare **anchor links** - a green
-check icon plus a one-line label, jumping to `#experiences` / `#planning` /
-`#faq`. The labels come from the bundled dictionary
-(`destination.about.topThings` / `.planning` / `.whyBook`), so they are identical
-on every island and carry no body text at all.
+Nothing to add. `/destinations/:id/content-sections/...` already maps to
+`destination:<id>` + `destinations` in the dashboard's `tagsForMutation`, which
+is what the About band reads. `affectsSlugRegistry` correctly ignores it (a
+3+-segment path whose verb is not a lifecycle verb).
 
-**What was asked for** (2026-07-21, with a design reference image): each of the
-three becomes a **heading + description block**. The sample copy was
-island-specific - Klein Curaçao, the 45-minute crossing, the Willemstad quays -
-which is exactly why this cannot be a `{destination}` dictionary template and
-needs authored per-destination rows.
+### Seed - island-specific copy without 105 hand-written strings
 
-**The design reference is an image and does not survive a context compaction.**
-Re-attach it before starting, or work from this description and expect to
-iterate on layout.
+`prisma/demo/i18n-templates.ts` gains `ISLAND_FACTS` (per destination slug:
+signature trip, nature spot, gateway town, crossing minutes), `DEST_SECTIONS`
+(the three `key`/`anchor`/`dictKey` identities), `DEST_SECTIONS_EN`, and a
+`destSections(name, facts)` entry in all six non-EN template objects.
 
-**Shape to build.** A generic `PageContentSection` model is the plan of record
-(see the Phase 3 bullet above) rather than three columns bolted onto
-`DestinationPageContent`, because hub already proves the pattern:
-`HubContentSection` (`prisma/destinations.prisma:261`) is per-locale,
-`sectionType`-discriminated, `displayOrder`-ordered. Copy that shape, but note
-its one flaw before repeating it - **it has no group key linking the per-locale
-variants**, which is why Phase 2 had to fall back all-or-nothing via
-`resolveLocaleSet` instead of per row. Give the new model a group id (the way
-`Faq.faqGroupId` does) and the resolver gets strictly better.
+The trick: **the landmarks are proper nouns, identical in every locale**, so one
+hand-written sentence set per locale yields genuinely island-specific copy for
+all five islands. Same move `CATEGORY_NAME_I18N` already makes. 5 islands x 3
+sections x 7 locales = 105 rows from 21 authored sentences.
 
-Also needed: the admin tab (follow the destination entity's existing
-Details/Page Content/SEO/FAQs structure) and the render path through
-`getDestinationPageContent`.
+`ensureContentSections` in `entity-content.ts` writes them, index-aligned with
+`DEST_SECTIONS` exactly the way `ensureFaqs` is index-aligned with its EN set. An
+island absent from `ISLAND_FACTS` is SKIPPED, not seeded with placeholder
+landmarks - the empty state is correct and the frontend falls back.
 
----
+### Frontend
+
+`destination-about.tsx` now takes a `sections` prop and exports
+`fallbackAboutSections(dict)`. The page resolves it the same way it resolves
+`aboutDescription`: CMS wins, otherwise the bundled labels. **The fallback path
+renders exactly what it rendered before** (bare label links, no body copy);
+authored sections render heading + body and switch the row to a wider layout.
+So an island nobody has authored looks untouched.
+
+### Dashboard
+
+- `ContentSectionManager` (`components/common/content-section-manager.tsx`) +
+  types/api-client/hooks, all mirroring the grouped-FAQ set.
+- Lives INSIDE the Page Content tab, not as a fifth tab: these blocks are page
+  content, and the entity tab set (Details / Page Content / SEO / FAQs) is shared
+  across modules.
+- English base only, with a Translation Console pointer - the same rule
+  `FaqManager` follows (user decision 2026-07-17).
+
+### Translation Console (user request, same day)
+
+- `DestinationWorkspace` gains an `extraSections` entry, "About sections". Two
+  translatable fields per section, and the upsert replaces the whole locale row,
+  so `save` groups changes by section and fills the untouched field from the
+  target row (English when the locale has none). One PUT per section, not per
+  field.
+
+### Console RBAC gate (user request, same day)
+
+The console offered every tab to every role; an operator saw Destinations, Hubs,
+Categories, Collections and Homepage, all of which 403 on save.
+
+- `TRANSLATABLE_ENTITY_PERMISSIONS` in `lib/translatable-schema.ts` maps each
+  entity type to the permission that gates its EDIT form - not its `VIEW_*`.
+  That distinction is the point: `TOUR_OPERATOR` holds `VIEW_CATEGORIES` but must
+  not rewrite category copy, so the gate keys on `EDIT_CATEGORY`.
+- The matrix renders only permitted tabs and falls through to the first permitted
+  one (the `'tour'` initial state is not guaranteed to be allowed).
+- `TranslationWorkspaceSwitch` re-checks: hiding a tab only removes the link,
+  and the URL stays typeable and bookmarked.
+- Net effect for an operator: Tours only, still scoped to their own by
+  `useMyTrips`.
+
+### Blank page on entering a workspace (user request, same day)
+
+The workspace segment had no `loading.tsx`, so clicking a matrix cell painted
+nothing until the client bundle mounted. Added `WorkspaceSkeleton`, rendered from
+BOTH the new `loading.tsx` and the two workspaces' own `isLoading` branch, so the
+navigation gap and the query gap read as one continuous skeleton instead of
+blank -> one shape -> another.
+
+### Follow-ups
+
+- The design reference was an image and did not survive compaction. Layout was
+  built from the written description; **re-attach it and iterate on the authored
+  branch's layout** (the data layer is done and does not depend on it).
+- `sections` is destination-only so far. The model is polymorphic and the service
+  is parameterized by `(pageType, entityId)`, so category/hub/collection is a
+  wrapper + a tab, no schema.
 
 ## Phase 2 - hub + collection pages stop dropping their editorial `[x]`  EXECUTED
 
