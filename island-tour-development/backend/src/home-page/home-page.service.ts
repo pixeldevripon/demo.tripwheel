@@ -36,6 +36,8 @@ const TRANSLATION_SELECT = {
   editorialCta: true,
   faqTitle: true,
   faqSubtitle: true,
+  metaTitle: true,
+  metaDescription: true,
   isMachineTranslated: true,
 } as const;
 
@@ -57,6 +59,8 @@ const EMPTY_COPY = {
   editorialCta: null,
   faqTitle: null,
   faqSubtitle: null,
+  metaTitle: null,
+  metaDescription: null,
 } as const;
 
 @Injectable()
@@ -130,6 +134,8 @@ export class HomePageService {
       editorialCta: copy?.editorialCta ?? null,
       faqTitle: copy?.faqTitle ?? null,
       faqSubtitle: copy?.faqSubtitle ?? null,
+      metaTitle: copy?.metaTitle ?? null,
+      metaDescription: copy?.metaDescription ?? null,
       faqs,
     };
   }
@@ -251,6 +257,8 @@ export class HomePageService {
         editorialCta: fields.editorialCta,
         faqTitle: fields.faqTitle,
         faqSubtitle: fields.faqSubtitle,
+        metaTitle: fields.metaTitle,
+        metaDescription: fields.metaDescription,
       },
       update: {
         isMachineTranslated: isMachineTranslated ?? false,
@@ -276,6 +284,10 @@ export class HomePageService {
         ...(fields.faqTitle !== undefined && { faqTitle: fields.faqTitle }),
         ...(fields.faqSubtitle !== undefined && {
           faqSubtitle: fields.faqSubtitle,
+        }),
+        ...(fields.metaTitle !== undefined && { metaTitle: fields.metaTitle }),
+        ...(fields.metaDescription !== undefined && {
+          metaDescription: fields.metaDescription,
         }),
       },
       select: TRANSLATION_SELECT,

@@ -79,6 +79,8 @@ describe('HomePageService', () => {
         editorialCta: null,
         faqTitle: null,
         faqSubtitle: null,
+        metaTitle: null,
+        metaDescription: null,
         faqs: [],
       });
     });
@@ -110,6 +112,8 @@ describe('HomePageService', () => {
             editorialCta: null,
             faqTitle: null,
             faqSubtitle: null,
+            metaTitle: 'Rondleidingen op de Cariben',
+            metaDescription: null,
             isMachineTranslated: false,
           },
         ],
@@ -122,6 +126,9 @@ describe('HomePageService', () => {
       expect(result.editorialDestinationSlug).toBe('curacao');
       // Unset copy stays null so the frontend keeps its dictionary default.
       expect(result.heroSubtitle).toBeNull();
+      // SEO meta is per-locale copy like any other field.
+      expect(result.metaTitle).toBe('Rondleidingen op de Cariben');
+      expect(result.metaDescription).toBeNull();
     });
 
     it('falls back to null copy when the locale has no row yet', async () => {
@@ -264,6 +271,29 @@ describe('HomePageService', () => {
 
       expect(prisma.homePage.upsert).toHaveBeenCalled();
       expect(prisma.homePageTranslation.upsert).toHaveBeenCalled();
+    });
+
+    it('writes the SEO meta like any other copy field', async () => {
+      prisma.homePage.upsert.mockResolvedValue({ id: 'default' });
+      prisma.homePageTranslation.upsert.mockResolvedValue({});
+
+      await service.upsertTranslation(
+        Locale.en,
+        {
+          fields: {
+            metaTitle: 'Caribbean Tours | Island Tours',
+            metaDescription: 'Book boat trips and island tours.',
+          },
+        },
+        'admin-1',
+      );
+
+      const call = prisma.homePageTranslation.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({
+        isMachineTranslated: false,
+        metaTitle: 'Caribbean Tours | Island Tours',
+        metaDescription: 'Book boat trips and island tours.',
+      });
     });
 
     it('only writes the named copy fields', async () => {

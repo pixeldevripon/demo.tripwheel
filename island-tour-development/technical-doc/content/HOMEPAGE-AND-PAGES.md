@@ -339,6 +339,12 @@ exist). Clearing the rows restored the bundled dictionary FAQs.
 **EXECUTED 2026-07-20** (dashboard repo). Pages joins this group in Phase 5; for
 now it holds Homepage alone.
 
+> **Superseded in part by Phase 4b (2026-07-21).** The nav placement, the
+> Experiences product logic and the Console registration below all still stand.
+> The TAB STRUCTURE described here (a tab per homepage section) and the helpers
+> it needed - `describeField`, `useSaveHomepageSection` - were replaced by the
+> entity shape every other module uses. Read Phase 4b for what exists today.
+
 Nav: **a `Pages` group, placed immediately before `Account`**, holding Homepage
 and gated `MANAGE_EDITORIAL` (user decision 2026-07-20). Grouped by what the
 items ARE - pages you edit - rather than by permission, so the Phase-5 legal and
@@ -449,6 +455,88 @@ change today.
 `next build` succeeds. The remaining warnings are the pre-existing
 `react-hooks/incompatible-library` `watch()` notices that the settings forms
 already produce. Still unverified: the rendered UI (no session).
+
+## Phase 4b - Redesign onto the entity convention `[x]`
+
+**EXECUTED 2026-07-21** (backend + dashboard). User review of the Phase-4 editor:
+*"the design is not up to the mark and not following our convention like what did
+the destination module - see the destination module form structure, specially faq
+and seo page content and details tab."* Correct on every count. Phase 4 shipped a
+**section-shaped** editor (a tab per homepage section, each with its own save)
+into an app where every other content surface is **entity-shaped**. Composing the
+shared settings KIT was necessary but not sufficient - the STRUCTURE still had to
+match, and it did not.
+
+### What was actually wrong
+
+1. **No SEO to speak of.** The "SEO" tab was one OG-image picker. The homepage had
+   no `metaTitle`/`metaDescription` AT ALL - the front door of the site was the
+   one page with no search-engine listing, while every category page had one.
+2. **Copy scattered across four tabs**, so changing the page's words meant four
+   saves in four places; a destination edits all of its copy in one.
+3. **No Details tab.** The record's own fields (hero image, CTA deck, CTA target)
+   were split across Hero and CTA Card, so one banner change was two round trips.
+4. **A second FAQ heading form** sat above the FAQ list, when that heading is
+   per-locale copy like every other string on the page.
+
+### Backend - the homepage gets a search listing
+
+`metaTitle` / `metaDescription` added to `HomePageTranslation` (migration
+`20260721063014_home_page_seo_meta`), threaded through `TRANSLATION_SELECT`,
+`EMPTY_COPY`, the public projection and the translation upsert.
+
+**Why on the TRANSLATION row and not a page-content record:** the four content
+entities keep meta on their per-locale `*PageContent` record. The homepage
+singleton has no such record and inventing one would mean a table, a controller
+and an upsert to hold two columns. The translation row is already per-locale, so
+the fields ride there - the ONLY structural difference, and it is invisible to
+the admin because the SEO tab looks identical to a destination's.
+
+Null keeps the existing fallback contract: an empty meta title means the public
+page uses the site-wide default from Settings, exactly as it did before.
+
+### Dashboard - the destination shape, tab for tab
+
+`Details | Page Content | Experiences | SEO | FAQs`, with `aliases` mapping the
+old `hero` and `cta` tabs onto `details` so existing links still land somewhere
+sensible.
+
+- **Details** = `HomepageForm`, one card and one Save covering hero image, CTA
+  deck and CTA target - one endpoint, one write, mirroring `DestinationForm`.
+- **Page Content** = the shared `EnglishContentEditor`, now with a `homepage`
+  branch. Every word on the page in one form, in the order the sections appear.
+- **SEO** = the shared `EntitySeoTab`, now exporting `HomepageSeoTab`: SERP
+  preview, character counters, Regenerate, and the OG image - the same component
+  destinations use. Suggestions come from the site-wide Settings defaults, which
+  is also what the live page falls back to, so the preview shows the truth.
+- **Experiences** = the curation card, unchanged in behaviour (every silent-drop
+  rule from Phase 4 survives verbatim); it lost only the heading form.
+- **FAQs** = `FaqManager` in the same card shell destinations use.
+
+Two additive changes to shared code, both benefiting every entity:
+`TranslatableFieldDef` gained an optional `placeholder` (which is how the
+show-the-fallback rule survives - the shipped copy is now the placeholder in the
+editor AND in the Translation Console, where a translator needs it most), and
+`SeoConfig` gained `metaSourceNote` / `ogFallbackNote` so the homepage can say
+where ITS fallbacks come from without forking the component.
+
+Deleted as dead: `homepage-hero-tab`, `homepage-editorial-tab`,
+`homepage-seo-tab`, `translation-pointer`, `describeField`,
+`useSaveHomepageSection` (no tab spans two endpoints any more - Details is pure
+base fields, Page Content is pure copy, so the composed save had nothing left to
+compose).
+
+### Verification
+
+Backend: `tsc` clean, **1329/1329 tests pass** (29 in `home-page`, incl. new
+coverage for the meta upsert, the public projection and the DTO ceilings). The
+round trip was exercised against the RUNNING API - a meta title written to the
+translation row appears in `GET /home-page/public`, and clearing it returns null
+(fallback intact). Dashboard: `tsc` clean, 0 lint errors, `next build` green.
+
+**Still unverified: the rendered UI.** Unchanged from Phase 4 - dashboard routes
+307 to `/portal` without a session, the Chrome extension was not connected this
+session, and signing in is not something I do. It needs a human pass.
 
 ## Phase 5 - Pages system `[ ]`
 

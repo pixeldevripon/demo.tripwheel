@@ -1,6 +1,9 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { UpdateHomePageDto } from './home-page.dto';
+import {
+  HomePageTranslationFieldsDto,
+  UpdateHomePageDto,
+} from './home-page.dto';
 
 /**
  * The homepage row is a singleton rendered on every locale's front page, and
@@ -69,5 +72,42 @@ describe('UpdateHomePageDto - media URL validation', () => {
 
   it('rejects a bad ogImage', async () => {
     expect(await errorsFor({ ogImage: 'ftp://x/y.png' })).toEqual(['ogImage']);
+  });
+});
+
+/**
+ * The SEO meta is per-locale copy on the translation record (the homepage
+ * singleton has no page-content record to hold it). The global ValidationPipe
+ * runs `forbidNonWhitelisted`, so a field missing from this DTO does not fall
+ * through silently - it 400s the whole save.
+ */
+describe('HomePageTranslationFieldsDto - SEO meta', () => {
+  async function fieldErrors(payload: Record<string, unknown>) {
+    const dto = plainToInstance(HomePageTranslationFieldsDto, payload);
+    return (await validate(dto)).map((e) => e.property);
+  }
+
+  it('accepts a meta title and description', async () => {
+    expect(
+      await fieldErrors({
+        metaTitle: 'Caribbean Tours & Activities | Island Tours',
+        metaDescription: 'Book boat trips and island tours across the islands.',
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts null - clearing meta falls back to the site-wide defaults', async () => {
+    expect(
+      await fieldErrors({ metaTitle: null, metaDescription: null }),
+    ).toEqual([]);
+  });
+
+  it('rejects absurd input past the hard ceiling', async () => {
+    expect(await fieldErrors({ metaTitle: 'x'.repeat(201) })).toEqual([
+      'metaTitle',
+    ]);
+    expect(await fieldErrors({ metaDescription: 'x'.repeat(501) })).toEqual([
+      'metaDescription',
+    ]);
   });
 });

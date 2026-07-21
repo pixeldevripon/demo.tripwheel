@@ -68,6 +68,14 @@ model HomePageTranslation {
   faqTitle    String?
   faqSubtitle String?
 
+  // Search-engine listing for `/{locale}/`. Per-locale, exactly like every other
+  // page's SEO meta — the difference is only WHERE it is stored: the content
+  // entities keep meta on their per-locale page-content record, and the homepage
+  // singleton has no page-content record, so it rides on the translation row.
+  // Null → the frontend falls back to the site-wide defaults from Settings.
+  metaTitle       String?
+  metaDescription String?
+
   isMachineTranslated Boolean  @default(false)
   updatedAt           DateTime @updatedAt
 

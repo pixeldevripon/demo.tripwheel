@@ -46,6 +46,13 @@ export interface PublicHomePage {
     faqTitle: string | null;
     faqSubtitle: string | null;
     /**
+     * Search-engine listing for this locale, admin-edited in the dashboard's
+     * homepage SEO tab. Null keeps the site-wide defaults from Settings, the
+     * same fallback rule as every field above.
+     */
+    metaTitle: string | null;
+    metaDescription: string | null;
+    /**
      * Published FAQs for this locale, in display order. Empty means "keep the
      * bundled dictionary FAQs" - the same fallback rule as every field above.
      * Untranslated FAQs are omitted by the backend rather than falling back to
@@ -72,6 +79,8 @@ function emptyHomePage(locale: Locale): PublicHomePage {
         editorialCta: null,
         faqTitle: null,
         faqSubtitle: null,
+        metaTitle: null,
+        metaDescription: null,
         faqs: [],
     };
 }

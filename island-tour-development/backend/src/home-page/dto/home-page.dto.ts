@@ -27,6 +27,14 @@ import {
 const URL_MAX_LENGTH = 2048;
 const URL_RULES = { protocols: ['https'], require_protocol: true };
 
+/**
+ * Hard ceilings for the search-engine listing. The RECOMMENDED lengths (~70 and
+ * ~170) are soft caps surfaced as a character counter in the editor — a long
+ * title is truncated by Google, not rejected — so these only stop absurd input.
+ */
+const SEO_TITLE_MAX_LENGTH = 200;
+const SEO_DESCRIPTION_MAX_LENGTH = 500;
+
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
 /** One published FAQ, already resolved to the requested locale. */
@@ -117,6 +125,22 @@ export class PublicHomePageResponseDto {
   })
   faqSubtitle!: string | null;
 
+  @ApiPropertyOptional({
+    example: 'Caribbean Tours & Activities, Chosen by Locals | Island Tours',
+    nullable: true,
+    description:
+      'Search-engine title for this locale. Null means the frontend falls back ' +
+      'to the site-wide default from Settings.',
+  })
+  metaTitle!: string | null;
+
+  @ApiPropertyOptional({
+    example:
+      'Book boat trips, snorkelling and island tours across the Caribbean.',
+    nullable: true,
+  })
+  metaDescription!: string | null;
+
   @ApiProperty({
     type: [HomePageFaqDto],
     description:
@@ -158,6 +182,12 @@ export class HomePageTranslationEntryDto {
 
   @ApiPropertyOptional({ nullable: true })
   faqSubtitle!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  metaTitle!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  metaDescription!: string | null;
 
   @ApiProperty({ example: false })
   isMachineTranslated!: boolean;
@@ -286,6 +316,28 @@ export class HomePageTranslationFieldsDto {
   @IsOptional()
   @IsString()
   faqSubtitle?: string | null;
+
+  /**
+   * SEO meta for `/{locale}/`. Same shape and rules as the page-content meta on
+   * every other page; length is a soft cap enforced in the editor (a search
+   * engine truncates, it does not reject), so only a hard ceiling lives here.
+   */
+  @ApiPropertyOptional({
+    example: 'Caribbean Tours & Activities, Chosen by Locals | Island Tours',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(SEO_TITLE_MAX_LENGTH)
+  metaTitle?: string | null;
+
+  @ApiPropertyOptional({
+    example:
+      'Book boat trips, snorkelling and island tours across the Caribbean.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(SEO_DESCRIPTION_MAX_LENGTH)
+  metaDescription?: string | null;
 }
 
 export class UpsertHomePageTranslationDto {
