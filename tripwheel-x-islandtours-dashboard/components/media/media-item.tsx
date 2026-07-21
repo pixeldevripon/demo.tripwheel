@@ -2,11 +2,17 @@
 
 import { Card } from '@/components/ui/card';
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
     Delete02Icon,
     File02Icon,
     Image02Icon,
     MusicNote01Icon,
     PlayIcon,
+    SeoIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
@@ -38,7 +44,6 @@ export default function MediaItemCard({
     selector,
     priority,
 }: MediaItemProps) {
-    const [isHovered, setIsHovered] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
 
     const kind = getMediaKind(item);
@@ -52,9 +57,7 @@ export default function MediaItemCard({
 
     return (
         <Card
-            className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-all duration-300 hover:shadow-lg ${className}`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-colors duration-fast ${className}`}
             onClick={handleClick}>
             <div className='relative h-full'>
                 {kind === 'image' ? (
@@ -129,9 +132,14 @@ export default function MediaItemCard({
                     </div>
                 )}
 
-                {/* Hover Overlay */}
+                {/* Hover scrim. Pure CSS off the card's `group` - this used to
+                    be React state, which re-rendered a full image tile on every
+                    pointer enter/leave across a grid of 50+. Opacity only, at
+                    --duration-fast (03 §7: hover is a color/opacity transition,
+                    no lifts or scale-ups). focus-within keeps it keyboard-visible. */}
                 <div
-                    className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                    aria-hidden
+                    className='pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 transition-opacity duration-fast group-hover:opacity-100 group-focus-within:opacity-100'
                 />
 
                 {/* Delete - revealed on card hover (and keyboard focus) */}
@@ -140,18 +148,36 @@ export default function MediaItemCard({
                         type='button'
                         aria-label='Delete media'
                         onClick={handleDelete}
-                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100'>
+                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer opacity-0 transition-opacity duration-fast group-hover:opacity-100 focus-visible:opacity-100'>
                         <HugeiconsIcon icon={Delete02Icon} size={14} />
                     </button>
                 )}
 
-                {/* SEO Indicator */}
+                {/* SEO indicator: this item has alt text and/or a caption.
+                    Icon-only, because the old "SEO Optimized" pill was wider
+                    than a third of the tile and truncated against the neighbour.
+
+                    z-30 is load-bearing: the image sits at z-10, so the old
+                    unlayered wrapper rendered BEHIND the photo and only showed
+                    on tiles the image did not fill (the "badge slides behind
+                    the image" bug).
+
+                    Bottom-left, not top-left: bulk-select mode puts its
+                    checkbox at top-2/left-2 (media-grid-ui) and delete owns
+                    top-right, so the top row is spoken for. The type badge
+                    (MP4/SVG) holds bottom-right. */}
                 {(item?.altText || item?.caption) && (
-                    <div className='absolute top-3 left-3'>
-                        <div className='bg-success-solid text-success-foreground text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
-                            SEO Optimized
-                        </div>
-                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className='absolute bottom-2 left-2 z-30 flex size-6 items-center justify-center rounded-full bg-success-solid text-success-foreground shadow-sm ring-1 ring-black/10'>
+                                <HugeiconsIcon icon={SeoIcon} size={14} />
+                                <span className='sr-only'>SEO optimized</span>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            SEO optimized - alt text or caption set
+                        </TooltipContent>
+                    </Tooltip>
                 )}
             </div>
         </Card>
