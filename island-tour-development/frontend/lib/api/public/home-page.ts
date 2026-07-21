@@ -111,9 +111,43 @@ export async function getHomePageContent(
     cacheLife('days');
     cacheTag('homepage');
 
-    const res = await publicGet<PublicHomePage>(
+    const res = await publicGet<Partial<PublicHomePage>>(
         `/home-page/public${buildQuery({ locale })}`,
     );
 
-    return res ?? emptyHomePage(locale);
+    return normalize(res, locale);
+}
+
+/**
+ * Fill in whatever the API did not send.
+ *
+ * The soft-null `publicGet` only covers "no response". It does NOT cover a
+ * response of the WRONG SHAPE, and the two deploys are independent: ship a
+ * frontend that reads `editorialCards` against a backend that still returns
+ * `editorialImages` and the field is `undefined`, so the first `.flatMap` on it
+ * takes down the prerender of the site's front door in every locale. That is
+ * exactly what happened on the first deploy of this feature.
+ *
+ * Merging over the all-null baseline makes an older (or newer) backend a
+ * DEGRADATION rather than an outage: unknown fields are ignored, missing ones
+ * fall back to their bundled defaults, and the page renders. The two arrays are
+ * re-checked explicitly because a present-but-not-an-array value would survive
+ * the spread and only fail later, at the call site.
+ */
+function normalize(
+    res: Partial<PublicHomePage> | null,
+    locale: Locale,
+): PublicHomePage {
+    const empty = emptyHomePage(locale);
+    if (!res) return empty;
+
+    return {
+        ...empty,
+        ...res,
+        locale,
+        editorialCards: Array.isArray(res.editorialCards)
+            ? res.editorialCards
+            : [],
+        faqs: Array.isArray(res.faqs) ? res.faqs : [],
+    };
 }

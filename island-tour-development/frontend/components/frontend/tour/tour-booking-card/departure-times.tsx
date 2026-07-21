@@ -1,8 +1,14 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useAnimationControls, useReducedMotion } from 'framer-motion';
+import { useEffect } from 'react';
 import { useBooking } from '@/hooks/tours/use-booking';
-import { springPop, swapFade } from '@/lib/motion';
+import {
+    shakeTransition,
+    shakeX,
+    springPop,
+    swapFade,
+} from '@/lib/motion';
 import { Collapse } from './collapse';
 import { formatTime } from './lib/booking.utils';
 
@@ -23,12 +29,43 @@ export function DepartureTimes() {
         selectedTime,
         selectTime,
         ctaError,
+        ctaErrorNonce,
     } = useBooking();
 
     // The CTA was clicked without a time: tint the selectable chips and give
     // the row a quick shake so the eye lands on what the note above the
     // button is asking for (no wrapper box - it collided with the date field).
     const missingSlot = ctaError === 'slot';
+
+    const reduceMotion = useReducedMotion();
+    const controls = useAnimationControls();
+
+    // Exactly when the chip grid is in the tree: `Collapse` unmounts its
+    // children (AnimatePresence) and the skeleton swaps in for the grid while
+    // slots load, so the element comes and goes.
+    const slotsVisible =
+        selectedDate != null && !slotsLoading && slots.length > 0;
+
+    // The row's own fade-in. It lives here rather than in an `animate` prop
+    // because the element is bound to `controls`, and a bound component takes
+    // its target only from them - which also means the start must wait for the
+    // element to exist. Firing it on mount alone would leave the grid stuck at
+    // `initial` opacity 0 whenever slots were still loading at that point,
+    // since controls with no subscriber animate nothing.
+    useEffect(() => {
+        if (!slotsVisible) return;
+        controls.start({ opacity: 1, transition: swapFade });
+    }, [controls, slotsVisible]);
+
+    // Replay the shake on EVERY blocked Checkout press, not just the first.
+    // `ctaErrorNonce` is the dependency that makes that possible: `missingSlot`
+    // is already true by the second press, so an effect (or a declarative
+    // target) keyed on it alone would never fire again. Imperative `.start` for
+    // the same reason - re-rendering the same keyframes is not a state change.
+    useEffect(() => {
+        if (!missingSlot || reduceMotion || !slotsVisible) return;
+        controls.start({ x: shakeX, transition: shakeTransition });
+    }, [missingSlot, ctaErrorNonce, reduceMotion, slotsVisible, controls]);
 
     return (
         <Collapse
@@ -56,17 +93,7 @@ export function DepartureTimes() {
                 <motion.div
                     key='slots'
                     initial={{ opacity: 0 }}
-                    // A one-shot horizontal shake when the missing-slot error
-                    // fires; opacity keeps its own fade-in transition.
-                    animate={
-                        missingSlot
-                            ? { opacity: 1, x: [0, -5, 5, -3, 3, 0] }
-                            : { opacity: 1, x: 0 }
-                    }
-                    transition={{
-                        default: swapFade,
-                        x: { duration: 0.35, ease: 'easeInOut' },
-                    }}
+                    animate={controls}
                     className='grid grid-cols-3 gap-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;

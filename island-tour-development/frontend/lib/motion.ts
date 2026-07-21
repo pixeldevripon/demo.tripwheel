@@ -26,6 +26,20 @@ export const swapFade = { duration: 0.15 } as const;
 export const crossFade = { duration: 0.2, ease: [0.4, 0, 0.2, 1] } as const;
 
 /**
+ * Attention shake for a required field the user skipped (the booking card's
+ * departure row when Checkout is pressed with no time picked).
+ *
+ * Drive it IMPERATIVELY - `useAnimationControls().start({ x: shakeX })` from an
+ * effect keyed on a click nonce. A declarative `animate={cond ? {x: shakeX} :
+ * ...}` plays exactly once: the second press writes the same target, framer
+ * sees no change, and nothing moves - which reads as a dead button precisely
+ * when the user is already confused. Never `whileHover`-adjacent; this fires
+ * on an explicit action only.
+ */
+export const shakeX = [0, -5, 5, -3, 3, 0];
+export const shakeTransition = { duration: 0.35, ease: 'easeInOut' } as const;
+
+/**
  * Sitewide page-enter (PageTransition): a whole page needs a longer, softer
  * settle than a card swap - same easing family as `Reveal` so route entrances
  * and section reveals feel like one system. Pair with y 16.

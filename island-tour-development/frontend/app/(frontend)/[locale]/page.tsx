@@ -101,13 +101,24 @@ export default async function HomePage({
     // render on an unconfigured host, and this page is the prerendered front door
     // for every locale, so one bad row would take the homepage down rather than
     // degrade one card.
-    const experienceCards = experiences.map(e => ({
-        id: e.id,
-        title: e.title,
-        image: safeRemoteImage(e.image),
-        videoUrl: e.videoUrl,
-        href: localizeHref(locale as Locale, e.href),
-    }));
+    // A card with no renderable photo is DROPPED, not passed on with a null:
+    // the slide is a full-bleed image with the title over it, so a null renders
+    // as a grey rectangle mid-carousel. The backend drops these too - this is
+    // the same invariant held on both sides, because the two deploy separately
+    // and a frontend must not depend on the age of the API it is talking to.
+    const experienceCards = experiences.flatMap(e => {
+        const image = safeRemoteImage(e.image);
+        if (!image || !e.href) return [];
+        return [
+            {
+                id: e.id,
+                title: e.title,
+                image,
+                videoUrl: e.videoUrl ?? null,
+                href: localizeHref(locale as Locale, e.href),
+            },
+        ];
+    });
     // Fan cards. An unrenderable photo DROPS the card rather than rendering an
     // empty slot: the deck then keeps its bundled card for that position, which
     // is the same never-blank rule the rest of this page follows.

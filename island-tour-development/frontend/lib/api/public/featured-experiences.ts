@@ -54,5 +54,9 @@ export async function getFeaturedExperiences(
         `/featured-experiences/public${buildQuery({ locale, destination })}`,
     );
 
-    return data ?? [];
+    // Array-checked, not just null-checked: this feeds a `.map`, and an API that
+    // answers with an object (an error envelope, an older route, a proxy page)
+    // would otherwise crash the prerender of the homepage rather than costing it
+    // one section. Callers fall back to their bundled deck on an empty list.
+    return Array.isArray(data) ? data : [];
 }
