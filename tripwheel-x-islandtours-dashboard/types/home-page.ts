@@ -35,15 +35,20 @@ export interface HomePageTranslation {
 /**
  * One fanned CTA card, as stored.
  *
- * The caption is NOT here on purpose: it is the linked island's own translated
- * name, so all 7 locales come for free and the card can never disagree with the
- * page it opens. A card with no island keeps the bundled label.
+ * It advertises a CATEGORY. The island is not on the card: the whole banner is
+ * themed to one island (`editorialDestinationId`), and a card's URL is that
+ * island plus this category - so a card can never open a different island from
+ * the button beside it.
+ *
+ * The caption is NOT here on purpose: it is the category's own translated name,
+ * so all 7 locales come for free and the card can never disagree with the page
+ * it opens. A card with no category keeps the bundled label.
  */
 export interface EditorialCard {
   id: string;
   imageUrl: string;
-  destinationId: string | null;
-  /** Whether the card is clickable. Off = the island is named but not linked. */
+  categoryId: string | null;
+  /** Whether the card is clickable. Off = named but not linked. */
   isLink: boolean;
   /** 0, 1, 2 - left, middle, front in fan order. */
   displayOrder: number;
@@ -63,7 +68,7 @@ export interface HomePageContent {
 /** One card on the way out. Its slot is its index in the array. */
 export interface EditorialCardInput {
   imageUrl: string;
-  destinationId?: string | null;
+  categoryId?: string | null;
   isLink?: boolean;
 }
 
