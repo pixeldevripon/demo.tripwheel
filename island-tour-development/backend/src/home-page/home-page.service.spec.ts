@@ -24,6 +24,13 @@ function createMockPrismaService() {
       findUnique: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    category: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    // The card gate: which categories have a LIVE tour on the banner's island.
+    tourCategory: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     faq: {
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -163,11 +170,23 @@ describe('HomePageService', () => {
     });
 
     /**
-     * The fanned deck. Its caption and link both come from the island, so these
-     * cover the three states an admin can put a card in - plus the one the
-     * system can put it in behind their back (island archived).
+     * The fanned deck. Caption and slug come from the CATEGORY; the link is
+     * additionally gated on that category having something bookable on the
+     * banner's island. These cover every state an admin can put a card in, plus
+     * the two the system can put it in behind their back (category archived,
+     * last tour on that island going dark).
      */
     describe('editorial cards', () => {
+      const CURACAO = { id: 'dest-1', slug: 'curacao' };
+
+      /** An island to resolve, and a category that is bookable on it. */
+      function islandWithLiveTour() {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        prisma.tourCategory.findMany.mockResolvedValue([
+          { categoryId: 'cat-1' },
+        ]);
+      }
+
       function homeWithCards(cards: unknown[]) {
         return {
           heroImage: null,
@@ -179,85 +198,94 @@ describe('HomePageService', () => {
         };
       }
 
-      const curacao = {
-        slug: 'curacao',
-        name: 'Curaçao',
+      const buggy = {
+        slug: 'buggy-tours',
+        name: 'Buggy Tours',
         isActive: true,
         translations: [],
       };
 
-      it('names and links a card from its island', async () => {
+      it('names a card from its category and hands back the slug', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: curacao,
+              category: buggy,
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.en)).editorialCards;
 
+        // No island in the slug: the frontend joins it to the island it
+        // resolved for the button, so the two can never disagree.
         expect(card).toEqual({
           image: 'https://cdn/buggy.jpg',
-          name: 'Curaçao',
-          href: '/curacao',
+          name: 'Buggy Tours',
+          categorySlug: 'buggy-tours',
         });
       });
 
       it('prefers the locale translation for the card name', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: { ...curacao, translations: [{ name: 'Curazao' }] },
+              category: {
+                ...buggy,
+                translations: [{ name: 'Tours en buggy' }],
+              },
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.es)).editorialCards;
 
-        expect(card.name).toBe('Curazao');
+        expect(card.name).toBe('Tours en buggy');
       });
 
-      it('keeps the name but drops the href when the link is switched off', async () => {
+      it('keeps the name but drops the slug when the link is switched off', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: false,
               displayOrder: 0,
-              destination: curacao,
+              category: buggy,
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.en)).editorialCards;
 
-        expect(card.name).toBe('Curaçao');
-        expect(card.href).toBeNull();
+        expect(card.name).toBe('Buggy Tours');
+        expect(card.categorySlug).toBeNull();
       });
 
-      it('degrades an archived island to a plain photo', async () => {
+      it('degrades an archived category to a plain photo', async () => {
+        islandWithLiveTour();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: { ...curacao, isActive: false },
+              category: { ...buggy, isActive: false },
             },
           ]),
         );
@@ -266,20 +294,75 @@ describe('HomePageService', () => {
 
         // Neither named nor linked: the page it would open no longer resolves.
         expect(card.name).toBeNull();
-        expect(card.href).toBeNull();
+        expect(card.categorySlug).toBeNull();
         expect(card.image).toBe('https://cdn/buggy.jpg');
       });
 
-      it('leaves an unlinked photo unnamed so the bundled label survives', async () => {
+      it('drops the link when the category has no live tour on that island', async () => {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        // The island resolves, the category is active and the admin asked for a
+        // link - but nothing is bookable, so the category page would 404.
+        prisma.tourCategory.findMany.mockResolvedValue([]);
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: null,
+              categoryId: 'cat-1',
+              isLink: true,
+              displayOrder: 0,
+              category: buggy,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        // Still a card - photo and caption survive, only the door closes.
+        expect(card.image).toBe('https://cdn/buggy.jpg');
+        expect(card.name).toBe('Buggy Tours');
+        expect(card.categorySlug).toBeNull();
+      });
+
+      it('gates against the island the banner actually points at', async () => {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        prisma.tourCategory.findMany.mockResolvedValue([
+          { categoryId: 'cat-1' },
+        ]);
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              categoryId: 'cat-1',
+              isLink: true,
+              displayOrder: 0,
+              category: buggy,
+            },
+          ]),
+        );
+
+        const result = await service.getPublic(Locale.en);
+
+        // The resolved island is reported, and the gate was asked about THAT
+        // island - if the two ever diverged the gate would be meaningless.
+        expect(result.editorialDestinationSlug).toBe('curacao');
+        expect(
+          prisma.tourCategory.findMany.mock.calls[0][0].where.tour
+            .destinationId,
+        ).toBe(CURACAO.id);
+      });
+
+      it('leaves a category-less photo unnamed so the bundled label survives', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              categoryId: null,
               isLink: false,
               displayOrder: 0,
-              destination: null,
+              category: null,
             },
           ]),
         );
@@ -289,7 +372,7 @@ describe('HomePageService', () => {
         expect(card).toEqual({
           image: 'https://cdn/buggy.jpg',
           name: null,
-          href: null,
+          categorySlug: null,
         });
       });
     });
@@ -344,12 +427,12 @@ describe('HomePageService', () => {
 
     it('replaces the deck wholesale, numbering slots by array order', async () => {
       prisma.homePage.upsert.mockResolvedValue({});
-      prisma.destination.findMany.mockResolvedValue([{ id: 'dest-1' }]);
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
       await service.update(
         {
           editorialCards: [
-            { imageUrl: 'https://cdn/1.jpg', destinationId: 'dest-1' },
+            { imageUrl: 'https://cdn/1.jpg', categoryId: 'cat-1' },
             { imageUrl: 'https://cdn/2.jpg' },
           ],
         },
@@ -364,16 +447,16 @@ describe('HomePageService', () => {
         {
           homeId: 'default',
           imageUrl: 'https://cdn/1.jpg',
-          destinationId: 'dest-1',
+          categoryId: 'cat-1',
           isLink: true,
           displayOrder: 0,
         },
         {
           homeId: 'default',
           imageUrl: 'https://cdn/2.jpg',
-          destinationId: null,
-          // No island to click through to, so the flag is normalised off here
-          // rather than left for the public resolver to second-guess.
+          categoryId: null,
+          // No category to click through to, so the flag is normalised off
+          // here rather than left for the public resolver to second-guess.
           isLink: false,
           displayOrder: 1,
         },
@@ -389,14 +472,14 @@ describe('HomePageService', () => {
       expect(prisma.homePageEditorialCard.createMany).not.toHaveBeenCalled();
     });
 
-    it('rejects a card pointing at an island that does not exist', async () => {
-      prisma.destination.findMany.mockResolvedValue([]);
+    it('rejects a card pointing at a category that does not exist', async () => {
+      prisma.category.findMany.mockResolvedValue([]);
 
       await expect(
         service.update(
           {
             editorialCards: [
-              { imageUrl: 'https://cdn/1.jpg', destinationId: 'missing' },
+              { imageUrl: 'https://cdn/1.jpg', categoryId: 'missing' },
             ],
           },
           'admin-1',

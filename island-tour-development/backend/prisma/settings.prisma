@@ -15,7 +15,9 @@ model SiteInfo {
 
   enableWhatsappChat Boolean? @default(false)
   whatsappNumber     String?  @default("")
-  instagramWidgetId  String?  @default("")
+  // Master kill switch for the Instagram grid. The feed itself lives in
+  // instagram.prisma — this only decides whether the public site renders it.
+  // (`instagramWidgetId` was dropped with the third-party-embed approach.)
   enableInstagram    Boolean? @default(false)
 
   // "Your local host" — the small looping avatar beside the WhatsApp button in

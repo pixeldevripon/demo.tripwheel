@@ -46,11 +46,17 @@ model HomePage {
 // set of slots rather than a growable list.
 //
 // It is a table and not the String[] it replaced because a card is no longer
-// just a photo: it carries WHERE it points and WHETHER it points anywhere. The
-// caption is deliberately not stored — it is the linked destination's own
-// translated name, so all 7 locales come for free and a card can never disagree
-// with the island it links to. A slot with no destination keeps the bundled
-// dictionary label, which is translated too.
+// just a photo: it carries WHAT it advertises and WHETHER it links.
+//
+// A card advertises a CATEGORY, and the island is NOT stored on it: the whole
+// banner is themed to one island (`HomePage.editorialDestinationId`), so a
+// card's URL is that island plus this category. An island per card would let a
+// card open a different island from the button sitting next to it.
+//
+// The caption is deliberately not stored — it is the category's own translated
+// name, so all 7 locales come for free and a card can never disagree with the
+// page it opens. A slot with no category keeps the bundled dictionary label,
+// which is translated too.
 model HomePageEditorialCard {
   id     String   @id @default(uuid())
   homeId String
@@ -58,15 +64,15 @@ model HomePageEditorialCard {
 
   imageUrl String
 
-  // The island this card advertises. Null → the slot is a plain photo with its
-  // bundled label. SetNull (not Cascade): deleting an island must degrade the
-  // card to a static photo, never delete the slot.
-  destinationId String?
-  destination   Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  // The category this card advertises. Null → the slot is a plain photo with
+  // its bundled label. SetNull (not Cascade): deleting a category must degrade
+  // the card to a static photo, never delete the slot.
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  // Whether the card is CLICKABLE. Separate from destinationId on purpose: an
-  // admin can name an island on a card without shipping traffic to it, and can
-  // switch that off for a season without losing which island it was.
+  // Whether the card is CLICKABLE. Separate from categoryId on purpose: an
+  // admin can name a category on a card without shipping traffic to it, and can
+  // switch that off for a season without losing which category it was.
   isLink Boolean @default(true)
 
   // 0, 1, 2 — left, middle, front in fan order.

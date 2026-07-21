@@ -31,15 +31,19 @@ export interface PublicHomePageFaq {
 /**
  * One fanned editorial CTA card.
  *
- * `name` is the linked island's name in THIS locale (never admin-typed), and is
- * null when the card is a plain photo - keep the bundled dictionary label then.
- * `href` is null whenever the card should not be clickable: no island, the link
- * switched off, or the island archived since.
+ * `name` is the CATEGORY's name in THIS locale (never admin-typed), and is null
+ * when the card is a plain photo - keep the bundled dictionary label then.
+ *
+ * `categorySlug` carries no island on purpose: the banner is themed to ONE
+ * island, so the page joins this to the island it already resolved for the
+ * button. That is what guarantees a card and the button beside it can never
+ * open different islands. Null whenever the card should not be clickable: no
+ * category, the link switched off, or the category archived since.
  */
 export interface PublicEditorialCard {
     image: string;
     name: string | null;
-    href: string | null;
+    categorySlug: string | null;
 }
 
 export interface PublicHomePage {
@@ -111,9 +115,43 @@ export async function getHomePageContent(
     cacheLife('days');
     cacheTag('homepage');
 
-    const res = await publicGet<PublicHomePage>(
+    const res = await publicGet<Partial<PublicHomePage>>(
         `/home-page/public${buildQuery({ locale })}`,
     );
 
-    return res ?? emptyHomePage(locale);
+    return normalize(res, locale);
+}
+
+/**
+ * Fill in whatever the API did not send.
+ *
+ * The soft-null `publicGet` only covers "no response". It does NOT cover a
+ * response of the WRONG SHAPE, and the two deploys are independent: ship a
+ * frontend that reads `editorialCards` against a backend that still returns
+ * `editorialImages` and the field is `undefined`, so the first `.flatMap` on it
+ * takes down the prerender of the site's front door in every locale. That is
+ * exactly what happened on the first deploy of this feature.
+ *
+ * Merging over the all-null baseline makes an older (or newer) backend a
+ * DEGRADATION rather than an outage: unknown fields are ignored, missing ones
+ * fall back to their bundled defaults, and the page renders. The two arrays are
+ * re-checked explicitly because a present-but-not-an-array value would survive
+ * the spread and only fail later, at the call site.
+ */
+function normalize(
+    res: Partial<PublicHomePage> | null,
+    locale: Locale,
+): PublicHomePage {
+    const empty = emptyHomePage(locale);
+    if (!res) return empty;
+
+    return {
+        ...empty,
+        ...res,
+        locale,
+        editorialCards: Array.isArray(res.editorialCards)
+            ? res.editorialCards
+            : [],
+        faqs: Array.isArray(res.faqs) ? res.faqs : [],
+    };
 }

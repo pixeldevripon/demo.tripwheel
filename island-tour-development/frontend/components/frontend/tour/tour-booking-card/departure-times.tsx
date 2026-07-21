@@ -1,8 +1,19 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import {
+    animate,
+    motion,
+    useMotionValue,
+    useReducedMotion,
+} from 'framer-motion';
+import { useEffect } from 'react';
 import { useBooking } from '@/hooks/tours/use-booking';
-import { springPop, swapFade } from '@/lib/motion';
+import {
+    shakeTransition,
+    shakeX,
+    springPop,
+    swapFade,
+} from '@/lib/motion';
 import { Collapse } from './collapse';
 import { formatTime } from './lib/booking.utils';
 
@@ -23,12 +34,38 @@ export function DepartureTimes() {
         selectedTime,
         selectTime,
         ctaError,
+        ctaErrorNonce,
     } = useBooking();
 
     // The CTA was clicked without a time: tint the selectable chips and give
     // the row a quick shake so the eye lands on what the note above the
     // button is asking for (no wrapper box - it collided with the date field).
     const missingSlot = ctaError === 'slot';
+
+    const reduceMotion = useReducedMotion();
+
+    // The shake rides its own motion value rather than the element's `animate`
+    // prop. That keeps the two concerns apart: `animate` stays declarative and
+    // owns only the fade-in, `shakeOffset` owns only x. Binding `animate` to
+    // AnimationControls instead would hand the whole target over to them - the
+    // fade would then have to be fired imperatively too, and any moment the
+    // grid was unmounted (Collapse closes it, the skeleton replaces it while
+    // slots load) the controls would have no subscriber, the start would go
+    // nowhere, and the grid would mount at `initial` opacity 0 and stay
+    // invisible. A motion value has no such coupling: it lives on this
+    // component, survives the grid coming and going, and animating it while
+    // nothing is bound is simply a no-op.
+    const shakeOffset = useMotionValue(0);
+
+    // Replay the shake on EVERY blocked Checkout press, not just the first.
+    // `ctaErrorNonce` is the dependency that makes that possible: `missingSlot`
+    // is already true by the second press, so an effect (or a declarative
+    // target) keyed on it alone would never fire again - re-rendering the same
+    // keyframes is not a state change, and framer has nothing to react to.
+    useEffect(() => {
+        if (!missingSlot || reduceMotion) return;
+        animate(shakeOffset, shakeX, shakeTransition);
+    }, [missingSlot, ctaErrorNonce, reduceMotion, shakeOffset]);
 
     return (
         <Collapse
@@ -56,17 +93,9 @@ export function DepartureTimes() {
                 <motion.div
                     key='slots'
                     initial={{ opacity: 0 }}
-                    // A one-shot horizontal shake when the missing-slot error
-                    // fires; opacity keeps its own fade-in transition.
-                    animate={
-                        missingSlot
-                            ? { opacity: 1, x: [0, -5, 5, -3, 3, 0] }
-                            : { opacity: 1, x: 0 }
-                    }
-                    transition={{
-                        default: swapFade,
-                        x: { duration: 0.35, ease: 'easeInOut' },
-                    }}
+                    animate={{ opacity: 1 }}
+                    transition={swapFade}
+                    style={{ x: shakeOffset }}
                     className='grid grid-cols-3 gap-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;

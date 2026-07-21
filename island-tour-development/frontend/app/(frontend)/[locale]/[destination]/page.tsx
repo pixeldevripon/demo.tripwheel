@@ -1,5 +1,5 @@
 import { DestinationAbout } from '@/components/frontend/destination/destination-about';
-import { DestinationInstagram } from '@/components/frontend/destination/destination-instagram';
+import { InstagramGrid } from '@/components/frontend/instagram/instagram-grid';
 import {
     DestinationCollectionsSection,
     DestinationHeroSection,
@@ -104,7 +104,10 @@ async function DestinationContent({
                 dict={dict}
             />
 
-            <DestinationInstagram dict={dict.destination.instagram} />
+            <InstagramGrid
+                dict={dict.destination.instagram}
+                destination={destination}
+            />
 
             <FaqSection dict={dict.home.faq} />
 

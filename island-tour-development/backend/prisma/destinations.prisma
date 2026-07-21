@@ -39,10 +39,11 @@ model Destination {
   forceMajeurePardons ForceMajeurePardon[]
   // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
   homePages           HomePage[]
-  // Fanned CTA cards pointing at this island (onDelete: SetNull).
-  homeEditorialCards  HomePageEditorialCard[]
   // Featured experiences pinned to this destination (onDelete: Cascade).
   featuredExperiences FeaturedExperience[]
+  // Instagram tiles pinned to this destination (onDelete: Cascade). Brand-wide
+  // tiles carry a null destinationId and are not in this relation.
+  instagramPosts      InstagramPost[]
 
   @@index([slug])
   @@index([isActive])

@@ -198,16 +198,21 @@ const EXPERIENCE_MEDIA: Record<string, { poster: string; video: string }> = {
 };
 
 /**
- * The fanned CTA deck: one island per card, in fan order (left, middle, front).
- * Each card shows that island's name - translated, because it comes from the
- * destination record - and opens its page. An editorial choice, changeable in
- * the dashboard in two clicks.
+ * The fanned CTA deck: one CATEGORY per card, in fan order (left, middle,
+ * front), matching the three categories the bundled deck has always shown.
+ *
+ * The island is not per card - the banner is themed to one island (set below),
+ * and each card opens that category ON it. Each card shows the category's own
+ * translated name. An editorial choice, changeable in the dashboard.
  */
-const CTA_DECK: { assetKey: string; destinationSlug: string }[] = [
-  { assetKey: 'island-curacao', destinationSlug: 'curacao' },
-  { assetKey: 'island-aruba', destinationSlug: 'aruba' },
-  { assetKey: 'island-sint-maarten', destinationSlug: 'sint-maarten' },
+const CTA_DECK: { assetKey: string; categorySlug: string }[] = [
+  { assetKey: 'cta-buggy-tours', categorySlug: 'off-road-tours' },
+  { assetKey: 'cta-snorkel-trips', categorySlug: 'snorkeling' },
+  { assetKey: 'cta-catamaran-trips', categorySlug: 'boat-tours' },
 ];
+
+/** The island the CTA banner is themed to - its button and all three cards. */
+const CTA_ISLAND_SLUG = 'curacao';
 
 /** The bundled hero, now a library asset. */
 const HERO_ASSET_KEY = 'hero-powerboat';
@@ -683,35 +688,49 @@ async function main(): Promise<void> {
       console.log('  SEO title and description set (were empty).');
     }
 
+    // The banner's island - the button opens it and every card opens a category
+    // on it, so it is set before the deck.
+    const ctaIsland = await prisma.destination.findUnique({
+      where: { slug: CTA_ISLAND_SLUG },
+      select: { id: true, name: true },
+    });
+    if (ctaIsland) {
+      await prisma.homePage.update({
+        where: { id: HOME_ID },
+        data: { editorialDestinationId: ctaIsland.id },
+      });
+      console.log(`  CTA island: ${ctaIsland.name}`);
+    }
+
     // The deck is a wholesale replace, exactly like the dashboard's save.
     const deck: {
       imageUrl: string;
-      destinationId: string;
+      categoryId: string;
       isLink: boolean;
       displayOrder: number;
     }[] = [];
 
     for (const [index, card] of CTA_DECK.entries()) {
       const asset = published.get(card.assetKey);
-      const destination = await prisma.destination.findUnique({
-        where: { slug: card.destinationSlug },
-        select: { id: true, name: true, isActive: true },
+      const category = await prisma.category.findUnique({
+        where: { slug: card.categorySlug },
+        select: { id: true, name: true },
       });
 
-      if (!asset || !destination) {
+      if (!asset || !category) {
         console.warn(
-          `  SKIP  CTA card ${index + 1} (missing ${!asset ? 'photo' : 'destination ' + card.destinationSlug})`,
+          `  SKIP  CTA card ${index + 1} (missing ${!asset ? 'photo' : 'category ' + card.categorySlug})`,
         );
         continue;
       }
 
       deck.push({
         imageUrl: asset.url,
-        destinationId: destination.id,
+        categoryId: category.id,
         isLink: true,
         displayOrder: deck.length,
       });
-      console.log(`  CTA card ${deck.length}: ${destination.name}`);
+      console.log(`  CTA card ${deck.length}: ${category.name}`);
     }
 
     if (deck.length) {

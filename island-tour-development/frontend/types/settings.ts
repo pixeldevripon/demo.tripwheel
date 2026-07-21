@@ -11,7 +11,6 @@ export interface SiteInfo {
   favicon: string | null;
   enableWhatsappChat: boolean;
   whatsappNumber: string | null;
-  instagramWidgetId: string | null;
   enableInstagram: boolean;
   faqs: unknown;
 }
@@ -25,7 +24,6 @@ export interface UpdateSiteInfoPayload {
   favicon?: string;
   enableWhatsappChat?: boolean;
   whatsappNumber?: string;
-  instagramWidgetId?: string;
   enableInstagram?: boolean;
 }
 

@@ -219,6 +219,14 @@ export interface PublicTourDetail {
   spotsRemaining: number | null;
   lastBookedAt: string | null;
   isSponsored: boolean;
+  /** §3.7 demand signal, recomputed nightly from sell-out history + remaining
+   *  capacity. `findBySlug` has always returned this (it is in `tourSelect`);
+   *  it was simply undeclared here, which is why the tour page's "Likely to
+   *  sell out" card rendered for every tour instead of the ~5-10% that earn it. */
+  likelyToSellOut: boolean;
+  /** Manual CMS override for the launch window, before any tour has 90 days of
+   *  history. Read-time logic is `override ?? computed` - never one or the other. */
+  likelyToSellOutOverride: boolean | null;
 
   isActive: boolean;
   publishedAt: string | null;

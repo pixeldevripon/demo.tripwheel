@@ -113,6 +113,12 @@ export interface BookingState {
      *  the inline note above the CTA and the highlight on the missing field;
      *  cleared as soon as that selection is made. */
     ctaError: 'date' | 'slot' | null;
+    /** Bumped on EVERY blocked CTA click, even when `ctaError` lands on the same
+     *  value as last time. Without it a second click is a no-op state write, so
+     *  the highlight animation has nothing to react to and only ever plays once
+     *  - the user hits Checkout again, sees nothing move, and reads the button
+     *  as broken. Consumers watch this, not `ctaError`, to replay. */
+    ctaErrorNonce: number;
 }
 
 /** Everything the sections can trigger. */
@@ -474,6 +480,7 @@ export function createBookingStore(init: BookingInit) {
         quoteLoading: false,
         quoteError: false,
         ctaError: null,
+        ctaErrorNonce: 0,
     };
 
     return createStore<BookingStore>()((set, get) => ({
@@ -545,11 +552,18 @@ export function createBookingStore(init: BookingInit) {
             // CTA and highlight that field, on top of the existing affordance
             // (missing date also pops the calendar open).
             if (!s.selectedDate) {
-                set({ calendarOpen: true, ctaError: 'date' });
+                set({
+                    calendarOpen: true,
+                    ctaError: 'date',
+                    ctaErrorNonce: s.ctaErrorNonce + 1,
+                });
                 return;
             }
             if (s.selectedTime == null || travelerCountOf(s) < 1) {
-                set({ ctaError: 'slot' });
+                set({
+                    ctaError: 'slot',
+                    ctaErrorNonce: s.ctaErrorNonce + 1,
+                });
                 return;
             }
             // Party won't fit this slot: keep the selectors open (capped at

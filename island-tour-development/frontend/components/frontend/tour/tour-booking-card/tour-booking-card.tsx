@@ -12,7 +12,7 @@ import { DepartureTimes } from './departure-times';
 import { PartySelector } from './party-selector';
 import { PolicyModal } from './policy-modal';
 import { PriceHeader } from './price-header';
-import { SellOutNotice } from './sell-out-notice';
+import { BookingNotices } from './booking-notices';
 import { SpectatorsPanel } from './spectators-panel';
 
 export type { PolicyModalDict, TourBookingDict } from '@/lib/tours/booking';
@@ -65,8 +65,9 @@ function TourBookingCardLayout() {
                 </div>
             </div>
 
-            {/* "Likely to sell out" notice — flows below the capped card */}
-            <SellOutNotice />
+            {/* Earned notices (sell-out / most popular / sponsored) — flow
+                below the capped card. Renders nothing when the tour has none. */}
+            <BookingNotices />
 
             {/* Policy detail modals (opened from the trust lines) */}
             <PolicyModal

@@ -101,28 +101,48 @@ export default async function HomePage({
     // render on an unconfigured host, and this page is the prerendered front door
     // for every locale, so one bad row would take the homepage down rather than
     // degrade one card.
-    const experienceCards = experiences.map(e => ({
-        id: e.id,
-        title: e.title,
-        image: safeRemoteImage(e.image),
-        videoUrl: e.videoUrl,
-        href: localizeHref(locale as Locale, e.href),
-    }));
+    // A card with no renderable photo is DROPPED, not passed on with a null:
+    // the slide is a full-bleed image with the title over it, so a null renders
+    // as a grey rectangle mid-carousel. The backend drops these too - this is
+    // the same invariant held on both sides, because the two deploy separately
+    // and a frontend must not depend on the age of the API it is talking to.
+    const experienceCards = experiences.flatMap(e => {
+        const image = safeRemoteImage(e.image);
+        if (!image || !e.href) return [];
+        return [
+            {
+                id: e.id,
+                title: e.title,
+                image,
+                videoUrl: e.videoUrl ?? null,
+                href: localizeHref(locale as Locale, e.href),
+            },
+        ];
+    });
     // Fan cards. An unrenderable photo DROPS the card rather than rendering an
     // empty slot: the deck then keeps its bundled card for that position, which
     // is the same never-blank rule the rest of this page follows.
+    //
+    // The href is built HERE, from the island resolved for the button above
+    // plus the card's category slug - so the whole banner always points at one
+    // island. Without a resolvable island there is nowhere to send anyone, so
+    // the card stays a photo with its caption.
     const editorialCards = content.editorialCards.flatMap(card => {
         const image = safeRemoteImage(card.image);
         if (!image) return [];
         return [
             {
                 image,
-                // Already this locale's island name; null keeps the bundled
-                // category label for the slot.
+                // Already this locale's category name; null keeps the bundled
+                // label for the slot.
                 name: card.name,
-                href: card.href
-                    ? localizeHref(locale as Locale, card.href)
-                    : null,
+                href:
+                    card.categorySlug && editorialIsland
+                        ? localizeHref(
+                              locale as Locale,
+                              `/${editorialIsland.slug}/${card.categorySlug}`,
+                          )
+                        : null,
             },
         ];
     });
