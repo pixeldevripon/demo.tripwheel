@@ -13,6 +13,10 @@
  *
  * Per-entity wrappers at the bottom wire their own hooks (fixed hook order)
  * and keep the original export names, so edit views only changed an import.
+ *
+ * The homepage joined later and bends one thing: it has no page-content record,
+ * so its meta lives on the translation row and its suggestions come from the
+ * site-wide Settings defaults. Everything an admin sees is identical.
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,16 +58,24 @@ import {
     useUpsertPageContent as useUpsertDestinationPageContent,
 } from '@/hooks/destinations/use-destinations';
 import {
+    useHomePageTranslations,
+    useUpdateHomePage,
+    useUpsertHomePageTranslation,
+} from '@/hooks/home-page/use-home-page';
+import {
     useHubPageContent,
     useHubTranslationByLocale,
     useUpdateHub,
     useUpsertHubPageContent,
 } from '@/hooks/hubs/use-hubs';
+import { useSeo, useSiteInfo } from '@/hooks/settings/use-settings';
+import { HOME_ID } from '@/lib/api/home-page';
 import { LOCALE_LABELS } from '@/lib/constants/locales';
 import type { TranslatableEntityType } from '@/lib/translatable-schema';
 import type { CategoryDetail } from '@/types/category';
 import type { Collection } from '@/types/collection';
 import type { DestinationDetail } from '@/types/destination';
+import type { HomePageContent } from '@/types/home-page';
 import type { HubDetail } from '@/types/hub';
 
 // Recommended search-engine limits (soft caps).
@@ -110,6 +122,10 @@ interface SeoConfig {
     fallbackTitle: (name: string) => string;
     /** FieldDescription noun ("destination name" etc.). */
     nameNoun: string;
+    /** What an empty OG image falls back to. Defaults to the hero image. */
+    ogFallbackNote?: string;
+    /** Where the suggestions come from, when it is not name + overview. */
+    metaSourceNote?: string;
 }
 
 function SerpPreview({
@@ -237,9 +253,10 @@ function EntitySeoView({
                             <span className='font-semibold text-content'>
                                 Meta title and description are per-locale.
                             </span>{' '}
-                            They start pre-filled from each language&apos;s
-                            name and overview. English is edited here; other
-                            languages live in the Translation Console.
+                            {config.metaSourceNote ??
+                                "They start pre-filled from each language's name and overview."}{' '}
+                            English is edited here; other languages live in the
+                            Translation Console.
                         </p>
                     </div>
 
@@ -379,8 +396,9 @@ function EntitySeoView({
                             />
                             <FieldDescription>
                                 Image shown when shared on social media (the
-                                Open Graph image). Falls back to the hero image
-                                when empty.
+                                Open Graph image).{' '}
+                                {config.ogFallbackNote ??
+                                    'Falls back to the hero image when empty.'}
                             </FieldDescription>
                         </Field>
                         <div className='flex justify-end pt-2'>
@@ -520,6 +538,67 @@ export function HubSeoTab({ hub }: { hub: HubDetail }) {
                     { id: hub.id, payload: { ogImage } },
                     saveToasts('Social share image saved.'),
                 )
+            }
+            ogSaving={update.isPending}
+        />
+    );
+}
+
+/**
+ * The homepage singleton.
+ *
+ * Two structural differences from the content entities, both forced by the fact
+ * that the homepage has no entity record of its own:
+ * - meta lives on the TRANSLATION record, not a page-content record, so the
+ *   same upsert that saves the hero headline saves the meta title;
+ * - there is no name or overview to derive suggestions from, so they come from
+ *   the site-wide SEO defaults in Settings - which is also exactly what the
+ *   public page falls back to when these are left empty.
+ */
+export function HomepageSeoTab({ content }: { content: HomePageContent }) {
+    const { data: translations, isLoading } = useHomePageTranslations();
+    const { data: siteInfo } = useSiteInfo();
+    const { data: siteSeo } = useSeo();
+    const upsert = useUpsertHomePageTranslation();
+    const update = useUpdateHomePage();
+
+    const english = translations?.find(t => t.locale === 'en');
+    const siteName = siteInfo?.siteName || 'Island Tours';
+
+    return (
+        <EntitySeoView
+            id={HOME_ID}
+            name={siteName}
+            slug=''
+            ogImage={content.ogImage ?? null}
+            overviewFallback={
+                siteSeo?.metaDescription || siteInfo?.siteDescription || ''
+            }
+            config={{
+                consoleType: 'homepage',
+                crumb: () => 'islandtours.com',
+                suggestTitle: n =>
+                    siteSeo?.metaTitle ||
+                    (siteInfo?.siteTagline ? `${n} - ${siteInfo.siteTagline}` : n),
+                fallbackTitle: n => siteSeo?.metaTitle || n,
+                nameNoun: 'site-wide defaults in Settings',
+                metaSourceNote:
+                    'They start pre-filled from the site-wide defaults in Settings, which is also what the live page uses while these are empty.',
+                ogFallbackNote:
+                    'Falls back to the site-wide share image from Settings when empty.',
+            }}
+            content={english}
+            contentLoading={isLoading}
+            translation={undefined}
+            onSaveMeta={v =>
+                upsert.mutate(
+                    { locale: 'en', payload: { fields: v } },
+                    saveToasts('Homepage SEO saved.'),
+                )
+            }
+            metaSaving={upsert.isPending}
+            onSaveOg={ogImage =>
+                update.mutate({ ogImage }, saveToasts('Social share image saved.'))
             }
             ogSaving={update.isPending}
         />

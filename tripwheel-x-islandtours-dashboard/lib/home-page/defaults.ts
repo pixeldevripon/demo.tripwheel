@@ -8,6 +8,10 @@
  * copy - the single most confusing thing about a fallback-based CMS. Showing it
  * turns empty state into an explanation instead of a worry.
  *
+ * Consumed as the `placeholder` of each HOMEPAGE_FIELDS entry
+ * (`lib/translatable-schema.ts`), so the editor and the Translation Console
+ * both show it without either of them special-casing the homepage.
+ *
  * DUPLICATED ON PURPOSE, and the only cross-repo duplication in this feature:
  * the source is the public site's i18n dictionary
  * (`island-tour-development/frontend/lib/i18n/dictionaries/en.json` -> `home`),
@@ -30,23 +34,6 @@ export const HOMEPAGE_DEFAULTS = {
 } as const;
 
 export type HomepageDefaultKey = keyof typeof HOMEPAGE_DEFAULTS;
-
-/**
- * The description under a homepage field: where the text appears, plus - while
- * the field is empty - the fact that the site is still rendering shipped copy
- * rather than nothing. Without the second half, an empty input on a
- * fallback-based CMS reads as a missing section.
- */
-export function describeField(
-  where: string,
-  value: string,
-  fallback?: string,
-): string {
-  const usingDefault = !value.trim() && Boolean(fallback);
-  return usingDefault
-    ? `${where} Currently showing the built-in default.`
-    : where;
-}
 
 /**
  * The bundled hero photo, shipped in the public site's `public/images/`. Shown

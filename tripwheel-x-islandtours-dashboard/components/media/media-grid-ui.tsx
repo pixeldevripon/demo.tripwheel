@@ -144,7 +144,12 @@ const MediaGridUi = ({
                                 viewMode='grid'
                                 selectMode={selectMode}
                                 priority={index < 8}
-                                className={`h-full w-full rounded-lg overflow-hidden transition-all duration-300 ${!isDeleting ? 'hover:shadow-md hover:scale-[1.02]' : ''} ${isSelected && showSelectionUI ? 'border-2 border-primary shadow-md' : ''}`}
+                                /* No hover scale or shadow lift (03 §7: hover is
+                                   a color/opacity transition, full stop). The
+                                   scale-up also fought the `layout` animation on
+                                   the wrapper and blurred the thumbnail mid-tween.
+                                   The tile's own border-color hover is the cue. */
+                                className={`h-full w-full rounded-lg overflow-hidden ${isSelected && showSelectionUI ? 'border-2 border-primary shadow-md' : ''}`}
                                 selector={selector}
                             />
                         </motion.div>

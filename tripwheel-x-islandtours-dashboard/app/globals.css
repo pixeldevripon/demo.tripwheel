@@ -64,6 +64,17 @@
     --duration-fast: 120ms;
     --duration-normal: 180ms;
     --duration-slow: 260ms;
+
+    /* Tailwind v4 resolves the `duration-*` utility against the
+     * `--transition-duration-*` namespace, NOT `--duration-*`. Without these
+     * aliases `duration-fast` is an unknown candidate that compiles to nothing,
+     * so every `transition-* duration-fast` in the app silently fell back to
+     * --default-transition-duration (150ms). 03 §7 names the tokens
+     * `--duration-*`, so keep those canonical and alias into the namespace
+     * rather than renaming 26 call sites away from the spec. */
+    --transition-duration-fast: var(--duration-fast);
+    --transition-duration-normal: var(--duration-normal);
+    --transition-duration-slow: var(--duration-slow);
 }
 
 /* ─── Neutral + brand ramps ───────────────────────────────────────────────

@@ -1,8 +1,10 @@
 'use client';
 
+import { Video01Icon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 
 import MediaSelector from '@/components/common/media-selector';
+import { MediaUploadZone } from '@/components/common/media-upload-zone';
 import { getMediaKind } from '@/components/media/media-kind';
 import { Button } from '@/components/ui/button';
 import type { MediaItem } from '@/types/media';
@@ -70,14 +72,13 @@ export function VideoSelectorField({
                     </div>
                 </div>
             ) : (
-                <button
-                    type='button'
-                    disabled={disabled}
+                <MediaUploadZone
                     onClick={() => setOpen(true)}
-                    className='flex h-24 w-full max-w-80 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-surface-inset text-sm text-content-muted transition-colors hover:border-primary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50'>
-                    <span className='font-medium'>Browse media library</span>
-                    <span className='text-xs'>MP4, WebM or MOV</span>
-                </button>
+                    disabled={disabled}
+                    icon={Video01Icon}
+                    label='Select a video'
+                    hint='Choose from your media library · MP4, WebM or MOV'
+                />
             )}
 
             <MediaSelector

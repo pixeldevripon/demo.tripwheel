@@ -13,6 +13,13 @@ export interface SiteInfo {
   whatsappNumber: string | null;
   instagramWidgetId: string | null;
   enableInstagram: boolean;
+  /**
+   * "Your local host" - the looping avatar beside the WhatsApp button in the
+   * FAQ block. Site-wide, not homepage content: that block renders on the home,
+   * destination and collection pages. Null on either keeps the bundled avatar.
+   */
+  faqHostImage: string | null;
+  faqHostVideo: string | null;
   faqs: unknown;
 }
 
@@ -27,6 +34,8 @@ export interface UpdateSiteInfoPayload {
   whatsappNumber?: string;
   instagramWidgetId?: string;
   enableInstagram?: boolean;
+  faqHostImage?: string;
+  faqHostVideo?: string;
 }
 
 export interface SiteSEO {

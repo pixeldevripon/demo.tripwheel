@@ -6,6 +6,7 @@ import { featuredExperiencesApi, homePageApi } from '@/lib/api/home-page';
 import type { Locale } from '@/lib/constants/locales';
 import type {
   CreateFeaturedExperiencePayload,
+  FeaturedExperience,
   UpdateFeaturedExperiencePayload,
   UpdateHomePagePayload,
   UpsertHomePageTranslationPayload,
@@ -58,39 +59,6 @@ export function useUpsertHomePageTranslation() {
   });
 }
 
-/**
- * Save one editor tab in a single action.
- *
- * A homepage section mixes locale-agnostic fields (images, the CTA target) with
- * English copy, which live behind two different endpoints. An admin filling in
- * a Hero tab should press Save once, so this composes both and only reports
- * success when both land. Either half may be omitted.
- */
-export function useSaveHomepageSection() {
-  const updateContent = useUpdateHomePage();
-  const upsertCopy = useUpsertHomePageTranslation();
-
-  async function save({
-    base,
-    fields,
-  }: {
-    base?: UpdateHomePagePayload;
-    fields?: UpsertHomePageTranslationPayload['fields'];
-  }) {
-    // Sequential, not parallel: both write the same singleton, and a failed
-    // copy write after a successful image write is far easier to reason about
-    // than two half-applied writes racing.
-    if (base && Object.keys(base).length) {
-      await updateContent.mutateAsync(base);
-    }
-    if (fields && Object.keys(fields).length) {
-      await upsertCopy.mutateAsync({ locale: 'en', payload: { fields } });
-    }
-  }
-
-  return { save, isPending: updateContent.isPending || upsertCopy.isPending };
-}
-
 // ── Top Island Experiences ───────────────────────────────────────────────────
 
 export function useFeaturedExperiences() {
@@ -122,6 +90,39 @@ export function useUpdateFeaturedExperience() {
       payload: UpdateFeaturedExperiencePayload;
     }) => featuredExperiencesApi.update(id, payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: homePageKeys.featured() });
+    },
+  });
+}
+
+/**
+ * Move a card and renumber the deck in one action.
+ *
+ * Swapping two neighbours' `displayOrder` is the obvious implementation and it
+ * silently does nothing on a deck where several rows share an order (every
+ * seeded row is 0, and nothing has ever forced them apart). So this writes
+ * POSITIONS instead: the caller passes the list in its intended final order and
+ * every row whose index moved is patched to that index. The first move
+ * normalises the deck; later ones touch two rows.
+ *
+ * One invalidation at the end, not one per row - otherwise the grid reshuffles
+ * under the cursor mid-reorder.
+ */
+export function useReorderFeaturedExperiences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ordered: FeaturedExperience[]) => {
+      const moved = ordered
+        .map((exp, index) => ({ exp, index }))
+        .filter(({ exp, index }) => exp.displayOrder !== index);
+
+      await Promise.all(
+        moved.map(({ exp, index }) =>
+          featuredExperiencesApi.update(exp.id, { displayOrder: index }),
+        ),
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: homePageKeys.featured() });
     },
   });

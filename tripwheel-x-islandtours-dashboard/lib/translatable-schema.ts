@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/constants/locales';
+import { HOMEPAGE_DEFAULTS } from '@/lib/home-page/defaults';
 
 /**
  * The translatable-surface registry (04 §3.3, Phase 17) - the keystone of the
@@ -54,6 +55,13 @@ export interface TranslatableFieldDef {
     maxLength?: number;
     /** One-line hint under the target input. */
     description?: string;
+    /**
+     * Shown greyed inside an empty input. Used where an empty field is not an
+     * empty section: the homepage renders bundled copy when a field is blank,
+     * so the placeholder IS that copy - it turns "this looks unset" into "this
+     * is what the site is showing".
+     */
+    placeholder?: string;
 }
 
 /** The 15 tour-level fields (13 body + 2 SEO; one flat upsert covers all). */
@@ -197,30 +205,35 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
         label: 'Hero headline',
         kind: 'input',
         description: 'The large text over the hero photo.',
+        placeholder: HOMEPAGE_DEFAULTS.heroTitle,
     },
     {
         name: 'heroSubtitle',
         label: 'Hero subheading',
         kind: 'input',
         description: 'The line directly under the headline.',
+        placeholder: HOMEPAGE_DEFAULTS.heroSubtitle,
     },
     {
         name: 'experiencesTitle',
         label: 'Experiences heading',
         kind: 'input',
         description: 'Above the "Top island experiences" carousel.',
+        placeholder: HOMEPAGE_DEFAULTS.experiencesTitle,
     },
     {
         name: 'editorialTitleLine1',
         label: 'CTA headline, line 1',
         kind: 'input',
         description: 'Top line of the two-line heading on the orange card.',
+        placeholder: HOMEPAGE_DEFAULTS.editorialTitleLine1,
     },
     {
         name: 'editorialTitleLine2',
         label: 'CTA headline, line 2',
         kind: 'input',
         description: 'Bottom line of that heading.',
+        placeholder: HOMEPAGE_DEFAULTS.editorialTitleLine2,
     },
     {
         name: 'editorialBody',
@@ -228,18 +241,21 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
         kind: 'textarea',
         rows: 3,
         description: 'The paragraph under the CTA heading.',
+        placeholder: HOMEPAGE_DEFAULTS.editorialBody,
     },
     {
         name: 'editorialCta',
         label: 'CTA button',
         kind: 'input',
         description: 'The text inside the white button.',
+        placeholder: HOMEPAGE_DEFAULTS.editorialCta,
     },
     {
         name: 'faqTitle',
         label: 'FAQ title',
         kind: 'input',
         description: 'The heading above the FAQ list.',
+        placeholder: HOMEPAGE_DEFAULTS.faqTitle,
     },
     {
         name: 'faqSubtitle',
@@ -247,6 +263,26 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
         kind: 'textarea',
         rows: 3,
         description: 'The paragraph beside the FAQ list.',
+        placeholder: HOMEPAGE_DEFAULTS.faqSubtitle,
+    },
+    // SEO meta closes the list, mirroring TOUR_FIELDS. On the homepage editor
+    // these two are hidden from the English content tab and edited in the SEO
+    // tab instead (which adds the SERP preview and character counters); the
+    // Console still renders them here, because a translator needs them.
+    {
+        name: 'metaTitle',
+        label: 'SEO - meta title',
+        kind: 'input',
+        maxLength: 70,
+        description: 'The blue line in a search result.',
+    },
+    {
+        name: 'metaDescription',
+        label: 'SEO - meta description',
+        kind: 'textarea',
+        rows: 2,
+        maxLength: 170,
+        description: 'The grey snippet under it.',
     },
 ];
 

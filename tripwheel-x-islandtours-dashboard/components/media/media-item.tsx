@@ -38,7 +38,6 @@ export default function MediaItemCard({
     selector,
     priority,
 }: MediaItemProps) {
-    const [isHovered, setIsHovered] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
 
     const kind = getMediaKind(item);
@@ -52,9 +51,7 @@ export default function MediaItemCard({
 
     return (
         <Card
-            className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-all duration-300 hover:shadow-lg ${className}`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            className={`relative p-0 group cursor-pointer overflow-hidden bg-card border-border hover:border-primary transition-colors duration-fast ${className}`}
             onClick={handleClick}>
             <div className='relative h-full'>
                 {kind === 'image' ? (
@@ -129,9 +126,14 @@ export default function MediaItemCard({
                     </div>
                 )}
 
-                {/* Hover Overlay */}
+                {/* Hover scrim. Pure CSS off the card's `group` - this used to
+                    be React state, which re-rendered a full image tile on every
+                    pointer enter/leave across a grid of 50+. Opacity only, at
+                    --duration-fast (03 §7: hover is a color/opacity transition,
+                    no lifts or scale-ups). focus-within keeps it keyboard-visible. */}
                 <div
-                    className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 z-20 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                    aria-hidden
+                    className='pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 transition-opacity duration-fast group-hover:opacity-100 group-focus-within:opacity-100'
                 />
 
                 {/* Delete - revealed on card hover (and keyboard focus) */}
@@ -140,19 +142,11 @@ export default function MediaItemCard({
                         type='button'
                         aria-label='Delete media'
                         onClick={handleDelete}
-                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100'>
+                        className='absolute top-2 right-2 z-30 size-7 rounded-md bg-white/95 shadow-sm border border-border flex items-center justify-center text-destructive cursor-pointer opacity-0 transition-opacity duration-fast group-hover:opacity-100 focus-visible:opacity-100'>
                         <HugeiconsIcon icon={Delete02Icon} size={14} />
                     </button>
                 )}
 
-                {/* SEO Indicator */}
-                {(item?.altText || item?.caption) && (
-                    <div className='absolute top-3 left-3'>
-                        <div className='bg-success-solid text-success-foreground text-xs px-2 py-1 rounded-full font-medium shadow-sm'>
-                            SEO Optimized
-                        </div>
-                    </div>
-                )}
             </div>
         </Card>
     );
