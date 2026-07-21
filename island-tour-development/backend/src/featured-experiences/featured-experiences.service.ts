@@ -93,6 +93,7 @@ export class FeaturedExperiencesService {
         entityId: true,
         destinationId: true,
         videoUrl: true,
+        posterUrl: true,
         displayOrder: true,
       },
       orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
@@ -141,7 +142,22 @@ export class FeaturedExperiencesService {
               categoryById.get(row.entityId),
               countsByCategory.get(row.entityId),
             );
-      if (card) resolved.push(card);
+      if (!card) continue;
+
+      // A card with no photo is not a card. The slide is a full-bleed image
+      // with the title over it, so a null here renders as a grey rectangle in
+      // the middle of the carousel - the one failure mode the gates above
+      // exist to prevent, arrived at from the other direction. Dropping it is
+      // consistent with every other gate here, and the frontend falls back to
+      // its bundled deck entirely if too few cards survive.
+      if (!card.image) {
+        this.logger.warn(
+          `Featured ${row.entityType} ${row.entityId} has no poster and its target has no hero or og image - dropped`,
+        );
+        continue;
+      }
+
+      resolved.push(card);
     }
 
     if (resolved.length > MAX_PUBLIC_EXPERIENCES) {
@@ -171,7 +187,7 @@ export class FeaturedExperiencesService {
    * surface "no live tours" rather than leaving them guessing.
    */
   private resolveHub(
-    row: { id: string; videoUrl: string | null; destinationId: string | null },
+    row: FeaturedRow,
     hub?: HubRow,
   ): ResolvedExperience | null {
     if (!hub) return null;
@@ -188,7 +204,7 @@ export class FeaturedExperiencesService {
       id: row.id,
       entityType: FeaturedEntityType.HUB,
       title: hub.translations[0]?.name || hub.name,
-      image: cardImage(hub.heroImage, hub.ogImage),
+      image: cardImage(row.posterUrl, hub.heroImage, hub.ogImage),
       videoUrl: row.videoUrl,
       href: `/${hub.destination.slug}/${hub.slug}`,
     };
@@ -207,7 +223,7 @@ export class FeaturedExperiencesService {
    * renders, and picks the most convincing one to send a traveller to.
    */
   private resolveCategory(
-    row: { id: string; videoUrl: string | null; destinationId: string | null },
+    row: FeaturedRow,
     category?: CategoryRow,
     counts?: Map<string, number>,
   ): ResolvedExperience | null {
@@ -228,7 +244,7 @@ export class FeaturedExperiencesService {
       id: row.id,
       entityType: FeaturedEntityType.CATEGORY,
       title: category.translations[0]?.name || category.name,
-      image: cardImage(category.heroImage, category.ogImage),
+      image: cardImage(row.posterUrl, category.heroImage, category.ogImage),
       videoUrl: row.videoUrl,
       href: `/${destination.slug}/${category.slug}`,
     };
@@ -315,31 +331,47 @@ export class FeaturedExperiencesService {
       .filter((r) => r.entityType === FeaturedEntityType.HUB)
       .map((r) => r.entityId);
 
+    // heroImage/ogImage ride along so the editor can render the REAL card -
+    // poster override or the entity photo it falls back to - without a second
+    // lookup per row. Curating a visual carousel from a list of names is the
+    // thing this endpoint used to force.
+    const targetSelect = {
+      id: true,
+      name: true,
+      heroImage: true,
+      ogImage: true,
+    } as const;
+
     const [categories, hubs] = await Promise.all([
       categoryIds.length
         ? this.prisma.category.findMany({
             where: { id: { in: categoryIds } },
-            select: { id: true, name: true },
+            select: targetSelect,
           })
         : [],
       hubIds.length
         ? this.prisma.hub.findMany({
             where: { id: { in: hubIds } },
-            select: { id: true, name: true },
+            select: targetSelect,
           })
         : [],
     ]);
 
-    const nameById = new Map(
-      [...categories, ...hubs].map((e) => [e.id, e.name]),
-    );
+    const targetById = new Map([...categories, ...hubs].map((e) => [e.id, e]));
 
-    return rows.map((row) => ({
-      ...row,
-      // Null flags a row whose target no longer exists - the admin list must show
-      // that rather than hide it, since the public side drops it silently.
-      entityName: nameById.get(row.entityId) ?? null,
-    }));
+    return rows.map((row) => {
+      const target = targetById.get(row.entityId);
+      return {
+        ...row,
+        // Null flags a row whose target no longer exists - the admin list must
+        // show that rather than hide it, since the public side drops it
+        // silently.
+        entityName: target?.name ?? null,
+        entityImage: target
+          ? cardImage(null, target.heroImage, target.ogImage)
+          : null,
+      };
+    });
   }
 
   async create(dto: CreateFeaturedExperienceDto, adminId: string) {
@@ -362,6 +394,7 @@ export class FeaturedExperiencesService {
         entityId: dto.entityId,
         destinationId: dto.destinationId ?? null,
         videoUrl: dto.videoUrl ?? null,
+        posterUrl: dto.posterUrl ?? null,
         displayOrder: dto.displayOrder ?? 0,
         isActive: dto.isActive ?? true,
       },
@@ -417,6 +450,7 @@ export class FeaturedExperiencesService {
           destinationId: dto.destinationId,
         }),
         ...(dto.videoUrl !== undefined && { videoUrl: dto.videoUrl }),
+        ...(dto.posterUrl !== undefined && { posterUrl: dto.posterUrl }),
         ...(dto.displayOrder !== undefined && {
           displayOrder: dto.displayOrder,
         }),
@@ -567,19 +601,32 @@ const FEATURED_SELECT = {
   entityId: true,
   destinationId: true,
   videoUrl: true,
+  posterUrl: true,
   displayOrder: true,
   isActive: true,
 } satisfies Prisma.FeaturedExperienceSelect;
 
 /**
- * The card photo. Prefers the entity's hero image and falls back to its OG image,
- * which is a different crop (1200x630 social card vs a 250x440 portrait slot) but
- * beats an empty grey box - and is frequently the only image an entity has, since
- * `ogImage` is populated far more consistently than `heroImage`. Null when neither
+ * The card photo, in preference order.
+ *
+ * The card's own POSTER wins when an admin set one: the carousel slot is a
+ * 250x440 portrait crop, and neither of the fallbacks is that shape, so a
+ * curated deck usually wants its own art. Failing that, the entity's hero, then
+ * its OG image - a different crop again (1200x630 social card) but it beats an
+ * empty grey box, and it is frequently the only image an entity has, since
+ * `ogImage` is populated far more consistently than `heroImage`. Null when none
  * exists; the frontend then falls back to its bundled card art.
+ *
+ * Note the title is NOT overridable the same way - it stays the entity's
+ * translated name, so a card can never disagree with the page it links to in
+ * any language. A photo carries no such promise.
  */
-function cardImage(heroImage: string | null, ogImage: string | null) {
-  return heroImage || ogImage || null;
+function cardImage(
+  posterUrl: string | null,
+  heroImage: string | null,
+  ogImage: string | null,
+) {
+  return posterUrl || heroImage || ogImage || null;
 }
 
 /** Most live tours wins; ties break on destination id so the pick is stable. */
@@ -603,6 +650,14 @@ function pickStrongestDestination(
 // changed select is a compile error instead of silent drift. (The `translations`
 // filter and `_count` are locale/where-dependent, so they are declared alongside
 // rather than inside the shared select consts.)
+/** The stored row, as both resolvers receive it. */
+type FeaturedRow = {
+  id: string;
+  videoUrl: string | null;
+  posterUrl: string | null;
+  destinationId: string | null;
+};
+
 type CategoryRow = Prisma.CategoryGetPayload<{
   select: typeof CATEGORY_SELECT;
 }> & {

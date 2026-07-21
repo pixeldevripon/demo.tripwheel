@@ -10,7 +10,13 @@ Two related but deliberately separate systems:
 
 ---
 
-## PUBLIC HOMEPAGE IS REVERTED - do not re-wire it yet (user, 2026-07-20)
+## PUBLIC HOMEPAGE IS WIRED (user, 2026-07-21) - the revert below is HISTORY
+
+The block was lifted once the dashboard and backend were signed off. The page
+was RESTORED from `ee2106f` (not rewritten) and updated for the contracts added
+since - see Phase 4d. The section below is kept for the reasoning it records.
+
+## ~~PUBLIC HOMEPAGE IS REVERTED - do not re-wire it yet (user, 2026-07-20)~~
 
 `frontend/app/(frontend)/[locale]/page.tsx` was restored to its pre-CMS state
 (`ee2106f^`). The public homepage renders bundled dictionary copy and bundled
@@ -339,6 +345,12 @@ exist). Clearing the rows restored the bundled dictionary FAQs.
 **EXECUTED 2026-07-20** (dashboard repo). Pages joins this group in Phase 5; for
 now it holds Homepage alone.
 
+> **Superseded in part by Phase 4b (2026-07-21).** The nav placement, the
+> Experiences product logic and the Console registration below all still stand.
+> The TAB STRUCTURE described here (a tab per homepage section) and the helpers
+> it needed - `describeField`, `useSaveHomepageSection` - were replaced by the
+> entity shape every other module uses. Read Phase 4b for what exists today.
+
 Nav: **a `Pages` group, placed immediately before `Account`**, holding Homepage
 and gated `MANAGE_EDITORIAL` (user decision 2026-07-20). Grouped by what the
 items ARE - pages you edit - rather than by permission, so the Phase-5 legal and
@@ -449,6 +461,299 @@ change today.
 `next build` succeeds. The remaining warnings are the pre-existing
 `react-hooks/incompatible-library` `watch()` notices that the settings forms
 already produce. Still unverified: the rendered UI (no session).
+
+## Phase 4b - Redesign onto the entity convention `[x]`
+
+**EXECUTED 2026-07-21** (backend + dashboard). User review of the Phase-4 editor:
+*"the design is not up to the mark and not following our convention like what did
+the destination module - see the destination module form structure, specially faq
+and seo page content and details tab."* Correct on every count. Phase 4 shipped a
+**section-shaped** editor (a tab per homepage section, each with its own save)
+into an app where every other content surface is **entity-shaped**. Composing the
+shared settings KIT was necessary but not sufficient - the STRUCTURE still had to
+match, and it did not.
+
+### What was actually wrong
+
+1. **No SEO to speak of.** The "SEO" tab was one OG-image picker. The homepage had
+   no `metaTitle`/`metaDescription` AT ALL - the front door of the site was the
+   one page with no search-engine listing, while every category page had one.
+2. **Copy scattered across four tabs**, so changing the page's words meant four
+   saves in four places; a destination edits all of its copy in one.
+3. **No Details tab.** The record's own fields (hero image, CTA deck, CTA target)
+   were split across Hero and CTA Card, so one banner change was two round trips.
+4. **A second FAQ heading form** sat above the FAQ list, when that heading is
+   per-locale copy like every other string on the page.
+
+### Backend - the homepage gets a search listing
+
+`metaTitle` / `metaDescription` added to `HomePageTranslation` (migration
+`20260721063014_home_page_seo_meta`), threaded through `TRANSLATION_SELECT`,
+`EMPTY_COPY`, the public projection and the translation upsert.
+
+**Why on the TRANSLATION row and not a page-content record:** the four content
+entities keep meta on their per-locale `*PageContent` record. The homepage
+singleton has no such record and inventing one would mean a table, a controller
+and an upsert to hold two columns. The translation row is already per-locale, so
+the fields ride there - the ONLY structural difference, and it is invisible to
+the admin because the SEO tab looks identical to a destination's.
+
+Null keeps the existing fallback contract: an empty meta title means the public
+page uses the site-wide default from Settings, exactly as it did before.
+
+### Dashboard - the destination shape, tab for tab
+
+`Details | Page Content | Experiences | SEO | FAQs`, with `aliases` mapping the
+old `hero` and `cta` tabs onto `details` so existing links still land somewhere
+sensible.
+
+- **Details** = `HomepageForm`, one card and one Save covering hero image, CTA
+  deck and CTA target - one endpoint, one write, mirroring `DestinationForm`.
+- **Page Content** = the shared `EnglishContentEditor`, now with a `homepage`
+  branch. Every word on the page in one form, in the order the sections appear.
+- **SEO** = the shared `EntitySeoTab`, now exporting `HomepageSeoTab`: SERP
+  preview, character counters, Regenerate, and the OG image - the same component
+  destinations use. Suggestions come from the site-wide Settings defaults, which
+  is also what the live page falls back to, so the preview shows the truth.
+- **Experiences** = the curation card, unchanged in behaviour (every silent-drop
+  rule from Phase 4 survives verbatim); it lost only the heading form.
+- **FAQs** = `FaqManager` in the same card shell destinations use.
+
+Two additive changes to shared code, both benefiting every entity:
+`TranslatableFieldDef` gained an optional `placeholder` (which is how the
+show-the-fallback rule survives - the shipped copy is now the placeholder in the
+editor AND in the Translation Console, where a translator needs it most), and
+`SeoConfig` gained `metaSourceNote` / `ogFallbackNote` so the homepage can say
+where ITS fallbacks come from without forking the component.
+
+Deleted as dead: `homepage-hero-tab`, `homepage-editorial-tab`,
+`homepage-seo-tab`, `translation-pointer`, `describeField`,
+`useSaveHomepageSection` (no tab spans two endpoints any more - Details is pure
+base fields, Page Content is pure copy, so the composed save had nothing left to
+compose).
+
+### Verification
+
+Backend: `tsc` clean, **1329/1329 tests pass** (29 in `home-page`, incl. new
+coverage for the meta upsert, the public projection and the DTO ceilings). The
+round trip was exercised against the RUNNING API - a meta title written to the
+translation row appears in `GET /home-page/public`, and clearing it returns null
+(fallback intact). Dashboard: `tsc` clean, 0 lint errors, `next build` green.
+
+**Still unverified: the rendered UI.** Unchanged from Phase 4 - dashboard routes
+307 to `/portal` without a session, the Chrome extension was not connected this
+session, and signing in is not something I do. It needs a human pass.
+
+## Phase 4c - Experiences deck, CTA card links, real media `[x]`
+
+**EXECUTED 2026-07-21.** Three user requests in one pass, all on top of 4b.
+
+### 1. Featured Cards, redesigned - and a poster per card
+
+The curation UI was a list of names with a number input for ordering. It is now a
+**grid of the cards themselves** at the carousel's own 3:4 portrait ratio, with
+hover controls (move earlier/later, edit media, show/hide, remove), following
+`trip-images-tab.tsx` - the dashboard's existing idiom for an ordered visual
+collection. Curating a visual section from a list of names was the actual defect.
+
+**`FeaturedExperience.posterUrl` added** (migration
+`20260721064945_featured_experience_poster`). It wins over the target entity's
+hero/og image, because the slot is a 250x440 portrait crop and neither fallback
+is that shape. It doubles as the `<video poster>`, so a card with a video no
+longer flashes black before it plays. The title is deliberately NOT overridable
+the same way - it stays the entity's translated name, so a card can never
+disagree with the page it opens in any language. A photo carries no such promise.
+
+The admin list endpoint now also returns **`entityImage`** (the target's own
+photo). Without it the editor could not draw the real card, and "clear the
+poster" would be a blind move.
+
+Ordering moved from a `displayOrder` number input to arrow controls backed by
+`useReorderFeaturedExperiences`, which writes POSITIONS rather than swapping two
+neighbours: every seeded row shares `displayOrder = 0`, and a swap between equal
+values is a no-op - the bug the obvious implementation would have shipped.
+
+### 2. CTA card photos link to islands
+
+`home_page.editorialImages` (a `String[]`) became **`HomePageEditorialCard`**
+(migration `20260721125741_home_page_editorial_cards`, hand-written so the
+existing photos are carried across BEFORE the column is dropped - the generated
+version would have created and dropped with nothing in between).
+
+Per card: photo, an optional island, and `isLink`. Three states, all editable in
+the Details tab: photo only (bundled caption), island named and clickable, island
+named but not clickable. `isLink` is separate from `destinationId` on purpose -
+an admin can name an island without shipping traffic to it, and switch that off
+for a season without losing which island it was.
+
+**The caption is not stored.** It is the linked island's own translated name, so
+all 7 locales come for free and a card can never disagree with the page it opens.
+An archived island degrades the card to a plain photo - neither named nor linked -
+exactly as the CTA button already did.
+
+The deck saves as a wholesale replace in one transaction with the base row: three
+fixed slots have no stable identity to diff ("the middle card" is a position, not
+a thing). The dashboard renders three fixed slots rather than a `useFieldArray`,
+for the same reason.
+
+### 3. The homepage now runs on library assets
+
+`pnpm home:media:seed` (`backend/scripts/seed-home-page-media.ts`, `--dry-run`
+supported) - **16 assets published, and the homepage record pointed at them.**
+
+The fallback contract made the CMS safe to ship but left the editor showing empty
+fields describing images an admin could not see, swap or reuse, because they were
+files in the frontend bundle. This closes that once:
+
+- **10 bundled files uploaded** from `frontend/public/` (hero, the 3 CTA
+  category photos, 4 island photos, the FAQ host avatar).
+- **6 registered, not re-uploaded**: the reel's images and videos are already in
+  this Cloudinary account (hard-coded in `top-experiences.tsx`), so the script
+  reads their metadata via the Admin API instead of duplicating ~100 MB of video.
+- Wired: hero image; the CTA deck as Curaçao / Aruba / Sint Maarten, each with
+  its island photo, name and link; posters + real footage on the three
+  experiences that have it.
+- **Placeholder video cleared** on four featured rows that pointed at a Google
+  Chromecast sample clip (`ForBiggerJoyrides.mp4`). Falling back to a real photo
+  beats playing someone else's demo.
+
+Idempotent throughout: deterministic public_ids with overwrite+invalidate, and
+every DB write upserts on `publicId`. URL policy comes from instantiating the
+app's own `CloudinaryService`, never a restatement of it.
+
+**Verification:** backend `tsc` clean, **1342/1342 tests pass**; both new
+contracts were checked against the RUNNING API - `GET /home-page/public` returns
+the three cards with translated names and hrefs, and
+`GET /featured-experiences/public` shows posters and the three real videos.
+Dashboard `tsc`, 0 lint errors, `next build` green; public frontend `tsc` clean.
+
+**Unverified, as before: the rendered dashboard UI** (no session, no browser).
+
+## Phase 4d - The public homepage goes live on the CMS `[x]`
+
+**EXECUTED 2026-07-21.** The user lifted the do-not-wire block. The page was
+**restored from `ee2106f`** (the version reverted on 2026-07-20) rather than
+rewritten from memory, then updated for everything added since.
+
+### What changed against the restored version
+
+- **`editorialCards` replaces `editorialImages`.** A fan card is a photo, an
+  island name and a link. Linked cards render as a real `<a>` (`MotionLink`, so
+  client-side navigation and the page transition survive) - they must be
+  crawlable and middle-clickable. They GIVE UP click-to-front, which is the
+  point of linking them; unlinked cards keep it. The element type is fixed per
+  card, so nothing remounts mid-shuffle.
+- **`generateMetadata`** now serves the homepage's own meta title, description
+  and OG image, omitting whatever is unset so the site-wide Settings defaults
+  apply. It reuses the same cached loader as the page, so it costs no request.
+- An unrenderable card photo **drops the card** rather than rendering an empty
+  slot - the deck then keeps its bundled art for that position.
+
+### Seeded so the page has something to serve
+
+`pnpm home:media:seed` gained two jobs beyond the media:
+
+- **The bundled FAQ, published in all 7 locales.** Those five questions had been
+  rendering from the i18n dictionaries since before the CMS - unreachable from
+  the dashboard, so nobody could edit, reorder or translate them. They are now
+  real grouped FAQ rows, and because every dictionary already carried its own
+  translation, all 7 locales landed at once with no translation work.
+  Deduplicated on the ENGLISH QUESTION TEXT, not on "are there any FAQs yet":
+  an admin had already added one of them by hand, so a wholesale skip would have
+  stranded the other four and a blind insert would have duplicated the one. That
+  hand-added row was English-only, which had quietly cost every other locale a
+  question - the script attaches the missing translations to the EXISTING group
+  rather than making a rival copy.
+- **The bundled page copy, in all 7 locales.** Same story as the FAQ: the nine
+  copy fields rendered from the dictionaries, so Page Content showed nine empty
+  inputs describing words an admin could not reach. Filled per FIELD, never per
+  record - a locale someone half-filled gets only its holes populated.
+- **A homepage SEO title and description**, written only when empty. Without one
+  the front door inherits whatever was last typed into Settings - which on this
+  database was a tour title and the word "sdf".
+
+**Nothing a visitor sees changed.** Every seeded value is the text or image the
+site was already rendering, and the dictionaries and bundled files stay exactly
+where they were: clear a field in the dashboard and the fallback takes over
+again, which is the contract the whole feature is built on.
+
+### The FAQ host avatar - and why it is NOT homepage content
+
+The last homepage media an admin could not swap: the round "your local host"
+avatar beside the WhatsApp button, hardcoded to
+`/videos/experiences/catamaran-trip.mp4` + `/images/home-page/faq/host-avatar.png`.
+
+**It went into Site Info settings, not the homepage record**, on the evidence:
+`FaqSection` renders on the home, destination AND collection pages (category and
+hub pass `minimal`, which hides this block), so a field on the homepage record
+would have fixed one surface and left the other two on a bundled file. The
+component is a server component that ALREADY reads `getPublicSiteInfo()` itself,
+with a comment explaining that threading one settings value through five callers
+is noise - so `faqHostImage` / `faqHostVideo` follow the WhatsApp number's exact
+path and all three surfaces got it with no prop threading at all.
+
+Fallback rules: neither set → the bundled pair; photo only → the photo alone, NOT
+the bundled clip playing under someone else's face; video only → their clip with
+the bundled poster. Edited in Settings > General beside the logo and favicon.
+
+**Verified on the running site** after busting the `site-info` tag: `/en` and
+`/en/curacao` both serve the Cloudinary avatar and poster.
+
+### Fallback audit - "no section, no content, no video can be empty"
+
+Every section was walked for a path that renders blank. Nine of ten guard
+correctly; one did not.
+
+| Section | Guard |
+|---|---|
+| Hero | photo falls back to the bundled original; title/subtitle to the dictionary |
+| Trust strip | dictionary-only, always present |
+| Top experiences | under 3 resolvable cards the whole bundled deck renders instead |
+| Testimonials | returns null when disabled - the section is ABSENT, never empty |
+| Explore islands | returns null on zero islands - same |
+| Editorial CTA | copy to the dictionary; each fan slot to its own bundled photo and label; the button to `/search` |
+| FAQ | copy to the dictionary; an empty list renders the bundled questions; the host avatar to the bundled pair |
+
+**The one real hole: a featured card with no photo anywhere.** The gates all
+asked "does the target still resolve", never "is there anything to show" - so a
+category with no hero AND no og image, featured with no poster, reached the
+carousel and rendered as a grey rectangle between two real slides. The slide is a
+full-bleed image with the title over it, so a null image has nowhere to degrade
+to. `resolvePublic` now drops such a card and logs it, which is what every other
+gate here already does; if too few survive, the bundled deck takes over.
+
+That made two dashboard messages false, so both were corrected: a card with no
+photo now reads "Not showing - this page has no photo either" in the danger
+colour, and the header counts cards that can actually REACH the homepage rather
+than rows that are merely switched on (it was reporting "3 live" while the site
+quietly showed its bundled deck). The one gate the editor cannot evaluate is
+"has a live tour" - only the backend knows that, and the picker says so.
+
+Not guarded, and deliberately: an image URL that is well-formed, on an allowed
+host, and simply 404s at the CDN. Detecting that means fetching every image at
+render time.
+
+### UI defects found on a live pass (fixed)
+
+- A featured card with no poster previewed the LINKED PAGE's photo, which reads
+  as "this card is done". The slot now asks for the media it is missing and says
+  what the site is doing meanwhile; the whole surface opens the media dialog, as
+  a SIBLING of the control buttons (a button inside a button breaks the inner
+  one).
+- The video picker had hand-rolled a flatter empty state than the image picker,
+  so side by side in a dialog it read as unstyled. `MediaUploadZone` is now
+  shared by both; only the icon and copy differ.
+- A single-image preview rendered inside a 3/4-column grid, so in a narrow
+  container it collapsed to a thumbnail too small to judge a photo by.
+
+### Verification
+
+Checked against the RUNNING site, not just the build: `/en` serves the CMS hero,
+all three island cards with their links, and the experience posters; `/nl` serves
+the Dutch FAQ from the database. The metadata override was confirmed after a
+cache bust - worth knowing that a direct DB write does NOT show up until the
+`homepage` tag is invalidated, which is what the dashboard does on save.
+Backend 1342/1342, dashboard and frontend `tsc` + build green.
 
 ## Phase 5 - Pages system `[ ]`
 

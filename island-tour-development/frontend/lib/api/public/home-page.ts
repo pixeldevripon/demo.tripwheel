@@ -28,11 +28,25 @@ export interface PublicHomePageFaq {
     answer: string;
 }
 
+/**
+ * One fanned editorial CTA card.
+ *
+ * `name` is the linked island's name in THIS locale (never admin-typed), and is
+ * null when the card is a plain photo - keep the bundled dictionary label then.
+ * `href` is null whenever the card should not be clickable: no island, the link
+ * switched off, or the island archived since.
+ */
+export interface PublicEditorialCard {
+    image: string;
+    name: string | null;
+    href: string | null;
+}
+
 export interface PublicHomePage {
     locale: Locale;
     heroImage: string | null;
     /** Fanned editorial CTA cards, in fan order. Short arrays keep bundled defaults. */
-    editorialImages: string[];
+    editorialCards: PublicEditorialCard[];
     /** Null = let the frontend resolve the CTA target itself. */
     editorialDestinationSlug: string | null;
     ogImage: string | null;
@@ -45,6 +59,13 @@ export interface PublicHomePage {
     editorialCta: string | null;
     faqTitle: string | null;
     faqSubtitle: string | null;
+    /**
+     * Search-engine listing for this locale, admin-edited in the dashboard's
+     * homepage SEO tab. Null keeps the site-wide defaults from Settings, the
+     * same fallback rule as every field above.
+     */
+    metaTitle: string | null;
+    metaDescription: string | null;
     /**
      * Published FAQs for this locale, in display order. Empty means "keep the
      * bundled dictionary FAQs" - the same fallback rule as every field above.
@@ -60,7 +81,7 @@ function emptyHomePage(locale: Locale): PublicHomePage {
     return {
         locale,
         heroImage: null,
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationSlug: null,
         ogImage: null,
         heroTitle: null,
@@ -72,6 +93,8 @@ function emptyHomePage(locale: Locale): PublicHomePage {
         editorialCta: null,
         faqTitle: null,
         faqSubtitle: null,
+        metaTitle: null,
+        metaDescription: null,
         faqs: [],
     };
 }

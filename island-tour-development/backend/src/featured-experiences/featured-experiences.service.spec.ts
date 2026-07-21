@@ -38,6 +38,7 @@ function featuredRow(over: Partial<Record<string, unknown>> = {}) {
     entityId: 'cat-1',
     destinationId: null,
     videoUrl: null,
+    posterUrl: null,
     displayOrder: 0,
     ...over,
   };
@@ -48,7 +49,7 @@ function categoryRow(over: Partial<Record<string, unknown>> = {}) {
     id: 'cat-1',
     name: 'Snorkeling',
     slug: 'snorkeling',
-    heroImage: null,
+    heroImage: 'https://cdn/cat-hero.jpg',
     ogImage: null,
     isActive: true,
     translations: [],
@@ -61,7 +62,7 @@ function hubRow(over: Partial<Record<string, unknown>> = {}) {
     id: 'hub-1',
     name: 'Klein Curacao',
     slug: 'klein-curacao',
-    heroImage: null,
+    heroImage: 'https://cdn/hub-hero.jpg',
     ogImage: null,
     isActive: true,
     status: HubStatus.PUBLISHED,
@@ -188,7 +189,7 @@ describe('FeaturedExperiencesService', () => {
     it('falls back to the OG image when there is no hero image', async () => {
       prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
       prisma.category.findMany.mockResolvedValue([
-        categoryRow({ ogImage: 'https://cdn/og.jpg' }),
+        categoryRow({ heroImage: null, ogImage: 'https://cdn/og.jpg' }),
       ]);
       prisma.tourCategory.findMany.mockResolvedValue(
         tourLinks('cat-1', CURACAO.id, 1),
@@ -197,6 +198,56 @@ describe('FeaturedExperiencesService', () => {
       const [card] = await service.resolvePublic(Locale.en);
 
       expect(card.image).toBe('https://cdn/og.jpg');
+    });
+
+    it('drops a card with no photo anywhere - the slide would be a grey box', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      // No poster, and the category has neither a hero nor an og image.
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: null, ogImage: null }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const cards = await service.resolvePublic(Locale.en);
+
+      expect(cards).toEqual([]);
+    });
+
+    it('keeps a photoless card once it has a poster of its own', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: null, ogImage: null }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const [card] = await service.resolvePublic(Locale.en);
+
+      expect(card.image).toBe('https://cdn/poster.jpg');
+    });
+
+    it("the card poster beats the entity's own images", async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({
+          heroImage: 'https://cdn/hero.jpg',
+          ogImage: 'https://cdn/og.jpg',
+        }),
+      ]);
+      prisma.tourCategory.findMany.mockResolvedValue(
+        tourLinks('cat-1', CURACAO.id, 1),
+      );
+
+      const [card] = await service.resolvePublic(Locale.en);
+
+      expect(card.image).toBe('https://cdn/poster.jpg');
     });
   });
 
@@ -340,6 +391,51 @@ describe('FeaturedExperiencesService', () => {
           'admin-1',
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  /**
+   * The admin list carries what the EDITOR needs to draw the real card: the
+   * target's name and the photo the card falls back to when it has no poster.
+   * Without those, curating a visual carousel means reading a list of ids.
+   */
+  describe('list', () => {
+    it("labels each row and carries the target's fallback photo", async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: 'https://cdn/hero.jpg' }),
+      ]);
+
+      const [row] = await service.list();
+
+      expect(row.entityName).toBe('Snorkeling');
+      expect(row.entityImage).toBe('https://cdn/hero.jpg');
+    });
+
+    it('carries the poster untouched - the editor resolves the preference itself', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([
+        featuredRow({ posterUrl: 'https://cdn/poster.jpg' }),
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        categoryRow({ heroImage: 'https://cdn/hero.jpg' }),
+      ]);
+
+      const [row] = await service.list();
+
+      expect(row.posterUrl).toBe('https://cdn/poster.jpg');
+      // NOT collapsed into entityImage: the editor has to show that the
+      // fallback exists and what it is, or "clear the poster" is a blind move.
+      expect(row.entityImage).toBe('https://cdn/hero.jpg');
+    });
+
+    it('surfaces a deleted target as nulls rather than hiding the row', async () => {
+      prisma.featuredExperience.findMany.mockResolvedValue([featuredRow()]);
+      prisma.category.findMany.mockResolvedValue([]);
+
+      const [row] = await service.list();
+
+      expect(row.entityName).toBeNull();
+      expect(row.entityImage).toBeNull();
     });
   });
 });

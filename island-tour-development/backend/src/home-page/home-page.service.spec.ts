@@ -6,7 +6,7 @@ import { FaqPageType, Locale } from '@prisma/client';
 import { HomePageService } from './home-page.service';
 
 function createMockPrismaService() {
-  return {
+  const client = {
     homePage: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
@@ -15,13 +15,27 @@ function createMockPrismaService() {
       findMany: jest.fn(),
       upsert: jest.fn(),
     },
+    homePageEditorialCard: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     destination: {
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     faq: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    // The deck replace runs in one transaction with the base upsert. The mock
+    // hands the callback the same client, so assertions read as if it were not
+    // transactional - the ordering guarantee is Prisma's to keep, not ours.
+    $transaction: jest.fn(),
   };
+  client.$transaction.mockImplementation((fn: (tx: typeof client) => unknown) =>
+    fn(client),
+  );
+  return client;
 }
 
 function createMockFaqGroupService() {
@@ -67,7 +81,7 @@ describe('HomePageService', () => {
       expect(result).toEqual({
         locale: Locale.en,
         heroImage: null,
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationSlug: null,
         ogImage: null,
         heroTitle: null,
@@ -79,6 +93,8 @@ describe('HomePageService', () => {
         editorialCta: null,
         faqTitle: null,
         faqSubtitle: null,
+        metaTitle: null,
+        metaDescription: null,
         faqs: [],
       });
     });
@@ -94,7 +110,7 @@ describe('HomePageService', () => {
     it('flattens the requested locale onto the base row', async () => {
       prisma.homePage.findUnique.mockResolvedValue({
         heroImage: 'https://cdn/hero.jpg',
-        editorialImages: ['https://cdn/a.jpg'],
+        editorialCards: [],
         editorialDestinationId: 'dest-1',
         ogImage: null,
         editorialDestination: { slug: 'curacao', isActive: true },
@@ -110,6 +126,8 @@ describe('HomePageService', () => {
             editorialCta: null,
             faqTitle: null,
             faqSubtitle: null,
+            metaTitle: 'Rondleidingen op de Cariben',
+            metaDescription: null,
             isMachineTranslated: false,
           },
         ],
@@ -122,12 +140,15 @@ describe('HomePageService', () => {
       expect(result.editorialDestinationSlug).toBe('curacao');
       // Unset copy stays null so the frontend keeps its dictionary default.
       expect(result.heroSubtitle).toBeNull();
+      // SEO meta is per-locale copy like any other field.
+      expect(result.metaTitle).toBe('Rondleidingen op de Cariben');
+      expect(result.metaDescription).toBeNull();
     });
 
     it('falls back to null copy when the locale has no row yet', async () => {
       prisma.homePage.findUnique.mockResolvedValue({
         heroImage: 'https://cdn/hero.jpg',
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationId: null,
         ogImage: null,
         editorialDestination: null,
@@ -141,10 +162,142 @@ describe('HomePageService', () => {
       expect(result.heroImage).toBe('https://cdn/hero.jpg');
     });
 
+    /**
+     * The fanned deck. Its caption and link both come from the island, so these
+     * cover the three states an admin can put a card in - plus the one the
+     * system can put it in behind their back (island archived).
+     */
+    describe('editorial cards', () => {
+      function homeWithCards(cards: unknown[]) {
+        return {
+          heroImage: null,
+          editorialCards: cards,
+          editorialDestinationId: null,
+          ogImage: null,
+          editorialDestination: null,
+          translations: [],
+        };
+      }
+
+      const curacao = {
+        slug: 'curacao',
+        name: 'Curaçao',
+        isActive: true,
+        translations: [],
+      };
+
+      it('names and links a card from its island', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              destinationId: 'dest-1',
+              isLink: true,
+              displayOrder: 0,
+              destination: curacao,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        expect(card).toEqual({
+          image: 'https://cdn/buggy.jpg',
+          name: 'Curaçao',
+          href: '/curacao',
+        });
+      });
+
+      it('prefers the locale translation for the card name', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              destinationId: 'dest-1',
+              isLink: true,
+              displayOrder: 0,
+              destination: { ...curacao, translations: [{ name: 'Curazao' }] },
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.es)).editorialCards;
+
+        expect(card.name).toBe('Curazao');
+      });
+
+      it('keeps the name but drops the href when the link is switched off', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              destinationId: 'dest-1',
+              isLink: false,
+              displayOrder: 0,
+              destination: curacao,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        expect(card.name).toBe('Curaçao');
+        expect(card.href).toBeNull();
+      });
+
+      it('degrades an archived island to a plain photo', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              destinationId: 'dest-1',
+              isLink: true,
+              displayOrder: 0,
+              destination: { ...curacao, isActive: false },
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        // Neither named nor linked: the page it would open no longer resolves.
+        expect(card.name).toBeNull();
+        expect(card.href).toBeNull();
+        expect(card.image).toBe('https://cdn/buggy.jpg');
+      });
+
+      it('leaves an unlinked photo unnamed so the bundled label survives', async () => {
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              destinationId: null,
+              isLink: false,
+              displayOrder: 0,
+              destination: null,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        expect(card).toEqual({
+          image: 'https://cdn/buggy.jpg',
+          name: null,
+          href: null,
+        });
+      });
+    });
+
     it('does not advertise an archived island in the CTA', async () => {
       prisma.homePage.findUnique.mockResolvedValue({
         heroImage: null,
-        editorialImages: [],
+        editorialCards: [],
         editorialDestinationId: 'dest-1',
         ogImage: null,
         editorialDestination: { slug: 'saint-lucia', isActive: false },
@@ -176,8 +329,8 @@ describe('HomePageService', () => {
 
       const call = prisma.homePage.upsert.mock.calls[0][0];
       expect(call.update).toEqual({ heroImage: 'https://cdn/new.jpg' });
-      // editorialImages was not sent, so it must survive untouched.
-      expect(call.update).not.toHaveProperty('editorialImages');
+      // The deck was not sent, so it must survive untouched.
+      expect(prisma.homePageEditorialCard.deleteMany).not.toHaveBeenCalled();
     });
 
     it('clears a field when it is explicitly null', async () => {
@@ -187,6 +340,69 @@ describe('HomePageService', () => {
 
       const call = prisma.homePage.upsert.mock.calls[0][0];
       expect(call.update).toEqual({ heroImage: null });
+    });
+
+    it('replaces the deck wholesale, numbering slots by array order', async () => {
+      prisma.homePage.upsert.mockResolvedValue({});
+      prisma.destination.findMany.mockResolvedValue([{ id: 'dest-1' }]);
+
+      await service.update(
+        {
+          editorialCards: [
+            { imageUrl: 'https://cdn/1.jpg', destinationId: 'dest-1' },
+            { imageUrl: 'https://cdn/2.jpg' },
+          ],
+        },
+        'admin-1',
+      );
+
+      expect(prisma.homePageEditorialCard.deleteMany).toHaveBeenCalledWith({
+        where: { homeId: 'default' },
+      });
+      const { data } = prisma.homePageEditorialCard.createMany.mock.calls[0][0];
+      expect(data).toEqual([
+        {
+          homeId: 'default',
+          imageUrl: 'https://cdn/1.jpg',
+          destinationId: 'dest-1',
+          isLink: true,
+          displayOrder: 0,
+        },
+        {
+          homeId: 'default',
+          imageUrl: 'https://cdn/2.jpg',
+          destinationId: null,
+          // No island to click through to, so the flag is normalised off here
+          // rather than left for the public resolver to second-guess.
+          isLink: false,
+          displayOrder: 1,
+        },
+      ]);
+    });
+
+    it('clears the deck when an empty array is sent', async () => {
+      prisma.homePage.upsert.mockResolvedValue({});
+
+      await service.update({ editorialCards: [] }, 'admin-1');
+
+      expect(prisma.homePageEditorialCard.deleteMany).toHaveBeenCalled();
+      expect(prisma.homePageEditorialCard.createMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a card pointing at an island that does not exist', async () => {
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.update(
+          {
+            editorialCards: [
+              { imageUrl: 'https://cdn/1.jpg', destinationId: 'missing' },
+            ],
+          },
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.homePageEditorialCard.deleteMany).not.toHaveBeenCalled();
     });
 
     it('skips the destination lookup when no CTA target is sent', async () => {
@@ -264,6 +480,29 @@ describe('HomePageService', () => {
 
       expect(prisma.homePage.upsert).toHaveBeenCalled();
       expect(prisma.homePageTranslation.upsert).toHaveBeenCalled();
+    });
+
+    it('writes the SEO meta like any other copy field', async () => {
+      prisma.homePage.upsert.mockResolvedValue({ id: 'default' });
+      prisma.homePageTranslation.upsert.mockResolvedValue({});
+
+      await service.upsertTranslation(
+        Locale.en,
+        {
+          fields: {
+            metaTitle: 'Caribbean Tours | Island Tours',
+            metaDescription: 'Book boat trips and island tours.',
+          },
+        },
+        'admin-1',
+      );
+
+      const call = prisma.homePageTranslation.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({
+        isMachineTranslated: false,
+        metaTitle: 'Caribbean Tours | Island Tours',
+        metaDescription: 'Book boat trips and island tours.',
+      });
     });
 
     it('only writes the named copy fields', async () => {

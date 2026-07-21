@@ -192,7 +192,9 @@ export function ApiUpsertHomePageTranslationDocs() {
         'Fields are wrapped in a `fields` object, matching every other ' +
         'translatable entity. Sending a field as null clears it, which is how ' +
         'the English tab "clears" copy (there is no delete route - deleting the ' +
-        'base locale would strand the section headings).',
+        'base locale would strand the section headings). The search-engine ' +
+        'meta title and description are per-locale copy on this same record: ' +
+        'the homepage singleton has no page-content record to hold them.',
     }),
     ApiResponse({
       status: 200,

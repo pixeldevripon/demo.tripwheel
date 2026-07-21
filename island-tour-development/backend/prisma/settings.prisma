@@ -18,6 +18,14 @@ model SiteInfo {
   instagramWidgetId  String?  @default("")
   enableInstagram    Boolean? @default(false)
 
+  // "Your local host" — the small looping avatar beside the WhatsApp button in
+  // the FAQ block. It lives in site info, NOT on the homepage record, because
+  // that block renders on the home, destination and collection pages; putting
+  // it on one page's record would leave the other two on a bundled file.
+  // Null on either → the site keeps its bundled avatar.
+  faqHostImage String? // still frame, and the video's poster
+  faqHostVideo String? // short loop; without one the still shows alone
+
   faqs Json? @default("[]")
 
   @@map("site_info")
