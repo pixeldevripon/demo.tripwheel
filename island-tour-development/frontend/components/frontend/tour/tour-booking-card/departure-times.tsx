@@ -1,6 +1,11 @@
 'use client';
 
-import { motion, useAnimationControls, useReducedMotion } from 'framer-motion';
+import {
+    animate,
+    motion,
+    useMotionValue,
+    useReducedMotion,
+} from 'framer-motion';
 import { useEffect } from 'react';
 import { useBooking } from '@/hooks/tours/use-booking';
 import {
@@ -38,34 +43,29 @@ export function DepartureTimes() {
     const missingSlot = ctaError === 'slot';
 
     const reduceMotion = useReducedMotion();
-    const controls = useAnimationControls();
 
-    // Exactly when the chip grid is in the tree: `Collapse` unmounts its
-    // children (AnimatePresence) and the skeleton swaps in for the grid while
-    // slots load, so the element comes and goes.
-    const slotsVisible =
-        selectedDate != null && !slotsLoading && slots.length > 0;
-
-    // The row's own fade-in. It lives here rather than in an `animate` prop
-    // because the element is bound to `controls`, and a bound component takes
-    // its target only from them - which also means the start must wait for the
-    // element to exist. Firing it on mount alone would leave the grid stuck at
-    // `initial` opacity 0 whenever slots were still loading at that point,
-    // since controls with no subscriber animate nothing.
-    useEffect(() => {
-        if (!slotsVisible) return;
-        controls.start({ opacity: 1, transition: swapFade });
-    }, [controls, slotsVisible]);
+    // The shake rides its own motion value rather than the element's `animate`
+    // prop. That keeps the two concerns apart: `animate` stays declarative and
+    // owns only the fade-in, `shakeOffset` owns only x. Binding `animate` to
+    // AnimationControls instead would hand the whole target over to them - the
+    // fade would then have to be fired imperatively too, and any moment the
+    // grid was unmounted (Collapse closes it, the skeleton replaces it while
+    // slots load) the controls would have no subscriber, the start would go
+    // nowhere, and the grid would mount at `initial` opacity 0 and stay
+    // invisible. A motion value has no such coupling: it lives on this
+    // component, survives the grid coming and going, and animating it while
+    // nothing is bound is simply a no-op.
+    const shakeOffset = useMotionValue(0);
 
     // Replay the shake on EVERY blocked Checkout press, not just the first.
     // `ctaErrorNonce` is the dependency that makes that possible: `missingSlot`
     // is already true by the second press, so an effect (or a declarative
-    // target) keyed on it alone would never fire again. Imperative `.start` for
-    // the same reason - re-rendering the same keyframes is not a state change.
+    // target) keyed on it alone would never fire again - re-rendering the same
+    // keyframes is not a state change, and framer has nothing to react to.
     useEffect(() => {
-        if (!missingSlot || reduceMotion || !slotsVisible) return;
-        controls.start({ x: shakeX, transition: shakeTransition });
-    }, [missingSlot, ctaErrorNonce, reduceMotion, slotsVisible, controls]);
+        if (!missingSlot || reduceMotion) return;
+        animate(shakeOffset, shakeX, shakeTransition);
+    }, [missingSlot, ctaErrorNonce, reduceMotion, shakeOffset]);
 
     return (
         <Collapse
@@ -93,7 +93,9 @@ export function DepartureTimes() {
                 <motion.div
                     key='slots'
                     initial={{ opacity: 0 }}
-                    animate={controls}
+                    animate={{ opacity: 1 }}
+                    transition={swapFade}
+                    style={{ x: shakeOffset }}
                     className='grid grid-cols-3 gap-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
