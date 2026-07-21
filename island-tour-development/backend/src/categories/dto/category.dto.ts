@@ -238,7 +238,7 @@ export class CategoryPageContentResponseDto {
 
 // ── FAQ DTOs ──────────────────────────────────────────────────────────────────
 
-export class FaqResponseDto {
+export class CategoryFaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   id!: string;
 
@@ -260,7 +260,7 @@ export class FaqResponseDto {
   locale!: Locale;
 }
 
-export class CreateFaqDto {
+export class CreateCategoryFaqDto {
   @ApiProperty({ enum: Locale, example: Locale.en })
   @IsEnum(Locale)
   locale!: Locale;
@@ -284,7 +284,7 @@ export class CreateFaqDto {
   displayOrder?: number = 0;
 }
 
-export class UpdateFaqDto {
+export class UpdateCategoryFaqDto {
   @ApiPropertyOptional({ example: 'Is food included?' })
   @IsOptional()
   @IsString()

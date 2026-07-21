@@ -20,7 +20,7 @@ import {
   ListReviewsQueryDto,
   ModerateReviewDto,
   ModerationQueueQueryDto,
-  OperatorResponseDto,
+  RespondToReviewDto,
   SummaryQueryDto,
 } from './dto/review.dto';
 import {
@@ -99,7 +99,7 @@ export class ReviewsController {
   @ApiRespondReviewDocs()
   respond(
     @Param('id') id: string,
-    @Body() dto: OperatorResponseDto,
+    @Body() dto: RespondToReviewDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.reviews.respond(id, dto, { id: user.id, role: user.role });

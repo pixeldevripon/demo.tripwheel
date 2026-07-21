@@ -23,10 +23,10 @@ import { CategoryService } from './categories.service';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
-  CreateFaqDto,
+  CreateCategoryFaqDto,
   FaqLocaleQueryDto,
   UpdateCategoryDto,
-  UpdateFaqDto,
+  UpdateCategoryFaqDto,
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
@@ -1322,7 +1322,7 @@ describe('CategoryService', () => {
 
   describe('createFaq', () => {
     const adminId = 'admin-1';
-    const dto: CreateFaqDto = {
+    const dto: CreateCategoryFaqDto = {
       locale: Locale.en,
       question: 'What is included?',
       answer: 'A life jacket and snorkeling gear.',
@@ -1361,7 +1361,7 @@ describe('CategoryService', () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
       prisma.faq.create.mockResolvedValue(makeFaqRecord());
 
-      const dtoWithout: CreateFaqDto = {
+      const dtoWithout: CreateCategoryFaqDto = {
         locale: Locale.en,
         question: 'What is included?',
         answer: 'A life jacket.',
@@ -1390,7 +1390,7 @@ describe('CategoryService', () => {
 
   describe('updateFaq', () => {
     const adminId = 'admin-1';
-    const dto: UpdateFaqDto = {
+    const dto: UpdateCategoryFaqDto = {
       question: 'Is food included?',
       answer: 'Yes, light snacks.',
     };

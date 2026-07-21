@@ -49,13 +49,13 @@ import {
   CollectionBySlugQueryDto,
   CollectionRenderQueryDto,
   CreateCollectionDto,
-  CreateFaqDto,
+  CreateCollectionFaqDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
   ReplaceCollectionToursDto,
   UpdateCollectionDto,
   UpdateCollectionStatusDto,
-  UpdateFaqDto,
+  UpdateCollectionFaqDto,
   UpsertCollectionPageContentDto,
   UpsertCollectionTourRationaleDto,
   UpsertCollectionTranslationsDto,
@@ -217,7 +217,7 @@ export class CollectionsController {
   @ApiCreateCollectionFaqDocs()
   createFaq(
     @Param('id') id: string,
-    @Body() dto: CreateFaqDto,
+    @Body() dto: CreateCollectionFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.collectionsService.createFaq(id, dto, user.id);
@@ -299,7 +299,7 @@ export class CollectionsController {
   updateFaq(
     @Param('id') id: string,
     @Param('faqId') faqId: string,
-    @Body() dto: UpdateFaqDto,
+    @Body() dto: UpdateCollectionFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.collectionsService.updateFaq(id, faqId, dto, user.id);

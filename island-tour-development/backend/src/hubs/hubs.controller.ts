@@ -19,7 +19,7 @@ import { Locale, Permission } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
-  CreateFaqDto,
+  CreateHubFaqDto,
   CreateHubDto,
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
@@ -29,7 +29,7 @@ import {
   ReplaceContentSectionsDto,
   SetComparisonDto,
   SetOurPicksDto,
-  UpdateFaqDto,
+  UpdateHubFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
@@ -311,7 +311,7 @@ export class HubController {
   @ApiCreateFaqDocs()
   createFaq(
     @Param('id') id: string,
-    @Body() dto: CreateFaqDto,
+    @Body() dto: CreateHubFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.createFaq(id, dto, user.id);
@@ -323,7 +323,7 @@ export class HubController {
   updateFaq(
     @Param('id') id: string,
     @Param('faqId') faqId: string,
-    @Body() dto: UpdateFaqDto,
+    @Body() dto: UpdateHubFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.updateFaq(id, faqId, dto, user.id);

@@ -48,7 +48,7 @@ import { FxRatesService } from '@/fx/fx-rates.service';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
-  CreateFaqDto,
+  CreateHubFaqDto,
   CreateHubDto,
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
@@ -57,7 +57,7 @@ import {
   ReplaceContentSectionsDto,
   SetComparisonDto,
   SetOurPicksDto,
-  UpdateFaqDto,
+  UpdateHubFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
@@ -1794,7 +1794,7 @@ export class HubService {
     });
   }
 
-  async createFaq(id: string, dto: CreateFaqDto, adminId: string) {
+  async createFaq(id: string, dto: CreateHubFaqDto, adminId: string) {
     await this.findHubOrThrow(id);
 
     const faq = await this.prisma.faq.create({
@@ -1818,7 +1818,7 @@ export class HubService {
   async updateFaq(
     id: string,
     faqId: string,
-    dto: UpdateFaqDto,
+    dto: UpdateHubFaqDto,
     adminId: string,
   ) {
     const faq = await this.prisma.faq.findFirst({

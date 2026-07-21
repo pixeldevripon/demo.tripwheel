@@ -119,7 +119,7 @@ export class CollectionRenderPageContentDto {
   @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
 }
 
-export class FaqResponseDto {
+export class CollectionFaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
   @ApiProperty({ example: 'How are these tours chosen?' }) question!: string;
@@ -175,7 +175,8 @@ export class CollectionRenderResponseDto extends CollectionLocalizedResponseDto 
   tours!: unknown[];
   @ApiProperty({ type: CollectionFastStatsDto })
   fastStats!: CollectionFastStatsDto;
-  @ApiProperty({ type: [FaqResponseDto] }) faqs!: FaqResponseDto[];
+  @ApiProperty({ type: [CollectionFaqResponseDto] })
+  faqs!: CollectionFaqResponseDto[];
   @ApiProperty({ type: [RelatedCollectionDto] })
   relatedCollections!: RelatedCollectionDto[];
 }
@@ -516,7 +517,7 @@ export class UpsertCollectionPageContentDto {
   metaDescription?: string;
 }
 
-export class CreateFaqDto {
+export class CreateCollectionFaqDto {
   @ApiProperty({ enum: Locale, example: Locale.en })
   @IsEnum(Locale)
   locale!: Locale;
@@ -537,7 +538,7 @@ export class CreateFaqDto {
   displayOrder?: number;
 }
 
-export class UpdateFaqDto {
+export class UpdateCollectionFaqDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

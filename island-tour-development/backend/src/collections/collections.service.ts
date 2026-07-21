@@ -42,11 +42,11 @@ import { TourQueryDto, TourSort } from '@/tours/dto/tour.dto';
 import {
   CollectionFilterQueryDto,
   CreateCollectionDto,
-  CreateFaqDto,
+  CreateCollectionFaqDto,
   FaqLocaleQueryDto,
   ReplaceCollectionToursDto,
   UpdateCollectionDto,
-  UpdateFaqDto,
+  UpdateCollectionFaqDto,
   UpsertCollectionPageContentDto,
   UpsertCollectionTourRationaleDto,
   UpsertCollectionTranslationsDto,
@@ -687,7 +687,7 @@ export class CollectionsService {
     });
   }
 
-  async createFaq(id: string, dto: CreateFaqDto, adminId: string) {
+  async createFaq(id: string, dto: CreateCollectionFaqDto, adminId: string) {
     await this.findCollectionOrThrow(id);
     const faq = await this.prisma.faq.create({
       data: {
@@ -709,7 +709,7 @@ export class CollectionsService {
   async updateFaq(
     id: string,
     faqId: string,
-    dto: UpdateFaqDto,
+    dto: UpdateCollectionFaqDto,
     adminId: string,
   ) {
     const faq = await this.prisma.faq.findFirst({

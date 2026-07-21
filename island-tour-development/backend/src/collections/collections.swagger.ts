@@ -19,7 +19,7 @@ import {
   CollectionTourRationaleResponseDto,
   CollectionTranslationEntryDto,
   DeleteMessageResponseDto,
-  FaqResponseDto,
+  CollectionFaqResponseDto,
 } from './dto/collection.dto';
 
 const serverError = ApiResponse({ status: 500, type: InternalServerErrorDto });
@@ -111,7 +111,7 @@ export function ApiGetCollectionFaqsDocs() {
     ApiOperation({ summary: 'Get collection FAQs (public)' }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     localeQuery,
-    ApiResponse({ status: 200, type: [FaqResponseDto] }),
+    ApiResponse({ status: 200, type: [CollectionFaqResponseDto] }),
     ...publicErrors,
   );
 }
@@ -223,7 +223,7 @@ export function ApiCreateCollectionFaqDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Create a collection FAQ (Admin)' }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
-    ApiResponse({ status: 201, type: FaqResponseDto }),
+    ApiResponse({ status: 201, type: CollectionFaqResponseDto }),
     ...adminErrors,
   );
 }
@@ -233,7 +233,7 @@ export function ApiUpdateCollectionFaqDocs() {
     ApiOperation({ summary: 'Update a collection FAQ (Admin)' }),
     ApiParam({ name: 'id', description: 'Collection UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: CollectionFaqResponseDto }),
     ...adminErrors,
   );
 }

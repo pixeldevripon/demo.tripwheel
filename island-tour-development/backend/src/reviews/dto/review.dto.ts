@@ -289,7 +289,7 @@ export class ModerateReviewDto {
   rejectionReason?: string;
 }
 
-export class OperatorResponseDto {
+export class RespondToReviewDto {
   @ApiProperty({ minLength: 2, maxLength: 2000 })
   @IsString()
   @MinLength(2)

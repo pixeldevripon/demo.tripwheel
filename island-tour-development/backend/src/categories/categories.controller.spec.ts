@@ -14,11 +14,11 @@ import { CategoryService } from './categories.service';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
-  CreateFaqDto,
+  CreateCategoryFaqDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
   UpdateCategoryDto,
-  UpdateFaqDto,
+  UpdateCategoryFaqDto,
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
@@ -331,7 +331,7 @@ describe('CategoryController', () => {
     it('delegates to categoryService.createFaq with id, dto, and user id', async () => {
       service.createFaq.mockResolvedValue({});
 
-      const dto: CreateFaqDto = {
+      const dto: CreateCategoryFaqDto = {
         locale: Locale.en,
         question: 'What is included?',
         answer: 'A life jacket and snorkeling gear.',
@@ -350,7 +350,7 @@ describe('CategoryController', () => {
     it('delegates to categoryService.updateFaq with id, faqId, dto, and user id', async () => {
       service.updateFaq.mockResolvedValue({});
 
-      const dto: UpdateFaqDto = { question: 'Is food included?' };
+      const dto: UpdateCategoryFaqDto = { question: 'Is food included?' };
       const user = makeAuthUser('admin-1');
       await controller.updateFaq('cat-1', 'faq-1', dto, user);
 

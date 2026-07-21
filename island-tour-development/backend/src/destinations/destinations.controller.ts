@@ -49,12 +49,12 @@ import {
 } from '@/common/faq/dto/faq-group.dto';
 import {
   CreateDestinationDto,
-  CreateFaqDto,
+  CreateDestinationFaqDto,
   DestinationQueryDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
   UpdateDestinationDto,
-  UpdateFaqDto,
+  UpdateDestinationFaqDto,
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
@@ -290,7 +290,7 @@ export class DestinationController {
   @ApiCreateFaqDocs()
   createFaq(
     @Param('id') id: string,
-    @Body() dto: CreateFaqDto,
+    @Body() dto: CreateDestinationFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.destinationService.createFaq(id, dto, user.id);
@@ -302,7 +302,7 @@ export class DestinationController {
   updateFaq(
     @Param('id') id: string,
     @Param('faqId') faqId: string,
-    @Body() dto: UpdateFaqDto,
+    @Body() dto: UpdateDestinationFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.destinationService.updateFaq(id, faqId, dto, user.id);

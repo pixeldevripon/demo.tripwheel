@@ -29,11 +29,11 @@ import {
 import { SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CreateDestinationDto,
-  CreateFaqDto,
+  CreateDestinationFaqDto,
   DestinationQueryDto,
   FaqLocaleQueryDto,
   UpdateDestinationDto,
-  UpdateFaqDto,
+  UpdateDestinationFaqDto,
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
@@ -550,7 +550,7 @@ export class DestinationService {
     });
   }
 
-  async createFaq(id: string, dto: CreateFaqDto, adminId: string) {
+  async createFaq(id: string, dto: CreateDestinationFaqDto, adminId: string) {
     await this.findDestinationOrThrow(id);
 
     const faq = await this.prisma.faq.create({
@@ -574,7 +574,7 @@ export class DestinationService {
   async updateFaq(
     id: string,
     faqId: string,
-    dto: UpdateFaqDto,
+    dto: UpdateDestinationFaqDto,
     adminId: string,
   ) {
     const faq = await this.prisma.faq.findFirst({
