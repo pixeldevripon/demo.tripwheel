@@ -5,7 +5,7 @@ import { auth } from '@/auth/auth.instance';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { validateEnv } from '@/env.validate';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -90,8 +90,20 @@ async function bootstrap() {
     exclude: ['api/auth/*path'],
   });
 
-  // ── Swagger (non-production only) ───────────────────────────────────────────
+  // ── Swagger ─────────────────────────────────────────────────────────────────
+  // Served in EVERY environment, production included (product decision,
+  // 2026-07-21). The old "non-production only" comment here never matched the
+  // code - nothing gated it - and the code was right.
+  await setupSwagger(app);
 
+  // ── Graceful shutdown ───────────────────────────────────────────────────────
+  app.enableShutdownHooks();
+
+  await app.listen(process.env.PORT ?? 5050);
+}
+
+/** Build the OpenAPI document (app + Better Auth) and mount `/api/docs`. */
+async function setupSwagger(app: INestApplication): Promise<void> {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Island Tours API')
     .setDescription('Tour marketplace - operators, slots, bookings')
@@ -100,6 +112,17 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
+
+  // `generateOpenAPISchema` only exists when Better Auth's `openAPI()` plugin is
+  // registered, and that plugin is deliberately dev-only (auth.instance.ts) - it
+  // publishes the auth schema. So in production the method is genuinely absent,
+  // and calling it threw `auth.api.generateOpenAPISchema is not a function` on
+  // every boot. The app's own routes were documented fine; only the /api/auth/*
+  // section was missing, with a scary error standing in for a one-line skip.
+  if (typeof auth.api.generateOpenAPISchema !== 'function') {
+    SwaggerModule.setup('api/docs', app, document);
+    return;
+  }
 
   try {
     const authSchema = await auth.api.generateOpenAPISchema();
@@ -140,10 +163,6 @@ async function bootstrap() {
   }
 
   SwaggerModule.setup('api/docs', app, document);
-
-  // ── Graceful shutdown ───────────────────────────────────────────────────────
-  app.enableShutdownHooks();
-
-  await app.listen(process.env.PORT ?? 5050);
 }
+
 void bootstrap();

@@ -20,7 +20,7 @@ import {
   CategoryTranslationEntryDto,
   DeleteCategoryResponseDto,
   DeleteMessageResponseDto,
-  FaqResponseDto,
+  CategoryFaqResponseDto,
   PaginatedLocalizedCategoriesResponseDto,
 } from './dto/category.dto';
 
@@ -334,7 +334,7 @@ export function ApiGetFaqsDocs() {
       enum: Locale,
       example: Locale.en,
     }),
-    ApiResponse({ status: 200, type: [FaqResponseDto] }),
+    ApiResponse({ status: 200, type: [CategoryFaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );
@@ -346,7 +346,7 @@ export function ApiCreateFaqDocs() {
       summary: 'Create a FAQ item for a category (Admin/Editor)',
     }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
-    ApiResponse({ status: 201, type: FaqResponseDto }),
+    ApiResponse({ status: 201, type: CategoryFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -357,7 +357,7 @@ export function ApiUpdateFaqDocs() {
     ApiOperation({ summary: 'Update a FAQ item (Admin/Editor)' }),
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: CategoryFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -437,7 +437,7 @@ export function ApiUpsertFaqTranslationDocs() {
     ApiParam({ name: 'id', description: 'Category UUID' }),
     ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
     ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: CategoryFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

@@ -24,11 +24,11 @@ import { Locale, Region, SlugEntityType } from '@prisma/client';
 import { DestinationService } from './destinations.service';
 import {
   CreateDestinationDto,
-  CreateFaqDto,
+  CreateDestinationFaqDto,
   DestinationQueryDto,
   FaqLocaleQueryDto,
   UpdateDestinationDto,
-  UpdateFaqDto,
+  UpdateDestinationFaqDto,
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
@@ -1095,7 +1095,7 @@ describe('DestinationService', () => {
     it('throws NotFoundException when destination does not exist', async () => {
       prisma.destination.findUnique.mockResolvedValue(null);
 
-      const dto: CreateFaqDto = {
+      const dto: CreateDestinationFaqDto = {
         locale: Locale.en,
         question: 'Question text here?',
         answer: 'Answer text here for visitors.',
@@ -1112,7 +1112,7 @@ describe('DestinationService', () => {
       prisma.destination.findUnique.mockResolvedValue(dest);
       prisma.faq.create.mockResolvedValue(faq);
 
-      const dto: CreateFaqDto = {
+      const dto: CreateDestinationFaqDto = {
         locale: Locale.en,
         question: 'Question text here?',
         answer: 'Answer text here for visitors.',
@@ -1140,7 +1140,7 @@ describe('DestinationService', () => {
       prisma.destination.findUnique.mockResolvedValue(dest);
       prisma.faq.create.mockResolvedValue(makeFaq());
 
-      const dto: CreateFaqDto = {
+      const dto: CreateDestinationFaqDto = {
         locale: Locale.en,
         question: 'Question text here?',
         answer: 'Answer text here for visitors.',
@@ -1163,7 +1163,9 @@ describe('DestinationService', () => {
     it('throws NotFoundException when no FAQ matches the given id and destinationId', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      const dto: UpdateFaqDto = { question: 'New question text here?' };
+      const dto: UpdateDestinationFaqDto = {
+        question: 'New question text here?',
+      };
       await expect(
         service.updateFaq('dest-1', 'faq-999', dto, adminId),
       ).rejects.toThrow(NotFoundException);
@@ -1178,7 +1180,9 @@ describe('DestinationService', () => {
       prisma.faq.findFirst.mockResolvedValue(existingFaq);
       prisma.faq.update.mockResolvedValue(updatedFaq);
 
-      const dto: UpdateFaqDto = { question: 'New question text here?' };
+      const dto: UpdateDestinationFaqDto = {
+        question: 'New question text here?',
+      };
       const result = await service.updateFaq('dest-1', 'faq-1', dto, adminId);
 
       expect(prisma.faq.update).toHaveBeenCalledWith(
@@ -1195,7 +1199,7 @@ describe('DestinationService', () => {
     it('queries faq with pageType DESTINATION and entityId filters', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      const dto: UpdateFaqDto = {};
+      const dto: UpdateDestinationFaqDto = {};
       await expect(
         service.updateFaq('dest-1', 'faq-1', dto, adminId),
       ).rejects.toThrow(NotFoundException);
@@ -1216,7 +1220,7 @@ describe('DestinationService', () => {
       prisma.faq.update.mockResolvedValue(updatedFaq);
 
       // Only displayOrder is provided
-      const dto: UpdateFaqDto = { displayOrder: 5 };
+      const dto: UpdateDestinationFaqDto = { displayOrder: 5 };
       await service.updateFaq('dest-1', 'faq-1', dto, adminId);
 
       const updateCall = prisma.faq.update.mock.calls[0][0];

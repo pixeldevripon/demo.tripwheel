@@ -14,13 +14,13 @@ import type { TypedAuthUser } from '@/auth/auth.types';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
-  CreateFaqDto,
+  CreateHubFaqDto,
   CreateHubDto,
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
   LocaleQueryDto,
-  UpdateFaqDto,
+  UpdateHubFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
@@ -333,7 +333,7 @@ describe('HubController', () => {
       const expected = { id: 'faq-new', question: 'What should I bring?' };
       service.createFaq.mockResolvedValue(expected as any);
 
-      const dto: CreateFaqDto = {
+      const dto: CreateHubFaqDto = {
         locale: Locale.en,
         question: 'What should I bring?',
         answer: 'Bring sunscreen and water.',
@@ -351,7 +351,7 @@ describe('HubController', () => {
       const expected = { id: 'faq-1', question: 'Updated?' };
       service.updateFaq.mockResolvedValue(expected as any);
 
-      const dto: UpdateFaqDto = { question: 'Updated?' };
+      const dto: UpdateHubFaqDto = { question: 'Updated?' };
       const user = makeAuthUser({ id: 'admin-8' });
       const result = await controller.updateFaq('hub-1', 'faq-1', dto, user);
 

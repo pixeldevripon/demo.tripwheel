@@ -28,12 +28,12 @@ import {
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
-  CreateFaqDto,
+  CreateHubFaqDto,
   CreateHubDto,
   FaqLocaleQueryDto,
   HubBySlugQueryDto,
   HubQueryDto,
-  UpdateFaqDto,
+  UpdateHubFaqDto,
   UpdateHubDto,
   UpsertHubPageContentDto,
   UpsertHubTranslationsDto,
@@ -1290,7 +1290,7 @@ describe('HubService', () => {
       const faq = makeFaq();
       prisma.faq.create.mockResolvedValue(faq);
 
-      const dto: CreateFaqDto = {
+      const dto: CreateHubFaqDto = {
         locale: Locale.en,
         question: 'What should I bring?',
         answer: 'Bring sunscreen, water, and a hat.',
@@ -1314,7 +1314,7 @@ describe('HubService', () => {
     it('throws NotFoundException when hub does not exist', async () => {
       prisma.hub.findUnique.mockResolvedValue(null);
 
-      const dto: CreateFaqDto = {
+      const dto: CreateHubFaqDto = {
         locale: Locale.en,
         question: 'What should I bring?',
         answer: 'Bring sunscreen and water.',
@@ -1328,7 +1328,7 @@ describe('HubService', () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
       prisma.faq.create.mockResolvedValue(makeFaq());
 
-      const dto: CreateFaqDto = {
+      const dto: CreateHubFaqDto = {
         locale: Locale.en,
         question: 'What should I bring?',
         answer: 'Bring sunscreen and water.',
@@ -1352,7 +1352,7 @@ describe('HubService', () => {
       const updatedFaq = makeFaq({ question: 'Updated question?' });
       prisma.faq.update.mockResolvedValue(updatedFaq);
 
-      const dto: UpdateFaqDto = { question: 'Updated question?' };
+      const dto: UpdateHubFaqDto = { question: 'Updated question?' };
       const result = await service.updateFaq('hub-1', 'faq-1', dto, 'admin-1');
 
       expect(prisma.faq.findFirst).toHaveBeenCalledWith(
@@ -1376,7 +1376,7 @@ describe('HubService', () => {
     it('throws NotFoundException when FAQ is not found for this hub', async () => {
       prisma.faq.findFirst.mockResolvedValue(null);
 
-      const dto: UpdateFaqDto = { question: 'Updated?' };
+      const dto: UpdateHubFaqDto = { question: 'Updated?' };
       await expect(
         service.updateFaq('hub-1', 'nonexistent-faq', dto, 'admin-1'),
       ).rejects.toThrow(NotFoundException);

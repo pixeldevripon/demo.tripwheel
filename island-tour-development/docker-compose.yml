@@ -69,6 +69,24 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       # Seed only on the boot where you explicitly ask for it (first deploy).
       RUN_SEED: ${RUN_SEED:-false}
+      # TEMPORARY, 2026-07-21 - diagnosing pg's "client.query() when the client
+      # is already executing a query" DeprecationWarning, which appears only in
+      # this container (the BullMQ workers do not run locally without Redis).
+      #
+      # Node prints each DeprecationWarning ONCE and WITHOUT a stack, so the bare
+      # line names no caller and cannot be traced after the fact. With this flag
+      # the same warning arrives with a full stack pointing at the code
+      # responsible. Application Prisma code is already ruled out: `Promise.all`
+      # on the pool, `$transaction([...])` batches, and even `Promise.all` inside
+      # an interactive transaction were all verified clean - Prisma serializes
+      # operations on a transaction connection - so the caller is a dependency.
+      #
+      # REMOVE once the culprit is identified: --trace-deprecation makes every
+      # deprecation in every dependency print a stack, which is noise in normal
+      # operation. To switch it off without editing this file, put an EMPTY
+      # `NODE_OPTIONS=` in ./.env - the default below uses `-` rather than `:-`
+      # precisely so an empty value counts as "set" and wins.
+      NODE_OPTIONS: ${NODE_OPTIONS---trace-deprecation}
     # Port exposed to Coolify's Traefik proxy (or nginx if self-managed).
     # Coolify's reverse proxy runs inside Docker so loopback binding is removed.
     ports:

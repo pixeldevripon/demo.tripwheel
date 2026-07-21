@@ -14,12 +14,12 @@ import { DestinationController } from './destinations.controller';
 import { DestinationService } from './destinations.service';
 import {
   CreateDestinationDto,
-  CreateFaqDto,
+  CreateDestinationFaqDto,
   DestinationQueryDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
   UpdateDestinationDto,
-  UpdateFaqDto,
+  UpdateDestinationFaqDto,
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
@@ -362,7 +362,7 @@ describe('DestinationController', () => {
     it('delegates to service.createFaq with id, dto, and user.id', async () => {
       service.createFaq.mockResolvedValue({ id: 'faq-1' });
 
-      const dto: CreateFaqDto = {
+      const dto: CreateDestinationFaqDto = {
         locale: Locale.en,
         question: 'What to do in Curaçao?',
         answer: 'There are many things to enjoy year-round.',
@@ -380,7 +380,7 @@ describe('DestinationController', () => {
     it('delegates to service.updateFaq with id, faqId, dto, and user.id', async () => {
       service.updateFaq.mockResolvedValue({ id: 'faq-1' });
 
-      const dto: UpdateFaqDto = { question: 'Updated question?' };
+      const dto: UpdateDestinationFaqDto = { question: 'Updated question?' };
       await controller.updateFaq('dest-1', 'faq-1', dto, mockAdminUser);
 
       expect(service.updateFaq).toHaveBeenCalledWith(

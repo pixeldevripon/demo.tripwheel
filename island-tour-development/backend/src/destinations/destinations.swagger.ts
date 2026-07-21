@@ -18,7 +18,7 @@ import {
   DestinationPageContentResponseDto,
   DestinationResponseDto,
   DestinationTranslationEntryDto,
-  FaqResponseDto,
+  DestinationFaqResponseDto,
   PaginatedLocalizedDestinationsResponseDto,
 } from './dto/destination.dto';
 import { FaqGroupResponseDto } from '@/common/faq/dto/faq-group.dto';
@@ -302,7 +302,7 @@ export function ApiGetFaqsDocs() {
       enum: Locale,
       example: Locale.en,
     }),
-    ApiResponse({ status: 200, type: [FaqResponseDto] }),
+    ApiResponse({ status: 200, type: [DestinationFaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );
@@ -314,7 +314,7 @@ export function ApiCreateFaqDocs() {
       summary: 'Create a FAQ item for a destination (Admin/Editor)',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
-    ApiResponse({ status: 201, type: FaqResponseDto }),
+    ApiResponse({ status: 201, type: DestinationFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -325,7 +325,7 @@ export function ApiUpdateFaqDocs() {
     ApiOperation({ summary: 'Update a FAQ item (Admin/Editor)' }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: DestinationFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -405,7 +405,7 @@ export function ApiUpsertFaqTranslationDocs() {
     ApiParam({ name: 'id', description: 'Destination UUID' }),
     ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
     ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: DestinationFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

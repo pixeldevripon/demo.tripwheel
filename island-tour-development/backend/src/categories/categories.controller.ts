@@ -52,11 +52,11 @@ import {
 import {
   CategoryQueryDto,
   CreateCategoryDto,
-  CreateFaqDto,
+  CreateCategoryFaqDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
   UpdateCategoryDto,
-  UpdateFaqDto,
+  UpdateCategoryFaqDto,
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
@@ -325,7 +325,7 @@ export class CategoryController {
   @ApiCreateFaqDocs()
   createFaq(
     @Param('id') id: string,
-    @Body() dto: CreateFaqDto,
+    @Body() dto: CreateCategoryFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.categoryService.createFaq(id, dto, user.id);
@@ -337,7 +337,7 @@ export class CategoryController {
   updateFaq(
     @Param('id') id: string,
     @Param('faqId') faqId: string,
-    @Body() dto: UpdateFaqDto,
+    @Body() dto: UpdateCategoryFaqDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.categoryService.updateFaq(id, faqId, dto, user.id);

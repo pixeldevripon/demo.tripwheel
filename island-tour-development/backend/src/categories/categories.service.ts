@@ -31,10 +31,10 @@ import { FeaturedEntityType, SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
-  CreateFaqDto,
+  CreateCategoryFaqDto,
   FaqLocaleQueryDto,
   UpdateCategoryDto,
-  UpdateFaqDto,
+  UpdateCategoryFaqDto,
   UpsertCategoryPageContentDto,
   UpsertCategoryTranslationsDto,
 } from './dto/category.dto';
@@ -840,7 +840,7 @@ export class CategoryService {
     });
   }
 
-  async createFaq(id: string, dto: CreateFaqDto, adminId: string) {
+  async createFaq(id: string, dto: CreateCategoryFaqDto, adminId: string) {
     await this.findCategoryOrThrow(id);
 
     const faq = await this.prisma.faq.create({
@@ -864,7 +864,7 @@ export class CategoryService {
   async updateFaq(
     id: string,
     faqId: string,
-    dto: UpdateFaqDto,
+    dto: UpdateCategoryFaqDto,
     adminId: string,
   ) {
     const faq = await this.prisma.faq.findFirst({

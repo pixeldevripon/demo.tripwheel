@@ -27,7 +27,7 @@ import type {
   ListReviewsQueryDto,
   ModerateReviewDto,
   ModerationQueueQueryDto,
-  OperatorResponseDto,
+  RespondToReviewDto,
 } from './dto/review.dto';
 
 const REVIEWABLE_STATUSES: BookingStatus[] = [
@@ -318,7 +318,7 @@ export class ReviewsService {
   // Operator response (tour owner or admin)
   // ════════════════════════════════════════════════════════════════════════
 
-  async respond(id: string, dto: OperatorResponseDto, actor: Actor) {
+  async respond(id: string, dto: RespondToReviewDto, actor: Actor) {
     if (containsBannedWord(dto.response)) {
       throw new BadRequestException('Response contains disallowed language');
     }

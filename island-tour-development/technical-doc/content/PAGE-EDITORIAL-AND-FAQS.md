@@ -285,6 +285,55 @@ or treat a title that names the wrong entity as this, not as a routing bug.
 
 ---
 
+## Phase 3 - DESIGN DECIDED, not yet written (2026-07-21)
+
+Nothing is implemented yet. These are the decisions made before starting, so the
+work resumes without re-deriving them.
+
+**Model: mirror `Faq`, not `HubContentSection`.** `prisma/faq.prisma` is already
+the codebase's polymorphic pattern and it has the group key
+`HubContentSection` lacks:
+
+```prisma
+model PageContentSection {
+  id           String   @id @default(uuid())
+  pageType     FaqPageType   // reuse the existing discriminator
+  entityId     String
+  sectionGroupId String      // links the 7 per-locale rows of ONE section
+  locale       Locale
+  sectionKey   String        // 'top-things' | 'planning' | 'why-book'
+  heading      String
+  body         String
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+
+  @@unique([pageType, entityId, sectionGroupId, locale])
+  @@index([pageType, entityId, locale, displayOrder])
+  @@map("page_content_sections")
+}
+```
+
+`sectionGroupId` is NOT nullable here (unlike `Faq.faqGroupId`, which is only
+nullable for legacy rows) - there are no legacy rows to protect, so the per-group
+locale fallback works from day one and `resolveFaqLocale`'s logic applies
+directly.
+
+**What the frontend has today** (`components/frontend/destination/
+destination-about.tsx:53-101`): three `<a>` elements - check icon + a one-line
+label from `dict.destination.about.{topThings,planning,whyBook}` - anchoring to
+`#experiences` / `#planning` / `#faq`. Identical on every island, no body copy.
+Each becomes heading + description. **The anchors must survive** - they are
+in-page navigation, not decoration.
+
+**Order of work:** schema + migration -> backend (admin CRUD + the section into
+the destination render payload) -> seed all 7 locales with REAL island copy ->
+frontend render keeping the `dict` fallback -> dashboard tab.
+
+**Still needs the design screenshot** for layout only; the data layer above does
+not depend on it.
+
+---
+
 ## Phase 3 work list `[ ]` - pointers
 
 Line numbers are as of 2026-07-21; re-grep rather than trusting them blind.

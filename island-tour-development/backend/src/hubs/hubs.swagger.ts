@@ -15,7 +15,7 @@ import {
   AllowedCategoryItemDto,
   DeleteHubResponseDto,
   DeleteMessageResponseDto,
-  FaqResponseDto,
+  HubFaqResponseDto,
   HubByDestinationResponseDto,
   HubDetailLocalizedResponseDto,
   HubPageContentResponseDto,
@@ -362,7 +362,7 @@ export function ApiGetFaqsDocs() {
       enum: Locale,
       example: Locale.en,
     }),
-    ApiResponse({ status: 200, type: [FaqResponseDto] }),
+    ApiResponse({ status: 200, type: [HubFaqResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );
@@ -372,7 +372,7 @@ export function ApiCreateFaqDocs() {
   return applyDecorators(
     ApiOperation({ summary: 'Create a FAQ item for a hub (Admin/Editor)' }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
-    ApiResponse({ status: 201, type: FaqResponseDto }),
+    ApiResponse({ status: 201, type: HubFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -383,7 +383,7 @@ export function ApiUpdateFaqDocs() {
     ApiOperation({ summary: 'Update a FAQ item (Admin/Editor)' }),
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'faqId', description: 'FAQ UUID' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: HubFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );
@@ -463,7 +463,7 @@ export function ApiUpsertFaqTranslationDocs() {
     ApiParam({ name: 'id', description: 'Hub UUID' }),
     ApiParam({ name: 'groupId', description: 'FAQ group UUID' }),
     ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
-    ApiResponse({ status: 200, type: FaqResponseDto }),
+    ApiResponse({ status: 200, type: HubFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

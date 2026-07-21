@@ -148,7 +148,7 @@ export class HubRenderPageContentDto {
   @ApiPropertyOptional({ nullable: true }) metaDescription!: string | null;
 }
 
-export class FaqResponseDto {
+export class HubFaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }) id!: string;
   @ApiProperty({ enum: Locale, example: Locale.en }) locale!: Locale;
   @ApiProperty({ example: 'What should I bring?' }) question!: string;
@@ -423,7 +423,7 @@ export class HubRenderResponseDto {
   discover!: HubContentSectionItemDto[];
   @ApiProperty({ type: [HubContentSectionItemDto] })
   localTips!: HubContentSectionItemDto[];
-  @ApiProperty({ type: [FaqResponseDto] }) faqs!: FaqResponseDto[];
+  @ApiProperty({ type: [HubFaqResponseDto] }) faqs!: HubFaqResponseDto[];
   @ApiProperty({ type: [RelatedHubItemDto] }) relatedHubs!: RelatedHubItemDto[];
   @ApiProperty({
     type: [String],
@@ -818,7 +818,7 @@ export class UpsertHubPageContentDto {
   metaDescription?: string;
 }
 
-export class CreateFaqDto {
+export class CreateHubFaqDto {
   @ApiProperty({ enum: Locale, example: Locale.en })
   @IsEnum(Locale)
   locale!: Locale;
@@ -842,7 +842,7 @@ export class CreateFaqDto {
   displayOrder?: number;
 }
 
-export class UpdateFaqDto {
+export class UpdateHubFaqDto {
   @ApiPropertyOptional({ example: 'What should I bring?' })
   @IsOptional()
   @IsString()

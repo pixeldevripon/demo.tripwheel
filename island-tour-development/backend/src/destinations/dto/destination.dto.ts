@@ -241,7 +241,7 @@ export class DestinationPageContentResponseDto {
 
 // ── FAQ DTOs ──────────────────────────────────────────────────────────────────
 
-export class FaqResponseDto {
+export class DestinationFaqResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   id!: string;
 
@@ -264,7 +264,7 @@ export class FaqResponseDto {
   locale!: Locale;
 }
 
-export class CreateFaqDto {
+export class CreateDestinationFaqDto {
   @ApiProperty({ enum: Locale, example: Locale.en })
   @IsEnum(Locale)
   locale!: Locale;
@@ -289,7 +289,7 @@ export class CreateFaqDto {
   displayOrder?: number = 0;
 }
 
-export class UpdateFaqDto {
+export class UpdateDestinationFaqDto {
   @ApiPropertyOptional({ example: 'Do I need a visa to visit Curaçao?' })
   @IsOptional()
   @IsString()
