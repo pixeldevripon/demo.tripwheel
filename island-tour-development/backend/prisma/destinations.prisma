@@ -39,8 +39,6 @@ model Destination {
   forceMajeurePardons ForceMajeurePardon[]
   // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
   homePages           HomePage[]
-  // Fanned CTA cards pointing at this island (onDelete: SetNull).
-  homeEditorialCards  HomePageEditorialCard[]
   // Featured experiences pinned to this destination (onDelete: Cascade).
   featuredExperiences FeaturedExperience[]
 

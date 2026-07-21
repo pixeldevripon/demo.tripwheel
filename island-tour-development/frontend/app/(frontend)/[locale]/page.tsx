@@ -122,18 +122,27 @@ export default async function HomePage({
     // Fan cards. An unrenderable photo DROPS the card rather than rendering an
     // empty slot: the deck then keeps its bundled card for that position, which
     // is the same never-blank rule the rest of this page follows.
+    //
+    // The href is built HERE, from the island resolved for the button above
+    // plus the card's category slug - so the whole banner always points at one
+    // island. Without a resolvable island there is nowhere to send anyone, so
+    // the card stays a photo with its caption.
     const editorialCards = content.editorialCards.flatMap(card => {
         const image = safeRemoteImage(card.image);
         if (!image) return [];
         return [
             {
                 image,
-                // Already this locale's island name; null keeps the bundled
-                // category label for the slot.
+                // Already this locale's category name; null keeps the bundled
+                // label for the slot.
                 name: card.name,
-                href: card.href
-                    ? localizeHref(locale as Locale, card.href)
-                    : null,
+                href:
+                    card.categorySlug && editorialIsland
+                        ? localizeHref(
+                              locale as Locale,
+                              `/${editorialIsland.slug}/${card.categorySlug}`,
+                          )
+                        : null,
             },
         ];
     });

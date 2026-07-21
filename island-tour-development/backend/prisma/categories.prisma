@@ -29,6 +29,8 @@ model Category {
   tourCategories TourCategory[]
   translations   CategoryTranslation[]
   pageContents   CategoryPageContent[]
+  // Fanned CTA cards on the homepage advertising this category (SetNull).
+  homeEditorialCards HomePageEditorialCard[]
 
   @@index([slug])
   @@index([parentCategoryId])

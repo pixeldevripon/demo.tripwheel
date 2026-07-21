@@ -49,10 +49,10 @@ export class HomePageFaqDto {
 /**
  * One fanned CTA card, resolved for the public site.
  *
- * `name` is the linked island's name IN THE REQUESTED LOCALE, never an
- * admin-typed string - that is what keeps all 7 locales correct with no
- * translation work and stops a card disagreeing with the page it opens. Null
- * name means the frontend keeps the bundled dictionary label for that slot.
+ * `name` is the CATEGORY's name IN THE REQUESTED LOCALE, never an admin-typed
+ * string - that is what keeps all 7 locales correct with no translation work
+ * and stops a card disagreeing with the page it opens. Null name means the
+ * frontend keeps the bundled dictionary label for that slot.
  */
 export class PublicEditorialCardDto {
   @ApiProperty({
@@ -61,21 +61,25 @@ export class PublicEditorialCardDto {
   image!: string;
 
   @ApiPropertyOptional({
-    example: 'Curaçao',
+    example: 'Buggy Tours',
     nullable: true,
-    description: "The linked island's localized name; null = bundled label.",
+    description:
+      "The category's localized name; null = keep the bundled label.",
   })
   name!: string | null;
 
   @ApiPropertyOptional({
-    example: '/curacao',
+    example: 'buggy-tours',
     nullable: true,
     description:
-      'Locale-less path; the frontend localizes it. Null when the card is a ' +
-      'plain photo - either no island is linked, the admin switched the link ' +
-      'off, or the island has since been archived.',
+      "The category's slug, or null when the card is a plain photo (no " +
+      'category, the link switched off, or the category archived since). The ' +
+      'ISLAND is not part of it: the banner is themed to one island, so the ' +
+      'frontend joins this to the island it already resolved for the button - ' +
+      'which is what guarantees a card and the button beside it never open ' +
+      'different islands.',
   })
-  href!: string | null;
+  categorySlug!: string | null;
 }
 
 /**
@@ -233,13 +237,13 @@ export class EditorialCardResponseDto {
   imageUrl!: string;
 
   @ApiPropertyOptional({ nullable: true })
-  destinationId!: string | null;
+  categoryId!: string | null;
 
   @ApiProperty({
     example: true,
     description:
-      'Whether the card is clickable. Independent of destinationId so an ' +
-      'island can be named on a card without sending traffic to it.',
+      'Whether the card is clickable. Independent of categoryId so a ' +
+      'category can be named on a card without sending traffic to it.',
   })
   isLink!: boolean;
 
@@ -288,17 +292,18 @@ export class EditorialCardInputDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'The island this card advertises. Null = a plain photo keeping its ' +
-      'bundled label.',
+      'The category this card advertises. Null = a plain photo keeping its ' +
+      'bundled label. The island is NOT per card - the banner is themed to ' +
+      'one island via editorialDestinationId.',
   })
   @IsOptional()
   @IsUUID()
-  destinationId?: string | null;
+  categoryId?: string | null;
 
   @ApiPropertyOptional({
     default: true,
     description:
-      'Whether the card is clickable. Ignored without a destination - there ' +
+      'Whether the card is clickable. Ignored without a category - there ' +
       'would be nowhere to click to.',
   })
   @IsOptional()

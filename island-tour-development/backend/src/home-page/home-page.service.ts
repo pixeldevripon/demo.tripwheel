@@ -52,7 +52,7 @@ const EDITORIAL_CARDS = {
   select: {
     id: true,
     imageUrl: true,
-    destinationId: true,
+    categoryId: true,
     isLink: true,
     displayOrder: true,
   },
@@ -105,9 +105,9 @@ export class HomePageService {
           editorialCards: {
             select: {
               ...EDITORIAL_CARDS.select,
-              // The card's caption and href both come from the island itself,
-              // in the requested locale - never from an admin-typed string.
-              destination: {
+              // Caption and slug both come from the CATEGORY itself, in the
+              // requested locale - never from an admin-typed string.
+              category: {
                 select: {
                   slug: true,
                   name: true,
@@ -146,14 +146,16 @@ export class HomePageService {
       locale,
       heroImage: base.heroImage,
       editorialCards: editorialCards.map((card) => {
-        // An archived island must not be advertised, exactly as with the CTA
+        // An archived category must not be advertised, exactly as with the CTA
         // button below: the card degrades to a plain photo rather than naming
         // and linking a page that 404s.
-        const live = card.destination?.isActive ? card.destination : null;
+        const live = card.category?.isActive ? card.category : null;
         return {
           image: card.imageUrl,
           name: live ? live.translations[0]?.name || live.name : null,
-          href: live && card.isLink ? `/${live.slug}` : null,
+          // Slug only - the frontend joins it to the island it resolved for
+          // the button, so a card can never open a different island from it.
+          categorySlug: live && card.isLink ? live.slug : null,
         };
       }),
       // An archived island must not be advertised on the homepage - fall back to
@@ -233,11 +235,11 @@ export class HomePageService {
       }
     }
 
-    // Every island a card points at must exist, for the same reason the CTA
+    // Every category a card points at must exist, for the same reason the CTA
     // target is checked: the FK would raise a 500-shaped Prisma error where the
     // admin needs a sentence.
     if (dto.editorialCards?.length) {
-      await this.assertCardDestinationsExist(dto.editorialCards);
+      await this.assertCardCategoriesExist(dto.editorialCards);
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -272,10 +274,10 @@ export class HomePageService {
             data: dto.editorialCards.map((card, index) => ({
               homeId: HOME_ID,
               imageUrl: card.imageUrl,
-              destinationId: card.destinationId ?? null,
+              categoryId: card.categoryId ?? null,
               // A link with nowhere to go is not a link. Normalising here means
               // the public resolver never has to special-case the pair.
-              isLink: card.destinationId ? (card.isLink ?? true) : false,
+              isLink: card.categoryId ? (card.isLink ?? true) : false,
               displayOrder: index,
             })),
           });
@@ -296,24 +298,22 @@ export class HomePageService {
   }
 
   /** One query for the whole deck rather than one per card. */
-  private async assertCardDestinationsExist(
-    cards: { destinationId?: string | null }[],
+  private async assertCardCategoriesExist(
+    cards: { categoryId?: string | null }[],
   ) {
     const ids = [
-      ...new Set(cards.map((c) => c.destinationId).filter((id) => !!id)),
+      ...new Set(cards.map((c) => c.categoryId).filter((id) => !!id)),
     ] as string[];
     if (!ids.length) return;
 
-    const found = await this.prisma.destination.findMany({
+    const found = await this.prisma.category.findMany({
       where: { id: { in: ids } },
       select: { id: true },
     });
 
-    const missing = ids.find((id) => !found.some((d) => d.id === id));
+    const missing = ids.find((id) => !found.some((c) => c.id === id));
     if (missing) {
-      throw new BadRequestException(
-        `No destination found with id "${missing}"`,
-      );
+      throw new BadRequestException(`No category found with id "${missing}"`);
     }
   }
 

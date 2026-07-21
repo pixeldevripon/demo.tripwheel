@@ -24,6 +24,9 @@ function createMockPrismaService() {
       findUnique: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    category: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     faq: {
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -179,33 +182,35 @@ describe('HomePageService', () => {
         };
       }
 
-      const curacao = {
-        slug: 'curacao',
-        name: 'Curaçao',
+      const buggy = {
+        slug: 'buggy-tours',
+        name: 'Buggy Tours',
         isActive: true,
         translations: [],
       };
 
-      it('names and links a card from its island', async () => {
+      it('names a card from its category and hands back the slug', async () => {
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: curacao,
+              category: buggy,
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.en)).editorialCards;
 
+        // No island in the slug: the frontend joins it to the island it
+        // resolved for the button, so the two can never disagree.
         expect(card).toEqual({
           image: 'https://cdn/buggy.jpg',
-          name: 'Curaçao',
-          href: '/curacao',
+          name: 'Buggy Tours',
+          categorySlug: 'buggy-tours',
         });
       });
 
@@ -215,49 +220,52 @@ describe('HomePageService', () => {
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: { ...curacao, translations: [{ name: 'Curazao' }] },
+              category: {
+                ...buggy,
+                translations: [{ name: 'Tours en buggy' }],
+              },
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.es)).editorialCards;
 
-        expect(card.name).toBe('Curazao');
+        expect(card.name).toBe('Tours en buggy');
       });
 
-      it('keeps the name but drops the href when the link is switched off', async () => {
+      it('keeps the name but drops the slug when the link is switched off', async () => {
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: false,
               displayOrder: 0,
-              destination: curacao,
+              category: buggy,
             },
           ]),
         );
 
         const [card] = (await service.getPublic(Locale.en)).editorialCards;
 
-        expect(card.name).toBe('Curaçao');
-        expect(card.href).toBeNull();
+        expect(card.name).toBe('Buggy Tours');
+        expect(card.categorySlug).toBeNull();
       });
 
-      it('degrades an archived island to a plain photo', async () => {
+      it('degrades an archived category to a plain photo', async () => {
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: 'dest-1',
+              categoryId: 'cat-1',
               isLink: true,
               displayOrder: 0,
-              destination: { ...curacao, isActive: false },
+              category: { ...buggy, isActive: false },
             },
           ]),
         );
@@ -266,20 +274,20 @@ describe('HomePageService', () => {
 
         // Neither named nor linked: the page it would open no longer resolves.
         expect(card.name).toBeNull();
-        expect(card.href).toBeNull();
+        expect(card.categorySlug).toBeNull();
         expect(card.image).toBe('https://cdn/buggy.jpg');
       });
 
-      it('leaves an unlinked photo unnamed so the bundled label survives', async () => {
+      it('leaves a category-less photo unnamed so the bundled label survives', async () => {
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
               id: 'c1',
               imageUrl: 'https://cdn/buggy.jpg',
-              destinationId: null,
+              categoryId: null,
               isLink: false,
               displayOrder: 0,
-              destination: null,
+              category: null,
             },
           ]),
         );
@@ -289,7 +297,7 @@ describe('HomePageService', () => {
         expect(card).toEqual({
           image: 'https://cdn/buggy.jpg',
           name: null,
-          href: null,
+          categorySlug: null,
         });
       });
     });
@@ -344,12 +352,12 @@ describe('HomePageService', () => {
 
     it('replaces the deck wholesale, numbering slots by array order', async () => {
       prisma.homePage.upsert.mockResolvedValue({});
-      prisma.destination.findMany.mockResolvedValue([{ id: 'dest-1' }]);
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
       await service.update(
         {
           editorialCards: [
-            { imageUrl: 'https://cdn/1.jpg', destinationId: 'dest-1' },
+            { imageUrl: 'https://cdn/1.jpg', categoryId: 'cat-1' },
             { imageUrl: 'https://cdn/2.jpg' },
           ],
         },
@@ -364,16 +372,16 @@ describe('HomePageService', () => {
         {
           homeId: 'default',
           imageUrl: 'https://cdn/1.jpg',
-          destinationId: 'dest-1',
+          categoryId: 'cat-1',
           isLink: true,
           displayOrder: 0,
         },
         {
           homeId: 'default',
           imageUrl: 'https://cdn/2.jpg',
-          destinationId: null,
-          // No island to click through to, so the flag is normalised off here
-          // rather than left for the public resolver to second-guess.
+          categoryId: null,
+          // No category to click through to, so the flag is normalised off
+          // here rather than left for the public resolver to second-guess.
           isLink: false,
           displayOrder: 1,
         },
@@ -389,14 +397,14 @@ describe('HomePageService', () => {
       expect(prisma.homePageEditorialCard.createMany).not.toHaveBeenCalled();
     });
 
-    it('rejects a card pointing at an island that does not exist', async () => {
-      prisma.destination.findMany.mockResolvedValue([]);
+    it('rejects a card pointing at a category that does not exist', async () => {
+      prisma.category.findMany.mockResolvedValue([]);
 
       await expect(
         service.update(
           {
             editorialCards: [
-              { imageUrl: 'https://cdn/1.jpg', destinationId: 'missing' },
+              { imageUrl: 'https://cdn/1.jpg', categoryId: 'missing' },
             ],
           },
           'admin-1',

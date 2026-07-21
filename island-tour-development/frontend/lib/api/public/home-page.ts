@@ -31,15 +31,19 @@ export interface PublicHomePageFaq {
 /**
  * One fanned editorial CTA card.
  *
- * `name` is the linked island's name in THIS locale (never admin-typed), and is
- * null when the card is a plain photo - keep the bundled dictionary label then.
- * `href` is null whenever the card should not be clickable: no island, the link
- * switched off, or the island archived since.
+ * `name` is the CATEGORY's name in THIS locale (never admin-typed), and is null
+ * when the card is a plain photo - keep the bundled dictionary label then.
+ *
+ * `categorySlug` carries no island on purpose: the banner is themed to ONE
+ * island, so the page joins this to the island it already resolved for the
+ * button. That is what guarantees a card and the button beside it can never
+ * open different islands. Null whenever the card should not be clickable: no
+ * category, the link switched off, or the category archived since.
  */
 export interface PublicEditorialCard {
     image: string;
     name: string | null;
-    href: string | null;
+    categorySlug: string | null;
 }
 
 export interface PublicHomePage {
