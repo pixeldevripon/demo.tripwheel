@@ -3459,6 +3459,31 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - At **20 or more published tours** the CTA carries the dynamic count: `See all {count} {Destination} tours →`.
 - **Below 20 published tours no count is shown**, to avoid signaling scarcity.
 - Instagram grid: brand handle row per review.
+  - **EXECUTED 2026-07-21 (phase 1 - admin-curated feed):** the grid was hardcoded (six bundled JPGs, a
+    hardcoded `@island.tours_` handle) and `SiteInfo.instagramWidgetId` was the abandoned start of a
+    third-party embed that nothing ever read. Both are gone. New **`instagram` backend module**
+    (`instagram.prisma`: `InstagramAccount` singleton + `InstagramPost`; enums `InstagramSource`,
+    `InstagramMediaType`; migration `20260721160000_instagram_feed`, which also **drops
+    `instagramWidgetId`**). Public `GET /instagram/public/feed?destination=&limit=` returns the handle,
+    profile link and tiles in one call; admin CRUD + reorder sits behind `VIEW_SETTINGS` /
+    `MANAGE_SETTINGS`. Public site renders `components/frontend/instagram/instagram-grid.tsx` from
+    `lib/api/public/instagram.ts` (`'use cache'`, new coarse tag **`instagram`**, added to
+    `lib/cache-tags.ts` in BOTH repos). Dashboard gets a **Settings > Instagram** tab (handle card +
+    tile grid: media-library photo, permalink, caption, alt override, per-island pin, show/hide, arrow
+    reorder), and dashboard writes bust `instagram` via `cache-revalidation.ts`.
+  - **Why first-party, not a widget:** an iframe embed cannot be server-rendered into this prerendered
+    page, brings consent-managed cookies into six EU locales for a decorative strip, and cannot be
+    styled to the Figma grid. **Instagram `media_url` CDN links expire within days and hotlinking them
+    breaks their terms**, so a tile's photo is always a URL we control.
+  - **Gates (all three collapse to "render no section"):** `SiteInfo.enableInstagram` off, zero live
+    tiles, or no handle set. A handle row over an empty grid is worse than no section.
+  - **PENDING (phase 2 - API sync):** Instagram Login OAuth + encrypted token (`INSTAGRAM_TOKEN_SECRET`,
+    the 3-file env change), daily sync job mirroring media into Cloudinary, and the **60-day long-lived
+    token refresh** (`GET /refresh_access_token`, token must be ≥24h old and unexpired; refresh at
+    <10 days with an admin warning at 7). Needs an Instagram **Business/Creator** account and Meta app
+    review for `instagram_business_basic`. Rows land in the same tables as `source = API`; the frontend
+    does not change. Synced tiles reject edits to sync-owned fields (photo/caption/permalink) but stay
+    curatable (order, visibility, pinning, alt text).
 - Destination description section: `About tours in {Destination}` — **350 to 500 words, exactly 3 H2s**,
   SEO content from the destination model.
 - **SEO ownership lock:** the destination page owns destination-level keywords and About content;

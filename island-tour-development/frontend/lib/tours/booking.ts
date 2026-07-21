@@ -84,6 +84,13 @@ export type TourBookingDict = {
     payLaterLink: string;
     sellOutTitle: string;
     sellOutSubtitle: string;
+    /** "Most popular" notice - earned by reviews (master §3.6). */
+    mostPopularTitle: string;
+    mostPopularSubtitle: string;
+    /** Paid-placement disclosure. Master calls transparency a brand pillar, so
+     *  this is a statement of fact, never a selling point. */
+    sponsoredTitle: string;
+    sponsoredSubtitle: string;
     // Booking Widget V2
     selectDate: string;
     checkAvailability: string;
@@ -148,6 +155,52 @@ export interface BookingSlot {
 }
 
 /** Everything the booking widget needs, resolved from a single tour fetch. */
+/**
+ * Notices stacked beneath the booking card. A subset of the master §3.6 badge
+ * set - `new` is deliberately excluded: on a listing card it REPLACES the rating
+ * row, but the detail page already shows the real rating and review list, so all
+ * "New" would add next to a Check Availability button is "nobody has reviewed
+ * this yet".
+ */
+export type BookingNoticeKind =
+    | 'likelyToSellOut'
+    | 'mostPopular'
+    | 'sponsored';
+
+/** Master §3.6: `mostPopular` is earned at >=10 reviews AND >=4.5 rating. */
+const MOST_POPULAR_MIN_REVIEWS = 10;
+const MOST_POPULAR_MIN_RATING = 4.5;
+
+/**
+ * Which notices this tour has earned, in display order.
+ *
+ * NOT the same call as `deriveTourBadge`. That one picks a SINGLE winner for a
+ * listing card, where there is one badge slot and sponsored outranks everything
+ * for transparency. Here there is room to stack, so a tour shows every signal it
+ * genuinely carries and none it does not.
+ *
+ * Order is shopper-first rather than the master's priority order: urgency, then
+ * social proof, then the paid-placement disclosure last. Sponsored ranks first
+ * on a card because it must not be crowded out of the only slot - that reason
+ * disappears once nothing can crowd it out.
+ */
+function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
+    const notices: BookingNoticeKind[] = [];
+    // `override ?? computed` - the CMS override is authoritative when set, and
+    // `false` is a meaningful override (suppress), so `??` not `||`.
+    if (detail.likelyToSellOutOverride ?? detail.likelyToSellOut) {
+        notices.push('likelyToSellOut');
+    }
+    if (
+        detail.aggregateReviewCount >= MOST_POPULAR_MIN_REVIEWS &&
+        (detail.aggregateRating ?? 0) >= MOST_POPULAR_MIN_RATING
+    ) {
+        notices.push('mostPopular');
+    }
+    if (detail.isSponsored) notices.push('sponsored');
+    return notices;
+}
+
 export interface TourBookingData {
     /** Currency glyph for the tour's default currency ("$" / "€"). */
     currencySymbol: string;
@@ -185,6 +238,8 @@ export interface TourBookingData {
     minPartySize: number;
     /** Largest bookable party, or null for no cap. */
     maxPartySize: number | null;
+    /** Which notices render beneath the card, already in display order. */
+    notices: BookingNoticeKind[];
 }
 
 /**
@@ -251,6 +306,8 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
     requiresDeposit: true,
     minPartySize: 1,
     maxPartySize: 20,
+    // All three, so the design/demo card exercises the full notice stack.
+    notices: ['likelyToSellOut', 'mostPopular', 'sponsored'],
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€' };
@@ -382,5 +439,6 @@ export function buildTourBookingData(
         requiresDeposit,
         minPartySize: detail.minPartySize,
         maxPartySize: detail.maxPartySize,
+        notices: deriveBookingNotices(detail),
     };
 }

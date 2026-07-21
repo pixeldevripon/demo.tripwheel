@@ -66,6 +66,15 @@
         radial-gradient(120% 120% at 10% 92%, rgba(0, 201, 80, 0.22) 0%, transparent 54%),
         linear-gradient(135deg, #0b2f3a 0%, #114b54 38%, #0e3b48 70%, #0a2630 100%);
 
+    /* Status screens (404 / error) — the hero gradient at a fraction of its
+       strength, so a status page still reads as Island Tours without competing
+       with the one message on it. Sits between the white navbar and the ink
+       footer, so it fades to --it-bg at the bottom edge. */
+    --it-status-gradient:
+        radial-gradient(70% 55% at 84% 2%, rgba(232, 97, 26, 0.10) 0%, transparent 60%),
+        radial-gradient(65% 55% at 6% 98%, rgba(0, 201, 80, 0.09) 0%, transparent 62%),
+        linear-gradient(180deg, #ffffff 0%, #ffffff 62%, #f9fafb 100%);
+
     /* Editorial banner — solid orange base; washes to white toward the right (desktop fan) or bottom (mobile fan) */
     --it-editorial-orange: linear-gradient(135deg, #f67e01 0%, #f54900 100%);
     --it-editorial-gradient:
@@ -479,6 +488,23 @@
 
     .it-scroll-x > * {
         scroll-snap-align: start;
+    }
+
+    /* ── Status screens (404 / error) ───────────────────────────────────────
+     * The page wash. The gradient sits behind `background-image` with a flat
+     * `background-color` underneath, so the surface is never bare while the
+     * gradient paints.
+     *
+     * The medallion has NO utility here on purpose: it is a token tint
+     * (`bg-it-primary-subtle` / `bg-it-warning-subtle` plus a matching hairline
+     * border) applied straight in the component. A large-format gradient like
+     * --it-hub-hero-gradient cannot be reused at that size - scaled down to a
+     * ~88px circle you only ever see the middle of the blend, which reads as
+     * mud rather than as either brand colour.
+     * --------------------------------------------------------------------- */
+    .it-status-surface {
+        background-color: var(--it-white);
+        background-image: var(--it-status-gradient);
     }
 
     .it-badge-available {

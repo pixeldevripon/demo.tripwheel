@@ -21,8 +21,12 @@ export interface PublicSiteInfo {
     enableWhatsappChat: boolean;
     /** Null whenever `enableWhatsappChat` is false - the backend nulls it. */
     whatsappNumber: string | null;
+    /**
+     * Kill switch for the Instagram grid. The tiles themselves come from
+     * `getInstagramFeed`, which applies this same flag - so a section only has
+     * to check `feed.enabled`.
+     */
     enableInstagram: boolean;
-    instagramWidgetId: string | null;
     /**
      * "Your local host" - the looping avatar beside the WhatsApp button in the
      * FAQ block. Site-wide rather than homepage content because that block
@@ -58,7 +62,6 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
             enableWhatsappChat: false,
             whatsappNumber: null,
             enableInstagram: false,
-            instagramWidgetId: null,
             faqHostImage: null,
             faqHostVideo: null,
         }

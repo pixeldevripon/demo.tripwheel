@@ -6,7 +6,12 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { DestinationActive, DestinationDetail } from '@/types/destination';
+import type {
+  DestinationActive,
+  DestinationDetail,
+  DestinationFaq,
+  DestinationPageContent,
+} from '@/types/destination';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet, publicGetStrict } from './fetch';
@@ -55,4 +60,52 @@ export async function getDestinationBySlug(
   );
   cacheTag(data ? `destination:${data.id}` : 'destinations');
   return data;
+}
+
+/**
+ * Editorial page content (about copy + meta title/description) for an island by
+ * id. Returns `null` when unauthored or the backend is unreachable - the page
+ * falls back to its bundled copy, so a null here is a normal state, not an error.
+ *
+ * Keyed by id rather than slug because that is the shape the backend exposes
+ * (`GET /destinations/:id/page-content`); callers already hold the island from
+ * `getDestinationBySlug`. Cached daily (tag-busted on writes) and tagged
+ * granularly `destination:<id>` so an admin's edit refreshes only that island.
+ */
+export async function getDestinationPageContent(
+  destinationId: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DestinationPageContent | null> {
+  'use cache';
+  cacheLife('days');
+  cacheTag(`destination:${destinationId}`);
+
+  return publicGet<DestinationPageContent>(
+    `/destinations/${destinationId}/page-content${buildQuery({ locale })}`,
+  );
+}
+
+/**
+ * Active FAQs for an island (by id), localized and ordered. Returns `[]` when
+ * unauthored or the backend is unreachable, which the page reads as "use the
+ * bundled questions".
+ *
+ * `locale` is always sent: the backend returns EVERY locale's rows mixed
+ * together when it is omitted, which would render each question seven times.
+ *
+ * Cached daily (tag-busted on writes); tagged `destination:<id>` so authoring
+ * this island's FAQs refreshes only its page.
+ */
+export async function getDestinationFaqs(
+  destinationId: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DestinationFaq[]> {
+  'use cache';
+  cacheLife('days');
+  cacheTag(`destination:${destinationId}`);
+
+  const data = await publicGet<DestinationFaq[]>(
+    `/destinations/${destinationId}/faqs${buildQuery({ locale })}`,
+  );
+  return data ?? [];
 }
