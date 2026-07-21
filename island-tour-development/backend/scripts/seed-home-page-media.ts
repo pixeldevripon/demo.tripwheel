@@ -257,6 +257,93 @@ interface DictionaryFaq {
   a: string;
 }
 
+/** The homepage slice of one locale's dictionary. Every field is optional. */
+interface HomeDictionary {
+  hero?: { title?: string; subtitle?: string };
+  experiences?: { title?: string };
+  editorial?: {
+    titleLine1?: string;
+    titleLine2?: string;
+    body?: string;
+    cta?: string;
+  };
+  faq?: { title?: string; subtitle?: string; items?: DictionaryFaq[] };
+}
+
+function readDictionary(locale: Locale): HomeDictionary | null {
+  const file = path.join(DICTIONARY_DIR, `${locale}.json`);
+  if (!fs.existsSync(file)) return null;
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+    home?: HomeDictionary;
+  };
+  return parsed.home ?? null;
+}
+
+/**
+ * The nine copy fields, per locale, lifted out of the dictionary the site
+ * currently renders.
+ *
+ * The fallback contract means an empty field already renders this exact text,
+ * so this changes NOTHING a visitor sees - what it changes is that an admin can
+ * now see, edit and translate the words instead of facing nine empty inputs
+ * describing copy they cannot reach. The dictionary stays in place as the
+ * fallback: clear a field and the site is right back to it.
+ *
+ * Per FIELD, not per record: a locale an admin has half-filled gets only its
+ * empty fields populated, and a field they wrote is never overwritten.
+ */
+async function seedHomepageCopy(prisma: PrismaClient): Promise<void> {
+  const existing = await prisma.homePageTranslation.findMany({
+    where: { homeId: HOME_ID },
+  });
+  const byLocale = new Map(existing.map((row) => [row.locale, row]));
+
+  let touched = 0;
+
+  for (const locale of DICTIONARY_LOCALES) {
+    const home = readDictionary(locale);
+    if (!home) continue;
+
+    const candidates: Record<string, string | undefined> = {
+      heroTitle: home.hero?.title,
+      heroSubtitle: home.hero?.subtitle,
+      experiencesTitle: home.experiences?.title,
+      editorialTitleLine1: home.editorial?.titleLine1,
+      editorialTitleLine2: home.editorial?.titleLine2,
+      editorialBody: home.editorial?.body,
+      editorialCta: home.editorial?.cta,
+      faqTitle: home.faq?.title,
+      faqSubtitle: home.faq?.subtitle,
+    };
+
+    const current = byLocale.get(locale) as Record<string, unknown> | undefined;
+    const data: Record<string, string> = {};
+
+    for (const [field, value] of Object.entries(candidates)) {
+      if (!value) continue;
+      const stored = current?.[field];
+      // Only ever fills a hole - an admin's words are never overwritten.
+      if (typeof stored === 'string' && stored.trim()) continue;
+      data[field] = value;
+    }
+
+    if (!Object.keys(data).length) continue;
+
+    await prisma.homePageTranslation.upsert({
+      where: { homeId_locale: { homeId: HOME_ID, locale } },
+      create: { homeId: HOME_ID, locale, ...data },
+      update: data,
+    });
+    touched += 1;
+  }
+
+  console.log(
+    touched
+      ? `  Copy: filled the empty fields on ${touched} locale${touched === 1 ? '' : 's'} from the dictionaries.`
+      : '  Copy: every locale already has its own words - left alone.',
+  );
+}
+
 /**
  * A stable id for a seeded FAQ group.
  *
@@ -316,12 +403,7 @@ async function seedHomepageFaqs(prisma: PrismaClient): Promise<void> {
 
   const byLocale = new Map<Locale, DictionaryFaq[]>();
   for (const locale of DICTIONARY_LOCALES) {
-    const file = path.join(DICTIONARY_DIR, `${locale}.json`);
-    if (!fs.existsSync(file)) continue;
-    const dict = JSON.parse(fs.readFileSync(file, 'utf8')) as {
-      home?: { faq?: { items?: DictionaryFaq[] } };
-    };
-    const items = dict.home?.faq?.items;
+    const items = readDictionary(locale)?.faq?.items;
     if (items?.length) byLocale.set(locale, items);
   }
 
@@ -556,6 +638,7 @@ async function main(): Promise<void> {
       console.log('\n  Hero image set.');
     }
 
+    await seedHomepageCopy(prisma);
     await seedHomepageFaqs(prisma);
 
     const english = await prisma.homePageTranslation.findUnique({
