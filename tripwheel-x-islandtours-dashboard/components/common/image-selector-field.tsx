@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Cancel01Icon, CloudUploadIcon, ImageAdd02Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import MediaSelector from '@/components/common/media-selector';
+import { MediaUploadZone } from '@/components/common/media-upload-zone';
 import type { MediaItem } from '@/types/media';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -35,84 +36,6 @@ type ImageSelectorFieldProps = (SingleProps | MultipleProps) & {
   className?: string;
 };
 
-// ─── Empty upload zone ────────────────────────────────────────────────────────
-
-function UploadZone({
-  onClick,
-  disabled,
-  label,
-  hint,
-  compact = false,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  label: string;
-  hint?: string;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      onClick={disabled ? undefined : onClick}
-      onKeyDown={(e) => {
-        if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={cn(
-        'group w-full flex flex-col items-center justify-center border border-dashed border-border',
-        'transition-all duration-200 hover:border-primary/60 hover:bg-primary/2',
-        disabled ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer',
-        compact ? 'gap-2 py-4 px-3' : 'gap-4 py-8 px-6'
-      )}
-    >
-      {/* Icon container */}
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-full bg-muted transition-all duration-200 group-hover:bg-primary/10 group-hover:scale-105',
-          compact ? 'size-9' : 'size-14'
-        )}
-      >
-        <HugeiconsIcon
-          icon={compact ? ImageAdd02Icon : CloudUploadIcon}
-          size={compact ? 18 : 26}
-          className="text-muted-foreground group-hover:text-primary transition-colors"
-        />
-      </div>
-
-      {/* Text */}
-      <div className="text-center space-y-1">
-        <p
-          className={cn(
-            'font-semibold',
-            compact ? 'text-2xs' : 'text-xs'
-          )}
-        >
-          {label}
-        </p>
-        {hint && (
-          <p className="text-2xs text-muted-foreground">{hint}</p>
-        )}
-      </div>
-
-      {/* CTA - only in full (non-compact) mode */}
-      {!compact && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="pointer-events-none"
-          tabIndex={-1}
-        >
-          Browse Media Library
-        </Button>
-      )}
-    </div>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ImageSelectorField(props: ImageSelectorFieldProps) {
@@ -134,7 +57,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
       <div className={cn('space-y-3', className)}>
         {/* Upload zone - always visible, shrinks to compact when images exist */}
         {canAddMore && (
-          <UploadZone
+          <MediaUploadZone
             onClick={() => setOpen(true)}
             disabled={disabled}
             compact={urls.length > 0}
@@ -217,7 +140,12 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
   return (
     <div className={cn('space-y-3', className)}>
       {value ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        /* One image, so it is sized directly rather than dropped into a 3/4
+           column grid - in a narrow container (a card slot, a side-by-side
+           form) a grid fraction of a fraction rendered a thumbnail too small
+           to judge the photo by. `max-w-48` keeps it about the size it was in
+           the wide forms it was designed against. */
+        <div className="w-full max-w-48">
           <div
             className={cn(
               'group relative aspect-square overflow-hidden border border-border bg-muted',
@@ -247,7 +175,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
           </div>
         </div>
       ) : (
-        <UploadZone
+        <MediaUploadZone
           onClick={() => setOpen(true)}
           disabled={disabled}
           label="Select an image"

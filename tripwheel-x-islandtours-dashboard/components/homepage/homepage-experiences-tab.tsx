@@ -6,6 +6,7 @@ import {
   ArrowUp02Icon,
   Delete02Icon,
   Image02Icon,
+  ImageAdd02Icon,
   PencilEdit02Icon,
   PlayIcon,
   PlusSignIcon,
@@ -83,11 +84,6 @@ import type {
  */
 export function HomepageExperiencesTab() {
   return <ExperiencesCurationCard />;
-}
-
-/** What the card will actually show: the poster, else the target's own photo. */
-function effectiveImage(exp: FeaturedExperience) {
-  return exp.posterUrl || exp.entityImage;
 }
 
 /**
@@ -367,53 +363,84 @@ function ExperienceCard({
   onDelete: () => void;
 }) {
   const missing = experience.entityName === null;
-  const image = effectiveImage(experience);
+  // Only the card's OWN poster is previewed here - see the placeholder below.
+  const poster = experience.posterUrl;
 
   return (
     <div className='group relative overflow-hidden rounded-md border border-line bg-surface-raised focus-within:ring-2 focus-within:ring-ring/30'>
       <div className='relative aspect-[3/4] bg-surface-inset'>
-        {image ? (
-          // Cloudinary URLs on an admin-only screen: next/image would buy
-          // nothing here and its config is the public site's concern.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image}
-            alt=''
-            className={
-              experience.isActive
-                ? 'size-full object-cover'
-                : 'size-full object-cover opacity-40 grayscale'
-            }
-          />
-        ) : (
-          <div className='flex size-full flex-col items-center justify-center gap-1 text-content-subtle'>
-            <HugeiconsIcon icon={Image02Icon} className='size-8 opacity-40' />
-            <span className='px-2 text-center text-xs'>
-              No photo - the site uses its bundled card art
+        {/*
+         * The whole surface opens the media dialog - the poster IS the thing
+         * you click a card to change. It is a sibling of the control buttons,
+         * never their parent: a button inside a button is invalid and the
+         * inner one stops working.
+         */}
+        <button
+          type='button'
+          onClick={onEdit}
+          disabled={disabled}
+          aria-label={`Poster and video for ${experience.entityName ?? 'this card'}`}
+          className='absolute inset-0 cursor-pointer disabled:cursor-not-allowed'>
+          {poster ? (
+            // Cloudinary URLs on an admin-only screen: next/image would buy
+            // nothing here and its config is the public site's concern.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={poster}
+              alt=''
+              className={
+                experience.isActive
+                  ? 'size-full object-cover'
+                  : 'size-full object-cover opacity-40 grayscale'
+              }
+            />
+          ) : (
+            /*
+             * No poster of its own. The card DOES render (it inherits the
+             * linked page's photo), but showing that photo here would say
+             * "this card is done" - so the slot asks for the media it is
+             * missing instead, and says what the site is doing meanwhile.
+             */
+            <span className='flex size-full flex-col items-center justify-center gap-2 border border-dashed border-line p-3 text-center transition-colors hover:border-primary/60 hover:bg-primary/2'>
+              <span className='flex size-10 items-center justify-center rounded-full bg-muted'>
+                <HugeiconsIcon
+                  icon={ImageAdd02Icon}
+                  className='size-5 text-content-muted'
+                />
+              </span>
+              <span className='text-xs font-semibold'>
+                Add poster and video
+              </span>
+              <span className='text-xs text-content-muted'>
+                {experience.entityImage
+                  ? 'Using the linked page’s photo for now'
+                  : 'The site is using its bundled card art'}
+              </span>
             </span>
-          </div>
-        )}
+          )}
+        </button>
 
         {/* Position, always visible: the number IS the carousel order. */}
-        <span className='absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums'>
+        <span className='pointer-events-none absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums'>
           {index + 1}
         </span>
 
         {experience.videoUrl && (
-          <span className='absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0'>
+          // Fades on hover: the action buttons take this corner.
+          <span className='pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 transition-opacity group-focus-within:opacity-0 group-hover:opacity-0'>
             <HugeiconsIcon icon={PlayIcon} className='size-3' />
             Video
           </span>
         )}
 
         {!experience.isActive && (
-          <span className='absolute inset-x-2 bottom-2 rounded-md bg-n-1000/70 px-2 py-1 text-center text-2xs font-medium text-n-0'>
+          <span className='pointer-events-none absolute inset-x-2 bottom-2 rounded-md bg-n-1000/70 px-2 py-1 text-center text-2xs font-medium text-n-0'>
             Hidden from the homepage
           </span>
         )}
 
         {/* Reorder (bottom-left on hover), matching the tour-images tab. */}
-        <div className='absolute bottom-2 left-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
+        <div className='absolute bottom-2 left-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
           <Button
             size='icon-sm'
             variant='secondary'
@@ -433,7 +460,7 @@ function ExperienceCard({
         </div>
 
         {/* Edit / show-hide / remove (top-right on hover). */}
-        <div className='absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
+        <div className='absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
           <Button
             size='icon-sm'
             variant='secondary'
@@ -476,11 +503,6 @@ function ExperienceCard({
             {experience.entityType === 'HUB' ? 'Hub' : 'Category'}
           </StatusBadge>
           {missing && <StatusBadge variant='danger'>Target deleted</StatusBadge>}
-          {!experience.posterUrl && !missing && experience.entityImage && (
-            <span className='text-xs text-content-muted'>
-              Using the page photo
-            </span>
-          )}
         </div>
         {missing && (
           <p className='flex items-start gap-1.5 text-xs text-danger-fg'>
