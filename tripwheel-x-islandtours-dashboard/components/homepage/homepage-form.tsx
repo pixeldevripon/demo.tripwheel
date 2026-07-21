@@ -79,6 +79,23 @@ function toSlots(cards: HomePageContent['editorialCards']): CardValues[] {
     return CARD_SLOTS.map((_, i) => stored[i] ?? { ...EMPTY_SLOT });
 }
 
+/**
+ * Which stored slots the site is serving WITHOUT their link, because the
+ * category has nothing bookable on the banner's island. Keyed by slot index,
+ * which is the deck's own order.
+ */
+function unlinkableSlots(cards: HomePageContent['editorialCards']): Set<number> {
+    const dead = new Set<number>();
+    [...cards]
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .forEach((card, index) => {
+            if (card.categoryId && card.isLink && !card.hasLiveTours) {
+                dead.add(index);
+            }
+        });
+    return dead;
+}
+
 interface DetailsValues {
     heroImage: string;
     editorialCards: CardValues[];
@@ -117,6 +134,10 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
     }, [content, reset]);
 
     const values = watch();
+    // Computed from what is SAVED, not from the form: the gate is a fact about
+    // the live site, and it only changes when a save changes it.
+    const unlinkable = unlinkableSlots(content.editorialCards);
+    const islandSlug = content.resolvedDestinationSlug;
 
     function onSubmit(v: DetailsValues) {
         update(
@@ -140,14 +161,15 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                 editorialDestinationId: realId(v.editorialDestinationId),
             },
             {
-                onSuccess: () => toast.success('Homepage updated successfully.'),
+                onSuccess: () =>
+                    toast.success('Homepage updated successfully.'),
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to update the homepage.',
+                            : 'Failed to update the homepage.'
                     ),
-            },
+            }
         );
     }
 
@@ -187,7 +209,7 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                                 onValueChange={v =>
                                     setValue('editorialDestinationId', v)
                                 }>
-                                <SelectTrigger>
+                                <SelectTrigger className='max-w-md'>
                                     <SelectValue placeholder='Choose automatically' />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -232,10 +254,12 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                                             slotLabel={slotLabel}
                                             categories={categories}
                                             value={values.editorialCards[index]}
+                                            noLiveTours={unlinkable.has(index)}
+                                            islandSlug={islandSlug}
                                             onImageChange={url => {
                                                 setValue(
                                                     `editorialCards.${index}.imageUrl`,
-                                                    url ?? '',
+                                                    url ?? ''
                                                 );
                                                 if (!url) {
                                                     // An empty slot has nothing
@@ -243,18 +267,18 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                                                     // keep a stale category.
                                                     setValue(
                                                         `editorialCards.${index}.categoryId`,
-                                                        NO_CATEGORY,
+                                                        NO_CATEGORY
                                                     );
                                                     setValue(
                                                         `editorialCards.${index}.isLink`,
-                                                        false,
+                                                        false
                                                     );
                                                 }
                                             }}
                                             onCategoryChange={categoryId => {
                                                 setValue(
                                                     `editorialCards.${index}.categoryId`,
-                                                    categoryId,
+                                                    categoryId
                                                 );
                                                 // Choosing a category means you
                                                 // want the link; switching back
@@ -262,13 +286,13 @@ export function HomepageForm({ content }: { content: HomePageContent }) {
                                                 // pointing nowhere.
                                                 setValue(
                                                     `editorialCards.${index}.isLink`,
-                                                    categoryId !== NO_CATEGORY,
+                                                    categoryId !== NO_CATEGORY
                                                 );
                                             }}
                                             onLinkModeChange={isLink =>
                                                 setValue(
                                                     `editorialCards.${index}.isLink`,
-                                                    isLink,
+                                                    isLink
                                                 )
                                             }
                                         />
@@ -302,6 +326,8 @@ function EditorialCardSlot({
     slotLabel,
     categories,
     value,
+    noLiveTours,
+    islandSlug,
     onImageChange,
     onCategoryChange,
     onLinkModeChange,
@@ -310,6 +336,9 @@ function EditorialCardSlot({
     slotLabel: string;
     categories: { id: string; name: string }[];
     value: CardValues | undefined;
+    /** Saved state: the site is serving this card without its link. */
+    noLiveTours: boolean;
+    islandSlug: string | null;
     onImageChange: (url: string | null) => void;
     onCategoryChange: (categoryId: string) => void;
     onLinkModeChange: (isLink: boolean) => void;
@@ -370,6 +399,14 @@ function EditorialCardSlot({
                     </Select>
                 )}
 
+                {noLiveTours && (
+                    <p className='text-xs font-medium text-danger-fg'>
+                        Not linked - this category has no live tour
+                        {islandSlug ? ` on ${islandSlug}` : ' on that island'},
+                        so its page would not open. The card still shows.
+                    </p>
+                )}
+
                 <p className='text-xs text-content-muted'>
                     {!value?.imageUrl
                         ? 'Empty - this slot keeps its built-in photo.'
@@ -383,3 +420,4 @@ function EditorialCardSlot({
         </div>
     );
 }
+

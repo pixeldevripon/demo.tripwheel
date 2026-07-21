@@ -52,6 +52,13 @@ export interface EditorialCard {
   isLink: boolean;
   /** 0, 1, 2 - left, middle, front in fan order. */
   displayOrder: number;
+  /**
+   * Whether this category has a LIVE tour on the island the banner points at.
+   * False means the public site serves the card WITHOUT its link, because the
+   * category page would 404 - shown in the editor rather than left to be
+   * discovered on the live site.
+   */
+  hasLiveTours: boolean;
 }
 
 /** The admin view: locale-agnostic fields plus every stored locale. */
@@ -61,6 +68,8 @@ export interface HomePageContent {
   editorialCards: EditorialCard[];
   /** Island the editorial CTA links to; null = let the site resolve it. */
   editorialDestinationId: string | null;
+  /** The island the cards are gated against - the pinned one, else the fallback. */
+  resolvedDestinationSlug: string | null;
   ogImage: string | null;
   translations: HomePageTranslation[];
 }
