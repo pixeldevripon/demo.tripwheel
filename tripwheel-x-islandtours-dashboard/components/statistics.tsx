@@ -19,6 +19,7 @@ import {
     type ChartConfig,
 } from '@/components/ui/chart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ReviewAnalytics } from '@/components/reviews/review-analytics';
 import {
     Tooltip,
     TooltipContent,
@@ -1338,6 +1339,9 @@ function StatisticsContent({
                                 <TabsTrigger value='breakdowns'>
                                     Breakdowns
                                 </TabsTrigger>
+                                <TabsTrigger value='reviews'>
+                                    Reviews
+                                </TabsTrigger>
                             </TabsList>
                             <div className='flex shrink-0 flex-wrap items-center gap-2 text-2xs text-muted-foreground'>
                                 <Badge
@@ -2109,6 +2113,14 @@ function StatisticsContent({
                                     </CardContent>
                                 </Card>
                             )}
+                        </TabsContent>
+
+                        {/* DASH-9. Lives here rather than on the reviews queue:
+                            the queue is the work, and these are statistics -
+                            which belong with the other statistics, under the
+                            same date range and scope selector. */}
+                        <TabsContent value='reviews' className='space-y-4'>
+                            <ReviewAnalytics />
                         </TabsContent>
                     </Tabs>
                 </>

@@ -4,7 +4,6 @@ import { useTableState } from '@/components/data-table/use-table-state';
 import { useRole } from '@/contexts/role-context';
 import { useReviews } from '@/hooks/reviews/use-reviews';
 import type { ReviewModerationStatus, ReviewsQueryParams } from '@/types/review';
-import { ReviewAnalytics } from './review-analytics';
 import { ReviewsTable } from './reviews-table';
 
 /**
@@ -53,12 +52,7 @@ export function ReviewsListView() {
   const { data, isLoading } = useReviews(params, scope);
 
   return (
-    <div className='space-y-6'>
-      {/* DASH-9. Above the queue: the queue is the work, these are the numbers
-          that tell you whether the work is going anywhere. Renders nothing for
-          a role without VIEW_ANALYTICS. */}
-      <ReviewAnalytics />
-
+    <div className='space-y-4'>
       <ReviewsTable
         data={data?.data ?? []}
         total={data?.total ?? 0}
