@@ -20,12 +20,12 @@
 | 1 | Schema + moderation backbone (BE) | 14 | 14 | **DONE 2026-07-22** |
 | 2 | Collection flow (BE + FE) | 17 | 16 | **DONE 2026-07-22** (FE-12 deferred, BE-16 open) |
 | 3 | Dashboard moderation module | 14 | 14 | **DONE 2026-07-22** |
-| 4 | Tour-page display completion (FE) | 10 | 2 | Partial (FE-4 done early) |
+| 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips unseen: no tour hits the 20 gate) |
 | 5 | LD32 translation | 5 | 0 | Not started |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
 | T | Test pass | 21 | 0 | Not started |
-| **Total** | | **103** | **52** | |
+| **Total** | | **107** | **66** | |
 
 ---
 
@@ -261,7 +261,49 @@
 - [ ] Any new env var is a **three-file change** (`env.validate.ts` + both backend `.env`
       examples). *Not needed: the cadence lives in the DB, not the environment - which is
       the point of making it dashboard-controlled.*
+- [x] **DASH-11 the cadence SCREEN** - `components/settings/review-requests-form.tsx`, a
+      new **Reviews** tab in admin settings (`/settings?tab=reviews`) holding the cadence
+      form above the existing platform-reviews form.
+      **Gap found on review: the endpoints existed with no UI**, so the master switch was
+      only reachable by a hand-rolled `PATCH`. "Dashboard-controlled" was true of the API
+      and false of the dashboard.
+      - Composed from the settings form kit (`SettingsCard` / `TextField` / `CheckboxField`
+        / `SettingsCardSkeleton`) per the reusable-UI rule - nothing hand-rolled.
+      - `reviews` was **aliased** to `integrations` and is now a real tab; the alias had to
+        be **removed** because `EntityTabs` resolves aliases *before* it looks the value up,
+        so leaving it would have made the new tab unreachable by URL. Legacy
+        `?tab=reviews` links still land on the platform-reviews form they were written for.
+      - Save confirmation states the resulting state in words ("Review requests are ON -
+        customers will be emailed") rather than a generic "Settings saved". A switch that
+        mails real customers should not confirm ambiguously.
+      - A plain-English summary line reads the seven numbers back as one sentence; the
+        fields are individually clear and collectively hard to hold in your head.
+      - `z.number()` + `valueAsNumber`, **not** `z.coerce.number()` - zod 4 types a coerced
+        input as `unknown`, which no longer satisfies the resolver's form type.
+- [x] **Verified (DASH-11):** `tsc` 0 errors · `eslint` 0 errors. The one remaining warning
+      (`react-hooks/incompatible-library` on argless `watch()`) is **pre-existing repo-wide**
+      - baseline-checked against `reviews-form.tsx` and `site-info-form.tsx`, which trip it
+      too, and argless `watch()` is already the pattern in 3 other components.
 
+> **LIVE-STATE DRIFT, found while verifying DASH-11 - RESOLVED 2026-07-22.** The `enabled`
+> *column default* is `false` and always was, but the `default` **row** in the dev DB read
+> `enabled = true`, left on after the incident below. 31 invitations sat `sentAt`-stamped
+> with `remindedAt` NULL, which would have sent **31 reminders around 2026-07-27**: 30 to
+> `@demo.islandtours.test` (hard bounces, sender reputation) and 1 to a real address.
+>
+> Closed on user instruction, in two steps:
+>
+> 1. `enabled = false`. Takes effect with no restart - `run()` calls `cadence()` fresh each
+>    invocation and returns before `createInvitations`/`sendFirstTouch`/the reminder branch.
+> 2. All 31 invitations **revoked** (`revokedAt` + `suppressedReason`), not deleted, so the
+>    ledger still records that they happened. Pausing alone was not enough: re-enabling
+>    would have released the whole batch at once, since by then every `sentAt` is far past
+>    the reminder interval.
+>
+> Verified with the service's own `WHERE` clauses, not an eyeball: `first_touch_due = 0`,
+> `reminders_due = 0`. Written straight to the DB, so the `DISABLED` line the service logs
+> on a flip is absent - state correct, audit line missing. Later flips go through the tab.
+>
 > **INCIDENT, recorded honestly.** During testing the job sent **31 real Resend API
 > calls**. Every recipient was an `@demo.islandtours.test` demo-seed address on an RFC 2606
 > reserved TLD that never resolves, plus the founder's own address which received and
@@ -377,30 +419,102 @@
 
 ---
 
-## Phase 4 - Tour-page display completion (FE)
+## Phase 4 - Tour-page display completion (FE) · **COMPLETE 2026-07-22**
 
-- [ ] **FE-3** Clickable star chart (LD31): a bar sets the `rating` filter and refetches
+- [x] **FE-3** Clickable star chart (LD31): a bar sets the `rating` filter and refetches
       page 1, with an active-filter chip and a clear affordance.
+      Each bar is a real `<button aria-pressed>`; clicking the active bar clears it, so the
+      chart is its own toggle. Zero-count bars are disabled - a filter that can only ever
+      return nothing should not be offered. Verified: 5 bars render as buttons, and
+      `?rating=3` returns `[3]` only while `?rating=4` returns 0 on the same tour.
 - [x] **FE-4a** Sort control gated at >= 10 of the tour's OWN reviews (LD30).
       **EXECUTED early in Phase 0** - once `ownReviewCount` existed the gate was two lines,
       and leaving it ungated alongside a borrowed LD11 count would have been a live bug.
       Star chart likewise gated at >= 3 (LD31).
-- [ ] **FE-4b** Filter bar at >= 20 reviews (LD30). Nothing to gate yet - the filter bar
-      itself does not exist. Build with FE-3/FE-9.
-- [ ] **FE-5** Per-card "Verified booking" badge + tooltip: "This guest booked and paid
+- [x] **FE-4b** Filter bar at >= 20 reviews (LD30) - the theme chips ARE the filter bar,
+      gated on `ownReviewCount >= 20`. **Not visible in demo data:** the busiest seeded tour
+      has 14 approved reviews, so nothing currently clears the gate. The gate and the
+      filtering are separately verified (backend filter below); what is unverified is only
+      how the chip row looks on screen.
+- [x] **FE-5** Per-card "Verified booking" badge + tooltip: "This guest booked and paid
       through Island Tours. We only publish reviews from real bookings."
-- [ ] **FE-7a** LD11 fallback copy: "New on Island Tours. This tour is run by {operator},
+      Native `title` rather than a hand-rolled popover - it is a compliance disclosure, so
+      it must survive with no JS, and the full Omnibus text has its own page (FE-11).
+      Verified: 11 badges on the reference tour (10 cards + the preview strip).
+- [x] **FE-7a** LD11 fallback copy: "New on Island Tours. This tour is run by {operator},
       rated {x.x} across {n} reviews."
-- [ ] **FE-7b** Low-volume copy: 1-2 reviews → "{x.x} from {n} early reviews", no chart.
-      0 reviews and no fallback → no empty section, lean on the New badge.
-- [ ] **FE-8** Travel month and guest type on each card.
-- [ ] **FE-10** Gate the photo strip on `photoReviewCount >= 3` and make it a carousel.
-- [ ] **FE-2** `Product` + `Offer` + `AggregateRating` + `Review` JSON-LD, server-rendered,
-      emitted **only at >= 3 approved reviews**, only for reviews actually visible, and
-      **never** for the LD11 operator fallback. Never on `Organization` / `LocalBusiness`.
-- [ ] **FE-9** Theme chips above the cards from `themeTags`, filtering the list.
-- [ ] **FE-11** **APPROVED (D3)** "How we handle reviews" explainer, linked from the trust
-      sub-line - the Omnibus "how you verify" disclosure.
+      Verified rendered on a 0-review tour: *"New on Island Tours. This tour is run by Miss
+      Ann Boat Trips, rated 4.8 across 39 reviews."*
+- [x] **FE-7b** Low-volume copy. **The spec as written was unreachable, and hid a live bug.**
+      `resolveRatingSource` returns `source: 'tour'` only at `tourCount >= 3`, so
+      "1-2 reviews showing the tour's own rating" is impossible by construction - a
+      `source === 'tour' && count <= 2` test can never fire. The state that DOES exist is
+      1-2 reviews whose operator is not established enough to lend a rating: reviews to
+      show, no qualifying rating. That case rendered `rating ?? 0` as a literal **"0.0"**
+      next to a star, so a tour with two five-star reviews advertised itself as zero-rated.
+      Resolved by keying the state off `source === 'none' && ownReviewCount > 0` and
+      rendering the count copy with **no star and no number** - LD11 declined to show a
+      rating, and printing an honest two-review average anyway is the exact thing the
+      3-review threshold exists to prevent. Copy changed to stand alone
+      ("{count} early reviews", not "from {count} early reviews") in all 7 locales.
+      **Open question for the master:** whether LD11 should instead expose a tour's own
+      1-2-review average under "early reviews" framing. That is a decision, not a bug -
+      flagged, not silently taken.
+- [x] **FE-7b (cont.)** 0 reviews and no fallback → **no section at all**, and the nav tab
+      is dropped in the same condition. A tab scrolling to a missing anchor is worse than
+      no tab; the divider above it goes too, so the page does not end on a stray hairline.
+- [x] **FE-8** Travel month and guest type on each card.
+      Built from `travelMonth`/`travelYear` (when the tour was TAKEN), never `createdAt` -
+      a review written six months late would otherwise claim the wrong season, which is the
+      one thing this line is read for. Guest type is absent on ~20% of reviews by design
+      (it is the optional step in the submit flow), so the line degrades to the month alone.
+      Verified: all 4 guest types plus the null case render on the reference tour.
+- [x] **FE-10** Photo strip gated on `photoCount >= 3` and made a snap carousel.
+      The gate counts **reviews with photos, not photos**: one guest's three snapshots are
+      one opinion, and a strip implies several. Hidden while a filter is active - it is
+      aggregated from the loaded page, so it would silently become "photos matching this
+      filter" under a heading that says otherwise. `photoCount` is a new summary field.
+- [x] **FE-2** `Product` + `Offer` + `AggregateRating` + `Review` JSON-LD, server-rendered.
+      Pure builder in `lib/seo/tour-review-jsonld.ts` so the emission rules are testable in
+      one place. **Verified both directions**, which is the part that matters:
+      - 14-review tour → 1 block, `reviewCount: 14` (the tour's OWN), 10 `Review` entries
+        matching exactly the 10 cards rendered, `Offer` at the converted display price.
+      - LD11 fallback tour → **0 blocks**. Marking a borrowed operator rating up as the
+        tour's `aggregateRating` would tell Google 4.8-from-39 about a product with no
+        reviews - review fraud under both Google's policy and the Omnibus regime.
+      Reviews with an empty body are excluded (a rating is not a review). Serialized with
+      `<` escaped, so review text cannot close the script tag. Nothing attaches to
+      `Organization` / `LocalBusiness`.
+- [x] **FE-9** Theme chips above the cards from `themeTags`, filtering the list.
+      **Deviates from the plan's "filtering client-side"** - deliberately. The star filter
+      already round-trips, and two filter mechanisms cannot combine: a client-side theme
+      filter would only ever see the pages loaded so far, so "Great guide" would mean
+      something different at each scroll depth and the count beside it would be a lie.
+      Added `themeTag` to `ListReviewsQueryDto` + a `has` (exact-element) clause, and
+      `themes[]` facets to the summary. Verified: exact match returns only tagged reviews,
+      the prefix `Great` returns **0** (proving it is not a prefix match), star+theme
+      combine, and a 61-char tag is a 400.
+- [x] **FE-9 data** `themeTags` and `reviewerType` were **empty on all 137 approved reviews**
+      - the demo seed never set either, so both features would have shipped invisible.
+      Added to `prisma/demo/reviews.ts` from a fixed vocabulary (free-text tags only group
+      by exact match, so a seed inventing a phrase per review renders a chip bar reading "1"
+      on every chip) and backfilled the existing 150 rows in place rather than re-seeding.
+- [x] **FE-11** **APPROVED (D3)** "How we handle reviews" explainer at
+      `/{locale}/reviews-policy`, linked from the reviews sub-line.
+      Reuses `LegalPageShell` for chrome, but is flagged in-file as **platform-authored, not
+      handover copy** (its six siblings are verbatim from `public/Legal Pages` and change
+      only through Denley). Every claim maps to enforced behaviour, including §6 disclosing
+      the LD11 borrowed rating - the one place a displayed rating is not the tour's own and
+      so the one most needing disclosure.
+- [x] **Verified (Phase 4):** backend `tsc` + `eslint` 0 · frontend `tsc` + `eslint` 0 ·
+      `next build` green, **891 pages** (868 + the new route x 7 locales) · summary returns
+      `themes` + `photoCount` · all four filter behaviours checked against the live API ·
+      both JSON-LD directions checked on real pages.
+- [x] **Stale-cache guard.** `getTourReviewSummary` is `'use cache'` with a `days` lifetime,
+      so a cached entry written before this phase - or a frontend deployed ahead of the
+      backend - hands back an object with `themes`/`photoCount` simply absent. Consumers
+      call `.length`/`.map` on them, which is a TypeError, not a missing chip bar. Both are
+      now defaulted at the loader boundary.
 
 ---
 

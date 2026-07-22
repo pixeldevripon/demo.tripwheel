@@ -10,6 +10,7 @@ import {
   Prisma,
   ReviewModerationStatus,
   ReviewResponseAuthor,
+  ReviewerType,
 } from '@prisma/client';
 import {
   ALL_LOCALES,
@@ -59,6 +60,51 @@ function commentFor(rating: number, r: number): string {
   if (rating >= 5) return pick(COMMENTS_5, r);
   if (rating === 4) return pick(COMMENTS_4, r);
   return pick(COMMENTS_3, r);
+}
+
+/**
+ * Canonical theme vocabulary for the review chips (FE-9).
+ *
+ * `themeTags` is a free-text `String[]` because admins set it by hand, but the
+ * demo data deliberately sticks to ONE vocabulary: chips are grouped by exact
+ * string match, so a seed that invented a fresh phrase per review would render
+ * a chip bar where every chip reads "1" - technically correct and completely
+ * useless as a filter. The wording tracks what the seeded comments actually say.
+ */
+const THEMES_POSITIVE = [
+  'Great guide',
+  'Well organised',
+  'Beautiful scenery',
+  'Good value',
+  'Felt safe',
+  'Family friendly',
+];
+/** What a 3-star review can still honestly be tagged with. */
+const THEMES_MIXED = ['Beautiful scenery', 'Felt rushed', 'Good value'];
+
+/** 1-3 distinct tags, deterministic in `i` so re-seeding is reproducible. */
+function themesFor(rating: number, i: number): string[] {
+  const pool = rating >= 4 ? THEMES_POSITIVE : THEMES_MIXED;
+  const count = rating >= 4 ? (i % 3) + 1 : (i % 2) + 1;
+  const out = new Set<string>();
+  for (let k = 0; k < count; k++) out.add(pool[(i * 2 + k * 3) % pool.length]);
+  return [...out];
+}
+
+/**
+ * Guest type (LD36). Left NULL on roughly a fifth of reviews on purpose - it is
+ * the one optional step in the submit flow, so a dataset where every review has
+ * it would hide the "card renders fine without it" case from every reviewer.
+ */
+const GUEST_TYPES = [
+  ReviewerType.COUPLE,
+  ReviewerType.FAMILY,
+  ReviewerType.FRIENDS,
+  ReviewerType.SOLO,
+] as const;
+
+function guestTypeFor(i: number): ReviewerType | null {
+  return i % 5 === 3 ? null : GUEST_TYPES[i % GUEST_TYPES.length];
 }
 
 export async function seedReviews(): Promise<void> {
@@ -146,6 +192,8 @@ export async function seedReviews(): Promise<void> {
         reviewerCountry: b.contactCountry,
         travelMonth: b.localDate.getUTCMonth() + 1,
         travelYear: b.localDate.getUTCFullYear(),
+        reviewerType: guestTypeFor(i),
+        themeTags: themesFor(rating, i),
         photos,
         isVerified: true,
         helpfulCount: intBetween(r(), 0, 28),

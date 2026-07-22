@@ -158,6 +158,13 @@ describe('ReviewsService', () => {
         { rating: 5, _count: 8 },
         { rating: 4, _count: 2 },
       ]);
+      // The theme/photo facet query. Counted in JS from this one bounded read,
+      // so every summary test needs it even when it asserts nothing about it.
+      prisma.review.findMany.mockResolvedValue([
+        { themeTags: ['Great guide', 'Good value'], photos: ['a.jpg'] },
+        { themeTags: ['Great guide'], photos: [] },
+        { themeTags: [], photos: ['b.jpg', 'c.jpg'] },
+      ]);
     });
 
     it('uses the tour rating at ≥3 approved reviews', async () => {
@@ -225,6 +232,56 @@ describe('ReviewsService', () => {
       const s = await svc.summary('t1');
       expect(s.source).toBe('none');
       expect(s.rating).toBeNull();
+    });
+
+    it('counts theme facets most-used first and photo REVIEWS, not photos', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        id: 't1',
+        operator: { aggregateRating: 4.9, aggregateReviewCount: 99 },
+      });
+      prisma.review.aggregate.mockResolvedValue({
+        _count: 3,
+        _avg: {
+          rating: 4.6,
+          ratingValue: null,
+          ratingGuide: null,
+          ratingSafety: null,
+        },
+      });
+
+      const s = await svc.summary('t1');
+      expect(s.themes).toEqual([
+        { tag: 'Great guide', count: 2 },
+        { tag: 'Good value', count: 1 },
+      ]);
+      // Two reviews carry photos; one of them carries two. The FE-10 carousel
+      // gate is about how many PEOPLE posted photos, so this must be 2, not 3.
+      expect(s.photoCount).toBe(2);
+    });
+
+    it('breaks a theme-count tie alphabetically so chip order is stable', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        id: 't1',
+        operator: { aggregateRating: 4.9, aggregateReviewCount: 99 },
+      });
+      prisma.review.aggregate.mockResolvedValue({
+        _count: 2,
+        _avg: {
+          rating: 5,
+          ratingValue: null,
+          ratingGuide: null,
+          ratingSafety: null,
+        },
+      });
+      // Insertion order deliberately reversed against alphabetical: without an
+      // explicit tiebreak these come back Map-insertion-ordered, so the chip bar
+      // would reshuffle between requests and read as a rendering bug.
+      prisma.review.findMany.mockResolvedValue([
+        { themeTags: ['Zesty', 'Attentive'], photos: [] },
+      ]);
+
+      const s = await svc.summary('t1');
+      expect(s.themes.map((t) => t.tag)).toEqual(['Attentive', 'Zesty']);
     });
   });
 

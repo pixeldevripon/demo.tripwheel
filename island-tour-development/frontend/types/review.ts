@@ -75,6 +75,16 @@ export interface RatingBucket {
 }
 
 /**
+ * One theme chip (FE-9). `tag` is a valid `themeTag` filter value for
+ * `GET /reviews` - the chips and the filter speak the same vocabulary, so a
+ * chip can never select nothing.
+ */
+export interface ThemeFacet {
+  tag: string;
+  count: number;
+}
+
+/**
  * `GET /reviews/summary?tourId=…` - the single source of LD11 truth.
  *
  * The backend resolves which rating to display: a tour shows its OWN rating at
@@ -98,6 +108,14 @@ export interface PublicReviewSummary {
   approvedCount: number;
   /** Approved-only, ordered [5*, 4*, 3*, 2*, 1*]. */
   distribution: RatingBucket[];
+  /** Theme tags on this tour's approved reviews, most-used first (FE-9). */
+  themes: ThemeFacet[];
+  /**
+   * Approved reviews carrying at least one photo. The photo carousel is gated
+   * on this at >= 3 (FE-10) - it counts REVIEWS, not photos, so one guest's
+   * three snapshots cannot open a strip that reads as three people's.
+   */
+  photoCount: number;
   avgValue: number | null;
   avgGuide: number | null;
   avgSafety: number | null;

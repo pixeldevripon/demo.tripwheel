@@ -447,7 +447,22 @@
                 "sortHelpful": "Plus utiles",
                 "showMore": "Afficher plus d'avis",
                 "loading": "Chargement...",
-                "empty": "Aucun avis pour le moment. Soyez le premier à réserver et à évaluer cette excursion."
+                "empty": "Aucun avis pour le moment. Soyez le premier à réserver et à évaluer cette excursion.",
+                "verified": "Réservation vérifiée",
+                "verifiedTooltip": "Ce voyageur a réservé et payé via Island Tours. Nous ne publions que des avis issus de réservations réelles.",
+                "travelledIn": "Voyage en {month}",
+                "guestCouple": "En couple",
+                "guestFamily": "En famille",
+                "guestFriends": "Entre amis",
+                "guestSolo": "Voyageur solo",
+                "filterStars": "{stars} étoiles",
+                "filterStarsOne": "{stars} étoile",
+                "clearFilter": "Effacer le filtre",
+                "noMatch": "Aucun avis ne correspond à ce filtre.",
+                "photosTitle": "Photos des voyageurs",
+                "operatorFallback": "Nouveau sur Island Tours. Cette excursion est proposée par {operator}, noté {rating} sur {count} avis.",
+                "earlyReviews": "{count} premiers avis",
+                "howWeHandle": "Comment nous gérons les avis"
             },
             "sections": {
                 "overview": "Aperçu",

@@ -447,7 +447,22 @@
                 "sortHelpful": "Most helpful",
                 "showMore": "Show more reviews",
                 "loading": "Loading...",
-                "empty": "No reviews yet. Be the first to book and review this tour."
+                "empty": "No reviews yet. Be the first to book and review this tour.",
+                "verified": "Verified booking",
+                "verifiedTooltip": "This guest booked and paid through Island Tours. We only publish reviews from real bookings.",
+                "travelledIn": "Travelled {month}",
+                "guestCouple": "Couple",
+                "guestFamily": "Family",
+                "guestFriends": "Friends",
+                "guestSolo": "Solo traveller",
+                "filterStars": "{stars} stars",
+                "filterStarsOne": "{stars} star",
+                "clearFilter": "Clear filter",
+                "noMatch": "No reviews match this filter.",
+                "photosTitle": "Photos from guests",
+                "operatorFallback": "New on Island Tours. This tour is run by {operator}, rated {rating} across {count} reviews.",
+                "earlyReviews": "{count} early reviews",
+                "howWeHandle": "How we handle reviews"
             },
             "sections": {
                 "overview": "Overview",

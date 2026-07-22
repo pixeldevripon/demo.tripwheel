@@ -25,6 +25,32 @@ function formatReviewDate(iso: string, locale: Locale): string {
   }).format(new Date(iso));
 }
 
+/**
+ * Localized travel month, e.g. "March 2026" (FE-8).
+ *
+ * Built from the review's `travelMonth`/`travelYear` (when the tour was taken),
+ * NOT from `createdAt` (when the review was written) - a review left six months
+ * late would otherwise claim the wrong season, which is exactly the signal a
+ * traveler is reading this line for.
+ *
+ * Returns '' when either part is missing so the caller can drop the line
+ * entirely rather than render a half-date.
+ */
+function formatTravelMonth(
+  month: number | null,
+  year: number | null,
+  locale: Locale,
+): string {
+  if (!month || !year) return '';
+  // Day 1 at UTC noon: a midnight date can roll back a day in a negative-offset
+  // timezone and take the month with it.
+  return new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
+}
+
 /** ISO country code -> localized country name ("NL" -> "Netherlands"). */
 function countryName(code: string | null, locale: Locale): string {
   if (!code) return '';
@@ -65,6 +91,16 @@ export function toFullReview(
     date: formatReviewDate(review.createdAt, locale),
     text: review.comment ?? '',
     photos: review.photos.length > 0 ? review.photos : undefined,
+    verified: review.isVerified,
+    travelLabel: formatTravelMonth(
+      review.travelMonth,
+      review.travelYear,
+      locale,
+    ),
+    // Passed through RAW, not localized here: the guest-type label lives in the
+    // dictionary alongside the rest of the section's copy, and this module is
+    // deliberately dictionary-free so it stays a pure mapper.
+    guestType: review.reviewerType,
   };
   if (review.responseText) {
     full.response = {

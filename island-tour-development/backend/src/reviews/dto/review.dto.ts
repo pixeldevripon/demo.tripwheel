@@ -143,6 +143,15 @@ export class RatingBucketDto {
   @ApiProperty({ example: 12 }) count!: number;
 }
 
+export class ThemeFacetDto {
+  @ApiProperty({ example: 'Great guide' }) tag!: string;
+  @ApiProperty({
+    example: 9,
+    description: 'Approved reviews carrying the tag.',
+  })
+  count!: number;
+}
+
 export class ReviewSummaryDto {
   @ApiProperty() tourId!: string;
   @ApiProperty({
@@ -173,6 +182,22 @@ export class ReviewSummaryDto {
       'Star distribution (approved only). Frontend renders at ≥3 (LD31).',
   })
   distribution!: RatingBucketDto[];
+  @ApiProperty({
+    type: [ThemeFacetDto],
+    description:
+      "Theme tags present on this tour's approved reviews, most-used first. " +
+      'Backs the theme chips (FE-9); each tag is a valid `themeTag` filter ' +
+      'value for GET /reviews.',
+  })
+  themes!: ThemeFacetDto[];
+  @ApiProperty({
+    example: 7,
+    description:
+      'Approved reviews carrying at least one photo. The customer-photo ' +
+      'carousel is gated on this at ≥3 (FE-10) - a strip built from one ' +
+      "guest's three snapshots is not social proof.",
+  })
+  photoCount!: number;
   @ApiPropertyOptional({ nullable: true, example: 4.5 }) avgValue!:
     | number
     | null;
@@ -221,6 +246,20 @@ export class ListReviewsQueryDto {
   @Min(1)
   @Max(5)
   rating?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Filter to reviews carrying this theme tag. Backs the theme chips above ' +
+      'the review list (FE-9). Server-side rather than the client-side filter ' +
+      'the plan sketched: the rating filter above already round-trips, and two ' +
+      'filter mechanisms cannot be combined coherently - a client-side theme ' +
+      'filter would only ever see the pages already loaded, so it would ' +
+      'silently disagree with the star filter about what "matching" means.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  themeTag?: string;
 
   // `helpful` is deliberately absent: helpful votes are deferred to V2 by the
   // master, so there is no vote to sort by at launch. `@IsIn` rather than a bare

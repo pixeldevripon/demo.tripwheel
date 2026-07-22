@@ -1,11 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useState } from 'react';
 import { type Locale } from '@/lib/constants/locales';
 import { fetchTourReviews } from '@/lib/api/reviews';
 import { toFullReview } from '@/lib/reviews/review-view';
-import type { ReviewSort } from '@/types/review';
+import { MotionButton } from '@/components/frontend/motion-primitives';
+import { springPop } from '@/lib/motion';
+import type { ReviewSort, ThemeFacet } from '@/types/review';
 
 export type ReviewHistogramRow = { stars: number; count: number };
 
@@ -22,6 +25,12 @@ export type FullReview = {
     photos?: string[];
     /** Optional operator response. */
     response?: ReviewResponse;
+    /** Booking-gated (FE-5). Always true at launch - only booked guests can review. */
+    verified: boolean;
+    /** Localized travel month, e.g. "March 2026". '' when unknown (FE-8). */
+    travelLabel: string;
+    /** Raw guest type (`COUPLE`|`FAMILY`|`FRIENDS`|`SOLO`) or null; localized here. */
+    guestType: string | null;
 };
 
 export type TourReviewsSectionDict = {
@@ -37,6 +46,27 @@ export type TourReviewsSectionDict = {
     showMore: string;
     loading: string;
     empty: string;
+    /** FE-5 badge + its disclosure tooltip. */
+    verified: string;
+    verifiedTooltip: string;
+    /** FE-8 "Travelled {month}" and the guest-type labels. */
+    travelledIn: string;
+    guestCouple: string;
+    guestFamily: string;
+    guestFriends: string;
+    guestSolo: string;
+    /** FE-3/FE-9 filtering. */
+    filterStars: string;
+    filterStarsOne: string;
+    clearFilter: string;
+    noMatch: string;
+    /** FE-10 photo carousel. */
+    photosTitle: string;
+    /** FE-7a/b low-volume + LD11 fallback copy. */
+    operatorFallback: string;
+    earlyReviews: string;
+    /** FE-11 Omnibus disclosure link. */
+    howWeHandle: string;
 };
 
 // No "Most helpful" option: helpful votes are deferred to V2 by the master, and
@@ -56,6 +86,21 @@ const PHOTO_STRIP_LIMIT = 12;
 const MIN_REVIEWS_FOR_CHART = 3;
 /** LD30: the sort control is hidden under 10 reviews. */
 const MIN_REVIEWS_FOR_SORT = 10;
+/** LD30: the theme-chip filter bar needs 20 - below that a chip selects a handful. */
+const MIN_REVIEWS_FOR_FILTERS = 20;
+/**
+ * FE-10: the photo carousel needs 3 reviews WITH photos, not 3 photos. One
+ * guest's three snapshots are one opinion; a strip implies several.
+ */
+const MIN_PHOTO_REVIEWS = 3;
+
+/** Guest-type code -> dictionary key. Unknown codes render nothing. */
+const GUEST_TYPE_KEYS: Record<string, keyof TourReviewsSectionDict> = {
+    COUPLE: 'guestCouple',
+    FAMILY: 'guestFamily',
+    FRIENDS: 'guestFriends',
+    SOLO: 'guestSolo',
+};
 
 function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
     return (
@@ -80,10 +125,15 @@ function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
  * the other detail sections it is NOT collapsible.
  *
  * Dynamic + paginated: seeded server-side with the first page, it fetches further
- * pages on "Show more" and re-fetches from page 1 when the sort changes, hitting
- * the public `GET /reviews` endpoint directly (no auth). Header aggregate + star
- * histogram come from the tour payload; the customer-photo strip is aggregated
- * from the loaded reviews. Renders an empty state when the tour has no reviews.
+ * pages on "Show more" and re-fetches from page 1 when the sort or a filter
+ * changes, hitting the public `GET /reviews` endpoint directly (no auth). Header
+ * aggregate, star histogram, theme facets and the photo count come from the
+ * review summary; the photo strip itself is aggregated from the loaded reviews.
+ *
+ * Both filters (star bar, theme chip) round-trip to the server rather than
+ * filtering what is already loaded - a client-side filter would only ever see
+ * the pages fetched so far, so "4 stars" would mean something different from one
+ * scroll depth to the next, and the count beside it would be a lie.
  */
 export function TourReviewsSection({
     tourId,
@@ -91,11 +141,16 @@ export function TourReviewsSection({
     rating,
     reviewCount,
     ownReviewCount,
+    ratingSource,
+    operatorName,
     histogram,
+    themes,
+    photoCount,
     initialReviews,
     total,
     pageSize,
     hostLabel,
+    explainerHref,
     dict,
 }: {
     tourId: string;
@@ -110,26 +165,64 @@ export function TourReviewsSection({
      * to chart and nothing to sort, however large `reviewCount` looks.
      */
     ownReviewCount: number;
+    /** Which entity the displayed rating belongs to (LD11). */
+    ratingSource: 'tour' | 'operator' | 'none';
+    /** Operator display name, for the LD11 fallback sentence. */
+    operatorName: string;
     histogram: ReviewHistogramRow[];
+    themes: ThemeFacet[];
+    /** Approved reviews carrying photos - the FE-10 carousel gate. */
+    photoCount: number;
     initialReviews: FullReview[];
     total: number;
     pageSize: number;
     hostLabel: string;
+    /** Locale-prefixed href of the "How we handle reviews" explainer (FE-11). */
+    explainerHref: string;
     dict: TourReviewsSectionDict;
 }) {
     const [reviews, setReviews] = useState<FullReview[]>(initialReviews);
     const [sort, setSort] = useState<ReviewSort>('newest');
     const [loadedPages, setLoadedPages] = useState(1);
     const [loading, setLoading] = useState(false);
+    // Server-side filters. `matchTotal` is the count for the CURRENT filter, which
+    // is why it is state and not the `total` prop - the prop is the unfiltered
+    // seed and must stay put so clearing a filter restores the right paging.
+    const [starFilter, setStarFilter] = useState<number | null>(null);
+    const [themeFilter, setThemeFilter] = useState<string | null>(null);
+    const [matchTotal, setMatchTotal] = useState(total);
 
-    const hasMore = reviews.length < total;
+    const isFiltered = starFilter !== null || themeFilter !== null;
+    const hasMore = reviews.length < matchTotal;
     const showChart = ownReviewCount >= MIN_REVIEWS_FOR_CHART;
     const showSort = ownReviewCount >= MIN_REVIEWS_FOR_SORT;
-    const photoStrip = reviews
-        .flatMap(r => r.photos ?? [])
-        .slice(0, PHOTO_STRIP_LIMIT);
+    const showThemeChips =
+        ownReviewCount >= MIN_REVIEWS_FOR_FILTERS && themes.length > 0;
+    const showPhotoStrip = photoCount >= MIN_PHOTO_REVIEWS;
+    /**
+     * FE-7b low-volume state, keyed off `'none'` rather than `'tour'`.
+     *
+     * LD11 returns `source: 'tour'` ONLY at >= 3 approved reviews, so a
+     * "1-2 of the tour's own reviews" state can never carry a tour rating -
+     * a `ratingSource === 'tour' && count <= 2` test is unreachable by
+     * construction. The state that DOES exist is a tour with 1-2 reviews whose
+     * operator is not established enough to lend one: reviews to show, no
+     * qualifying rating. That case previously rendered `rating ?? 0` as a
+     * literal "0.0" next to a star, so a tour with two five-star reviews
+     * advertised itself as zero-rated.
+     */
+    const isEarly = ratingSource === 'none' && ownReviewCount > 0;
+    const photoStrip = showPhotoStrip
+        ? reviews.flatMap(r => r.photos ?? []).slice(0, PHOTO_STRIP_LIMIT)
+        : [];
 
-    async function loadPage(page: number, nextSort: ReviewSort, append: boolean) {
+    async function loadPage(
+        page: number,
+        nextSort: ReviewSort,
+        nextStar: number | null,
+        nextTheme: string | null,
+        append: boolean
+    ) {
         setLoading(true);
         try {
             const res = await fetchTourReviews({
@@ -138,9 +231,12 @@ export function TourReviewsSection({
                 sort: nextSort,
                 page,
                 limit: pageSize,
+                ...(nextStar !== null && { rating: nextStar }),
+                ...(nextTheme !== null && { themeTag: nextTheme }),
             });
             const mapped = res.data.map(r => toFullReview(r, locale, hostLabel));
             setReviews(prev => (append ? [...prev, ...mapped] : mapped));
+            setMatchTotal(res.total);
             setLoadedPages(page);
         } catch {
             // Keep whatever is already shown; the button/control stays for retry.
@@ -152,27 +248,47 @@ export function TourReviewsSection({
     function handleSortChange(next: ReviewSort) {
         if (next === sort || loading) return;
         setSort(next);
-        void loadPage(1, next, false);
+        void loadPage(1, next, starFilter, themeFilter, false);
     }
 
     function handleShowMore() {
         if (loading || !hasMore) return;
-        void loadPage(loadedPages + 1, sort, true);
+        void loadPage(loadedPages + 1, sort, starFilter, themeFilter, true);
     }
 
-    // Empty state - keep the heading (it's the tab-nav target) and show a message.
-    if (total === 0) {
-        return (
-            <section id='tour-reviews' className='flex scroll-mt-36 flex-col gap-4'>
-                <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                    {dict.title}
-                </h2>
-                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    {dict.empty}
-                </p>
-            </section>
-        );
+    /** Clicking the active bar clears it, so the chart is its own toggle (FE-3). */
+    function handleStarClick(stars: number) {
+        if (loading) return;
+        const next = starFilter === stars ? null : stars;
+        setStarFilter(next);
+        void loadPage(1, sort, next, themeFilter, false);
     }
+
+    function handleThemeClick(tag: string) {
+        if (loading) return;
+        const next = themeFilter === tag ? null : tag;
+        setThemeFilter(next);
+        void loadPage(1, sort, starFilter, next, false);
+    }
+
+    function handleClearFilters() {
+        if (loading) return;
+        setStarFilter(null);
+        setThemeFilter(null);
+        void loadPage(1, sort, null, null, false);
+    }
+
+    // FE-7b: a tour with no reviews and no operator rating to borrow renders NO
+    // section at all. An empty "no reviews yet" block is a hole in the page that
+    // says the tour is untested; the "New" badge carries that far better. The
+    // caller drops the nav tab in the same condition, so nothing links here.
+    if (total === 0 && ratingSource === 'none') return null;
+
+    const starLabel = (stars: number) =>
+        (stars === 1 ? dict.filterStarsOne : dict.filterStars).replace(
+            '{stars}',
+            String(stars)
+        );
 
     return (
         <section id='tour-reviews' className='flex scroll-mt-36 flex-col gap-8'>
@@ -183,134 +299,305 @@ export function TourReviewsSection({
                         {dict.title}
                     </h2>
                     <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                        {dict.subtitle}
+                        {dict.subtitle}{' '}
+                        {/* Omnibus Art. 7(6): the "how we verify" disclosure has to
+                            be reachable from where the reviews are shown (FE-11). */}
+                        <Link
+                            href={explainerHref}
+                            className='underline underline-offset-2 transition-colors hover:text-it-primary'>
+                            {dict.howWeHandle}
+                        </Link>
                     </p>
                 </div>
 
                 <div className='flex flex-col gap-8'>
-                    <div className='flex items-center gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        <span className='flex items-center gap-1'>
-                            <Image
-                                src='/icons/star-listings.svg'
-                                alt=''
-                                width={20}
-                                height={20}
-                                className='size-5 shrink-0'
-                            />
-                            <span className='font-medium'>{rating.toFixed(1)}</span>
-                        </span>
-                        <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
-                        <span>{dict.reviewsCount.replace('{count}', String(reviewCount))}</span>
-                    </div>
+                    {/* LD11: when the rating is BORROWED from the operator, say so
+                        in words. Showing an operator's 4.8 under a tour heading
+                        with no explanation is the whole reason LD11 needed a
+                        display rule and not just a fallback value. */}
+                    {ratingSource === 'operator' ? (
+                        <p className='m-0 max-w-160 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            {dict.operatorFallback
+                                .replace('{operator}', operatorName)
+                                .replace('{rating}', rating.toFixed(1))
+                                .replace('{count}', String(reviewCount))}
+                        </p>
+                    ) : isEarly ? (
+                        // FE-7b. Deliberately NO star and NO number: LD11 has
+                        // declined to show a rating for this tour, and printing
+                        // one anyway - even the honest average of two reviews -
+                        // is the exact thing the 3-review threshold exists to
+                        // prevent. The reviews themselves are still listed below.
+                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            {dict.earlyReviews.replace(
+                                '{count}',
+                                String(ownReviewCount)
+                            )}
+                        </p>
+                    ) : (
+                        // Only reachable with `source === 'tour'`, which LD11
+                        // guarantees means >= 3 reviews and a real rating.
+                        <div className='flex items-center gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='flex items-center gap-1'>
+                                <Image
+                                    src='/icons/star-listings.svg'
+                                    alt=''
+                                    width={20}
+                                    height={20}
+                                    className='size-5 shrink-0'
+                                />
+                                <span className='font-medium'>{rating.toFixed(1)}</span>
+                            </span>
+                            <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
+                            <span>
+                                {dict.reviewsCount.replace(
+                                    '{count}',
+                                    String(reviewCount)
+                                )}
+                            </span>
+                        </div>
+                    )}
 
                     {/* Histogram (LD31) - renders at 3 or more of the tour's OWN
-                        reviews. The denominator is `ownReviewCount`, never
-                        `reviewCount`: under LD11 the latter can be the operator's,
-                        which would scale every bar against the wrong total. */}
+                        reviews, and each bar is a filter (FE-3). The denominator
+                        is `ownReviewCount`, never `reviewCount`: under LD11 the
+                        latter can be the operator's, which would scale every bar
+                        against the wrong total. */}
                     {showChart && (
-                    <div className='flex max-w-91 flex-col gap-1'>
-                        {histogram.map(row => (
-                            <div key={row.stars} className='flex items-center gap-3'>
-                                <span className='flex w-9 shrink-0 items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {row.stars}
-                                    <Image
-                                        src='/icons/star-listings.svg'
-                                        alt=''
-                                        width={16}
-                                        height={16}
-                                        className='size-4 shrink-0'
-                                    />
-                                </span>
-                                <span className='relative h-2 flex-1 overflow-hidden rounded-it-full bg-[#dddfe3]'>
-                                    <span
-                                        className='absolute inset-y-0 left-0 rounded-it-full bg-it-primary'
-                                        style={{
-                                            width: `${ownReviewCount ? (row.count / ownReviewCount) * 100 : 0}%`,
-                                        }}
-                                    />
-                                </span>
-                                <span className='w-6 shrink-0 text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {row.count}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+                        <div className='flex max-w-91 flex-col gap-1'>
+                            {histogram.map(row => {
+                                const active = starFilter === row.stars;
+                                return (
+                                    <MotionButton
+                                        key={row.stars}
+                                        type='button'
+                                        onClick={() => handleStarClick(row.stars)}
+                                        disabled={loading || row.count === 0}
+                                        aria-pressed={active}
+                                        aria-label={starLabel(row.stars)}
+                                        whileTap={{ scale: 0.98 }}
+                                        transition={springPop}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-it-full px-2 py-0.5 text-left transition-colors hover:bg-it-surface disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent ${
+                                            active ? 'bg-it-surface' : ''
+                                        }`}>
+                                        <span className='flex w-9 shrink-0 items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            {row.stars}
+                                            <Image
+                                                src='/icons/star-listings.svg'
+                                                alt=''
+                                                width={16}
+                                                height={16}
+                                                className='size-4 shrink-0'
+                                            />
+                                        </span>
+                                        <span className='relative h-2 flex-1 overflow-hidden rounded-it-full bg-[#dddfe3]'>
+                                            <span
+                                                className={`absolute inset-y-0 left-0 rounded-it-full transition-colors ${
+                                                    active
+                                                        ? 'bg-it-heading'
+                                                        : 'bg-it-primary'
+                                                }`}
+                                                style={{
+                                                    width: `${ownReviewCount ? (row.count / ownReviewCount) * 100 : 0}%`,
+                                                }}
+                                            />
+                                        </span>
+                                        <span className='w-6 shrink-0 text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            {row.count}
+                                        </span>
+                                    </MotionButton>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             </div>
 
-            {/* Sort control (LD30) - hidden under 10 of the tour's own reviews;
-                below that there is not enough to reorder for it to mean anything. */}
-            {showSort && (
-            <div className='flex items-center gap-8'>
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    {dict.sortBy}
-                </span>
-                <div className='relative'>
-                    <select
-                        value={sort}
-                        onChange={e => handleSortChange(e.target.value as ReviewSort)}
-                        disabled={loading}
-                        aria-label={dict.sortBy}
-                        className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
-                        {SORT_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>
-                                {dict[opt.labelKey]}
-                            </option>
-                        ))}
-                    </select>
-                    <Image
-                        src='/icons/caret-down.svg'
-                        alt=''
-                        width={20}
-                        height={20}
-                        className='pointer-events-none absolute top-1/2 right-4 size-5 shrink-0 -translate-y-1/2'
-                    />
+            {/* Theme chips (FE-9, gated at 20 by LD30) */}
+            {showThemeChips && (
+                <div className='flex flex-wrap gap-2'>
+                    {themes.map(theme => {
+                        const active = themeFilter === theme.tag;
+                        return (
+                            <MotionButton
+                                key={theme.tag}
+                                type='button'
+                                onClick={() => handleThemeClick(theme.tag)}
+                                disabled={loading}
+                                aria-pressed={active}
+                                whileTap={{ scale: 0.95 }}
+                                transition={springPop}
+                                className={`cursor-pointer rounded-it-full border px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
+                                    active
+                                        ? 'border-it-heading bg-it-heading text-it-white'
+                                        : 'border-it-border bg-it-white text-it-heading hover:border-it-heading'
+                                }`}>
+                                {theme.tag}
+                                <span className='ml-2 opacity-60'>{theme.count}</span>
+                            </MotionButton>
+                        );
+                    })}
                 </div>
-            </div>
             )}
 
-            {/* Customer photo strip - real review photos */}
-            {photoStrip.length > 0 && (
-                <div className='flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                    {photoStrip.map((src, i) => (
-                        <div
-                            key={`${src}-${i}`}
-                            className='relative size-20 shrink-0 overflow-hidden rounded-it-full bg-it-border'>
-                            <Image
-                                src={src}
-                                alt=''
-                                fill
-                                sizes='80px'
-                                className='object-cover'
-                            />
+            {/* Active-filter row + sort. Both live on one line so the filter state
+                is never off-screen while the list below it is filtered. */}
+            {(isFiltered || showSort) && (
+                <div className='flex flex-wrap items-center justify-between gap-4'>
+                    {isFiltered ? (
+                        <div className='flex flex-wrap items-center gap-3'>
+                            {starFilter !== null && (
+                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    {starLabel(starFilter)}
+                                </span>
+                            )}
+                            {themeFilter !== null && (
+                                <span className='flex items-center gap-2 rounded-it-full bg-it-surface px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    {themeFilter}
+                                </span>
+                            )}
+                            <MotionButton
+                                type='button'
+                                onClick={handleClearFilters}
+                                disabled={loading}
+                                whileTap={{ scale: 0.95 }}
+                                transition={springPop}
+                                className='cursor-pointer text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
+                                {dict.clearFilter}
+                            </MotionButton>
                         </div>
+                    ) : (
+                        <span />
+                    )}
+
+                    {/* Sort control (LD30) - hidden under 10 of the tour's own
+                        reviews; below that there is not enough to reorder for it
+                        to mean anything. */}
+                    {showSort && (
+                        <div className='flex items-center gap-8'>
+                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                {dict.sortBy}
+                            </span>
+                            <div className='relative'>
+                                <select
+                                    value={sort}
+                                    onChange={e =>
+                                        handleSortChange(e.target.value as ReviewSort)
+                                    }
+                                    disabled={loading}
+                                    aria-label={dict.sortBy}
+                                    className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                    {SORT_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {dict[opt.labelKey]}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Image
+                                    src='/icons/caret-down.svg'
+                                    alt=''
+                                    width={20}
+                                    height={20}
+                                    className='pointer-events-none absolute top-1/2 right-4 size-5 shrink-0 -translate-y-1/2'
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Customer photo carousel (FE-10) - gated on 3+ reviews WITH photos,
+                and hidden while filtered, since the strip is aggregated from the
+                loaded page and would otherwise silently become "photos matching
+                this filter" under a heading that says otherwise. */}
+            {photoStrip.length > 0 && !isFiltered && (
+                <div className='flex flex-col gap-3'>
+                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        {dict.photosTitle}
+                    </h3>
+                    <div className='flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        {photoStrip.map((src, i) => (
+                            <div
+                                key={`${src}-${i}`}
+                                className='relative size-20 shrink-0 snap-start overflow-hidden rounded-it-full bg-it-border'>
+                                <Image
+                                    src={src}
+                                    alt=''
+                                    fill
+                                    sizes='80px'
+                                    className='object-cover'
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Review cards, or the filtered-to-nothing state. The two empty
+                states are deliberately different: "no reviews" is about the tour,
+                "no matches" is about the filter the guest just set, and offering
+                "clear" on the former would be nonsense. */}
+            {reviews.length === 0 ? (
+                <div className='flex flex-col items-start gap-3'>
+                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        {isFiltered ? dict.noMatch : dict.empty}
+                    </p>
+                    {isFiltered && (
+                        <MotionButton
+                            type='button'
+                            onClick={handleClearFilters}
+                            disabled={loading}
+                            whileTap={{ scale: 0.95 }}
+                            transition={springPop}
+                            className='cursor-pointer text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 disabled:cursor-default disabled:opacity-60'>
+                            {dict.clearFilter}
+                        </MotionButton>
+                    )}
+                </div>
+            ) : (
+                <div className='flex flex-col gap-4'>
+                    {reviews.map(review => (
+                        <ReviewCard key={review.id} review={review} dict={dict} />
                     ))}
                 </div>
             )}
 
-            {/* Review cards */}
-            <div className='flex flex-col gap-4'>
-                {reviews.map(review => (
-                    <ReviewCard key={review.id} review={review} />
-                ))}
-            </div>
-
             {/* Show more */}
             {hasMore && (
-                <button
+                <MotionButton
                     type='button'
                     onClick={handleShowMore}
                     disabled={loading}
+                    whileTap={{ scale: 0.98 }}
+                    transition={springPop}
                     className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
                     {loading ? dict.loading : dict.showMore}
-                </button>
+                </MotionButton>
             )}
         </section>
     );
 }
 
-function ReviewCard({ review }: { review: FullReview }) {
+function ReviewCard({
+    review,
+    dict,
+}: {
+    review: FullReview;
+    dict: TourReviewsSectionDict;
+}) {
+    const guestKey = review.guestType
+        ? GUEST_TYPE_KEYS[review.guestType]
+        : undefined;
+    const guestLabel = guestKey ? dict[guestKey] : '';
+    // Travel month and guest type share one meta line; either can be absent
+    // (guest type is the one optional step in the submit flow).
+    const meta = [
+        review.travelLabel
+            ? dict.travelledIn.replace('{month}', review.travelLabel)
+            : '',
+        guestLabel,
+    ].filter(Boolean);
+
     return (
         <article className='flex flex-col gap-4 rounded-[16px] border border-it-border bg-it-white p-6'>
             <div className='flex flex-col gap-2'>
@@ -320,9 +607,36 @@ function ReviewCard({ review }: { review: FullReview }) {
                         <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                             {review.name}
                         </span>
-                        <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <span className='flex flex-wrap items-center gap-2.5 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                             {review.date}
+                            {/* FE-5. A native `title` rather than a hand-rolled
+                                popover: it is the disclosure of last resort and
+                                must work with no JS, and the full Omnibus
+                                explanation already has a linked page of its own. */}
+                            {review.verified && (
+                                <>
+                                    <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
+                                    <span
+                                        title={dict.verifiedTooltip}
+                                        className='flex cursor-help items-center gap-2'>
+                                        <Image
+                                            src='/icons/review-verified.svg'
+                                            alt=''
+                                            width={16}
+                                            height={16}
+                                            className='size-4 shrink-0'
+                                        />
+                                        {dict.verified}
+                                    </span>
+                                </>
+                            )}
                         </span>
+                        {/* FE-8 travel month + guest type */}
+                        {meta.length > 0 && (
+                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                {meta.join(' · ')}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>

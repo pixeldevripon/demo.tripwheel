@@ -70,17 +70,29 @@ export async function getTourReviewSummary(
   const res = await publicGet<PublicReviewSummary>(
     `/reviews/summary${buildQuery({ tourId })}`,
   );
-  return (
-    res ?? {
+  if (!res) {
+    return {
       tourId,
       source: 'none',
       rating: null,
       reviewCount: 0,
       approvedCount: 0,
       distribution: [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 })),
+      themes: [],
+      photoCount: 0,
       avgValue: null,
       avgGuide: null,
       avgSafety: null,
-    }
-  );
+    };
+  }
+  // `themes` and `photoCount` were added after launch, and this loader is
+  // `'use cache'` with a `days` lifetime - so a cached entry written by the
+  // previous shape, or a frontend deployed ahead of the backend, hands back an
+  // object with those keys simply absent. The consumers call `.length` and
+  // `.map` on them, which would be a TypeError rather than a missing chip bar.
+  return {
+    ...res,
+    themes: res.themes ?? [],
+    photoCount: res.photoCount ?? 0,
+  };
 }

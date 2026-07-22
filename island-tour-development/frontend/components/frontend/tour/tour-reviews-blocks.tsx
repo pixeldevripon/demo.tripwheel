@@ -5,6 +5,11 @@ import { getTourReviews } from '@/lib/api/public/reviews';
 import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import type { ThemeFacet } from '@/types/review';
+import {
+    buildTourReviewJsonLd,
+    type TourJsonLdProduct,
+} from '@/lib/seo/tour-review-jsonld';
 import { TourReviews } from './tour-reviews';
 import { TourReviewsSection } from './tour-reviews-section';
 
@@ -65,8 +70,19 @@ interface TourReviewsBlockProps {
     reviewCount: number;
     /** The tour's OWN approved count. Drives every LD30/LD31 render threshold. */
     ownReviewCount: number;
+    /** Which entity the displayed rating belongs to (LD11). */
+    ratingSource: 'tour' | 'operator' | 'none';
+    /** Operator display name, for the LD11 fallback sentence. */
+    operatorName: string;
     histogram: { stars: number; count: number }[];
+    themes: ThemeFacet[];
+    /** Approved reviews carrying photos - the FE-10 carousel gate. */
+    photoCount: number;
     hostLabel: string;
+    /** Locale-prefixed href of the "How we handle reviews" explainer (FE-11). */
+    explainerHref: string;
+    /** Product facts for the FE-2 structured data. */
+    product: TourJsonLdProduct;
     dict: ComponentProps<typeof TourReviewsSection>['dict'];
 }
 
@@ -77,8 +93,14 @@ export async function TourReviewsBlock({
     rating,
     reviewCount,
     ownReviewCount,
+    ratingSource,
+    operatorName,
     histogram,
+    themes,
+    photoCount,
     hostLabel,
+    explainerHref,
+    product,
     dict,
 }: TourReviewsBlockProps) {
     await connection();
@@ -91,19 +113,47 @@ export async function TourReviewsBlock({
         toFullReview(r, locale, hostLabel),
     );
 
+    // FE-2. Built from the SAME page of reviews that renders below, so the markup
+    // can only ever describe what a visitor can actually see. Emits nothing under
+    // the LD11 operator fallback - see the builder for why that matters.
+    const jsonLd = buildTourReviewJsonLd({
+        product,
+        ratingSource,
+        rating,
+        ownReviewCount,
+        visibleReviews: reviewList.data,
+    });
+
     return (
-        <TourReviewsSection
-            tourId={tourId}
-            locale={locale}
-            rating={rating}
-            reviewCount={reviewCount}
-            ownReviewCount={ownReviewCount}
-            histogram={histogram}
-            initialReviews={fullReviews}
-            total={reviewList.total}
-            pageSize={REVIEWS_PAGE_SIZE}
-            hostLabel={hostLabel}
-            dict={dict}
-        />
+        <>
+            {jsonLd && (
+                <script
+                    type='application/ld+json'
+                    // Serialized, not interpolated: `<` inside review text would
+                    // otherwise be able to close the script tag.
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+                    }}
+                />
+            )}
+            <TourReviewsSection
+                tourId={tourId}
+                locale={locale}
+                rating={rating}
+                reviewCount={reviewCount}
+                ownReviewCount={ownReviewCount}
+                ratingSource={ratingSource}
+                operatorName={operatorName}
+                histogram={histogram}
+                themes={themes}
+                photoCount={photoCount}
+                initialReviews={fullReviews}
+                total={reviewList.total}
+                pageSize={REVIEWS_PAGE_SIZE}
+                hostLabel={hostLabel}
+                explainerHref={explainerHref}
+                dict={dict}
+            />
+        </>
     );
 }

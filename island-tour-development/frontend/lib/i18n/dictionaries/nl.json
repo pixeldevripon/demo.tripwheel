@@ -447,7 +447,22 @@
                 "sortHelpful": "Meest behulpzaam",
                 "showMore": "Meer reviews tonen",
                 "loading": "Laden...",
-                "empty": "Nog geen reviews. Wees de eerste die deze tour boekt en beoordeelt."
+                "empty": "Nog geen reviews. Wees de eerste die deze tour boekt en beoordeelt.",
+                "verified": "Geverifieerde boeking",
+                "verifiedTooltip": "Deze gast heeft geboekt en betaald via Island Tours. Wij publiceren alleen reviews van echte boekingen.",
+                "travelledIn": "Gereisd in {month}",
+                "guestCouple": "Stel",
+                "guestFamily": "Gezin",
+                "guestFriends": "Vrienden",
+                "guestSolo": "Alleenreizend",
+                "filterStars": "{stars} sterren",
+                "filterStarsOne": "{stars} ster",
+                "clearFilter": "Filter wissen",
+                "noMatch": "Geen reviews komen overeen met dit filter.",
+                "photosTitle": "Foto's van gasten",
+                "operatorFallback": "Nieuw op Island Tours. Deze tour wordt verzorgd door {operator}, beoordeeld met {rating} op basis van {count} reviews.",
+                "earlyReviews": "{count} eerste reviews",
+                "howWeHandle": "Hoe wij omgaan met reviews"
             },
             "sections": {
                 "overview": "Overzicht",

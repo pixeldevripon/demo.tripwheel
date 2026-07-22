@@ -447,7 +447,22 @@
                 "sortHelpful": "最有帮助",
                 "showMore": "显示更多评价",
                 "loading": "加载中...",
-                "empty": "暂无评价。成为第一个预订并评价此行程的人。"
+                "empty": "暂无评价。成为第一个预订并评价此行程的人。",
+                "verified": "已验证预订",
+                "verifiedTooltip": "该旅客通过 Island Tours 预订并付款。我们只发布来自真实预订的评价。",
+                "travelledIn": "出行时间：{month}",
+                "guestCouple": "情侣",
+                "guestFamily": "家庭",
+                "guestFriends": "朋友",
+                "guestSolo": "独自旅行",
+                "filterStars": "{stars} 星",
+                "filterStarsOne": "{stars} 星",
+                "clearFilter": "清除筛选",
+                "noMatch": "没有符合此筛选条件的评价。",
+                "photosTitle": "旅客照片",
+                "operatorFallback": "Island Tours 新上线。此行程由 {operator} 运营，在 {count} 条评价中获得 {rating} 分。",
+                "earlyReviews": "{count} 条早期评价",
+                "howWeHandle": "我们如何处理评价"
             },
             "sections": {
                 "overview": "概览",

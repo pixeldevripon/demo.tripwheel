@@ -177,6 +177,9 @@ export class ReviewsService {
       tourId: query.tourId,
       // LD31: clicking a bar on the star chart filters to that star value.
       ...(query.rating != null && { rating: query.rating }),
+      // FE-9: theme chips. `has` is an exact array-element match, so a tag is
+      // never matched by prefix - "Great guide" cannot be selected by "Great".
+      ...(query.themeTag && { themeTags: { has: query.themeTag } }),
     };
 
     const [total, rows] = await Promise.all([
@@ -211,7 +214,7 @@ export class ReviewsService {
     if (!tour) throw new NotFoundException('Tour not found');
 
     const where: Prisma.ReviewWhereInput = { ...PUBLISHED, tourId };
-    const [agg, groups] = await Promise.all([
+    const [agg, groups, facetRows] = await Promise.all([
       this.prisma.review.aggregate({
         where,
         _count: true,
@@ -223,7 +226,31 @@ export class ReviewsService {
         },
       }),
       this.prisma.review.groupBy({ by: ['rating'], where, _count: true }),
+      // Theme-chip and photo facets. Counted in JS off one bounded per-tour
+      // query rather than `groupBy` (which cannot aggregate a scalar list) or
+      // raw SQL with `unnest`: raw SQL would mean hand-restating the PUBLISHED
+      // clause, and a filter that drifts from the shared constant would publish
+      // held or imported reviews into the facets while the list itself hides
+      // them. One tour's approved reviews are tens to low hundreds of rows.
+      this.prisma.review.findMany({
+        where,
+        select: { themeTags: true, photos: true },
+      }),
     ]);
+
+    const themeCounts = new Map<string, number>();
+    let photoCount = 0;
+    for (const row of facetRows) {
+      if (row.photos.length > 0) photoCount++;
+      for (const tag of row.themeTags) {
+        themeCounts.set(tag, (themeCounts.get(tag) ?? 0) + 1);
+      }
+    }
+    // Most-used first, then alphabetical so the chip order is stable across
+    // requests when counts tie - an unstable chip bar reads as a rendering bug.
+    const themes = [...themeCounts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 
     const approvedCount = agg._count;
     const tourRating = roundRating(agg._avg.rating);
@@ -249,6 +276,8 @@ export class ReviewsService {
       reviewCount: resolution.reviewCount,
       approvedCount,
       distribution,
+      themes,
+      photoCount,
       avgValue: roundRating(agg._avg.ratingValue),
       avgGuide: roundRating(agg._avg.ratingGuide),
       avgSafety: roundRating(agg._avg.ratingSafety),

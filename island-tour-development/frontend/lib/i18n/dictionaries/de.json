@@ -447,7 +447,22 @@
                 "sortHelpful": "Hilfreichste",
                 "showMore": "Mehr Bewertungen anzeigen",
                 "loading": "Wird geladen...",
-                "empty": "Noch keine Bewertungen. Sei der Erste, der diese Tour bucht und bewertet."
+                "empty": "Noch keine Bewertungen. Sei der Erste, der diese Tour bucht und bewertet.",
+                "verified": "Verifizierte Buchung",
+                "verifiedTooltip": "Dieser Gast hat über Island Tours gebucht und bezahlt. Wir veröffentlichen nur Bewertungen aus echten Buchungen.",
+                "travelledIn": "Gereist im {month}",
+                "guestCouple": "Paar",
+                "guestFamily": "Familie",
+                "guestFriends": "Freunde",
+                "guestSolo": "Alleinreisend",
+                "filterStars": "{stars} Sterne",
+                "filterStarsOne": "{stars} Stern",
+                "clearFilter": "Filter zurücksetzen",
+                "noMatch": "Keine Bewertungen entsprechen diesem Filter.",
+                "photosTitle": "Fotos von Gästen",
+                "operatorFallback": "Neu bei Island Tours. Diese Tour wird von {operator} durchgeführt, bewertet mit {rating} aus {count} Bewertungen.",
+                "earlyReviews": "{count} erste Bewertungen",
+                "howWeHandle": "Wie wir mit Bewertungen umgehen"
             },
             "sections": {
                 "overview": "Überblick",
