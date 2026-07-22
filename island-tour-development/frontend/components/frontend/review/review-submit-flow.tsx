@@ -340,7 +340,7 @@ export function ReviewSubmitFlow({
 
 function Card({ children }: { children: React.ReactNode }) {
     return (
-        <div className='w-full max-w-125 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
+        <div className='w-full max-w-3xl rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-8'>
             {children}
         </div>
     );

@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "Ce lien d'avis n'est plus valable.",
         "invalidBody": "Il a peut-être déjà été utilisé, ou la réservation a été annulée. Si ce n'est pas le cas, contactez-nous et nous arrangerons cela.",
+        "invalidFindBooking": "Retrouver ma réservation",
+        "invalidBrowse": "Voir les excursions",
         "step1Header": "Comment s'est passée votre excursion ?",
         "step1Hint": "Touchez une étoile. C'est tout.",
         "savedNote": "Enregistré. Merci.",

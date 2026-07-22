@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",
         "invalidBody": "It may already have been used, or the booking was cancelled. If you think that's wrong, get in touch and we'll sort it out.",
+        "invalidFindBooking": "Find my booking",
+        "invalidBrowse": "Browse tours",
         "step1Header": "How was your tour experience?",
         "step1Hint": "Tap a star. That's all it takes.",
         "savedNote": "Saved. Thank you.",

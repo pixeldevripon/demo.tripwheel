@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",
         "invalidBody": "它可能已被使用，或预订已取消。如果您认为有误，请联系我们，我们会为您处理。",
+        "invalidFindBooking": "查找我的预订",
+        "invalidBrowse": "浏览行程",
         "step1Header": "此次行程体验如何？",
         "step1Hint": "点一颗星即可。",
         "savedNote": "已保存，谢谢。",

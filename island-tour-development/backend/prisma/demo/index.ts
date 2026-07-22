@@ -24,6 +24,7 @@ import { seedCommercial } from './commercial';
 import { seedEngagement } from './engagement';
 import { seedEntityContent } from './entity-content';
 import { seedSettings } from './settings';
+import { seedCustomers, seedReviewDemoLinks } from './customers';
 
 async function assertBaseSeed(): Promise<void> {
   const [dest, cat] = await Promise.all([
@@ -55,6 +56,10 @@ export async function runDemoSeed(): Promise<void> {
   await seedEngagement(); // wishlists + notifications
   await seedEntityContent(); // dest/cat/hub translations + page content + FAQs + hub editorial
   await seedSettings(); // singletons + webhooks + media
+  await seedCustomers(); // user <-> operator relationships for the customer list
+  // LAST: reserves un-reviewed bookings + restores the fixed demo review links.
+  // Must follow seedReviews, which would otherwise review the pool away.
+  await seedReviewDemoLinks();
 
   console.log('\n════════════ DEMO SEED COMPLETE ════════════');
   console.log(

@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",
         "invalidBody": "Mogelijk is hij al gebruikt, of is de boeking geannuleerd. Klopt dat niet? Neem contact op, dan lossen we het op.",
+        "invalidFindBooking": "Mijn boeking zoeken",
+        "invalidBrowse": "Bekijk tours",
         "step1Header": "Hoe was je tourervaring?",
         "step1Hint": "Tik op een ster. Meer is het niet.",
         "savedNote": "Opgeslagen. Bedankt.",

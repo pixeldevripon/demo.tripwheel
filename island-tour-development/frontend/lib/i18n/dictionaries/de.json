@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",
         "invalidBody": "Möglicherweise wurde er bereits verwendet oder die Buchung wurde storniert. Falls das nicht stimmt, melde dich, wir klären das.",
+        "invalidFindBooking": "Meine Buchung finden",
+        "invalidBrowse": "Touren ansehen",
         "step1Header": "Wie war deine Tour?",
         "step1Hint": "Tippe auf einen Stern. Mehr ist es nicht.",
         "savedNote": "Gespeichert. Danke.",

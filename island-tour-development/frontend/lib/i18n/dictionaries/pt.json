@@ -780,6 +780,8 @@
     "reviewSubmit": {
         "invalidTitle": "Este link de avaliação já não é válido.",
         "invalidBody": "Pode já ter sido usado, ou a reserva foi cancelada. Se achar que é um engano, fale connosco e resolvemos.",
+        "invalidFindBooking": "Encontrar a minha reserva",
+        "invalidBrowse": "Ver excursões",
         "step1Header": "Como foi o seu passeio?",
         "step1Hint": "Toque numa estrela. É só isso.",
         "savedNote": "Guardado. Obrigado.",
