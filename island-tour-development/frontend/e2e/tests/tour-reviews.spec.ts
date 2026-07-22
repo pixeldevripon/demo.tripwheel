@@ -1,26 +1,18 @@
 /**
  * Public tour-page review display + compliance E2E.
  *
- * ## KNOWN BROKEN - the streamed-section tests are `test.fixme`
+ * ## Why every locator goes through `reviewsSection()`
  *
- * The reviews section is a `connection()` dynamic Suspense boundary. React's
- * streaming SSR leaves a SECOND, `hidden` copy of the late-arriving content in
- * the DOM as a holding pen, and DOM order between the two is not stable. Every
- * assertion scoped to `#tour-reviews` therefore resolves intermittently to a
- * 0x0 hidden node and fails as "hidden" while the page is perfect in a browser.
+ * This section is a `connection()` dynamic Suspense boundary. React's streaming
+ * SSR parks a SECOND, hidden copy of the late-arriving content in the DOM until
+ * it swaps the real one in. Both match `#tour-reviews`, DOM order between them
+ * is not stable, and the hidden copy has no layout box - so `.first()`,
+ * `.last()`, `filter({ visible: true })` and `:visible` are all flaky here
+ * (each was tried, and each failed intermittently).
  *
- * `.first()`, `.last()`, `filter({ visible: true })` and `:visible` were all
- * tried; none is reliable. The fix is probably to wait on a settled signal
- * (hydration marker or an explicit `data-` attribute the section sets after
- * mount) rather than to select between the copies - that needs a small change
- * to the component, which is out of scope for this pass.
- *
- * **These previously "passed" against a stale `next-server` process serving
- * fully-prerendered pages with no streaming.** That green was not real, and is
- * corrected here rather than left to mislead.
- *
- * The behaviour itself IS verified - by direct HTML inspection and against the
- * live API - see the Phase 5 entry in REVIEW-MODULE-CHECKLIST.md.
+ * The section sets `data-hydrated` in an effect. The holding-pen copy is never
+ * hydrated, so that attribute marks the live one unambiguously - and waiting on
+ * it also waits for interactivity, which the click tests need regardless.
  *
  * Runs against real seeded data rather than mocks: the whole point of these
  * assertions is that the LD11/LD30/LD31 thresholds resolve correctly against
@@ -53,20 +45,17 @@ import { expect, test, type Page } from '@playwright/test';
  * browser. Filtering on visibility is what makes these tests describe what a
  * traveller actually sees.
  */
+/** The LIVE reviews section - see the file header for why this is not `#tour-reviews`. */
 function reviewsSection(page: Page) {
-  // `:visible` rather than `.first()` / `.last()`: DOM order between the hidden
-  // holding-pen copy and the real one is NOT guaranteed, so positional
-  // selection is flaky. Visibility is the actual property under test.
-  return page.locator('#tour-reviews:visible');
+  return page.locator('#tour-reviews[data-hydrated="true"]');
 }
 
 /**
- * Navigate and WAIT for the streamed reviews boundary to be swapped in.
+ * Navigate and WAIT for the section to hydrate.
  *
- * Without this every assertion races the stream: the section is a `connection()`
- * dynamic boundary, so on a cold request the visible copy simply does not exist
- * yet and a bare `goto` + assert fails intermittently for reasons that have
- * nothing to do with the thing under test.
+ * Without this every assertion races the stream: on a cold request the live
+ * copy does not exist yet, so a bare `goto` + assert fails intermittently for
+ * reasons that have nothing to do with the thing under test.
  */
 async function gotoTour(page: Page, path: string) {
   await page.goto(path);
@@ -83,7 +72,7 @@ const TOURS = {
 };
 
 test.describe('tour page - review thresholds', () => {
-  test.fixme('0 own reviews: borrowed rating is disclosed, no chart, no JSON-LD', async ({
+  test('0 own reviews: borrowed rating is disclosed, no chart, no JSON-LD', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.fallback);
@@ -104,7 +93,7 @@ test.describe('tour page - review thresholds', () => {
     );
   });
 
-  test.fixme('3-9 own reviews: chart renders, sort control does not (LD30)', async ({
+  test('3-9 own reviews: chart renders, sort control does not (LD30)', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.small);
@@ -116,7 +105,7 @@ test.describe('tour page - review thresholds', () => {
     await expect(reviewsSection(page).locator('select')).toHaveCount(0);
   });
 
-  test.fixme('20+ own reviews: chart, sort and JSON-LD all present', async ({
+  test('20+ own reviews: chart, sort and JSON-LD all present', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.large);
@@ -139,7 +128,7 @@ test.describe('tour page - review thresholds', () => {
     expect(json.review.length).toBeLessThanOrEqual(10);
   });
 
-  test.fixme('the theme-chip filter bar appears past 20 reviews (FE-9 / LD30)', async ({
+  test('the theme-chip filter bar appears past 20 reviews (FE-9 / LD30)', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.large);
@@ -170,7 +159,7 @@ test.describe('tour page - review thresholds', () => {
       .toBe(before);
   });
 
-  test.fixme('the filter bar stays hidden under 20 reviews (LD30)', async ({
+  test('the filter bar stays hidden under 20 reviews (LD30)', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.small);
@@ -180,7 +169,7 @@ test.describe('tour page - review thresholds', () => {
     await expect(chips).toHaveCount(0);
   });
 
-  test.fixme('the clickable star chart filters the list (FE-3 / LD31)', async ({
+  test('the clickable star chart filters the list (FE-3 / LD31)', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.small);
@@ -213,7 +202,7 @@ test.describe('tour page - review thresholds', () => {
 });
 
 test.describe('tour page - compliance', () => {
-  test.fixme('the verification sub-line links to the explainer (Omnibus Art. 7(6))', async ({
+  test('the verification sub-line links to the explainer (Omnibus Art. 7(6))', async ({
     page,
   }) => {
     await gotoTour(page, TOURS.large);
@@ -245,7 +234,7 @@ test.describe('tour page - compliance', () => {
     ).toBeVisible();
   });
 
-  test.fixme('no third-party review widget appears on a tour page', async ({ page }) => {
+  test('no third-party review widget appears on a tour page', async ({ page }) => {
     await gotoTour(page, TOURS.large);
 
     // Trustpilot is a PLATFORM-level surface (homepage), never a tour page:
@@ -331,7 +320,7 @@ test.describe('tour page - compliance', () => {
     });
   });
 
-  test.fixme('every review card carries its verification basis', async ({ page }) => {
+  test('every review card carries its verification basis', async ({ page }) => {
     await gotoTour(page, TOURS.large);
 
     const cards = reviewsSection(page).locator('article');

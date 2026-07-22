@@ -1,5 +1,8 @@
 # Review Module - Build Checklist
 
+> Plain-language walkthrough of the whole module (what it does and why, no code):
+> **`REVIEW-MODULE-EXPLAINED.md`** - start there if you want the picture rather than the tasks.
+>
 > Requirements: `REVIEW-MODULE-REQUIREMENTS.md` · Plan: `REVIEW-MODULE-PLAN.md`
 >
 > **Keep this current.** Flip `- [ ]` to `- [x]` in the **same commit or response** as the

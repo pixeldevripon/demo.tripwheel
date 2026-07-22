@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type Locale } from '@/lib/constants/locales';
 import { fetchTourReviews } from '@/lib/api/reviews';
 import { toFullReview } from '@/lib/reviews/review-view';
@@ -232,6 +232,21 @@ export function TourReviewsSection({
     const [languageFilter, setLanguageFilter] = useState<string | null>(null);
     const [matchTotal, setMatchTotal] = useState(total);
 
+    /**
+     * Hydration marker, for tests and for anything that needs to know this
+     * section is live rather than streamed-but-inert.
+     *
+     * This boundary streams, and React's streaming SSR parks a SECOND, hidden
+     * copy of the content in the DOM until it swaps the real one in. Both match
+     * `#tour-reviews`, DOM order between them is not stable, and the hidden copy
+     * has no layout box - so positional or visibility-based selection is flaky
+     * by construction. The holding-pen copy is never HYDRATED, though, so an
+     * effect can only ever run on the live one. Waiting on this attribute also
+     * waits for interactivity, which is what a click test actually needs.
+     */
+    const [hydrated, setHydrated] = useState(false);
+    useEffect(() => setHydrated(true), []);
+
     const isFiltered =
         starFilter !== null ||
         themeFilter !== null ||
@@ -376,7 +391,10 @@ export function TourReviewsSection({
         );
 
     return (
-        <section id='tour-reviews' className='flex scroll-mt-36 flex-col gap-8'>
+        <section
+            id='tour-reviews'
+            data-hydrated={hydrated ? 'true' : undefined}
+            className='flex scroll-mt-36 flex-col gap-8'>
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
