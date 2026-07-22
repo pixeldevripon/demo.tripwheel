@@ -204,6 +204,11 @@ export async function seedReviews(): Promise<void> {
         reviewerCountry: b.contactCountry,
         travelMonth: b.localDate.getUTCMonth() + 1,
         travelYear: b.localDate.getUTCFullYear(),
+        // Written a few days after the tour, not at seed time. Without this
+        // every review shares one `createdAt` and the DASH-9 rating-trend and
+        // velocity charts have a single bucket to plot - the feature looks
+        // broken when it is the data that is flat.
+        createdAt: new Date(b.localDate.getTime() + (2 + (i % 5)) * 864e5),
         reviewerType: guestTypeFor(i),
         themeTags: themesFor(rating, i),
         photos,
@@ -512,6 +517,7 @@ export async function topUpReviewDepth(): Promise<{
           reviewerCountry: booking.contactCountry,
           travelMonth: localDate.getUTCMonth() + 1,
           travelYear: localDate.getUTCFullYear(),
+          createdAt: new Date(localDate.getTime() + (2 + (i % 5)) * 864e5),
           reviewerType: guestTypeFor(i),
           themeTags: themesFor(rating, i),
           photos,

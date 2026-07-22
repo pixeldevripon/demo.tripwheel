@@ -18,6 +18,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import type {
   DashboardStatsDto,
   DashboardStatsQueryDto,
+  ReviewStatsDto,
   TrendPointDto,
 } from './dto/analytics.dto';
 
@@ -392,6 +393,135 @@ export class AnalyticsService {
    * the response states which window was applied, so no figure on the screen is
    * left ambiguous about the period it covers.
    */
+  /**
+   * DASH-9 - review analytics, scoped like every other read here: an operator
+   * sees only their own tours, a platform role sees everything.
+   *
+   * ## Why the trend is bucketed in SQL
+   * A rating trend over a year is 12 numbers; pulling every review to average
+   * them in JS would move thousands of rows to compute a dozen. `date_trunc`
+   * does it in the database, which is also the only way `AVG` stays correct
+   * without materialising the set.
+   *
+   * ## What "velocity" counts
+   * Reviews CREATED per bucket, not approved - approval is our latency, not the
+   * traveller's behaviour, and mixing them makes a moderation backlog look like
+   * a collapse in review volume.
+   *
+   * Moderation counts are current STATE (how big is the queue right now), so
+   * they deliberately ignore the date range - the same stock-vs-flow split the
+   * dashboard stats already make.
+   */
+  async getReviewStats(
+    query: DashboardStatsQueryDto,
+    actor: { id: string; role: Role },
+  ): Promise<ReviewStatsDto> {
+    const platformWide = isPlatformWideRole(actor.role);
+    const operatorId = platformWide
+      ? null
+      : await resolveOperatorId(this.prisma, actor.id, actor.role);
+
+    const granularity = query.granularity ?? 'month';
+    const range = this.resolveRange(query, new Date());
+
+    const scope = operatorId
+      ? Prisma.sql`AND r."operatorId" = ${operatorId}`
+      : Prisma.empty;
+    const fromClause = range.fromIso
+      ? Prisma.sql`AND r."createdAt" >= ${range.fromIso}::timestamp`
+      : Prisma.empty;
+    const toClause = range.toIso
+      ? Prisma.sql`AND r."createdAt" < ${range.toIso}::timestamp`
+      : Prisma.empty;
+
+    // Trend + velocity in ONE pass: both are per-bucket aggregates over the
+    // same rows, so splitting them would be two scans for one answer.
+    const trendRows = await this.prisma.$queryRaw<
+      {
+        bucket: Date;
+        avgrating: number | null;
+        created: bigint;
+        approved: bigint;
+      }[]
+    >`
+      SELECT date_trunc(${granularity}, r."createdAt") AS bucket,
+             AVG(r.rating) FILTER (WHERE r."moderationStatus" = 'APPROVED') AS avgrating,
+             COUNT(*) AS created,
+             COUNT(*) FILTER (WHERE r."moderationStatus" = 'APPROVED') AS approved
+      FROM reviews r
+      WHERE 1 = 1 ${scope} ${fromClause} ${toClause}
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+
+    const where: Prisma.ReviewWhereInput = operatorId ? { operatorId } : {};
+    const [byStatus, themeRows, operator] = await Promise.all([
+      this.prisma.review.groupBy({
+        by: ['moderationStatus'],
+        where,
+        _count: true,
+      }),
+      // Theme breakdown over APPROVED only - a rejected review's tags describe
+      // something nobody can see.
+      this.prisma.review.findMany({
+        where: { ...where, moderationStatus: 'APPROVED' },
+        select: { themeTags: true },
+      }),
+      operatorId
+        ? this.prisma.operator.findUnique({
+            where: { id: operatorId },
+            select: {
+              aggregateRating: true,
+              aggregateReviewCount: true,
+              cancellationRate90d: true,
+            },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const themeCounts = new Map<string, number>();
+    for (const row of themeRows) {
+      for (const tag of row.themeTags) {
+        themeCounts.set(tag, (themeCounts.get(tag) ?? 0) + 1);
+      }
+    }
+
+    const statusCount = (status: string) =>
+      byStatus.find((b) => b.moderationStatus === status)?._count ?? 0;
+
+    return {
+      granularity,
+      trend: trendRows.map((r) => ({
+        period: r.bucket.toISOString().slice(0, 10),
+        avgRating:
+          r.avgrating == null
+            ? null
+            : Math.round(Number(r.avgrating) * 10) / 10,
+        created: Number(r.created),
+        approved: Number(r.approved),
+      })),
+      moderation: {
+        pending: statusCount('PENDING'),
+        approved: statusCount('APPROVED'),
+        held: statusCount('HELD'),
+        rejected: statusCount('REJECTED'),
+      },
+      themes: [...themeCounts.entries()]
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+        .slice(0, 12),
+      eligibility: operator
+        ? {
+            aggregateRating: operator.aggregateRating
+              ? Number(operator.aggregateRating)
+              : null,
+            aggregateReviewCount: operator.aggregateReviewCount,
+            cancellationRate90d: Number(operator.cancellationRate90d),
+          }
+        : null,
+    };
+  }
+
   async getDashboardStats(
     query: DashboardStatsQueryDto,
     actor: { id: string; role: Role },

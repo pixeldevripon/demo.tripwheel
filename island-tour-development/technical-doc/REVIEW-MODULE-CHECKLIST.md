@@ -23,9 +23,9 @@
 | 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips now visible - seed depth cleared the 20 gate) |
 | 5 | LD32 translation | 8 | 8 | **DONE 2026-07-22** (needs a Google Translate key to do anything) |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
-| 7 | Depth + operator partnership | 8 | 3 | Filters DONE 2026-07-22; photo-forward cards + DASH-9 + LD37 open; LD28 & helpful votes are V2 by the master |
+| 7 | Depth + operator partnership | 8 | 5 | **DONE 2026-07-22** except LD37 (a business decision) and LD28 + helpful votes (V2 by the master) |
 | T | Test pass | 23 | 23 | **DONE 2026-07-22** - found + fixed a cross-operator read bug; 9 public-site tests since marked `test.fixme`, see the correction below |
-| **Total** | | **114** | **103** | |
+| **Total** | | **114** | **105** | |
 
 ---
 
@@ -676,11 +676,41 @@
       combine (COUPLE + photos -> 2), a bad enum is a 400, and the whole bar is absent under
       the 20-review gate. 98 backend unit tests (1 new covering both facets), copy in all 7
       locales (32 keys, parity asserted).
-- [ ] Photo-forward cards.
+- [x] **Photo-forward cards.** A guest's photo now LEADS the card body at
+      160/208px in a snap-scroller, instead of sitting below the text as an 80px
+      thumbnail where it read as an afterthought - which is the whole point of the item.
+      Horizontal scroll rather than wrap, so a four-photo review cannot push the next card
+      off the fold. Tapping opens a full-size view (plain fixed overlay, closes on click and
+      on Escape - one job, no dependency), because a photo-forward card is only worth it if
+      the photo can actually be looked at.
+      **Verified in the DOM:** photo renders ABOVE the review text, 208px wide, lightbox
+      opens and closes on Escape. Copy in all 7 locales.
 - [ ] AI review summaries + AI theme chips at 30 reviews per tour (LD28, LD29 Tier 3).
 - [ ] Helpful votes re-enabled with identity binding.
-- [ ] **DASH-9** Operator analytics: rating trend, review velocity, theme breakdown, plus
-      the eligibility metrics the nightly job already computes.
+- [x] **DASH-9** Operator review analytics - `GET /analytics/reviews`, scoped exactly like
+      the dashboard stats: `VIEW_ANALYTICS` decides WHO may see statistics, the service
+      decides WHOSE. An operator sees only their own tours; a platform role sees everything
+      and gets `eligibility: null`, having no single operator to report.
+      Returns rating trend, review velocity, theme breakdown and the operator eligibility
+      metrics the nightly job computes.
+      - **Velocity charts `created`, not `approved`.** Approval latency is ours, not the
+        traveller's - charting approvals makes a moderation backlog look like a collapse in
+        review volume.
+      - **Moderation counts ignore the date range** - they are current STATE (how big is the
+        queue now), the same stock-vs-flow split the dashboard stats already make.
+      - Trend + velocity come from ONE bucketed SQL pass (`date_trunc`): they are per-bucket
+        aggregates over the same rows, so two scans would be two answers to one question.
+      - Dashboard panel composes the shared `ChartContainer` and `Progress` primitives, not
+        hand-rolled bars - `Progress` already routes a runtime width through a CSS custom
+        property, which is what the repo's no-inline-style rule requires. Renders nothing at
+        all for a role without `VIEW_ANALYTICS` (absent, never disabled).
+- [x] **Seed fix found while verifying DASH-9:** every review shared one `createdAt` (seed
+      time), so the trend and velocity charts had a SINGLE bucket - the feature looked broken
+      when it was the data that was flat. Reviews are now written 2-6 days after their tour,
+      giving 8 months of real movement (4.5 - 4.8 average, 3 - 165 per month).
+      **Verified live:** admin sees 460 created / 447 approved platform-wide with
+      `eligibility: null`; the operator sees 91 approved with their own rating and 90-day
+      cancellation rate. All four panels render with 2 charts and 7 theme bars.
 - [ ] **LD37 switch**: platform-authored → moderated operator-authored responses.
 
 ---

@@ -665,6 +665,74 @@ export class DashboardStatsDto {
 
 // ── Query ───────────────────────────────────────────────────────────────────
 
+export class ReviewTrendPointDto {
+  @ApiProperty({ example: '2026-07-01' }) period!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 4.6,
+    description: 'Average of APPROVED reviews in the bucket; null if none.',
+  })
+  avgRating!: number | null;
+  @ApiProperty({
+    example: 12,
+    description:
+      'Reviews CREATED in the bucket - the traveller-behaviour signal. ' +
+      'Deliberately not "approved": approval latency is ours, and mixing the ' +
+      'two makes a moderation backlog look like a collapse in review volume.',
+  })
+  created!: number;
+  @ApiProperty({ example: 10 }) approved!: number;
+}
+
+export class ReviewModerationCountsDto {
+  @ApiProperty({ example: 4 }) pending!: number;
+  @ApiProperty({ example: 120 }) approved!: number;
+  @ApiProperty({ example: 1 }) held!: number;
+  @ApiProperty({ example: 2 }) rejected!: number;
+}
+
+export class ReviewThemeCountDto {
+  @ApiProperty({ example: 'Great guide' }) tag!: string;
+  @ApiProperty({ example: 9 }) count!: number;
+}
+
+export class ReviewEligibilityDto {
+  @ApiPropertyOptional({ nullable: true, example: 4.7 })
+  aggregateRating!: number | null;
+  @ApiProperty({ example: 81 }) aggregateReviewCount!: number;
+  @ApiProperty({
+    example: 1.5,
+    description: 'Trailing-90-day cancellation rate (%), from the nightly job.',
+  })
+  cancellationRate90d!: number;
+}
+
+export class ReviewStatsDto {
+  @ApiProperty({ enum: ['month', 'day'] }) granularity!: 'month' | 'day';
+  @ApiProperty({ type: [ReviewTrendPointDto] })
+  trend!: ReviewTrendPointDto[];
+  @ApiProperty({
+    type: ReviewModerationCountsDto,
+    description:
+      'Current STATE (how big is the queue now), so it ignores the date range ' +
+      '- the same stock-vs-flow split the dashboard stats make.',
+  })
+  moderation!: ReviewModerationCountsDto;
+  @ApiProperty({
+    type: [ReviewThemeCountDto],
+    description: 'Top 12 theme tags across APPROVED reviews.',
+  })
+  themes!: ReviewThemeCountDto[];
+  @ApiPropertyOptional({
+    type: ReviewEligibilityDto,
+    nullable: true,
+    description:
+      'Operator eligibility metrics the nightly job computes. Null for a ' +
+      'platform-wide caller, which has no single operator to report.',
+  })
+  eligibility!: ReviewEligibilityDto | null;
+}
+
 export class DashboardStatsQueryDto {
   @ApiPropertyOptional({
     example: '2026-07-01',

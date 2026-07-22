@@ -460,6 +460,8 @@
                 "clearFilter": "Filter wissen",
                 "noMatch": "Geen reviews komen overeen met dit filter.",
                 "photosTitle": "Foto's van gasten",
+                "photoOpen": "Foto bekijken",
+                "photoClose": "Sluiten",
                 "operatorFallback": "Nieuw op Island Tours. Deze tour wordt verzorgd door {operator}, beoordeeld met {rating} op basis van {count} reviews.",
                 "earlyReviews": "{count} eerste reviews",
                 "howWeHandle": "Hoe wij omgaan met reviews",

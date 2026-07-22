@@ -73,6 +73,9 @@ export type TourReviewsSectionDict = {
     earlyReviews: string;
     /** FE-11 Omnibus disclosure link. */
     howWeHandle: string;
+    /** Phase 7 photo-forward cards. */
+    photoOpen: string;
+    photoClose: string;
     /** Phase 7 depth filters. */
     filterGuest: string;
     filterLanguage: string;
@@ -737,6 +740,9 @@ function ReviewCard({
     // LD32 toggle state is PER CARD, not section-wide: a reader who wants to see
     // one guest's own words has said nothing about the next guest's.
     const [showingOriginal, setShowingOriginal] = useState(false);
+    /** Index of the photo opened full-size, or null. */
+    const [lightbox, setLightbox] = useState<number | null>(null);
+    const hasPhotos = Boolean(review.photos && review.photos.length > 0);
     const canToggle = review.isMachineTranslated && Boolean(review.originalText);
     const body =
         showingOriginal && review.originalText ? review.originalText : review.text;
@@ -795,6 +801,34 @@ function ReviewCard({
                         )}
                     </div>
                 </div>
+                {/* Photo-forward (Phase 7). A guest's own photo is the most
+                    persuasive thing on the card, and it used to sit BELOW the
+                    text at thumbnail size where it read as an afterthought.
+                    Leading with it - and at a size you can actually see - is
+                    the whole point of the "photo-forward" item.
+                    Horizontal scroll rather than wrap: a review with four
+                    photos should not push the next card off the fold. */}
+                {hasPhotos && (
+                    <div className='-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        {review.photos!.map((src, i) => (
+                            <button
+                                key={`${src}-${i}`}
+                                type='button'
+                                onClick={() => setLightbox(i)}
+                                aria-label={dict.photoOpen}
+                                className='relative aspect-[4/3] w-40 shrink-0 cursor-pointer snap-start overflow-hidden rounded-[12px] border-0 bg-it-border p-0 sm:w-52'>
+                                <Image
+                                    src={src}
+                                    alt=''
+                                    fill
+                                    sizes='(min-width: 640px) 208px, 160px'
+                                    className='object-cover transition-opacity duration-300 hover:opacity-90'
+                                />
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {body}
                 </p>
@@ -824,40 +858,55 @@ function ReviewCard({
                 )}
             </div>
 
-            {((review.photos && review.photos.length > 0) || review.response) && (
+            {review.response && (
                 <div className='flex flex-col gap-4'>
-                    {review.photos && review.photos.length > 0 ? (
-                        <div className='flex flex-wrap gap-2'>
-                            {review.photos.map((src, i) => (
-                                <div
-                                    key={`${src}-${i}`}
-                                    className='relative size-20 shrink-0 overflow-hidden rounded-[10px] bg-it-border'>
-                                    <Image
-                                        src={src}
-                                        alt=''
-                                        fill
-                                        sizes='80px'
-                                        className='object-cover'
-                                    />
-                                </div>
-                            ))}
+                    <div className='flex flex-col gap-4 rounded-[12px] border border-it-border bg-it-surface p-6'>
+                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            {review.response.text}
+                        </p>
+                        <div className='flex flex-col'>
+                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                {review.response.name}
+                            </span>
+                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                {review.response.date}
+                            </span>
                         </div>
-                    ) : null}
-                    {review.response && (
-                        <div className='flex flex-col gap-4 rounded-[12px] border border-it-border bg-it-surface p-6'>
-                            <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                {review.response.text}
-                            </p>
-                            <div className='flex flex-col'>
-                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {review.response.name}
-                                </span>
-                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                    {review.response.date}
-                                </span>
-                            </div>
-                        </div>
-                    )}
+                    </div>
+                </div>
+            )}
+            {/* Full-size view. A photo-forward card is only worth it if the
+                photo can actually be looked at; the inline tile is a preview.
+                Plain fixed overlay rather than a dialog library - it has one
+                job, closes on click and on Escape, and adds no dependency. */}
+            {lightbox !== null && review.photos?.[lightbox] && (
+                <div
+                    role='dialog'
+                    aria-modal='true'
+                    aria-label={dict.photoOpen}
+                    tabIndex={-1}
+                    onClick={() => setLightbox(null)}
+                    onKeyDown={e => {
+                        if (e.key === 'Escape') setLightbox(null);
+                    }}
+                    ref={el => el?.focus()}
+                    className='fixed inset-0 z-100 flex cursor-zoom-out items-center justify-center bg-black/80 p-4'>
+                    <div className='relative h-full max-h-[80vh] w-full max-w-4xl'>
+                        <Image
+                            src={review.photos[lightbox]}
+                            alt=''
+                            fill
+                            sizes='100vw'
+                            className='object-contain'
+                        />
+                    </div>
+                    <button
+                        type='button'
+                        aria-label={dict.photoClose}
+                        onClick={() => setLightbox(null)}
+                        className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading'>
+                        {dict.photoClose}
+                    </button>
                 </div>
             )}
         </article>

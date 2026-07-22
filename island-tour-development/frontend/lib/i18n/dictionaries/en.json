@@ -460,6 +460,8 @@
                 "clearFilter": "Clear filter",
                 "noMatch": "No reviews match this filter.",
                 "photosTitle": "Photos from guests",
+                "photoOpen": "View photo",
+                "photoClose": "Close",
                 "operatorFallback": "New on Island Tours. This tour is run by {operator}, rated {rating} across {count} reviews.",
                 "earlyReviews": "{count} early reviews",
                 "howWeHandle": "How we handle reviews",

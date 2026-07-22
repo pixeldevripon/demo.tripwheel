@@ -460,6 +460,8 @@
                 "clearFilter": "Effacer le filtre",
                 "noMatch": "Aucun avis ne correspond à ce filtre.",
                 "photosTitle": "Photos des voyageurs",
+                "photoOpen": "Voir la photo",
+                "photoClose": "Fermer",
                 "operatorFallback": "Nouveau sur Island Tours. Cette excursion est proposée par {operator}, noté {rating} sur {count} avis.",
                 "earlyReviews": "{count} premiers avis",
                 "howWeHandle": "Comment nous gérons les avis",

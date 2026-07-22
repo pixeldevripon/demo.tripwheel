@@ -460,6 +460,8 @@
                 "clearFilter": "清除筛选",
                 "noMatch": "没有符合此筛选条件的评价。",
                 "photosTitle": "旅客照片",
+                "photoOpen": "查看照片",
+                "photoClose": "关闭",
                 "operatorFallback": "Island Tours 新上线。此行程由 {operator} 运营，在 {count} 条评价中获得 {rating} 分。",
                 "earlyReviews": "{count} 条早期评价",
                 "howWeHandle": "我们如何处理评价",
