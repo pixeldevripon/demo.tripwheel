@@ -71,6 +71,15 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.VIEW_REVIEWS],
             },
             {
+                // Who has booked, and who still owes a review. Operators see it
+                // too, scoped by the BACKEND to their own customers - the same
+                // actor-scoped rule the queues above follow.
+                title: 'Customers',
+                url: 'customers',
+                icon: UserGroupIcon,
+                permissions: [Permission.VIEW_USERS],
+            },
+            {
                 title: 'Payments',
                 url: 'payments',
                 icon: CreditCardIcon,
