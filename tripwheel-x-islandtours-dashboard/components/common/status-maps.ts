@@ -118,3 +118,37 @@ export const REVIEW_STATUS: Record<ReviewModerationStatus, StatusMeta> = {
     HELD: { label: 'Held', variant: 'info' },
     REJECTED: { label: 'Rejected', variant: 'danger' },
 };
+
+/**
+ * Customer lifecycle, derived from the booking count rather than a stored
+ * column - "how many times have they come back" is the whole of it, so a column
+ * would only be a second copy that can go stale.
+ */
+export type CustomerTier = 'new' | 'repeat' | 'loyal';
+
+export const CUSTOMER_TIER: Record<CustomerTier, StatusMeta> = {
+    new: { label: 'New', variant: 'neutral' },
+    repeat: { label: 'Repeat', variant: 'info' },
+    loyal: { label: 'Loyal', variant: 'success' },
+};
+
+export function customerTier(bookingsCount: number): CustomerTier {
+    if (bookingsCount >= 5) return 'loyal';
+    if (bookingsCount >= 2) return 'repeat';
+    return 'new';
+}
+
+/**
+ * Review standing for a customer row.
+ *
+ * `warning` on "awaiting" is deliberate: it is the one state on this screen
+ * that someone can act on, and the action is one click away in the same row.
+ */
+export const CUSTOMER_REVIEW_STATE: Record<
+    'awaiting' | 'all_reviewed' | 'none',
+    StatusMeta
+> = {
+    awaiting: { label: 'Awaiting', variant: 'warning' },
+    all_reviewed: { label: 'All reviewed', variant: 'success' },
+    none: { label: 'No reviews', variant: 'neutral' },
+};

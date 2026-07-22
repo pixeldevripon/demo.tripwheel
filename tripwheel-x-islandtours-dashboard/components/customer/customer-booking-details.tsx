@@ -25,6 +25,7 @@ import {
     refundDue,
 } from '@/lib/bookings/format';
 import { formatDate } from '@/lib/utils';
+import { reviewUrl } from '@/lib/public-site';
 import type { BookingListItem, BookingPaymentModel } from '@/types/booking';
 
 /**
@@ -150,6 +151,36 @@ export function CustomerBookingDetails({
                             {PAYMENT_MODEL_NOTE[booking.paymentModel]}
                         </p>
                     </Section>
+
+                    {/* Only on a trip that has actually happened and can still
+                        be reviewed - `canReview` is the server's own gate, so
+                        this cannot offer a review the API would refuse. The
+                        token is a write credential and reaches the client only
+                        on the traveller's OWN bookings. */}
+                    {booking.review?.canReview && booking.review.reviewToken ? (
+                        <Section label='Review'>
+                            <p className='m-0 pb-3 text-xs text-muted-foreground'>
+                                How was this trip? It takes one tap, and the rest
+                                is optional.
+                            </p>
+                            <Button asChild size='sm' className='w-full'>
+                                <a
+                                    href={reviewUrl(booking.review.reviewToken)}
+                                    target='_blank'
+                                    rel='noopener noreferrer'>
+                                    Leave a review
+                                </a>
+                            </Button>
+                        </Section>
+                    ) : null}
+
+                    {booking.review?.reviewed ? (
+                        <Section label='Review'>
+                            <p className='m-0 text-xs text-muted-foreground'>
+                                Thanks - you have already reviewed this trip.
+                            </p>
+                        </Section>
+                    ) : null}
 
                     <Section label='Cancellation'>
                         <CancellationPanel
