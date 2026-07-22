@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Tours, Review Strategy Verification</title>
+<style>
+  :root{
+    --brand:#E8611A; --brand-dark:#c44e12; --ink:#1f2937; --muted:#6B7280;
+    --bg:#faf8f6; --card:#ffffff; --line:#e7e3df; --code-bg:#f4f1ee;
+    --locked:#2563eb; --locked-bg:#eaf1ff; --new:#15803d; --new-bg:#e9f7ee;
+    --change:#b45309; --change-bg:#fdf2e3; --sidebar-w:310px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.62;font-size:16px;-webkit-font-smoothing:antialiased}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:16px;
+    padding:12px 22px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.03)}
+  .topbar .brand{display:flex;align-items:center;gap:11px;font-weight:700;white-space:nowrap}
+  .topbar .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);flex:none}
+  .topbar .brand small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:.02em}
+  .search{margin-left:auto;position:relative;display:flex;align-items:center}
+  .search input{width:300px;max-width:46vw;padding:9px 14px 9px 34px;border:1px solid var(--line);
+    border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  .search input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+  .search .mag{position:absolute;left:11px;color:var(--muted);font-size:14px;pointer-events:none}
+  .search .count{position:absolute;right:10px;font-size:12px;color:var(--muted)}
+  .menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;font-size:15px;cursor:pointer}
+  .layout{display:flex;align-items:flex-start;max-width:1320px;margin:0 auto}
+  .sidebar{position:sticky;top:57px;align-self:flex-start;width:var(--sidebar-w);flex:none;
+    height:calc(100vh - 57px);overflow-y:auto;padding:20px 12px 60px 22px;border-right:1px solid var(--line)}
+  .sidebar h4{margin:6px 8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+  .toc-list{list-style:none;margin:0;padding:0}
+  .toc-list a{display:block;text-decoration:none;color:#374151;padding:5px 9px;border-radius:7px;
+    font-size:13.5px;border-left:2px solid transparent;line-height:1.35}
+  .toc-list a.lvl3{padding-left:22px;font-size:12.7px;color:#586074}
+  .toc-list a:hover{background:#f1ece8;color:var(--ink)}
+  .toc-list a.active{color:var(--brand-dark);background:var(--change-bg);border-left-color:var(--brand);font-weight:600}
+  .toc-list a.hide{display:none}
+  .content{flex:1;min-width:0;padding:30px 48px 120px;max-width:900px}
+  .content h1{font-size:30px;line-height:1.2;margin:.2em 0 .5em;letter-spacing:-.01em}
+  .content h2{font-size:23px;margin:1.7em 0 .5em;padding-top:14px;border-top:2px solid var(--line);scroll-margin-top:72px}
+  .content h2:first-of-type{border-top:none;padding-top:0}
+  .content h3{font-size:17.5px;margin:1.5em 0 .4em;color:#111827;scroll-margin-top:72px}
+  .content p{margin:.6em 0}
+  .content a{color:var(--brand-dark);text-decoration:underline;text-underline-offset:2px}
+  .content strong{color:#111827}
+  .content ul,.content ol{margin:.5em 0 .9em;padding-left:1.4em}
+  .content li{margin:.28em 0}
+  .content blockquote{margin:1em 0;padding:.6em 1.1em;background:#fff;border-left:3px solid var(--brand);
+    border-radius:0 8px 8px 0;color:#374151}
+  .content blockquote p{margin:.4em 0}
+  hr{border:none;border-top:1px solid var(--line);margin:2.2em 0}
+  table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:14px;background:#fff;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  thead th{background:#f6efe9;font-weight:700;color:#1f2937;border-bottom:2px solid #e3d6cc}
+  tbody tr:nth-child(even){background:#fbfaf8}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;
+    background:var(--code-bg);padding:1.5px 5px;border-radius:5px;color:#9a3412}
+  pre{background:#1f2430;color:#e6e1d6;padding:16px 18px;border-radius:11px;overflow-x:auto;
+    font-size:12.5px;line-height:1.5;margin:1.1em 0;border:1px solid #11141b}
+  pre code{background:none;color:inherit;padding:0;font-size:12.5px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:1px 7px;
+    border-radius:999px;vertical-align:baseline;white-space:nowrap}
+  .tag-locked{color:var(--locked);background:var(--locked-bg)}
+  .tag-new{color:var(--new);background:var(--new-bg)}
+  .tag-change{color:var(--change);background:var(--change-bg)}
+  .tag-wrong{color:#b91c1c;background:#fdecec}
+  mark{background:#ffe49b;color:inherit;padding:0 1px;border-radius:2px}
+  mark.current{background:var(--brand);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:6px 0 4px;
+    padding:13px 16px;background:#fff;border:1px solid var(--line);border-radius:11px;font-size:13px}
+  .legend b{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .legend .li{display:flex;align-items:center;gap:7px;color:#374151}
+  .backtop{position:fixed;right:20px;bottom:20px;z-index:25;background:var(--brand);color:#fff;border:none;
+    width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .backtop.show{opacity:1;pointer-events:auto}
+  @media (max-width:980px){
+    .sidebar{position:fixed;top:57px;left:0;z-index:20;background:#fff;transform:translateX(-100%);
+      transition:transform .22s;box-shadow:2px 0 16px rgba(0,0,0,.12);width:84vw;max-width:340px}
+    .sidebar.open{transform:translateX(0)}
+    .menu-btn{display:inline-block}
+    .content{padding:22px 20px 100px}
+    .search input{width:160px}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+  <div class="brand"><span class="dot"></span><span>Island Tours<small>Critical Verification Report</small></span></div>
+  <div class="search">
+    <span class="mag">&#128269;</span>
+    <input id="searchInput" type="search" placeholder="Search this document..." autocomplete="off" spellcheck="false">
+    <span class="count" id="searchCount"></span>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <h4>Contents</h4>
+    <ul class="toc-list" id="tocList"></ul>
+  </nav>
+  <main class="content" id="content">
+<h1 id="island-tours-review-strategy-critical-verification-report">Island Tours Review Strategy, Critical Verification Report</h1>
+<p><strong>Companion to island-tours-review-strategy.md (advisory v0.1). June 18, 2026.</strong> Method: six-angle adversarial fact-check. Each angle was researched by a dedicated agent instructed to actively try to refute the advisory's claims, using current 2026 primary sources (Trustpilot help and corporate pages, EUR-Lex and the European Commission UCPD guidance, Google Search Central, the official Viator, GetYourGuide, Booking.com and Airbnb help centers, the Journal of Marketing, the Spiegel Research Center, and PowerReviews). Verdicts are VERIFIED, NEEDS NUANCE, or WRONG.</p>
+<hr />
+<h2 id="bottom-line">Bottom line</h2>
+<p>The advisory's four core recommendations all survive scrutiny:</p>
+<ol type="1">
+<li>Build your own verified-booking review system for tours. <strong>Holds.</strong></li>
+<li>Use Trustpilot only as a platform-trust layer, one island.tours profile, not for tour reviews. <strong>Holds</strong>, with a softer line on Trustpilot Product Reviews.</li>
+<li>Keep platform reviews and tour reviews strictly separate. <strong>Holds.</strong></li>
+<li>Close the post-tour review-request gap. <strong>Holds.</strong></li>
+</ol>
+<p>But the verification found <strong>one material problem</strong> that changes a tactic, not the strategy, plus a set of accuracy fixes. The material problem is review gating. The rest is precision: a stale Trustpilot statistic, a renamed Google product, several mis-attributed CRO statistics, and a review-timing recommendation that is industry-normal but not as evidence-backed as the advisory implied.</p>
+<hr />
+<h2 id="the-one-material-change-stop-sentiment-gating-the-trustpilot-invitation">The one material change: stop sentiment-gating the Trustpilot invitation</h2>
+<p><strong>This is the most important finding in the whole verification.</strong></p>
+<p>The advisory (sections 4.8, 4.9, 5.6, and the step 4 of the collection flow in 6.1) recommends routing only customers who rate the experience highly to the Trustpilot platform-review step, summarized as "gate the optional Trustpilot ask, never gate the first-party publication." The second half is correct. The first half is a real liability.</p>
+<p>Selectively inviting only happy customers to a third-party review platform is "review gating," and it is not a safe lever.</p>
+<ul>
+<li><strong>It violates Trustpilot's own rules.</strong> Trustpilot's guidelines treat selectively inviting only satisfied customers as a prohibited manipulation of the TrustScore, and the business account can be sanctioned or delisted for it. Source: Trustpilot Guidelines for Reviewers (April 2026), https://corporate.trustpilot.com/legal/for-reviewers/guidelines-for-reviewers/apr-2026, and Best practices for review invitations, https://help.trustpilot.com/s/article/Best-practices-for-creating-review-invitations.</li>
+<li><strong>It aligns with conduct a regulator just punished.</strong> In decision PS12962 the Italian competition authority (AGCM) fined Trustpilot 4 million euro, finding that its tools "actually allow businesses to select the consumers to whom review invitations are sent, with implications for the overall representativeness of the published ratings," which the authority treated as a misleading practice under the Italian transposition of the Unfair Commercial Practices Directive. The fine targeted the platform, but the legal theory (selective invitation distorts representativeness and misleads consumers) applies to a business that deliberately skews its invitation sample. Source: https://en.agcm.it/en/media/press-releases/2023/3/PS12962.</li>
+<li><strong>The direction of travel is one way.</strong> The US FTC's Consumer Reviews and Testimonials Rule (effective October 2024) explicitly targets review gating, with warning-letter enforcement underway. Not EU law, but it confirms the mainstream regulatory view. Source: https://www.ftc.gov/news-events/news/press-releases/2024/08/federal-trade-commission-announces-final-rule-banning-fake-reviews-testimonials.</li>
+</ul>
+<p><strong>The compliant redesign.</strong> Invite all customers to the platform review on the same neutral basis, with no sentiment-based routing. Keep publishing every first-party tour review regardless of score (the advisory already does this, and it is correct). The service-recovery channel for unhappy customers should be offered alongside the neutral platform invitation, never as a substitute that withholds it. Anti-fatigue is then handled by a single unified flow, a per-customer frequency cap, and never double-sending, not by filtering on happiness. The lawful one-line version is: invite neutrally, publish everything, disclose how you verify.</p>
+<p>One related platform constraint: Trustpilot bans incentivized reviews outright, so no rewards or discounts may be attached to a Trustpilot invitation. EU law would permit a disclosed incentive, but Trustpilot's rules do not, so the platform layer must stay incentive-free.</p>
+<hr />
+<h2 id="angle-1-trustpilot">Angle 1: Trustpilot</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Claim in the advisory</th>
+<th>Verdict</th>
+<th>Correction</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Service Reviews are about the company; Product Reviews are a separate SKU-level product</td>
+<td>VERIFIED</td>
+<td>None</td>
+</tr>
+<tr class="even">
+<td>One business profile per domain; do not fragment into many profiles</td>
+<td>VERIFIED</td>
+<td>Precise rule is one profile per domain, so distinct brands or domains can each have one</td>
+</tr>
+<tr class="odd">
+<td>Product Reviews live on Trustpilot, not your own site</td>
+<td>NEEDS NUANCE</td>
+<td>Product Reviews are hosted by Trustpilot but are designed to display back on your own product pages via widgets and to feed Google Shopping. They are more capable than the advisory implies</td>
+</tr>
+<tr class="even">
+<td>Trustpilot is a Google-licensed partner; about 100 reviews earns seller stars</td>
+<td>VERIFIED, term outdated</td>
+<td>Google renamed Seller Ratings to "store ratings." Keep the 100-review and 3.5 star bar, but do not assert a fixed twelve-month window as fact (Google docs reference 24 months)</td>
+</tr>
+<tr class="odd">
+<td>Open model: anyone can post an organic review without proof of purchase</td>
+<td>VERIFIED</td>
+<td>None</td>
+</tr>
+<tr class="even">
+<td>The useful features sit behind paid tiers</td>
+<td>VERIFIED</td>
+<td>Treat any specific prices as third-party estimates, billed per domain</td>
+</tr>
+<tr class="odd">
+<td>About 200 million reviews across 900,000 businesses</td>
+<td>WRONG</td>
+<td>It is roughly 350 million reviews across about 1.3 million businesses in early 2026. Source: https://corporate.trustpilot.com/</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Strategic read.</strong> Using one island.tours profile for service reviews and rejecting per-tour and per-operator profiles is sound and matches how Trustpilot is built. The one refinement: the advisory's "only service reviews, never Product Reviews" framing is stricter than the platform requires. Trustpilot Product Reviews can capture per-tour feedback under the single profile and syndicate it back to your pages. The advisory's reasons to keep tour reviews first-party (SEO ownership, schema control, the verified-booking promise) still stand, so first-party should still own the tour page, but Product Reviews should be described as a deliberately-declined option, not a near-impossibility.</p>
+<hr />
+<h2 id="angle-2-eu-consumer-law">Angle 2: EU consumer law</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Claim</th>
+<th>Verdict</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>You must disclose whether and how reviews are verified</td>
+<td>VERIFIED</td>
+<td>Article 7(6) UCPD (Omnibus). Note: you may publish unverified reviews if you say so honestly; what you cannot do is claim verification you do not perform</td>
+</tr>
+<tr class="even">
+<td>Claiming reviews are from real buyers without reasonable checks is a banned practice</td>
+<td>VERIFIED</td>
+<td>Annex I point 23b, blacklist</td>
+</tr>
+<tr class="odd">
+<td>Fake or commissioned reviews are prohibited</td>
+<td>VERIFIED</td>
+<td>Annex I point 23c</td>
+</tr>
+<tr class="even">
+<td>Suppressing negatives while publishing positives is unfair</td>
+<td>VERIFIED</td>
+<td>Caught by Articles 6 and 7 plus the Commission Guidance, publish both or disclose you do not</td>
+</tr>
+<tr class="odd">
+<td>Gating the third-party invitation is a safe optional lever</td>
+<td>WRONG</td>
+<td>See the material-change section above. Selective invitation is a recognised legal-risk vector and a Trustpilot guideline breach</td>
+</tr>
+<tr class="even">
+<td>Incentivized reviews allowed if disclosed</td>
+<td>VERIFIED for EU law</td>
+<td>But Trustpilot bans them, so not usable on the platform layer</td>
+</tr>
+<tr class="odd">
+<td>Netherlands establishment or Curacao location does not switch off EU rules</td>
+<td>VERIFIED</td>
+<td>The UCPD applies to practices directed at EU consumers regardless of where the service is performed. ITG B.V. being Netherlands-based makes the Dutch ACM the home regulator; Dutch transposition is Boek 6 BW, articles 6:193a to 6:193j</td>
+</tr>
+</tbody>
+</table>
+<p>Primary sources: Directive (EU) 2019/2161 https://eur-lex.europa.eu/eli/dir/2019/2161/oj/eng; Commission Notice C/2021/526 https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:52021XC1229(05); AGCM PS12962 https://en.agcm.it/en/media/press-releases/2023/3/PS12962.</p>
+<hr />
+<h2 id="angle-3-google-structured-data">Angle 3: Google structured data</h2>
+<p>All five schema claims VERIFIED. The advisory's three recommendations (emit AggregateRating only at the display threshold, never mark up the Provider Rating fallback as the tour aggregate, never put review markup on the Organization) are all consistent with current Google policy. Only the framing needs three tightenings.</p>
+<ul>
+<li><strong>There is no Google minimum review count.</strong> Google requires <code>ratingValue</code> plus <code>ratingCount</code> or <code>reviewCount</code>, and states no minimum. The advisory's "at least 3 reviews" must be presented as the platform's own display choice, not a Google rule. Source: https://developers.google.com/search/docs/appearance/structured-data/review-snippet.</li>
+<li><strong>A structured-data manual action removes rich-result eligibility only, it does not lower web ranking.</strong> The advisory should not describe it as a ranking penalty. Source: https://developers.google.com/search/docs/appearance/structured-data/sd-policies.</li>
+<li><strong>The self-serving rule is a star-eligibility restriction, and third-party widgets do not escape it.</strong> A business embedding reviews about itself (including via a Trustpilot or Facebook widget) on its own pages is still self-serving and still gets no review stars. This actually reinforces the advisory: a Trustpilot widget on island.tours is a trust badge, not a route to rich-result stars, so keep tour AggregateRating first-party. Source: https://developers.google.com/search/docs/appearance/structured-data/review-snippet.</li>
+</ul>
+<hr />
+<h2 id="angle-4-how-the-big-otas-actually-work">Angle 4: how the big OTAs actually work</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Claim</th>
+<th>Verdict</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Viator is verified-booking-only and syndicates Tripadvisor reviews</td>
+<td>NEEDS NUANCE</td>
+<td>Viator also runs an ungated path (Tripadvisor-account, no proof of purchase). Product-level Tripadvisor syndication is a fallback only when a listing has no native Viator reviews; company-level Tripadvisor reviews feed in directly</td>
+</tr>
+<tr class="even">
+<td>GetYourGuide is verified-purchaser only</td>
+<td>VERIFIED</td>
+<td>Slight nuance: a verified buyer who did not complete (guide no-show, unclear meeting point) can still review</td>
+</tr>
+<tr class="odd">
+<td>Booking.com: invite about 48h after checkout, 3-month window, 1-10 plus subscores</td>
+<td>VERIFIED</td>
+<td>The overall 1-10 score is the guest's own rating, not an average of the subscores; anonymous reviews are now allowed</td>
+</tr>
+<tr class="even">
+<td>Airbnb: 14-day double-blind, simultaneous publish, edit until the other submits</td>
+<td>VERIFIED</td>
+<td>Applies to homes; Services and Experiences reviews cannot be edited</td>
+</tr>
+<tr class="odd">
+<td>Theme chips above review cards are a Viator and GetYourGuide pattern</td>
+<td>NEEDS NUANCE</td>
+<td>The pattern is real and current, but the exact labels "Why travelers loved this" and "What travelers loved" could not be confirmed verbatim on official pages. Hedge the wording</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What changed in 2025 and 2026, worth knowing.</strong> Consumer-facing AI review summaries are now live: GetYourGuide put AI summaries above the reviews on the traveler page (a 2026 release), and Booking.com is rolling out AI review summaries too. Viator and Tripadvisor merged operations and now syndicate ratings into AI assistants. This validates the master's direction on AI summaries (LD28) while confirming that deferring them until a tour has real review depth is the right launch call. Sources: https://www.getyourguide.supply/articles/get-more-from-your-reviews-whats-new-on-getyourguide; https://news.booking.com/bookingcom-debuts-agentic-ai-innovations-adding-to-its-robust-suite-of-genai-tools-for-customers/.</p>
+<p><strong>Net for the advisory.</strong> The verified-booking positioning is correct, but the precise phrase should be "verified purchaser" rather than "booked and completed," because GetYourGuide and Booking both accept some non-completers. The timed post-experience invitation is genuinely universal. The benchmark table needs the Viator nuance and the hedge on the chip labels.</p>
+<hr />
+<h2 id="angle-5-review-collection-timing-and-channels">Angle 5: review-collection timing and channels</h2>
+<p>This angle produced the most useful challenge to the advisory after the gating finding.</p>
+<ul>
+<li><strong>The morning-after send is industry-normal but not proven optimal.</strong> The two direct day-tour peers send the first request the day after: Viator on day one (plus a text), GetYourGuide one to two days after. So the advisory matches industry practice. But the strongest controlled evidence cuts the other way. A Journal of Marketing field study across more than 300,000 consumers, run partly on a travel marketplace selling guided tours, found that next-day reminders reduced the likelihood of a review for experience goods (travel, restaurants), while delayed reminders increased it, with a larger penalty for younger travelers. The honest synthesis: a day tour is fully consumed on the day, so the "needs time to evaluate" objection is weaker than for hotels or products, but there is no basis to call the morning-after optimal. Source: https://www.ama.org/2023/01/10/asking-for-customer-reviews-at-the-right-time-sooner-is-not-always-better/.</li>
+<li><strong>One reminder is right, but 72 hours is eager.</strong> A single reminder is well supported and matches TripAdvisor's one-reminder cap. The interval is not evidence-settled; TripAdvisor's tour guidance leans toward about a week, and the reactance study argues against tight loops. Stretching the reminder to roughly 5 to 7 days is at least as defensible as 72 hours and better supported.</li>
+<li><strong>Dropping SMS is justified, with one watch-out.</strong> WhatsApp plus email cover the high-completion and low-cost channels. The famous "98 percent SMS open rate" is not a measured statistic. Keep an eye on the US-traveler segment, which skews to SMS and iMessage over WhatsApp.</li>
+<li><strong>Channel direction is right, magnitudes are soft.</strong> SMS and WhatsApp do out-convert email for review requests, but the precise lift figures are vendor case studies, not controlled data. Cite the direction, not specific multiples.</li>
+<li><strong>One compliance add.</strong> WhatsApp Business requires prior opt-in and an approved message template; capture WhatsApp opt-in at booking so the reminder template is not rejected.</li>
+</ul>
+<p><strong>Recommendation.</strong> Keep the morning-after send as a launch default, but label it a hypothesis to A/B test against a day-2 or day-3 send, stretch the reminder toward 5 to 7 days, and add the WhatsApp opt-in requirement.</p>
+<hr />
+<h2 id="angle-6-the-cro-statistics">Angle 6: the CRO statistics</h2>
+<p>Every figure traced back to something real, but several were mis-attributed or loosely worded. The advisory inherits some of these from the master (LD31 and the Baymard citation in section 5.7), so the master sections that carry them are worth tightening the next time they are touched. This is a citation-precision issue, not a conflict.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Statistic as used</th>
+<th>Verdict</th>
+<th>Correct form and source</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>96% of users actively look for negative reviews</td>
+<td>NEEDS NUANCE</td>
+<td>"96% of shoppers look for negative reviews at least sometimes." PowerReviews 2021, not Bazaarvoice or Baymard</td>
+</tr>
+<tr class="even">
+<td>52% specifically seek 1-star reviews first</td>
+<td>NEEDS NUANCE</td>
+<td>"52% specifically seek out one-star reviews." PowerReviews 2021. Drop "first"</td>
+</tr>
+<tr class="odd">
+<td>Reviews are the number one conversion driver</td>
+<td>NEEDS NUANCE</td>
+<td>Reframe as the most influential factor in purchase decisions (PowerReviews 2023), or cite the Spiegel conversion lift</td>
+</tr>
+<tr class="even">
+<td>95% of users rely on reviews (Baymard)</td>
+<td>WRONG attribution</td>
+<td>Baymard's 95% is "relied on reviews to learn more about products" (a UX lab finding), not purchase-decision reliance. Use PowerReviews for reliance</td>
+</tr>
+<tr class="odd">
+<td>Photo reviews are the most trusted, better than text</td>
+<td>NEEDS NUANCE</td>
+<td>Use "shoppers who interact with review photos and video convert about twice the baseline" (PowerReviews, roughly 104% lift, 2022) and "about 77% seek out customer photos." Drop the photo-beats-text claim</td>
+</tr>
+<tr class="even">
+<td>An all-five-star page reads as fake</td>
+<td>VERIFIED</td>
+<td>Add support: purchase likelihood peaks at 4.0 to 4.7 stars then falls toward 5.0 (Spiegel Research Center, Northwestern, 2017). The +67% lift for shoppers who seek bad reviews is Reevoo (2012), not Northwestern</td>
+</tr>
+</tbody>
+</table>
+<p>The underlying point the advisory makes with these numbers (negatives build trust and convert, show them, do not chase a perfect 5.0) is correct and well supported. Only the attributions and exact wordings need fixing.</p>
+<hr />
+<h2 id="prioritized-list-of-changes-to-the-advisory">Prioritized list of changes to the advisory</h2>
+<p>Critical (changes a recommendation):</p>
+<ol type="1">
+<li><strong>Reverse the review-gating tactic.</strong> Rewrite 4.8 point 2, 4.9, 5.6 point 2, and the step 4 of 6.1 so the Trustpilot or platform invitation goes to all customers on the same neutral basis. Service recovery is offered alongside, never instead. Cite the AGCM fine and Trustpilot's anti-gating rule.</li>
+</ol>
+<p>High (accuracy that affects credibility):</p>
+<ol start="2" type="1">
+<li>Fix the Trustpilot scale to about 350 million reviews and 1.3 million businesses (4.1).</li>
+<li>Rename Google Seller Ratings to Google store ratings throughout (4.2, 4.8).</li>
+<li>Reframe the review-timing recommendation (5.4, 5.5): morning-after is a launch default to A/B test, stretch the reminder to 5 to 7 days, add WhatsApp opt-in and template compliance, note the US-traveler SMS gap.</li>
+<li>Fix the CRO statistic attributions and wordings (executive summary, 3.3, 3.4, 10.4) per the table above.</li>
+</ol>
+<p>Medium (framing precision):</p>
+<ol start="6" type="1">
+<li>Soften the Trustpilot Product Reviews rejection in 4.6 to a deliberately-declined option, noting they can syndicate to your pages.</li>
+<li>Tighten the schema framing in 9.2 and 9.4: no Google minimum review count, a manual action removes rich-result eligibility only (not ranking), and the self-serving rule means a Trustpilot widget about yourself earns no stars.</li>
+<li>Add the OTA benchmark nuances in 11.1 and 11.2: "verified purchaser" not "booked and completed," the Viator ungated and fallback-syndication detail, the hedge on the chip labels, and the 2026 arrival of consumer-facing AI review summaries.</li>
+</ol>
+<p>None of these touches the master. They refine the advisory only.</p>
+<hr />
+<h2 id="sources">Sources</h2>
+<p>Trustpilot: https://corporate.trustpilot.com/ ; https://help.trustpilot.com/s/article/Product-reviews-FAQ ; https://help.trustpilot.com/s/article/Trustpilot-and-Googles-store-ratings ; https://corporate.trustpilot.com/legal/for-reviewers/guidelines-for-reviewers/apr-2026. EU law: https://eur-lex.europa.eu/eli/dir/2019/2161/oj/eng ; https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:52021XC1229(05) ; https://en.agcm.it/en/media/press-releases/2023/3/PS12962 ; https://www.ftc.gov/news-events/news/press-releases/2024/08/federal-trade-commission-announces-final-rule-banning-fake-reviews-testimonials. Google: https://developers.google.com/search/docs/appearance/structured-data/review-snippet ; https://developers.google.com/search/docs/appearance/structured-data/sd-policies. OTAs: https://operatorresources.viator.com/understanding-different-types-of-reviews/ ; https://supply.getyourguide.support/hc/en-us/articles/13981000922141-Understanding-Customer-Reviews-on-GetYourGuide ; https://partner.booking.com/en-us/help/guest-reviews/general/guest-review-process-and-conditions ; https://www.airbnb.com/help/article/13 ; https://www.getyourguide.supply/articles/get-more-from-your-reviews-whats-new-on-getyourguide. Timing and CRO research: https://www.ama.org/2023/01/10/asking-for-customer-reviews-at-the-right-time-sooner-is-not-always-better/ ; https://spiegel.medill.northwestern.edu/how-online-reviews-influence-sales/ ; https://www.powerreviews.com/power-of-reviews-survey-2021/ ; https://www.powerreviews.com/power-of-reviews-2023/ ; https://www.businesswire.com/news/home/20120111005032/en/Social-Commerce-Bad-Reviews-Good-Business-Reevoo.</p>
+<hr />
+<p><em>End of verification report. The advisory has been updated to v0.2 to apply the critical and high-priority changes above.</em></p>
+  </main>
+</div>
+<button class="backtop" id="backtop" aria-label="Back to top">&#8593;</button>
+<script>
+(function(){
+  var content = document.getElementById('content');
+  var tocList = document.getElementById('tocList');
+
+  // ---- Verdict legend after H1 ----
+  var h1 = content.querySelector('h1');
+  if (h1){
+    var lg = document.createElement('div');
+    lg.className = 'legend';
+    lg.innerHTML = '<b>Verdicts</b>'+
+      '<span class="li"><span class="tag tag-new">VERIFIED</span> holds up</span>'+
+      '<span class="li"><span class="tag tag-change">NEEDS NUANCE</span> partly right, correction inside</span>'+
+      '<span class="li"><span class="tag tag-wrong">WRONG</span> must change</span>';
+    h1.parentNode.insertBefore(lg, h1.nextSibling);
+  }
+
+  // ---- Verdict word styling in table cells ----
+  function walkText(root, fn){
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode:function(n){
+        var p = n.parentNode;
+        while(p && p!==root){
+          var t = p.nodeName;
+          if(t==='PRE'||t==='CODE'||t==='SCRIPT'||t==='STYLE'||t==='MARK'||t==='A') return NodeFilter.FILTER_REJECT;
+          p = p.parentNode;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes=[], n; while(n=w.nextNode()) nodes.push(n);
+    nodes.forEach(fn);
+  }
+  var VERD = /(VERIFIED|NEEDS NUANCE|WRONG|UNVERIFIABLE)/g;
+  walkText(content, function(node){
+    if(!VERD.test(node.nodeValue)) return;
+    VERD.lastIndex=0;
+    var s=node.nodeValue, frag=document.createDocumentFragment(), last=0, m;
+    while(m=VERD.exec(s)){
+      if(m.index>last) frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+      var span=document.createElement('span');
+      var v=m[1];
+      span.className='tag '+(v==='VERIFIED'?'tag-new':(v==='WRONG'?'tag-wrong':'tag-change'));
+      span.textContent=v; frag.appendChild(span);
+      last=m.index+m[0].length;
+    }
+    if(last<s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    node.parentNode.replaceChild(frag,node);
+  });
+
+  // ---- Build TOC ----
+  var heads = content.querySelectorAll('h2, h3');
+  var slug = {};
+  heads.forEach(function(h){
+    if(!h.id){
+      var base = h.textContent.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      var id = base || 'sec'; var i=2; while(slug[id]){ id = base+'-'+(i++); } h.id = id;
+    }
+    slug[h.id]=true;
+    var a = document.createElement('a');
+    a.href = '#'+h.id; a.textContent = h.textContent;
+    a.className = (h.tagName==='H3') ? 'lvl3' : 'lvl2';
+    a.dataset.target = h.id; tocList.appendChild(a);
+  });
+  var tocLinks = Array.prototype.slice.call(tocList.querySelectorAll('a'));
+
+  // ---- Scrollspy ----
+  var byId = {};
+  tocLinks.forEach(function(a){ byId[a.dataset.target]=a; });
+  var spy = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        tocLinks.forEach(function(a){a.classList.remove('active');});
+        var a = byId[e.target.id]; if(a){ a.classList.add('active'); a.scrollIntoView({block:'nearest'}); }
+      }
+    });
+  }, {rootMargin:'-72px 0px -70% 0px', threshold:0});
+  heads.forEach(function(h){ spy.observe(h); });
+
+  // ---- Mobile menu ----
+  var sidebar = document.getElementById('sidebar');
+  document.getElementById('menuBtn').addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+  tocList.addEventListener('click', function(e){ if(e.target.tagName==='A') sidebar.classList.remove('open'); });
+
+  // ---- Back to top ----
+  var backtop = document.getElementById('backtop');
+  window.addEventListener('scroll', function(){
+    if(window.scrollY>600) backtop.classList.add('show'); else backtop.classList.remove('show');
+  });
+  backtop.addEventListener('click', function(){ window.scrollTo({top:0,behavior:'smooth'}); });
+
+  // ---- Search ----
+  var input = document.getElementById('searchInput');
+  var countEl = document.getElementById('searchCount');
+  var marks = [], cur = -1;
+  function clearMarks(){
+    marks.forEach(function(mk){ var t=document.createTextNode(mk.textContent); mk.parentNode.replaceChild(t, mk); });
+    marks = []; cur = -1; content.normalize();
+  }
+  function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function run(q){
+    clearMarks(); q=q.trim();
+    if(q.length<2){ countEl.textContent=''; tocLinks.forEach(function(a){a.classList.remove('hide');}); return; }
+    var re = new RegExp(esc(q),'gi');
+    walkText(content, function(node){
+      if(!re.test(node.nodeValue)) return; re.lastIndex=0;
+      var s=node.nodeValue, frag=document.createDocumentFragment(), last=0, m;
+      while(m=re.exec(s)){
+        if(m.index>last) frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+        var mk=document.createElement('mark'); mk.textContent=m[0]; frag.appendChild(mk); marks.push(mk);
+        last=m.index+m[0].length; if(m.index===re.lastIndex) re.lastIndex++;
+      }
+      if(last<s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+      node.parentNode.replaceChild(frag,node);
+    });
+    countEl.textContent = marks.length ? (marks.length+' found') : 'none';
+    var lq=q.toLowerCase();
+    tocLinks.forEach(function(a){ a.classList.toggle('hide', a.textContent.toLowerCase().indexOf(lq)===-1); });
+    if(marks.length){ cur=0; focusMark(); }
+  }
+  function focusMark(){
+    marks.forEach(function(mk){mk.classList.remove('current');});
+    var mk=marks[cur]; if(!mk) return;
+    mk.classList.add('current'); mk.scrollIntoView({block:'center',behavior:'smooth'});
+    countEl.textContent = (cur+1)+' / '+marks.length;
+  }
+  var deb;
+  input.addEventListener('input', function(){ clearTimeout(deb); deb=setTimeout(function(){ run(input.value); }, 180); });
+  input.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && marks.length){ e.preventDefault(); cur=(cur+(e.shiftKey?-1:1)+marks.length)%marks.length; focusMark(); }
+    if(e.key==='Escape'){ input.value=''; run(''); }
+  });
+})();
+</script>
+</body>
+</html>

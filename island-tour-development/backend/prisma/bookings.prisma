@@ -84,16 +84,23 @@ model Booking {
   eurFxProviderAsOf     DateTime? // provider timestamp of the booking→EUR rate
 
   // Contact (OCTO Contact; guest override of User)
-  contactFirstName  String?
-  contactLastName   String?
-  contactFullName   String?
-  contactEmail      String?
-  contactPhone      String?
-  contactPostalCode String?
-  contactCountry    String?
-  contactLocales    String[] @default([])
-  notes             String? // "Special requests" — capped at 500 chars in the DTO
-  newsletterOptIn   Boolean  @default(false) // Figma checkout marketing opt-in
+  contactFirstName    String?
+  contactLastName     String?
+  contactFullName     String?
+  contactEmail        String?
+  contactPhone        String?
+  contactPostalCode   String?
+  contactCountry      String?
+  contactLocales      String[] @default([])
+  notes               String? // "Special requests" — capped at 500 chars in the DTO
+  newsletterOptIn     Boolean  @default(false) // Figma checkout marketing opt-in
+  // WhatsApp consent for the post-tour review REMINDER only (never the first
+  // touch, never marketing). WhatsApp Business requires prior opt-in plus an
+  // approved non-promotional template, so without this captured at checkout the
+  // reminder template is rejected and the job silently falls back to email.
+  // Separate from `newsletterOptIn`: agreeing to a newsletter is not consent to
+  // be messaged on WhatsApp.
+  reviewWhatsappOptIn Boolean  @default(false)
 
   // Attribution + tracking (master tracking E.8; booking_complete contract)
   utmSource         String?
@@ -128,15 +135,16 @@ model Booking {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour           Tour              @relation(fields: [tourId], references: [id])
-  departure      Departure?        @relation(fields: [departureId], references: [id])
-  operator       Operator          @relation(fields: [operatorId], references: [id])
-  user           User?             @relation(fields: [userId], references: [id])
-  pickupLocation PickupLocation?   @relation(fields: [pickupLocationId], references: [id])
-  unitItems      BookingUnitItem[]
-  addOns         BookingAddOn[]
-  payments       Payment[]
-  review         Review?
+  tour             Tour              @relation(fields: [tourId], references: [id])
+  departure        Departure?        @relation(fields: [departureId], references: [id])
+  operator         Operator          @relation(fields: [operatorId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  pickupLocation   PickupLocation?   @relation(fields: [pickupLocationId], references: [id])
+  unitItems        BookingUnitItem[]
+  addOns           BookingAddOn[]
+  payments         Payment[]
+  review           Review?
+  reviewInvitation ReviewInvitation?
 
   @@index([tourId])
   @@index([operatorId])

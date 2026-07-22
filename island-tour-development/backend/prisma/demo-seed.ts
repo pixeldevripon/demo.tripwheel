@@ -15,7 +15,8 @@ import { prisma } from './demo/_shared';
 async function main() {
   const clean = process.argv.includes('--clean');
   // Targeted mode: (re)seed only the filter-only sub-categories + tag existing
-  // demo tours, without re-running the whole (non-idempotent) demo seed.
+  // demo tours. The full seed is now re-runnable, so this is a speed shortcut
+  // rather than a safety one.
   const subCategoriesOnly = process.argv.includes('--subcategories');
   if (clean) {
     await cleanDemo();

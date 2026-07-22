@@ -44,6 +44,102 @@ describe('roundRating', () => {
   });
 });
 
+/**
+ * LD11 boundary table. The three thresholds (3 tour reviews / 10 operator
+ * reviews / 4.0 operator average) are the whole decision, and an off-by-one on
+ * any of them either hides a rating a tour has earned or lends one it has not.
+ * Each pair below straddles exactly one boundary.
+ */
+describe('resolveRatingSource - LD11 boundaries (3 / 10 / 4.0)', () => {
+  // Operator is deliberately UNQUALIFIED here, so the only thing that can
+  // produce a 'tour' result is the tour-count boundary itself.
+  const noFallback = { operatorCount: 0, operatorRating: null };
+
+  it.each([
+    [2, 'operator' as const],
+    [3, 'tour' as const],
+  ])('tour with %i own reviews resolves to %s', (tourCount, expected) => {
+    const r = resolveRatingSource({
+      tourCount,
+      tourRating: 4.5,
+      operatorCount: 40,
+      operatorRating: 4.9,
+    });
+    expect(r.source).toBe(expected);
+  });
+
+  it.each([
+    [9, 'none' as const],
+    [10, 'operator' as const],
+  ])('operator with %i reviews resolves to %s', (operatorCount, expected) => {
+    const r = resolveRatingSource({
+      tourCount: 0,
+      tourRating: null,
+      operatorCount,
+      operatorRating: 4.5,
+    });
+    expect(r.source).toBe(expected);
+  });
+
+  it.each([
+    [3.9, 'none' as const],
+    [4.0, 'operator' as const],
+  ])('operator rated %s resolves to %s', (operatorRating, expected) => {
+    const r = resolveRatingSource({
+      tourCount: 0,
+      tourRating: null,
+      operatorCount: 40,
+      operatorRating,
+    });
+    expect(r.source).toBe(expected);
+  });
+
+  it('never lends a rating when the operator misses EITHER condition', () => {
+    // High rating, too few reviews.
+    expect(
+      resolveRatingSource({
+        tourCount: 1,
+        tourRating: 5,
+        operatorCount: 9,
+        operatorRating: 5,
+      }).source,
+    ).toBe('none');
+    // Many reviews, rating too low.
+    expect(
+      resolveRatingSource({
+        tourCount: 1,
+        tourRating: 5,
+        operatorCount: 500,
+        operatorRating: 3.9,
+      }).source,
+    ).toBe('none');
+  });
+
+  it('falls through to none when a 3+ review tour somehow has a null average', () => {
+    // Guards the `&& input.tourRating != null` half of the first branch: a tour
+    // cannot show a rating it does not have, however many reviews it has.
+    expect(
+      resolveRatingSource({
+        tourCount: 5,
+        tourRating: null,
+        ...noFallback,
+      }).source,
+    ).toBe('none');
+  });
+
+  it('reports the TOUR count even when showing no rating', () => {
+    // `reviewCount` is what the page renders beside the (absent) rating, and it
+    // must describe this tour, not the operator that failed to qualify.
+    const r = resolveRatingSource({
+      tourCount: 2,
+      tourRating: 5,
+      operatorCount: 9,
+      operatorRating: 5,
+    });
+    expect(r).toEqual({ source: 'none', rating: null, reviewCount: 2 });
+  });
+});
+
 describe('resolveRatingSource (LD11)', () => {
   it('uses the tour rating at ≥3 approved reviews', () => {
     const r = resolveRatingSource({

@@ -47,6 +47,20 @@ export interface TypResponse {
      * and card details withheld (the bare publicRef link is view-only).
      */
     verified: boolean;
+    /**
+     * FE-12 review affordance. **Null on an unverified payload** - the token is
+     * a WRITE credential (anyone holding it can submit a review as this guest),
+     * so it never rides on a payload a shared `publicRef` link can fetch.
+     *
+     * Gate the CTA on `canReview`, never on status alone: it is the SAME
+     * predicate the create endpoint enforces, so a button driven by anything
+     * else will offer a review the API then refuses.
+     */
+    review: {
+        reviewed: boolean;
+        canReview: boolean;
+        reviewToken: string | null;
+    } | null;
     publicRef: string;
     displayRef: string;
     status: string;

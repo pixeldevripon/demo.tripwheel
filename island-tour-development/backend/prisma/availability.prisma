@@ -70,6 +70,7 @@ model Departure {
 
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
+  reviews  Review[]
 
   @@unique([tourId, date, startTime])
   @@index([tourId, date])

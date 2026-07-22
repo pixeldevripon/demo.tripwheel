@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AvailabilityModule } from '@/availability/availability.module';
 import { TiersModule } from '@/tiers/tiers.module';
+import { ReviewsModule } from '@/reviews/reviews.module';
 import { ToursModule } from '@/tours/tours.module';
 
 import { NightlyJobsService } from './nightly-jobs.service';
@@ -13,7 +14,7 @@ import { PublicCacheService } from './public-cache.service';
  * feature modules whose services the jobs call (both export their service).
  */
 @Module({
-  imports: [TiersModule, ToursModule, AvailabilityModule],
+  imports: [TiersModule, ToursModule, AvailabilityModule, ReviewsModule],
   providers: [NightlyJobsService, PublicCacheService],
 })
 export class WorkersModule {}

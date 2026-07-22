@@ -4,11 +4,16 @@
 // only if operator has ≥10 reviews AND ≥4.0 avg (enforced in the service, not the schema).
 
 model Review {
-  id         String @id @default(uuid())
-  bookingId  String @unique // one review per booking → "Verified booking"
-  tourId     String // PER-TOUR
-  operatorId String
-  userId     String
+  id          String  @id @default(uuid())
+  bookingId   String  @unique // one review per booking → "Verified booking"
+  tourId      String // PER-TOUR
+  operatorId  String
+  userId      String
+  // The departure actually travelled on, derived from the booking at create time.
+  // Nullable: older bookings predate departures, and a booking can lose its
+  // departure without invalidating the review. Powers per-departure operator
+  // insight and seasonality analysis.
+  departureId String?
 
   // Ratings — overall + optional sub-scores (all 1–5)
   rating       Int // overall
@@ -21,18 +26,43 @@ model Review {
   reviewerFirstName String?
   reviewerInitial   String? // "Ada B."
   reviewerCountry   String?
+  // Guest type (LD36). Nullable because step 3b of the collection flow is
+  // optional — a one-tap review must still count.
+  reviewerType      ReviewerType?
 
   travelMonth Int? // 1–12
   travelYear  Int?
   photos      String[] @default([])
 
-  isVerified   Boolean @default(true) // always true (booking-gated)
-  helpfulCount Int     @default(0)
+  // Manual admin tags surfaced as highlight chips above the review cards — the
+  // pre-AI version of LD29 Tier 3, which stays deferred until 30 reviews (LD28).
+  // Admin-writable only; never operator- or traveller-set.
+  themeTags String[] @default([])
 
-  moderationStatus    ReviewModerationStatus @default(PENDING)
-  rejectionReason     String?
-  operatorResponse    String?
-  operatorRespondedAt DateTime?
+  // NATIVE reviews are booking-gated, so `isVerified` is always true for them.
+  // Stored explicitly rather than inferred so the "Every review from a confirmed
+  // booking" claim is auditable and any future non-native source is unambiguous.
+  source     ReviewSource @default(NATIVE)
+  isVerified Boolean      @default(true)
+
+  // Editorial pick for the LD29 preview module and the homepage tour-quote strip.
+  // Admin-only; never tier-linked and never operator-set.
+  isFeatured Boolean @default(false)
+
+  // DEFERRED to V2 (LD30). The column is retained so re-enabling helpful votes
+  // with a per-visitor vote binding is a feature, not a migration. There is
+  // deliberately no endpoint that writes it.
+  helpfulCount Int @default(0)
+
+  moderationStatus ReviewModerationStatus @default(PENDING)
+  rejectionReason  String?
+
+  // Published response. Authorship per LD37: PLATFORM at launch, OPERATOR from
+  // phase 4 behind moderation. E.7 forbids editing after publish, so the service
+  // rejects a second write rather than overwriting.
+  responseText   String?
+  responseAuthor ReviewResponseAuthor?
+  responseAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -41,11 +71,15 @@ model Review {
   tour         Tour                @relation(fields: [tourId], references: [id])
   operator     Operator            @relation(fields: [operatorId], references: [id])
   user         User                @relation(fields: [userId], references: [id])
+  departure    Departure?          @relation(fields: [departureId], references: [id], onDelete: SetNull)
   translations ReviewTranslation[]
+  flags        ReviewFlag[]
 
   @@index([tourId, moderationStatus, createdAt]) // per-tour listing, newest-first
-  @@index([tourId, rating]) // sort by rating
+  @@index([tourId, rating]) // sort by rating + the LD31 star-chart filter
   @@index([operatorId, moderationStatus])
+  @@index([moderationStatus, createdAt]) // cross-tour admin queue, oldest-first
+  @@index([departureId])
   @@map("reviews")
 }
 
@@ -54,10 +88,135 @@ model ReviewTranslation {
   reviewId            String
   locale              Locale
   comment             String
+  /// False marks the ORIGINAL - the locale the guest actually wrote in. Exactly
+  /// one row per review should carry false; the rest are LD32 machine output.
   isMachineTranslated Boolean @default(false)
+
+  /// SHA-1 of the source text this row was translated FROM.
+  ///
+  /// The translation cache is only a cache if it can tell "already done" from
+  /// "done, but the source has since changed". Without this the job either
+  /// re-translates every review on every run (paying per character to produce
+  /// identical output) or never re-translates at all, silently serving a stale
+  /// translation after an admin edits the original. Null on original rows and
+  /// on translations that predate LD32.
+  sourceHash String?
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@unique([reviewId, locale])
   @@map("review_translations")
+}
+
+/// Append-only audit trail. Every moderation-status change writes one row in the
+/// SAME transaction as the change itself, including deletes.
+///
+/// This is a compliance artefact, not a convenience: the Omnibus Directive lets
+/// us remove a review only on documented policy grounds (fake, abusive,
+/// off-topic, personal data) and never for being negative. Without an actor, a
+/// timestamp and a reason on every transition there is no way to demonstrate
+/// that — and no way to answer an operator who claims a review vanished.
+///
+/// Never updated, never deleted by application code.
+///
+/// DELIBERATELY NOT A FOREIGN KEY. `reviewId` is a plain column, so the trail
+/// SURVIVES the review it documents. A cascading FK would delete the evidence
+/// along with the evidence's subject, which is precisely backwards: the row that
+/// matters most is the one recording that a review was removed, by whom, and on
+/// what ground. Read it with `findMany({ where: { reviewId } })`.
+model ReviewModerationLog {
+  id       String @id @default(uuid())
+  reviewId String
+
+  /// The user who made the change. Nullable only for system-initiated
+  /// transitions (a future automated screen), never for a human action.
+  actorId String?
+
+  /// Null on the row that records the original submission.
+  fromStatus ReviewModerationStatus?
+  /// Null on the row that records a hard delete.
+  toStatus   ReviewModerationStatus?
+  /// True when the review was destroyed rather than transitioned.
+  isDeletion Boolean                 @default(false)
+
+  /// The documented ground. Required for a rejection; free text otherwise.
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([reviewId, createdAt])
+  @@index([actorId])
+  @@map("review_moderation_logs")
+}
+
+/// An operator's only lever over a review. A flag is a REQUEST, never an action:
+/// it routes to Island Tours, who decide on policy grounds. Operators have no
+/// delete, no unpublish and no edit anywhere in this model, by design — the
+/// moment buyers suspect operators can scrub bad reviews, every five-star rating
+/// becomes worthless.
+model ReviewFlag {
+  id       String @id @default(uuid())
+  reviewId String
+
+  flaggedByUserId String
+  reason          ReviewFlagReason
+  note            String?
+
+  status         ReviewFlagStatus @default(OPEN)
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  // One flag per user per review; re-flagging is an update, not a queue of
+  // duplicates.
+  @@unique([reviewId, flaggedByUserId])
+  @@index([status, createdAt])
+  @@map("review_flags")
+}
+
+/// The post-tour review invitation — the collection gap the whole module waits on.
+///
+/// One row per completed booking. It is BOTH the send ledger (has the first email
+/// gone? has the single reminder gone?) and the credential for the tokenized
+/// review page, which is reached from an email with no login, exactly like the
+/// cancellation flow.
+///
+/// SINGLE-USE: `completedAt` is stamped the moment step 1 commits, and every
+/// token endpoint refuses a completed or revoked invitation thereafter. One
+/// review per booking is already enforced by `Review.bookingId @unique`; this is
+/// the second lock, on the door rather than the record.
+model ReviewInvitation {
+  id        String @id @default(uuid())
+  bookingId String @unique
+
+  /// URL credential. Random and non-enumerable, like `Booking.publicRef` — a
+  /// guessable token would let a stranger post a "verified booking" review.
+  token String @unique @default(uuid())
+
+  /// The review this invitation produced, once it has produced one.
+  reviewId String?
+
+  sentAt      DateTime? // first touch (email, morning after)
+  remindedAt  DateTime? // the single reminder at 5-7 days; never a second
+  completedAt DateTime? // step 1 committed — the token is spent
+  revokedAt   DateTime? // booking cancelled after the invitation went out
+
+  /// Why the invitation was never sent, when it was suppressed rather than sent.
+  suppressedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // The send job's working set: "invitations that still need a first touch" and
+  // "invitations that still need their reminder".
+  @@index([sentAt, completedAt])
+  @@index([remindedAt, sentAt, completedAt])
+  @@map("review_invitations")
 }

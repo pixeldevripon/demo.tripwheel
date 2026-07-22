@@ -12,7 +12,25 @@ import {
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 
-import { DashboardStatsDto } from './dto/analytics.dto';
+import { DashboardStatsDto, ReviewStatsDto } from './dto/analytics.dto';
+
+export function ApiReviewStatsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Review analytics (DASH-9)',
+      description: [
+        'Rating trend, review velocity, theme breakdown and the operator eligibility metrics the nightly job computes.',
+        '',
+        'Scope follows the caller, exactly like the dashboard stats: a TOUR_OPERATOR sees only its own tours; a platform role sees everything (and gets `eligibility: null`, having no single operator to report).',
+        '',
+        "`trend[].created` counts reviews SUBMITTED in the bucket, not approved - approval latency is ours, not the traveller's, and mixing them makes a moderation backlog look like a collapse in review volume. `moderation` is current state and ignores the date range.",
+      ].join('\n'),
+    }),
+    ApiOkResponse({ type: ReviewStatsDto }),
+    ApiUnauthorizedResponse({ type: UnauthorizedErrorDto }),
+    ApiForbiddenResponse({ type: ForbiddenErrorDto }),
+  );
+}
 
 export function ApiDashboardStatsDocs() {
   return applyDecorators(

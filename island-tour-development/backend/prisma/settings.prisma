@@ -189,3 +189,53 @@ model PlatformReviewsConfig {
 
   @@map("platform_reviews_config")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-tour review request schedule (singleton)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Admin-controlled cadence for the post-tour review invitation.
+///
+/// These were hardcoded constants until it became clear they are a business
+/// decision, not an engineering one: the advisory is explicit that the
+/// morning-after send is a LAUNCH DEFAULT TO A/B TEST, not a proven optimum (a
+/// Journal of Marketing field study run partly on a guided-tours marketplace
+/// found next-day reminders actually *reduce* review likelihood for experience
+/// goods). Tuning that from the dashboard is the whole point.
+///
+/// `enabled` DEFAULTS TO FALSE and is the master switch. A job that mails real
+/// customers must be switched on deliberately, once, by a person - never merely
+/// by deploying the code that contains it.
+model ReviewRequestSettings {
+  id String @id @default("default")
+
+  /// Master switch. Off means the job runs and does nothing.
+  enabled Boolean @default(false)
+
+  /// Local hour in the TOUR's timezone for the first touch (0-23).
+  /// "The morning after" is a different absolute instant on every island.
+  firstSendLocalHour Int @default(10)
+
+  /// Days after the tour before the first touch. 1 = the morning after.
+  firstSendDelayDays Int @default(1)
+
+  /// Send the single reminder this many days after the first touch.
+  /// 5-7 is better supported than a 72-hour nudge and matches TripAdvisor's
+  /// roughly one-week practice.
+  reminderAfterDays Int @default(5)
+
+  /// Whether the single reminder is sent at all.
+  reminderEnabled Boolean @default(true)
+
+  /// Stop chasing a booking older than this. A very late invitation reads as
+  /// spam rather than service.
+  giveUpAfterDays Int @default(30)
+
+  /// Max invitations processed per hourly run, so a backlog cannot monopolise
+  /// the process or empty a mail quota in one pass.
+  batchSize Int @default(200)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("review_request_settings")
+}

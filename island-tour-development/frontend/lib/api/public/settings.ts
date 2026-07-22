@@ -39,9 +39,9 @@ export interface PublicSiteInfo {
 
 /**
  * Settings an admin changes rarely but expects to see live. `cacheLife('days')`
- * with the `site-info` tag: a Settings > General save fires the revalidation
- * Server Action (see lib/api/cache-revalidation.ts), so the long window costs
- * nothing in staleness.
+ * with the `site-info` tag: a Settings > General save in the dashboard POSTs the
+ * tag to `app/api/revalidate/route.ts` (mapped by that repo's
+ * lib/api/cache-revalidation.ts), so the long window costs nothing in staleness.
  *
  * Falls back to WhatsApp/Instagram disabled if the backend is unreachable, so a
  * settings outage degrades to "no chat button" rather than a broken page.

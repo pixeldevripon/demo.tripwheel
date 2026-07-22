@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AvailabilityService } from '@/availability/availability.service';
+import { ReviewRequestsService } from '@/reviews/review-requests.service';
 import { TiersService } from '@/tiers/tiers.service';
 import { ToursService } from '@/tours/tours.service';
 
@@ -31,7 +32,35 @@ export class NightlyJobsService {
     private readonly tiers: TiersService,
     private readonly availability: AvailabilityService,
     private readonly publicCache: PublicCacheService,
+    private readonly reviewRequests: ReviewRequestsService,
   ) {}
+
+  /**
+   * Post-tour review requests, HOURLY rather than nightly.
+   *
+   * "The morning after, around 10:00 local" is a different absolute instant on
+   * every island, so a once-a-day job at a fixed UTC hour would either fire at
+   * the wrong local time or need one cron per destination. Running hourly and
+   * letting the job decide per booking (in that booking's snapshotted timezone)
+   * is the version that stays correct as destinations are added.
+   *
+   * Cheap: the query is indexed on exactly the two working sets it scans, and it
+   * is a no-op in the 23 hours a given booking is not due.
+   */
+  @Cron(CronExpression.EVERY_HOUR, {
+    name: 'review-requests',
+    timeZone: 'UTC',
+  })
+  async reviewRequestsHourly(): Promise<void> {
+    try {
+      await this.reviewRequests.run();
+    } catch (err) {
+      // Never let a mail failure kill the scheduler: the next hour retries.
+      this.logger.error(
+        `Review requests job failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
 
   // 03:00 UTC daily. "Evaluated daily" is the master's cadence for both the
   // spotlight lifecycle (§7.2) and the demand signal (§3.7).

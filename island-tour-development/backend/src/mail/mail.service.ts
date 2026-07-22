@@ -20,25 +20,43 @@ import {
 } from './templates/email-template.renderer';
 
 /**
+ * Where the design-owned HTML templates live at runtime.
+ *
+ * `nest build` emits CommonJS, so `__dirname` is the right answer in every real
+ * environment. The e2e suite is the exception: `test/jest-e2e.json` transforms
+ * with `useESM` (better-auth ships ESM only), and `__dirname` does not exist
+ * under ESM - referencing it threw a ReferenceError at import time, which took
+ * down every e2e suite in the repo, not just the mail ones, because this module
+ * is reached through `AppModule`.
+ *
+ * `typeof` on an undeclared identifier is safe in JS, so this probes rather than
+ * throws, and production still resolves through `__dirname` exactly as before.
+ */
+const TEMPLATE_DIR =
+  typeof __dirname !== 'undefined'
+    ? path.join(__dirname, 'templates')
+    : path.join(process.cwd(), 'src', 'mail', 'templates');
+
+/**
  * The LOCKED confirmation-email template (master 6.5 + its HTML wireframe), read
  * once at boot. It is design-owned markup rather than TypeScript, so `nest build`
  * has to copy it: see the `assets` entry in `nest-cli.json` - without it this throws
  * at startup in production while passing every test locally.
  */
 const BOOKING_CONFIRMATION_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'booking-confirmation-email.template.html'),
+  path.join(TEMPLATE_DIR, 'booking-confirmation-email.template.html'),
   'utf8',
 );
 
 /** Operator "Booking Received" notification (C7) - same shell, operator content. */
 const OPERATOR_BOOKING_RECEIVED_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'operator-booking-received.template.html'),
+  path.join(TEMPLATE_DIR, 'operator-booking-received.template.html'),
   'utf8',
 );
 
 /** Shared branded notice (cancellation ack, operator notices) - same shell. */
 const BOOKING_NOTICE_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'booking-notice.template.html'),
+  path.join(TEMPLATE_DIR, 'booking-notice.template.html'),
   'utf8',
 );
 
@@ -289,6 +307,71 @@ export class MailService {
       html: renderEmailTemplate(BOOKING_NOTICE_TEMPLATE, context),
       text,
     });
+  }
+
+  // ── Post-tour review request (the collection gap) ──────────────────────────
+
+  /**
+   * The post-tour review invitation - the fifth sibling in the transactional
+   * email family, after confirmation, operator balance, pre-tour reminder and
+   * cancellation.
+   *
+   * REUSES THE SHARED NOTICE SHELL rather than adding a fifth near-identical
+   * HTML file. The shell already carries exactly this shape (brand bar, headline,
+   * booking reference, tour line, paragraphs, one CTA, sign-off), and a copy of
+   * it would drift from the family the first time anyone restyled one of them.
+   *
+   * The CTA points at the tokenized review page, so the guest goes from inbox to
+   * a committed star rating in one tap with no login. Copy is deliberately about
+   * the guest's day and the local team, not about us needing content.
+   */
+  async sendReviewRequestEmail(
+    to: string,
+    context: {
+      firstName: string;
+      tourName: string;
+      bookingRef: string;
+      dateLong: string;
+      startTime: string;
+      reviewUrl: string;
+      siteLogoUrl?: string | null;
+      emailIconBase: string;
+      isReminder?: boolean;
+    },
+  ): Promise<void> {
+    const subject = context.isReminder
+      ? `Did you enjoy ${context.tourName}?`
+      : `How was ${context.tourName}?`;
+
+    const paragraphs = context.isReminder
+      ? [
+          `Hi ${context.firstName}, we hope ${context.tourName} was everything you came for.`,
+          'A quick star rating helps the next traveller book with confidence, and it means a lot to the local team who ran your tour. It takes about thirty seconds.',
+        ]
+      : [
+          `Hi ${context.firstName},`,
+          `We hope ${context.tourName} was everything you came to the islands for.`,
+          'Travellers trust other travellers, so a quick word about your day helps the next guest book with confidence, and it means a lot to the local team who ran your tour.',
+          'It takes about thirty seconds.',
+        ];
+
+    await this.sendBookingNoticeEmail(
+      to,
+      subject,
+      {
+        noticeTitle: subject,
+        bookingRef: context.bookingRef,
+        tourName: context.tourName,
+        dateLong: context.dateLong,
+        startTime: context.startTime,
+        noticeParagraphs: paragraphs,
+        ctaUrl: context.reviewUrl,
+        ctaLabel: 'Rate your tour',
+        siteLogoUrl: context.siteLogoUrl ?? '',
+        emailIconBase: context.emailIconBase,
+      },
+      `${paragraphs.join('\n\n')}\n\nRate your tour: ${context.reviewUrl}\n\nThank you for spending your day with us. Built by Islanders.`,
+    );
   }
 
   // ── Cancellation request → admin (B3) ──────────────────────────────────────

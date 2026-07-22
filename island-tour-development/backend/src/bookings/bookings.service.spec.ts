@@ -59,6 +59,11 @@ function day(date: string) {
 
 function mockPrisma() {
   const p: any = {
+    // FE-12: `getThankYou` asks whether this booking can still produce a review.
+    // Default to "no review, no invitation" so existing cases are unaffected -
+    // a test that cares overrides these.
+    review: { findUnique: jest.fn().mockResolvedValue(null) },
+    reviewInvitation: { findUnique: jest.fn().mockResolvedValue(null) },
     booking: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),

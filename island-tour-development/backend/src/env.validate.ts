@@ -104,6 +104,16 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   RESEND_API_KEY: (v) =>
     v.startsWith('re_') ? null : 'must be a Resend API key (starts with re_)',
   MAIL_FROM: () => null,
+  // LD32 review translation (Google Cloud Translation v3). BOTH are optional:
+  // with either missing the feature is inert and reviews display in their
+  // original language, which is the pre-LD32 behaviour. Validated for shape
+  // only, so a typo is caught at boot rather than as a 403 six locales deep.
+  GOOGLE_TRANSLATE_API_KEY: (v) =>
+    v.length >= 20 ? null : 'must be a Google Cloud API key',
+  GOOGLE_TRANSLATE_PROJECT_ID: (v) =>
+    /^[a-z][a-z0-9-]{4,29}$/.test(v)
+      ? null
+      : 'must be a Google Cloud project id (lowercase, 6-30 chars)',
   // Payments & tracking (Phase 6). Stripe keys live in the DB, not here.
   FX_USD_TO_EUR: (v) => {
     const n = Number(v);

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Tours, Review System Build vs Buy</title>
+<style>
+  :root{
+    --brand:#E8611A; --brand-dark:#c44e12; --ink:#1f2937; --muted:#6B7280;
+    --bg:#faf8f6; --card:#ffffff; --line:#e7e3df; --code-bg:#f4f1ee;
+    --locked:#2563eb; --locked-bg:#eaf1ff; --new:#15803d; --new-bg:#e9f7ee;
+    --change:#b45309; --change-bg:#fdf2e3; --sidebar-w:310px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.62;font-size:16px;-webkit-font-smoothing:antialiased}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:16px;
+    padding:12px 22px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.03)}
+  .topbar .brand{display:flex;align-items:center;gap:11px;font-weight:700;white-space:nowrap}
+  .topbar .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);flex:none}
+  .topbar .brand small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:.02em}
+  .search{margin-left:auto;position:relative;display:flex;align-items:center}
+  .search input{width:300px;max-width:46vw;padding:9px 14px 9px 34px;border:1px solid var(--line);
+    border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  .search input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+  .search .mag{position:absolute;left:11px;color:var(--muted);font-size:14px;pointer-events:none}
+  .search .count{position:absolute;right:10px;font-size:12px;color:var(--muted)}
+  .menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;font-size:15px;cursor:pointer}
+  .layout{display:flex;align-items:flex-start;max-width:1320px;margin:0 auto}
+  .sidebar{position:sticky;top:57px;align-self:flex-start;width:var(--sidebar-w);flex:none;
+    height:calc(100vh - 57px);overflow-y:auto;padding:20px 12px 60px 22px;border-right:1px solid var(--line)}
+  .sidebar h4{margin:6px 8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+  .toc-list{list-style:none;margin:0;padding:0}
+  .toc-list a{display:block;text-decoration:none;color:#374151;padding:5px 9px;border-radius:7px;
+    font-size:13.5px;border-left:2px solid transparent;line-height:1.35}
+  .toc-list a.lvl3{padding-left:22px;font-size:12.7px;color:#586074}
+  .toc-list a:hover{background:#f1ece8;color:var(--ink)}
+  .toc-list a.active{color:var(--brand-dark);background:var(--change-bg);border-left-color:var(--brand);font-weight:600}
+  .toc-list a.hide{display:none}
+  .content{flex:1;min-width:0;padding:30px 48px 120px;max-width:900px}
+  .content h1{font-size:30px;line-height:1.2;margin:.2em 0 .5em;letter-spacing:-.01em}
+  .content h2{font-size:23px;margin:1.7em 0 .5em;padding-top:14px;border-top:2px solid var(--line);scroll-margin-top:72px}
+  .content h2:first-of-type{border-top:none;padding-top:0}
+  .content h3{font-size:17.5px;margin:1.5em 0 .4em;color:#111827;scroll-margin-top:72px}
+  .content p{margin:.6em 0}
+  .content a{color:var(--brand-dark);text-decoration:underline;text-underline-offset:2px}
+  .content strong{color:#111827}
+  .content ul,.content ol{margin:.5em 0 .9em;padding-left:1.4em}
+  .content li{margin:.28em 0}
+  .content blockquote{margin:1em 0;padding:.6em 1.1em;background:#fff;border-left:3px solid var(--brand);
+    border-radius:0 8px 8px 0;color:#374151}
+  .content blockquote p{margin:.4em 0}
+  hr{border:none;border-top:1px solid var(--line);margin:2.2em 0}
+  table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:14px;background:#fff;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  thead th{background:#f6efe9;font-weight:700;color:#1f2937;border-bottom:2px solid #e3d6cc}
+  tbody tr:nth-child(even){background:#fbfaf8}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;
+    background:var(--code-bg);padding:1.5px 5px;border-radius:5px;color:#9a3412}
+  pre{background:#1f2430;color:#e6e1d6;padding:16px 18px;border-radius:11px;overflow-x:auto;
+    font-size:12.5px;line-height:1.5;margin:1.1em 0;border:1px solid #11141b}
+  pre code{background:none;color:inherit;padding:0;font-size:12.5px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:1px 7px;
+    border-radius:999px;vertical-align:baseline;white-space:nowrap}
+  .tag-locked{color:var(--locked);background:var(--locked-bg)}
+  .tag-new{color:var(--new);background:var(--new-bg)}
+  .tag-change{color:var(--change);background:var(--change-bg)}
+  .tag-wrong{color:#b91c1c;background:#fdecec}
+  mark{background:#ffe49b;color:inherit;padding:0 1px;border-radius:2px}
+  mark.current{background:var(--brand);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:6px 0 4px;
+    padding:13px 16px;background:#fff;border:1px solid var(--line);border-radius:11px;font-size:13px}
+  .legend b{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .legend .li{display:flex;align-items:center;gap:7px;color:#374151}
+  .backtop{position:fixed;right:20px;bottom:20px;z-index:25;background:var(--brand);color:#fff;border:none;
+    width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .backtop.show{opacity:1;pointer-events:auto}
+  @media (max-width:980px){
+    .sidebar{position:fixed;top:57px;left:0;z-index:20;background:#fff;transform:translateX(-100%);
+      transition:transform .22s;box-shadow:2px 0 16px rgba(0,0,0,.12);width:84vw;max-width:340px}
+    .sidebar.open{transform:translateX(0)}
+    .menu-btn{display:inline-block}
+    .content{padding:22px 20px 100px}
+    .search input{width:160px}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+  <div class="brand"><span class="dot"></span><span>Island Tours<small>Review System, Build vs Buy</small></span></div>
+  <div class="search">
+    <span class="mag">&#128269;</span>
+    <input id="searchInput" type="search" placeholder="Search this document..." autocomplete="off" spellcheck="false">
+    <span class="count" id="searchCount"></span>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <h4>Contents</h4>
+    <ul class="toc-list" id="tocList"></ul>
+  </nav>
+  <main class="content" id="content">
+<h1 id="island-tours-review-system-build-vs-buy">Island Tours Review System, Build vs Buy</h1>
+<p><strong>Companion to the review strategy advisory. June 18, 2026.</strong> Question answered: are there existing review systems Island Tours can buy, or open-source code it can reuse, instead of building from scratch? Method: four-angle deep research (commercial review SaaS, travel and tours specific systems, open source and self-hostable code, and a build-vs-buy fit analysis), with current 2026 primary sources (vendor developer docs and pricing pages, Google Search Central, EUR-Lex, OTA help centers, GitHub).</p>
+<p>This document contains zero em-dashes, per the working agreement.</p>
+<hr />
+<h2 id="bottom-line">Bottom line</h2>
+<p>There is no off-the-shelf review system that fits Island Tours well, and there is no mature open-source one you can drop in either. The honest answer to "is this for sale or findable as code" is: the pieces are, the system is not.</p>
+<ul>
+<li><strong>For sale:</strong> plenty of review SaaS exists, but almost all of it is built for Shopify e-commerce or for hotels. The few that expose a true headless API can technically take your verified-booking signal, but none does tour-plus-operator attribution natively, none gives you organic rating stars on your own pages (Google's self-serving rule blocks widget reviews), most price per booking (the wrong cost curve for a marketplace), and some keep a license on your review content after you leave.</li>
+<li><strong>As code:</strong> there is no production-grade standalone open-source review system for a Next.js and Supabase stack. What exists is either welded to a whole commerce platform (Medusa, Sylius, Shopware) or a single-digit-star solo project. The realistic path is to build a thin, owned module using two MIT reference implementations for the data model and a set of genuinely mature building blocks for moderation and translation.</li>
+<li><strong>The structural reason buying loses:</strong> your hard requirement is reviews gated on Island Tours' own confirmed bookings, attributed to both tour and operator, on your own domain. Verified-booking gating is only possible if the review system can read your booking graph. A third-party widget structurally cannot. This is exactly why every comparable marketplace (Viator, GetYourGuide, Booking, Airbnb, Etsy) builds first-party.</li>
+</ul>
+<p><strong>Recommendation:</strong> build first-party on your existing stack, own the data in an EU-region database, render the reviews server-side into island.tours. If you need to launch faster than engineering allows, the only acceptable shortcut is a headless, own-the-data collection vendor rendered server-side and synced into your own database, never a drop-in widget. The conditions under which buying actually wins are narrow and listed at the end.</p>
+<p>This corroborates the build-first-party direction already in the review strategy advisory. The new finding is how decisively the market confirms it.</p>
+<hr />
+<h2 id="part-1.-what-is-for-sale-commercial-review-saas">Part 1. What is for sale: commercial review SaaS</h2>
+<p>The large review platforms split into three groups by how well they fit a custom (non-Shopify) tours marketplace that needs to submit verified-booking reviews by API and display them on its own domain.</p>
+<h3 id="the-few-with-a-real-headless-api">1.1 The few with a real headless API</h3>
+<p>These can ingest your own booking signal and return review data as JSON for you to render server-side. They are the only buyable options worth considering for a custom build.</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Platform</th>
+<th>Headless fit</th>
+<th>Verified-booking by API</th>
+<th>SEO and data ownership</th>
+<th>Pricing signal</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>REVIEWS.io</strong></td>
+<td>Best mechanical fit. Documents the whole loop: read reviews as JSON, fire order-id-keyed invitations, and directly insert a pre-collected review carrying your own <code>order_id</code> and photos. Native machine translation (matters for 7 locales). Google Licensed Review Partner. <code>branch</code> maps to operator, <code>sku</code> to tour.</td>
+<td>Yes, direct insert with your order id.</td>
+<td>Stars can reach Google store ratings. Ownership caveat: their terms keep a perpetual license to review content after cancellation.</td>
+<td>API gated to the paid "Plus" or "Grow" plan; third-party estimates roughly 299 to 499 USD per month per domain. Treat exact price as an estimate.</td>
+</tr>
+<tr class="even">
+<td><strong>Yotpo</strong></td>
+<td>Works headlessly: read <code>reviews.json</code> plus a Core Orders feed that auto-tags Verified Buyer when an email matches a past order. No Shopify required.</td>
+<td>Yes, but verified-buyer at creation needs a sales-gated HMAC, and multilingual off Shopify needs a separate domain and app key per locale (a real gotcha at 7 locales).</td>
+<td>Clean merchant ownership of review content per its terms. Feeds Google store ratings.</td>
+<td>Free SMB tier; real volume pushes to enterprise quote, roughly 1,200 to 2,500 USD per month. Per-order overage at scale.</td>
+</tr>
+<tr class="odd">
+<td><strong>PowerReviews</strong></td>
+<td>Genuinely API-first and platform-agnostic: separate Read and Write APIs, the Write body includes <code>order_id</code>, <code>reviewer_type</code>, <code>source</code>.</td>
+<td>Yes, driven by feeding your own order feed.</td>
+<td>Product-level rich snippets, not seller ratings. Now a Syndigo product (not part of Bazaarvoice).</td>
+<td>Quote only, no free tier.</td>
+</tr>
+<tr class="even">
+<td><strong>Bazaarvoice</strong></td>
+<td>Strongest verification mechanism: a signed User Authentication String lets your backend assert verified-purchaser without Bazaarvoice re-checking. Conversations API supports custom display and submission.</td>
+<td>Yes, the cleanest verified assertion.</td>
+<td>Heavy frictions: display API rate-limited, caching needs approval, you hand-roll JSON-LD anyway, and its retailer syndication is built for branded goods with GTINs, irrelevant to tours. Owns "Network Data" and gives only a revocable display license, so you can lose content on exit.</td>
+<td>Quote only, mid-market roughly 40k to 80k USD per year, enterprise higher. Too heavy for a single-domain OTA.</td>
+</tr>
+</tbody>
+</table>
+<p>The recommendation inside this group: if you buy a collection layer to accelerate, <strong>Yotpo or Stamped grant the cleanest ownership of your review content</strong>, which matters more than raw mechanics for a system you may later bring fully in-house. <strong>REVIEWS.io is the best mechanical match</strong> (its order-id insert plus invitation plus JSON read mirror exactly what an in-house verified-booking system does), but weigh its perpetual post-cancellation content license. <strong>Avoid Bazaarvoice</strong> on weight and ownership for a single domain.</p>
+<h3 id="strong-collection-poor-headless-display">1.2 Strong collection, poor headless display</h3>
+<ul>
+<li><strong>Feefo</strong> is the best conceptual match for verified bookings and is travel-native, with a first-class operator-versus-tour review split and multi-stage after-booking journeys. But its own docs say the Reviews API is not suitable if you plan to self-host the data, the only bulk export is deprecated, and you can never post a review yourself (only the invited customer via Feefo's form). Sanctioned display is Feefo-hosted widgets. Good model, wrong architecture for an SEO-owning SSR build. List pricing around 149 to 299 GBP per month per domain.</li>
+<li><strong>Trustpilot Product Reviews</strong> can invite by your booking reference and attach photos, but there is no direct review insertion, the company-review SEO value lives on trustpilot.com, and the API is enterprise-gated. Use Trustpilot for the platform-trust layer (as the strategy advisory already recommends), not for tour reviews.</li>
+</ul>
+<h3 id="shopify-bound-or-wrong-shape-eliminate">1.3 Shopify-bound or wrong shape, eliminate</h3>
+<ul>
+<li><strong>Okendo:</strong> "headless" means headless Shopify; review ids are Shopify product ids; no create-review API. Poor fit.</li>
+<li><strong>Judge.me:</strong> sunsetting all non-Shopify platforms through January 2026; API requires a live myshopify.com domain; API-created reviews cannot be verified or order-linked. Impossible.</li>
+<li><strong>Loox:</strong> Shopify-exclusive end to end; its 2026 API is read-only. Hard fail.</li>
+<li><strong>Junip:</strong> effectively Shopify-only; display API read-only and premium-gated; no submit by API. Poor fit.</li>
+<li><strong>Stamped:</strong> the one Shopify-cluster vendor with a documented custom-platform path and clean data ownership, verified-buyer keyed off order data you push, but Shopify-first in posture and no native machine translation. A marginal headless option, behind REVIEWS.io and Yotpo.</li>
+<li><strong>Trustmary:</strong> testimonials and Google-review aggregation, widget-centric, no booking-gated tour-level reviews. Out of scope.</li>
+</ul>
+<h3 id="the-cross-cutting-reality">1.4 The cross-cutting reality</h3>
+<p>Every vendor's turnkey rich-snippet and rating-star tooling is built for its own JavaScript widget. In a real Next.js server-rendered build you write the schema.org JSON-LD yourself from the JSON API regardless of which vendor you pick. So the "SEO out of the box" selling point does not apply to your architecture, which removes a big part of the reason to buy.</p>
+<hr />
+<h2 id="part-2.-travel-and-tours-specific-systems-and-third-party-review-sources">Part 2. Travel and tours specific systems, and third-party review sources</h2>
+<p>This is the group you might expect to fit, being in the same industry. It does not.</p>
+<h3 id="hospitality-review-platforms-serve-hotels-not-a-reselling-marketplace">2.1 Hospitality review platforms serve hotels, not a reselling marketplace</h3>
+<p>TrustYou, Revinate, Customer Alliance, GuestRevu, and Reputize are hotel reputation tools. They assume a property and room-night model, verify against a stay rather than your transaction, display an aggregated score rather than dual-attributed reviews, have no path to ingest a Supabase booking feed, and several are priced per room or per property, a unit that does not exist for a tours OTA. Drop all five. The closest affordable, industry-agnostic, embeddable one (Trustmary) is a display layer only and does not verify against your bookings.</p>
+<h3 id="tour-booking-software-serves-operators-not-resellers">2.2 Tour booking software serves operators, not resellers</h3>
+<p>FareHarbor, Rezdy, Bokun, Checkfront, TourCMS, Peek Pro, Ventrata, and TrekkSoft are operator-side reservation systems. The decisive finding, confirmed from their API endpoint references rather than marketing: <strong>none exposes review content to a reseller via API.</strong> Every review feature is the operator's own reputation funnel to the operator's own Google or Tripadvisor listing. The OCTO open standard that several use for reseller connectivity has no reviews capability at all. Even Bokun, owned by Tripadvisor, locks its Tripadvisor reviews widget to the operator's own listing and gives resellers only rating-based product filtering, not review content to republish. A review locked inside an operator's FareHarbor account does not help Island Tours.</p>
+<h3 id="third-party-review-sources-are-legally-hostile-to-this-use-case">2.3 Third-party review sources are legally hostile to this use case</h3>
+<p>You might hope to display Google, Tripadvisor, or Viator reviews. The licensing makes that impractical for an SEO-owning marketplace.</p>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Source</th>
+<th>Reviews you get</th>
+<th>Store or cache?</th>
+<th>Search-indexable?</th>
+<th>Mix with your own reviews?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Google Places API</td>
+<td>5 max, tied to a place</td>
+<td>No, only the place id</td>
+<td>No</td>
+<td>Yes, but ephemeral</td>
+</tr>
+<tr class="even">
+<td>Tripadvisor Content API</td>
+<td>About 3 per location</td>
+<td>No</td>
+<td>No (must be non-indexable)</td>
+<td>No, a clause forbids displaying alongside any other reviews</td>
+</tr>
+<tr class="odd">
+<td>Viator Partner API</td>
+<td>All reviews per product</td>
+<td>Yes, under 24h TTL</td>
+<td>No, must load via blocked JavaScript</td>
+<td>Tied to Viator's catalogue, and booking redirects to viator.com</td>
+</tr>
+<tr class="even">
+<td>GetYourGuide Partner API</td>
+<td>None to affiliates</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>n/a</td>
+</tr>
+</tbody>
+</table>
+<p>Two flags. Google and Tripadvisor both forbid storing the review content and forbid indexing it, so they degrade to live, attribution-heavy widgets with no SEO value. Tripadvisor's anti-commingling clause is directly incompatible with showing its reviews next to your own. Viator is the only source that lets you store reviews briefly and show the full set, but it ties you to Viator's catalogue, funnels the booking to a competing channel, and still cannot be indexed. As an EU or Dutch entity you also fall under each provider's EEA-specific terms, several of which are revocable at will. Have a lawyer read any specific order before relying on it.</p>
+<h3 id="verdict-for-part-2">2.4 Verdict for Part 2</h3>
+<p>There is no off-the-shelf travel or tours review system that fits a custom reselling OTA. The market serves hotels or operators, not a marketplace that resells operators' tours. The only fully owned, indexable, freely mixable, permanently storable, dual-attributable review asset is first-party verified-booking reviews collected on your own bookings.</p>
+<hr />
+<h2 id="part-3.-what-is-findable-as-code-open-source">Part 3. What is findable as code: open source</h2>
+<p>The blunt finding: there is no mature, reusable, standalone open-source review system that drops into a Next.js and Supabase stack and delivers the full spec (verified-booking gating, rating, text, photos, moderation, aggregation, multi-locale, schema.org). That product category effectively does not exist in 2026. Every usable reviews implementation is welded to a host platform, and every truly standalone repo is a single-digit-star solo or beta project. So the realistic path is to build the module yourself, copying the data model and workflow from a couple of permissively licensed references and assembling mature building blocks for the supporting layers.</p>
+<h3 id="reference-implementations-to-copy-from-not-depend-on">3.1 Reference implementations to copy from, not depend on</h3>
+<p>These are MIT-licensed and worth reading before you write a line, but you lift patterns from them rather than taking a runtime dependency.</p>
+<ul>
+<li><strong>Medusa.js product-reviews plugin</strong> (Node and TypeScript, Postgres, MIT). The best code reference because it shares your language and database. Lift the table schema, the moderation status enum, and the average-plus-histogram aggregation SQL straight into a Supabase view. Note: the maintained package is the v2 one, not the legacy plugin.</li>
+<li><strong>Sylius reviews</strong> (PHP, MIT). The best architecture reference. Lift the polymorphic "reviewable" pattern (one table can serve both tours and operators), the new to accepted to rejected state machine, and the cached average-rating updater design.</li>
+<li><strong>Shopware reviews</strong> (MIT community edition). Use its feature set as your product-spec checklist: approval gates visibility, owner replies, per-channel and language-scoped display, aggregate plus per-star breakdown.</li>
+<li>Saleor has no reviews feature at all; Reaction Commerce is discontinued; Vendure's reviews are a GPL-licensed demo plugin. Skip these for reuse.</li>
+</ul>
+<h3 id="standalone-open-source-review-projects-all-weak">3.2 Standalone open-source review projects, all weak</h3>
+<p>The honest landscape: the GitHub "rating system" topic is dominated by Elo and TrueSkill matchmaking math, which is irrelevant. Self-hosted comment engines lack stars, verified-booking gating, and aggregation. The few real review repos are all immature: a couple of Medusa review plugins under about a dozen stars each, one NestJS plus Next.js plus Postgres project aimed at marketing testimonials rather than commerce (fork-and-own, high risk), and a feature-complete but officially abandoned VTEX module that only runs inside VTEX. None is production-grade for your use case. The fact that there are several competing Medusa review plugins, none above roughly a dozen stars, is itself the signal: no community standard exists.</p>
+<h3 id="the-realistic-starting-blocks-you-would-actually-use">3.3 The realistic starting blocks you would actually use</h3>
+<ul>
+<li><strong>Scaffold:</strong> Razikus/supabase-nextjs-template (Apache 2.0, actively maintained, Next.js 15 and Supabase). It already ships auth plus a storage row-level-security file-upload demo, which transfers directly to review photos. The best production-grade base to extend, if you are not just bolting onto the existing app.</li>
+<li><strong>Rating widget:</strong> Kibo UI Rating, a shadcn copy-paste component you own, since shadcn has no built-in rating. Avoid the abandoned star-rating npm libraries.</li>
+<li><strong>The core logic you write yourself, a few dozen lines each, because no library ships it:</strong> a booking-gated insert policy (insert allowed only when a completed booking owned by that user exists for that tour), a unique constraint for one review per booking, per-user-folder storage policies for photos, and a trigger that maintains the denormalized rating average, count, and star distribution on the tour and operator rows.</li>
+</ul>
+<h3 id="the-building-blocks-that-are-genuinely-production-grade">3.4 The building blocks that are genuinely production-grade</h3>
+<p>This is where mature open source does exist and is worth using:</p>
+<ul>
+<li><strong>Text profanity (Node):</strong> obscenity (MIT, active). Defeats obfuscation, low false positives. Avoid the abandoned bad-words library.</li>
+<li><strong>Toxicity (optional ML sidecar):</strong> Detoxify (Apache 2.0, multilingual), run as a Python sidecar, or the TensorFlow.js toxicity model for a pure-JS English option.</li>
+<li><strong>Image moderation:</strong> NSFWJS (MIT, the default). Run via tfjs-node or a Docker sidecar, route by confidence band to a human queue, and tune the threshold so legitimate beach and tour photos are not rejected.</li>
+<li><strong>Machine translation:</strong> for permissive licensing and self-hosting, OPUS-MT or Helsinki-NLP models on CTranslate2, or LibreTranslate as a separate network service. Google Translate or DeepL give better quality per character at a per-character cost. Reviews are short and high-volume, so a pragmatic hybrid is self-hosted for bulk gist with a paid API for flagged or important text. Avoid NLLB-200, which is non-commercial licensed.</li>
+</ul>
+<h3 id="verdict-for-part-3">3.5 Verdict for Part 3</h3>
+<p>Fork nothing wholesale. Build a thin, owned reviews module on Supabase, copying the schema and moderation workflow from the Medusa plugin and Sylius (both MIT), using Razikus's template for storage RLS patterns, Kibo UI for the stars, and the obscenity, NSFWJS, and OPUS-MT or LibreTranslate building blocks for the supporting layers. The differentiated work (booking-gated RLS, photo storage RLS, the rating rollup trigger) is a few hundred lines you would write no matter which starting point you chose.</p>
+<hr />
+<h2 id="part-4.-the-build-vs-buy-decision">Part 4. The build-vs-buy decision</h2>
+<h3 id="why-a-third-party-widget-structurally-cannot-do-the-core-job">4.1 Why a third-party widget structurally cannot do the core job</h3>
+<p>Your hard requirement is reviews gated on Island Tours' own confirmed bookings. That gate is only possible if the review system can read your booking records and confirm a completed, paid booking owned by that customer. A drop-in widget has no access to your booking graph. This is not a configuration gap, it is structural, and it is exactly why every comparable marketplace builds in-house: Viator, GetYourGuide, Booking, Airbnb, and Etsy all gate reviews on their own verified transactions. A SaaS can approximate verification only if you feed it your order data by API, which means you are doing the integration work anyway.</p>
+<h3 id="the-seo-and-rich-results-trap">4.2 The SEO and rich-results trap</h3>
+<p>Even if you feed a SaaS your booking signal, you cannot get organic rating stars on your own pages through its widget. Google's review-snippet policy is explicit that when the entity being reviewed controls the reviews about itself, pages using Organization or LocalBusiness structured data are ineligible for star rich results, and this explicitly includes reviews embedded through a third-party widget. The only on-domain route to legitimate review stars is to mark up the review target as the item being reviewed (the tour), not your organization, and to render that markup server-side from your own data.</p>
+<p>Two precisions worth carrying into the build. First, server-side rendering into your own DOM wins on content attribution, indexing speed, and rich-result eligibility all at once; an iframe or JavaScript widget is credited to the vendor's URL and is indexed late or missed. If you ever use a SaaS, you must use it headlessly by API and render server-side, never the drop-in widget. Second, marking a guided tour up as a Product purely to earn stars is a documented gray area: the schema types that best fit an experience (Service, Event, TouristTrip) are not on Google's review-snippet eligible list, so there is some manual-action risk, and Google's late-2025 guidance asks for one clear review target per rating. In practice the whole industry marks experiences up as Products and earns stars, so this is a watch-item to validate, not a blocker, and it slightly tempers the confidence of the schema section in the strategy advisory rather than overturning it.</p>
+<h3 id="data-residency-and-gdpr">4.3 Data residency and GDPR</h3>
+<p>Storing EU customers' review text and photos in your own EU-region database is materially cleaner than a US SaaS. The EU-US Data Privacy Framework is in force in mid-2026 but under appeal to the Court of Justice, a live "Schrems three" risk, so a US vendor that is not Framework-certified would need standard contractual clauses plus a transfer impact assessment. Even a US-owned cloud's EU region does not fully escape US jurisdiction under the CLOUD Act. Supabase itself is a US-incorporated company on AWS, so an EU-region Supabase project keeps the data in the EU but the parent still sits under US law; for maximum sovereignty you would self-host Postgres in the EU or hold the encryption keys EEA-side. Review photos are ordinary personal data unless you run facial recognition on them (do not), and you need an Article 28 data processing agreement with any processor, Supabase included. None of this is fatal to using Supabase, but it all points the same way: own the data, host it in the EU.</p>
+<h3 id="cost-and-lock-in-at-marketplace-scale">4.4 Cost and lock-in at marketplace scale</h3>
+<p>SaaS review pricing scales with booking volume, which is the wrong cost curve for a marketplace. The capabilities you actually need (a headless API, multi-language, multiple locales, a custom verified feed, single sign-on) are precisely the enterprise-gated ones, so a SaaS that meets your spec lands you in four to six figures per year and still does not give you booking gating or organic rich results. Annual or multi-year upfront commitments and proprietary exports add an exit tax. Building a reviews feature on an existing Supabase and Next.js stack sits at the low end of custom-software cost and avoids all of that, which is why building becomes the rational steady state once booking volume is meaningful.</p>
+<h3 id="what-this-means-together">4.5 What this means together</h3>
+<p>The four angles converge. The market has no fitting product, the open source has no fitting system, the SEO and verification requirements can only be met first-party, the data should live in your own EU database, and every peer marketplace has reached the same conclusion. Build.</p>
+<hr />
+<h2 id="part-5.-recommendation">Part 5. Recommendation</h2>
+<p><strong>Build a first-party review system on your existing stack. Own the data in an EU-region Postgres or Supabase database. Render the reviews server-side into island.tours.</strong> This is the same conclusion the strategy advisory reached, now stress-tested against the buy and open-source markets and confirmed.</p>
+<p>Concretely, the build is the seven-layer module described in the strategy work: the expanded E.7 schema with booking-gated row-level security and dual tour-and-operator attribution, a tokenized post-tour collection flow, a moderation queue, a nightly-plus-trigger aggregation, server-rendered display with Product-level JSON-LD, machine translation, and the verification disclosure. Copy the data model and moderation workflow from the Medusa plugin and Sylius, and use the obscenity, NSFWJS, and OPUS-MT or LibreTranslate building blocks so you are not writing those from scratch.</p>
+<h3 id="if-you-must-accelerate-the-one-acceptable-hybrid">5.1 If you must accelerate: the one acceptable hybrid</h3>
+<p>If engineering cannot build this before launch, the only acceptable shortcut is a headless, own-the-data collection vendor, rendered server-side and synced into your own database, never a drop-in widget. Pick a vendor that grants clean ownership of review content (Yotpo or Stamped on those grounds; REVIEWS.io is the best mechanical match but weigh its perpetual post-cancellation license), put it on an EU-region or Framework-certified processor, feed it your booking signal so the verified badge reflects your booking, pull reviews by API, render them first-party, and keep a synced copy in your own EU database so you can graduate to full first-party later without a migration. Use Trustpilot, separately, only for the platform-trust layer as the strategy advisory recommends.</p>
+<h3 id="the-conditions-under-which-buying-actually-wins">5.2 The conditions under which buying actually wins</h3>
+<p>Buy (headless, owning the data) only if all of these hold at once:</p>
+<ul>
+<li>You need to launch in weeks, not a quarter, with no engineering capacity for a reviews feature now.</li>
+<li>Booking volume is low enough that per-order pricing stays inside a small monthly tier.</li>
+<li>You do not yet need organic rating stars on your tour pages (off-domain reputation is enough short-term).</li>
+<li>You accept an export and licensing dependency, and you pick an own-the-data vendor on an EU-region or Framework-certified processor.</li>
+<li>You still render headless server-side and keep a synced copy in your own EU database.</li>
+</ul>
+<p>The moment any one of these breaks (meaningful booking volume, a need for on-site review stars, strict EU residency, or wanting the unique review text as a durable SEO asset) building wins. For a custom verified-booking OTA on Next.js and Supabase, those conditions break almost immediately, so building is the expected steady state.</p>
+<hr />
+<h2 id="sources">Sources</h2>
+<p>Commercial review SaaS: REVIEWS.io developer docs and pricing (https://developer.reviews.io/, https://www.reviews.io/front/pricingplans); Yotpo developer docs (https://developer.yotpo.com/, https://support.yotpo.com/docs/creating-a-targeted-product-review); PowerReviews (now Syndigo) API; Bazaarvoice Conversations API and verified purchaser (https://developers.bazaarvoice.com/v1.0-ConversationsAPI/docs/verified-purchaser); Feefo developer docs; Trustpilot Invitations API (https://developers.trustpilot.com/invitations-api-overview/); Okendo, Judge.me, Loox, Junip, Stamped developer docs.</p>
+<p>Travel and tours: Viator operator resources on review types (https://operatorresources.viator.com/understanding-different-types-of-reviews/); Bokun Tripadvisor widget docs (https://docs.bokun.io/); FareHarbor, Rezdy, Checkfront, TourCMS API references; OCTO standard; Google Places API policies (https://developers.google.com/maps/documentation/places/web-service/policies); Tripadvisor Content API master terms (https://tripadvisor-content-api.readme.io/reference/api-master-terms-new); GetYourGuide Partner API spec (https://code.getyourguide.com/partner-api-spec/).</p>
+<p>Open source: Medusa product-reviews tutorial (https://docs.medusajs.com/resources/how-to-tutorials/tutorials/product-reviews); Sylius reviews (https://docs.sylius.com/the-book/products/product-reviews); Shopware reviews (https://docs.shopware.com/en/shopware-6-en/catalogues/reviews); Razikus/supabase-nextjs-template (https://github.com/Razikus/supabase-nextjs-template); Kibo UI Rating (https://www.kibo-ui.com/components/rating); obscenity (https://github.com/jo3-l/obscenity); NSFWJS (https://github.com/infinitered/nsfwjs); OPUS-MT (https://github.com/Helsinki-NLP/Opus-MT); LibreTranslate (https://github.com/LibreTranslate/LibreTranslate); Supabase storage access control (https://supabase.com/docs/guides/storage/security/access-control).</p>
+<p>Build vs buy: Google review snippet policy (https://developers.google.com/search/docs/appearance/structured-data/review-snippet); Google JavaScript SEO basics (https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics); EU-US Data Privacy Framework status (https://www.twobirds.com/en/insights/2025/euus-data-privacy-framework-survives-legal-challenge); GDPR data residency (https://massivegrid.com/blog/gdpr-data-residency-european-hosting/); FTC Consumer Reviews and Testimonials Rule (https://www.ftc.gov/business-guidance/resources/consumer-reviews-testimonials-rule-questions-answers); peer verified-booking review policies (Viator, GetYourGuide https://supply.getyourguide.support/hc/en-us/articles/13981000922141, Booking.com https://partner.booking.com/en-us/help/guest-reviews/general/guest-review-process-and-conditions, Airbnb https://www.airbnb.com/help/article/2673, Etsy https://help.etsy.com/hc/en-us/articles/360000572708).</p>
+<hr />
+<p><em>End. This is advice, not applied to the master. It complements island-tours-review-strategy.md and its verification report.</em></p>
+  </main>
+</div>
+<button class="backtop" id="backtop" aria-label="Back to top">&#8593;</button>
+<script>
+(function(){
+  var content = document.getElementById('content');
+  var tocList = document.getElementById('tocList');
+  function walkText(root, fn){
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode:function(n){
+        var p=n.parentNode;
+        while(p && p!==root){ var t=p.nodeName;
+          if(t==='PRE'||t==='CODE'||t==='SCRIPT'||t==='STYLE'||t==='MARK'||t==='A') return NodeFilter.FILTER_REJECT;
+          p=p.parentNode; }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes=[], n; while(n=w.nextNode()) nodes.push(n); nodes.forEach(fn);
+  }
+  // TOC
+  var heads = content.querySelectorAll('h2, h3');
+  var slug = {};
+  heads.forEach(function(h){
+    if(!h.id){ var base=h.textContent.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      var id=base||'sec'; var i=2; while(slug[id]){ id=base+'-'+(i++); } h.id=id; }
+    slug[h.id]=true;
+    var a=document.createElement('a'); a.href='#'+h.id; a.textContent=h.textContent;
+    a.className=(h.tagName==='H3')?'lvl3':'lvl2'; a.dataset.target=h.id; tocList.appendChild(a);
+  });
+  var tocLinks = Array.prototype.slice.call(tocList.querySelectorAll('a'));
+  var byId={}; tocLinks.forEach(function(a){ byId[a.dataset.target]=a; });
+  var spy=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){
+      tocLinks.forEach(function(a){a.classList.remove('active');});
+      var a=byId[e.target.id]; if(a){ a.classList.add('active'); a.scrollIntoView({block:'nearest'}); } } });
+  }, {rootMargin:'-72px 0px -70% 0px', threshold:0});
+  heads.forEach(function(h){ spy.observe(h); });
+  var sidebar=document.getElementById('sidebar');
+  document.getElementById('menuBtn').addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+  tocList.addEventListener('click', function(e){ if(e.target.tagName==='A') sidebar.classList.remove('open'); });
+  var backtop=document.getElementById('backtop');
+  window.addEventListener('scroll', function(){ if(window.scrollY>600) backtop.classList.add('show'); else backtop.classList.remove('show'); });
+  backtop.addEventListener('click', function(){ window.scrollTo({top:0,behavior:'smooth'}); });
+  // Search
+  var input=document.getElementById('searchInput'), countEl=document.getElementById('searchCount'), marks=[], cur=-1;
+  function clearMarks(){ marks.forEach(function(mk){ var t=document.createTextNode(mk.textContent); mk.parentNode.replaceChild(t,mk); }); marks=[]; cur=-1; content.normalize(); }
+  function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function run(q){
+    clearMarks(); q=q.trim();
+    if(q.length<2){ countEl.textContent=''; tocLinks.forEach(function(a){a.classList.remove('hide');}); return; }
+    var re=new RegExp(esc(q),'gi');
+    walkText(content, function(node){
+      if(!re.test(node.nodeValue)) return; re.lastIndex=0;
+      var s=node.nodeValue, frag=document.createDocumentFragment(), last=0, m;
+      while(m=re.exec(s)){ if(m.index>last) frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+        var mk=document.createElement('mark'); mk.textContent=m[0]; frag.appendChild(mk); marks.push(mk);
+        last=m.index+m[0].length; if(m.index===re.lastIndex) re.lastIndex++; }
+      if(last<s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+      node.parentNode.replaceChild(frag,node);
+    });
+    countEl.textContent = marks.length ? (marks.length+' found') : 'none';
+    var lq=q.toLowerCase(); tocLinks.forEach(function(a){ a.classList.toggle('hide', a.textContent.toLowerCase().indexOf(lq)===-1); });
+    if(marks.length){ cur=0; focusMark(); }
+  }
+  function focusMark(){ marks.forEach(function(mk){mk.classList.remove('current');}); var mk=marks[cur]; if(!mk) return;
+    mk.classList.add('current'); mk.scrollIntoView({block:'center',behavior:'smooth'}); countEl.textContent=(cur+1)+' / '+marks.length; }
+  var deb;
+  input.addEventListener('input', function(){ clearTimeout(deb); deb=setTimeout(function(){ run(input.value); }, 180); });
+  input.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && marks.length){ e.preventDefault(); cur=(cur+(e.shiftKey?-1:1)+marks.length)%marks.length; focusMark(); }
+    if(e.key==='Escape'){ input.value=''; run(''); } });
+})();
+</script>
+</body>
+</html>

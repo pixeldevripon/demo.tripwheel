@@ -37,8 +37,18 @@ import { loadDemoTravelers } from './users-operators';
 import { SHOWCASE_MOST_POPULAR, SHOWCASE_NEW } from './tours';
 
 // ── Pricing (mirror computeBookingPricing) ───────────────────────────────────────
-interface Line { ageBandId: string; quantity: number; priceRetail: Prisma.Decimal }
-interface AddOnLine { addOnId: string; name: string; unit: AddOnUnit; quantity: number; unitPrice: Prisma.Decimal }
+interface Line {
+  ageBandId: string;
+  quantity: number;
+  priceRetail: Prisma.Decimal;
+}
+interface AddOnLine {
+  addOnId: string;
+  name: string;
+  unit: AddOnUnit;
+  quantity: number;
+  unitPrice: Prisma.Decimal;
+}
 
 function computePricing(input: {
   lines: Line[];
@@ -49,17 +59,23 @@ function computePricing(input: {
   commissionTier: Prisma.Decimal;
   discount?: Prisma.Decimal;
 }) {
-  const { lines, addOns, currency, paymentModel, depositPct, commissionTier } = input;
+  const { lines, addOns, currency, paymentModel, depositPct, commissionTier } =
+    input;
   const pax = lines.reduce((s, l) => s + l.quantity, 0);
 
   let unitsRetail = D(0);
-  for (const l of lines) unitsRetail = unitsRetail.plus(l.priceRetail.times(l.quantity));
+  for (const l of lines)
+    unitsRetail = unitsRetail.plus(l.priceRetail.times(l.quantity));
 
   const expandedAddOns = addOns.map((a) => {
-    const multiplier = a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
+    const multiplier =
+      a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
     return { ...a, totalPrice: money(a.unitPrice.times(multiplier)) };
   });
-  const addOnsRetail = expandedAddOns.reduce((s, a) => s.plus(a.totalPrice), D(0));
+  const addOnsRetail = expandedAddOns.reduce(
+    (s, a) => s.plus(a.totalPrice),
+    D(0),
+  );
 
   const discount = input.discount ?? D(0);
   const totalRetail = money(unitsRetail.plus(addOnsRetail).minus(discount));
@@ -85,7 +101,17 @@ function computePricing(input: {
   const totalEur = money(totalRetail.times(fxRateToEur));
   const commissionAmount = money(totalEur.times(commissionRate));
 
-  return { pax, totalRetail, depositAmount, balanceAmount, commissionRate, commissionAmount, totalEur, fxRateToEur, expandedAddOns };
+  return {
+    pax,
+    totalRetail,
+    depositAmount,
+    balanceAmount,
+    commissionRate,
+    commissionAmount,
+    totalEur,
+    fxRateToEur,
+    expandedAddOns,
+  };
 }
 
 function hhmm(time: Date): string {
@@ -110,31 +136,55 @@ export async function seedBookingsAndPayments(): Promise<void> {
     log('No demo travelers — skipping bookings.');
     return;
   }
-  const alreadySeeded = await prisma.booking.count({ where: { tour: { reference: DEMO_TOUR_REF } } });
-  if (alreadySeeded > 0) {
-    log(`Bookings already seeded (${alreadySeeded}) — skipping (run :clean first to rebuild).`);
+  // PER-TOUR incremental, not a global "any bookings exist -> skip everything"
+  // guard. The old global check meant a tour added in a later seed pass never
+  // received bookings at all, so it stayed at zero reviews and no demand signal
+  // forever.
+  //
+  // Existing bookings are deliberately NOT rewritten. Unlike tour copy, a
+  // booking is transactional history: it carries a status a human may have
+  // moved (cancelled, redeemed, refunded), payments settled against it, and
+  // seats held on a departure. Re-running the seed over it would erase exactly
+  // the state a re-seed is supposed to preserve. New tours get bookings; seeded
+  // ones are left alone.
+  const booked = new Set(
+    (
+      await prisma.booking.findMany({
+        where: { tour: { reference: DEMO_TOUR_REF } },
+        select: { tourId: true },
+        distinct: ['tourId'],
+      })
+    ).map((b) => b.tourId),
+  );
+
+  const tours = (
+    await prisma.tour.findMany({
+      where: { reference: DEMO_TOUR_REF },
+      select: {
+        id: true,
+        slug: true,
+        operatorId: true,
+        defaultCurrency: true,
+        paymentModel: true,
+        depositPct: true,
+        commissionTier: true,
+        durationMinutesTo: true,
+        durationMinutesFrom: true,
+        pickupModel: true,
+        destination: { select: { slug: true, name: true } },
+        ageBands: {
+          select: { id: true, bandType: true, price: true, label: true },
+        },
+        addOns: { select: { id: true, name: true, unit: true, price: true } },
+        pickupLocations: { select: { id: true, address: true }, take: 1 },
+      },
+    })
+  ).filter((t) => !booked.has(t.id));
+
+  if (tours.length === 0) {
+    log('Bookings: every demo tour already has them — nothing to add.');
     return;
   }
-
-  const tours = await prisma.tour.findMany({
-    where: { reference: DEMO_TOUR_REF },
-    select: {
-      id: true,
-      slug: true,
-      operatorId: true,
-      defaultCurrency: true,
-      paymentModel: true,
-      depositPct: true,
-      commissionTier: true,
-      durationMinutesTo: true,
-      durationMinutesFrom: true,
-      pickupModel: true,
-      destination: { select: { slug: true, name: true } },
-      ageBands: { select: { id: true, bandType: true, price: true, label: true } },
-      addOns: { select: { id: true, name: true, unit: true, price: true } },
-      pickupLocations: { select: { id: true, address: true }, take: 1 },
-    },
-  });
 
   let bookingCount = 0;
   let paymentCount = 0;
@@ -142,14 +192,38 @@ export async function seedBookingsAndPayments(): Promise<void> {
 
   for (const [tIdx, tour] of tours.entries()) {
     const r = rng(1000 + tIdx);
-    const adultBand = tour.ageBands.find((b) => b.bandType === AgeBandType.ADULT) ?? tour.ageBands[0];
+    const adultBand =
+      tour.ageBands.find((b) => b.bandType === AgeBandType.ADULT) ??
+      tour.ageBands[0];
     if (!adultBand) continue;
 
     // Past departures (for completed bookings) and future departures (upcoming/on-hold).
     const today0 = new Date();
     const [pastDeps, futureDeps] = await Promise.all([
-      prisma.departure.findMany({ where: { tourId: tour.id, date: { lt: today0 } }, orderBy: { date: 'desc' }, take: 10, select: { id: true, date: true, startTime: true, capacity: true, bookedCount: true } }),
-      prisma.departure.findMany({ where: { tourId: tour.id, date: { gte: today0 } }, orderBy: { date: 'asc' }, take: 10, select: { id: true, date: true, startTime: true, capacity: true, bookedCount: true } }),
+      prisma.departure.findMany({
+        where: { tourId: tour.id, date: { lt: today0 } },
+        orderBy: { date: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+        },
+      }),
+      prisma.departure.findMany({
+        where: { tourId: tour.id, date: { gte: today0 } },
+        orderBy: { date: 'asc' },
+        take: 10,
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+        },
+      }),
     ]);
 
     // Plan: 4 past REDEEMED (reviewable), 1 upcoming CONFIRMED, 1 ON_HOLD,
@@ -163,8 +237,10 @@ export async function seedBookingsAndPayments(): Promise<void> {
       { status: BookingStatus.CONFIRMED, when: 'future' },
       { status: BookingStatus.ON_HOLD, when: 'future' },
     ];
-    if (tIdx % 2 === 0) plans.push({ status: BookingStatus.CANCELLED, when: 'past' });
-    if (tIdx % 3 === 0) plans.push({ status: BookingStatus.EXPIRED, when: 'future' });
+    if (tIdx % 2 === 0)
+      plans.push({ status: BookingStatus.CANCELLED, when: 'past' });
+    if (tIdx % 3 === 0)
+      plans.push({ status: BookingStatus.EXPIRED, when: 'future' });
 
     // Badge showcase (master §3.6): a NEW tour must have ZERO reviews, so it gets no
     // bookings; a MOST_POPULAR tour needs >= 10 reviews, so it gets ~14 redeemed
@@ -172,7 +248,8 @@ export async function seedBookingsAndPayments(): Promise<void> {
     if (SHOWCASE_NEW.has(tour.slug)) {
       plans.length = 0;
     } else if (SHOWCASE_MOST_POPULAR.has(tour.slug)) {
-      for (let k = 0; k < 10; k++) plans.push({ status: BookingStatus.REDEEMED, when: 'past' });
+      for (let k = 0; k < 10; k++)
+        plans.push({ status: BookingStatus.REDEEMED, when: 'past' });
     }
 
     let pastCursor = 0;
@@ -181,9 +258,14 @@ export async function seedBookingsAndPayments(): Promise<void> {
     for (const [bIdx, plan] of plans.entries()) {
       const depPool = plan.when === 'past' ? pastDeps : futureDeps;
       if (depPool.length === 0) continue;
-      const dep = plan.when === 'past' ? depPool[pastCursor++ % depPool.length] : depPool[futureCursor++ % depPool.length];
+      const dep =
+        plan.when === 'past'
+          ? depPool[pastCursor++ % depPool.length]
+          : depPool[futureCursor++ % depPool.length];
       const traveler = pick(travelers, r());
-      const [firstName, ...rest] = (traveler.name ?? 'Guest Traveler').split(' ');
+      const [firstName, ...rest] = (traveler.name ?? 'Guest Traveler').split(
+        ' ',
+      );
       const lastName = rest.join(' ') || 'Traveler';
 
       // Build lines from a pax pattern, restricted to bands the tour actually has.
@@ -195,19 +277,32 @@ export async function seedBookingsAndPayments(): Promise<void> {
         if (cur) cur.qty++;
         else counts.set(band.id, { band, qty: 1 });
       }
-      const lines: Line[] = [...counts.values()].map((c) => ({ ageBandId: c.band.id, quantity: c.qty, priceRetail: c.band.price }));
+      const lines: Line[] = [...counts.values()].map((c) => ({
+        ageBandId: c.band.id,
+        quantity: c.qty,
+        priceRetail: c.band.price,
+      }));
       const seats = lines.reduce((s, l) => s + l.quantity, 0);
 
       // Optional single add-on.
       const addOns: AddOnLine[] = [];
       if (tour.addOns.length && r() > 0.5) {
         const a = pick(tour.addOns, r());
-        addOns.push({ addOnId: a.id, name: a.name, unit: a.unit, quantity: 1, unitPrice: a.price });
+        addOns.push({
+          addOnId: a.id,
+          name: a.name,
+          unit: a.unit,
+          quantity: 1,
+          unitPrice: a.price,
+        });
       }
 
       // Optional coupon (10% off) on some bookings.
       const useCoupon = r() > 0.8;
-      const subtotalForDiscount = lines.reduce((s, l) => s.plus(l.priceRetail.times(l.quantity)), D(0));
+      const subtotalForDiscount = lines.reduce(
+        (s, l) => s.plus(l.priceRetail.times(l.quantity)),
+        D(0),
+      );
       const discount = useCoupon ? money(subtotalForDiscount.times(0.1)) : D(0);
 
       const pricing = computePricing({
@@ -228,11 +323,18 @@ export async function seedBookingsAndPayments(): Promise<void> {
       const endDateTime = new Date(startDateTime.getTime() + durTo * 60_000);
       const year = localDate.getUTCFullYear();
 
-      const isConfirmedLike = plan.status === BookingStatus.CONFIRMED || plan.status === BookingStatus.REDEEMED;
+      const isConfirmedLike =
+        plan.status === BookingStatus.CONFIRMED ||
+        plan.status === BookingStatus.REDEEMED;
       const isCancelled = plan.status === BookingStatus.CANCELLED;
-      const usesCardPayment = tour.paymentModel === PaymentModel.PAID_IN_FULL || tour.paymentModel === PaymentModel.OPERATOR_LINK;
+      const usesCardPayment =
+        tour.paymentModel === PaymentModel.PAID_IN_FULL ||
+        tour.paymentModel === PaymentModel.OPERATOR_LINK;
 
-      const confirmedAt = plan.when === 'past' ? new Date(startDateTime.getTime() - 3 * 86_400_000) : new Date(today0.getTime() - intBetween(r(), 1, 10) * 86_400_000);
+      const confirmedAt =
+        plan.when === 'past'
+          ? new Date(startDateTime.getTime() - 3 * 86_400_000)
+          : new Date(today0.getTime() - intBetween(r(), 1, 10) * 86_400_000);
 
       const utm = pick(UTM_SOURCES, r());
 
@@ -272,7 +374,10 @@ export async function seedBookingsAndPayments(): Promise<void> {
           contactPhone: '+10000000000',
           contactCountry: traveler.location ?? 'Netherlands',
           contactLocales: ['en'],
-          notes: r() > 0.7 ? 'Celebrating an anniversary — any extra touches appreciated!' : null,
+          notes:
+            r() > 0.7
+              ? 'Celebrating an anniversary — any extra touches appreciated!'
+              : null,
           newsletterOptIn: r() > 0.5,
           utmSource: utm ?? undefined,
           utmMedium: utm ? 'cpc' : undefined,
@@ -281,15 +386,28 @@ export async function seedBookingsAndPayments(): Promise<void> {
           customerLocale: 'en',
           conversionFiredAt: isConfirmedLike ? confirmedAt : null,
           utcConfirmedAt: isConfirmedLike ? confirmedAt : null,
-          utcRedeemedAt: plan.status === BookingStatus.REDEEMED ? new Date(endDateTime.getTime() + 3_600_000) : null,
-          utcExpiresAt: plan.status === BookingStatus.ON_HOLD ? new Date(today0.getTime() + 30 * 60_000) : null,
-          utcCancelledAt: isCancelled ? new Date(confirmedAt.getTime() + 86_400_000) : null,
+          utcRedeemedAt:
+            plan.status === BookingStatus.REDEEMED
+              ? new Date(endDateTime.getTime() + 3_600_000)
+              : null,
+          utcExpiresAt:
+            plan.status === BookingStatus.ON_HOLD
+              ? new Date(today0.getTime() + 30 * 60_000)
+              : null,
+          utcCancelledAt: isCancelled
+            ? new Date(confirmedAt.getTime() + 86_400_000)
+            : null,
           cancellationRefund: isCancelled ? CancellationRefund.FULL : null,
           cancelledBy: isCancelled ? CancelledBy.CUSTOMER : null,
           cancellationReason: isCancelled ? 'Change of travel plans' : null,
-          billingCountry: usesCardPayment && isConfirmedLike ? (traveler.location ?? 'Netherlands') : null,
-          paymentMethodBrand: usesCardPayment && isConfirmedLike ? 'visa' : null,
-          paymentMethodLast4: usesCardPayment && isConfirmedLike ? '4242' : null,
+          billingCountry:
+            usesCardPayment && isConfirmedLike
+              ? (traveler.location ?? 'Netherlands')
+              : null,
+          paymentMethodBrand:
+            usesCardPayment && isConfirmedLike ? 'visa' : null,
+          paymentMethodLast4:
+            usesCardPayment && isConfirmedLike ? '4242' : null,
           unitItems: {
             create: lines.flatMap((l) =>
               Array.from({ length: l.quantity }, () => ({
@@ -298,13 +416,26 @@ export async function seedBookingsAndPayments(): Promise<void> {
                 priceRetail: l.priceRetail,
                 contactFirstName: firstName,
                 contactLastName: lastName,
-                ticketCode: plan.status === BookingStatus.REDEEMED ? `TKT-${randomUUID().slice(0, 8).toUpperCase()}` : null,
-                utcRedeemedAt: plan.status === BookingStatus.REDEEMED ? new Date(endDateTime.getTime() + 3_600_000) : null,
+                ticketCode:
+                  plan.status === BookingStatus.REDEEMED
+                    ? `TKT-${randomUUID().slice(0, 8).toUpperCase()}`
+                    : null,
+                utcRedeemedAt:
+                  plan.status === BookingStatus.REDEEMED
+                    ? new Date(endDateTime.getTime() + 3_600_000)
+                    : null,
               })),
             ),
           },
           addOns: {
-            create: pricing.expandedAddOns.map((a) => ({ addOnId: a.addOnId, name: a.name, unit: a.unit, quantity: a.quantity, unitPrice: a.unitPrice, totalPrice: a.totalPrice })),
+            create: pricing.expandedAddOns.map((a) => ({
+              addOnId: a.addOnId,
+              name: a.name,
+              unit: a.unit,
+              quantity: a.quantity,
+              unitPrice: a.unitPrice,
+              totalPrice: a.totalPrice,
+            })),
           },
         },
         select: { id: true },
@@ -318,7 +449,8 @@ export async function seedBookingsAndPayments(): Promise<void> {
           where: { id: dep.id },
           data: {
             bookedCount: { increment: seats },
-            status: newBooked >= dep.capacity ? DepartureStatus.SOLD_OUT : undefined,
+            status:
+              newBooked >= dep.capacity ? DepartureStatus.SOLD_OUT : undefined,
             soldOutAt: newBooked >= dep.capacity ? new Date() : undefined,
           },
         });
@@ -328,51 +460,134 @@ export async function seedBookingsAndPayments(): Promise<void> {
       // ── Payments ──
       if (isConfirmedLike) {
         if (tour.paymentModel === PaymentModel.PAID_IN_FULL) {
-          await prisma.payment.create({ data: { bookingId: booking.id, provider: PaymentProvider.STRIPE, kind: PaymentKind.FULL, status: PaymentStatus.SUCCEEDED, amount: pricing.totalRetail, currency: tour.defaultCurrency, intentId: `pi_demo_${booking.id.slice(0, 12)}`, chargeId: `ch_demo_${booking.id.slice(0, 12)}`, methodType: 'card' } });
+          await prisma.payment.create({
+            data: {
+              bookingId: booking.id,
+              provider: PaymentProvider.STRIPE,
+              kind: PaymentKind.FULL,
+              status: PaymentStatus.SUCCEEDED,
+              amount: pricing.totalRetail,
+              currency: tour.defaultCurrency,
+              intentId: `pi_demo_${booking.id.slice(0, 12)}`,
+              chargeId: `ch_demo_${booking.id.slice(0, 12)}`,
+              methodType: 'card',
+            },
+          });
           paymentCount++;
         } else if (tour.paymentModel === PaymentModel.OPERATOR_LINK) {
-          await prisma.payment.create({ data: { bookingId: booking.id, provider: PaymentProvider.STRIPE, kind: PaymentKind.DEPOSIT, status: PaymentStatus.SUCCEEDED, amount: pricing.depositAmount, currency: tour.defaultCurrency, intentId: `pi_demo_${booking.id.slice(0, 12)}`, chargeId: `ch_demo_${booking.id.slice(0, 12)}`, methodType: 'card' } });
+          await prisma.payment.create({
+            data: {
+              bookingId: booking.id,
+              provider: PaymentProvider.STRIPE,
+              kind: PaymentKind.DEPOSIT,
+              status: PaymentStatus.SUCCEEDED,
+              amount: pricing.depositAmount,
+              currency: tour.defaultCurrency,
+              intentId: `pi_demo_${booking.id.slice(0, 12)}`,
+              chargeId: `ch_demo_${booking.id.slice(0, 12)}`,
+              methodType: 'card',
+            },
+          });
           paymentCount++;
         }
         // ON_ARRIVAL / OPERATOR_FULL: no platform payment.
       } else if (isCancelled && usesCardPayment) {
-        const refundBase = tour.paymentModel === PaymentModel.PAID_IN_FULL ? pricing.totalRetail : pricing.depositAmount;
-        await prisma.payment.create({ data: { bookingId: booking.id, provider: PaymentProvider.STRIPE, kind: PaymentKind.FULL, status: PaymentStatus.REFUNDED, amount: refundBase, currency: tour.defaultCurrency, intentId: `pi_demo_${booking.id.slice(0, 12)}`, chargeId: `ch_demo_${booking.id.slice(0, 12)}`, methodType: 'card' } });
-        await prisma.payment.create({ data: { bookingId: booking.id, provider: PaymentProvider.STRIPE, kind: PaymentKind.REFUND, status: PaymentStatus.REFUNDED, amount: refundBase, currency: tour.defaultCurrency, refundId: `re_demo_${booking.id.slice(0, 12)}`, methodType: 'card' } });
+        const refundBase =
+          tour.paymentModel === PaymentModel.PAID_IN_FULL
+            ? pricing.totalRetail
+            : pricing.depositAmount;
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            provider: PaymentProvider.STRIPE,
+            kind: PaymentKind.FULL,
+            status: PaymentStatus.REFUNDED,
+            amount: refundBase,
+            currency: tour.defaultCurrency,
+            intentId: `pi_demo_${booking.id.slice(0, 12)}`,
+            chargeId: `ch_demo_${booking.id.slice(0, 12)}`,
+            methodType: 'card',
+          },
+        });
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            provider: PaymentProvider.STRIPE,
+            kind: PaymentKind.REFUND,
+            status: PaymentStatus.REFUNDED,
+            amount: refundBase,
+            currency: tour.defaultCurrency,
+            refundId: `re_demo_${booking.id.slice(0, 12)}`,
+            methodType: 'card',
+          },
+        });
         paymentCount += 2;
       }
 
       // Operator booking tallies.
-      const agg = perOperator.get(tour.operatorId) ?? { total: 0, cancelled: 0 };
+      const agg = perOperator.get(tour.operatorId) ?? {
+        total: 0,
+        cancelled: 0,
+      };
       if (!isCancelled && plan.status !== BookingStatus.EXPIRED) agg.total++;
       if (isCancelled) agg.cancelled++;
       perOperator.set(tour.operatorId, agg);
     }
 
     // CRO counters on the tour.
-    const liveCount = await prisma.booking.count({ where: { tourId: tour.id, status: { in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED] } } });
-    const last = await prisma.booking.findFirst({ where: { tourId: tour.id }, orderBy: { createdAt: 'desc' }, select: { utcConfirmedAt: true, createdAt: true } });
-    await prisma.tour.update({ where: { id: tour.id }, data: { bookingCount: liveCount, lastBookedAt: last?.utcConfirmedAt ?? last?.createdAt ?? null } });
+    const liveCount = await prisma.booking.count({
+      where: {
+        tourId: tour.id,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED] },
+      },
+    });
+    const last = await prisma.booking.findFirst({
+      where: { tourId: tour.id },
+      orderBy: { createdAt: 'desc' },
+      select: { utcConfirmedAt: true, createdAt: true },
+    });
+    await prisma.tour.update({
+      where: { id: tour.id },
+      data: {
+        bookingCount: liveCount,
+        lastBookedAt: last?.utcConfirmedAt ?? last?.createdAt ?? null,
+      },
+    });
   }
 
   // Operator aggregates.
   for (const [operatorId, agg] of perOperator) {
     const denom = agg.total + agg.cancelled;
     const rate = denom > 0 ? money((agg.cancelled / denom) * 100) : money(0);
-    await prisma.operator.update({ where: { id: operatorId }, data: { totalBookings: agg.total, cancellationRate90d: rate } });
+    await prisma.operator.update({
+      where: { id: operatorId },
+      data: { totalBookings: agg.total, cancellationRate90d: rate },
+    });
   }
 
   // A couple of idempotent webhook ledger rows (provider replay no-ops).
   await prisma.stripeWebhookEvent.upsert({
     where: { id: 'evt_demo_payment_intent_succeeded' },
     update: {},
-    create: { id: 'evt_demo_payment_intent_succeeded', type: 'payment_intent.succeeded', processedAt: new Date(), payload: { demo: true, object: 'event' } },
+    create: {
+      id: 'evt_demo_payment_intent_succeeded',
+      type: 'payment_intent.succeeded',
+      processedAt: new Date(),
+      payload: { demo: true, object: 'event' },
+    },
   });
   await prisma.mollieWebhookEvent.upsert({
     where: { id: 'tr_demo_payment' },
     update: {},
-    create: { id: 'tr_demo_payment', type: 'payment', processedAt: new Date(), payload: { demo: true, id: 'tr_demo_payment' } },
+    create: {
+      id: 'tr_demo_payment',
+      type: 'payment',
+      processedAt: new Date(),
+      payload: { demo: true, id: 'tr_demo_payment' },
+    },
   });
 
-  log(`Bookings: ${bookingCount} created; Payments: ${paymentCount} + 2 webhook ledger rows.`);
+  log(
+    `Bookings: ${bookingCount} created; Payments: ${paymentCount} + 2 webhook ledger rows.`,
+  );
 }

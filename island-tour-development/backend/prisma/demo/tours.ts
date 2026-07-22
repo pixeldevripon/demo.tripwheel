@@ -2054,7 +2054,7 @@ export async function seedTours(): Promise<void> {
   );
 
   let created = 0;
-  let skipped = 0;
+  let refreshed = 0;
   const publishedAt = dayOffset(-45);
 
   for (const bp of TOUR_BLUEPRINTS) {
@@ -2062,15 +2062,6 @@ export async function seedTours(): Promise<void> {
     const destinationId = destIdBySlug.get(bp.destinationSlug);
     if (!operatorId || !destinationId) {
       log(`! Skipping ${bp.slug} (missing operator/destination)`);
-      continue;
-    }
-
-    const existing = await prisma.tour.findUnique({
-      where: { destinationId_slug: { destinationId, slug: bp.slug } },
-      select: { id: true },
-    });
-    if (existing) {
-      skipped++;
       continue;
     }
 
@@ -2085,6 +2076,90 @@ export async function seedTours(): Promise<void> {
     const c = CATEGORY_CONTENT[bp.primaryCategory];
     const primaryCat = catBySlug.get(bp.primaryCategory);
     const categoryDisplay = primaryCat ? primaryCat.name : bp.primaryCategory;
+
+    // Scalars are hoisted so the SAME definition serves both a first-time create
+    // and a re-seed refresh. Duplicating them would guarantee the two drift.
+    const tourData = {
+      operatorId,
+      destinationId,
+      name: bp.name,
+      slug: bp.slug,
+      status: TourStatus.LIVE,
+      isActive: true,
+      isBookable: true,
+      reference: DEMO_TOUR_REF,
+      timeZone: meta.tz,
+      // pricing. The included-guests + extra-person surcharge applies ONLY to
+      // GROUP pricing; a blueprint that declares those fields is a group-priced
+      // charter, so it is forced to unit_type GROUP. Other unit types
+      // (boat/vehicle/aircraft/package) are a flat whole-unit price.
+      pricingModel: bp.pricingModel ?? PricingModel.PER_PERSON,
+      wholeUnitType:
+        bp.pricingModel === PricingModel.UNIT
+          ? bp.unitIncludedGuests != null || bp.extraPersonPrice != null
+            ? WholeUnitType.GROUP
+            : (bp.wholeUnitType ?? null)
+          : null,
+      defaultCurrency: currency,
+      basePrice: money(bp.basePrice),
+      unitIncludedGuests: bp.unitIncludedGuests ?? null,
+      extraPersonPrice:
+        bp.extraPersonPrice != null ? money(bp.extraPersonPrice) : null,
+      // operational
+      durationMinutesFrom: bp.durationFrom,
+      durationMinutesTo: bp.durationTo,
+      pickupModel: bp.pickup ? PickupModel.INCLUDED : PickupModel.NONE,
+      pickupRequired: false,
+      minPartySize: 1,
+      maxPartySize:
+        bp.maxPartySize ??
+        (bp.bookingType === TourBookingType.PRIVATE ? 12 : 20),
+      bookingCutoffMinutes: 120,
+      cancellationHours: bp.cancellationHours ?? 48,
+      startTimes: bp.startTimes,
+      paymentModel: bp.paymentModel ?? PaymentModel.OPERATOR_LINK,
+      depositPct: D(20.0),
+      // commercial
+      commissionTier: D(tier.commission),
+      tierKey: bp.tierKey,
+      tierRank: tier.rank,
+      qualityScore: D(60 + tier.rank * 5),
+      eligibilityState: EligibilityState.ELIGIBLE,
+      firstPublishedAt: tourPublishedAt,
+      publishedAt: tourPublishedAt,
+      // SEO / content
+      ogImage: themedPhoto(tourTheme(bp.slug), 0, 1200, 630),
+      breadcrumbLabel: bp.name,
+      // meeting point
+      meetingPointLat: meta.lat,
+      meetingPointLng: meta.lng,
+      departureCity: meta.city,
+      checkInMinutesBefore: 30,
+      // audience
+      minAgeYears: bp.minAgeYears ?? null,
+      fitnessLevel: bp.fitnessLevel ?? FitnessLevel.EASY,
+      bookingType: bp.bookingType,
+      weatherDependent: bp.flags?.weatherDependent ?? false,
+      wheelchairAccessible: bp.flags?.wheelchairAccessible ?? false,
+      familyFriendly: bp.flags?.familyFriendly ?? false,
+      suitableForBeginners: bp.flags?.suitableForBeginners ?? false,
+      isLocalsFavourite: bp.flags?.isLocalsFavourite ?? false,
+    };
+
+    // Re-seedable: an existing demo tour has its CONTENT refreshed in place
+    // rather than being skipped, so changed blueprint copy actually lands on a
+    // VPS re-run without `--clean`. Children (images, highlights, translations,
+    // category/hub links) are left alone - they are already present, and
+    // rebuilding them would delete rows an admin may have edited.
+    const existing = await prisma.tour.findUnique({
+      where: { destinationId_slug: { destinationId, slug: bp.slug } },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.tour.update({ where: { id: existing.id }, data: tourData });
+      refreshed++;
+      continue;
+    }
 
     await prisma.$transaction(async (tx) => {
       const tour = await tx.tour.create({
@@ -2454,7 +2529,7 @@ export async function seedTours(): Promise<void> {
   }
 
   log(
-    `Tours: ${created} created, ${skipped} already existed (total blueprints ${TOUR_BLUEPRINTS.length}).`,
+    `Tours: ${created} created, ${refreshed} refreshed in place (total blueprints ${TOUR_BLUEPRINTS.length}).`,
   );
 }
 

@@ -25,6 +25,41 @@ function formatReviewDate(iso: string, locale: Locale): string {
   }).format(new Date(iso));
 }
 
+/**
+ * Localized travel month, e.g. "March 2026" (FE-8).
+ *
+ * Built from the review's `travelMonth`/`travelYear` (when the tour was taken),
+ * NOT from `createdAt` (when the review was written) - a review left six months
+ * late would otherwise claim the wrong season, which is exactly the signal a
+ * traveler is reading this line for.
+ *
+ * Returns '' when either part is missing so the caller can drop the line
+ * entirely rather than render a half-date.
+ */
+function formatTravelMonth(
+  month: number | null,
+  year: number | null,
+  locale: Locale,
+): string {
+  if (!month || !year) return '';
+  // Day 1 at UTC noon: a midnight date can roll back a day in a negative-offset
+  // timezone and take the month with it.
+  return new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
+}
+
+/** Locale code -> its name in the READER's language ("nl" -> "Dutch"). */
+function languageName(code: Locale, locale: Locale): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /** ISO country code -> localized country name ("NL" -> "Netherlands"). */
 function countryName(code: string | null, locale: Locale): string {
   if (!code) return '';
@@ -49,14 +84,18 @@ export function toTourReview(review: PublicReview, locale: Locale): TourReview {
 }
 
 /**
- * Map a review to the full-section card shape. `hostLabel` is the response
- * author label - the review payload carries the operator response text/date but
- * no author name, so the caller supplies a display label.
+ * Map a review to the full-section card shape.
+ *
+ * Two author labels, because a response can come from either party:
+ * `hostLabel` is the operator's display name and `platformLabel` is ours. The
+ * payload carries `responseAuthor` as the discriminator but no names, so the
+ * caller supplies both and this picks.
  */
 export function toFullReview(
   review: PublicReview,
   locale: Locale,
   hostLabel: string,
+  platformLabel: string,
 ): FullReview {
   const full: FullReview = {
     id: review.id,
@@ -65,13 +104,36 @@ export function toFullReview(
     date: formatReviewDate(review.createdAt, locale),
     text: review.comment ?? '',
     photos: review.photos.length > 0 ? review.photos : undefined,
+    verified: review.isVerified,
+    // LD32. Both texts travel together so the toggle needs no second request
+    // and no per-review translation URL.
+    isMachineTranslated: review.isMachineTranslated,
+    originalText: review.originalComment,
+    originalLanguage: review.originalLocale
+      ? languageName(review.originalLocale, locale)
+      : '',
+    travelLabel: formatTravelMonth(
+      review.travelMonth,
+      review.travelYear,
+      locale,
+    ),
+    // Passed through RAW, not localized here: the guest-type label lives in the
+    // dictionary alongside the rest of the section's copy, and this module is
+    // deliberately dictionary-free so it stays a pure mapper.
+    guestType: review.reviewerType,
   };
-  if (review.operatorResponse) {
+  if (review.responseText) {
     full.response = {
-      text: review.operatorResponse,
-      name: hostLabel,
-      date: review.operatorRespondedAt
-        ? formatReviewDate(review.operatorRespondedAt, locale)
+      text: review.responseText,
+      // WHO replied, from `responseAuthor` - not "whoever owns the tour".
+      // Responses are platform-authored at launch (LD37), so labelling every
+      // one with the operator's name told the reader the operator had replied
+      // when Island Tours had. `responseAuthor` exists to answer exactly this
+      // and was being ignored.
+      name:
+        review.responseAuthor === 'OPERATOR' ? hostLabel : platformLabel,
+      date: review.responseAt
+        ? formatReviewDate(review.responseAt, locale)
         : '',
     };
   }

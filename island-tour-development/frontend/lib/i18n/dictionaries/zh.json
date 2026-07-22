@@ -1,752 +1,814 @@
 {
-  "nav": {
-    "selectIsland": "选择您的岛屿",
-    "wishlist": "收藏夹",
-    "account": "账户",
-    "logout": "退出登录",
-    "menu": "菜单",
-    "close": "关闭",
-    "language": "语言",
-    "categories": "分类",
-    "search": "搜索",
-    "myBookings": "我的预订"
-  },
-  "footer": {
-    "tagline": "由岛民打造。",
-    "ourStory": "我们的故事",
-    "explore": "探索",
-    "support": "支持",
-    "workWithUs": "与我们合作",
-    "legal": "法律",
-    "language": "语言",
-    "currency": "货币",
-    "links": {
-      "boatTours": "乘船游览",
-      "help": "帮助中心",
-      "contact": "联系我们",
-      "listTour": "发布您的旅行",
-      "affiliate": "成为联盟伙伴",
-      "privacy": "隐私政策",
-      "cookies": "Cookie 政策",
-      "terms": "服务条款",
-      "cancellation": "取消政策",
-      "legalNotice": "法律声明"
+    "nav": {
+        "selectIsland": "选择您的岛屿",
+        "wishlist": "收藏夹",
+        "account": "账户",
+        "logout": "退出登录",
+        "menu": "菜单",
+        "close": "关闭",
+        "language": "语言",
+        "categories": "分类",
+        "search": "搜索",
+        "myBookings": "我的预订"
     },
-    "copyright": "© 2026 ITG B.V. (Island Tours Group)",
-    "registration": "KvK Curaçao 169950",
-    "manageCookies": "管理 Cookie"
-  },
-  "common": {
-    "popular": "热门",
-    "search": "搜索",
-    "viewAll": "查看全部",
-    "readMore": "阅读更多"
-  },
-  "search": {
-    "title": "搜索",
-    "placeholder": "搜索行程、活动、地点",
-    "resultsFor": "“{query}” 的 {count} 个结果",
-    "resultFor": "“{query}” 的 {count} 个结果",
-    "noResults": "没有找到 “{query}” 的结果",
-    "noResultsHint": "请检查拼写或尝试更宽泛的关键词。",
-    "promptTitle": "搜索 Island Tours",
-    "promptHint": "输入至少 2 个字符以查找行程、活动和地点。",
-    "searching": "搜索中...",
-    "seeAll": "查看全部 {count} 个结果",
-    "hours": "{value} 小时",
-    "hour": "1 小时",
-    "minutes": "{value} 分钟",
-    "range": "{from} 至 {to} 小时",
-    "toursIn": "{name}的行程",
-    "beyond": "{name}以外",
-    "tourCount": "{count} 个行程",
-    "tourCountOne": "1 个行程",
-    "seeAllTours": "查看全部行程"
-  },
-  "wishlist": {
-    "title": "你的心愿单",
-    "empty": "还没有收藏的行程",
-    "emptyHint": "点击任意行程上的爱心即可收藏到这里。",
-    "signInTitle": "登录以查看你的心愿单",
-    "signInHint": "你收藏的行程与你的账户关联。",
-    "signInCta": "登录"
-  },
-  "home": {
-    "hero": {
-      "title": "我们没有发现加勒比海。我们在这里长大。",
-      "subtitle": "由本地人甄选，为旅行者打造。",
-      "searchPlaceholder": "哪个岛屿？",
-      "popular": "热门"
-    },
-    "trust": [
-      {
-        "title": "今天只需支付 20%",
-        "body": "立即锁定名额，余款稍后支付"
-      },
-      {
-        "title": "计划有变？没问题",
-        "body": "每个行程均可免费取消，无需理由"
-      },
-      {
-        "title": "随时为您提供帮助",
-        "body": "通过 WhatsApp 联系我们，08:00 - 20:00"
-      }
-    ],
-    "experiences": {
-      "title": "岛上热门体验",
-      "cards": {
-        "sunsetCruise": "日落巡航",
-        "catamaranTrip": "双体船之旅",
-        "buggyTour": "沙滩车之旅",
-        "snorkeling": "浮潜",
-        "dolphin": "海豚邂逅"
-      }
-    },
-    "explore": {
-      "title": "探索我们的岛屿",
-      "tours": "个旅行",
-      "seeMore": "查看更多岛屿"
-    },
-    "editorial": {
-      "titleLine1": "一座岛屿",
-      "titleLine2": "无尽冒险",
-      "body": "我们在这座岛上长大。这些是我们会为自己的朋友预订的旅行。",
-      "cta": "探索库拉索",
-      "categories": {
-        "buggy": "沙滩车之旅",
-        "snorkel": "浮潜之旅",
-        "catamaran": "双体船之旅"
-      }
-    },
-    "faq": {
-      "title": "预订前需要帮助吗？",
-      "subtitle": "我们是本地人。我们在这里长大，了解这些旅行，希望您在这些岛屿上度过最美好的时光。",
-      "whatsapp": "通过 WhatsApp 聊天",
-      "guarantees": [
-        "免费取消，无需理由",
-        "今天最低只需支付 20%，余款稍后支付"
-      ],
-      "items": [
-        {
-          "q": "如果我的计划有变，可以取消吗？",
-          "a": "大多数旅游项目可在开始前24小时内取消并获得全额退款。无需填写表格，无需任何理由。直接通过您的确认邮件取消即可。"
+    "footer": {
+        "tagline": "由岛民打造。",
+        "ourStory": "我们的故事",
+        "explore": "探索",
+        "support": "支持",
+        "workWithUs": "与我们合作",
+        "legal": "法律",
+        "language": "语言",
+        "currency": "货币",
+        "links": {
+            "boatTours": "乘船游览",
+            "help": "帮助中心",
+            "contact": "联系我们",
+            "listTour": "发布您的旅行",
+            "affiliate": "成为联盟伙伴",
+            "privacy": "隐私政策",
+            "cookies": "Cookie 政策",
+            "terms": "服务条款",
+            "cancellation": "取消政策",
+            "legalNotice": "法律声明"
         },
-        {
-          "q": "现在必须全额付款吗？",
-          "a": "不需要 — 您只需预付 20% 即可锁定名额，余款可在临近出发日期时支付。"
+        "copyright": "© 2026 ITG B.V. (Island Tours Group)",
+        "registration": "KvK Curaçao 169950",
+        "manageCookies": "管理 Cookie"
+    },
+    "common": {
+        "popular": "热门",
+        "search": "搜索",
+        "viewAll": "查看全部",
+        "readMore": "阅读更多"
+    },
+    "search": {
+        "title": "搜索",
+        "placeholder": "搜索行程、活动、地点",
+        "resultsFor": "“{query}” 的 {count} 个结果",
+        "resultFor": "“{query}” 的 {count} 个结果",
+        "noResults": "没有找到 “{query}” 的结果",
+        "noResultsHint": "请检查拼写或尝试更宽泛的关键词。",
+        "promptTitle": "搜索 Island Tours",
+        "promptHint": "输入至少 2 个字符以查找行程、活动和地点。",
+        "searching": "搜索中...",
+        "seeAll": "查看全部 {count} 个结果",
+        "hours": "{value} 小时",
+        "hour": "1 小时",
+        "minutes": "{value} 分钟",
+        "range": "{from} 至 {to} 小时",
+        "toursIn": "{name}的行程",
+        "beyond": "{name}以外",
+        "tourCount": "{count} 个行程",
+        "tourCountOne": "1 个行程",
+        "seeAllTours": "查看全部行程"
+    },
+    "wishlist": {
+        "title": "你的心愿单",
+        "empty": "还没有收藏的行程",
+        "emptyHint": "点击任意行程上的爱心即可收藏到这里。",
+        "signInTitle": "登录以查看你的心愿单",
+        "signInHint": "你收藏的行程与你的账户关联。",
+        "signInCta": "登录"
+    },
+    "home": {
+        "hero": {
+            "title": "我们没有发现加勒比海。我们在这里长大。",
+            "subtitle": "由本地人甄选，为旅行者打造。",
+            "searchPlaceholder": "哪个岛屿？",
+            "popular": "热门"
         },
-        {
-          "q": "Island Tours 背后是谁？",
-          "a": "我们是一支在库拉索、阿鲁巴和圣马丁长大的岛民团队。每一个旅行都经过我们亲自审核。"
+        "trust": [
+            {
+                "title": "今天只需支付 20%",
+                "body": "立即锁定名额，余款稍后支付"
+            },
+            {
+                "title": "计划有变？没问题",
+                "body": "每个行程均可免费取消，无需理由"
+            },
+            {
+                "title": "随时为您提供帮助",
+                "body": "通过 WhatsApp 联系我们，08:00 - 20:00"
+            }
+        ],
+        "experiences": {
+            "title": "岛上热门体验",
+            "cards": {
+                "sunsetCruise": "日落巡航",
+                "catamaranTrip": "双体船之旅",
+                "buggyTour": "沙滩车之旅",
+                "snorkeling": "浮潜",
+                "dolphin": "海豚邂逅"
+            }
         },
-        {
-          "q": "如果我的旅行被取消怎么办？",
-          "a": "如果运营商取消了旅行，您将在 24 小时内获得全额退款 — 无需理由。"
+        "explore": {
+            "title": "探索我们的岛屿",
+            "tours": "个旅行",
+            "seeMore": "查看更多岛屿"
         },
-        {
-          "q": "不确定选哪个旅行？我们来帮您。",
-          "a": "随时通过 WhatsApp 与我们联系。告诉我们您的需求，我们会提供真诚的本地推荐。"
+        "editorial": {
+            "titleLine1": "一座岛屿",
+            "titleLine2": "无尽冒险",
+            "body": "我们在这座岛上长大。这些是我们会为自己的朋友预订的旅行。",
+            "cta": "探索库拉索",
+            "categories": {
+                "buggy": "沙滩车之旅",
+                "snorkel": "浮潜之旅",
+                "catamaran": "双体船之旅"
+            }
+        },
+        "faq": {
+            "title": "预订前需要帮助吗？",
+            "subtitle": "我们是本地人。我们在这里长大，了解这些旅行，希望您在这些岛屿上度过最美好的时光。",
+            "whatsapp": "通过 WhatsApp 聊天",
+            "guarantees": [
+                "免费取消，无需理由",
+                "今天最低只需支付 20%，余款稍后支付"
+            ],
+            "items": [
+                {
+                    "q": "如果我的计划有变，可以取消吗？",
+                    "a": "大多数旅游项目可在开始前24小时内取消并获得全额退款。无需填写表格，无需任何理由。直接通过您的确认邮件取消即可。"
+                },
+                {
+                    "q": "现在必须全额付款吗？",
+                    "a": "不需要 — 您只需预付 20% 即可锁定名额，余款可在临近出发日期时支付。"
+                },
+                {
+                    "q": "Island Tours 背后是谁？",
+                    "a": "我们是一支在库拉索、阿鲁巴和圣马丁长大的岛民团队。每一个旅行都经过我们亲自审核。"
+                },
+                {
+                    "q": "如果我的旅行被取消怎么办？",
+                    "a": "如果运营商取消了旅行，您将在 24 小时内获得全额退款 — 无需理由。"
+                },
+                {
+                    "q": "不确定选哪个旅行？我们来帮您。",
+                    "a": "随时通过 WhatsApp 与我们联系。告诉我们您的需求，我们会提供真诚的本地推荐。"
+                }
+            ]
         }
-      ]
-    }
-  },
-  "destination": {
-    "allTours": {
-      "breadcrumb": {
-        "home": "首页",
-        "current": "所有行程"
-      },
-      "heading": {
-        "title": "{year}年{destination}的所有行程与活动",
-        "categoryTitle": "{destination}的{category}",
-        "subtitle": "我们在{destination}提供的所有行程，尽在于此。",
-        "availableCount": "{count} 个行程",
-        "availableLabel": "可预订"
-      },
-      "toolbar": {
-        "filters": "筛选",
-        "selectDate": "选择日期",
-        "guestTypes": {
-          "adults": {
-            "label": "成人",
-            "hint": "13 岁以上",
-            "word": "成人"
-          },
-          "children": {
-            "label": "儿童",
-            "hint": "2–12 岁",
-            "word": "儿童"
-          },
-          "infants": {
-            "label": "婴儿",
-            "hint": "2 岁以下",
-            "word": "婴儿"
-          }
+    },
+    "destination": {
+        "allTours": {
+            "breadcrumb": {
+                "home": "首页",
+                "current": "所有行程"
+            },
+            "heading": {
+                "title": "{year}年{destination}的所有行程与活动",
+                "categoryTitle": "{destination}的{category}",
+                "subtitle": "我们在{destination}提供的所有行程，尽在于此。",
+                "availableCount": "{count} 个行程",
+                "availableLabel": "可预订"
+            },
+            "toolbar": {
+                "filters": "筛选",
+                "selectDate": "选择日期",
+                "guestTypes": {
+                    "adults": {
+                        "label": "成人",
+                        "hint": "13 岁以上",
+                        "word": "成人"
+                    },
+                    "children": {
+                        "label": "儿童",
+                        "hint": "2–12 岁",
+                        "word": "儿童"
+                    },
+                    "infants": {
+                        "label": "婴儿",
+                        "hint": "2 岁以下",
+                        "word": "婴儿"
+                    }
+                },
+                "resultsCount": "{shown} / {total}",
+                "toursWord": "个行程",
+                "clearAll": "清除全部",
+                "sortBy": "排序方式："
+            },
+            "emptyState": {
+                "title": "没有符合筛选条件的行程",
+                "description": "请调整或清除筛选条件以查看更多行程。"
+            },
+            "sort": {
+                "localsFavorites": "当地人最爱",
+                "priceLowHigh": "价格（从低到高）",
+                "priceHighLow": "价格（从高到低）",
+                "defaultSuffix": "（默认）"
+            },
+            "trust": {
+                "builtByLocals": {
+                    "title": "由当地人打造",
+                    "subtitle": "在这里长大"
+                },
+                "freeCancellation": {
+                    "title": "免费取消",
+                    "subtitle": "无需理由"
+                },
+                "message": {
+                    "title": "我们是当地人",
+                    "subtitle": "通过 WhatsApp 联系我们"
+                },
+                "pay": {
+                    "title": "最低支付 20%",
+                    "subtitle": "今天，余款稍后再付"
+                }
+            },
+            "filterModal": {
+                "title": "筛选",
+                "price": "价格",
+                "duration": "时长",
+                "durations": {
+                    "upTo2": "最多 2 小时",
+                    "2to4": "2 至 4 小时",
+                    "4to6": "4 至 6 小时",
+                    "fullDay": "全天 (6+ 小时)"
+                },
+                "timeOfDay": "时段",
+                "times": {
+                    "morning": "上午",
+                    "afternoon": "下午",
+                    "evening": "晚上"
+                },
+                "freeCancellation": "免费取消",
+                "freeCancellationNote": "所有行程均含免费取消。",
+                "cancellationLabel": "按可取消时限筛选：",
+                "cancellation": {
+                    "24h": "出发前 24 小时内",
+                    "48h": "出发前 48 小时",
+                    "72h": "出发前 72 小时"
+                },
+                "pickupAvailable": "提供接送",
+                "ratings": "评分",
+                "ratingsNote": "（有评价后显示）",
+                "clearAll": "清除全部",
+                "applyFilters": "应用筛选"
+            }
         },
-        "resultsCount": "{shown} / {total}",
-        "toursWord": "个行程",
-        "clearAll": "清除全部",
-        "sortBy": "排序方式："
-      },
-      "emptyState": {
-        "title": "没有符合筛选条件的行程",
-        "description": "请调整或清除筛选条件以查看更多行程。"
-      },
-      "sort": {
-        "localsFavorites": "当地人最爱",
-        "priceLowHigh": "价格（从低到高）",
-        "priceHighLow": "价格（从高到低）",
-        "defaultSuffix": "（默认）"
-      },
-      "trust": {
-        "builtByLocals": {
-          "title": "由当地人打造",
-          "subtitle": "在这里长大"
+        "hero": {
+            "toursActivities": "旅游与活动",
+            "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",
+            "searchPlaceholder": "搜索旅游或活动",
+            "selectDate": "选择日期",
+            "popularLabel": "热门"
         },
-        "freeCancellation": {
-          "title": "免费取消",
-          "subtitle": "无需理由"
+        "exploreTypes": {
+            "title": "按类型探索",
+            "tours": "个项目"
         },
-        "message": {
-          "title": "我们是当地人",
-          "subtitle": "通过 WhatsApp 联系我们"
+        "youMightLike": "您可能也喜欢",
+        "hub": {
+            "whyTitle": "为什么选择{hub}",
+            "firstTimersTitle": "我们给初次到访者关于{hub}的建议",
+            "alsoWorthTitle": "在{destination}也值得一游",
+            "titlePattern": "{hub}一日游",
+            "tripsHeading": "{count}个{hub}一日游。挑选您的行程。",
+            "tripsSubtitle": "选择日期，或先在下方比较",
+            "charters": {
+                "heading": "{count}个私人包船。专属于您。",
+                "subtitle": "专属于您的团队，外加船员。",
+                "dayCharters": "日间包船",
+                "overnightCharters": "过夜包船"
+            },
+            "picks": {
+                "heading": "我们体验过每一艘船",
+                "subtitle": "我们的精选——每种旅客都有一款",
+                "bookTrip": "预订此行程",
+                "footerNote": "我们诚实的推荐，并非付费排名。",
+                "seeAllTours": "查看所有行程",
+                "best": "综合最佳",
+                "popular": "最受欢迎",
+                "families": "最适合家庭"
+            },
+            "sponsored": "赞助",
+            "tabs": {
+                "trips": "行程",
+                "privateCharters": "私人包船",
+                "compare": "比较",
+                "discover": "发现"
+            },
+            "tagline": "岛民推荐访客去的地方",
+            "selectDate": "选择日期",
+            "checkAvailability": "查看可用性",
+            "comparison": {
+                "title": "哪一趟行程适合你？",
+                "subtitle": "这些行程之间的真正差别，一目了然。",
+                "whatStandsOut": "亮点",
+                "book": "预订"
+            },
+            "discover": {
+                "titlePattern": "探索 {hub}",
+                "subtitle": "出发前需要了解的事。",
+                "bookTrip": "预订行程"
+            },
+            "frequencyDaily": "每日",
+            "frequencyWeekly": "每周{count}天",
+            "durationFullDay": "全天",
+            "durationHalfDay": "半天",
+            "checkingAvailability": "正在查询可用性",
+            "noneOnDate": "所选日期没有可预订的体验。",
+            "showAllDates": "显示所有日期",
+            "durationDay": "1 天",
+            "durationDays": "{count} 天",
+            "cardChips": {
+                "upTo": "最多 {count} 人",
+                "familyFriendly": "适合家庭",
+                "peopleIncluded": "/{count} 人",
+                "perExtraPerson": "+ 每增加一人 {price}",
+                "amenities": {
+                    "openBar": "无限畅饮",
+                    "bbq": "烧烤",
+                    "beachHouse": "海滩屋",
+                    "breakfast": "早餐",
+                    "meals": "餐食",
+                    "drinks": "饮品",
+                    "snorkeling": "浮潜"
+                },
+                "perUnit": "/人",
+                "perGroup": "/每团",
+                "perBoat": "/每船",
+                "perVehicle": "/每车",
+                "perAircraft": "/每架飞机",
+                "perPackage": "/每套餐"
+            },
+            "heroInclusion": {
+                "bbq": "BBQ 午餐",
+                "beachHouse": "海滩屋",
+                "openBar": "无限畅饮",
+                "breakfast": "早餐"
+            }
         },
-        "pay": {
-          "title": "最低支付 20%",
-          "subtitle": "今天，余款稍后再付"
+        "tour": {
+            "save": "收藏",
+            "share": "分享",
+            "linkCopied": "链接已复制",
+            "localsFavorite": "当地人最爱",
+            "showAllPhotos": "查看所有照片",
+            "booking": {
+                "from": "仅需",
+                "perPerson": "每人",
+                "continue": "继续",
+                "selected": "已选择",
+                "soldOut": "售罄",
+                "available": "可预订",
+                "calendarNoDepartures": "无出发班次",
+                "calendarClosed": "已关闭",
+                "onlyLeft": "仅剩 {count} 个",
+                "travelers": "{count} 位旅客",
+                "guests": "{count} 位宾客",
+                "perGroup": "每团",
+                "perBoat": "每船",
+                "perVehicle": "每车",
+                "perAircraft": "每架飞机",
+                "perPackage": "每套餐",
+                "unitIncludes": "最多 {count} 位宾客",
+                "unitExtra": "每增加一位宾客 +{price}",
+                "unitCharterLine": "包船（最多 {count} 位宾客）",
+                "unitExtraGuests": "额外宾客",
+                "privateCharter": "私人包船 - 此班次由您专属",
+                "total": "总计",
+                "payToday": "今日支付",
+                "balanceLater": "余款后付",
+                "balanceOnArrival": "到场付余款",
+                "taxesIncluded": "含全部税费",
+                "showDetails": "查看明细",
+                "freeCancellation": "{hours} 小时前{link}",
+                "freeCancellationLink": "免费取消",
+                "payLater": "{link}，余款通过运营商的安全链接支付",
+                "payOnArrival": "{link}，余款到场支付",
+                "payInFull": "立即全额支付",
+                "payLaterLink": "今日仅付 {pct}%",
+                "sellOutTitle": "可能售罄",
+                "sellOutSubtitle": "立即预订以确保名额",
+                "mostPopularTitle": "最受欢迎",
+                "mostPopularSubtitle": "预订过的旅客给予高度评价",
+                "sponsoredTitle": "赞助",
+                "sponsoredSubtitle": "由运营商付费推广的展示位",
+                "selectDate": "选择日期",
+                "checkAvailability": "查看可订情况",
+                "errorSelectDate": "请选择日期以继续",
+                "errorSelectSlot": "请选择出发时间以继续",
+                "bookingUnavailable": "此行程目前无法在线预订。",
+                "apply": "应用",
+                "perPersonShort": "/每人",
+                "free": "免费",
+                "bringingSpectators": "需要带随行观众吗？",
+                "spectatorNote": "随行观众可同行，但不参与活动",
+                "yes": "是",
+                "no": "否",
+                "spectators": "随行观众",
+                "capacityNote": "该出发时段仅剩 {count} 个名额",
+                "maxPerBooking": "每次预订最多 {count} 位旅客",
+                "policyClose": "关闭",
+                "cancellationModal": {
+                    "title": "{hours} 小时前免费取消",
+                    "introTitle": "计划有变？没问题。",
+                    "introBody": "在行程开始前 {hours} 小时（当地时间）之前均可取消。全额退款，无需填表，无需理由。",
+                    "stepsTitle": "如何操作",
+                    "steps": [
+                        "打开您的预订确认邮件",
+                        "点击\"取消预订\"",
+                        "已付款项将退回至您原来的付款方式"
+                    ],
+                    "outroTitle": "开始前不足 {hours} 小时",
+                    "outroBody": "若在行程开始前不足 {hours} 小时取消，我们将无法退款或更改预订。但如果是运营商取消，您将获得保障：全额退款或免费改期。"
+                },
+                "depositModal": {
+                    "title": "今日仅付 {pct}%，余款后付",
+                    "introTitle": "让您的计划更灵活。",
+                    "introBody": "现在预订行程，出发前在线支付余款即可。",
+                    "stepsTitle": "如何操作",
+                    "steps": [
+                        "今日支付 {pct}%。您的预订立即确认，所有详情将发送至您的邮箱。",
+                        "您将收到一个安全链接用于支付余款，并会随着行程临近收到提醒。",
+                        "在行程开始前 {hours} 小时（当地时间）之前支付余款，或取消以获得全额退款。此后预订将锁定，且订金不可退还。"
+                    ],
+                    "outroTitle": "我们为何这样做",
+                    "outroBody": "热门行程很快售罄，因此您的订金会在预订当下即刻为您锁定名额，无需一次性付清全款。您同时也在支持经营这些行程的当地岛民。"
+                }
+            },
+            "reviews": {
+                "title": "我们的客人怎么说",
+                "subtitle": "来自真实旅客的已验证评价",
+                "seeAll": "查看所有评价",
+                "verified": "已验证",
+                "readMore": "阅读更多",
+                "readLess": "收起"
+            },
+            "reviewsSection": {
+                "subtitle": "每条评价均来自已确认的预订，绝无例外。",
+                "reviewsCount": "{count} 条评价",
+                "sortBy": "排序方式：",
+                "sortNewest": "最新",
+                "sortRatingHigh": "评分最高",
+                "sortRatingLow": "评分最低",
+                "sortHelpful": "最有帮助",
+                "showMore": "显示更多评价",
+                "loading": "加载中...",
+                "empty": "暂无评价。成为第一个预订并评价此行程的人。",
+                "verified": "已验证预订",
+                "verifiedTooltip": "该旅客通过 Island Tours 预订并付款。我们只发布来自真实预订的评价。",
+                "travelledIn": "出行时间：{month}",
+                "guestCouple": "情侣",
+                "guestFamily": "家庭",
+                "guestFriends": "朋友",
+                "guestSolo": "独自旅行",
+                "filterStars": "{stars} 星",
+                "filterStarsOne": "{stars} 星",
+                "clearFilter": "清除筛选",
+                "noMatch": "没有符合此筛选条件的评价。",
+                "photosTitle": "旅客照片",
+                "photoOpen": "查看照片",
+                "photoClose": "关闭",
+                "operatorFallback": "Island Tours 新上线。此行程由 {operator} 运营，在 {count} 条评价中获得 {rating} 分。",
+                "earlyReviews": "{count} 条早期评价",
+                "howWeHandle": "我们如何处理评价",
+                "responseByPlatform": "Island Tours",
+                "filterGuest": "出行方式",
+                "filterLanguage": "撰写语言",
+                "filterWithPhotos": "含照片",
+                "filterAny": "全部",
+                "translatedBy": "由 Google 翻译",
+                "showOriginal": "查看原文（{language}）",
+                "showTranslation": "查看译文"
+            },
+            "sections": {
+                "overview": "概览",
+                "included": "包含内容",
+                "expect": "行程预期",
+                "meeting": "集合与接送",
+                "info": "重要信息",
+                "cancellation": "取消政策",
+                "reviews": "评价"
+            },
+            "exclusion": {
+                "availablePrice": "可选 - {price}",
+                "available": "可选",
+                "payOnDay": "现场支付"
+            },
+            "meeting": {
+                "meetingPoint": "集合点",
+                "hotelPickup": "酒店接送",
+                "departureTime": "出发时间",
+                "openInMaps": "在谷歌地图中打开",
+                "pickupWindow": "{start}-{end} 时间段",
+                "checkInEarly": "请提前 {minutes} 分钟办理登记。"
+            },
+            "info": {
+                "notSuitableFor": "不适合",
+                "knowBeforeYouGo": "出行须知",
+                "whatToBring": "需携带物品"
+            },
+            "cancellation": {
+                "title": "计划有变？没问题。",
+                "body": "在行程开始前 {hours} 小时可免费取消，全额退款，无需填表，无需理由。\n\n若在开始时间前不足 {hours} 小时取消，很抱歉我们无法退款或更改预订。",
+                "suppliedBy": "提供方"
+            },
+            "related": {
+                "moreInCategory": "{destination}的更多{category}行程",
+                "moreToExplore": "在{destination}发现更多"
+            }
+        },
+        "categoryAboutTitle": "关于{destination}的{category}",
+        "categorySubtitle": "所有行程均可免费取消，预订后即时确认。",
+        "faqTitle": "常见问题",
+        "categoryTrust": {
+            "builtByLocals": "由在此长大的当地人打造",
+            "freeCancellation": "免费取消，无需理由",
+            "whatsapp": "WhatsApp 支持，我们是本地人",
+            "deposit": "仅需 20% 定金即可预订"
+        },
+        "categoryFilter": {
+            "date": "日期",
+            "duration": "时长",
+            "price": "价格",
+            "groupSize": "团队人数",
+            "language": "语言",
+            "activeFilters": "已选筛选：",
+            "clearAll": "全部清除",
+            "groupSizeLabel": "出行人数",
+            "groupSizeHint": "您团队的总人数",
+            "guideLanguageTitle": "导游语言",
+            "languages": {
+                "en": "英语",
+                "es": "西班牙语",
+                "nl": "荷兰语",
+                "pap": "帕皮阿门托语",
+                "fr": "法语",
+                "de": "德语",
+                "pt": "葡萄牙语"
+            }
+        },
+        "about": {
+            "title": "关于{destination}的旅行",
+            "description": "我们在{destination}提供的每一个行程，都由生活在当地的人挑选。我们亲自体验每条线路，凭亲身经历撰写介绍，并在一开始就标明全额价格，结账时不会有额外费用。大多数行程只需支付少量订金即可锁定名额，无需全额付款；每个行程都可在其页面标示的时限内免费取消。预订即时确认，确认信息会立即送达；出发前如有任何疑问，我们每天 08:00 至 20:00 通过 WhatsApp 为您解答。",
+            "learnMore": "了解更多",
+            "readLess": "收起",
+            "topThings": "最热门的活动",
+            "planning": "规划您的行程",
+            "whyBook": "为什么选择 Island Tours 预订"
+        },
+        "instagram": {
+            "viewMore": "在Instagram上查看更多"
+        },
+        "listings": {
+            "title": "当地人最爱",
+            "seeAllCount": "查看 {destination} 的全部 {count} 个旅行",
+            "seeAll": "查看 {destination} 的所有旅行",
+            "new": "新品",
+            "likelyToSellOut": "即将售罄",
+            "mostPopular": "最受欢迎",
+            "sponsored": "赞助",
+            "pickupAvailable": "提供接送",
+            "freeCancellation": "免费取消",
+            "priceVaries": "价格因团体人数而异",
+            "from": "起",
+            "per": "/人",
+            "perGroup": "/每组",
+            "perBoat": "/每船",
+            "perVehicle": "/每车",
+            "perAircraft": "/每架飞机",
+            "perPackage": "/每套餐"
+        },
+        "collections": {
+            "title": "精选系列",
+            "explore": "立即探索",
+            "breadcrumb": "系列",
+            "tours": "个游览",
+            "share": "分享",
+            "related": {
+                "heading": "继续探索{destination}",
+                "prompt": "还没决定？",
+                "cta": "查看{destination}的所有游览"
+            },
+            "faq": {
+                "guarantees": [
+                    "大多数行程免费取消，无需填写表格",
+                    "今天最低只需支付20%，余款稍后再付"
+                ]
+            }
         }
-      },
-      "filterModal": {
-        "title": "筛选",
-        "price": "价格",
-        "duration": "时长",
-        "durations": {
-          "upTo2": "最多 2 小时",
-          "2to4": "2 至 4 小时",
-          "4to6": "4 至 6 小时",
-          "fullDay": "全天 (6+ 小时)"
-        },
-        "timeOfDay": "时段",
-        "times": {
-          "morning": "上午",
-          "afternoon": "下午",
-          "evening": "晚上"
-        },
-        "freeCancellation": "免费取消",
-        "freeCancellationNote": "所有行程均含免费取消。",
-        "cancellationLabel": "按可取消时限筛选：",
-        "cancellation": {
-          "24h": "出发前 24 小时内",
-          "48h": "出发前 48 小时",
-          "72h": "出发前 72 小时"
-        },
-        "pickupAvailable": "提供接送",
-        "ratings": "评分",
-        "ratingsNote": "（有评价后显示）",
-        "clearAll": "清除全部",
-        "applyFilters": "应用筛选"
-      }
     },
-    "hero": {
-      "toursActivities": "旅游与活动",
-      "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",
-      "searchPlaceholder": "搜索旅游或活动",
-      "selectDate": "选择日期",
-      "popularLabel": "热门"
-    },
-    "exploreTypes": {
-      "title": "按类型探索",
-      "tours": "个项目"
-    },
-    "youMightLike": "您可能也喜欢",
-    "hub": {
-      "whyTitle": "为什么选择{hub}",
-      "firstTimersTitle": "我们给初次到访者关于{hub}的建议",
-      "alsoWorthTitle": "在{destination}也值得一游",
-      "titlePattern": "{hub}一日游",
-      "tripsHeading": "{count}个{hub}一日游。挑选您的行程。",
-      "tripsSubtitle": "选择日期，或先在下方比较",
-      "charters": {
-        "heading": "{count}个私人包船。专属于您。",
-        "subtitle": "专属于您的团队，外加船员。",
-        "dayCharters": "日间包船",
-        "overnightCharters": "过夜包船"
-      },
-      "picks": {
-        "heading": "我们体验过每一艘船",
-        "subtitle": "我们的精选——每种旅客都有一款",
-        "bookTrip": "预订此行程",
-        "footerNote": "我们诚实的推荐，并非付费排名。",
-        "seeAllTours": "查看所有行程",
-        "best": "综合最佳",
-        "popular": "最受欢迎",
-        "families": "最适合家庭"
-      },
-      "sponsored": "赞助",
-      "tabs": {
-        "trips": "行程",
-        "privateCharters": "私人包船",
-        "compare": "比较",
-        "discover": "发现"
-      },
-      "tagline": "岛民推荐访客去的地方",
-      "selectDate": "选择日期",
-      "checkAvailability": "查看可用性",
-      "comparison": {
-        "title": "哪一趟行程适合你？",
-        "subtitle": "这些行程之间的真正差别，一目了然。",
-        "whatStandsOut": "亮点",
-        "book": "预订"
-      },
-      "discover": {
-        "titlePattern": "探索 {hub}",
-        "subtitle": "出发前需要了解的事。",
-        "bookTrip": "预订行程"
-      },
-      "frequencyDaily": "每日",
-      "frequencyWeekly": "每周{count}天",
-      "durationFullDay": "全天",
-      "durationHalfDay": "半天",
-      "checkingAvailability": "正在查询可用性",
-      "noneOnDate": "所选日期没有可预订的体验。",
-      "showAllDates": "显示所有日期",
-      "durationDay": "1 天",
-      "durationDays": "{count} 天",
-      "cardChips": {
-        "upTo": "最多 {count} 人",
-        "familyFriendly": "适合家庭",
-        "peopleIncluded": "/{count} 人",
-        "perExtraPerson": "+ 每增加一人 {price}",
-        "amenities": {
-          "openBar": "无限畅饮",
-          "bbq": "烧烤",
-          "beachHouse": "海滩屋",
-          "breakfast": "早餐",
-          "meals": "餐食",
-          "drinks": "饮品",
-          "snorkeling": "浮潜"
-        },
-        "perUnit": "/人",
-        "perGroup": "/每团",
-        "perBoat": "/每船",
-        "perVehicle": "/每车",
-        "perAircraft": "/每架飞机",
-        "perPackage": "/每套餐"
-      },
-      "heroInclusion": {
-        "bbq": "BBQ 午餐",
-        "beachHouse": "海滩屋",
-        "openBar": "无限畅饮",
-        "breakfast": "早餐"
-      }
-    },
-    "tour": {
-      "save": "收藏",
-      "share": "分享",
-      "linkCopied": "链接已复制",
-      "localsFavorite": "当地人最爱",
-      "showAllPhotos": "查看所有照片",
-      "booking": {
-        "from": "仅需",
-        "perPerson": "每人",
+    "checkout": {
+        "breadcrumb": "结账",
+        "backToAvailability": "返回可预订时间",
+        "contact": "联系方式",
+        "payment": "付款",
+        "contactDetails": "联系方式",
+        "paymentDetails": "付款信息",
+        "completeContactFirst": "请先填写联系方式",
+        "edit": "编辑",
+        "firstName": "名字",
+        "lastName": "姓氏",
+        "email": "电子邮箱",
+        "emailHelper": "我们会将预订确认发送到此邮箱。",
+        "country": "国家/地区",
+        "phone": "电话号码",
+        "phonePlaceholder": "电话号码",
+        "phoneHelper": "我们仅在行程当天用于沟通协调。",
+        "pickup": "接送地点",
+        "pickupFrom": "(每人 {price} 起)",
+        "pickupNone": "不接送 - 在集合地点会合",
+        "pickupOther": "其他地点，我们将通过 WhatsApp 确认",
+        "specialRequests": "特殊要求（可选）",
+        "specialRequestsPlaceholder": "有什么需要我们了解的吗？饮食需求、无障碍需求或特殊场合。",
+        "maxChars": "最多 500 个字符",
+        "newsletter": "是的，也请每周向我发送加勒比旅行灵感。当地贴士、隐秘去处以及运营商的故事。",
         "continue": "继续",
-        "selected": "已选择",
-        "soldOut": "售罄",
-        "available": "可预订",
-        "calendarNoDepartures": "无出发班次",
-        "calendarClosed": "已关闭",
-        "onlyLeft": "仅剩 {count} 个",
-        "travelers": "{count} 位旅客",
-        "guests": "{count} 位宾客",
-        "perGroup": "每团",
-        "perBoat": "每船",
-        "perVehicle": "每车",
-        "perAircraft": "每架飞机",
-        "perPackage": "每套餐",
-        "unitIncludes": "最多 {count} 位宾客",
-        "unitExtra": "每增加一位宾客 +{price}",
-        "unitCharterLine": "包船（最多 {count} 位宾客）",
-        "unitExtraGuests": "额外宾客",
-        "privateCharter": "私人包船 - 此班次由您专属",
+        "requiredError": "此项为必填",
+        "emailError": "请输入有效的电子邮箱",
+        "selectPaymentMethod": "选择付款方式",
+        "card": "银行卡",
+        "cardNumber": "卡号",
+        "expiry": "有效期",
+        "expiryPlaceholder": "MM/YY",
+        "cvv": "CVV",
+        "postalCode": "邮政编码（因地区而异）",
+        "postalCodePlaceholder": "邮政编码",
+        "nameOnCard": "持卡人姓名",
+        "nameOnCardPlaceholder": "持卡人姓名",
+        "consent": "点击“预订我的名额”即表示您同意 Island Tours 的{terms}和{privacy}。",
+        "consentTerms": "条款",
+        "consentPrivacy": "隐私政策",
+        "securePayment": "付款安全并已加密",
+        "reserve": "预订我的名额",
+        "reservePay": "支付 {amount}",
+        "bookingSummary": "预订摘要",
+        "noPickup": "不接送",
+        "freeCancellation": "行程开始前 {hours} 小时可免费取消",
         "total": "总计",
         "payToday": "今日支付",
         "balanceLater": "余款后付",
-        "balanceOnArrival": "到场付余款",
-        "taxesIncluded": "含全部税费",
-        "showDetails": "查看明细",
-        "freeCancellation": "{hours} 小时前{link}",
-        "freeCancellationLink": "免费取消",
-        "payLater": "{link}，余款通过运营商的安全链接支付",
-        "payOnArrival": "{link}，余款到场支付",
-        "payInFull": "立即全额支付",
-        "payLaterLink": "今日仅付 {pct}%",
-        "sellOutTitle": "可能售罄",
-        "sellOutSubtitle": "立即预订以确保名额",
-        "mostPopularTitle": "最受欢迎",
-        "mostPopularSubtitle": "预订过的旅客给予高度评价",
-        "sponsoredTitle": "赞助",
-        "sponsoredSubtitle": "由运营商付费推广的展示位",
-        "selectDate": "选择日期",
-        "checkAvailability": "查看可订情况",
-        "errorSelectDate": "请选择日期以继续",
-        "errorSelectSlot": "请选择出发时间以继续",
-        "bookingUnavailable": "此行程目前无法在线预订。",
-        "apply": "应用",
-        "perPersonShort": "/每人",
-        "free": "免费",
-        "bringingSpectators": "需要带随行观众吗？",
-        "spectatorNote": "随行观众可同行，但不参与活动",
-        "yes": "是",
-        "no": "否",
-        "spectators": "随行观众",
-        "capacityNote": "该出发时段仅剩 {count} 个名额",
-        "maxPerBooking": "每次预订最多 {count} 位旅客",
-        "policyClose": "关闭",
-        "cancellationModal": {
-          "title": "{hours} 小时前免费取消",
-          "introTitle": "计划有变？没问题。",
-          "introBody": "在行程开始前 {hours} 小时（当地时间）之前均可取消。全额退款，无需填表，无需理由。",
-          "stepsTitle": "如何操作",
-          "steps": [
-            "打开您的预订确认邮件",
-            "点击\"取消预订\"",
-            "已付款项将退回至您原来的付款方式"
-          ],
-          "outroTitle": "开始前不足 {hours} 小时",
-          "outroBody": "若在行程开始前不足 {hours} 小时取消，我们将无法退款或更改预订。但如果是运营商取消，您将获得保障：全额退款或免费改期。"
-        },
-        "depositModal": {
-          "title": "今日仅付 {pct}%，余款后付",
-          "introTitle": "让您的计划更灵活。",
-          "introBody": "现在预订行程，出发前在线支付余款即可。",
-          "stepsTitle": "如何操作",
-          "steps": [
-            "今日支付 {pct}%。您的预订立即确认，所有详情将发送至您的邮箱。",
-            "您将收到一个安全链接用于支付余款，并会随着行程临近收到提醒。",
-            "在行程开始前 {hours} 小时（当地时间）之前支付余款，或取消以获得全额退款。此后预订将锁定，且订金不可退还。"
-          ],
-          "outroTitle": "我们为何这样做",
-          "outroBody": "热门行程很快售罄，因此您的订金会在预订当下即刻为您锁定名额，无需一次性付清全款。您同时也在支持经营这些行程的当地岛民。"
-        }
-      },
-      "reviews": {
-        "title": "我们的客人怎么说",
-        "subtitle": "来自真实旅客的已验证评价",
-        "seeAll": "查看所有评价",
-        "verified": "已验证",
-        "readMore": "阅读更多",
-        "readLess": "收起"
-      },
-      "reviewsSection": {
-        "subtitle": "每条评价均来自已确认的预订，绝无例外。",
-        "reviewsCount": "{count} 条评价",
-        "sortBy": "排序方式：",
-        "sortNewest": "最新",
-        "sortRatingHigh": "评分最高",
-        "sortRatingLow": "评分最低",
-        "sortHelpful": "最有帮助",
-        "showMore": "显示更多评价",
-        "loading": "加载中...",
-        "empty": "暂无评价。成为第一个预订并评价此行程的人。"
-      },
-      "sections": {
-        "overview": "概览",
-        "included": "包含内容",
-        "expect": "行程预期",
-        "meeting": "集合与接送",
-        "info": "重要信息",
-        "cancellation": "取消政策",
-        "reviews": "评价"
-      },
-      "exclusion": {
-        "availablePrice": "可选 - {price}",
-        "available": "可选",
-        "payOnDay": "现场支付"
-      },
-      "meeting": {
-        "meetingPoint": "集合点",
-        "hotelPickup": "酒店接送",
-        "departureTime": "出发时间",
-        "openInMaps": "在谷歌地图中打开",
-        "pickupWindow": "{start}-{end} 时间段",
-        "checkInEarly": "请提前 {minutes} 分钟办理登记。"
-      },
-      "info": {
-        "notSuitableFor": "不适合",
-        "knowBeforeYouGo": "出行须知",
-        "whatToBring": "需携带物品"
-      },
-      "cancellation": {
-        "title": "计划有变？没问题。",
-        "body": "在行程开始前 {hours} 小时可免费取消，全额退款，无需填表，无需理由。\n\n若在开始时间前不足 {hours} 小时取消，很抱歉我们无法退款或更改预订。",
-        "suppliedBy": "提供方"
-      },
-      "related": {
-        "moreInCategory": "{destination}的更多{category}行程",
-        "moreToExplore": "在{destination}发现更多"
-      }
+        "taxesIncluded": "含所有税费",
+        "cardNumberPlaceholder": "1234 1234 1234 1234",
+        "cvvPlaceholder": "****",
+        "paypal": "PayPal",
+        "applePay": "Apple Pay",
+        "googlePay": "Google Pay",
+        "backToTour": "返回行程",
+        "fullName": "全名",
+        "backToContact": "返回联系信息",
+        "processing": "处理中...",
+        "paymentError": "无法完成付款。请检查您的银行卡信息后重试。",
+        "reserveError": "我们无法为您保留名额，可能刚刚已售罄，请返回重试。",
+        "cardIncomplete": "请填写完整的银行卡信息。",
+        "paymentUnavailable": "在线支付暂时不可用，请稍后重试。",
+        "processingTitle": "正在确认您的预订",
+        "processingSubtitle": "正在向运营商为您锁定名额，只需片刻。",
+        "processingStillWorking": "马上就好。确认完成后我们会立即通过电子邮件通知您。",
+        "processingViewBooking": "查看我的预订",
+        "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
+        "methodUnavailable": "不支持 {currency}",
+        "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
+        "countryPopular": "热门",
+        "countryAll": "所有国家/地区"
     },
-    "categoryAboutTitle": "关于{destination}的{category}",
-    "categorySubtitle": "所有行程均可免费取消，预订后即时确认。",
-    "faqTitle": "常见问题",
-    "categoryTrust": {
-      "builtByLocals": "由在此长大的当地人打造",
-      "freeCancellation": "免费取消，无需理由",
-      "whatsapp": "WhatsApp 支持，我们是本地人",
-      "deposit": "仅需 20% 定金即可预订"
+    "cancelBooking": {
+        "title": "取消 {tour}（{date}）？",
+        "refundNote": "全额退款，无需任何理由。我们会发邮件确认。",
+        "refund": "退款 {amount}",
+        "refundMethod": "已付金额将退回您原来的付款方式。",
+        "afterWindow": "如果您在行程开始前不到 {hours} 小时取消，我们无法退款或修改预订。但如果运营商不得不取消，您将获得全额退款或免费改期。",
+        "reference": "预订参考号：",
+        "reasonPlaceholder": "选填。有什么想告诉我们的吗？",
+        "confirm": "是的，取消预订",
+        "keep": "保留我的预订",
+        "sending": "发送中...",
+        "sentTitle": "取消申请已发送。",
+        "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
+        "notActive": "此预订已不再有效，无需取消。",
+        "error": "提交失败。请重试，或通过 WhatsApp 联系我们。",
+        "verifyTitle": "请先验证身份",
+        "verifyBody": "取消预订前,我们需要确认这是您的预订。请使用邮箱和预订编号登录,完成后会直接返回此页。",
+        "verifyCta": "使用邮箱 + 预订编号验证"
     },
-    "categoryFilter": {
-      "date": "日期",
-      "duration": "时长",
-      "price": "价格",
-      "groupSize": "团队人数",
-      "language": "语言",
-      "activeFilters": "已选筛选：",
-      "clearAll": "全部清除",
-      "groupSizeLabel": "出行人数",
-      "groupSizeHint": "您团队的总人数",
-      "guideLanguageTitle": "导游语言",
-      "languages": {
-        "en": "英语",
-        "es": "西班牙语",
-        "nl": "荷兰语",
-        "pap": "帕皮阿门托语",
-        "fr": "法语",
-        "de": "德语",
-        "pt": "葡萄牙语"
-      }
+    "thankYou": {
+        "title": "预订成功，{name}！🌴",
+        "subtitle": "您的{tour}已预订，时间为{date} {time}。",
+        "bookingRef": "预订编号：",
+        "reviewPrompt": "您的行程体验如何？",
+        "reviewPromptBody": "轻点一下即可。您的评价能帮助下一位旅客做出选择。",
+        "reviewCta": "撰写评价",
+        "addToCalendar": "添加到日历",
+        "emailSentTo": "确认邮件已发送至 {email}",
+        "emailHelpPrefix": "没收到？请检查垃圾邮件，或",
+        "resendEmail": "重新发送邮件",
+        "emailResent": "确认邮件已重新发送",
+        "emailResending": "发送中...",
+        "emailResendFailed": "发送失败，请重试。",
+        "summaryTitle": "您的预订摘要",
+        "tourDetails": "行程详情",
+        "paymentTitle": "付款",
+        "dateTime": "日期和时间",
+        "duration": "时长",
+        "pickup": "接送",
+        "freeCancel": "免费取消",
+        "beforeDate": "{date}之前",
+        "trip": "行程",
+        "email": "邮箱",
+        "phoneNumber": "电话号码",
+        "traveler": "出行人",
+        "guestLead": "主要联系人",
+        "depositPaid": "已付定金",
+        "percentPaid": "已付{pct}%",
+        "remainingBalance": "剩余余额",
+        "percentUnpaid": "未付{pct}%",
+        "operatorLinkNote": "{operator}将通过邮件向您发送付款链接",
+        "payBefore": "付款截止",
+        "total": "总计",
+        "ref": "编号",
+        "nextTitle": "接下来",
+        "step1Title": "预订确认邮件",
+        "step1Sub": "未收到请检查垃圾邮件",
+        "step2Title": "运营方的付款链接",
+        "step2Sub": "请在{date}前付款，仅限刷卡",
+        "step3Title": "准时到场，尽情享受",
+        "relatedTitle": "岛民也喜欢...",
+        "relatedSubtitle": "为您的预订精心搭配",
+        "browsePicks": "浏览岛民精选",
+        "aptEyebrow": "🌴 我们的公寓",
+        "sleeps": "可住{count}人",
+        "from": "起",
+        "perNight": "/每晚",
+        "aptCta": "在 Airbnb 查看空房",
+        "questionTitle": "对行程有疑问？",
+        "talkLocals": "联系运营的本地人，他们最了解：",
+        "issueTitle": "预订或付款遇到问题？",
+        "issueBody": "请发邮件至 {email} 并附上您的编号（{ref}）",
+        "replyTime": "我们通常会在 12 小时内回复",
+        "verifyTitle": "部分信息已隐藏",
+        "verifyBody": "您正在通过共享链接查看,因此个人信息已被隐藏。如果这是您的预订,请使用邮箱和预订编号验证身份以查看全部信息。",
+        "verifyCta": "验证身份",
+        "manageTitle": "您的预订",
+        "manageSubtitle": "{tour},{date} {time}。",
+        "statusConfirmed": "已确认",
+        "statusCancelled": "已取消",
+        "statusCancellationPending": "取消处理中",
+        "cancellationPendingNote": "我们已收到您的取消申请并正在处理。完成后会立即发送邮件通知您。",
+        "cancelledNote": "此预订已取消。确认邮件已发送给您。",
+        "cancelBooking": "取消预订",
+        "needToCancel": "需要取消?"
     },
-    "about": {
-      "title": "关于{destination}的旅行",
-      "description": "我们在{destination}提供的每一个行程，都由生活在当地的人挑选。我们亲自体验每条线路，凭亲身经历撰写介绍，并在一开始就标明全额价格，结账时不会有额外费用。大多数行程只需支付少量订金即可锁定名额，无需全额付款；每个行程都可在其页面标示的时限内免费取消。预订即时确认，确认信息会立即送达；出发前如有任何疑问，我们每天 08:00 至 20:00 通过 WhatsApp 为您解答。",
-      "learnMore": "了解更多",
-      "readLess": "收起",
-      "topThings": "最热门的活动",
-      "planning": "规划您的行程",
-      "whyBook": "为什么选择 Island Tours 预订"
+    "travelerLogin": {
+        "title": "我的预订",
+        "subtitle": "使用预订时的邮箱和预订编号登录。",
+        "emailLabel": "邮箱",
+        "refLabel": "预订编号",
+        "refHint": "在确认邮件顶部。",
+        "submit": "查看我的预订",
+        "checking": "正在核对",
+        "redirecting": "正在跳转",
+        "errorBefore": "邮箱与预订编号不匹配。请核对确认邮件，或",
+        "errorLink": "通过 WhatsApp 联系我们",
+        "errorAfter": "，我们会为你解决。",
+        "lostLink": "找不到预订编号？",
+        "back": "返回",
+        "lostTitle": "我们会发送到你的邮箱",
+        "lostSubtitle": "输入预订时使用的邮箱。",
+        "lostSubmit": "发送我的预订编号",
+        "sending": "发送中",
+        "sentNote": "如果该邮箱有预订记录，预订编号已在发送途中。",
+        "whatsapp": "WhatsApp 联系我们",
+        "operatorCta": "旅游运营商？登录运营商门户",
+        "terms": "条款",
+        "privacy": "隐私政策",
+        "help": "帮助",
+        "tagline": "由岛民打造。"
     },
-    "instagram": {
-      "viewMore": "在Instagram上查看更多"
-    },
-    "listings": {
-      "title": "当地人最爱",
-      "seeAllCount": "查看 {destination} 的全部 {count} 个旅行",
-      "seeAll": "查看 {destination} 的所有旅行",
-      "new": "新品",
-      "likelyToSellOut": "即将售罄",
-      "mostPopular": "最受欢迎",
-      "sponsored": "赞助",
-      "pickupAvailable": "提供接送",
-      "freeCancellation": "免费取消",
-      "priceVaries": "价格因团体人数而异",
-      "from": "起",
-      "per": "/人",
-      "perGroup": "/每组",
-      "perBoat": "/每船",
-      "perVehicle": "/每车",
-      "perAircraft": "/每架飞机",
-      "perPackage": "/每套餐"
-    },
-    "collections": {
-      "title": "精选系列",
-      "explore": "立即探索",
-      "breadcrumb": "系列",
-      "tours": "个游览",
-      "share": "分享",
-      "related": {
-        "heading": "继续探索{destination}",
-        "prompt": "还没决定？",
-        "cta": "查看{destination}的所有游览"
-      },
-      "faq": {
-        "guarantees": [
-          "大多数行程免费取消，无需填写表格",
-          "今天最低只需支付20%，余款稍后再付"
-        ]
-      }
+    "reviewSubmit": {
+        "invalidTitle": "此评价链接已失效。",
+        "invalidBody": "它可能已被使用，或预订已取消。如果您认为有误，请联系我们，我们会为您处理。",
+        "step1Header": "此次行程体验如何？",
+        "step1Hint": "点一颗星即可。",
+        "savedNote": "已保存，谢谢。",
+        "step2Header": "告诉其他旅客您的感受。",
+        "step2Helper": "哪些地方令您印象深刻？向导、亮点，还是它是否适合您的同行伙伴？",
+        "step2Placeholder": "写几句关于这一天的感受……",
+        "step3Header": "上传一两张当天的照片。",
+        "step3Helper": "如果您已分享过照片，可以粘贴链接。",
+        "step3bHeader": "您和谁一同出行？",
+        "guestCouple": "情侣",
+        "guestFamily": "家庭",
+        "guestFriends": "朋友",
+        "guestSolo": "独自",
+        "step4Header": "在 Island Tours 预订的体验如何？",
+        "step4Body": "刚才是关于行程本身。这一项是关于我们：预订、付款，以及您获得的帮助。",
+        "step4Cta": "在 Trustpilot 上留下评价",
+        "step4Skip": "暂不需要",
+        "recoveryHeader": "很抱歉未能达到您的期待。",
+        "recoveryBody": "请私下告诉我们哪里出了问题。我们会逐一阅读。",
+        "recoveryPlaceholder": "怎样会更好？",
+        "recoverySend": "私下发送",
+        "recoverySent": "谢谢，我们已收到，会有专人跟进。",
+        "thanksTitle": "谢谢，您的评价已提交。",
+        "thanksBody": "审核通过后即会公开显示。准备好下一次海岛之旅了吗？",
+        "thanksCta": "浏览更多行程",
+        "save": "保存",
+        "skip": "跳过",
+        "saving": "保存中……",
+        "error": "提交失败，请重试。",
+        "verifiedNote": "无论评分高低，您的评价都会完整发布。Island Tours 上的每条评价均来自已确认的预订。"
     }
-  },
-  "checkout": {
-    "breadcrumb": "结账",
-    "backToAvailability": "返回可预订时间",
-    "contact": "联系方式",
-    "payment": "付款",
-    "contactDetails": "联系方式",
-    "paymentDetails": "付款信息",
-    "completeContactFirst": "请先填写联系方式",
-    "edit": "编辑",
-    "firstName": "名字",
-    "lastName": "姓氏",
-    "email": "电子邮箱",
-    "emailHelper": "我们会将预订确认发送到此邮箱。",
-    "country": "国家/地区",
-    "phone": "电话号码",
-    "phonePlaceholder": "电话号码",
-    "phoneHelper": "我们仅在行程当天用于沟通协调。",
-    "pickup": "接送地点",
-    "pickupFrom": "(每人 {price} 起)",
-    "pickupNone": "不接送 - 在集合地点会合",
-    "pickupOther": "其他地点，我们将通过 WhatsApp 确认",
-    "specialRequests": "特殊要求（可选）",
-    "specialRequestsPlaceholder": "有什么需要我们了解的吗？饮食需求、无障碍需求或特殊场合。",
-    "maxChars": "最多 500 个字符",
-    "newsletter": "是的，也请每周向我发送加勒比旅行灵感。当地贴士、隐秘去处以及运营商的故事。",
-    "continue": "继续",
-    "requiredError": "此项为必填",
-    "emailError": "请输入有效的电子邮箱",
-    "selectPaymentMethod": "选择付款方式",
-    "card": "银行卡",
-    "cardNumber": "卡号",
-    "expiry": "有效期",
-    "expiryPlaceholder": "MM/YY",
-    "cvv": "CVV",
-    "postalCode": "邮政编码（因地区而异）",
-    "postalCodePlaceholder": "邮政编码",
-    "nameOnCard": "持卡人姓名",
-    "nameOnCardPlaceholder": "持卡人姓名",
-    "consent": "点击“预订我的名额”即表示您同意 Island Tours 的{terms}和{privacy}。",
-    "consentTerms": "条款",
-    "consentPrivacy": "隐私政策",
-    "securePayment": "付款安全并已加密",
-    "reserve": "预订我的名额",
-    "reservePay": "支付 {amount}",
-    "bookingSummary": "预订摘要",
-    "noPickup": "不接送",
-    "freeCancellation": "行程开始前 {hours} 小时可免费取消",
-    "total": "总计",
-    "payToday": "今日支付",
-    "balanceLater": "余款后付",
-    "taxesIncluded": "含所有税费",
-    "cardNumberPlaceholder": "1234 1234 1234 1234",
-    "cvvPlaceholder": "****",
-    "paypal": "PayPal",
-    "applePay": "Apple Pay",
-    "googlePay": "Google Pay",
-    "backToTour": "返回行程",
-    "fullName": "全名",
-    "backToContact": "返回联系信息",
-    "processing": "处理中...",
-    "paymentError": "无法完成付款。请检查您的银行卡信息后重试。",
-    "reserveError": "我们无法为您保留名额，可能刚刚已售罄，请返回重试。",
-    "cardIncomplete": "请填写完整的银行卡信息。",
-    "paymentUnavailable": "在线支付暂时不可用，请稍后重试。",
-    "processingTitle": "正在确认您的预订",
-    "processingSubtitle": "正在向运营商为您锁定名额，只需片刻。",
-    "processingStillWorking": "马上就好。确认完成后我们会立即通过电子邮件通知您。",
-    "processingViewBooking": "查看我的预订",
-    "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
-    "methodUnavailable": "不支持 {currency}",
-    "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
-    "countryPopular": "热门",
-    "countryAll": "所有国家/地区"
-  },
-  "cancelBooking": {
-    "title": "取消 {tour}（{date}）？",
-    "refundNote": "全额退款，无需任何理由。我们会发邮件确认。",
-    "refund": "退款 {amount}",
-    "refundMethod": "已付金额将退回您原来的付款方式。",
-    "afterWindow": "如果您在行程开始前不到 {hours} 小时取消，我们无法退款或修改预订。但如果运营商不得不取消，您将获得全额退款或免费改期。",
-    "reference": "预订参考号：",
-    "reasonPlaceholder": "选填。有什么想告诉我们的吗？",
-    "confirm": "是的，取消预订",
-    "keep": "保留我的预订",
-    "sending": "发送中...",
-    "sentTitle": "取消申请已发送。",
-    "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
-    "notActive": "此预订已不再有效，无需取消。",
-    "error": "提交失败。请重试，或通过 WhatsApp 联系我们。",
-    "verifyTitle": "请先验证身份",
-    "verifyBody": "取消预订前,我们需要确认这是您的预订。请使用邮箱和预订编号登录,完成后会直接返回此页。",
-    "verifyCta": "使用邮箱 + 预订编号验证"
-  },
-  "thankYou": {
-    "title": "预订成功，{name}！🌴",
-    "subtitle": "您的{tour}已预订，时间为{date} {time}。",
-    "bookingRef": "预订编号：",
-    "addToCalendar": "添加到日历",
-    "emailSentTo": "确认邮件已发送至 {email}",
-    "emailHelpPrefix": "没收到？请检查垃圾邮件，或",
-    "resendEmail": "重新发送邮件",
-    "emailResent": "确认邮件已重新发送",
-    "emailResending": "发送中...",
-    "emailResendFailed": "发送失败，请重试。",
-    "summaryTitle": "您的预订摘要",
-    "tourDetails": "行程详情",
-    "paymentTitle": "付款",
-    "dateTime": "日期和时间",
-    "duration": "时长",
-    "pickup": "接送",
-    "freeCancel": "免费取消",
-    "beforeDate": "{date}之前",
-    "trip": "行程",
-    "email": "邮箱",
-    "phoneNumber": "电话号码",
-    "traveler": "出行人",
-    "guestLead": "主要联系人",
-    "depositPaid": "已付定金",
-    "percentPaid": "已付{pct}%",
-    "remainingBalance": "剩余余额",
-    "percentUnpaid": "未付{pct}%",
-    "operatorLinkNote": "{operator}将通过邮件向您发送付款链接",
-    "payBefore": "付款截止",
-    "total": "总计",
-    "ref": "编号",
-    "nextTitle": "接下来",
-    "step1Title": "预订确认邮件",
-    "step1Sub": "未收到请检查垃圾邮件",
-    "step2Title": "运营方的付款链接",
-    "step2Sub": "请在{date}前付款，仅限刷卡",
-    "step3Title": "准时到场，尽情享受",
-    "relatedTitle": "岛民也喜欢...",
-    "relatedSubtitle": "为您的预订精心搭配",
-    "browsePicks": "浏览岛民精选",
-    "aptEyebrow": "🌴 我们的公寓",
-    "sleeps": "可住{count}人",
-    "from": "起",
-    "perNight": "/每晚",
-    "aptCta": "在 Airbnb 查看空房",
-    "questionTitle": "对行程有疑问？",
-    "talkLocals": "联系运营的本地人，他们最了解：",
-    "issueTitle": "预订或付款遇到问题？",
-    "issueBody": "请发邮件至 {email} 并附上您的编号（{ref}）",
-    "replyTime": "我们通常会在 12 小时内回复",
-    "verifyTitle": "部分信息已隐藏",
-    "verifyBody": "您正在通过共享链接查看,因此个人信息已被隐藏。如果这是您的预订,请使用邮箱和预订编号验证身份以查看全部信息。",
-    "verifyCta": "验证身份",
-    "manageTitle": "您的预订",
-    "manageSubtitle": "{tour},{date} {time}。",
-    "statusConfirmed": "已确认",
-    "statusCancelled": "已取消",
-    "statusCancellationPending": "取消处理中",
-    "cancellationPendingNote": "我们已收到您的取消申请并正在处理。完成后会立即发送邮件通知您。",
-    "cancelledNote": "此预订已取消。确认邮件已发送给您。",
-    "cancelBooking": "取消预订",
-    "needToCancel": "需要取消?"
-  },
-  "travelerLogin": {
-    "title": "我的预订",
-    "subtitle": "使用预订时的邮箱和预订编号登录。",
-    "emailLabel": "邮箱",
-    "refLabel": "预订编号",
-    "refHint": "在确认邮件顶部。",
-    "submit": "查看我的预订",
-    "checking": "正在核对",
-    "redirecting": "正在跳转",
-    "errorBefore": "邮箱与预订编号不匹配。请核对确认邮件，或",
-    "errorLink": "通过 WhatsApp 联系我们",
-    "errorAfter": "，我们会为你解决。",
-    "lostLink": "找不到预订编号？",
-    "back": "返回",
-    "lostTitle": "我们会发送到你的邮箱",
-    "lostSubtitle": "输入预订时使用的邮箱。",
-    "lostSubmit": "发送我的预订编号",
-    "sending": "发送中",
-    "sentNote": "如果该邮箱有预订记录，预订编号已在发送途中。",
-    "whatsapp": "WhatsApp 联系我们",
-    "operatorCta": "旅游运营商？登录运营商门户",
-    "terms": "条款",
-    "privacy": "隐私政策",
-    "help": "帮助",
-    "tagline": "由岛民打造。"
-  }
 }

@@ -233,20 +233,11 @@ export async function seedCollections(): Promise<void> {
   const destIdBySlug = new Map(destinations.map((d) => [d.slug, d.id]));
 
   let created = 0;
-  let skipped = 0;
+  let refreshed = 0;
 
   for (const def of COLLECTIONS) {
     const destinationId = destIdBySlug.get(def.destinationSlug);
     if (!destinationId) continue;
-
-    const existing = await prisma.collection.findUnique({
-      where: { destinationId_slug: { destinationId, slug: def.slug } },
-      select: { id: true },
-    });
-    if (existing) {
-      skipped++;
-      continue;
-    }
 
     // Resolve member tours for MANUAL collections.
     let memberTours: { id: string }[] = [];
@@ -264,29 +255,43 @@ export async function seedCollections(): Promise<void> {
       });
     }
 
+    const collectionData = {
+      name: def.name,
+      slug: def.slug,
+      collectionType: def.type,
+      tourIds: memberTours.map((t) => t.id), // legacy mirror
+      filterQuery: def.filterQuery ?? Prisma.JsonNull,
+      // Hero intentionally not seeded (dashboard-managed); the page
+      // renders its neutral fallback. OG stays topical for share cards.
+      heroImage: null,
+      ogImage: photo(COLLECTION_PHOTO[def.slug] ?? 'beachClassic', 1200, 630),
+      sortOrder: def.sortOrder ?? 'recommended',
+      status: CollectionStatus.PUBLISHED,
+      displayStyle: def.displayStyle,
+      isActive: true,
+      isSeeded: false,
+    };
+
+    // Re-seedable: refresh an existing collection's content (including its
+    // recomputed membership) instead of skipping it, so a VPS re-run picks up
+    // blueprint changes. Translations and tour links are only built on first
+    // create - rebuilding them would drop admin edits.
+    const existing = await prisma.collection.findUnique({
+      where: { destinationId_slug: { destinationId, slug: def.slug } },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.collection.update({
+        where: { id: existing.id },
+        data: collectionData,
+      });
+      refreshed++;
+      continue;
+    }
+
     await prisma.$transaction(async (tx) => {
       const collection = await tx.collection.create({
-        data: {
-          destinationId,
-          name: def.name,
-          slug: def.slug,
-          collectionType: def.type,
-          tourIds: memberTours.map((t) => t.id), // legacy mirror
-          filterQuery: def.filterQuery ?? Prisma.JsonNull,
-          // Hero intentionally not seeded (dashboard-managed); the page
-          // renders its neutral fallback. OG stays topical for share cards.
-          heroImage: null,
-          ogImage: photo(
-            COLLECTION_PHOTO[def.slug] ?? 'beachClassic',
-            1200,
-            630,
-          ),
-          sortOrder: def.sortOrder ?? 'recommended',
-          status: CollectionStatus.PUBLISHED,
-          displayStyle: def.displayStyle,
-          isActive: true,
-          isSeeded: false,
-        },
+        data: { destinationId, ...collectionData },
       });
 
       await tx.collectionTranslation.createMany({
@@ -363,5 +368,5 @@ export async function seedCollections(): Promise<void> {
     created++;
   }
 
-  log(`Collections: ${created} created, ${skipped} already existed.`);
+  log(`Collections: ${created} created, ${refreshed} refreshed in place.`);
 }

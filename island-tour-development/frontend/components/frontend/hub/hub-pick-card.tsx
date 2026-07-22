@@ -16,8 +16,9 @@ export type HubPick = {
     /** Localized label text, e.g. "BEST OVERALL". */
     labelText: string;
     title: string;
-    rating: number;
-    reviewCount: number;
+    /** Omit to hide the rating - an unrated pick is not a 0-star pick. */
+    rating?: number;
+    reviewCount?: number;
     /** Boat type, e.g. "Yacht". */
     type: string;
     description: string;
@@ -85,20 +86,25 @@ export function HubPickCard({
                                 {pick.title}
                             </h3>
                             <div className='flex items-center gap-4'>
-                                <span className='flex items-center gap-2'>
-                                    <Image
-                                        src='/icons/star-listings.svg'
-                                        alt=''
-                                        width={16}
-                                        height={16}
-                                        className='size-4 shrink-0'
-                                    />
-                                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                                        {pick.rating} (
-                                        {pick.reviewCount.toLocaleString()})
-                                    </span>
-                                </span>
-                                <span className='size-1 shrink-0 rounded-full bg-it-heading/30' />
+                                {pick.rating !== undefined && (
+                                    <>
+                                        <span className='flex items-center gap-2'>
+                                            <Image
+                                                src='/icons/star-listings.svg'
+                                                alt=''
+                                                width={16}
+                                                height={16}
+                                                className='size-4 shrink-0'
+                                            />
+                                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
+                                                {pick.rating}
+                                                {pick.reviewCount !== undefined &&
+                                                    ` (${pick.reviewCount.toLocaleString()})`}
+                                            </span>
+                                        </span>
+                                        <span className='size-1 shrink-0 rounded-full bg-it-heading/30' />
+                                    </>
+                                )}
                                 <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                     {pick.type}
                                 </span>

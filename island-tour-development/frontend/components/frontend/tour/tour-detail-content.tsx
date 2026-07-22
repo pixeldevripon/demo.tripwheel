@@ -3,6 +3,7 @@ import {
     TourReviewsSectionSkeleton,
 } from '@/components/frontend/skeletons/tour-page-skeleton';
 import { getDestinationCategories } from '@/lib/api/public/categories';
+import { getTourReviewSummary } from '@/lib/api/public/reviews';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getServerCurrency } from '@/lib/currency/server';
 import { type Locale } from '@/lib/constants/locales';
@@ -113,6 +114,12 @@ export async function TourDetailContent({
     });
     if (!detail) notFound();
 
+    // LD11 lives on the backend (`review-display.util.ts`), not here: the tour
+    // payload only carries the tour's OWN aggregates and cannot express the
+    // cold-start fallback to the operator's rating. Fetched after the detail
+    // because it is keyed by the resolved tour id.
+    const reviewSummary = await getTourReviewSummary(detail.id);
+
     const tourDict = dict.destination.tour;
 
     // Live header / breadcrumb / title values (localized with EN fallback applied
@@ -120,8 +127,15 @@ export async function TourDetailContent({
     // name; `breadcrumbLabel` is the shorter English crumb, falling back to title.
     const title = detail.translation?.title ?? detail.name;
     const breadcrumbLabel = detail.breadcrumbLabel ?? title;
-    const rating = detail.aggregateRating;
-    const reviewCount = detail.aggregateReviewCount;
+    // The DISPLAYED rating and its count - the tour's own, or the operator's when
+    // LD11 borrows it, or null when neither qualifies.
+    const rating = reviewSummary.rating;
+    const reviewCount = reviewSummary.reviewCount;
+    // The tour's OWN approved count. Every render threshold keys off this, never
+    // off `reviewCount`, which may belong to the operator: a tour with 0 reviews
+    // borrowing an operator's 40 must not thereby unlock the star chart, the sort
+    // control or the LD29 preview - none of that data is about this tour.
+    const ownReviewCount = reviewSummary.approvedCount;
     const isLocalsFavourite = detail.isLocalsFavourite;
     const locationLabel = detail.departureCity
         ? `${detail.departureCity}, ${destinationName}`
@@ -313,10 +327,28 @@ export async function TourDetailContent({
     // header rating); the individual cards stream in a separate boundary from the
     // reviews list. A review's operator IS the tour's operator.
     const reviewHostLabel = detail.operatorName ?? '';
-    const reviewHistogram = [5, 4, 3, 2, 1].map((stars, i) => ({
-        stars,
-        count: detail.ratingDistribution[i] ?? 0,
-    }));
+    // Straight from the summary (approved-only, already ordered [5*..1*]) rather
+    // than from the tour row, so the chart cannot disagree with the number above it.
+    const reviewHistogram = reviewSummary.distribution;
+    // FE-7b: with no reviews AND no operator rating to borrow, the section
+    // renders nothing at all. Computed here as well as inside the section so the
+    // tab can be dropped in the same breath - a nav tab that scrolls to a
+    // non-existent anchor is worse than no tab.
+    const hasReviewsSection = !(
+        reviewSummary.approvedCount === 0 && reviewSummary.source === 'none'
+    );
+    // FE-2 product facts. Prefers the converted display price so the marked-up
+    // amount matches what the page shows in the shopper's currency.
+    const reviewProduct = {
+        name: title,
+        description: detail.translation?.shortDescription ?? null,
+        images: detail.images.map(img => img.url),
+        // Relative: `metadataBase` is admin-configured and may be absent, and a
+        // fabricated absolute URL is worse markup than none.
+        url: null,
+        price: detail.money?.priceFrom ?? detail.priceFrom,
+        currency: detail.money?.currency ?? detail.defaultCurrency,
+    };
 
     // In-page tab nav over the detail sections. Each tab scrolls to its `#id`
     // section; sections are added incrementally (each is collapsible, separated
@@ -328,7 +360,9 @@ export async function TourDetailContent({
         { id: 'tour-meeting', label: tourDict.sections.meeting },
         { id: 'tour-info', label: tourDict.sections.info },
         { id: 'tour-cancellation', label: tourDict.sections.cancellation },
-        { id: 'tour-reviews', label: tourDict.sections.reviews },
+        ...(hasReviewsSection
+            ? [{ id: 'tour-reviews', label: tourDict.sections.reviews }]
+            : []),
     ];
 
     return (
@@ -405,9 +439,13 @@ export async function TourDetailContent({
                         {/* Left column content: reviews preview + section tabs +
                             all detail sections + full reviews. */}
                         <div className='flex min-w-0 flex-col gap-10 lg:col-start-1 lg:row-start-2'>
-                            {/* Review preview streams in its own boundary; only
-                                rendered when the aggregate says there are reviews. */}
-                            {reviewCount > 0 && (
+                            {/* LD29 review preview, streamed in its own boundary.
+                                Gated on the tour's OWN approved count and its own
+                                rating: hidden under 3 reviews, and under a 4.0
+                                aggregate. A borrowed operator rating never opens
+                                this - the cards would have to come from reviews of
+                                a different tour. */}
+                            {ownReviewCount >= 3 && (rating ?? 0) >= 4 && (
                                 <Suspense
                                     fallback={<TourReviewsPreviewSkeleton />}>
                                     <TourReviewsPreview
@@ -672,29 +710,44 @@ export async function TourDetailContent({
                                 </div>
                             </TourSection>
 
-                            <div className='h-px w-full bg-it-heading/10' />
-
                             {/* Full reviews section - streams from the reviews
-                                fetch; aggregate + histogram come from the tour. */}
-                            <Suspense
-                                fallback={
-                                    <TourReviewsSectionSkeleton
-                                        count={Math.min(10, reviewCount)}
-                                    />
-                                }>
-                                <TourReviewsBlock
-                                    tourId={detail.id}
-                                    locale={locale}
-                                    rating={rating ?? 0}
-                                    reviewCount={reviewCount}
-                                    histogram={reviewHistogram}
-                                    hostLabel={reviewHostLabel}
-                                    dict={{
-                                        title: tourDict.sections.reviews,
-                                        ...tourDict.reviewsSection,
-                                    }}
-                                />
-                            </Suspense>
+                                fetch; aggregate + histogram come from the tour.
+                                Both the divider and the block are dropped when
+                                there is nothing to show (FE-7b), so the page does
+                                not end on a hairline under the last section. */}
+                            {hasReviewsSection && (
+                                <>
+                                    <div className='h-px w-full bg-it-heading/10' />
+                                    <Suspense
+                                        fallback={
+                                            <TourReviewsSectionSkeleton
+                                                count={Math.min(10, ownReviewCount)}
+                                            />
+                                        }>
+                                        <TourReviewsBlock
+                                            tourId={detail.id}
+                                            locale={locale}
+                                            rating={rating ?? 0}
+                                            reviewCount={reviewCount}
+                                            ownReviewCount={ownReviewCount}
+                                            ratingSource={reviewSummary.source}
+                                            operatorName={reviewHostLabel}
+                                            histogram={reviewHistogram}
+                                            themes={reviewSummary.themes}
+                                            guestTypes={reviewSummary.guestTypes}
+                                            languages={reviewSummary.languages}
+                                            photoCount={reviewSummary.photoCount}
+                                            hostLabel={reviewHostLabel}
+                                            explainerHref={`/${locale}/reviews-policy`}
+                                            product={reviewProduct}
+                                            dict={{
+                                                title: tourDict.sections.reviews,
+                                                ...tourDict.reviewsSection,
+                                            }}
+                                        />
+                                    </Suspense>
+                                </>
+                            )}
                         </div>
                         </div>
                     </div>

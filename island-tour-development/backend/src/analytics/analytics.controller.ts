@@ -7,7 +7,7 @@ import { RequirePermissions } from '@/auth/decorators/require-permissions.decora
 import type { TypedAuthUser } from '@/auth/auth.types';
 
 import { AnalyticsService } from './analytics.service';
-import { ApiDashboardStatsDocs } from './analytics.swagger';
+import { ApiDashboardStatsDocs, ApiReviewStatsDocs } from './analytics.swagger';
 import { DashboardStatsQueryDto } from './dto/analytics.dto';
 
 /**
@@ -31,6 +31,25 @@ export class AnalyticsController {
     @Query() query: DashboardStatsQueryDto,
   ) {
     return this.analytics.getDashboardStats(query, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  /**
+   * GET /analytics/reviews - DASH-9.
+   *
+   * Same permission and the same scoping split as the dashboard stats above:
+   * VIEW_ANALYTICS decides who may see statistics, the service decides whose.
+   */
+  @Get('reviews')
+  @RequirePermissions(Permission.VIEW_ANALYTICS)
+  @ApiReviewStatsDocs()
+  reviews(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: DashboardStatsQueryDto,
+  ) {
+    return this.analytics.getReviewStats(query, {
       id: user.id,
       role: user.role,
     });

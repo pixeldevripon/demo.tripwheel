@@ -1,6 +1,6 @@
 import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
@@ -8,6 +8,7 @@ import {
   PublicSocialMediaResponseDto,
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
+  UpdateReviewRequestsDto,
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
@@ -17,6 +18,8 @@ import {
 
 @Injectable()
 export class SettingsService {
+  private readonly logger = new Logger(SettingsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
@@ -362,5 +365,40 @@ export class SettingsService {
       ...result,
       apiKey: this.maskSecret(result.apiKey),
     };
+  }
+
+  // ── Post-tour review requests (cadence) ────────────────────────────────────
+
+  /**
+   * The review-invitation schedule. Singleton, upserted on first read so the
+   * dashboard always has a row to edit.
+   */
+  async getReviewRequests() {
+    return this.prisma.reviewRequestSettings.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+  }
+
+  /**
+   * Update the schedule.
+   *
+   * `enabled` is the master switch and starts FALSE: a job that mails real
+   * customers is turned on deliberately by a person, never merely by deploying
+   * the code that contains it. Flipping it on is logged.
+   */
+  async updateReviewRequests(dto: UpdateReviewRequestsDto) {
+    const before = await this.getReviewRequests();
+    const after = await this.prisma.reviewRequestSettings.update({
+      where: { id: 'default' },
+      data: { ...dto },
+    });
+    if (before.enabled !== after.enabled) {
+      this.logger.log(
+        `Post-tour review requests ${after.enabled ? 'ENABLED' : 'DISABLED'}`,
+      );
+    }
+    return after;
   }
 }
