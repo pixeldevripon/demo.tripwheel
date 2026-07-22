@@ -54,16 +54,17 @@ export async function seedCustomers(): Promise<void> {
     },
     _count: { _all: true },
     _sum: { totalEur: true },
-    _min: { utcConfirmedAt: true },
-    _max: { utcConfirmedAt: true },
+    _min: { utcConfirmedAt: true, createdAt: true },
+    _max: { utcConfirmedAt: true, createdAt: true },
   });
 
   let written = 0;
   for (const p of pairs) {
     if (!p.userId) continue;
     const data = {
-      firstBookingAt: p._min.utcConfirmedAt,
-      lastBookingAt: p._max.utcConfirmedAt,
+      // Same fallback as the service - see recomputeAggregates.
+      firstBookingAt: p._min.utcConfirmedAt ?? p._min.createdAt,
+      lastBookingAt: p._max.utcConfirmedAt ?? p._max.createdAt,
       bookingsCount: p._count._all,
       totalSpendEur: p._sum.totalEur ?? 0,
     };

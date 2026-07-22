@@ -233,6 +233,35 @@
       deletion find them (added an optional folder override to `CloudinaryService`).
       **Verified live:** real upload returns a Cloudinary URL and persists; a `.txt` is 400
       "Only image files can be attached"; an unknown token is 404; a 9th photo is 400.
+- [x] **BE-16 wired into the UI (2026-07-22).** Step 3 shipped with a `type="url"` box, so the
+      endpoint existed and nothing used it - a guest on a phone straight off a boat was being
+      asked to host an image somewhere and paste a link, which is asking them not to bother.
+      Replaced with a real file picker + thumbnail strip posting multipart to the endpoint
+      above; the response's full `photos` array replaces local state, so the thumbnails show
+      what is stored rather than what the client believes it sent. `step3Helper` copy changed
+      in all 7 locales (it still said "paste a link"), and `photoAdd` added.
+- [x] **Uploader UX + pending state (2026-07-22).** Extracted to
+      `components/frontend/review/review-photo-uploader.tsx`. A pending tile renders the
+      guest's OWN photo from a local object URL behind a pulsing veil and a spinner - a grey
+      box for the length of a 6 MB upload on hotel wifi reads as "did that work?". Object
+      URLs are revoked on settle and on unmount, or the browser holds each whole file in
+      memory. Type and size are checked client-side too (the server check is still the one
+      that counts), so a 20 MB video is refused instantly instead of after a long upload that
+      ends in a 400. Adds drag-and-drop, a per-photo remove control, an `aria-live` counter
+      that doubles as the error line, and an input reset so re-picking the same file is not
+      a silent no-op. Five copy keys added across all 7 locales.
+- [x] **Enrich `photos` is removal-only (2026-07-22).** Closing a hole the new uploader would
+      otherwise have widened: `PATCH /reviews/invitation/:token` is unauthenticated by design
+      and its `photos` field took arbitrary strings, so it was a public write that pinned any
+      URL onto a page we publish. It now accepts only a SUBSET of what is already attached -
+      which is exactly the one legitimate use, a guest deleting a photo they did not mean to
+      add. **Verified live:** upload 2 -> PATCH to 1 -> DB reads 1; a foreign URL is 400.
+- [x] **Star correction (2026-07-22).** Step 1 commits on press, which is what makes a one-tap
+      review count - but it also made a mistap permanent, and the stars were `disabled` once
+      committed. `EnrichReviewDto` now takes an optional `rating` (1-5), so a second press
+      PATCHes instead of POSTing. Only while `PENDING`: `loadEnrichable` already refuses once
+      a moderator has acted, so a published rating cannot be edited from a stale tab.
+      **Verified live:** start 5 -> PATCH 2 -> DB reads 2; `rating: 9` is 400.
 
 ### 2b. Scheduling and email (BE) · **COMPLETE 2026-07-22**
 
@@ -385,8 +414,24 @@
       is present and a reviewable booking reports `canReview: true` with its token.
       Computed from data joined into the SAME query (`reviewStateForRow`) rather than a
       per-row lookup - a round trip per row would be N+1 across a 20-row page.
-      New `NEXT_PUBLIC_SITE_URL` in the dashboard (the review page lives on the public site),
-      with a localhost:3000 fallback so a dev without it set still gets a working link.
+- [x] **FE-12b CORRECTED (2026-07-22).** Shipped in the wrong component and therefore
+      rendered NOWHERE. The CTA went into `components/bookings/booking-row-actions.tsx` - the
+      admin/operator table, which by the rule directly above never receives a `review` block -
+      while `components/customer/customer-bookings-view.tsx`, the traveller's own "My
+      Bookings" and the only place the data lands, had no affordance at all. A dead branch
+      typechecks perfectly, which is why "the component exists" was not evidence.
+      Now: a **Review column** in the customer table (`Leave a review` / `Reviewed` /  `-`,
+      `stopPropagation` so it does not also open the details sheet) plus a **Review section**
+      in the details sheet. Both gate on the server's `canReview` alone.
+      **Verified live:** signed in as `traveler.t01`, all 45 rows carry `review`, 4 report
+      `canReview: true`, 39 `reviewed: true` - including `IT-2026-C28EE552`, the top row of
+      the screenshot that reported this.
+- [x] **Public-site URL was a ghost var (2026-07-22).** The link read
+      `NEXT_PUBLIC_SITE_URL`, which the extraction spec explicitly records as a ghost ("does
+      not exist. Do not add it") and which is absent from `.env.local` - so it silently took
+      the localhost fallback in every environment. Now `lib/public-site.ts` centralises
+      `reviewUrl()` on `NEXT_PUBLIC_FACING_APP_URL`, the variable that is actually set and
+      that the profile dropdown already uses.
 
 ---
 
@@ -861,3 +906,66 @@ New files: `src/reviews/dto/review.dto.spec.ts`, `src/reviews/review-requests.se
       hubs, categories, collections, attributes, trips). They target routes that no longer
       exist in the public app. Not touched here; flagged for deletion alongside the extraction
       cleanup.
+
+---
+
+## Booking-management page · 2026-07-22
+
+- [x] **"Add to calendar" is hidden once the trip is over.** It rendered unconditionally, so a
+      REDEEMED booking offered a Google Calendar entry for a date that had already passed -
+      directly above the "how was your trip?" ask, which reads as a page that has not noticed
+      the trip happened. Also hidden on a CANCELLED booking, and the whole action row is
+      skipped when neither it nor Cancel applies rather than animating in an empty container.
+      Keyed off the real end instant, not `status`, so a CONFIRMED booking never marked
+      redeemed drops it too.
+      The verdict (`departed`) is computed in the thank-you MAPPER beside `canCancel`, not in
+      the component: reading the clock during render is impure (the React compiler rejects it)
+      and would drift between the server pass and hydration.
+
+---
+
+## Customers screen (operator + Island Tours) · 2026-07-22
+
+- [x] **Table enriched to carry its own data.** It listed bookings / reviews / awaiting /
+      last booking as bare numerals with no status cues and no money at all, while
+      `totalSpendEur` was already on the payload and simply never rendered. Now: an initials
+      avatar with name + email; bookings with a derived **New / Repeat / Loyal** badge;
+      **lifetime spend** (EUR-normalized server-side, parsed for display only); reviews with
+      an **`N awaiting` / All reviewed / No reviews** badge; last booking with a relative
+      "3 days ago" under the date.
+- [x] **Colour goes through `StatusBadge`, not raw `Badge`.** 03 §5.1 makes `StatusBadge` the
+      only way to colour a status, with the dot AND the label mandatory so colour is never
+      the sole carrier of meaning (WCAG 1.4.1 A). The new states live in `status-maps.ts`
+      (`CUSTOMER_TIER`, `customerTier()`, `CUSTOMER_REVIEW_STATE`) like every other domain.
+- [x] **"Ask for review" promoted out of the `...` menu** to a visible row button, shown only
+      where `awaitingReview > 0`, with a tooltip naming what it sends. Still in the menu too,
+      disabled, so a row without the button explains itself rather than looking incomplete.
+
+### Three data bugs this surfaced
+
+- [x] **Review-depth seed wrote money-less bookings.** `topUpReviewDepth()` created 310
+      REDEEMED bookings with `totalRetail` but no `totalEur`, no `fxRateToEur` and no
+      `utcConfirmedAt`. `totalEur` is what every aggregate sums and `utcConfirmedAt` what they
+      date by, so seven customers showed 4-6 trips, EUR 0 lifetime spend and a blank
+      "last booking". A REDEEMED booking in that state is corrupt, not merely sparse.
+      **The repair lives IN the seed** (`repairMoneylessBookings`, run inside `seedReviews`
+      before the aggregate recompute), not in a one-off script - any environment already
+      carrying those rows, the VPS above all, only heals on the next
+      `pnpm prisma:seed:demo`, and a repair that has to be remembered is one that will not be
+      run. Scoped to rows that are BOTH `totalEur`-null and `utcConfirmedAt`-null, a state the
+      real booking flow cannot produce, so it can never touch live data.
+      **Proved by re-breaking:** nulled the money fields on 25 healthy bookings, re-seeded ->
+      `Repaired 25 booking(s)`, 0 left broken, 0 customers at zero spend, 0 with a blank last
+      booking; a second re-seed printed nothing, the predicate being unsatisfiable once fixed.
+      The three permanent demo review links still resolve afterwards.
+- [x] **Aggregates had no fallback for a missing confirmation stamp.** `recomputeAggregates`
+      dated `first/lastBookingAt` off `utcConfirmedAt` alone, and an aggregate skips nulls
+      silently. Both it and the seed now fall back to `createdAt` - the same precedence the
+      tour's `lastBookedAt` already used.
+- [x] **`awaitingReviewOnly` filtered the PAGE, not the query.** It ran `data.filter(...)`
+      after `take`, so page 1 came back empty while `total` still reported 78 - the filter
+      looked broken because it was applied to twenty rows already chosen without it.
+      `Customer` has no relation to bookings (it is a rollup keyed by user+operator), so the
+      qualifying pairs are now resolved first and pinned into the `where`. An empty OR matches
+      everything in Prisma, so "no matches" is expressed as an impossible id.
+      **Verified live:** `awaitingReviewOnly=true` returns `total: 26`, every row `> 0`.

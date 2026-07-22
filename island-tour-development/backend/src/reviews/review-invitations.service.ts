@@ -226,7 +226,27 @@ export class ReviewInvitationsService {
     const data: Prisma.ReviewUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.reviewerType !== undefined) data.reviewerType = dto.reviewerType;
-    if (dto.photos !== undefined) data.photos = dto.photos;
+    // Photos may only be REMOVED here, never introduced.
+    //
+    // This endpoint is unauthenticated by design - the token is the credential -
+    // and every real photo now arrives through the BE-16 upload, which puts the
+    // file on our own Cloudinary account. Accepting arbitrary strings would make
+    // a public write that pins any URL onto a page we publish. Restricting the
+    // list to a subset of what is already attached keeps the one legitimate use
+    // (the guest deleting a photo they did not mean to add) and drops the rest.
+    if (dto.photos !== undefined) {
+      const attached = new Set(review.photos ?? []);
+      const unknown = dto.photos.filter((url) => !attached.has(url));
+      if (unknown.length > 0) {
+        throw new BadRequestException(
+          'Photos can only be removed here - upload new ones via /photos',
+        );
+      }
+      data.photos = dto.photos;
+    }
+    // A mistapped star is correctable while the review is still PENDING -
+    // `loadEnrichable` already refuses once a moderator has acted.
+    if (dto.rating !== undefined) data.rating = dto.rating;
     if (dto.ratingValue !== undefined) data.ratingValue = dto.ratingValue;
     if (dto.ratingGuide !== undefined) data.ratingGuide = dto.ratingGuide;
     if (dto.ratingSafety !== undefined) data.ratingSafety = dto.ratingSafety;

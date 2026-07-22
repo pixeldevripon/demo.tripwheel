@@ -51,7 +51,7 @@ async function ReviewBody({
     if (!invitation) {
         return (
             <MountReveal>
-                <div className='w-full max-w-3xl rounded-[16px] bg-it-white p-8 text-center shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-12'>
+                <div className='w-full max-w-xl rounded-[16px] bg-it-white p-8 text-center shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-12'>
                     <Image
                         src='/icons/review-verified.svg'
                         alt=''
@@ -119,7 +119,7 @@ async function ReviewBody({
 
 function ReviewSkeleton() {
     return (
-        <div className='w-full max-w-3xl animate-pulse rounded-[16px] bg-it-white p-6 sm:p-8'>
+        <div className='w-full max-w-xl animate-pulse rounded-[16px] bg-it-white p-6 sm:p-8'>
             <div className='h-40 w-full rounded-[12px] bg-it-border' />
             <div className='mt-5 h-7 w-3/4 rounded-[6px] bg-it-border' />
             <div className='mt-2 h-4 w-1/2 rounded-[6px] bg-it-border' />
@@ -146,7 +146,7 @@ export default async function ReviewPage({
 
     return (
         <section className='it-section flex min-h-[70vh] items-center justify-center bg-it-surface'>
-            <div className='it-container [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-3xl'>
+            <div className='it-container [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-xl'>
                 <Suspense fallback={<ReviewSkeleton />}>
                     <ReviewBody token={token} locale={locale} />
                 </Suspense>

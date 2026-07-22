@@ -57,7 +57,37 @@ export class CustomersService {
       ? null
       : await resolveOperatorId(this.prisma, actor.id, actor.role);
 
+    // `awaitingReviewOnly` has to narrow the QUERY, not the page.
+    //
+    // It used to filter the mapped rows after `take`, which meant page 1 could
+    // come back empty while `total` still claimed 78 - the filter looked broken
+    // because it was applied to twenty rows that had already been chosen without
+    // it. Customer has no relation to bookings (it is a rollup keyed by
+    // user+operator), so the qualifying pairs are resolved first and pinned into
+    // the where clause.
+    const awaitingPairs = query.awaitingReviewOnly
+      ? await this.prisma.booking.groupBy({
+          by: ['userId', 'operatorId'],
+          where: {
+            status: { in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED] },
+            review: { is: null },
+            tourEndDateTime: { lt: new Date() },
+            userId: { not: null },
+          },
+        })
+      : null;
+
     const where: Prisma.CustomerWhereInput = {
+      ...(awaitingPairs && {
+        // An empty OR matches everything in Prisma, so an empty result set has
+        // to be expressed as an impossible id rather than an empty array.
+        OR: awaitingPairs.length
+          ? awaitingPairs.map((p) => ({
+              userId: p.userId as string,
+              operatorId: p.operatorId,
+            }))
+          : [{ id: '00000000-0000-0000-0000-000000000000' }],
+      }),
       ...(query.operatorId && platformWide && { operatorId: query.operatorId }),
       ...(search && {
         user: {
@@ -130,7 +160,7 @@ export class CustomersService {
       awaiting.map((r) => [key(r.userId, r.operatorId), r._count._all]),
     );
 
-    let data = rows.map((r) => ({
+    const data = rows.map((r) => ({
       id: r.id,
       userId: r.userId,
       email: r.user.email,
@@ -144,10 +174,6 @@ export class CustomersService {
       reviewsLeft: reviewedBy.get(key(r.userId, r.operatorId)) ?? 0,
       awaitingReview: awaitingBy.get(key(r.userId, r.operatorId)) ?? 0,
     }));
-
-    if (query.awaitingReviewOnly) {
-      data = data.filter((d) => d.awaitingReview > 0);
-    }
 
     return { total, page, limit, data };
   }

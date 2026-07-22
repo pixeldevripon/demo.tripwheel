@@ -60,6 +60,19 @@ export function BookingManageHeader({
                 text: 'text-it-green',
                 bg: 'bg-it-green/8',
             };
+    /**
+     * A trip that has already happened cannot be added to a calendar.
+     *
+     * The event is in the past, so the link creates a Google Calendar entry for
+     * a date that has been and gone - and it sat directly above the "how was
+     * your trip?" ask, which reads as a page that has not noticed the trip is
+     * over. Keyed off the real end instant rather than `status` alone, so a
+     * CONFIRMED booking that was never marked redeemed also drops it - the
+     * verdict is computed in the mapper, because reading the clock during
+     * render is impure.
+     */
+    const showCalendar = !cancelled && !booking.departed;
+
     const stateNote = cancelled
         ? dict.cancelledNote
         : cancellationPending
@@ -137,9 +150,13 @@ export function BookingManageHeader({
                     </MountReveal>
                 )}
 
+                {/* Skipped entirely when neither action applies, or the row
+                    would animate in an empty container. */}
+                {(showCalendar || canCancel) && (
                 <MountReveal
                     delay={0.1}
                     className='flex flex-col gap-4 sm:flex-row sm:items-center'>
+                    {showCalendar && (
                     <MotionA
                         href={buildCalendarUrl(booking)}
                         target='_blank'
@@ -158,6 +175,7 @@ export function BookingManageHeader({
                             className='size-4'
                         />
                     </MotionA>
+                    )}
                     {canCancel && (
                         <MotionA
                             href={cancelHref}
@@ -170,6 +188,7 @@ export function BookingManageHeader({
                         </MotionA>
                     )}
                 </MountReveal>
+                )}
 
                 <MountReveal
                     delay={0.15}

@@ -7,6 +7,7 @@ import { MotionButton } from '../motion-primitives';
 import { springPop } from '@/lib/motion';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { startReview, enrichReview, sendPrivateFeedback } from '@/lib/api/review-submit';
+import { ReviewPhotoUploader } from './review-photo-uploader';
 
 type Dict = Dictionary['reviewSubmit'];
 
@@ -61,7 +62,7 @@ export function ReviewSubmitFlow({
     const [rating, setRating] = useState<number | null>(null);
     const [hovered, setHovered] = useState<number | null>(null);
     const [comment, setComment] = useState('');
-    const [photos, setPhotos] = useState('');
+    const [photos, setPhotos] = useState<string[]>([]);
     const [guestType, setGuestType] = useState<GuestType | null>(null);
     const [feedback, setFeedback] = useState('');
     const [feedbackSent, setFeedbackSent] = useState(false);
@@ -72,12 +73,24 @@ export function ReviewSubmitFlow({
     const committed = rating !== null;
     const isLow = committed && rating <= LOW_RATING;
 
+    /**
+     * Step 1. Commits on press - and stays correctable.
+     *
+     * Committing on press is what makes a one-tap review count, but it also
+     * means a mistap would otherwise be permanent. So a second press re-rates:
+     * the first call CREATES the review, every later one PATCHES it, which the
+     * backend accepts for as long as the review is still pending moderation.
+     */
     async function commitRating(value: number) {
-        if (busy || committed) return;
+        if (busy || value === rating) return;
         setBusy(true);
         setError(null);
         try {
-            await startReview(token, value);
+            if (committed) {
+                await enrichReview(token, { rating: value });
+            } else {
+                await startReview(token, value);
+            }
             setRating(value);
         } catch {
             setError(dict.error);
@@ -170,8 +183,8 @@ export function ReviewSubmitFlow({
                             key={star}
                             type='button'
                             aria-label={`${star}`}
-                            disabled={busy || committed}
-                            onMouseEnter={() => !committed && setHovered(star)}
+                            disabled={busy}
+                            onMouseEnter={() => setHovered(star)}
                             onMouseLeave={() => setHovered(null)}
                             onClick={() => void commitRating(star)}
                             whileTap={{ scale: 0.9 }}
@@ -234,16 +247,11 @@ export function ReviewSubmitFlow({
                     </Step>
 
                     <Step header={dict.step3Header} helper={dict.step3Helper}>
-                        <input
-                            type='url'
-                            value={photos}
-                            onChange={e => setPhotos(e.target.value)}
-                            onBlur={() =>
-                                photos.trim() &&
-                                void save({ photos: [photos.trim()] })
-                            }
-                            placeholder='https://'
-                            className='w-full rounded-[10px] border border-it-border bg-it-white p-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                        <ReviewPhotoUploader
+                            token={token}
+                            photos={photos}
+                            onChange={setPhotos}
+                            dict={dict}
                         />
                     </Step>
 
@@ -353,7 +361,7 @@ export function ReviewSubmitFlow({
 
 function Card({ children }: { children: React.ReactNode }) {
     return (
-        <div className='w-full max-w-3xl rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-8'>
+        <div className='w-full max-w-xl rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-8'>
             {children}
         </div>
     );

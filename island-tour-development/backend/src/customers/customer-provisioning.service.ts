@@ -135,12 +135,17 @@ export class CustomerProvisioningService {
         },
         _count: { _all: true },
         _sum: { totalEur: true },
-        _min: { utcConfirmedAt: true },
-        _max: { utcConfirmedAt: true },
+        _min: { utcConfirmedAt: true, createdAt: true },
+        _max: { utcConfirmedAt: true, createdAt: true },
       });
       const data = {
-        firstBookingAt: agg._min.utcConfirmedAt,
-        lastBookingAt: agg._max.utcConfirmedAt,
+        // `createdAt` is the fallback because a booking can be CONFIRMED with no
+        // confirmation stamp (imported or seeded rows), and an aggregate skips
+        // nulls silently - so a customer whose every booking lacked one showed a
+        // blank "Last booking" beside a count of 6, which reads as broken data.
+        // Same precedence the tour's `lastBookedAt` already uses.
+        firstBookingAt: agg._min.utcConfirmedAt ?? agg._min.createdAt,
+        lastBookingAt: agg._max.utcConfirmedAt ?? agg._max.createdAt,
         bookingsCount: agg._count._all,
         totalSpendEur: agg._sum.totalEur ?? 0,
       };
