@@ -465,6 +465,7 @@
                 "operatorFallback": "Neu bei Island Tours. Diese Tour wird von {operator} durchgeführt, bewertet mit {rating} aus {count} Bewertungen.",
                 "earlyReviews": "{count} erste Bewertungen",
                 "howWeHandle": "Wie wir mit Bewertungen umgehen",
+                "responseByPlatform": "Island Tours",
                 "filterGuest": "Reiseart",
                 "filterLanguage": "Verfasst auf",
                 "filterWithPhotos": "Mit Fotos",

@@ -84,14 +84,18 @@ export function toTourReview(review: PublicReview, locale: Locale): TourReview {
 }
 
 /**
- * Map a review to the full-section card shape. `hostLabel` is the response
- * author label - the review payload carries the operator response text/date but
- * no author name, so the caller supplies a display label.
+ * Map a review to the full-section card shape.
+ *
+ * Two author labels, because a response can come from either party:
+ * `hostLabel` is the operator's display name and `platformLabel` is ours. The
+ * payload carries `responseAuthor` as the discriminator but no names, so the
+ * caller supplies both and this picks.
  */
 export function toFullReview(
   review: PublicReview,
   locale: Locale,
   hostLabel: string,
+  platformLabel: string,
 ): FullReview {
   const full: FullReview = {
     id: review.id,
@@ -121,7 +125,13 @@ export function toFullReview(
   if (review.responseText) {
     full.response = {
       text: review.responseText,
-      name: hostLabel,
+      // WHO replied, from `responseAuthor` - not "whoever owns the tour".
+      // Responses are platform-authored at launch (LD37), so labelling every
+      // one with the operator's name told the reader the operator had replied
+      // when Island Tours had. `responseAuthor` exists to answer exactly this
+      // and was being ignored.
+      name:
+        review.responseAuthor === 'OPERATOR' ? hostLabel : platformLabel,
       date: review.responseAt
         ? formatReviewDate(review.responseAt, locale)
         : '',

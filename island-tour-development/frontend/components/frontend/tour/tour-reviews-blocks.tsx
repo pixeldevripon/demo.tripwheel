@@ -115,7 +115,7 @@ export async function TourReviewsBlock({
         limit: REVIEWS_PAGE_SIZE,
     });
     const fullReviews = reviewList.data.map(r =>
-        toFullReview(r, locale, hostLabel),
+        toFullReview(r, locale, hostLabel, dict.responseByPlatform),
     );
 
     // FE-2. Built from the SAME page of reviews that renders below, so the markup

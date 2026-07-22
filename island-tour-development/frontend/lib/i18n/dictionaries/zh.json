@@ -465,6 +465,7 @@
                 "operatorFallback": "Island Tours 新上线。此行程由 {operator} 运营，在 {count} 条评价中获得 {rating} 分。",
                 "earlyReviews": "{count} 条早期评价",
                 "howWeHandle": "我们如何处理评价",
+                "responseByPlatform": "Island Tours",
                 "filterGuest": "出行方式",
                 "filterLanguage": "撰写语言",
                 "filterWithPhotos": "含照片",

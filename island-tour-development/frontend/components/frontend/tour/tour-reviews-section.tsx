@@ -81,6 +81,8 @@ export type TourReviewsSectionDict = {
     filterLanguage: string;
     filterWithPhotos: string;
     filterAny: string;
+    /** Author label for a PLATFORM-authored response (LD37). */
+    responseByPlatform: string;
     /** FE-6 LD32 translation label + toggle. */
     translatedBy: string;
     showOriginal: string;
@@ -308,7 +310,7 @@ export function TourReviewsSection({
                 ...(f.photos && { withPhotos: true }),
                 ...(f.language !== null && { writtenIn: f.language }),
             });
-            const mapped = res.data.map(r => toFullReview(r, locale, hostLabel));
+            const mapped = res.data.map(r => toFullReview(r, locale, hostLabel, dict.responseByPlatform));
             setReviews(prev => (append ? [...prev, ...mapped] : mapped));
             setMatchTotal(res.total);
             setLoadedPages(page);
