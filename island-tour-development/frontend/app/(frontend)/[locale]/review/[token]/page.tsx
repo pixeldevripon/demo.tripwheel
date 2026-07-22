@@ -146,7 +146,7 @@ export default async function ReviewPage({
 
     return (
         <section className='it-section flex min-h-[70vh] items-center justify-center bg-it-surface'>
-            <div className='it-container flex justify-center'>
+            <div className='it-container [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-3xl'>
                 <Suspense fallback={<ReviewSkeleton />}>
                     <ReviewBody token={token} locale={locale} />
                 </Suspense>
