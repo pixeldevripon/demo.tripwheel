@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CancelCircleIcon, Copy01Icon, MoreHorizontalIcon, ViewIcon } from '@hugeicons/core-free-icons';
+import { CancelCircleIcon, Copy01Icon, MoreHorizontalIcon, StarIcon, ViewIcon } from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -15,6 +15,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useRole } from '@/contexts/role-context';
+
+/**
+ * Public site origin - the review page lives there, not in the dashboard.
+ * Falls back to the local public-site port (3000) so a dev without the env set
+ * still gets a working link rather than a relative path into the dashboard.
+ */
+const PUBLIC_SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 import { useCancelBooking } from '@/hooks/bookings/use-bookings';
 import type { BookingListItem } from '@/types/booking';
 import { refundDue } from '@/lib/bookings/format';
@@ -62,6 +70,25 @@ export function BookingRowActions({
           >
             <HugeiconsIcon icon={Copy01Icon} /> Copy reference
           </DropdownMenuItem>
+          {/* FE-12b. Present only on a customer's OWN bookings - the backend
+              omits `review` entirely for admin/operator listings, because
+              `reviewToken` is a write credential. Gated on the server's
+              `canReview`, the same predicate the create endpoint enforces, so
+              this can never offer a review the API would refuse. */}
+          {booking.review?.canReview && booking.review.reviewToken && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a
+                  href={`${PUBLIC_SITE_URL}/en/review/${booking.review.reviewToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <HugeiconsIcon icon={StarIcon} /> Leave a review
+                </a>
+              </DropdownMenuItem>
+            </>
+          )}
           {canCancel && (
             <>
               <DropdownMenuSeparator />
