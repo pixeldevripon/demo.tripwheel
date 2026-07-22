@@ -139,6 +139,31 @@ test.describe('Reviews moderation queue', () => {
     ).toBeVisible();
   });
 
+  test('"All statuses" actually widens the list, not just the dropdown', async ({
+    page,
+  }) => {
+    // Regression: the control sent `undefined` for "all", the list view read
+    // that as "unset" and re-applied its PENDING default, so history was
+    // unreachable while the dropdown happily showed every option. The old test
+    // asserted the OPTIONS existed and passed throughout.
+    let lastStatus: string | null | undefined = 'unset';
+    await page.route('**/api/v1/reviews/admin**', async (route: any) => {
+      lastStatus = new URL(route.request().url()).searchParams.get('status');
+      await route.fulfill({ json: PENDING_LIST });
+    });
+
+    await page.goto('/reviews');
+    await expect(page.getByText('Ada B.').first()).toBeVisible();
+    expect(lastStatus).toBe('PENDING');
+
+    await page.getByRole('combobox').first().click();
+    await page.getByRole('option', { name: /all statuses/i }).click();
+
+    // No `status` param at all == every status. Anything else means the filter
+    // silently narrowed the queue again.
+    await expect.poll(() => lastStatus).toBeNull();
+  });
+
   test('rejecting requires a documented policy ground', async ({ page }) => {
     await page.goto('/reviews');
     await expect(page.getByText('Ada B.').first()).toBeVisible();

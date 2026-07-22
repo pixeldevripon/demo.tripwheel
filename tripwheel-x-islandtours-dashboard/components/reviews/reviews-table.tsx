@@ -111,9 +111,11 @@ export function ReviewsTable({
               className='max-w-sm flex-1'
             />
             <Select
-              value={filters.status ?? 'all'}
+              value={filters.status ?? 'PENDING'}
               onValueChange={(v) =>
-                onFilterChange('status', v === 'all' ? undefined : v)
+                // 'all' is passed through, NOT dropped: clearing the key would
+                // hit the list view's PENDING default and silently re-filter.
+                onFilterChange('status', v)
               }>
               <SelectTrigger className='w-40'>
                 <SelectValue placeholder='Status' />

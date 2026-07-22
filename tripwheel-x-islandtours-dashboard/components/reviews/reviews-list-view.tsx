@@ -37,12 +37,20 @@ export function ReviewsListView() {
 
   const scope = can('APPROVE_REVIEW') ? 'admin' : 'operator';
 
-  const status = (filters.status ?? 'PENDING') as ReviewModerationStatus;
+  // PENDING is the DEFAULT, not a floor. `?? 'PENDING'` treated "All statuses"
+  // (which the control sends as `all`) as "unset" and put the queue straight
+  // back on Pending, so the full history was unreachable - the exact opposite
+  // of the "history is one dropdown away" rule this list is built on.
+  const rawStatus = filters.status ?? 'PENDING';
+  const status =
+    rawStatus === 'all' ? undefined : (rawStatus as ReviewModerationStatus);
 
   const params: ReviewsQueryParams = {
     page,
     limit,
-    status,
+    // Omitted entirely on "all" - the backend treats an absent status as
+    // "every status", and sending `undefined` explicitly would serialise.
+    ...(status ? { status } : {}),
     ...(filters.rating ? { rating: Number(filters.rating) } : {}),
     ...(filters.tourId ? { tourId: filters.tourId } : {}),
     ...(filters.flagged === 'true' ? { flagged: true } : {}),
@@ -60,7 +68,7 @@ export function ReviewsListView() {
         limit={limit}
         isLoading={isLoading}
         searchValue={search}
-        filters={{ ...filters, status }}
+        filters={{ ...filters, status: rawStatus }}
         onSearchChange={setSearch}
         onPageChange={setPage}
         onLimitChange={setLimit}

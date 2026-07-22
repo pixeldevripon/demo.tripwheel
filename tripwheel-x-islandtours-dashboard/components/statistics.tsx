@@ -1326,7 +1326,11 @@ function StatisticsContent({
                         its own. */}
                     <Tabs defaultValue='revenue' className='space-y-6'>
                         <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-                            <TabsList className='grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4'>
+                            {/* Five columns, not four: the Reviews tab was rendering into a
+                                hidden second grid row, so it existed in the DOM and was
+                                invisible on screen. Column count must track the trigger
+                                count. */}
+                            <TabsList className='grid w-full max-w-3xl grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'>
                                 <TabsTrigger value='revenue'>
                                     Revenue &amp; Bookings
                                 </TabsTrigger>
