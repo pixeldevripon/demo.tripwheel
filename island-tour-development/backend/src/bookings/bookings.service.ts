@@ -2490,6 +2490,14 @@ export class BookingsService {
       where.userId = actor.id;
     }
 
+    // FE-12b. The review affordance is attached ONLY on the self-scoped branch.
+    // `reviewToken` is a WRITE credential - an admin or operator listing other
+    // people's bookings must never receive one, or the list becomes a way to
+    // author reviews as any traveller on the platform.
+    const selfScoped =
+      !isPlatformWideBookingRole(actor.role) &&
+      actor.role !== Role.TOUR_OPERATOR;
+
     if (query.tourId) where.tourId = query.tourId;
     if (query.status) where.status = query.status;
     if (query.paymentModel) where.paymentModel = query.paymentModel;
@@ -2520,6 +2528,12 @@ export class BookingsService {
           unitItems: true,
           tour: { select: { name: true, cancellationHours: true } },
           payments: { select: { kind: true, status: true, amount: true } },
+          // FE-12b review state. Selected unconditionally (one join either way)
+          // but only PROJECTED on the self-scoped branch below.
+          review: { select: { id: true } },
+          reviewInvitation: {
+            select: { token: true, revokedAt: true, completedAt: true },
+          },
         },
         // Cancellation-request queues surface oldest-unprocessed first;
         // everything else reads newest bookings first.
@@ -2534,9 +2548,54 @@ export class BookingsService {
       total,
       page,
       limit,
-      data: rows.map((row) =>
-        stripCommissionForCustomer(mapBookingListItem(row), actor.role),
-      ),
+      data: rows.map((row) => {
+        const item = stripCommissionForCustomer(
+          mapBookingListItem(row),
+          actor.role,
+        );
+        return selfScoped
+          ? { ...item, review: this.reviewStateForRow(row) }
+          : item;
+      }),
+    };
+  }
+
+  /**
+   * Review affordance for one list row, from data already joined in.
+   *
+   * Mirrors {@link reviewStateFor} but takes the row rather than re-querying -
+   * a per-row round trip would be N+1 across a 20-row page. The predicate is
+   * kept identical to the create gate on purpose: a CTA that offers a review
+   * the API refuses is worse than no CTA.
+   */
+  private reviewStateForRow(row: {
+    status: BookingStatus;
+    localDate: Date;
+    tourEndDateTime: Date | null;
+    review: { id: string } | null;
+    reviewInvitation: {
+      token: string;
+      revokedAt: Date | null;
+      completedAt: Date | null;
+    } | null;
+  }) {
+    const completed = BookingsService.REVIEWABLE_BOOKING_STATUSES.includes(
+      row.status,
+    );
+    const end =
+      row.tourEndDateTime ?? new Date(row.localDate.getTime() + 864e5);
+    const finished = end <= new Date();
+    const usableToken =
+      row.reviewInvitation &&
+      !row.reviewInvitation.revokedAt &&
+      !row.reviewInvitation.completedAt
+        ? row.reviewInvitation.token
+        : null;
+
+    return {
+      reviewed: Boolean(row.review),
+      canReview: Boolean(completed && finished && !row.review && usableToken),
+      reviewToken: row.review ? null : usableToken,
     };
   }
 

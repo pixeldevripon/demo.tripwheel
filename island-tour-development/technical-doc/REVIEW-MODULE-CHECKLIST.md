@@ -25,7 +25,7 @@
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
 | T | Test pass | 23 | 23 | **DONE 2026-07-22** - found + fixed a cross-operator read bug; 9 public-site tests since marked `test.fixme`, see the correction below |
-| **Total** | | **114** | **99** | |
+| **Total** | | **114** | **100** | |
 
 ---
 
@@ -372,11 +372,18 @@
       review + a usable invitation) rather than re-deciding it, so the button can never offer
       something the API refuses - the same rule the cancel affordance already follows.
       Copy in all 7 locales (thankYou block, 65 keys, parity asserted).
-- [ ] **FE-12b** The same CTA in the **dashboard's customer bookings list**
-      (`tripwheel-x-islandtours-dashboard`, `customerNav` -> My Bookings). NOT done: the
-      customer booking LIST payload carries no review state, so this needs the same
-      `review` block added to the bookings list endpoint first. The TYP surface above is the
-      one a traveller reaches from the review email and the lookup; this is the second.
+- [x] **FE-12b** The same CTA in the **dashboard's customer bookings list**
+      (`customerNav` -> My Bookings), as a row action opening the public review page.
+      Backend adds the same `review` block to `GET /bookings`, **attached only on the
+      self-scoped branch**: an admin or operator listing other people's bookings receives no
+      `review` key at all, because `reviewToken` is a WRITE credential - anyone holding one
+      can submit a review as that traveller. **Verified live in both directions:** signed in
+      as admin, zero rows carry a `review` block; signed in as the owning customer, the block
+      is present and a reviewable booking reports `canReview: true` with its token.
+      Computed from data joined into the SAME query (`reviewStateForRow`) rather than a
+      per-row lookup - a round trip per row would be N+1 across a 20-row page.
+      New `NEXT_PUBLIC_SITE_URL` in the dashboard (the review page lives on the public site),
+      with a localhost:3000 fallback so a dev without it set still gets a working link.
 
 ---
 
