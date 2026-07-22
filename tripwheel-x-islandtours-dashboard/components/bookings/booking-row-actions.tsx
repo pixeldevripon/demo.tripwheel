@@ -15,15 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useRole } from '@/contexts/role-context';
-
-/**
- * Public site origin - the review page lives there, not in the dashboard.
- * Falls back to the local public-site port (3000) so a dev without the env set
- * still gets a working link rather than a relative path into the dashboard.
- */
-const PUBLIC_SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 import { useCancelBooking } from '@/hooks/bookings/use-bookings';
+import { reviewUrl } from '@/lib/public-site';
 import type { BookingListItem } from '@/types/booking';
 import { refundDue } from '@/lib/bookings/format';
 
@@ -80,7 +73,7 @@ export function BookingRowActions({
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a
-                  href={`${PUBLIC_SITE_URL}/en/review/${booking.review.reviewToken}`}
+                  href={reviewUrl(booking.review.reviewToken)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

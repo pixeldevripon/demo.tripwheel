@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { Ticket01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+    CheckmarkCircle02Icon,
+    StarIcon,
+    Ticket01Icon,
+} from '@hugeicons/core-free-icons';
+import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/data-table/data-table';
 import { useTableState } from '@/components/data-table/use-table-state';
 import { StatusBadge } from '@/components/common/status-badge';
@@ -17,6 +23,7 @@ import {
 import { bookingMoney, freeCancellationNote } from '@/lib/bookings/format';
 import { formatDate } from '@/lib/utils';
 import type { BookingListItem } from '@/types/booking';
+import { reviewUrl } from '@/lib/public-site';
 import { CustomerBookingDetails } from './customer-booking-details';
 import { CustomerStatCard } from './customer-stat-card';
 
@@ -130,6 +137,47 @@ export function CustomerBookingsView() {
                             </span>
                         ) : null}
                     </div>
+                );
+            },
+        },
+        {
+            id: 'review',
+            header: 'Review',
+            cell: ({ row }) => {
+                const state = row.original.review;
+                if (state?.reviewed) {
+                    return (
+                        <span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                            <HugeiconsIcon
+                                icon={CheckmarkCircle02Icon}
+                                className='size-3.5'
+                            />
+                            Reviewed
+                        </span>
+                    );
+                }
+                // Gated on the server's `canReview` alone - the same predicate
+                // the create endpoint enforces. Deriving it here from `status`
+                // would offer a review the API then refuses.
+                if (!state?.canReview || !state.reviewToken) {
+                    return <span className='text-xs text-muted-foreground'>–</span>;
+                }
+                return (
+                    <Button
+                        asChild
+                        size='sm'
+                        variant='outline'
+                        // The row opens the details sheet; without this the
+                        // sheet opens behind the new tab on every click.
+                        onClick={e => e.stopPropagation()}>
+                        <a
+                            href={reviewUrl(state.reviewToken)}
+                            target='_blank'
+                            rel='noopener noreferrer'>
+                            <HugeiconsIcon icon={StarIcon} />
+                            Leave a review
+                        </a>
+                    </Button>
                 );
             },
         },
