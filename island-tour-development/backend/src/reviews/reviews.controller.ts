@@ -104,8 +104,14 @@ export class ReviewsController {
   @Get('admin')
   @RequirePermissions(Permission.VIEW_REVIEWS)
   @ApiAdminListReviewsDocs()
-  adminList(@Query() query: AdminReviewsQueryDto) {
-    return this.reviews.adminList(query);
+  adminList(
+    @Query() query: AdminReviewsQueryDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    // Scoped by ACTOR, not by permission. `VIEW_REVIEWS` is held by operators
+    // too, so passing the query alone let any operator read every other
+    // operator's queue through this route.
+    return this.reviews.listForActor(query, { id: user.id, role: user.role });
   }
 
   @Get('operator')

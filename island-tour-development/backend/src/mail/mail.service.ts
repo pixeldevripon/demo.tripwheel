@@ -20,25 +20,43 @@ import {
 } from './templates/email-template.renderer';
 
 /**
+ * Where the design-owned HTML templates live at runtime.
+ *
+ * `nest build` emits CommonJS, so `__dirname` is the right answer in every real
+ * environment. The e2e suite is the exception: `test/jest-e2e.json` transforms
+ * with `useESM` (better-auth ships ESM only), and `__dirname` does not exist
+ * under ESM - referencing it threw a ReferenceError at import time, which took
+ * down every e2e suite in the repo, not just the mail ones, because this module
+ * is reached through `AppModule`.
+ *
+ * `typeof` on an undeclared identifier is safe in JS, so this probes rather than
+ * throws, and production still resolves through `__dirname` exactly as before.
+ */
+const TEMPLATE_DIR =
+  typeof __dirname !== 'undefined'
+    ? path.join(__dirname, 'templates')
+    : path.join(process.cwd(), 'src', 'mail', 'templates');
+
+/**
  * The LOCKED confirmation-email template (master 6.5 + its HTML wireframe), read
  * once at boot. It is design-owned markup rather than TypeScript, so `nest build`
  * has to copy it: see the `assets` entry in `nest-cli.json` - without it this throws
  * at startup in production while passing every test locally.
  */
 const BOOKING_CONFIRMATION_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'booking-confirmation-email.template.html'),
+  path.join(TEMPLATE_DIR, 'booking-confirmation-email.template.html'),
   'utf8',
 );
 
 /** Operator "Booking Received" notification (C7) - same shell, operator content. */
 const OPERATOR_BOOKING_RECEIVED_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'operator-booking-received.template.html'),
+  path.join(TEMPLATE_DIR, 'operator-booking-received.template.html'),
   'utf8',
 );
 
 /** Shared branded notice (cancellation ack, operator notices) - same shell. */
 const BOOKING_NOTICE_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'templates', 'booking-notice.template.html'),
+  path.join(TEMPLATE_DIR, 'booking-notice.template.html'),
   'utf8',
 );
 

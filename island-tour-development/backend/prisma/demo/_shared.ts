@@ -10,6 +10,7 @@
 // (admin user, categories, destinations, hubs, attribute dictionary).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { createHash } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
   Currency,
@@ -22,6 +23,49 @@ import 'dotenv/config';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 export const prisma = new PrismaClient({ adapter });
+
+/**
+ * Deterministic UUID for a demo row - the foundation of a re-runnable seed.
+ *
+ * ## Why this exists
+ * Re-seeding used to require `--clean` first, which deletes the whole demo graph.
+ * On a VPS that is unacceptable: a re-seed to pick up new demo content would take
+ * every booking, payment and review with it, and any real data entangled with
+ * them. The blocker was that rows with no natural key (bookings, payments,
+ * departures, reviews) were created with `randomUUID()`, so a second run could
+ * only ever duplicate them - there was no way to say "the same row again".
+ *
+ * Hashing a STABLE key into the id makes every such row addressable across runs,
+ * which is what turns `.create` into `.upsert`. Same inputs -> same id -> update
+ * in place. New inputs -> new id -> insert. Nothing is ever deleted.
+ *
+ * Produces a valid v5-shaped UUID (SHA-1, version and variant bits set), so it
+ * satisfies Postgres `uuid` columns and Prisma's `@db.Uuid` typing.
+ *
+ * @param namespace Entity family, e.g. `'booking'`. Keeps keyspaces apart so a
+ *                  booking and a payment built from the same key never collide.
+ * @param key       Stable identity WITHIN that family, e.g. `${tourSlug}:${i}`.
+ *                  It must not contain anything random or time-based, or the
+ *                  whole point is lost.
+ */
+export function demoId(namespace: string, key: string): string {
+  const h = createHash('sha1')
+    .update(`island-tours:demo:${namespace}:${key}`)
+    .digest('hex');
+  const v5 =
+    h.slice(0, 8) +
+    '-' +
+    h.slice(8, 12) +
+    '-5' + // version 5
+    h.slice(13, 16) +
+    '-' +
+    // variant: one of 8, 9, a, b
+    ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16) +
+    h.slice(17, 20) +
+    '-' +
+    h.slice(20, 32);
+  return v5;
+}
 
 // ── Demo markers (used for idempotency + clean) ─────────────────────────────────
 export const DEMO_EMAIL_DOMAIN = 'demo.islandtours.test';

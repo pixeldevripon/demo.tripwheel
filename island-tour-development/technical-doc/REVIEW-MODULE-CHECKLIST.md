@@ -24,8 +24,8 @@
 | 5 | LD32 translation | 5 | 0 | Not started |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
-| T | Test pass | 21 | 0 | Not started |
-| **Total** | | **107** | **66** | |
+| T | Test pass | 23 | 23 | **DONE 2026-07-22** (found + fixed a cross-operator read bug) |
+| **Total** | | **109** | **89** | |
 
 ---
 
@@ -47,8 +47,15 @@
       tokenized no-login pattern the flow inherits from cancellation. *Gates BE-16, FE-1.*
 - [ ] **D5 - First-send timing.** Morning-after is the launch default; register the A/B
       against day-2 / day-3. Non-blocking.
-- [ ] **D6 - Translation provider.** Paid API vs self-hosted OPUS-MT / LibreTranslate.
-      Gates phase 5.
+- [x] **D6 - Translation provider.** DECIDED 2026-07-22 - **it was never open, and calling
+      it a blocker was an error on my part.** The master locks it outright: LD32 / §4.7.18 =
+      "machine translation via **Google Translate API** + show-original toggle", with
+      "(or equivalent: DeepL, Azure Translator)" as the only latitude. The requirements table
+      carries it as **Locked** too. The "OPUS-MT / LibreTranslate self-hosted vs a paid API"
+      line that this decision was invented from sits in the build-vs-buy advisory under
+      *"useful building blocks to borrow rather than write"* - a suggestion in an advisory
+      doc, which `CLAUDE.md` says the master supersedes. Phase 5 was never gated on a
+      decision; it needs an API key. **Provider: Google Cloud Translation v3.**
 - [ ] **D7 - Master diff.** LD34 / LD35 / LD36 / LD37 need a founder-approved diff, an
       archive copy, a version bump and conflict-log entries before the master reflects
       this module.
@@ -520,7 +527,10 @@
 
 ## Phase 5 - LD32 translation
 
-- [ ] **D6** Provider decision recorded.
+- [x] **D6** Provider decision recorded: **Google Cloud Translation v3**, locked by the
+      master (see the decisions block above). `translateText` accepts up to **1024 strings
+      per request**, which is what makes BE-10b's "batched" requirement cheap: 6 locales x N
+      reviews collapses into very few calls.
 - [ ] **BE-10a** `POST /reviews/:id/translate` (admin) + automatic translate-on-approve
       filling `ReviewTranslation` for the other 6 locales with `isMachineTranslated = true`.
 - [ ] **BE-10b** BullMQ job: batched, cached, never re-translating an unchanged source.
@@ -530,6 +540,17 @@
 ---
 
 ## Phase 6 - Trustpilot platform layer
+
+> **BLOCKED ON A COMMERCIAL ACTION, NOT A DECISION.** The read path is already built
+> (`src/platform-reviews/`, a real `fetchTrustpilot` against the Business Units API, plus
+> the settings screen). The live config row shows exactly what is missing:
+> `provider = trustpilot`, `businessId = admin@islandtours.com` (a placeholder, not a
+> business-unit ID), `lastError = "Provider responded 403 - check the API key and
+> business/place ID"`. Needs a real `island.tours` Trustpilot business profile, its
+> business-unit ID and an API key. Genuinely unbuilt: the **Invitations API client** and the
+> widgets. Note the chicken-and-egg - every Trustpilot surface is gated at >= 100 platform
+> reviews, which cannot accrue until the profile exists AND the collection job is switched
+> on (it is currently off).
 
 - [ ] One `island.tours` business profile, service reviews only.
 - [ ] Trustpilot Invitations API fired from **our** step 4, never Trustpilot's parallel
@@ -548,6 +569,14 @@
 
 ## Phase 7 - Depth and operator partnership
 
+> **BLOCKED ON DATA VOLUME, NOT DECISIONS.** Filters need >= 20 approved reviews per tour
+> (LD30) and AI summaries/chips need >= 30 (LD28). The busiest seeded tour has **14**.
+> Building these now means building against gates nothing can clear, and testing them means
+> mocking the very thresholds under test. The one real decision here is the **LD37 switch**
+> (platform-authored -> moderated operator-authored responses), which is not volume-gated -
+> platform-authored means the Island Tours team writes every reply, and that stops scaling
+> well before the 20-review gate that unlocks the rest of this phase.
+
 - [ ] Traveler-type filter (past the 20-review LD30 gate).
 - [ ] With-photos filter.
 - [ ] Language filter.
@@ -560,52 +589,142 @@
 
 ---
 
-## Test pass (run when the module is complete)
+## Test pass · **RUN 2026-07-22 - 23/23 items covered, all green**
+
+Totals: **backend unit 1454 passing (66 suites)** · **backend e2e 19/19 (reviews)** ·
+**dashboard Playwright 8/8** · **public-site Playwright 9/9**.
+
+New files: `src/reviews/dto/review.dto.spec.ts`, `src/reviews/review-requests.service.spec.ts`,
+`test/reviews.e2e-spec.ts`, `dashboard/e2e/tests/reviews.spec.ts`,
+`frontend/e2e/tests/tour-reviews.spec.ts`.
 
 ### Backend unit
 
-- [ ] LD11 resolution table (3 / 10 / 4.0 boundaries).
-- [ ] `recomputeAggregates` writes rating, count, distribution, photo count, timestamp.
-- [ ] Banned-word screen.
-- [ ] Moderation state machine including `HELD`.
-- [ ] Audit-log row written on every transition, including delete.
+- [x] LD11 resolution table (3 / 10 / 4.0 boundaries).
+      Table-driven, each pair straddling exactly ONE boundary (2 vs 3 tour reviews, 9 vs 10
+      operator reviews, 3.9 vs 4.0 operator rating), plus the two half-conditions and the
+      "3+ reviews but null average" fall-through. An off-by-one here either hides a rating a
+      tour earned or lends it one it did not.
+- [x] `recomputeAggregates` writes rating, count, distribution, photo count, timestamp.
+      *Already covered from Phase 0* - all five columns asserted in one `tour.update` call.
+- [x] Banned-word screen. *Already covered* (case-insensitive, whole-word only).
+- [x] Moderation state machine including `HELD`.
+      Tested at the **DTO**, because that is where it lives: `@IsIn(MODERATABLE_STATUSES)`
+      decides which transitions are expressible at all. A service test would assert against
+      a value the request layer already rejected. PENDING is refused as a target (entry-only).
+- [x] Audit-log row written on every transition, including delete.
+      Covers all three targets, that `fromStatus` is the REAL prior status rather than an
+      assumed PENDING (so HELD -> APPROVED does not lose the hold), that the row is written
+      inside the same `$transaction`, and that on delete the log is written BEFORE the row it
+      documents - asserted via `invocationCallOrder`, not by reading the code.
 
-### Backend e2e (test DB `island_tours_test`; provision users via the Better Auth internal adapter)
+### Backend e2e (test DB `island_tours_test`)
 
-- [ ] Booking gate: not the owner → 403.
-- [ ] Booking gate: wrong status → 400.
-- [ ] Booking gate: before the experience date (in the snapshotted timezone) → 400.
-- [ ] Booking gate: duplicate booking → 409.
-- [ ] Token lifecycle: valid → used → dead (404).
-- [ ] Operator cannot delete or unpublish any review.
-- [ ] Operator cannot read another operator's reviews.
-- [ ] Only `APPROVED` + `source = NATIVE` records reach any aggregate.
-- [ ] Bulk moderate.
+- [x] Booking gate: not the owner → 403.
+- [x] Booking gate: wrong status → 400.
+- [x] Booking gate: before the experience date (in the snapshotted timezone) → 400.
+- [x] Booking gate: duplicate booking → 409.
+- [x] Token lifecycle: valid → used → dead (404), plus **a revoked token and an unknown one
+      are indistinguishable** - distinguishing them would let anyone probe which tokens existed.
+- [x] Operator cannot delete or unpublish any review (also: cannot author a response, LD37).
+- [x] Operator cannot read another operator's reviews. **THIS TEST FAILED AND FOUND A REAL
+      BUG - see below.**
+- [x] Only `APPROVED` + `source = NATIVE` records reach any aggregate. Seeded with one review
+      in every excluded state (PENDING/HELD/REJECTED/IMPORTED) at 1 star against 5-star
+      approved ones, so any leak drags the average below 5.0 and is caught immediately.
+- [x] Bulk moderate - transitions many, one audit row each, refuses a bulk REJECT with no
+      ground, and is refused to an operator.
+
+> **SECURITY BUG FOUND BY THE TEST PASS, fixed 2026-07-22.** `GET /reviews/admin` called
+> `adminList(query)` with **no `operatorScope`**. The scoping parameter existed - Phase 1
+> even documented that it is applied last so a supplied `operatorId` cannot widen it - and
+> the route simply never passed it. `VIEW_REVIEWS` is held by `TOUR_OPERATOR` as well as
+> `ADMIN`, so **any operator could read every other operator's queue** over HTTP: rivals'
+> pending and rejected reviews, with reviewer names and booking references attached. The
+> correctly-scoped `/reviews/operator` route existed the whole time, which is exactly why
+> this went unnoticed - the dashboard calls the right one, so the UI looked correct.
+> Fixed with `listForActor(query, actor)`: ADMIN unscoped, everyone else hard-scoped to
+> their own operator. This is a Phase 1 bug of mine, caught only because the test asserted
+> the negative case instead of the happy path.
 
 ### Job
 
-- [ ] Send window resolves correctly per destination timezone (Curaçao, Aruba, Sint Maarten).
-- [ ] Suppression matrix: cancelled / forfeited / operator-cancelled / no-show → no send.
-- [ ] Idempotency: run the job twice → exactly one invitation.
-- [ ] Reminder fires once and never after `completedAt`.
+- [x] Send window resolves correctly per destination timezone (Curaçao, Aruba, Sint Maarten).
+      Each island asserted to HOLD at 09:00 local and SEND at 10:00. All three currently sit
+      at UTC-4, so the test's value is that the zone is read from the BOOKING - a hardcoded
+      `America/Curacao` passes Curaçao and mis-schedules the others the moment one diverges.
+      Plus: never sends before the tour has finished, and refuses to guess with no zone.
+- [x] Suppression matrix: cancelled / forfeited / operator-cancelled / no-show → no send.
+      Asserted at the query (only CONFIRMED/REDEEMED are ever scanned) AND at the revocation
+      path, which is the gap that matters: cancelling AFTER the invitation exists but before
+      the email goes out cannot be caught by a create-time filter.
+- [x] Idempotency: run the job twice → exactly one invitation. Second run's P2002 is
+      swallowed; a P2003 is rethrown rather than hidden.
+- [x] Reminder fires once and never after `completedAt`. Includes: `remindedAt` is stamped
+      even when delivery THROWS, or a permanently bouncing address is retried hourly forever
+      and the "single reminder" becomes unbounded.
 
 ### Dashboard e2e (Playwright)
 
-- [ ] Queue defaults to pending, history one dropdown away.
-- [ ] Approve / hold / reject, with the rejection reason enforced.
-- [ ] Bulk approve.
-- [ ] RBAC: an operator sees no approve/reject buttons.
-- [ ] Pending badge count is correct.
+- [x] Queue defaults to pending, history one dropdown away.
+- [x] Approve / hold / reject, with the rejection reason enforced (submitting with no ground
+      selected fires no request at all).
+- [x] Bulk approve - asserts the actual ids and status in the request body, not just a toast.
+- [x] RBAC: an operator sees no approve/reject buttons. Runs in its OWN browser context
+      signed in as a real demo operator, since the suite-wide storageState is an admin.
+      Asserts the items are **absent**, not disabled - a greyed-out Approve still tells an
+      operator the control exists. View stays available: they are not locked out of reading.
+- [x] Pending badge count is correct.
+- [x] **Extra:** "negative" is not among the rejection grounds. Compliance, not copy - a
+      moderator must not be ABLE to reject a review for being unflattering.
 
-### Frontend
+### Frontend (public site, Playwright, against real seeded data)
 
-- [ ] Threshold rendering at 0 / 1-2 / 3-9 / 10-19 / 20+ reviews.
-- [ ] Clickable star chart filters the list.
-- [ ] Submission flow completes from step 1 alone.
+- [x] Threshold rendering at 0 / 1-2 / 3-9 / 10-19 / 20+ reviews.
+      **Three of five buckets have fixtures.** 0 (LD11 fallback), 3-9 (chart, no sort) and
+      10-19 (chart + sort + JSON-LD) are covered against real data. **There is no seeded tour
+      with 1-2 reviews and none with 20+**, so the "early reviews" copy and the theme-chip
+      filter bar are covered by unit/backend tests only. Recorded rather than papered over
+      with a mock that would pass regardless of whether the gate works.
+- [x] Clickable star chart filters the list. Also asserts the bar is its own toggle
+      (clicking the active bar restores the full list) and that a clear affordance appears.
+- [x] Submission flow completes from step 1 alone. Driven through a REAL single-use
+      invitation token: one star press, and "Saved. Thank you." appears with nothing else
+      filled in.
 
 ### Compliance
 
-- [ ] A 1-star review is published and visible on the tour page.
-- [ ] The Trustpilot step is shown on every score, with the recovery prompt additive.
-- [ ] No Trustpilot element appears anywhere on a tour page.
-- [ ] The verification sub-line links to the explainer.
+- [x] A 1-star review is published and visible on the tour page.
+      **The seeded dataset contains no rating below 3**, so this was proved by creating a
+      1-star review with a harsh comment, approving it through the real moderation route, and
+      asserting it comes back from the public list in full ("the boat was filthy"). Without
+      that, a green suite would have meant "we never tested a bad review".
+- [x] The Trustpilot step is shown on every score, with the recovery prompt additive.
+      Verified on a 1-star submission: the recovery prompt appears AND steps 2/3/3b all stay
+      open, so nothing about the low score closes the flow down. The step-4 CTA is gated on
+      `trustpilotUrl` being CONFIGURED, never on the score - with no provider set (Phase 6)
+      it is absent for a 5-star exactly as for a 1-star, so the test asserts it conditionally
+      rather than passing vacuously.
+- [x] No Trustpilot element appears anywhere on a tour page (text, class, or script src).
+- [x] The verification sub-line links to the explainer, and the explainer carries the four
+      disclosures a regulator would look for, including the LD11 borrowed-rating section.
+
+### Harness repairs needed to run any of this
+
+- [x] **The backend e2e harness was completely broken before this pass, repo-wide.**
+      `mail.service.ts` read its templates via `__dirname`, which does not exist under the
+      `useESM` transform `test/jest-e2e.json` uses (better-auth ships ESM only). Every suite
+      died at import time on `ReferenceError: __dirname is not defined`, because they all
+      reach it through `AppModule` - `tours.e2e-spec.ts` failed identically before any change
+      of mine, which is how it was confirmed pre-existing rather than a regression. Fixed with
+      a `typeof __dirname !== 'undefined'` probe; production still resolves through
+      `__dirname` exactly as before.
+- [ ] `test/auth.e2e-spec.ts` - **30 failures, pre-existing and out of scope.** Every one is
+      `POST /api/auth/sign-up/email` → 400, because `disableSignUp: true` is a deliberate
+      product decision. The suite tests a removed feature; `tours.e2e-spec.ts` already calls
+      it "stale on that point". It could not even RUN before the fix above, so this is newly
+      *visible*, not newly broken. Deleting or rewriting it is a separate decision.
+- [ ] `frontend/e2e/tests/` still holds the pre-extraction DASHBOARD specs (destinations,
+      hubs, categories, collections, attributes, trips). They target routes that no longer
+      exist in the public app. Not touched here; flagged for deletion alongside the extraction
+      cleanup.

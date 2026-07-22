@@ -12,11 +12,17 @@ import {
   ReviewResponseAuthor,
   ReviewerType,
 } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import {
   ALL_LOCALES,
+  DEMO_EMAIL_DOMAIN,
   DEMO_TOUR_REF,
+  dateAt,
+  dayOffset,
   intBetween,
   log,
+  makeDisplayRef,
+  money,
   pick,
   prisma,
   rng,
@@ -223,6 +229,12 @@ export async function seedReviews(): Promise<void> {
     touchedOperators.add(b.operatorId);
   }
 
+  // Depth top-up runs BEFORE the recompute below, so the extra reviews are
+  // included in the aggregates rather than needing a second pass.
+  const depth = await topUpReviewDepth();
+  for (const id of depth.tourIds) touchedTours.add(id);
+  for (const id of depth.operatorIds) touchedOperators.add(id);
+
   // ── Recompute aggregates (mirror ReviewsService.recomputeAggregates + extras) ──
   for (const tourId of touchedTours) {
     const where: Prisma.ReviewWhereInput = {
@@ -274,4 +286,169 @@ export async function seedReviews(): Promise<void> {
     log(
       `! Only ${approved} approved reviews — homepage social-proof strip (>=100) will stay hidden.`,
     );
+}
+
+/**
+ * Review-DEPTH top-up for the three showcase tours.
+ *
+ * ## Why this exists
+ * Every Phase-7 feature is volume-gated, and the base seed cannot clear those
+ * gates: it creates exactly one review per REDEEMED booking, so a tour's review
+ * count is capped by its booking count (the busiest lands around 14). That left
+ * the LD30 filter bar (>= 20) and the LD28 AI summary / theme chips (>= 30)
+ * unreachable, and unreachable gates cannot be built against or tested - the
+ * tests would have to mock the very thresholds under test.
+ *
+ * So this creates the extra REDEEMED bookings those reviews need, rather than
+ * reviews without bookings: `Review.bookingId` is a required relation, which is
+ * the booking gate expressed in the schema. Faking depth by loosening that would
+ * put unverifiable reviews in the demo data, which is the one thing the whole
+ * module exists to prevent.
+ *
+ * Idempotent: tops each tour up TO the target, so re-running is a no-op.
+ */
+const REVIEW_DEPTH_TARGET = 36;
+
+export async function topUpReviewDepth(): Promise<{
+  tourIds: string[];
+  operatorIds: string[];
+}> {
+  const tours = await prisma.tour.findMany({
+    where: {
+      slug: { in: [...SHOWCASE_MOST_POPULAR] },
+      reference: DEMO_TOUR_REF,
+    },
+    select: {
+      id: true,
+      slug: true,
+      operatorId: true,
+      defaultCurrency: true,
+      paymentModel: true,
+      timeZone: true,
+    },
+  });
+  if (tours.length === 0) return { tourIds: [], operatorIds: [] };
+
+  // Reuse the demo travellers - a review needs a real user behind it.
+  const travelers = await prisma.user.findMany({
+    where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` }, role: 'USER' },
+    select: { id: true, name: true },
+    take: 60,
+  });
+  if (travelers.length === 0) {
+    log('! No demo travellers found — skipping review-depth top-up.');
+    return { tourIds: [], operatorIds: [] };
+  }
+
+  let added = 0;
+  for (const [tIdx, tour] of tours.entries()) {
+    const have = await prisma.review.count({
+      where: {
+        tourId: tour.id,
+        moderationStatus: ReviewModerationStatus.APPROVED,
+      },
+    });
+    const need = REVIEW_DEPTH_TARGET - have;
+    if (need <= 0) continue;
+
+    for (let i = 0; i < need; i++) {
+      const r = rng(90_000 + tIdx * 1_000 + i);
+      const traveler = travelers[(tIdx * 7 + i) % travelers.length];
+      const [firstName, lastNameRaw] = (traveler.name ?? 'Guest T').split(' ');
+      const lastName = lastNameRaw ?? 'T';
+
+      // Spread across the last ~10 months so the travel-month line on each card
+      // varies and a rating-trend chart has something to plot.
+      const daysAgo = 20 + ((i * 9) % 300);
+      const localDate = dayOffset(-daysAgo);
+      const id = randomUUID();
+
+      // Skew positive but keep a real tail: these tours must stay >= 4.5 for the
+      // "Most popular" badge, while still carrying criticism a filter can find.
+      const roll = r();
+      const rating = roll > 0.78 ? 5 : roll > 0.3 ? 5 : roll > 0.12 ? 4 : 3;
+
+      const hasPhotos = r() > 0.62;
+      const photos = hasPhotos
+        ? Array.from({ length: intBetween(r(), 1, 3) }, (_, p) =>
+            themedPhoto(tourTheme(tour.slug), 500 + i + p, 1080, 810),
+          )
+        : [];
+      const comment = commentFor(rating, r());
+      const addResponse = r() > 0.75;
+
+      const booking = await prisma.booking.create({
+        data: {
+          id,
+          tourId: tour.id,
+          operatorId: tour.operatorId,
+          userId: traveler.id,
+          displayRef: makeDisplayRef(id, localDate.getUTCFullYear()),
+          status: BookingStatus.REDEEMED,
+          paymentModel: tour.paymentModel,
+          currency: tour.defaultCurrency,
+          localDate,
+          startTime: '09:00',
+          tourStartDateTime: dateAt(localDate, '09:00'),
+          tourEndDateTime: dateAt(localDate, '16:00'),
+          tourTimeZone: tour.timeZone,
+          totalRetail: money(120),
+          depositAmount: money(24),
+          balanceAmount: money(96),
+          taxes: [],
+          contactFirstName: firstName,
+          contactLastName: lastName,
+          contactEmail: `depth+${id.slice(0, 8)}@${DEMO_EMAIL_DOMAIN}`,
+          contactCountry: pick(['NL', 'US', 'DE', 'FR', 'GB', 'BE'], r()),
+        },
+      });
+
+      await prisma.review.create({
+        data: {
+          bookingId: booking.id,
+          tourId: tour.id,
+          operatorId: tour.operatorId,
+          userId: traveler.id,
+          rating,
+          ratingValue: Math.min(5, Math.max(1, rating - (r() > 0.6 ? 1 : 0))),
+          ratingGuide: rating,
+          ratingSafety: 5,
+          title: pick(TITLES, r()),
+          reviewerFirstName: firstName,
+          reviewerInitial: `${firstName} ${lastName.charAt(0)}.`,
+          reviewerCountry: booking.contactCountry,
+          travelMonth: localDate.getUTCMonth() + 1,
+          travelYear: localDate.getUTCFullYear(),
+          reviewerType: guestTypeFor(i),
+          themeTags: themesFor(rating, i),
+          photos,
+          isVerified: true,
+          helpfulCount: intBetween(r(), 0, 28),
+          moderationStatus: ReviewModerationStatus.APPROVED,
+          responseText: addResponse ? pick(OPERATOR_RESPONSES, r()) : null,
+          responseAuthor: addResponse ? ReviewResponseAuthor.PLATFORM : null,
+          responseAt: addResponse ? new Date() : null,
+          translations: {
+            create: ALL_LOCALES.map((locale) => ({
+              locale,
+              comment,
+              isMachineTranslated: locale !== Locale.en,
+            })),
+          },
+        },
+      });
+      added++;
+    }
+  }
+
+  if (added > 0) {
+    log(
+      `Review depth: +${added} approved reviews across ${tours.length} showcase tours ` +
+        `(target ${REVIEW_DEPTH_TARGET} each — clears the LD30 filter gate at 20 and the LD28 summary gate at 30).`,
+    );
+  }
+  return {
+    tourIds: tours.map((t) => t.id),
+    operatorIds: [...new Set(tours.map((t) => t.operatorId))],
+  };
 }

@@ -747,6 +747,20 @@ export class ReviewsService {
   }
 
   /** The same queue, hard-scoped to the calling operator's own tours. */
+  /**
+   * The moderation queue, scoped to whoever is asking.
+   *
+   * `VIEW_REVIEWS` is held by TOUR_OPERATOR as well as ADMIN, so the permission
+   * alone cannot be the scope: it says "may see reviews", not "may see everyone's
+   * reviews". Without this branch the `/reviews/admin` route handed any operator
+   * the whole platform's queue - every rival's pending and rejected reviews,
+   * with reviewer names and booking references attached.
+   */
+  async listForActor(query: AdminReviewsQueryDto, actor: Actor) {
+    if (actor.role === Role.ADMIN) return this.adminList(query);
+    return this.operatorList(query, actor);
+  }
+
   async operatorList(query: AdminReviewsQueryDto, actor: Actor) {
     const operatorId = await resolveOperatorId(
       this.prisma,

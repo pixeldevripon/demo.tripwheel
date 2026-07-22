@@ -380,6 +380,179 @@ describe('ReviewsService', () => {
     });
   });
 
+  /**
+   * The audit trail is the only artefact that can answer "who removed this
+   * review and on what ground" after the fact. Every transition must leave one,
+   * in the SAME transaction as the change - a status change that commits
+   * without its log row is precisely the case we could not defend.
+   */
+  describe('moderation audit log', () => {
+    // Annotated, not inferred: a bare default narrows the parameter to the
+    // literal 'PENDING' and rejects every other status at the call site.
+    function moderatable(
+      status: ReviewModerationStatus = ReviewModerationStatus.PENDING,
+    ) {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'u1',
+        tourId: 't1',
+        operatorId: 'op1',
+        moderationStatus: status,
+      });
+      prisma.review.update.mockResolvedValue(createdReview());
+      prisma.review.aggregate.mockResolvedValue({ _count: 0, _avg: {} });
+      prisma.review.groupBy.mockResolvedValue([]);
+      prisma.review.count.mockResolvedValue(0);
+      prisma.review.findMany.mockResolvedValue([]);
+      prisma.tour.update.mockResolvedValue({});
+      prisma.operator.update.mockResolvedValue({});
+    }
+
+    it.each([
+      ReviewModerationStatus.APPROVED,
+      ReviewModerationStatus.HELD,
+      ReviewModerationStatus.REJECTED,
+    ])('writes a row carrying from -> %s', async (status) => {
+      moderatable();
+      await svc.moderate(
+        'r1',
+        { status, rejectionReason: 'Off-topic.' },
+        'admin1',
+      );
+
+      expect(prisma.reviewModerationLog.create).toHaveBeenCalledTimes(1);
+      expect(prisma.reviewModerationLog.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({
+          reviewId: 'r1',
+          actorId: 'admin1',
+          fromStatus: ReviewModerationStatus.PENDING,
+          toStatus: status,
+        }),
+      );
+    });
+
+    it('records the real fromStatus, not an assumed PENDING', async () => {
+      // HELD -> APPROVED is a second decision on the same review. A log that
+      // hardcoded PENDING would lose the fact that it was ever held.
+      moderatable(ReviewModerationStatus.HELD);
+      await svc.moderate(
+        'r1',
+        { status: ReviewModerationStatus.APPROVED },
+        'admin2',
+      );
+
+      expect(prisma.reviewModerationLog.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({
+          fromStatus: ReviewModerationStatus.HELD,
+          toStatus: ReviewModerationStatus.APPROVED,
+        }),
+      );
+    });
+
+    it('HELD carries no rejection reason - it is not a soft reject', async () => {
+      moderatable();
+      await svc.moderate(
+        'r1',
+        { status: ReviewModerationStatus.HELD },
+        'admin1',
+      );
+      expect(prisma.review.update.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({
+          moderationStatus: ReviewModerationStatus.HELD,
+          rejectionReason: null,
+        }),
+      );
+    });
+
+    it('writes the log INSIDE the same transaction as the status change', async () => {
+      moderatable();
+      await svc.moderate(
+        'r1',
+        { status: ReviewModerationStatus.APPROVED },
+        'admin1',
+      );
+      // Both the update and the log go through the tx callback, so a rollback
+      // takes the pair. If either moved outside, this count would drop.
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.review.update).toHaveBeenCalledTimes(1);
+      expect(prisma.reviewModerationLog.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs a DELETION row before the row it documents is destroyed', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'u1',
+        tourId: 't1',
+        operatorId: 'op1',
+        moderationStatus: ReviewModerationStatus.APPROVED,
+      });
+      prisma.review.delete.mockResolvedValue({});
+      prisma.review.aggregate.mockResolvedValue({ _count: 0, _avg: {} });
+      prisma.review.groupBy.mockResolvedValue([]);
+      prisma.review.count.mockResolvedValue(0);
+      prisma.review.findMany.mockResolvedValue([]);
+      prisma.tour.update.mockResolvedValue({});
+      prisma.operator.update.mockResolvedValue({});
+
+      await svc.remove(
+        'r1',
+        { id: 'admin1', role: Role.ADMIN },
+        { reason: 'Contains personal data.' },
+      );
+
+      const logCall =
+        prisma.reviewModerationLog.create.mock.invocationCallOrder[0];
+      const deleteCall = prisma.review.delete.mock.invocationCallOrder[0];
+      // Ordering is the point: the log is written first so the evidence of a
+      // removal outlives the removed row.
+      expect(logCall).toBeLessThan(deleteCall);
+      expect(prisma.reviewModerationLog.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({
+          isDeletion: true,
+          toStatus: null,
+          fromStatus: ReviewModerationStatus.APPROVED,
+          reason: 'Contains personal data.',
+        }),
+      );
+    });
+
+    it('an author deleting their own review needs no ground, but is still logged', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'u1',
+        tourId: 't1',
+        operatorId: 'op1',
+        moderationStatus: ReviewModerationStatus.PENDING,
+      });
+      prisma.review.delete.mockResolvedValue({});
+
+      await svc.remove('r1', { id: 'u1', role: Role.USER });
+
+      expect(prisma.reviewModerationLog.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({
+          isDeletion: true,
+          reason: 'Deleted by the author',
+        }),
+      );
+    });
+
+    it('refuses a moderator deletion with no documented ground', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'someone-else',
+        tourId: 't1',
+        operatorId: 'op1',
+        moderationStatus: ReviewModerationStatus.APPROVED,
+      });
+
+      await expect(
+        svc.remove('r1', { id: 'admin1', role: Role.ADMIN }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.review.delete).not.toHaveBeenCalled();
+      expect(prisma.reviewModerationLog.create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('respond', () => {
     it('rejects a response with banned language', async () => {
       await expect(
