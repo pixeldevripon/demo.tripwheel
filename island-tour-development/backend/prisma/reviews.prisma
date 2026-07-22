@@ -88,7 +88,19 @@ model ReviewTranslation {
   reviewId            String
   locale              Locale
   comment             String
+  /// False marks the ORIGINAL - the locale the guest actually wrote in. Exactly
+  /// one row per review should carry false; the rest are LD32 machine output.
   isMachineTranslated Boolean @default(false)
+
+  /// SHA-1 of the source text this row was translated FROM.
+  ///
+  /// The translation cache is only a cache if it can tell "already done" from
+  /// "done, but the source has since changed". Without this the job either
+  /// re-translates every review on every run (paying per character to produce
+  /// identical output) or never re-translates at all, silently serving a stale
+  /// translation after an admin edits the original. Null on original rows and
+  /// on translations that predate LD32.
+  sourceHash String?
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 

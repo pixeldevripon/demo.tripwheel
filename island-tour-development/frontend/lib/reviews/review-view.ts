@@ -51,6 +51,15 @@ function formatTravelMonth(
   }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
 }
 
+/** Locale code -> its name in the READER's language ("nl" -> "Dutch"). */
+function languageName(code: Locale, locale: Locale): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /** ISO country code -> localized country name ("NL" -> "Netherlands"). */
 function countryName(code: string | null, locale: Locale): string {
   if (!code) return '';
@@ -92,6 +101,13 @@ export function toFullReview(
     text: review.comment ?? '',
     photos: review.photos.length > 0 ? review.photos : undefined,
     verified: review.isVerified,
+    // LD32. Both texts travel together so the toggle needs no second request
+    // and no per-review translation URL.
+    isMachineTranslated: review.isMachineTranslated,
+    originalText: review.originalComment,
+    originalLanguage: review.originalLocale
+      ? languageName(review.originalLocale, locale)
+      : '',
     travelLabel: formatTravelMonth(
       review.travelMonth,
       review.travelYear,

@@ -320,8 +320,15 @@ function hitToHubTour(
         href: localizeHref(locale, `/${destinationSlug}/${hit.slug}`),
         images: (hit.images ?? []).map(img => img.url).filter(Boolean),
         badge: toHubBadge(hit.badge),
-        rating: hit.aggregateRating ?? 0,
-        reviewCount: hit.aggregateReviewCount,
+        // Undefined, never 0: `lib/tours/listing.ts` gates on the COUNT for the
+        // same reason - a tour with no reviews has no rating, and `?? 0` turned
+        // that into a displayed zero on every hub card.
+        rating:
+            hit.aggregateReviewCount > 0
+                ? (hit.aggregateRating ?? undefined)
+                : undefined,
+        reviewCount:
+            hit.aggregateReviewCount > 0 ? hit.aggregateReviewCount : undefined,
         title: hit.title,
         attributes: buildCardChips(hit, labels),
         priceDisplay,
@@ -347,8 +354,14 @@ function pickToHubPick(
         label,
         labelText: labelText[label],
         title: pick.tour.title,
-        rating: pick.tour.rating ?? 0,
-        reviewCount: pick.tour.reviewCount ?? 0,
+        rating:
+            (pick.tour.reviewCount ?? 0) > 0
+                ? (pick.tour.rating ?? undefined)
+                : undefined,
+        reviewCount:
+            (pick.tour.reviewCount ?? 0) > 0
+                ? (pick.tour.reviewCount ?? undefined)
+                : undefined,
         // Figma shows the boat type under the title; fall back to the unit type
         // (e.g. "Private charter") for non-boat picks that carry no boat_type.
         type: pick.tour.boatType

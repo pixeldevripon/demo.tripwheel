@@ -1,5 +1,12 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { buildRedisConnection } from '@/common/utils/redis.util';
 import { MailModule } from '@/mail/mail.module';
+import { ReviewTranslationProcessor } from './review-translation.processor';
+import {
+  REVIEW_TRANSLATION_QUEUE,
+  ReviewTranslationService,
+} from './review-translation.service';
 import { ReviewInvitationsController } from './review-invitations.controller';
 import { ReviewInvitationsService } from './review-invitations.service';
 import { ReviewsController } from './reviews.controller';
@@ -15,9 +22,29 @@ import { ReviewsService } from './reviews.service';
  * `reviews/:id`, which would otherwise swallow `invitation` as an id.
  */
 @Module({
-  imports: [MailModule],
+  imports: [
+    MailModule,
+    // LD32 translation runs off the request path: approving a review must not
+    // wait on six third-party round trips, and a provider outage must not look
+    // like a broken moderation queue.
+    BullModule.registerQueue({
+      name: REVIEW_TRANSLATION_QUEUE,
+      connection: buildRedisConnection(),
+    }),
+  ],
   controllers: [ReviewInvitationsController, ReviewsController],
-  providers: [ReviewsService, ReviewInvitationsService, ReviewRequestsService],
-  exports: [ReviewsService, ReviewInvitationsService, ReviewRequestsService],
+  providers: [
+    ReviewsService,
+    ReviewInvitationsService,
+    ReviewRequestsService,
+    ReviewTranslationService,
+    ReviewTranslationProcessor,
+  ],
+  exports: [
+    ReviewsService,
+    ReviewInvitationsService,
+    ReviewRequestsService,
+    ReviewTranslationService,
+  ],
 })
 export class ReviewsModule {}

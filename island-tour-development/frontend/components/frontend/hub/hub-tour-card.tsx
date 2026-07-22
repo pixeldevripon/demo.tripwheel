@@ -26,8 +26,9 @@ export type HubTour = {
     /** Hero-first image set for the hover carousel. */
     images: string[];
     badge: HubTourBadge;
-    rating: number;
-    reviewCount: number;
+    /** Omit to hide the rating row - an unrated tour is not a 0-star tour. */
+    rating?: number;
+    reviewCount?: number;
     title: string;
     /** Short attribute tags, dot-separated - e.g. ['8h','Yacht','Beach house']. */
     attributes: string[];
@@ -137,19 +138,25 @@ export function HubTourCard({
                 padding never animates, so hover only tints the card and nothing
                 re-wraps or shifts. */}
             <div className='flex flex-col gap-1.5 px-3 pt-2 pb-3 md:gap-3 md:px-4 md:pt-4 md:pb-4'>
-                {/* Rating */}
-                <div className='flex items-center gap-2'>
-                    <Image
-                        src='/icons/star-listings.svg'
-                        alt=''
-                        width={16}
-                        height={16}
-                        className='size-4 shrink-0'
-                    />
-                    <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 md:text-[14px]'>
-                        {tour.rating} ({tour.reviewCount.toLocaleString()})
-                    </span>
-                </div>
+                {/* Rating - only when the tour actually has one. Rendering a
+                    defaulted 0 here advertised a brand-new tour as "0 (0)",
+                    which reads as a terrible tour rather than a new one. */}
+                {tour.rating !== undefined && (
+                    <div className='flex items-center gap-2'>
+                        <Image
+                            src='/icons/star-listings.svg'
+                            alt=''
+                            width={16}
+                            height={16}
+                            className='size-4 shrink-0'
+                        />
+                        <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 md:text-[14px]'>
+                            {tour.rating}
+                            {tour.reviewCount !== undefined &&
+                                ` (${tour.reviewCount.toLocaleString()})`}
+                        </span>
+                    </div>
+                )}
 
                 {/* Title + attribute tags */}
                 <div className='flex flex-col gap-1 md:gap-1.5'>

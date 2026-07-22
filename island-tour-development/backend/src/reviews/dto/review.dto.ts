@@ -64,6 +64,26 @@ export class ReviewResponseDto {
     description: 'Locale the returned comment is in.',
   })
   locale!: Locale;
+  @ApiProperty({
+    example: false,
+    description:
+      'True when `comment` is LD32 machine output rather than what the guest ' +
+      'wrote. Drives the "Translated by Google" label and the show-original toggle.',
+  })
+  isMachineTranslated!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "The guest's own words, sent alongside the translation so the toggle is " +
+      'in place and instant. Null when `comment` already IS the original.',
+  })
+  originalComment!: string | null;
+  @ApiPropertyOptional({
+    enum: Locale,
+    nullable: true,
+    description: 'Locale the guest wrote in.',
+  })
+  originalLocale!: Locale | null;
   @ApiPropertyOptional({ nullable: true, example: 'Ada B.' }) reviewerInitial!:
     | string
     | null;
@@ -150,6 +170,30 @@ export class ThemeFacetDto {
     description: 'Approved reviews carrying the tag.',
   })
   count!: number;
+}
+
+export class TranslateReviewResultDto {
+  @ApiProperty() reviewId!: string;
+  @ApiProperty({
+    example: 6,
+    description: 'Locales written on this run.',
+  })
+  written!: number;
+  @ApiProperty({
+    example: 0,
+    description:
+      'Locales already up to date - present, machine-made, and built from the ' +
+      'same source text (matching `sourceHash`).',
+  })
+  skipped!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'no_source_text',
+    description:
+      'Why nothing happened: `not_approved`, `no_source_text`, or ' +
+      '`not_configured` (which the endpoint turns into a 400).',
+  })
+  reason?: string;
 }
 
 export class ReviewSummaryDto {

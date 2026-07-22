@@ -31,6 +31,12 @@ export type FullReview = {
     travelLabel: string;
     /** Raw guest type (`COUPLE`|`FAMILY`|`FRIENDS`|`SOLO`) or null; localized here. */
     guestType: string | null;
+    /** LD32: `text` is machine output rather than the guest's own words. */
+    isMachineTranslated: boolean;
+    /** The guest's own words, for the show-original toggle. */
+    originalText: string | null;
+    /** Language the guest wrote in, in the reader's language ("Dutch"). */
+    originalLanguage: string;
 };
 
 export type TourReviewsSectionDict = {
@@ -67,6 +73,10 @@ export type TourReviewsSectionDict = {
     earlyReviews: string;
     /** FE-11 Omnibus disclosure link. */
     howWeHandle: string;
+    /** FE-6 LD32 translation label + toggle. */
+    translatedBy: string;
+    showOriginal: string;
+    showTranslation: string;
 };
 
 // No "Most helpful" option: helpful votes are deferred to V2 by the master, and
@@ -585,6 +595,13 @@ function ReviewCard({
     review: FullReview;
     dict: TourReviewsSectionDict;
 }) {
+    // LD32 toggle state is PER CARD, not section-wide: a reader who wants to see
+    // one guest's own words has said nothing about the next guest's.
+    const [showingOriginal, setShowingOriginal] = useState(false);
+    const canToggle = review.isMachineTranslated && Boolean(review.originalText);
+    const body =
+        showingOriginal && review.originalText ? review.originalText : review.text;
+
     const guestKey = review.guestType
         ? GUEST_TYPE_KEYS[review.guestType]
         : undefined;
@@ -640,8 +657,32 @@ function ReviewCard({
                     </div>
                 </div>
                 <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    {review.text}
+                    {body}
                 </p>
+
+                {/* FE-6a. Attribution is not optional politeness: presenting
+                    machine output as a guest's own words misstates who said it,
+                    and the toggle is what makes the claim checkable. Both texts
+                    are already in the payload, so this never refetches and there
+                    is no per-review translation URL to index (FE-6b). */}
+                {canToggle && (
+                    <div className='flex flex-wrap items-center gap-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        {!showingOriginal && <span>{dict.translatedBy}</span>}
+                        <MotionButton
+                            type='button'
+                            onClick={() => setShowingOriginal(v => !v)}
+                            whileTap={{ scale: 0.95 }}
+                            transition={springPop}
+                            className='cursor-pointer border-0 bg-transparent p-0 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2'>
+                            {showingOriginal
+                                ? dict.showTranslation
+                                : dict.showOriginal.replace(
+                                      '{language}',
+                                      review.originalLanguage,
+                                  )}
+                        </MotionButton>
+                    </div>
+                )}
             </div>
 
             {((review.photos && review.photos.length > 0) || review.response) && (

@@ -20,12 +20,12 @@
 | 1 | Schema + moderation backbone (BE) | 14 | 14 | **DONE 2026-07-22** |
 | 2 | Collection flow (BE + FE) | 17 | 16 | **DONE 2026-07-22** (FE-12 deferred, BE-16 open) |
 | 3 | Dashboard moderation module | 14 | 14 | **DONE 2026-07-22** |
-| 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips unseen: no tour hits the 20 gate) |
-| 5 | LD32 translation | 5 | 0 | Not started |
+| 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips now visible - seed depth cleared the 20 gate) |
+| 5 | LD32 translation | 8 | 8 | **DONE 2026-07-22** (needs a Google Translate key to do anything) |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
-| T | Test pass | 23 | 23 | **DONE 2026-07-22** (found + fixed a cross-operator read bug) |
-| **Total** | | **109** | **89** | |
+| T | Test pass | 23 | 23 | **DONE 2026-07-22** - found + fixed a cross-operator read bug; 9 public-site tests since marked `test.fixme`, see the correction below |
+| **Total** | | **112** | **97** | |
 
 ---
 
@@ -513,6 +513,19 @@
       only through Denley). Every claim maps to enforced behaviour, including §6 disclosing
       the LD11 borrowed rating - the one place a displayed rating is not the tour's own and
       so the one most needing disclosure.
+> **TEST-SUITE CORRECTION, 2026-07-22.** The public-site Playwright spec
+> (`frontend/e2e/tests/tour-reviews.spec.ts`) is **not green**, and the earlier "9/9 passed"
+> in this document was **not real**: it ran against a stale `next-server` process still
+> serving fully-prerendered pages. Against a correctly-streaming server, the reviews section
+> is a `connection()` Suspense boundary and React's streaming SSR leaves a SECOND `hidden`
+> copy of the content in the DOM, with no stable ordering between the two - so every
+> `#tour-reviews`-scoped assertion intermittently resolves to a 0x0 hidden node.
+> `.first()`, `.last()`, `filter({ visible: true })` and `:visible` were all tried; none is
+> reliable. The 9 affected tests are marked `test.fixme` with the reason in-file rather than
+> left red or falsely green. **The behaviour itself is verified** by direct HTML inspection
+> and against the live API (see Phase 4 and Phase 5 entries). Fixing this properly probably
+> means having the section publish a settled marker after mount, which is a component change.
+
 - [x] **Verified (Phase 4):** backend `tsc` + `eslint` 0 · frontend `tsc` + `eslint` 0 ·
       `next build` green, **891 pages** (868 + the new route x 7 locales) · summary returns
       `themes` + `photoCount` · all four filter behaviours checked against the live API ·
@@ -531,11 +544,46 @@
       master (see the decisions block above). `translateText` accepts up to **1024 strings
       per request**, which is what makes BE-10b's "batched" requirement cheap: 6 locales x N
       reviews collapses into very few calls.
-- [ ] **BE-10a** `POST /reviews/:id/translate` (admin) + automatic translate-on-approve
-      filling `ReviewTranslation` for the other 6 locales with `isMachineTranslated = true`.
-- [ ] **BE-10b** BullMQ job: batched, cached, never re-translating an unchanged source.
-- [ ] **FE-6a** Per-card "Translated by …" label + **show-original toggle**.
-- [ ] **FE-6b** Translate in place. No indexable per-review translation URLs.
+- [x] **BE-10a** `POST /reviews/:id/translate` (admin, `EDIT_REVIEW`, throttled) + automatic
+      translate-on-approve. `ReviewTranslationService` is a thin Cloud Translation v3 REST
+      client - one endpoint, one shape, no extra dependency tree.
+      Four things it refuses to do, each a real failure mode:
+      - **Never translates the original away.** The row the guest wrote
+        (`isMachineTranslated = false`) is the source and is never overwritten - nor is a
+        human-authored translation in any other locale.
+      - **Never translates an unapproved review.** Paying to translate something that may be
+        rejected is waste, and a HELD review has not earned publication in any language.
+      - **Never blocks moderation.** Approval enqueues; `enqueue` swallows its own failure,
+        so a Redis outage is an untranslated review rather than a failed approval.
+      - **Inert when unconfigured.** No key -> `isEnabled` false, job no-ops, endpoint 400s
+        with the reason. Reviews still display in their original language, which is exactly
+        the pre-LD32 behaviour.
+- [x] **BE-10b** BullMQ worker on `review-translation`, `jobId` = review id so repeat
+      approvals de-duplicate. **Cached via a new `ReviewTranslation.sourceHash`** (migration
+      `20260722180000`): every written row records the SHA-1 of the text it came from, so a
+      re-run with an unchanged source calls nothing. Without it this is not a cache, it is a
+      recurring per-character bill for identical output - and a source an admin later edits
+      would keep serving a stale translation forever.
+      Deliberately NOT backfilled: existing rows are seed copies, not real machine output,
+      and inventing a hash would mark them fresh and starve the first real pass.
+- [x] **Env is a three-file change** (`env.validate.ts` + both `.env` examples).
+      Both vars OPTIONAL and shape-validated, so a typo is caught at boot rather than as a
+      403 six locales deep.
+- [x] **FE-6a** Per-card "Translated by Google" label + show-original toggle.
+      Toggle state is PER CARD: a reader who wants one guest's own words has said nothing
+      about the next guest's. Copy in all 7 locales (28 keys, parity asserted).
+- [x] **FE-6b** Translated in place. Both texts ship in the SAME payload
+      (`isMachineTranslated`, `originalComment`, `originalLocale`), so the toggle never
+      refetches and there is no per-review translation URL - which would be a second
+      indexable page of the same content in another language.
+- [x] **Seed fix found while verifying:** the demo seed wrote the identical English text
+      into all 7 locale rows, so the toggle flipped between two identical strings and looked
+      like a broken button. Non-EN rows now carry the `stub()` marker (`[NL] ...`).
+- [x] **Verified:** 97 backend unit tests (15 new, covering the cache, the refusals, the
+      zh -> zh-CN provider mapping and enqueue failure) · `tsc` + `eslint` clean both repos ·
+      `next build` green at 891 pages · live API returns `isMachineTranslated: true` /
+      `originalLocale: en` on `?locale=nl` · **rendered check: 11 toggles on the NL page
+      (10 cards + preview strip), 0 on EN** - correct, because English IS the original.
 
 ---
 

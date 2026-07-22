@@ -16,6 +16,8 @@ import {
   ReviewSource,
   Role,
 } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { dateKey, localNow } from '@/common/utils/timezone.util';
@@ -25,6 +27,10 @@ import {
   reviewerInitial,
   roundRating,
 } from './review-display.util';
+import {
+  REVIEW_TRANSLATION_QUEUE,
+  ReviewTranslationService,
+} from './review-translation.service';
 import type {
   AdminReviewsQueryDto,
   BulkModerateReviewsDto,
@@ -61,7 +67,12 @@ type Actor = { id: string; role: Role };
 export class ReviewsService {
   private readonly logger = new Logger(ReviewsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly translation: ReviewTranslationService,
+    @InjectQueue(REVIEW_TRANSLATION_QUEUE)
+    private readonly translationQueue: Queue,
+  ) {}
 
   // ════════════════════════════════════════════════════════════════════════
   // Create - booking-gated, one per booking, starts PENDING
@@ -379,6 +390,14 @@ export class ReviewsService {
     // Aggregates change whenever a review enters or leaves the APPROVED set.
     await this.recomputeAggregates(review.tourId, review.operatorId);
 
+    // LD32: approval is what makes a review publishable, so it is what triggers
+    // translation. Enqueued, never awaited - the moderator's click must not wait
+    // on six third-party round trips, and `enqueue` swallows its own failure so
+    // a Redis outage cannot turn into a failed approval.
+    if (dto.status === ReviewModerationStatus.APPROVED) {
+      await this.translation.enqueue(this.translationQueue, id);
+    }
+
     this.logger.log(
       `Review ${id} moderated ${review.moderationStatus} → ${dto.status} by ${adminId}`,
     );
@@ -451,6 +470,23 @@ export class ReviewsService {
   // ════════════════════════════════════════════════════════════════════════
 
   /** Manual highlight chips (pre-AI LD29 Tier 3). Admin-only, never operator-set. */
+  /**
+   * LD32 on demand (see the controller for when this is the right tool).
+   *
+   * Surfaces `not_configured` as a 400 rather than a silent success: an admin
+   * clicking "translate" and getting 200 / nothing translated would look like a
+   * broken button, when the real answer is that no API key is set.
+   */
+  async translate(id: string) {
+    const res = await this.translation.translateReview(id);
+    if (res.reason === 'not_configured') {
+      throw new BadRequestException(
+        'Review translation is not configured (GOOGLE_TRANSLATE_API_KEY / GOOGLE_TRANSLATE_PROJECT_ID)',
+      );
+    }
+    return res;
+  }
+
   async setThemeTags(id: string, dto: SetThemeTagsDto) {
     const tags = [
       ...new Set(dto.themeTags.map((t) => t.trim()).filter(Boolean)),
@@ -954,6 +990,17 @@ function mapReview(review: ReviewWithTranslations, locale?: Locale) {
     review.translations[0] ??
     null;
 
+  // LD32: the row the guest actually wrote. `isMachineTranslated = false` is the
+  // marker; EN then anything are the fallbacks for rows predating the flag.
+  const original =
+    review.translations.find((t) => !t.isMachineTranslated) ??
+    review.translations.find((t) => t.locale === Locale.en) ??
+    review.translations[0] ??
+    null;
+  const isTranslated = Boolean(
+    translation && original && translation.locale !== original.locale,
+  );
+
   return {
     id: review.id,
     tourId: review.tourId,
@@ -965,6 +1012,13 @@ function mapReview(review: ReviewWithTranslations, locale?: Locale) {
     title: review.title,
     comment: translation?.comment ?? null,
     locale: translation?.locale ?? locale ?? Locale.en,
+    // FE-6: both texts ship together so the show-original toggle is instant and
+    // in place. A per-review translation URL would be a second indexable page
+    // of the same content in a different language - duplicate content, and one
+    // more thing for a crawler to find that no traveller ever links to.
+    isMachineTranslated: isTranslated,
+    originalComment: isTranslated ? (original?.comment ?? null) : null,
+    originalLocale: original?.locale ?? null,
     reviewerInitial: review.reviewerInitial,
     reviewerCountry: review.reviewerCountry,
     travelMonth: review.travelMonth,

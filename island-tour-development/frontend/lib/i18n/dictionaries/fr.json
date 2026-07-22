@@ -462,7 +462,10 @@
                 "photosTitle": "Photos des voyageurs",
                 "operatorFallback": "Nouveau sur Island Tours. Cette excursion est proposée par {operator}, noté {rating} sur {count} avis.",
                 "earlyReviews": "{count} premiers avis",
-                "howWeHandle": "Comment nous gérons les avis"
+                "howWeHandle": "Comment nous gérons les avis",
+                "translatedBy": "Traduit par Google",
+                "showOriginal": "Afficher l'original ({language})",
+                "showTranslation": "Afficher la traduction"
             },
             "sections": {
                 "overview": "Aperçu",

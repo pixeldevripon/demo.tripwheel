@@ -27,6 +27,18 @@ export interface PublicReview {
   comment: string | null;
   /** Locale the returned `comment` is in. */
   locale: Locale;
+  /**
+   * True when `comment` is LD32 machine output rather than the guest's own
+   * words. Drives the "Translated by Google" label and the show-original toggle.
+   */
+  isMachineTranslated: boolean;
+  /**
+   * The guest's own words, shipped ALONGSIDE the translation so the toggle is
+   * instant and in place. Null when `comment` already is the original.
+   */
+  originalComment: string | null;
+  /** Locale the guest wrote in. */
+  originalLocale: Locale | null;
   /** Short reviewer label, e.g. "Ada B." (never a full name). */
   reviewerInitial: string | null;
   /** ISO 3166 country code, e.g. "NL". */

@@ -90,11 +90,15 @@ const dto = { bookingId: 'bk1', rating: 5, comment: 'Wonderful sunset cruise' };
 
 describe('ReviewsService', () => {
   let prisma: any;
+  let translation: any;
   let svc: ReviewsService;
 
   beforeEach(() => {
     prisma = mockPrisma();
-    svc = new ReviewsService(prisma);
+    // LD32 collaborators. `enqueue` is a no-op here: these tests are about
+    // moderation, and a real queue would make them depend on Redis.
+    translation = { enqueue: jest.fn().mockResolvedValue(undefined) } as any;
+    svc = new ReviewsService(prisma, translation, {} as any);
   });
 
   describe('create (booking-gated)', () => {

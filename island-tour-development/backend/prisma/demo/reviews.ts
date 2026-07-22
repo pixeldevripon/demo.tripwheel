@@ -6,7 +6,9 @@
 
 import {
   BookingStatus,
+  Currency,
   Locale,
+  PaymentModel,
   Prisma,
   ReviewModerationStatus,
   ReviewResponseAuthor,
@@ -28,10 +30,11 @@ import {
   rng,
   roundRating,
   section,
+  stub,
   themedPhoto,
   tourTheme,
 } from './_shared';
-import { SHOWCASE_MOST_POPULAR } from './tours';
+import { SHOWCASE_MOST_POPULAR, SHOWCASE_NEW } from './tours';
 
 const COMMENTS_5 = [
   'Absolutely the highlight of our trip. The crew was warm, knowledgeable, and clearly proud of their island. We saw turtles up close and the lunch was delicious.',
@@ -136,9 +139,12 @@ export async function seedReviews(): Promise<void> {
     },
   });
 
+  // NOT an early return. On a re-run every booking already has its review, so
+  // `bookings` is empty - and returning here would skip the depth top-up and the
+  // aggregate recompute below with it, which is exactly the case a VPS re-seed
+  // hits every time.
   if (bookings.length === 0) {
-    log('No reviewable bookings — skipping reviews.');
-    return;
+    log('No new reviewable bookings — checking review depth only.');
   }
 
   let created = 0;
@@ -213,9 +219,11 @@ export async function seedReviews(): Promise<void> {
         responseAuthor: addResponse ? ReviewResponseAuthor.PLATFORM : null,
         responseAt: addResponse ? new Date() : null,
         translations: {
+          // See the depth top-up below: non-EN rows carry a visibly different
+          // stub so the LD32 show-original toggle demonstrably does something.
           create: ALL_LOCALES.map((locale) => ({
             locale,
-            comment,
+            comment: locale === Locale.en ? comment : stub(locale, comment),
             isMachineTranslated: locale !== Locale.en,
           })),
         },
@@ -307,26 +315,108 @@ export async function seedReviews(): Promise<void> {
  *
  * Idempotent: tops each tour up TO the target, so re-running is a no-op.
  */
+/** The showcase tours, which also carry the "Most popular" badge. */
 const REVIEW_DEPTH_TARGET = 36;
+/**
+ * Everything else that gets depth. Past the LD30 filter gate (20) with room to
+ * spare, without flattening every tour to the same shape - a demo where all 18
+ * tours have an identical review count reads as generated, and the low-volume
+ * states stop being reachable.
+ */
+const REVIEW_DEPTH_TARGET_SECONDARY = 24;
+/** Depth is spread across destinations rather than piled onto one island. */
+const MIN_DEPTH_TOURS = 15;
+const DEPTH_TOURS_PER_DESTINATION = 6;
+
+type DepthTour = {
+  id: string;
+  slug: string;
+  operatorId: string;
+  defaultCurrency: Currency;
+  paymentModel: PaymentModel;
+  timeZone: string;
+  destinationId: string;
+};
+
+/**
+ * Which tours get depth: the showcase three, plus up to
+ * {@link DEPTH_TOURS_PER_DESTINATION} more per destination, so every island has
+ * tours past the LD30 gates rather than one island carrying the whole demo.
+ *
+ * ## Two exclusions that are not arbitrary
+ * 1. **SHOWCASE_NEW** - these must stay at ZERO reviews. They are what makes the
+ *    "New" badge and the LD11 operator-fallback state visible at all; giving
+ *    them reviews silently deletes two demo states.
+ * 2. **Tours currently at zero reviews** - same reason generalised. A tour with
+ *    no reviews is the LD11 fallback fixture (and the public-site e2e asserts
+ *    against exactly that), so depth is added to tours that already have some.
+ *    It also keeps the demo honest: a brand-new listing does not wake up with 24
+ *    reviews.
+ */
+async function selectDepthTours(): Promise<DepthTour[]> {
+  const select = {
+    id: true,
+    slug: true,
+    operatorId: true,
+    defaultCurrency: true,
+    paymentModel: true,
+    timeZone: true,
+    destinationId: true,
+  } as const;
+
+  const candidates = await prisma.tour.findMany({
+    where: {
+      reference: DEMO_TOUR_REF,
+      slug: { notIn: [...SHOWCASE_NEW] },
+      // Already reviewed = safe to deepen. See exclusion 2 above.
+      reviews: { some: { moderationStatus: ReviewModerationStatus.APPROVED } },
+    },
+    select,
+    orderBy: [{ destinationId: 'asc' }, { slug: 'asc' }],
+  });
+
+  const chosen: DepthTour[] = [];
+  const perDestination = new Map<string, number>();
+
+  // Showcase tours first - they carry the "Most popular" badge and have the
+  // highest target, so they must never be crowded out by the per-destination cap.
+  for (const t of candidates) {
+    if (!SHOWCASE_MOST_POPULAR.has(t.slug)) continue;
+    chosen.push(t);
+    perDestination.set(
+      t.destinationId,
+      (perDestination.get(t.destinationId) ?? 0) + 1,
+    );
+  }
+
+  for (const t of candidates) {
+    if (SHOWCASE_MOST_POPULAR.has(t.slug)) continue;
+    const used = perDestination.get(t.destinationId) ?? 0;
+    if (used >= DEPTH_TOURS_PER_DESTINATION) continue;
+    chosen.push(t);
+    perDestination.set(t.destinationId, used + 1);
+  }
+
+  // The per-destination cap is a spread rule, not a ceiling on the total. A
+  // small destination can leave the platform short of the floor, so top up from
+  // whatever is left rather than silently shipping fewer.
+  if (chosen.length < MIN_DEPTH_TOURS) {
+    const already = new Set(chosen.map((t) => t.id));
+    for (const t of candidates) {
+      if (chosen.length >= MIN_DEPTH_TOURS) break;
+      if (already.has(t.id)) continue;
+      chosen.push(t);
+    }
+  }
+
+  return chosen;
+}
 
 export async function topUpReviewDepth(): Promise<{
   tourIds: string[];
   operatorIds: string[];
 }> {
-  const tours = await prisma.tour.findMany({
-    where: {
-      slug: { in: [...SHOWCASE_MOST_POPULAR] },
-      reference: DEMO_TOUR_REF,
-    },
-    select: {
-      id: true,
-      slug: true,
-      operatorId: true,
-      defaultCurrency: true,
-      paymentModel: true,
-      timeZone: true,
-    },
-  });
+  const tours = await selectDepthTours();
   if (tours.length === 0) return { tourIds: [], operatorIds: [] };
 
   // Reuse the demo travellers - a review needs a real user behind it.
@@ -348,7 +438,10 @@ export async function topUpReviewDepth(): Promise<{
         moderationStatus: ReviewModerationStatus.APPROVED,
       },
     });
-    const need = REVIEW_DEPTH_TARGET - have;
+    const target = SHOWCASE_MOST_POPULAR.has(tour.slug)
+      ? REVIEW_DEPTH_TARGET
+      : REVIEW_DEPTH_TARGET_SECONDARY;
+    const need = target - have;
     if (need <= 0) continue;
 
     for (let i = 0; i < need; i++) {
@@ -429,9 +522,13 @@ export async function topUpReviewDepth(): Promise<{
           responseAuthor: addResponse ? ReviewResponseAuthor.PLATFORM : null,
           responseAt: addResponse ? new Date() : null,
           translations: {
+            // Non-EN rows carry a VISIBLY different stub. Copying the English
+            // text into all seven locales made the LD32 show-original toggle
+            // flip between two identical strings, which looks like a broken
+            // button rather than a working translation.
             create: ALL_LOCALES.map((locale) => ({
               locale,
-              comment,
+              comment: locale === Locale.en ? comment : stub(locale, comment),
               isMachineTranslated: locale !== Locale.en,
             })),
           },
@@ -443,8 +540,9 @@ export async function topUpReviewDepth(): Promise<{
 
   if (added > 0) {
     log(
-      `Review depth: +${added} approved reviews across ${tours.length} showcase tours ` +
-        `(target ${REVIEW_DEPTH_TARGET} each — clears the LD30 filter gate at 20 and the LD28 summary gate at 30).`,
+      `Review depth: +${added} approved reviews across ${tours.length} tours ` +
+        `(${REVIEW_DEPTH_TARGET} on showcase tours, ${REVIEW_DEPTH_TARGET_SECONDARY} elsewhere — ` +
+        `clears the LD30 filter gate at 20 and the LD28 summary gate at 30).`,
     );
   }
   return {

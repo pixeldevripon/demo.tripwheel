@@ -462,7 +462,10 @@
                 "photosTitle": "Foto's van gasten",
                 "operatorFallback": "Nieuw op Island Tours. Deze tour wordt verzorgd door {operator}, beoordeeld met {rating} op basis van {count} reviews.",
                 "earlyReviews": "{count} eerste reviews",
-                "howWeHandle": "Hoe wij omgaan met reviews"
+                "howWeHandle": "Hoe wij omgaan met reviews",
+                "translatedBy": "Vertaald door Google",
+                "showOriginal": "Toon origineel ({language})",
+                "showTranslation": "Toon vertaling"
             },
             "sections": {
                 "overview": "Overzicht",

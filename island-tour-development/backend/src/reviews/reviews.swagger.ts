@@ -18,6 +18,7 @@ import {
   AdminReviewResponseDto,
   ReviewResponseDto,
   ReviewSummaryDto,
+  TranslateReviewResultDto,
 } from './dto/review.dto';
 import { ReviewInvitationResponseDto } from './dto/review-invitation.dto';
 
@@ -172,6 +173,23 @@ export const ApiThemeTagsDocs = () =>
       summary: 'Set highlight chips (pre-AI LD29 Tier 3). Admin-only.',
     }),
     ApiOkResponse({ type: ReviewResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+  );
+
+export const ApiTranslateReviewDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Translate a review into the remaining locales (LD32). Admin-only, synchronous.',
+      description:
+        'Approval already enqueues this. Use the endpoint for a review approved ' +
+        'before translation was configured, a source an admin has since edited, ' +
+        'or a manual retry after a provider outage. Re-running with an unchanged ' +
+        'source writes nothing (the sourceHash cache). 400 when no provider key ' +
+        'is configured.',
+    }),
+    ApiOkResponse({ type: TranslateReviewResultDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 

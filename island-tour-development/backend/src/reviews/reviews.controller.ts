@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Permission } from '@prisma/client';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
@@ -48,6 +49,7 @@ import {
   ApiRespondReviewDocs,
   ApiReviewSummaryDocs,
   ApiThemeTagsDocs,
+  ApiTranslateReviewDocs,
 } from './reviews.swagger';
 
 /**
@@ -185,6 +187,23 @@ export class ReviewsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.reviews.moderate(id, dto, user.id);
+  }
+
+  /**
+   * POST /reviews/:id/translate
+   *
+   * LD32 on demand. Approval already enqueues this, so the endpoint exists for
+   * the cases the queue cannot cover: a review approved before the feature was
+   * configured, a source text an admin has since edited, or a provider outage
+   * that needs a manual retry. Synchronous, so the caller sees the real result
+   * rather than "queued" - it is a handful of calls for ONE review.
+   */
+  @Throttle({ medium: { limit: 20, ttl: 60000 } })
+  @Post(':id/translate')
+  @RequirePermissions(Permission.EDIT_REVIEW)
+  @ApiTranslateReviewDocs()
+  translate(@Param('id') id: string) {
+    return this.reviews.translate(id);
   }
 
   @Patch(':id/theme-tags')

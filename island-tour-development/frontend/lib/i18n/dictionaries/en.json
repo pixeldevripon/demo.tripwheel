@@ -462,7 +462,10 @@
                 "photosTitle": "Photos from guests",
                 "operatorFallback": "New on Island Tours. This tour is run by {operator}, rated {rating} across {count} reviews.",
                 "earlyReviews": "{count} early reviews",
-                "howWeHandle": "How we handle reviews"
+                "howWeHandle": "How we handle reviews",
+                "translatedBy": "Translated by Google",
+                "showOriginal": "Show original ({language})",
+                "showTranslation": "Show translation"
             },
             "sections": {
                 "overview": "Overview",
