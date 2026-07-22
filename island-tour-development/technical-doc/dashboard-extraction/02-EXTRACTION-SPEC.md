@@ -316,9 +316,67 @@ Rationale, and it matters: `types/*.ts` are hand-written mirrors of **backend DT
 | `frontend/lint_errors.log` | 45KB | build artifact |
 | `ui/{progress,breadcrumb,drawer,toggle,toggle-group,input-otp,input-group}.tsx` | - | unused or transitive-only to deleted files - **re-verify after the table rewrite**, which may adopt some |
 
-**Do NOT delete** `lib/api/cache-revalidation.ts` - it is live (`lib/api/fetch.ts:7`). An earlier scan reported it orphaned; that was wrong.
+~~**Do NOT delete** `lib/api/cache-revalidation.ts` - it is live (`lib/api/fetch.ts:7`). An earlier scan reported it orphaned; that was wrong.~~
+
+> **SUPERSEDED 2026-07-22, after step 6 shipped.** That note was correct while the
+> dashboard route group still lived in the public repo: `cache-revalidation.ts` was the
+> in-process producer and `app/_actions/revalidate.ts` called `updateTag` in a cache both
+> apps shared. Once the transport moved (02B) and the route group left, the public repo's
+> copy became a *stale second vocabulary*: its hand-written `CacheTag` union had drifted
+> and was missing `platform-reviews`, `homepage`, `instagram` and `media-indexing`, while
+> the authoritative list sat in `lib/cache-tags.ts` next to it. It was still reachable from
+> `lib/api/fetch.ts`, but the only live callers left (`/bookings/*`, and
+> `/availability/check`, which is explicitly skipped) mapped to **zero** tags, so it
+> produced nothing. Both files are now **deleted from the public repo**, and
+> `lib/api/fetch.ts` carries a comment explaining why this app has no producer path.
+> The public repo is the **consumer** only: `app/api/revalidate/route.ts`, validating
+> against the shared `lib/cache-tags.ts`. Do not reinstate a parallel map here.
 
 **Leave behind** (public-owned): `app/(frontend)/**`, `components/frontend/**`, `lib/api/public/**`, `lib/api/{wishlist,search,reviews,categories-public,slug-registry,bookings}.ts`, `contexts/booking-context.tsx`, `hooks/tours/{use-booking,use-booking-quote}.ts`, `hooks/use-drag-scroll.ts`, `app/(login)/{apply,bookings}`, `components/smooth-scroll.tsx`, public skeletons, `types/{tour-detail,facets}.ts`, `app/(frontend)/frontend-tokens.css`.
+Add to that list, verified live 2026-07-22: `lib/api/{availability,bookings-lookup,fetch,query}.ts`
+(`fetch.ts` survives because `bookings.ts` and `availability.ts` import it).
+
+### 3.6a Step-10 cleanup executed in the public repo (2026-07-22)
+
+Method: a resolved import graph (every `@/…` and relative specifier resolved to a real file),
+walked transitively from the Next entrypoints (`page`/`layout`/`route`/`loading`/`error`/
+`not-found`/`sitemap`/`robots` + `proxy.ts`/`next.config.ts`) over **all** source roots -
+`app`, `components`, `contexts`, `hooks`, `lib`, `navigations`, `types`, `utils`. A plain
+`grep` is not sufficient and gave three false positives on the first pass: `./fetch` and
+`./categories` inside `lib/api/public/` resolve to that folder's own files, not to
+`lib/api/fetch.ts` / `lib/api/categories.ts`, and `lib/api/categories` substring-matches the
+live `categories-public.ts`.
+
+Deleted (62 files, ~7,000 LOC, every one confirmed to exist in the dashboard repo and none on
+the Leave-behind list):
+
+| Group | Files |
+|---|---|
+| Cache-bridge producer | `lib/api/cache-revalidation.ts`, `app/_actions/revalidate.ts` (see the superseded note above) |
+| Dashboard API clients | `lib/api/{attributes,bookings-dashboard,categories,collections,destinations,faq-groups,hubs,locals-favourites,media,operator-settings,operators,profile,settings,tiers,trips}.ts` |
+| Their sole consumers | `hooks/{attributes,bookings,categories,collections,destinations,faq,hubs,locals-favourites,media,operators,payments,profile,settings,tiers,trips}/**` |
+| Server actions | `app/_actions/{dashboardActions,userActions}.ts`, `lib/server/auth-headers.ts` |
+| `lib/tours/listing.ts` split leftovers | `lib/tours/{derive-badge,signals}.ts` - **this is the §3.1 item**; they were split out here, copied to the dashboard, and never removed from the public side |
+| Dashboard-only lib | `lib/config/{rbac,derived-attributes}.ts`, `lib/rbac-utils.ts`, `lib/constants/category-icons.ts`, `lib/stores/use-upload-store.ts`, `lib/validations/profile.ts`, `hooks/use-visible-section.ts` (its default storage key is literally `dashboard-visible-sections`) |
+| Dashboard shell | `contexts/role-context.tsx`, `navigations/navigations.ts` |
+| Dashboard DTO mirrors | `types/{attribute,booking,faq,locals-favourite,media,operator-settings,operator,profile,settings,tier}.ts` |
+| Stray `utils/` (dir removed) | `utils/{crop-utils,intl-utils}.ts` (both live in the dashboard repo) and `utils/weather.ts`, template cruft that defaulted to Dhaka, Bangladesh |
+| Dead public skeletons | `components/frontend/skeletons/hub-{tour-card,trips-panel}-skeleton.tsx` - leftovers of a Suspense boundary that was **deliberately reverted**; `hub-page.tsx:68` says "The trips block deliberately has NO Suspense hole of its own… the fallback just flashed" |
+
+Verified after: `tsc --noEmit` clean, `eslint .` clean, all 923 internal imports resolve, and
+`next build` green (exit 0, 868/868 static pages) against a running backend.
+
+**Deliberately NOT deleted**, though currently unreachable:
+
+- `components/frontend/login/**` (8 files) and `lib/auth-client.ts` - operator/staff login is
+  built but not yet routed. `components/frontend/**` is Leave-behind, and §3.2 marks
+  `lib/auth-client.ts` as COPY (each repo keeps one).
+- `components/frontend/{category/category-trust-strip,skeletons/hub-tour-card-skeleton,skeletons/hub-trips-panel-skeleton}.tsx` -
+  unwired public components; Leave-behind covers them.
+- `components/ui/**` (30 of 35 unreferenced) + `hooks/use-mobile.ts` - the shadcn fork. Only
+  `calendar`, `popover`, `sonner`, `tooltip` are reachable today and `input-otp` is held by
+  the pending login work. Pruning the design system is a separate, owner-level decision.
+
 
 ---
 
@@ -506,7 +564,7 @@ Ordered so that nothing is broken at any step, and the risky item is isolated.
 | 7 | Env + ~~Docker~~ **Vercel** + deploy to a staging subdomain | Loads, authenticates, lists tours | **code done** (`06` Ph8); deploy pending |
 | 8 | **Parity verification** (§11) against production | Every row green | **next** |
 | 9 | Cut DNS. Old `/dashboard/*` 308s to the new origin. | | |
-| 10 | **In the public repo:** delete the dashboard route group and the now-unused exports from `lib/tours/listing.ts` | Public site builds and deploys | |
+| 10 | **In the public repo:** delete the dashboard route group and the now-unused exports from `lib/tours/listing.ts` | Public site builds and deploys | **done 2026-07-22** (see §3.6a) |
 
 **Step 7 is Vercel, not Docker** (user decision, 2026-07-17): the sibling public app already
 deploys there and `docker-compose.yml` states the frontend is not containerised. No `Dockerfile`

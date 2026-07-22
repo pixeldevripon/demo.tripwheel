@@ -3,8 +3,20 @@
  *
  * Always sends the Better Auth session cookie (`credentials: 'include'`) and
  * normalises error bodies (string or string[] `message`) into a thrown Error.
+ *
+ * NO CACHE REVALIDATION HERE, ON PURPOSE. This app is the CONSUMER side of the
+ * cross-repo cache bridge, never the producer: dashboard writes arrive over HTTP
+ * at `app/api/revalidate/route.ts`, which validates them against the shared
+ * `lib/cache-tags.ts` contract and busts the tags. The pre-extraction producer
+ * (`lib/api/cache-revalidation.ts` + `app/_actions/revalidate.ts`) was removed
+ * because it had drifted from that contract - it was still carrying a
+ * hand-written tag union with no `platform-reviews`, `homepage`, `instagram` or
+ * `media-indexing`. A second, staler copy of the vocabulary in this repo is a
+ * drift trap, and the only live writes routed through here (`/bookings/*`,
+ * `/availability/check`) mapped to nothing anyway. If a public write ever does
+ * need to bust a tag, do it at that call site against `lib/cache-tags.ts` - do
+ * not reinstate a parallel map.
  */
-import { revalidatePublicForPath } from './cache-revalidation';
 
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
@@ -58,10 +70,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
     throw new Error(message);
   }
-
-  // A successful write may change public content - bust the affected public
-  // cache tags so the change shows up on the live site immediately.
-  revalidatePublicForPath(path, method);
 
   if (res.status === 204) return undefined as T;
   // Some mutations (e.g. DELETE) reply 200/201 with an empty body. Parsing that

@@ -32,7 +32,8 @@ export async function resolveSlug(
     // Public and immutable-by-slug, so cache it (Cache Components `use cache`,
     // not the legacy fetch cache). Two tags: the granular `slug:dest:slug` for
     // targeted busting, and the coarse `slug-registry` busted by any entity
-    // create / delete / rename / (de)activate (see lib/api/cache-revalidation.ts),
+    // create / delete / rename / (de)activate (see the dashboard repo's
+    // lib/api/cache-revalidation.ts, which POSTs the tags to /api/revalidate),
     // since those change what a slug resolves to. Every resolution-changing write
     // goes through that bridge, so the long 'days' profile is a backstop, not the
     // freshness mechanism (ISR-cost lever: this lookup runs on every entity page).

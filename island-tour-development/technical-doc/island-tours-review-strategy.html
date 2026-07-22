@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Island Tours, Review Strategy and Review UX</title>
+<style>
+  :root{
+    --brand:#E8611A; --brand-dark:#c44e12; --ink:#1f2937; --muted:#6B7280;
+    --bg:#faf8f6; --card:#ffffff; --line:#e7e3df; --code-bg:#f4f1ee;
+    --locked:#2563eb; --locked-bg:#eaf1ff; --new:#15803d; --new-bg:#e9f7ee;
+    --change:#b45309; --change-bg:#fdf2e3; --sidebar-w:310px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.62;font-size:16px;-webkit-font-smoothing:antialiased}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:16px;
+    padding:12px 22px;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.03)}
+  .topbar .brand{display:flex;align-items:center;gap:11px;font-weight:700;white-space:nowrap}
+  .topbar .dot{width:12px;height:12px;border-radius:50%;background:var(--brand);flex:none}
+  .topbar .brand small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:.02em}
+  .search{margin-left:auto;position:relative;display:flex;align-items:center}
+  .search input{width:300px;max-width:46vw;padding:9px 14px 9px 34px;border:1px solid var(--line);
+    border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  .search input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+  .search .mag{position:absolute;left:11px;color:var(--muted);font-size:14px;pointer-events:none}
+  .search .count{position:absolute;right:10px;font-size:12px;color:var(--muted)}
+  .menu-btn{display:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;font-size:15px;cursor:pointer}
+  .layout{display:flex;align-items:flex-start;max-width:1320px;margin:0 auto}
+  .sidebar{position:sticky;top:57px;align-self:flex-start;width:var(--sidebar-w);flex:none;
+    height:calc(100vh - 57px);overflow-y:auto;padding:20px 12px 60px 22px;border-right:1px solid var(--line)}
+  .sidebar h4{margin:6px 8px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+  .toc-list{list-style:none;margin:0;padding:0}
+  .toc-list a{display:block;text-decoration:none;color:#374151;padding:5px 9px;border-radius:7px;
+    font-size:13.5px;border-left:2px solid transparent;line-height:1.35}
+  .toc-list a.lvl3{padding-left:22px;font-size:12.7px;color:#586074}
+  .toc-list a:hover{background:#f1ece8;color:var(--ink)}
+  .toc-list a.active{color:var(--brand-dark);background:var(--change-bg);border-left-color:var(--brand);font-weight:600}
+  .toc-list a.hide{display:none}
+  .content{flex:1;min-width:0;padding:30px 48px 120px;max-width:900px}
+  .content h1{font-size:30px;line-height:1.2;margin:.2em 0 .5em;letter-spacing:-.01em}
+  .content h2{font-size:23px;margin:1.7em 0 .5em;padding-top:14px;border-top:2px solid var(--line);scroll-margin-top:72px}
+  .content h2:first-of-type{border-top:none;padding-top:0}
+  .content h3{font-size:17.5px;margin:1.5em 0 .4em;color:#111827;scroll-margin-top:72px}
+  .content p{margin:.6em 0}
+  .content a{color:var(--brand-dark);text-decoration:underline;text-underline-offset:2px}
+  .content strong{color:#111827}
+  .content ul,.content ol{margin:.5em 0 .9em;padding-left:1.4em}
+  .content li{margin:.28em 0}
+  .content blockquote{margin:1em 0;padding:.6em 1.1em;background:#fff;border-left:3px solid var(--brand);
+    border-radius:0 8px 8px 0;color:#374151}
+  .content blockquote p{margin:.4em 0}
+  hr{border:none;border-top:1px solid var(--line);margin:2.2em 0}
+  table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:14px;background:#fff;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  thead th{background:#f6efe9;font-weight:700;color:#1f2937;border-bottom:2px solid #e3d6cc}
+  tbody tr:nth-child(even){background:#fbfaf8}
+  code{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;
+    background:var(--code-bg);padding:1.5px 5px;border-radius:5px;color:#9a3412}
+  pre{background:#1f2430;color:#e6e1d6;padding:16px 18px;border-radius:11px;overflow-x:auto;
+    font-size:12.5px;line-height:1.5;margin:1.1em 0;border:1px solid #11141b}
+  pre code{background:none;color:inherit;padding:0;font-size:12.5px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:1px 7px;
+    border-radius:999px;vertical-align:baseline;white-space:nowrap}
+  .tag-locked{color:var(--locked);background:var(--locked-bg)}
+  .tag-new{color:var(--new);background:var(--new-bg)}
+  .tag-change{color:var(--change);background:var(--change-bg)}
+  .tag-wrong{color:#b91c1c;background:#fdecec}
+  mark{background:#ffe49b;color:inherit;padding:0 1px;border-radius:2px}
+  mark.current{background:var(--brand);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:6px 0 4px;
+    padding:13px 16px;background:#fff;border:1px solid var(--line);border-radius:11px;font-size:13px}
+  .legend b{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .legend .li{display:flex;align-items:center;gap:7px;color:#374151}
+  .backtop{position:fixed;right:20px;bottom:20px;z-index:25;background:var(--brand);color:#fff;border:none;
+    width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .backtop.show{opacity:1;pointer-events:auto}
+  @media (max-width:980px){
+    .sidebar{position:fixed;top:57px;left:0;z-index:20;background:#fff;transform:translateX(-100%);
+      transition:transform .22s;box-shadow:2px 0 16px rgba(0,0,0,.12);width:84vw;max-width:340px}
+    .sidebar.open{transform:translateX(0)}
+    .menu-btn{display:inline-block}
+    .content{padding:22px 20px 100px}
+    .search input{width:160px}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation">&#9776;</button>
+  <div class="brand"><span class="dot"></span><span>Island Tours<small>Review Strategy &amp; UX, advisory v0.2</small></span></div>
+  <div class="search">
+    <span class="mag">&#128269;</span>
+    <input id="searchInput" type="search" placeholder="Search this document..." autocomplete="off" spellcheck="false">
+    <span class="count" id="searchCount"></span>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <h4>Contents</h4>
+    <ul class="toc-list" id="tocList"></ul>
+  </nav>
+  <main class="content" id="content">
+<h1 id="island-tours-review-strategy-and-review-ux">Island Tours, Review Strategy and Review UX</h1>
+<p><strong>Advisory document. Version 0.2 (draft for review), June 18, 2026.</strong> Author role: senior CRO strategist, OTA product manager, UX designer, and technical product owner. Status: strategic advice plus ready-to-fold master change proposals (Appendix A). Nothing here is applied to the master yet. Version 0.2 applies the critical and high-priority corrections from an adversarial verification pass (see the companion island-tours-review-strategy-verification.md). The biggest change: the Trustpilot invitation is no longer sentiment-gated, because review gating breaches Trustpilot's rules and EU consumer law. Corrected points are flagged inline with [v0.2 correction].</p>
+<hr />
+<h2 id="how-to-read-this-document">How to read this document</h2>
+<p>This advisory sits next to <code>island-tours-platform-master.md</code>. The master already locks a large part of the review system. This document does three things at once, and every recommendation is tagged so you can see which is which.</p>
+<ul>
+<li><strong>[LOCKED]</strong> This is already decided in the master. The advice explains it, defends it, or sequences it. No change needed. The source is cited (LD number, section, or Appendix E).</li>
+<li><strong>[NEW]</strong> This is a recommendation on a point the master is silent on. It does not contradict anything locked. It can be adopted without a conflict log entry, but it does need a spec to be written (see Appendix A for the drafted ones).</li>
+<li><strong>[CHANGE]</strong> This recommendation would edit or supersede a locked decision. It requires the normal master process: a diff proposal, your approval, an archive copy, a version bump, and a conflict log entry. Appendix A drafts these.</li>
+</ul>
+<p>The master wins on every conflict. Where this document and the master disagree, treat the master as correct and this as a proposal to change it.</p>
+<p>One housekeeping note for the build: this advisory contains zero em-dashes, per the working agreement. The em-dash count rule in the README applies to the master file; this file should read zero.</p>
+<hr />
+<h2 id="executive-summary">Executive summary</h2>
+<p>The short version, for a five minute read.</p>
+<p><strong>1. Build your own verified-booking review system for tours. This is not optional and it is mostly already specced.</strong> Tour reviews are your single most valuable first-party asset for trust, conversion, and SEO. The master already locks the data model (Appendix E.7), the tour-page display (LD11, LD29 to LD33), the verification promise ("Every review from a confirmed booking. No exceptions."), and the cold-start behavior. The one real gap is collection: there is no post-tour review request anywhere in the email sequence. That gap is the highest-leverage thing to close, and Appendix A drafts the spec for it.</p>
+<p><strong>2. Use Trustpilot, but only as a platform-trust layer, never as your tour review store.</strong> Trustpilot should hold service reviews about Island Tours as a booking platform, on one company profile for the island.tours domain. It feeds external credibility, Google Seller Ratings (stars on your Ads), and the homepage social proof strip the master already specced at 100 or more platform reviews. Do not push tour reviews into Trustpilot, do not create per-tour or per-operator Trustpilot profiles, and do not blend Trustpilot scores into your tour AggregateRating. Doing any of those exports your highest-value trust and SEO asset to a third party and breaks the verified-booking promise.</p>
+<p><strong>3. Keep platform reviews and tour reviews strictly separate, by surface, label, and aggregate.</strong> Platform reviews answer "can I trust Island Tours with my money and my booking?" Tour reviews answer "will I enjoy this specific tour?" They live on different surfaces, carry different labels, and are never merged into one number. This separation is the main thing that keeps the homepage honest and keeps you compliant.</p>
+<p><strong>4. The homepage sells trust in the platform. The tour page sells trust in the tour.</strong> On the homepage, lead with platform trust (Trustpilot aggregate, the verified-booking promise, real platform numbers) plus clearly attributed tour-review quotes that link back to the tour. On the tour page, the locked review system already does the heavy lifting: a preview module above the fold, a full reviews section as the last H2, a clickable star chart, verified badges, and photos.</p>
+<p><strong>5. The compliance frame is not a tax, it is a conversion strategy.</strong> EU consumer law (the Omnibus Directive) requires you to disclose how reviews are verified, forbids hiding negative reviews, and forbids review gating (inviting only happy customers to a review platform). The same things that keep you legal also convert better: a stated verification method reads as honest, and visible negative reviews make the positive ones believable. Most shoppers look for negative reviews at least sometimes (96 percent, PowerReviews 2021), a point the master also reflects in LD31.</p>
+<p><strong>The headline decisions, in one line each.</strong></p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Question</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Build own review DB?</td>
+<td>Yes, for tours. Already specced. Close the collection gap.</td>
+</tr>
+<tr class="even">
+<td>Trustpilot as primary or extra layer?</td>
+<td>Extra layer only. Platform service reviews. Not tours.</td>
+</tr>
+<tr class="odd">
+<td>One Trustpilot profile or per tour?</td>
+<td>One profile, island.tours domain. Never per tour or per operator.</td>
+</tr>
+<tr class="even">
+<td>Trustpilot Product Reviews for tours?</td>
+<td>No at launch. Your own first-party system owns the tour page.</td>
+</tr>
+<tr class="odd">
+<td>Homepage shows what?</td>
+<td>Platform trust first. Tour quotes second, clearly attributed.</td>
+</tr>
+<tr class="even">
+<td>Tour page shows what?</td>
+<td>The locked first-party system. Add guest-type capture from day one.</td>
+</tr>
+<tr class="odd">
+<td>Biggest gap to fix first?</td>
+<td>The post-tour review request. It does not exist yet.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="strategic-advice">1. Strategic advice</h2>
+<h3 id="the-best-review-strategy-for-island-tours">1.1 The best review strategy for Island Tours</h3>
+<p>Island Tours is a young marketplace where most visitors have never heard of the brand. That single fact sets the whole strategy. Trust has to be manufactured on the page, in the moment, because there is no brand memory to lean on. Reviews are the cheapest and most credible way to do that, but only if they are believable, specific, and visibly tied to real bookings.</p>
+<p>The strategy is a two-layer trust model.</p>
+<p>The <strong>first-party layer</strong> is your own verified-booking review system. It powers the tour pages, the rating numbers on cards and in search, the tier eligibility logic, and the structured data. This is where conversion is won or lost, because a visitor on a tour page is deciding whether to book that tour, and the only thing that answers their real question ("will I like this?") is other guests who did it. You own this layer end to end. It is already specced in the master, and it is the layer to protect and finish first.</p>
+<p>The <strong>platform-trust layer</strong> is Trustpilot. It answers a different and earlier question in the journey: "is Island Tours a real company that will not take my deposit and disappear?" A third-party badge with a recognizable name carries weight precisely because you do not control it. This layer is a supplement. It is valuable, but it is not where bookings are decided, and it must never be confused with the first-party layer.</p>
+<p>Get the layering wrong and you damage both. Push tour reviews into Trustpilot and you lose SEO, schema control, and the on-page experience. Show Trustpilot platform scores on a tour page and you confuse the buyer about what the rating even means. The discipline is the strategy.</p>
+<h3 id="should-island-tours-build-its-own-review-database">1.2 Should Island Tours build its own review database?</h3>
+<p>Yes, for tours, without hesitation. Three reasons.</p>
+<p>First, <strong>conversion</strong>. The tour-page decision is tour-specific. A generic platform rating does not tell a buyer whether the Klein Curaçao crossing is rough, whether the buggy tour is too much for kids, or whether the sunset cruise actually includes the rum punch the photos imply. Only tour-attributed reviews answer that, and those reviews have to live on the tour page where the decision happens.</p>
+<p>Second, <strong>SEO and AEO</strong>. Review text is unique, long-tail, constantly refreshed user content. It is the difference between a thin operator-supplied description and a page that ranks for "is Klein Curaçao good for seasickness" or "best snorkel tour Curacao for families." It also feeds AggregateRating and Review structured data, which can surface rating stars in search results. You cannot get any of that if the reviews sit on Trustpilot's domain.</p>
+<p>Third, <strong>you already started</strong>. The master locks the schema (Appendix E.7), the display (LD29 to LD33), the cold-start fallback (LD11), and the verification rule. Building your own database is not a new decision, it is finishing one you have made.</p>
+<p>The master already reflects this. <strong>[LOCKED]</strong> Appendix E.7 defines the reviews entity, gated on a confirmed <code>booking_id</code>, with the promise "Every review from a confirmed booking. No exceptions." Tour aggregates derive from approved records only.</p>
+<h3 id="trustpilot-as-primary-source-or-extra-trust-layer">1.3 Trustpilot as primary source or extra trust layer</h3>
+<p>Extra trust layer. Always. Never the primary source for tour reviews.</p>
+<p>The reasoning is covered in full in section 4, but the one-line version belongs here in the strategy: Trustpilot is a service-review platform built to review companies, not a product-review engine built to review individual tours on your own pages. Using it as your primary tour review store would mean exporting your best first-party asset, paying a subscription to rent it back as a widget, and giving up schema and SEO control on the exact pages where bookings happen. The master already treats Trustpilot this way: it appears once, in the homepage social proof strip, gated at 100 or more platform reviews, and it is deliberately kept off the destination page because "a thin review base is a liability, not a trust signal."</p>
+<h3 id="the-difference-between-platform-reviews-and-tour-reviews">1.4 The difference between platform reviews and tour reviews</h3>
+<p>This distinction is the spine of the whole strategy, so it is worth stating precisely.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Platform reviews</th>
+<th>Tour reviews</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Question they answer</td>
+<td>Is Island Tours trustworthy as a booking platform?</td>
+<td>Will I enjoy this specific tour?</td>
+</tr>
+<tr class="even">
+<td>Subject</td>
+<td>The brand, the booking flow, payment, support, refunds</td>
+<td>The experience and the operator who runs it</td>
+</tr>
+<tr class="odd">
+<td>Where they live</td>
+<td>Homepage, footer, checkout trust area, Google Ads stars</td>
+<td>Tour detail page, tour cards, search, category pages</td>
+</tr>
+<tr class="even">
+<td>Source</td>
+<td>Trustpilot (service reviews), one company profile</td>
+<td>Your own verified-booking system (Appendix E.7)</td>
+</tr>
+<tr class="odd">
+<td>Aggregate shown as</td>
+<td>Trustpilot TrustScore, platform level</td>
+<td>Per-tour star rating and count, per-operator fallback (LD11)</td>
+</tr>
+<tr class="even">
+<td>Verification</td>
+<td>Trustpilot invited and organic</td>
+<td>Confirmed <code>booking_id</code>, no exceptions</td>
+</tr>
+<tr class="odd">
+<td>Who owns the data</td>
+<td>Trustpilot</td>
+<td>Island Tours</td>
+</tr>
+</tbody>
+</table>
+<p>The two are complementary, not redundant. A buyer needs both reassurances, but at different moments. Platform trust matters early, on the homepage, before they trust the brand at all. Tour trust matters late, on the tour page, when they are choosing between two snorkel tours.</p>
+<h3 id="how-to-prevent-confusion-between-the-two">1.5 How to prevent confusion between the two</h3>
+<p>Confusion is the real risk, and it is an honesty risk as much as a UX risk. If a visitor reads a glowing "Island Tours was amazing" quote on the homepage and assumes it describes the tour they are about to book, you have misled them, even if you did not mean to. The Omnibus Directive treats that kind of blurring as a potential unfair practice, and buyers punish it with distrust the moment they notice.</p>
+<p>Five rules keep the two clean.</p>
+<ol type="1">
+<li><strong>Separate aggregates, always.</strong> The Trustpilot TrustScore and the per-tour rating are never added, averaged, or shown as one number. A tour page shows the tour rating. The homepage shows the platform score. They never share a star.</li>
+<li><strong>Label by subject.</strong> Platform proof is labeled about the platform ("Travelers rate Island Tours", "Rated on Trustpilot"). Tour reviews are labeled about the tour ("What guests say about this tour", "Every review from a confirmed booking").</li>
+<li><strong>Attribute every quote.</strong> Any tour-review quote shown off the tour page (for example on the homepage) carries the tour name and links to that tour. It is never floated as a generic brand testimonial.</li>
+<li><strong>Separate by surface.</strong> Platform proof appears on brand surfaces (homepage, footer, checkout). Tour reviews appear on tour surfaces. The one deliberate crossover, tour quotes on the homepage, follows rule 3.</li>
+<li><strong>One verification sentence per context.</strong> The tour page says reviews come from confirmed bookings. The Trustpilot widget says it is Trustpilot. Neither borrows the other's credibility.</li>
+</ol>
+<hr />
+<h2 id="homepage-review-strategy">2. Homepage review strategy</h2>
+<h3 id="what-the-homepage-is-for-and-therefore-what-reviews-it-needs">2.1 What the homepage is for, and therefore what reviews it needs</h3>
+<p>The master is blunt about the homepage job: "get the user to choose an island. Single primary action." The homepage is not where a tour is sold. It is where the brand earns enough trust for the visitor to keep going. So homepage reviews should build confidence in Island Tours as a platform, not try to sell any one tour.</p>
+<p>That points to a clear answer to your question. The homepage should lead with <strong>platform trust</strong>, not a mixed feed of every tour review. A raw mix of tour reviews on the homepage is noisy, it is impossible to attribute cleanly, and it invites exactly the platform-versus-tour confusion section 1.5 warns about. Tour reviews belong on tour pages, where the buyer can act on them.</p>
+<h3 id="what-the-homepage-should-show">2.2 What the homepage should show</h3>
+<p>The master already specs one social proof element. <strong>[LOCKED]</strong> Section 5.1 places a "Social proof strip: Trustpilot aggregate plus rotating review quotes" between the video carousel and featured destinations, rendering only at 100 or more platform reviews. That is the right anchor. The recommendation below builds the homepage review strategy around it without contradicting it.</p>
+<p>Three homepage trust elements, in priority order.</p>
+<p><strong>A. The micro trust bar (already locked, not a review element but the trust baseline).</strong> Section 5.1 locks a three-column micro bar directly under the hero: pay 20 percent today, free cancellation, locals here to help. This is the first trust signal and it is not review-based, which is correct: at launch you may not have 100 platform reviews yet, and the trust bar carries the load until you do.</p>
+<p><strong>B. The platform social proof strip (locked, the primary review element).</strong> This is the Trustpilot aggregate plus rotating platform-review quotes, gated at 100 reviews. <strong>[NEW]</strong> Recommendation for its content and copy:</p>
+<ul>
+<li>Show the Trustpilot star score and review count, with the Trustpilot wordmark so the third-party credibility reads clearly.</li>
+<li>Rotate three to five short platform quotes that are about the booking experience: "booking took two minutes," "got my refund with no hassle," "the WhatsApp team answered at 9pm." These reinforce the platform promises (deposit, free cancellation, local support), which is exactly what the micro bar claims, now proven by real people.</li>
+<li>Header copy options, in brand voice: "Travelers trust Island Tours" or "Thousands of trips booked, here is how it went." Keep it about the booking, not the tours.</li>
+</ul>
+<p><strong>C. A clearly attributed tour-quote strip (new, optional, volume-gated).</strong> <strong>[NEW]</strong> Once tour reviews exist in volume, a single rotating strip of standout tour-review snippets is a strong homepage element, but only under the section 1.5 rules: each quote carries the tour name, a star rating, and links to that tour. Header: "What guests are saying about our tours." This is honest because it is explicitly about tours and routes the visitor toward a bookable page. It also doubles as discovery. Gate it at a sensible volume (for example 50 or more approved tour reviews across the destination) so it never renders thin.</p>
+<p>The deliberate choice: do not build a generic "what people say about Island Tours" testimonial wall that mixes tour praise and platform praise into one undifferentiated feed. It is the most common pattern and the least honest one.</p>
+<h3 id="what-a-clean-homepage-combination-looks-like">2.3 What a clean homepage combination looks like</h3>
+<p>Reading top to bottom, the trust narrative should escalate from promise to proof:</p>
+<pre><code>HERO                  -&gt; the brand promise (locals, your islands)
+MICRO TRUST BAR       -&gt; the three concrete promises (deposit, free cancel, help)
+VIDEO CAROUSEL        -&gt; the experience, visually
+SOCIAL PROOF STRIP    -&gt; PLATFORM proof: Trustpilot score + booking quotes   [&gt;=100 reviews]
+TOUR-QUOTE STRIP      -&gt; TOUR proof: attributed snippets that link to tours   [new, volume-gated]
+FEATURED DESTINATIONS -&gt; the next action (choose an island)
+WHY ISLAND TOURS      -&gt; the reasons, restated
+NEED HELP (FAQ)       -&gt; objection handling
+FOOTER                -&gt; Trustpilot mini-badge + payment logos (persistent trust)</code></pre>
+<p>The progression is promise, then experience, then platform proof, then tour proof, then action. Each band answers the doubt the previous one raises. Nothing competes, nothing is mislabeled.</p>
+<h3 id="homepage-review-copy-and-headlines">2.4 Homepage review copy and headlines</h3>
+<p>Brand-voice headlines, no em-dashes, ready to test.</p>
+<ul>
+<li>Platform strip header: "Travelers trust Island Tours" (primary) or "Booked by thousands, run by locals" (variant).</li>
+<li>Platform strip sub-line: "Real reviews from real bookings, collected on Trustpilot."</li>
+<li>Tour-quote strip header: "What guests say about our tours."</li>
+<li>Tour-quote attribution line: "{Guest first name}, on {Tour name} -&gt; " with the arrow linking to the tour.</li>
+<li>Empty or pre-threshold state (under 100 platform reviews): render the micro trust bar and the locked NeedHelp FAQ only. Do not render an empty social proof strip and do not show a fabricated number. Absence reads better than a thin "based on 4 reviews."</li>
+</ul>
+<hr />
+<h2 id="tour-page-review-strategy">3. Tour page review strategy</h2>
+<p>This is where bookings are won, and it is also the most heavily specced part of the master. Most of this section is therefore confirming and sequencing locked decisions, with a few targeted additions.</p>
+<h3 id="what-the-tour-page-should-show">3.1 What the tour page should show</h3>
+<p><strong>[LOCKED]</strong> The master locks a three-part review presence on the tour detail page, and it is well designed.</p>
+<ol type="1">
+<li><strong>Above the fold: the review preview module (LD29).</strong> Hidden under 3 reviews. At 3 to 9 reviews with an aggregate of 4.0 or higher, it renders a "What our guests say" header plus two recent four-star-plus cards. This is an early trust signal placed high in the funnel, before the visitor even scrolls to the overview.</li>
+<li><strong>The meta row rating (LD11, LD13).</strong> The star rating and count next to the H1, with the Provider Rating cold-start fallback: under 3 native reviews, if the operator has 10 or more reviews at 4.0 or higher, show the operator-level rating instead. This solves the empty-page problem for new tours from established operators.</li>
+<li><strong>The full Reviews section, the seventh and final H2 (LD16, LD30 to LD32).</strong> Trust sub-line under the H2: "Every review from a confirmed booking. No exceptions." A clickable star distribution chart from launch (renders at 3 or more reviews). Sort hidden under 10 reviews, filters hidden under 20. Per-card machine translation with a show-original toggle.</li>
+</ol>
+<p>The placement logic is deliberate and correct: an early teaser high on the page (LD29), the headline number at the top (LD11), and the deep-dive at the bottom as the final validation before the related-tours cross-sell. The master cites Baymard here. To state it precisely: reviews are the most influential factor in purchase decisions (PowerReviews, 2023), and in Baymard's usability testing 95 percent of users relied on reviews to learn more about products. Either way, reviews are the decisive content on a product page.</p>
+<h3 id="how-to-show-the-tours-reviews-as-persuasively-as-possible">3.2 How to show the tour's reviews as persuasively as possible</h3>
+<p>The locked system is strong. Three additions push it further, all CRO-positive.</p>
+<p><strong>[NEW] Capture guest type from day one, even though the filter UI is V2.</strong> The master defers the reviewer-type filter to V2 (LD30, filters hidden under 20 reviews) and defers reviewer_type collection with it. That is a mistake worth correcting cheaply. Collecting guest type at submission (couple, family, friends, solo) costs one tap in the review flow and has zero UI cost on the page until you choose to surface it. But it unlocks three things later with no backfill: the traveler-type filter, the highest-converting review snippet selection ("families said..."), and operator insight. Collect it now, surface it when volume justifies. See Appendix A, E.7 expansion.</p>
+<p><strong>[NEW] Lead each review card with the most decision-useful metadata, not just stars.</strong> A five-star score is table stakes. What converts is context: the verified-booking badge, the travel month, and the guest type. A card that reads "Verified booking, snorkeled in March, traveled as a family" is far more persuasive to a parent than five anonymous stars. All three data points already exist or are one tap away.</p>
+<p><strong>[NEW] Surface review highlights as themes once volume exists.</strong> The master defers AI category chips to V2 (LD28, LD29 Tier 3) and reactivates at 30 reviews, which is the right gate. Before that, a cheaper manual version works: let the admin tag two or three recurring themes per tour (for example "calm water," "great crew," "good for kids") and show them as static chips above the cards. This is the LD29 Tier 3 pattern without the AI dependency, and it is high-CRO because it lets a buyer jump straight to the reviews that answer their specific doubt.</p>
+<h3 id="which-review-filters-are-worth-building">3.3 Which review filters are worth building</h3>
+<p>Filters only earn their place when there is enough review volume that filtering returns useful results. The master's gate (filters hidden under 20 reviews, LD30) is correct. Within that gate, here is the priority order, most to least valuable for a tour marketplace.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Filter</th>
+<th>Value</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Rating (via the clickable star chart)</td>
+<td>Highest. Most shoppers seek negatives (96 percent at least sometimes), 52 percent seek out 1-star reviews (PowerReviews 2021; LD31).</td>
+<td><strong>[LOCKED]</strong> Live from launch via the star chart. Keep.</td>
+</tr>
+<tr class="even">
+<td>Guest type (family, couple, solo, friends)</td>
+<td>High. Self-identification: a parent wants parent reviews.</td>
+<td><strong>[NEW]</strong> Collect now, filter at V2.</td>
+</tr>
+<tr class="odd">
+<td>With photos</td>
+<td>High. Photo reviews are the most trusted and most clicked.</td>
+<td><strong>[NEW]</strong> V2, gated on photo-review volume.</td>
+</tr>
+<tr class="even">
+<td>Language</td>
+<td>Medium. Useful in a seven-locale platform, but machine translation (LD32) already covers comprehension.</td>
+<td><strong>[NEW]</strong> V2, lower priority than guest type and photos.</td>
+</tr>
+<tr class="odd">
+<td>Date or recency</td>
+<td>Medium. Recency matters, but default newest-first (LD30) already handles it.</td>
+<td><strong>[LOCKED]</strong> Default sort covers it. A dedicated filter is low value.</td>
+</tr>
+<tr class="even">
+<td>Experience type or theme</td>
+<td>Medium-high, but better as highlight chips (3.2) than as a filter.</td>
+<td><strong>[NEW]</strong> Ship as chips, not a filter.</td>
+</tr>
+</tbody>
+</table>
+<p>The trap to avoid is shipping a full filter bar at launch when tours have four reviews each. The master already avoids it. Hold the line.</p>
+<h3 id="which-review-details-raise-conversion">3.4 Which review details raise conversion</h3>
+<p>In rough order of conversion impact for a tour marketplace:</p>
+<ol type="1">
+<li><strong>The verified-booking badge and the verification sub-line.</strong> This is the single most important review detail for a young brand. It is the difference between "reviews" and "trustworthy reviews." Already locked as the sub-line; add a per-card badge.</li>
+<li><strong>Photos from guests.</strong> High-impact review content: shoppers who interact with review photos and video convert about twice the baseline visitor (PowerReviews, 2022), and roughly 77 percent seek out customer photos before buying. The master activates a photo carousel at 3 or more photo reviews (<code>photo_review_count</code>). Make photo upload a frictionless optional step in the collection flow (section 6).</li>
+<li><strong>The rating distribution chart.</strong> Locked and clickable (LD31). It signals nothing-to-hide and gives a fast path to negatives.</li>
+<li><strong>Guest type and travel month per card.</strong> Context that lets a buyer pattern-match to themselves.</li>
+<li><strong>Highlights or theme chips.</strong> The fast path to the review that answers the buyer's specific question.</li>
+<li><strong>Helpful votes.</strong> The master defers these to V2, correctly: at launch volumes a "0 found this helpful" counter reads as a negative signal. Keep deferred.</li>
+</ol>
+<h3 id="where-the-review-block-belongs-for-maximum-cro-impact">3.5 Where the review block belongs for maximum CRO impact</h3>
+<p>The master's answer is already the textbook-correct one, so the recommendation is to keep it.</p>
+<ul>
+<li><strong>Above the fold: the preview module (LD29).</strong> Early trust, before scroll. This is the highest-impact placement and it is locked.</li>
+<li><strong>The meta row rating at the H1 (LD11).</strong> The headline number where the eye lands first.</li>
+<li><strong>The full section as the last H2, right before Related Tours (LD16).</strong> Reviews are the final validation in the persuasion-ordered page. The master's section order puts emotional sell and value first, logistics in the middle, and reviews last as the closing argument before the cross-sell. That is correct and matches Viator and Klook.</li>
+</ul>
+<p>One thing not to do: do not move the full reviews section higher up the page to "show off" reviews. The sticky booking widget and the preview module already keep review proof in view. Burying the overview under a wall of reviews would hurt the persuasion sequence the master deliberately built.</p>
+<hr />
+<h2 id="trustpilot-advice">4. Trustpilot advice</h2>
+<p>This section gives the critical read you asked for: is Trustpilot the right tool, and exactly how should Island Tours use it.</p>
+<h3 id="is-trustpilot-a-strong-choice-for-island-tours">4.1 Is Trustpilot a strong choice for Island Tours</h3>
+<p>Yes, for one specific job: platform trust. No, for everything else.</p>
+<p>Trustpilot is a service-review platform. Its core product reviews the company, not individual products. It runs an open model: any consumer can leave an organic review, and businesses can also invite customers through Trustpilot's tools. The name is widely recognized by European consumers, and that recognition is the whole value: a Trustpilot badge says "an independent third party vouches that this company is real and treats people fairly." For a young, unknown brand asking strangers for a deposit, that is worth a lot, early in the journey.</p>
+<p>As of early 2026 Trustpilot carries roughly 350 million reviews across about 1.3 million businesses.</p>
+<p>What Trustpilot is not is a tour review engine. It is not built to sit on your tour pages, attribute reviews to specific departures, feed your AggregateRating schema, or power on-page filters. Trying to make it do that job fights the tool.</p>
+<h3 id="the-advantages-of-trustpilot">4.2 The advantages of Trustpilot</h3>
+<ul>
+<li><strong>External credibility.</strong> A third-party badge is more believable than self-hosted reviews precisely because you do not control it. This is its single biggest advantage and it is real.</li>
+<li><strong>Google store ratings (formerly Seller Ratings).</strong> Trustpilot is a Google-licensed review partner. Crossing Google's bar (about 100 eligible reviews and a 3.5 star minimum) can put star ratings under your Google Ads and in Google's store-rating surfaces, which lifts ad click-through. For a platform that runs Google Ads as a primary channel (the master treats the Activity Hub and All Tours pages as Ads landing surfaces), this is a concrete, measurable benefit.</li>
+<li><strong>Widgets (TrustBoxes).</strong> Drop-in widgets for the homepage strip, footer, and checkout trust area. Low engineering cost.</li>
+<li><strong>CRO at the platform-trust moment.</strong> A recognizable score on the homepage and at checkout reduces the "is this site legit" hesitation that kills first-time conversion.</li>
+<li><strong>Collection tooling.</strong> Automated invitations and reminders, so you can build a platform review base without building that machinery yourself.</li>
+</ul>
+<h3 id="the-disadvantages-and-risks">4.3 The disadvantages and risks</h3>
+<ul>
+<li><strong>It is a rented asset.</strong> Reviews on Trustpilot live on Trustpilot's domain and behind Trustpilot's subscription. Stop paying and the widgets degrade. Your first-party tour reviews have none of this dependency, which is exactly why tours must stay first-party.</li>
+<li><strong>No SEO or schema value for your tour pages.</strong> Content on trustpilot.com does not help island.tours rank, and you cannot use it to legitimately mark up AggregateRating on your own tour pages.</li>
+<li><strong>The open model cuts both ways.</strong> Anyone can post an organic review, including non-customers and competitors. You can flag policy violations, but you do not have the clean verified-booking guarantee your first-party system has. This is fine for platform trust, and a poor fit for tour-level decisions.</li>
+<li><strong>Cost.</strong> Trustpilot's paid tiers are not cheap, and the genuinely useful features (Seller Ratings, product reviews, advanced widgets) sit on higher tiers.</li>
+<li><strong>Confusion risk.</strong> If a Trustpilot score appears anywhere near a tour, buyers cannot tell what the rating is about. This is the section 1.5 risk, and Trustpilot makes it easy to trip into.</li>
+</ul>
+<h3 id="should-island-tours-have-one-trustpilot-profile">4.4 Should Island Tours have one Trustpilot profile</h3>
+<p>Yes. One business profile for the island.tours domain. This is how Trustpilot is designed to work: one profile per domain, accumulating the platform-level TrustScore. One profile concentrates your review volume into a single strong number, which is what drives Seller Ratings and recognition.</p>
+<h3 id="should-each-tour-have-its-own-trustpilot-profile">4.5 Should each tour have its own Trustpilot profile</h3>
+<p>No. Emphatically. Per-tour Trustpilot profiles would fragment your volume into dozens of near-empty profiles, none of which reaches a credible score, none of which you can manage at scale, and all of which dilute the one domain profile that actually matters. It also is not what the per-domain model is built for. This is the clearest "do not do it" in the whole Trustpilot question.</p>
+<p>The same logic rejects per-operator Trustpilot profiles. Your operators are not the Trustpilot customer, Island Tours is. Operator reputation belongs in your first-party system (the Provider Rating, LD11), not in a sprawl of third-party profiles you cannot control.</p>
+<h3 id="can-trustpilot-product-reviews-treat-tours-as-products">4.6 Can Trustpilot Product Reviews treat tours as products</h3>
+<p>Technically yes. Trustpilot Product Reviews lets you attach reviews to specific product SKUs, and you could model each tour as a SKU. But you should not make this your tour review system, for three reasons.</p>
+<p>First, it still hands your highest-value first-party asset to a third party. Product Reviews are hosted by Trustpilot, and although they can be embedded back on your pages via widgets and fed to Google Shopping, the canonical store and the relationship stay with Trustpilot, with weaker SEO and ownership than a system you own outright.</p>
+<p>Second, it is a heavier integration (a product feed, SKU mapping, review syndication) for a worse outcome than the first-party system you have already specced.</p>
+<p>Third, and most important, it is redundant. Your own E.7 system already does tour-level reviews better, with verified bookings, on-page schema, and full control. Product Reviews would be a second, weaker tour-review store competing with the one you own.</p>
+<p>There is one real future case: if a paid channel or partner ever demands third-party-verified tour-level review badges that you cannot satisfy with first-party data, Trustpilot Product Reviews could supply a syndicated badge layer under the single profile, displayed on your pages via widgets. That is a phase-four option to keep open, not a launch decision. Until then, first-party owns the tour page.</p>
+<h3 id="is-it-smarter-to-tag-trustpilot-service-reviews-per-tour-or-operator">4.7 Is it smarter to tag Trustpilot service reviews per tour or operator</h3>
+<p>For internal analytics, yes, this is the smart middle path. Trustpilot service reviews can carry tags or metadata. When you invite a customer to leave a platform review after a specific tour, you can tag that review with the tour and operator behind the scenes. That lets you slice your platform reputation by tour and operator for your own insight, without ever creating per-tour profiles or showing tour-level Trustpilot scores publicly.</p>
+<p>The rule: tag privately, display platform-level. The public Trustpilot surface stays the one domain TrustScore. The tags are an internal analytics convenience, not a public review structure.</p>
+<h3 id="the-concrete-trustpilot-setup-to-adopt">4.8 The concrete Trustpilot setup to adopt</h3>
+<p>A specific, buildable recommendation.</p>
+<ol type="1">
+<li><strong>One Trustpilot business profile</strong> on the island.tours domain. Service reviews only.</li>
+<li><strong>Automated collection, invited neutrally [v0.2 correction].</strong> After a tour, your own review flow (section 6) asks the tour-experience question first, then invites the customer to leave a Trustpilot platform review. The invitation goes to every customer on the same basis, regardless of how they rated the tour. Do not route only happy customers to Trustpilot: that is review gating, which breaches Trustpilot's own rules and is the conduct a regulator fined Trustpilot 4 million euro over (see 4.9). Unhappy customers are additionally offered a private "what went wrong" channel, alongside the neutral invitation, never instead of it.</li>
+<li><strong>Tag each invitation</strong> with tour and operator for internal analytics. Display stays platform-level.</li>
+<li><strong>Widgets in three places only:</strong> the homepage social proof strip (already locked at 100 or more reviews), the footer mini-badge, and the checkout trust area as a secondary signal. Never on a tour page.</li>
+<li><strong>Claim Google store ratings</strong> once you cross the threshold (about 100 eligible reviews, 3.5 stars), to put stars on your Google Ads.</li>
+<li><strong>Keep all tour reviews first-party.</strong> Trustpilot never touches the tour page, the tour AggregateRating, or the tour cards.</li>
+</ol>
+<h3 id="a-compliance-caution-on-review-gating-v0.2-correction">4.9 A compliance caution on review gating [v0.2 correction]</h3>
+<p>This is the rule the first draft got wrong, so read it carefully. Inviting only happy customers to a third-party platform is review gating, and it is not safe. Trustpilot's own guidelines prohibit selectively inviting satisfied customers, and the business account can be sanctioned or delisted for it. The Italian competition authority fined Trustpilot 4 million euro in decision PS12962 partly because its tools let businesses "select the consumers to whom review invitations are sent," which it treated as a misleading practice under EU consumer law. The legal theory reaches a business that skews its own invitation sample, and the regulatory direction (including the US FTC's 2024 review-gating ban) is one way.</p>
+<p>So the line is not "gate the ask, never gate publication." It is stronger: do not gate either one. Invite every customer to the platform review on the same neutral basis, publish every first-party review regardless of score, and disclose how you verify. A private service-recovery channel for unhappy customers is fine and encouraged, but only alongside the neutral invitation, never as a filter that withholds it. One more platform rule: Trustpilot bans incentivized reviews, so attach no reward to a Trustpilot invitation, even though disclosed incentives would be lawful under EU law. Section 10 covers the wider compliance frame.</p>
+<hr />
+<h2 id="the-own-review-system">5. The own review system</h2>
+<p>Most of this exists in the master. This section consolidates it into one schema, names the gaps, and (in Appendix A) drafts the spec to close them.</p>
+<h3 id="what-the-master-already-locks">5.1 What the master already locks</h3>
+<p><strong>[LOCKED]</strong> Appendix E.7 defines the reviews entity: reviewer first name plus last initial only, reviewer type enum, travel month and year (no exact dates, for privacy), rating 1 to 5, text per locale with a translation cache (LD32), photos array, helpful count, operator response (no editing), and moderation status. Submission is gated on a confirmed <code>booking_id</code>. Tour aggregates derive from approved records only.</p>
+<p>The privacy choices here are deliberate and good: a first name plus last initial and a travel month, never a full name or an exact date, which protects the reviewer while keeping the review credible.</p>
+<h3 id="what-data-to-store-per-review-the-consolidated-schema">5.2 What data to store per review (the consolidated schema)</h3>
+<p>Your question listed the fields you expect. Mapped against the locked E.7 and the master's wider data model, here is the consolidated target. Fields marked <strong>[LOCKED]</strong> are already in the master. Fields marked <strong>[NEW]</strong> are additions that Appendix A drafts into an E.7 expansion. None of the additions contradict a locked decision, they fill gaps.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td>[NEW]</td>
+<td>Primary key, one record per review.</td>
+</tr>
+<tr class="even">
+<td><code>booking_id</code></td>
+<td>[LOCKED]</td>
+<td>The verification gate. No booking, no review.</td>
+</tr>
+<tr class="odd">
+<td><code>tour_id</code></td>
+<td>[NEW]</td>
+<td>Derived from the booking. Drives tour aggregates. The master's aggregates imply this link but E.7 does not list the column.</td>
+</tr>
+<tr class="even">
+<td><code>operator_id</code></td>
+<td>[NEW]</td>
+<td>Derived from the booking. Drives the Provider Rating (LD11) and operator analytics.</td>
+</tr>
+<tr class="odd">
+<td><code>customer_id</code></td>
+<td>[NEW]</td>
+<td>The E.8 hashed-email id. One review per booking per customer.</td>
+</tr>
+<tr class="even">
+<td><code>rating</code></td>
+<td>[LOCKED]</td>
+<td>Integer 1 to 5.</td>
+</tr>
+<tr class="odd">
+<td><code>text</code></td>
+<td>[LOCKED]</td>
+<td>Stored in the original locale. Machine-translated on demand (LD32), cached.</td>
+</tr>
+<tr class="even">
+<td><code>original_locale</code></td>
+<td>[LOCKED]</td>
+<td>Retained for the show-original toggle (LD32).</td>
+</tr>
+<tr class="odd">
+<td><code>travel_month</code>, <code>travel_year</code></td>
+<td>[LOCKED]</td>
+<td>No exact date, for privacy. This is your "travel date," privacy-safe.</td>
+</tr>
+<tr class="even">
+<td><code>created_at</code></td>
+<td>[NEW]</td>
+<td>The review submission date. This is your "review date." Drives default newest-first sort (LD30) and the LD29 card date.</td>
+</tr>
+<tr class="odd">
+<td><code>reviewer_first_name</code>, <code>reviewer_last_initial</code></td>
+<td>[LOCKED]</td>
+<td>Privacy-preserving display name.</td>
+</tr>
+<tr class="even">
+<td><code>reviewer_type</code> (guest type)</td>
+<td>[LOCKED data point, [NEW] collect-at-launch]</td>
+<td>Enum: couple, family, friends, solo. The master defers collection to V2. Recommendation: collect from launch (3.2).</td>
+</tr>
+<tr class="odd">
+<td><code>photos[]</code></td>
+<td>[LOCKED]</td>
+<td>Drives the photo carousel at 3 or more photo reviews.</td>
+</tr>
+<tr class="even">
+<td><code>status</code> (moderation)</td>
+<td>[LOCKED]</td>
+<td>Enum: pending, approved, rejected, held. Only approved records feed aggregates.</td>
+</tr>
+<tr class="odd">
+<td><code>source</code></td>
+<td>[NEW]</td>
+<td>Enum: native (default, the only source on tour pages), and reserved values for any future imported or syndicated reviews, always labeled and never blended into native aggregates.</td>
+</tr>
+<tr class="even">
+<td><code>verified</code> flag</td>
+<td>[NEW]</td>
+<td>Boolean, always true for native given the booking gate, but stored explicitly so the verification claim is auditable and so any future non-native source is unambiguously distinguishable.</td>
+</tr>
+<tr class="odd">
+<td><code>operator_response</code>, <code>operator_response_at</code></td>
+<td>[LOCKED, with a conflict to resolve]</td>
+<td>E.7 says operator response; the canonical source Section4_7 says platform-authored. See 7.4 and Appendix A.</td>
+</tr>
+<tr class="even">
+<td><code>helpful_count</code></td>
+<td>[LOCKED, V2]</td>
+<td>Deferred to V2. Re-add when helpful votes activate.</td>
+</tr>
+<tr class="odd">
+<td><code>theme_tags[]</code></td>
+<td>[NEW]</td>
+<td>Manual admin tags for highlight chips (3.2), the pre-AI version of LD29 Tier 3.</td>
+</tr>
+<tr class="even">
+<td><code>tour_departure_id</code></td>
+<td>[NEW, optional]</td>
+<td>Links the review to the specific departure (E.9), useful for operator insight and seasonality.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-the-review-flow-should-work-after-a-tour">5.3 How the review flow should work after a tour</h3>
+<p>This is the real gap. The master's transactional email sequence is confirmation, then the operator balance email, then the pre-tour reminder, then (on cancellation) the cancellation confirmation. There is no post-tour review request anywhere. Nothing currently asks the guest to review. Closing this is the highest-leverage action in this whole advisory, because the best-designed review display is worthless with no reviews flowing in.</p>
+<p><strong>[NEW]</strong> The recommended flow, designed to sit in the existing email system as a fifth sibling template (the master already has a recognizable template family: confirmation and reminder are deliberately built as siblings).</p>
+<ul>
+<li><strong>Trigger:</strong> tour completion, measured from <code>tour_end_datetime</code> (already on the booking, E.8). Tours are single-day (LD25), so the experience is same-day and freshest right after.</li>
+<li><strong>Suppression:</strong> never send for cancelled, forfeited, operator-cancelled, or no-show bookings. Mirror the pre-tour reminder's suppression rules (6.7).</li>
+<li><strong>One review per booking.</strong> The token is single-use. A completed review closes the invitation.</li>
+</ul>
+<h3 id="when-to-send-the-review-invitation">5.4 When to send the review invitation</h3>
+<p><strong>[NEW, refined in v0.2]</strong> Send the first request the morning after the tour, at roughly 10:00 tour-local. This matches the two direct day-tour peers (Viator sends day one, GetYourGuide one to two days after), and a day tour is fully experienced by then, so the memory and the photos are fresh. Treat the exact timing as a launch default to A/B test, not a proven optimum: the strongest controlled study on the question (a Journal of Marketing field experiment run partly on a guided-tours marketplace) found that very early review reminders can reduce response for experience goods, with a larger effect on younger travelers, so a day-2 or day-3 send is a fair test variant. Send one reminder if there is no response, and lean toward 5 to 7 days rather than 72 hours: a single reminder is well supported, and the longer interval matches TripAdvisor's roughly one-week practice while avoiding the reactance the study flags. Two touches maximum, then stop.</p>
+<h3 id="which-channels-to-use">5.5 Which channels to use</h3>
+<p><strong>[NEW]</strong> Email primary, WhatsApp as the reminder, no SMS at launch.</p>
+<ul>
+<li><strong>Email (primary).</strong> You already have a verified transactional email stack (Resend, with SPF, DKIM, DMARC on a dedicated subdomain) and the customer's email. The review request is a transactional sibling of the confirmation and reminder. This is the obvious primary channel, zero new infrastructure.</li>
+<li><strong>WhatsApp (the reminder only).</strong> WhatsApp is high-engagement and you already use <code>wa.me</code> deep links across the platform. A single review nudge via WhatsApp for the reminder touch will outperform an email reminder where you have a number. Two constraints from the verification: WhatsApp Business requires prior opt-in and an approved (non-promotional) message template, so capture WhatsApp review-contact opt-in at booking; and keep it to the reminder, not the first touch, to respect the master's deliberate restraint on WhatsApp (6.6 keeps it out of the commit moment, but a post-tour nudge is a different, low-pressure context).</li>
+<li><strong>SMS (skip at launch).</strong> There is no SMS provider in the stack, SMS adds cost and deliverability complexity, and it buys little over email plus WhatsApp. The often-quoted "98 percent SMS open rate" is not a measured figure, so it is not a reason to build SMS. One segment to watch: US travelers skew to SMS and iMessage over WhatsApp, so revisit SMS if US demand grows. Phone is captured, so the option stays open.</li>
+</ul>
+<h3 id="how-to-prevent-review-fatigue-when-you-also-use-trustpilot">5.6 How to prevent review fatigue when you also use Trustpilot</h3>
+<p>This is the question that most teams get wrong, and the answer is a single unified flow, not two parallel asks.</p>
+<p><strong>[NEW]</strong> The anti-fatigue design:</p>
+<ol type="1">
+<li><strong>One invitation, one flow.</strong> The post-tour email asks the tour-experience question first. The Trustpilot platform ask is an optional last step inside the same flow (section 6), not a separate email a day later. The customer is asked once.</li>
+<li><strong>Invite to Trustpilot neutrally, do not gate it [v0.2 correction].</strong> Every customer sees the same Trustpilot invitation, regardless of score. The earlier draft suggested showing it only to happy customers, which is review gating and is not allowed (4.9). Anti-fatigue comes from the single flow and the frequency cap below, not from filtering by sentiment.</li>
+<li><strong>Frequency-cap per customer.</strong> A repeat customer who reviewed last month is not asked to do a platform review again. Cap the Trustpilot ask to once per customer per quarter.</li>
+<li><strong>Never double-send.</strong> If a customer completes the first-party review, suppress any separate Trustpilot invitation Trustpilot's own tooling might otherwise fire. Drive Trustpilot invitations from your flow, not from Trustpilot's automatic service running in parallel.</li>
+</ol>
+<p>The principle: the customer experiences one warm "how was it" moment, not a drip of review begging from two systems.</p>
+<hr />
+<h2 id="review-collection-flow">6. Review collection flow</h2>
+<p>A customer-friendly flow that maximizes completion while keeping the tour review and the platform review cleanly separate.</p>
+<h3 id="the-flow-step-by-step">6.1 The flow, step by step</h3>
+<p>The email links to a tokenized page on island.tours, the same pattern as the cancellation flow (6.4 in the master uses a tokenized page keyed on the booking reference). Progressive disclosure: each step is optional after the first, and the page commits the rating immediately so a one-tap review still counts.</p>
+<pre><code>EMAIL / WHATSAPP
+   &quot;How was {Tour name}?&quot;  [tap the stars]
+        |
+        v
+STEP 1  TOUR RATING (required, one tap)
+   How was your tour experience?
+   [* * * * *]   &lt;- tapping a star submits immediately and saves
+        |
+        v
+STEP 2  TOUR REVIEW TEXT (optional)
+   Tell other travelers what it was like.
+   helper prompts: the guide? the highlights? good for kids?
+   [ free text ]   [ Skip ]
+        |
+        v
+STEP 3  PHOTOS (optional)
+   Add a photo or two from your day.
+   [ upload ]   [ Skip ]
+        |
+        v
+STEP 3b GUEST TYPE (optional, one tap)
+   Who did you travel with?  [ Couple ][ Family ][ Friends ][ Solo ]
+        |
+        v
+STEP 4  BOOKING EXPERIENCE (optional, shown to EVERYONE)
+   neutral invitation, never gated on a positive rating
+   &quot;How was booking with Island Tours?&quot;
+   [ Leave a review on Trustpilot -&gt; ]   [ No thanks ]
+   if step 1 was low, also: [ Tell us privately what went wrong ]
+        |
+        v
+   THANK YOU  (+ a soft cross-sell: &quot;Ready for your next island day?&quot;)</code></pre>
+<p>The Trustpilot invitation in step 4 is shown to every customer on the same basis, never only to happy ones, because sentiment-gating a third-party invitation is review gating (4.9). When step 1 is low, the page additionally offers a private recovery prompt, "Sorry it missed the mark. Tell us what went wrong, just to us," alongside the neutral invitation, not instead of it. That routes to a private feedback channel and a support follow-up. The tour review itself (steps 1 to 3) is always published in full, whatever the score. This is the service-recovery path and the compliance line from 4.9.</p>
+<h3 id="the-two-questions-kept-distinct">6.2 The two questions, kept distinct</h3>
+<p>The design hinges on never merging these two:</p>
+<ul>
+<li><strong>"How was your tour experience?"</strong> This is the tour review. It is about the experience and the operator. It is stored in E.7, attributed to the tour, shown on the tour page, and counts toward the tour rating. This is step 1 to 3.</li>
+<li><strong>"How was booking with Island Tours?"</strong> This is the platform review. It is about the booking, payment, and support. It is offered to every customer with a neutral Trustpilot invitation; unhappy customers are also offered a private recovery channel. It never touches the tour rating. This is step 4.</li>
+</ul>
+<p>The visual and copy separation is the safeguard. Step 4 has a different header, a different framing ("booking with Island Tours" not "your tour"), and a clear platform context (the Trustpilot logo). A customer is never confused about which thing they are rating.</p>
+<h3 id="example-invitation-copy-english">6.3 Example invitation copy, English</h3>
+<p><strong>Email, first send (morning after the tour).</strong></p>
+<p>Subject: How was {Tour name}?</p>
+<p>Preview: Your review helps the next traveler, and the islanders who showed you around.</p>
+<p>Body:</p>
+<blockquote>
+<p>Hi {First name},</p>
+<p>We hope {Tour name} was everything you came to Curacao for.</p>
+<p>Travelers trust other travelers, so a quick word about your day helps the next guest book with confidence, and it means a lot to the local team who ran your tour.</p>
+<p>It takes about thirty seconds.</p>
+<p>[ Rate your tour ]</p>
+<p>Thank you for spending your day with us. Built by Islanders.</p>
+</blockquote>
+<p><strong>WhatsApp reminder (72 hours later, if no response).</strong></p>
+<blockquote>
+<p>Hi {First name}, did you enjoy {Tour name}? A quick star rating helps the next traveler and the local team. Here is the link, it takes thirty seconds: {link}</p>
+</blockquote>
+<p><strong>On-page micro-copy.</strong></p>
+<ul>
+<li>Step 1 header: "How was your tour experience?"</li>
+<li>Step 2 header: "Tell other travelers what it was like." Helper: "What stood out? The guide, the highlights, whether it suited your group?"</li>
+<li>Step 3 header: "Add a photo or two from your day."</li>
+<li>Step 4 header (4 to 5 stars only): "Glad you enjoyed it. How was booking with Island Tours?"</li>
+<li>Recovery header (1 to 3 stars): "Sorry it missed the mark. Tell us what went wrong, just to us."</li>
+<li>Thank-you: "Thank you. Your review is in. Ready for your next island day?"</li>
+</ul>
+<h3 id="example-invitation-copy-dutch">6.4 Example invitation copy, Dutch</h3>
+<p><strong>E-mail, eerste verzending (ochtend na de tour).</strong></p>
+<p>Onderwerp: Hoe was {Tour name}?</p>
+<p>Preview: Jouw review helpt de volgende reiziger, en de eilanders die je rondleidden.</p>
+<p>Body:</p>
+<blockquote>
+<p>Hoi {First name},</p>
+<p>We hopen dat {Tour name} alles was waarvoor je naar Curacao kwam.</p>
+<p>Reizigers vertrouwen op andere reizigers. Een kort woordje over je dag helpt de volgende gast met vertrouwen boeken, en het betekent veel voor het lokale team dat je tour verzorgde.</p>
+<p>Het kost ongeveer dertig seconden.</p>
+<p>[ Beoordeel je tour ]</p>
+<p>Bedankt dat je je dag met ons doorbracht. Built by Islanders.</p>
+</blockquote>
+<p><strong>WhatsApp-herinnering (72 uur later, als er geen reactie is).</strong></p>
+<blockquote>
+<p>Hoi {First name}, heb je genoten van {Tour name}? Een snelle sterbeoordeling helpt de volgende reiziger en het lokale team. Hier is de link, het kost dertig seconden: {link}</p>
+</blockquote>
+<p><strong>Microcopy op de pagina.</strong></p>
+<ul>
+<li>Stap 1 kop: "Hoe was je tourervaring?"</li>
+<li>Stap 2 kop: "Vertel andere reizigers hoe het was." Helper: "Wat viel op? De gids, de hoogtepunten, of het bij je gezelschap paste?"</li>
+<li>Stap 3 kop: "Voeg een foto of twee van je dag toe."</li>
+<li>Stap 4 kop (alleen 4 tot 5 sterren): "Fijn dat je genoten hebt. Hoe was het boeken via Island Tours?"</li>
+<li>Herstel-kop (1 tot 3 sterren): "Jammer dat het tegenviel. Vertel ons wat er misging, alleen aan ons."</li>
+<li>Bedankt: "Bedankt. Je review staat erop. Klaar voor je volgende eilanddag?"</li>
+</ul>
+<p>Note on brand voice: the customer-facing deliverable is English (working agreement). The Dutch above is provided because you asked for both, and because some guests book in Dutch (the platform runs seven locales). Both versions are translation-ready strings for <code>next-intl</code>, not hardcoded copy.</p>
+<hr />
+<h2 id="admin-and-backend-requirements">7. Admin and backend requirements</h2>
+<p>The master has the data model (E.7 moderation status) but no admin spec for reviews. This section defines the functions, the permission split, and resolves the one open conflict.</p>
+<h3 id="review-functions-in-the-island-tours-admin">7.1 Review functions in the Island Tours admin</h3>
+<p><strong>[NEW]</strong> The admin needs a Reviews module under the existing Trips Management structure, sitting naturally next to Bookings (because every review is gated on a booking) and Tour Partners (because every review attributes to an operator). Functions:</p>
+<ul>
+<li><strong>Moderation queue.</strong> New reviews land as <code>pending</code>. Admin approves, rejects, or holds. Only approved records feed aggregates and display. This is the single most important function and it must exist from launch.</li>
+<li><strong>View and filter.</strong> Filter by tour, operator, rating, status, source, date, language, with-photos. This is operational triage, not the consumer filter (which is V2).</li>
+<li><strong>Link to booking, tour, operator.</strong> Automatic from <code>booking_id</code>, displayed for context and fraud checks.</li>
+<li><strong>Translate.</strong> Trigger or refresh the machine translation cache (LD32); never edit the source text.</li>
+<li><strong>Tag themes.</strong> Apply <code>theme_tags</code> for the highlight chips (3.2).</li>
+<li><strong>Feature and unfeature.</strong> Mark a review as featured for the LD29 preview module or the homepage tour-quote strip.</li>
+<li><strong>Respond.</strong> Publish a response (see 7.4 for who authors it).</li>
+<li><strong>Publish and unpublish.</strong> On documented policy grounds only, with an audit log. Never to hide a negative review for being negative (compliance, section 10).</li>
+<li><strong>Report or flag handling.</strong> Process operator and user flags (abuse, off-topic, personal data) and decide on policy grounds.</li>
+</ul>
+<h3 id="what-rights-island-tours-has">7.2 What rights Island Tours has</h3>
+<p>Island Tours is the data owner and the only party that can change a review's published state. Full rights: moderate, approve, reject, hold, translate, tag, feature, publish, unpublish (on policy grounds, audited), and respond. Island Tours also owns the aggregates and the verification guarantee.</p>
+<h3 id="what-rights-a-tour-partner-or-operator-gets">7.3 What rights a tour partner or operator gets</h3>
+<p><strong>[NEW]</strong> Operators get visibility and a voice, never control over publication. Specifically:</p>
+<ul>
+<li><strong>Read access</strong> to their own tours' reviews and rating analytics. Not other operators' reviews.</li>
+<li><strong>Submit a response</strong> to a review, which enters a moderation queue and publishes after admin approval. No editing after publish (consistent with the E.7 "no editing" rule).</li>
+<li><strong>Flag a review</strong> for policy violation (abuse, off-topic, contains personal data, not a real customer). The flag routes to Island Tours admin, who decides. A flag is a request, never an action.</li>
+<li><strong>No delete, no unpublish, no edit</strong> of any review. Operators cannot remove or hide reviews, full stop.</li>
+</ul>
+<h3 id="should-an-operator-be-able-to-respond-to-reviews">7.4 Should an operator be able to respond to reviews</h3>
+<p>There is an unresolved conflict in your own documents here, and it needs a decision. Appendix E.7 of the master says "operator response (no editing)." The canonical source Section4_7 paragraph 4.7.18 (Component 7) says the response is "platform response (Island Tours-authored, not operator)." These contradict each other. Per the working agreement the master wins, so today the answer is operator response. But the canonical source it points to says the opposite, which means the master is carrying a latent inconsistency that will surface the moment this gets built.</p>
+<p><strong>[CHANGE]</strong> Recommended resolution, phased:</p>
+<ul>
+<li><strong>At launch (low volume): platform-authored responses.</strong> Island Tours replies in brand voice. This gives you tone control, a small moderation surface, and consistency while volume is low. It aligns with the canonical Section4_7 source.</li>
+<li><strong>From phase 4 (operator dashboards): add moderated operator responses.</strong> Once operators have a dashboard, let them respond in their own voice, through the moderation queue, no editing after publish. This aligns with the master's E.7 intent and scales response volume off the Island Tours team.</li>
+</ul>
+<p>This resolves the conflict cleanly: short term matches the canonical source, long term matches the master's E.7 field, and the transition is a feature release rather than a contradiction. Appendix A drafts the conflict log entry that records this.</p>
+<h3 id="how-to-stop-operators-removing-negative-reviews">7.5 How to stop operators removing negative reviews</h3>
+<p>This is both a trust requirement and a legal one, and the architecture already mostly enforces it.</p>
+<ul>
+<li><strong>Reviews are platform-owned.</strong> Operators have no delete, unpublish, or edit permission in the data model. There is no button to press.</li>
+<li><strong>Flag, do not remove.</strong> The only operator lever is a flag that routes to Island Tours. The decision is always Island Tours', on documented policy grounds.</li>
+<li><strong>Audit everything.</strong> Every status change on a review is logged with actor, timestamp, and reason. If a review is ever unpublished, there is a record of who did it and why.</li>
+<li><strong>Policy grounds are narrow and written down.</strong> A review can be removed for being fake, abusive, off-topic, or containing personal data. It cannot be removed for being negative, low, or commercially inconvenient. This is the Omnibus line (section 10), and it is also what keeps your reviews believable.</li>
+</ul>
+<p>The reason this matters for conversion, not just compliance: the moment buyers suspect operators can scrub bad reviews, every five-star rating becomes worthless. The integrity of the system is the product.</p>
+<hr />
+<h2 id="ux-and-ui-recommendations">8. UX and UI recommendations</h2>
+<p>Wireframes below use the master's convention: emoji are text-shorthand for SVG icons (LD20), never rendered in production. Brand orange is <code>#E8611A</code>. These designs respect the locked components and add only what the master leaves open.</p>
+<h3 id="homepage-social-proof-desktop">8.1 Homepage social proof, desktop</h3>
+<pre><code>+--------------------------------------------------------------------------+
+|                        Travelers trust Island Tours                      |
+|                                                                          |
+|     [Trustpilot logo]  4.7  * * * * *   based on 1,240 reviews           |
+|                                                                          |
+|  +----------------+   +----------------+   +----------------+            |
+|  | &quot;Booked in two |   | &quot;Got my refund |   | &quot;WhatsApp team |            |
+|  |  minutes, paid |   |  with zero     |   |  replied at    |            |
+|  |  20% deposit.&quot; |   |  hassle.&quot;      |   |  9pm. Locals.&quot; |            |
+|  |  Sarah, NL     |   |  Mark, US      |   |  Lea, DE       |            |
+|  +----------------+   +----------------+   +----------------+            |
++--------------------------------------------------------------------------+
+
+   (renders only at &gt;=100 platform reviews; below that, this band is absent
+    and the micro trust bar carries trust on its own)</code></pre>
+<p>Note every quote here is about booking, payment, and support, not about a tour. That is what keeps it a platform-trust band.</p>
+<h3 id="homepage-tour-quote-strip-desktop-new-volume-gated">8.2 Homepage tour-quote strip, desktop (new, volume-gated)</h3>
+<pre><code>+--------------------------------------------------------------------------+
+|                     What guests say about our tours                      |
+|                                                                          |
+|  &lt; +------------------+  +------------------+  +------------------+  &gt;    |
+|    | * * * * *        |  | * * * * *        |  | * * * * *        |       |
+|    | &quot;Calm water, the |  | &quot;The BBQ on the  |  | &quot;Our guide knew  |       |
+|    |  kids loved it.&quot; |  |  beach was...&quot;   |  |  every reef.&quot;    |       |
+|    | Anna, on         |  | Tom, on Klein    |  | Priya, on Coral  |       |
+|    | Dolphin Swim -&gt;  |  | Curacao Trip -&gt;  |  | Snorkel Cruise -&gt;|       |
+|    +------------------+  +------------------+  +------------------+       |
++--------------------------------------------------------------------------+
+
+   each card links to its tour; attribution names the tour explicitly
+   (renders only at a sensible tour-review volume, e.g. &gt;=50 approved)</code></pre>
+<h3 id="homepage-social-proof-mobile">8.3 Homepage social proof, mobile</h3>
+<pre><code>+----------------------------+
+|  Travelers trust           |
+|  Island Tours              |
+|                            |
+|  [Trustpilot]  4.7         |
+|  * * * * *  1,240 reviews  |
+|                            |
+|  +----------------------+  |
+|  | &quot;Booked in two       |  |
+|  |  minutes.&quot;  Sarah    |  |
+|  +----------------------+  |
+|   o  o  o   (swipe dots)   |
++----------------------------+
+
+   tour-quote strip below stacks the same way:
+   one card visible, horizontal swipe, 1.2 cards peek</code></pre>
+<h3 id="tour-page-reviews-desktop">8.4 Tour page reviews, desktop</h3>
+<p>This consolidates the locked LD11, LD29, LD30, LD31, LD32 into one view, with the new badges and chips marked.</p>
+<pre><code>ABOVE THE FOLD
++-------------------------------------------------+   +------------------+
+| H1: Klein Curacao: Full-Day Catamaran Trip      |   | BOOKING WIDGET   |
+| * 4.8 (1,738) . Locals&#39; favorite . City, Island |   | (sticky)         |
+| [gallery]                                        |   |                  |
+| [Duration] [Pickup] [Languages]                  |   |                  |
+|                                                  |   |                  |
+| -- LD29 preview module (3 to 9 reviews, &gt;=4.0) --|   |                  |
+|  What our guests say  4.8 (1,738)  See all -&gt; |   |                  |
+|  +-----------------------+ +---------------------+ |                  |
+|  | * * * * *             | | * * * * *           | |                  |
+|  | &quot;Crystal water, great | | &quot;Smooth crossing,   | |                  |
+|  |  crew.&quot; [Verified]    | |  BBQ was great.&quot;    | |                  |
+|  | Anna L. . Family . Mar| | Tom R. . Couple . Feb| |                 |
+|  +-----------------------+ +---------------------+ |                  |
++-------------------------------------------------+   +------------------+
+
+FINAL H2 (seventh section, before Related Tours)
++--------------------------------------------------------------------------+
+| Reviews                                                                   |
+| Every review from a confirmed booking. No exceptions.                     |
+|                                                                           |
+| 4.8  * * * * *   1,738 reviews        [theme chips, new:]                  |
+|                                        [All][Calm water][Great crew][BBQ]  |
+| 5*  |||||||||||||||||||||||  1,510   &lt;- clickable rows (LD31)             |
+| 4*  ||||||||  180                                                          |
+| 3*  ||  32                                                                 |
+| 2*  |  10                                                                  |
+| 1*  |  6                                                                   |
+|                                                                           |
+| [Sort: Newest v]  (hidden under 10)   [Filters]  (hidden under 20)         |
+|                                                                           |
+| +----------------------------------------------------------------------+  |
+| | * * * * *   [Verified booking]                  March 2026           |  |
+| | Anna L.  .  Traveled as a family                                     |  |
+| | &quot;The water was calm enough for our 7-year-old, and the crew...&quot;      |  |
+| | [photo][photo]            [Translated by Google . Show original]     |  |
+| | -- Island Tours: &quot;Thanks Anna, so glad the little one...&quot; (resp.)   |  |
+| +----------------------------------------------------------------------+  |
+| ... more cards, newest first ...                                          |
++--------------------------------------------------------------------------+</code></pre>
+<h3 id="tour-page-reviews-mobile">8.5 Tour page reviews, mobile</h3>
+<pre><code>+----------------------------+
+| Reviews                    |
+| Every review from a        |
+| confirmed booking.         |
+|                            |
+| 4.8 * * * * * (1,738)      |
+| [All][Calm water][Crew] &gt;  |  &lt;- chips scroll
+|                            |
+| 5* ||||||||||||| 1,510     |  &lt;- tap to filter
+| 4* ||||| 180               |
+| 3* | 32   2* | 10  1* | 6  |
+|                            |
+| +------------------------+ |
+| | * * * * * [Verified]   | |
+| | Anna L. . Family . Mar | |
+| | &quot;The water was calm    | |
+| |  enough for our...&quot;    | |
+| | [photo] [photo]        | |
+| | Translated . Original  | |
+| +------------------------+ |
+|   ... stacked cards ...    |
++----------------------------+</code></pre>
+<h3 id="microcopy-library">8.6 Microcopy library</h3>
+<p><strong>Trust and verification badges.</strong></p>
+<ul>
+<li>Per-card badge: "Verified booking"</li>
+<li>Section sub-line (locked): "Every review from a confirmed booking. No exceptions."</li>
+<li>Tooltip on the badge: "This guest booked and paid through Island Tours. We only publish reviews from real bookings."</li>
+<li>Homepage platform proof: "Rated on Trustpilot" / "Real reviews from real bookings."</li>
+</ul>
+<p><strong>Empty and low-volume states.</strong> These matter more than anything for a launching marketplace, because most tours will start near zero.</p>
+<ul>
+<li><strong>Zero reviews, operator has a rating (LD11 fallback active):</strong> the meta row shows the Provider Rating; the reviews section shows the operator-level context line. Recommended copy: "New on Island Tours. This tour is run by {operator}, rated {x.x} across {n} reviews." This borrows operator trust honestly without faking tour reviews.</li>
+<li><strong>Zero reviews, no operator fallback:</strong> do not render an empty reviews section or a "be the first" placeholder on the tour page (the master's LD29 Tier 1 hides the preview module for exactly this reason). Instead, lean on the New badge (the master's recency badge for tours under 30 days with zero reviews) and the platform trust signals. Recommended line if any reviews placeholder is shown at all: "No guest reviews yet. You could be the first to tell us how it went." Use sparingly, and never where it weakens the page.</li>
+<li><strong>1 to 2 reviews (below the 3-review chart threshold):</strong> show the rating and count line, no distribution chart (per LD31). Copy: "{x.x} from {n} early reviews."</li>
+<li><strong>3 to 9 reviews:</strong> the LD29 preview module activates and the full section renders with the star chart, no sort, no filters. This is the locked happy path for a young tour.</li>
+</ul>
+<p><strong>Low-review honesty note.</strong> The instinct to pad a thin tour with borrowed or generic praise is the one to resist. The master already resists it (LD29 hides rather than fakes, the destination page refuses a thin Trustpilot badge). A New badge plus an honest operator-rating fallback converts better than a hollow review wall, and it keeps you compliant.</p>
+<p><strong>CTA toward booking from the reviews context.</strong> Keep the sticky booking widget present (it already is). Do not add a separate "book now" button inside the reviews section; the persuasion job of reviews is to feed the always-visible widget, not to compete with it.</p>
+<hr />
+<h2 id="seo-and-structured-data">9. SEO and structured data</h2>
+<h3 id="which-schema-is-worth-it-for-tour-pages">9.1 Which schema is worth it for tour pages</h3>
+<p><strong>[LOCKED]</strong> The master already specs the right markup. Section 2.6 puts "Product/Offer with ... Review plus AggregateRating from paragraph 4.7.18 and the LD29 preview cards" on the tour detail page. That is the correct, complete answer:</p>
+<ul>
+<li><code>Product</code> (the tour) with <code>Offer</code> (price, availability, accepted payment methods).</li>
+<li><code>AggregateRating</code> on the Product, populated from approved native reviews only.</li>
+<li><code>Review</code> items for the displayed reviews (the LD29 preview cards and the visible reviews section cards).</li>
+</ul>
+<p>Do not add review markup anywhere else. In particular, do not put <code>Review</code> or <code>AggregateRating</code> on an <code>Organization</code> or <code>LocalBusiness</code> entity for Island Tours itself. Google does not show review stars for an entity that controls the reviews about itself, and that rule explicitly includes reviews embedded through a third-party widget. So a Trustpilot widget on island.tours is a trust badge that earns no rich-result stars, which is another reason to keep tour AggregateRating first-party and let Trustpilot's own profile carry the platform stars.</p>
+<h3 id="when-you-may-use-aggregaterating-and-review-schema">9.2 When you may use AggregateRating and Review schema</h3>
+<p>The governing rule, from Google's structured-data policy and EU law alike: only mark up review content that is actually visible on the page, and only when it reflects genuine reviews of that specific item.</p>
+<ul>
+<li><strong>Emit <code>AggregateRating</code> only at or above the master's render threshold.</strong> Google itself sets no minimum review count (it requires a rating value plus a rating or review count, and nothing more), so the 3-review gate is the platform's own display choice, not a Google rule. The master renders the rating at 3 or more reviews (the meta row and the star chart both gate at 3). Align the schema to the same gate: no <code>AggregateRating</code> under 3 reviews. Below that, the page legitimately has no aggregate to claim.</li>
+<li><strong>Every marked-up <code>Review</code> must be visible on the page.</strong> Mark up the reviews you actually render, not the full database.</li>
+<li><strong>Use the Provider Rating fallback carefully.</strong> When LD11 shows the operator rating in place of tour reviews, that is an operator-level signal shown for context. Do not mark it up as the tour's <code>AggregateRating</code>, because it is not. Mark up the tour's own aggregate only when the tour has its own qualifying reviews.</li>
+</ul>
+<h3 id="what-content-must-be-visible-on-the-page">9.3 What content must be visible on the page</h3>
+<p>Everything you mark up. The schema must mirror the rendered page: the rating, the count, and the individual reviews in the markup are the same ones a human sees. This is both Google's requirement and the Omnibus transparency principle. The verification sub-line ("Every review from a confirmed booking") should also be visible, because it substantiates the trust claim that the stars imply.</p>
+<h3 id="how-to-avoid-misuse-and-google-risk">9.4 How to avoid misuse and Google risk</h3>
+<ul>
+<li><strong>No marked-up reviews that are not on the page.</strong> The most common cause of lost review stars. A structured-data manual action removes rich-result eligibility only, it does not lower your web ranking, so the risk here is losing the stars, not a ranking penalty.</li>
+<li><strong>No self-serving organization reviews.</strong> Keep platform reviews on Trustpilot.</li>
+<li><strong>No aggregate without real reviews.</strong> Respect the 3-review gate.</li>
+<li><strong>No blending sources into one aggregate.</strong> Native tour reviews only in the tour <code>AggregateRating</code>. If you ever display imported or third-party reviews, they are labeled and excluded from the marked-up aggregate (the <code>source</code> and <code>verified</code> fields in the E.7 expansion make this enforceable).</li>
+<li><strong>Machine-translated review text:</strong> keep the original available (LD32 show-original), and do not generate many near-duplicate translated URLs that could read as thin or duplicate content. Translate in place, do not spawn indexable translation pages per review.</li>
+</ul>
+<h3 id="how-reviews-drive-long-tail-seo-and-aeo">9.5 How reviews drive long-tail SEO and AEO</h3>
+<p>This is where first-party reviews pay back the build cost. Review text is unique, specific, constantly refreshed user content, and it is exactly the language real buyers search in.</p>
+<ul>
+<li><strong>Long-tail queries.</strong> Reviews naturally contain phrases your marketing copy never would: "calm enough for kids," "got seasick on the crossing," "the BBQ was worth it," "guide spoke Dutch." These match long-tail searches that convert because they are specific.</li>
+<li><strong>Freshness.</strong> A tour page that gains reviews monthly is a page Google sees as alive, which helps ranking versus a static operator description.</li>
+<li><strong>AEO and AI citation.</strong> The master already invests in answer-engine optimization (FAQPage schema, the Help Center). Review content, marked up as <code>Review</code>, is citable by AI answer engines for exactly the suitability questions buyers ask ("is the Klein Curacao trip good for families"). The master removed per-tour FAQ (LD21) partly because reviews answer suitability questions organically; that decision only pays off if reviews actually flow, which loops back to closing the collection gap (section 5).</li>
+<li><strong>Internal linking.</strong> The theme chips (3.2) and the related-tours rows (LD33) turn review themes into navigation, spreading link equity and keeping users on the platform.</li>
+</ul>
+<hr />
+<h2 id="compliance-and-trustworthiness">10. Compliance and trustworthiness</h2>
+<p>The legal frame and the trust frame point the same way: be transparent, show the bad with the good, and never fake or filter. Island Tours sells to EU travelers across seven locales, so EU consumer law applies, principally the Omnibus Directive as transposed across member states.</p>
+<h3 id="the-principles-to-operate-by">10.1 The principles to operate by</h3>
+<ol type="1">
+<li><strong>Verified by booking, and say so.</strong> Every native review is gated on a confirmed <code>booking_id</code>. The Omnibus Directive requires that you disclose whether and how you verify reviews. The master's sub-line does this; keep it visible and link it to a short explainer.</li>
+<li><strong>Show negative reviews.</strong> Selectively publishing positives while suppressing negatives is an explicit unfair practice under the directive. It is also bad CRO. Publish all approved reviews regardless of score.</li>
+<li><strong>Never claim false verification.</strong> Do not label anything "verified" that is not. The <code>verified</code> flag and <code>source</code> enum keep this auditable.</li>
+<li><strong>Moderate on policy, not on sentiment.</strong> Remove only fake, abusive, off-topic, or personal-data-containing reviews, with an audit trail. Never remove a review for being negative.</li>
+<li><strong>Label external reviews.</strong> If you ever show an operator's Tripadvisor or Google rating, or a Trustpilot score, label its source and never merge it into your verified tour aggregate.</li>
+<li><strong>Respect privacy.</strong> First name plus last initial, travel month not exact date (already locked in E.7). This is GDPR-friendly and reduces reviewer exposure.</li>
+</ol>
+<h3 id="how-to-disclose-that-reviews-come-from-verified-bookings">10.2 How to disclose that reviews come from verified bookings</h3>
+<p>The master's locked sub-line "Every review from a confirmed booking. No exceptions." is the disclosure, and it is well written. Strengthen it two ways, both new:</p>
+<ul>
+<li><strong>Make it a link</strong> to a one-paragraph "How we handle reviews" explainer (verification method, moderation policy, why negatives stay up). This satisfies the "how you verify" half of the Omnibus requirement, which a bare claim does not fully meet.</li>
+<li><strong>Add the per-card "Verified booking" badge</strong> so the claim is reinforced at the point of each review, not only once under the H2.</li>
+</ul>
+<h3 id="how-to-handle-negative-reviews">10.3 How to handle negative reviews</h3>
+<ul>
+<li><strong>Publish them.</strong> All approved reviews, all scores.</li>
+<li><strong>Make them easy to find.</strong> The clickable star chart (LD31) is already the fast path to one-star reviews, which 52 percent of users seek first. This is a feature, not a leak.</li>
+<li><strong>Respond constructively.</strong> A calm, specific response to a negative review converts better than the absence of the review would. At launch, Island Tours authors these (7.4); later, operators do, moderated.</li>
+<li><strong>Use them for service recovery.</strong> The collection flow routes low scorers to a private recovery channel (6.1), which is the right place to fix a problem, while the public review still stands.</li>
+</ul>
+<h3 id="why-you-must-not-show-only-positive-reviews">10.4 Why you must not show only positive reviews</h3>
+<p>Three reasons, in order of weight:</p>
+<ol type="1">
+<li><strong>It is illegal.</strong> Suppressing negatives is an unfair commercial practice under the Omnibus Directive, with real enforcement risk.</li>
+<li><strong>It does not convert.</strong> An all-five-star page reads as fake. Purchase likelihood peaks around 4.0 to 4.7 stars and then falls as ratings approach a perfect 5.0 (Spiegel Research Center, Northwestern, 2017), and most shoppers seek out negative reviews (96 percent at least sometimes, PowerReviews 2021). A 4.6 with visible criticism outperforms a suspicious 5.0.</li>
+<li><strong>It destroys the asset.</strong> The entire value of your verified-booking system is believability. Filter it once and you have spent that credibility.</li>
+</ol>
+<h3 id="how-to-avoid-misleading-buyers-with-external-reviews">10.5 How to avoid misleading buyers with external reviews</h3>
+<ul>
+<li><strong>Do not blend.</strong> Operator Tripadvisor or Google ratings, and the Trustpilot platform score, never enter the tour <code>AggregateRating</code> or the marked-up schema.</li>
+<li><strong>Label and date.</strong> If an external rating is shown at all, it carries its source name and is clearly platform-level or operator-level, not tour-level.</li>
+<li><strong>Prefer first-party on tour pages.</strong> The tour page shows your verified reviews. External signals stay on brand surfaces (Trustpilot on the homepage, footer, checkout). The Provider Rating (LD11) is the one operator-level signal allowed on a tour page, and it is your own computed number from your own data, clearly framed as the operator's rating during cold start.</li>
+</ul>
+<hr />
+<h2 id="how-large-otas-use-reviews-and-what-to-copy">11. How large OTAs use reviews, and what to copy</h2>
+<p>A practical benchmark, then the translation to Island Tours. The point is not to imitate, it is to see which patterns are revealed-preference winners across platforms that run thousands of A/B tests.</p>
+<h3 id="the-benchmark">11.1 The benchmark</h3>
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Platform</th>
+<th>Verification</th>
+<th>Review source</th>
+<th>Homepage social proof</th>
+<th>Tour or product reviews</th>
+<th>Filters</th>
+<th>Rating summary</th>
+<th>Invitation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Viator</strong></td>
+<td>Mostly verified booking, plus an ungated Tripadvisor-account path</td>
+<td>First-party, with Tripadvisor reviews as a fallback when a listing has none</td>
+<td>Brand trust plus volume claims</td>
+<td>Per-experience, prominent, photo-forward</td>
+<td>Rating, traveler type, language, keyword search</td>
+<td>Stars, count, distribution bars</td>
+<td>Post-experience email plus a text</td>
+</tr>
+<tr class="even">
+<td><strong>GetYourGuide</strong></td>
+<td>Verified purchaser (some non-completers allowed)</td>
+<td>First-party only</td>
+<td>Themed AI review summaries (2026)</td>
+<td>Per-activity, AI summary above cards</td>
+<td>Rating, traveler type, language</td>
+<td>Stars, count, AI review summary</td>
+<td>Post-activity email plus 2 reminders</td>
+</tr>
+<tr class="odd">
+<td><strong>Booking.com</strong></td>
+<td>Verified stay: must book through the platform</td>
+<td>First-party only</td>
+<td>Aggregate scores, "Guests who stayed"</td>
+<td>Per-property, structured subscores</td>
+<td>Subscores, traveler type, language, period</td>
+<td>Score out of 10, category subscores</td>
+<td>Email about 48h after checkout, 3-month window</td>
+</tr>
+<tr class="even">
+<td><strong>Airbnb</strong></td>
+<td>Verified stay, double-blind</td>
+<td>First-party only</td>
+<td>Brand and Superhost signals</td>
+<td>Per-listing, host and guest both review</td>
+<td>Rating, keyword, recency</td>
+<td>Stars plus six category breakdowns</td>
+<td>Both parties prompted, 14-day double-blind window</td>
+</tr>
+<tr class="odd">
+<td><strong>Tripadvisor</strong></td>
+<td>Open, not purchase-verified</td>
+<td>First-party, community model</td>
+<td>Volume and "Travelers' Choice" badges</td>
+<td>Per-attraction, very high volume</td>
+<td>Rating, traveler type, language, season</td>
+<td>Bubble rating, distribution</td>
+<td>Solicited and organic</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-patterns-worth-copying">11.2 The patterns worth copying</h3>
+<ul>
+<li><strong>Verified purchaser is the industry standard for booking platforms.</strong> GetYourGuide, Booking, and Airbnb gate reviews on a real booking (Booking and GetYourGuide even accept some non-completers), and Viator gates its main path while also running an ungated one. Tripadvisor's fully open model is the outlier and is widely seen as more gameable. Island Tours' locked "confirmed booking, no exceptions" rule is at the strict, trustworthy end and is a genuine differentiator.</li>
+<li><strong>Theme chips and review summaries above the cards.</strong> GetYourGuide and Viator both surface review-derived themes above their review lists (GetYourGuide now uses consumer-facing AI review summaries, a 2026 release), though the exact on-screen labels vary and should be checked against a live listing before being copied. This is a high-CRO pattern at volume, and the master already plans it (LD29 Tier 3). The recommendation to ship a manual chip version earlier (3.2) brings this winner forward.</li>
+<li><strong>Structured subscores (Booking.com, Airbnb).</strong> For tours, a light version is worth considering post-launch: a few optional sub-ratings (for example value, guide, organization) that enrich the page and give operators actionable signal. This is a phase-three idea, not launch, and it stays optional so it never adds friction to the one-tap rating.</li>
+<li><strong>Post-experience invitation, timed to the moment (Booking at 48h, Airbnb's window).</strong> Every major platform sends a timed post-experience invitation. Island Tours has none. This is the gap section 5 closes, and the benchmark confirms its priority.</li>
+<li><strong>Traveler-type filtering everywhere.</strong> Every platform filters by who traveled. This is why 3.2 recommends collecting guest type from day one even though the filter is V2.</li>
+<li><strong>Homepage social proof is platform-level, tour reviews are product-level.</strong> None of these platforms dumps raw tour reviews on the homepage as brand testimonials. They show aggregate trust and themed proof. This validates the section 2 homepage strategy.</li>
+</ul>
+<h3 id="the-translation-to-island-tours">11.3 The translation to Island Tours</h3>
+<p>Island Tours is closest to Viator and GetYourGuide in shape (a tour marketplace selling third-party operators' experiences), and the master has already absorbed most of their revealed preferences. The practical synthesis:</p>
+<ul>
+<li>Keep the verified-booking gate (matches all four booking platforms, beats Tripadvisor).</li>
+<li>Ship theme chips early, manually, then AI-power them at 30 reviews (GetYourGuide and Viator pattern, master LD29).</li>
+<li>Close the post-tour invitation gap now (every benchmark has one, you have none).</li>
+<li>Collect guest type from day one (universal filter pattern).</li>
+<li>Keep the homepage platform-level and the tour page product-level (universal).</li>
+<li>Consider optional tour subscores in phase three (Booking and Airbnb pattern), never required.</li>
+</ul>
+<hr />
+<h2 id="final-recommendation">12. Final recommendation</h2>
+<h3 id="the-best-review-platform-choice">12.1 The best review platform choice</h3>
+<p>A split decision, by layer:</p>
+<ul>
+<li><strong>Tour reviews: your own first-party verified-booking system.</strong> Already specced (E.7, LD11, LD29 to LD33). This is non-negotiable and mostly built on paper. Finish it.</li>
+<li><strong>Platform reviews: Trustpilot, one domain profile, service reviews only.</strong> A trust layer, not the primary source. Feeds the homepage strip, the footer, checkout, and Google Seller Ratings.</li>
+</ul>
+<p>Trustpilot is used, but scoped. It never touches a tour page.</p>
+<h3 id="the-ideal-review-architecture">12.2 The ideal review architecture</h3>
+<pre><code>                        ISLAND TOURS REVIEW ARCHITECTURE
+
+  PLATFORM TRUST LAYER                         TOUR TRUST LAYER
+  (third-party, rented)                        (first-party, owned)
+
+  Trustpilot (one profile)                     E.7 reviews (verified booking)
+   - service reviews about IT                   - tour-attributed, operator-attributed
+   - TrustScore, Seller Ratings                 - rating, text, photos, guest type
+   - widgets                                    - moderation, translation, themes
+        |                                              |
+        v                                              v
+  Homepage social proof strip  [&gt;=100]         Tour page: LD29 preview (above fold)
+  Footer mini-badge                            Tour page: meta row rating (LD11)
+  Checkout trust area                          Tour page: Reviews H2 + star chart (LD30/31)
+                                               Cards, search, category grids (aggregate)
+        |                                              |
+        +------------------ never merged --------------+
+                            never share an aggregate
+                            never share a surface (except attributed homepage quotes)
+
+  COLLECTION (one unified flow, section 6)
+   post-tour email + WhatsApp reminder
+     -&gt; Step 1 tour rating (required)
+     -&gt; Steps 2-3 text, photos, guest type (optional)
+     -&gt; Step 4 platform review: Trustpilot if 4-5*, private recovery if lower</code></pre>
+<h3 id="what-goes-on-the-homepage">12.3 What goes on the homepage</h3>
+<p>Platform trust first: the micro trust bar (locked), then the Trustpilot social proof strip (locked, at 100+ reviews), then a clearly attributed tour-quote strip (new, volume-gated) whose every quote names and links its tour. No generic testimonial wall. No tour reviews masquerading as brand praise.</p>
+<h3 id="what-goes-on-tour-pages">12.4 What goes on tour pages</h3>
+<p>The locked first-party system: the LD29 preview module above the fold, the LD11 meta-row rating with the Provider Rating cold-start fallback, and the Reviews H2 with the clickable star chart (LD31), translation (LD32), and threshold-gated sort and filters (LD30). Plus the new additions: a per-card verified badge, guest type and travel month per card, and manual theme chips ahead of the AI version. No Trustpilot anywhere on the tour page.</p>
+<h3 id="should-trustpilot-be-used-yes-or-no">12.5 Should Trustpilot be used, yes or no</h3>
+<p>Yes, with discipline. Use it for platform service reviews on one profile, as a trust layer that lifts early-funnel confidence and Google Ads performance. Do not use it for tour reviews, do not create per-tour or per-operator profiles, and do not blend it into tour ratings. If that discipline cannot be guaranteed, the safer answer would be to skip it, because a misused Trustpilot integration does more harm (confusion, exported SEO, broken verification promise) than the platform-trust lift is worth. The recommendation is yes, scoped exactly as section 4.8 lays out.</p>
+<h3 id="phased-roadmap">12.6 Phased roadmap</h3>
+<p>The phases align with the master's existing V1 and V2 split, so nothing here fights a locked sequence.</p>
+<p><strong>Phase 1: MVP review system (the launch must-have).</strong> The whole point of phase 1 is to get verified reviews flowing and displaying. - Build the E.7 schema with the new fields (Appendix A), including guest type and source and verified flag from day one. - Build the post-tour collection flow: the email, the WhatsApp reminder, and the tokenized rating page (steps 1 to 3b, the tour review). This is the gap that does not exist yet. - Build the tour-page display already specced: LD29 preview, LD11 fallback, the Reviews H2, the clickable star chart, machine translation. - Build the admin moderation queue (approve, reject, hold) and the audit log. - Ship the verification disclosure (the linked sub-line and the per-card badge). - Outcome: every completed tour can produce a verified, moderated, displayed review.</p>
+<p><strong>Phase 2: Trustpilot integration (the platform-trust layer).</strong> - Stand up one Trustpilot profile on island.tours. - Add step 4 to the collection flow: the gated platform-review routing (Trustpilot for happy bookers, private recovery for unhappy), with frequency capping and tour or operator tagging for internal analytics. - Activate the homepage social proof strip at 100 reviews (already specced) and the footer and checkout widgets. - Claim Google Seller Ratings. - Outcome: external platform credibility, without touching tour pages.</p>
+<p><strong>Phase 3: Advanced filters, photo reviews, AI summaries.</strong> - Surface the traveler-type, with-photos, and language filters once volumes cross the LD30 gates (20 reviews). - Promote photo reviews (carousel at 3 photo reviews, photo-forward cards). - Turn on AI review summaries and AI theme chips at 30 reviews per tour (LD28, LD29 Tier 3). - Consider optional tour subscores (value, guide, organization), Booking-style, never required. - Outcome: the mature, high-CRO review experience at volume.</p>
+<p><strong>Phase 4: Operator dashboards and performance insights.</strong> - Give operators a dashboard: read access to their reviews and rating analytics, response submission through moderation, and flag-for-review. - Switch responses from platform-authored to moderated operator-authored (resolving the 7.4 conflict on the long-term side). - Add operator-facing insight: rating trends, theme breakdowns, review velocity, and the eligibility metrics the master already computes (review count, rating, cancellation rate) surfaced back to operators. - Outcome: operators are partners in review quality, and the Island Tours team is out of the per-review response loop.</p>
+<h3 id="the-one-thing-to-do-first">12.7 The one thing to do first</h3>
+<p>Close the collection gap. Every locked display decision in the master is waiting on reviews that nothing currently asks for. The post-tour invitation is the highest-leverage, lowest-risk, fully-additive piece of work in the entire review system. Build it first, in phase 1, and the rest of the specced system finally has something to show.</p>
+<hr />
+<h2 id="appendix-a.-proposed-master-changes-drafts-not-applied">Appendix A. Proposed master changes (drafts, not applied)</h2>
+<p>Per the working agreement, master changes require a diff proposal, your approval, an archive copy, a version bump, and a conflict log entry. Nothing below is applied. These are drafts to react to. Each is tagged with where it would land.</p>
+<h3 id="a.1-appendix-e.7-expansion-proposed">A.1 Appendix E.7 expansion (proposed)</h3>
+<p>Replace the current E.7 prose with an explicit field table plus the retained prose. New fields are marked. This does not change any locked behavior, it makes the existing model buildable and adds the launch-cheap additions argued in sections 3 and 5.</p>
+<pre><code>### E.7 reviews (one record per submitted review)
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid | Primary key |
+| booking_id | uuid unique | Verification gate; one review per booking; &quot;Every review from a confirmed booking. No exceptions.&quot; |
+| tour_id | uuid | Derived from booking; drives E.3 tour aggregates (approved only) |
+| operator_id | uuid | Derived from booking; drives E.6 Provider Rating (LD11) |
+| customer_id | varchar | E.8 hashed-email id |
+| tour_departure_id | uuid nullable | Links to the departure (E.9) for operator and seasonality insight |
+| rating | smallint | 1 to 5 |
+| text | text | Stored in original locale; machine-translated on demand and cached (LD32) |
+| original_locale | varchar | Retained for show-original (LD32) |
+| travel_month | smallint | Privacy: month only, no exact date |
+| travel_year | smallint | Privacy: year only |
+| created_at | timestamptz | Review submission date; default newest-first sort (LD30) |
+| reviewer_first_name | varchar | Display: first name only |
+| reviewer_last_initial | char(1) | Display: last initial only |
+| reviewer_type | enum nullable | couple / family / friends / solo; COLLECT FROM LAUNCH (was V2), filter UI stays V2 |
+| photos[] | array | Drives photo carousel at &gt;=3 photo reviews |
+| theme_tags[] | array nullable | Manual admin tags for highlight chips (pre-AI LD29 Tier 3) |
+| status | enum | pending / approved / rejected / held; only approved feed aggregates |
+| source | enum | native (default; only source shown on tour pages and in tour aggregates); reserved values for future labeled imports, never blended |
+| verified | boolean | True for native (booking-gated); explicit for audit and to distinguish any non-native source |
+| response_text | text nullable | Published response (authorship per the A.3 conflict log resolution) |
+| response_author | enum nullable | platform / operator (operator enabled in phase 4) |
+| response_at | timestamptz nullable | No editing after publish |
+| helpful_count | int | DEFERRED to V2 (re-add when helpful votes activate, LD30) |
+
+Retained prose: Reviewer first name plus last initial only; travel month and year, no exact dates; rating 1 to 5; submission gated on a confirmed booking_id. Tour aggregates in E.3 derive from approved records only. Full schema in Section4_7 paragraph 4.7.18 (with the response-authorship correction per conflict log entry below).</code></pre>
+<h3 id="a.2-new-master-section-proposed-6.8-post-tour-review-request-email">A.2 New master section (proposed): 6.8 Post-tour review request email</h3>
+<p>This is the spec for the collection gap, written to sit as the fifth sibling in the section 6 email family. Proposed placement: a new 6.8, with a pointer from 6.5's sequence list.</p>
+<pre><code>### 6.8 Post-tour review request email (proposed)
+
+Canonical source to be written: island-tours-review-request-spec.md; same template system as the confirmation (6.5) and reminder (6.7), a recognizable sibling. Sends once per completed booking the morning after the tour, roughly 10:00 tour-local, measured from tour_end_datetime (E.8); treat the timing as a launch default to A/B test against a day-2 or day-3 send. Single reminder at 5 to 7 days if no response, via WhatsApp where opt-in exists; then stop. Suppressed for cancelled, forfeited, operator-cancelled, and no-show bookings (mirrors 6.7). Links to a tokenized review page on island.tours (the 6.4 tokenized pattern, public_ref plus display_ref), single-use token.
+
+The page is progressive disclosure: Step 1 tour rating (required, one tap, commits immediately); Step 2 review text (optional); Step 3 photos (optional); Step 3b guest type (optional, one tap, reviewer_type); Step 4 platform review (optional): a neutral invitation to Trustpilot shown to every customer regardless of score, never gated on a positive rating (review gating breaches Trustpilot rules and EU consumer law). When Step 1 is low, the page additionally offers a private recovery prompt routed to support, alongside the neutral invitation. The tour review (Steps 1 to 3) is published in full regardless of score.
+
+Two questions, never merged: &quot;How was your tour experience?&quot; (the E.7 tour review, attributed to the tour and operator) and &quot;How was booking with Island Tours?&quot; (the platform review, a neutral Trustpilot invitation with an optional private recovery channel, never in the tour aggregate). Copy locked in the spec, EN plus the six other locales via next-intl. Never a payment link. Soft-opt-in upsell block reused from 6.7 below the thank-you, opt-out customers get the identical page without it.</code></pre>
+<h3 id="a.3-proposed-locked-decision-entries">A.3 Proposed Locked Decision entries</h3>
+<pre><code>| LD34 | Two-layer review model: first-party verified-booking reviews own tours; Trustpilot service reviews (one island.tours profile) own platform trust. Never merged, never on the same surface except attributed homepage tour-quotes. | Proposed |
+| LD35 | Post-tour review request (6.8): first email the morning after plus one reminder at 5 to 7 days; tokenized progressive-disclosure page; tour rating required, text/photos/guest-type optional; neutral (non-gated) platform-review invitation. | Proposed |
+| LD36 | reviewer_type (guest type) collected from launch; consumer filter UI remains V2 (supersedes the LD30 deferral of reviewer_type collection only, not the filter gate). | Proposed |
+| LD37 | Review response authorship: platform-authored at launch, moderated operator-authored from phase 4. Resolves the E.7 vs Section4_7 4.7.18 conflict. | Proposed |</code></pre>
+<h3 id="a.4-proposed-conflict-log-entries">A.4 Proposed conflict log entries</h3>
+<pre><code>NN. E.7 &quot;operator response (no editing)&quot; vs Section4_7 4.7.18 Component 7 &quot;platform response (Island Tours-authored, not operator)&quot; -&gt; resolved: platform-authored at launch, moderated operator-authored from phase 4 (LD37). E.7 response fields gain response_author enum. Section4_7 Component 7 &quot;platform response&quot; stands for launch and is superseded at phase 4.
+NN+1. Email sequence (6.5) listed confirmation, operator balance, pre-tour reminder, cancellation -&gt; adds the post-tour review request (6.8) as the fifth sibling template; sequence note in 6.5 updated.
+NN+2. LD30 deferred reviewer_type collection to V2 -&gt; reviewer_type now collected from launch (LD36); the filter UI gate (hidden under 20 reviews) is unchanged.
+NN+3. Homepage 5.1 social proof strip (Trustpilot, &gt;=100 reviews) -&gt; joined by a new volume-gated, attributed tour-quote strip; both kept platform-honest per LD34. (Only if the new strip is adopted.)</code></pre>
+<h3 id="a.5-touched-artifacts-if-these-are-applied">A.5 Touched artifacts if these are applied</h3>
+<p>If you accept any of the above, the regeneration and checks from the README apply: bump the master version and changelog, copy the current master to archive/ first, run scripts/md2docx.js and scripts/md2html.js, and re-run the em-dash count (the target stays exactly 10 in the master, since none of the proposed text adds an em-dash). The tour-journey and checkout-journey views touch section 6, so if 6.8 is added, check those views per the README's maintenance note. The new email spec (island-tours-review-request-spec.md) lands in sources/canonical/ and joins Appendix D and the build map (Appendix F).</p>
+<hr />
+<h2 id="sources">Sources</h2>
+<p>Master and project files (local): island-tours-platform-master.md (sections 1.4, 2.6, 3.11, 3.12, 5.1, 5.2, 5.7, 6.1 to 6.7, 7.1, 7.2, 8.3, Appendix A LD11 and LD28 to LD33, Appendix E.3, E.6, E.7, E.8), README-cowork.md, and sources/canonical/Section4_7_TourDetailPage.md (paragraph 4.7.18 review schema and LD register).</p>
+<p>External (web), accessed June 18, 2026:</p>
+<ul>
+<li>Trustpilot, service vs product reviews and model: <a href="https://business.trustpilot.com/features/service-reviews">Service Reviews, Trustpilot Business</a>, <a href="https://help.trustpilot.com/s/article/Product-reviews-FAQ?language=en_US">Product reviews FAQ</a>, <a href="https://support.trustpilot.com/hc/en-us/articles/360011813119-The-three-types-of-Trustpilot-reviews">The three types of Trustpilot reviews</a>.</li>
+<li>Viator and GetYourGuide verified-booking reviews: <a href="https://travelventurefour.com/getyourguide-vs-viator-which-is-better-for-booking-tours-in-2026/">GetYourGuide vs Viator 2026</a>, <a href="https://thetraveltinker.com/planning/getyourguide-vs-viator/">GetYourGuide vs Viator vs Booking Direct 2026</a>.</li>
+<li>EU Omnibus Directive, fake reviews and verification disclosure: <a href="https://termly.io/resources/articles/eu-omnibus/">EU Omnibus Directive, Termly</a>, <a href="https://key-g.com/blog/legal-status-ratings-reviews-eu-consumer-law">Online Reviews and EU Consumer Law, KeyGroup</a>, <a href="https://www.powerreviews.com/review-authenticity/eu/">EU Omnibus Directive, PowerReviews</a>.</li>
+<li>Airbnb double-blind 14-day review window: <a href="https://freewyldfoundry.com/blog/airbnb-review-guidelines-2026/">Airbnb Review Guidelines 2026, Freewyld</a>, <a href="https://www.houst.com/blog/airbnb-review">Airbnb Reviews How They Work, Houst</a>.</li>
+<li>Booking.com verified-stay reviews, timing, and subscores: <a href="https://partner.booking.com/en-us/help/guest-reviews/general/everything-you-need-know-about-guest-review-scores">Everything about Guest Review Scores, Booking.com Partner</a>, <a href="https://partner.booking.com/en-us/help/guest-reviews/general/guest-review-process-and-conditions">Guest review process and conditions, Booking.com Partner</a>.</li>
+</ul>
+<hr />
+<p><em>End of advisory. This document is advice plus drafted proposals; the master remains the single source of truth, and nothing here is applied to it.</em></p>
+  </main>
+</div>
+<button class="backtop" id="backtop" aria-label="Back to top">&#8593;</button>
+<script>
+(function(){
+  var content = document.getElementById('content');
+  var tocList = document.getElementById('tocList');
+
+  // ---- Legend after H1 ----
+  var h1 = content.querySelector('h1');
+  if (h1){
+    var lg = document.createElement('div');
+    lg.className = 'legend';
+    lg.innerHTML = '<b>Tags</b>'+
+      '<span class="li"><span class="tag tag-locked">LOCKED</span> already in the master</span>'+
+      '<span class="li"><span class="tag tag-new">NEW</span> new recommendation</span>'+
+      '<span class="li"><span class="tag tag-change">CHANGE</span> would edit a locked decision</span>';
+    h1.parentNode.insertBefore(lg, h1.nextSibling);
+  }
+
+  // ---- Badge styling: wrap [LOCKED]/[NEW]/[CHANGE] tokens ----
+  var TOKEN = /\[(LOCKED|NEW|CHANGE)\]/g;
+  function walkText(root, fn){
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode:function(n){
+        var p = n.parentNode;
+        while(p && p!==root){
+          var t = p.nodeName;
+          if(t==='PRE'||t==='CODE'||t==='SCRIPT'||t==='STYLE'||t==='MARK') return NodeFilter.FILTER_REJECT;
+          p = p.parentNode;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var nodes=[], n; while(n=w.nextNode()) nodes.push(n);
+    nodes.forEach(fn);
+  }
+  walkText(content, function(node){
+    if(!TOKEN.test(node.nodeValue)) return;
+    TOKEN.lastIndex = 0;
+    var frag = document.createDocumentFragment();
+    var s = node.nodeValue, last=0, m;
+    while(m = TOKEN.exec(s)){
+      if(m.index>last) frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+      var span = document.createElement('span');
+      span.className = 'tag tag-'+m[1].toLowerCase();
+      span.textContent = m[1];
+      frag.appendChild(span);
+      last = m.index + m[0].length;
+    }
+    if(last<s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+
+  // ---- Build TOC ----
+  var heads = content.querySelectorAll('h2, h3');
+  var slug = {};
+  heads.forEach(function(h){
+    if(!h.id){
+      var base = h.textContent.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      var id = base || 'sec'; var i=2; while(slug[id]){ id = base+'-'+(i++); } h.id = id;
+    }
+    slug[h.id]=true;
+    var a = document.createElement('a');
+    a.href = '#'+h.id;
+    a.textContent = h.textContent;
+    a.className = (h.tagName==='H3') ? 'lvl3' : 'lvl2';
+    a.dataset.target = h.id;
+    tocList.appendChild(a);
+  });
+  var tocLinks = Array.prototype.slice.call(tocList.querySelectorAll('a'));
+
+  // ---- Scrollspy ----
+  var byId = {};
+  tocLinks.forEach(function(a){ byId[a.dataset.target]=a; });
+  var spy = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        tocLinks.forEach(function(a){a.classList.remove('active');});
+        var a = byId[e.target.id]; if(a){ a.classList.add('active');
+          a.scrollIntoView({block:'nearest'}); }
+      }
+    });
+  }, {rootMargin:'-72px 0px -70% 0px', threshold:0});
+  heads.forEach(function(h){ spy.observe(h); });
+
+  // ---- Mobile menu ----
+  var sidebar = document.getElementById('sidebar');
+  document.getElementById('menuBtn').addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+  tocList.addEventListener('click', function(e){ if(e.target.tagName==='A') sidebar.classList.remove('open'); });
+
+  // ---- Back to top ----
+  var backtop = document.getElementById('backtop');
+  window.addEventListener('scroll', function(){
+    if(window.scrollY>600) backtop.classList.add('show'); else backtop.classList.remove('show');
+  });
+  backtop.addEventListener('click', function(){ window.scrollTo({top:0,behavior:'smooth'}); });
+
+  // ---- Search: highlight + count + TOC filter ----
+  var input = document.getElementById('searchInput');
+  var countEl = document.getElementById('searchCount');
+  var marks = [], cur = -1;
+  function clearMarks(){
+    marks.forEach(function(mk){
+      var t = document.createTextNode(mk.textContent);
+      mk.parentNode.replaceChild(t, mk);
+    });
+    marks = []; cur = -1;
+    content.normalize();
+  }
+  function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function run(q){
+    clearMarks();
+    q = q.trim();
+    if(q.length<2){ countEl.textContent=''; tocLinks.forEach(function(a){a.classList.remove('hide');}); return; }
+    var re = new RegExp(esc(q),'gi');
+    walkText(content, function(node){
+      if(!re.test(node.nodeValue)) return;
+      re.lastIndex=0;
+      var s=node.nodeValue, frag=document.createDocumentFragment(), last=0, m;
+      while(m=re.exec(s)){
+        if(m.index>last) frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+        var mk=document.createElement('mark'); mk.textContent=m[0]; frag.appendChild(mk); marks.push(mk);
+        last=m.index+m[0].length;
+        if(m.index===re.lastIndex) re.lastIndex++;
+      }
+      if(last<s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+      node.parentNode.replaceChild(frag,node);
+    });
+    countEl.textContent = marks.length ? (marks.length+' found') : 'none';
+    // filter TOC: show only sections whose heading text matches
+    var lq=q.toLowerCase();
+    tocLinks.forEach(function(a){ a.classList.toggle('hide', a.textContent.toLowerCase().indexOf(lq)===-1); });
+    if(marks.length){ cur=0; focusMark(); }
+  }
+  function focusMark(){
+    marks.forEach(function(mk){mk.classList.remove('current');});
+    var mk=marks[cur]; if(!mk) return;
+    mk.classList.add('current');
+    mk.scrollIntoView({block:'center',behavior:'smooth'});
+    countEl.textContent = (cur+1)+' / '+marks.length;
+  }
+  var deb;
+  input.addEventListener('input', function(){ clearTimeout(deb); deb=setTimeout(function(){ run(input.value); }, 180); });
+  input.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && marks.length){
+      e.preventDefault();
+      cur = (cur + (e.shiftKey?-1:1) + marks.length) % marks.length;
+      focusMark();
+    }
+    if(e.key==='Escape'){ input.value=''; run(''); }
+  });
+})();
+</script>
+</body>
+</html>
