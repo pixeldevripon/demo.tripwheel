@@ -7,6 +7,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
  */
 export const MAX_REVIEW_PHOTOS = 8;
 import { Locale, ReviewerType } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -104,6 +105,23 @@ export class EnrichReviewDto {
   reviewerType?: ReviewerType;
 
   @ApiPropertyOptional({ minimum: 1, maximum: 5 })
+  @ApiPropertyOptional({
+    minimum: 1,
+    maximum: 5,
+    description:
+      'Correct the overall star rating. Allowed because a mistapped star was ' +
+      'otherwise permanent - the review page commits on press, which is what ' +
+      'makes a one-tap review count, and that must not also make a slip final. ' +
+      'Only works while the review is still PENDING; once moderated the text ' +
+      'that was approved is not rewritable from an emailed link.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
   @IsOptional()
   @IsInt()
   @Min(1)

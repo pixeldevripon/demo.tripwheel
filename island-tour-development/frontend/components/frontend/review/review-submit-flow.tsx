@@ -7,6 +7,7 @@ import { MotionButton } from '../motion-primitives';
 import { springPop } from '@/lib/motion';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { startReview, enrichReview, sendPrivateFeedback } from '@/lib/api/review-submit';
+import { ReviewPhotoUploader } from './review-photo-uploader';
 
 type Dict = Dictionary['reviewSubmit'];
 
@@ -61,7 +62,7 @@ export function ReviewSubmitFlow({
     const [rating, setRating] = useState<number | null>(null);
     const [hovered, setHovered] = useState<number | null>(null);
     const [comment, setComment] = useState('');
-    const [photos, setPhotos] = useState('');
+    const [photos, setPhotos] = useState<string[]>([]);
     const [guestType, setGuestType] = useState<GuestType | null>(null);
     const [feedback, setFeedback] = useState('');
     const [feedbackSent, setFeedbackSent] = useState(false);
@@ -72,12 +73,24 @@ export function ReviewSubmitFlow({
     const committed = rating !== null;
     const isLow = committed && rating <= LOW_RATING;
 
+    /**
+     * Step 1. Commits on press - and stays correctable.
+     *
+     * Committing on press is what makes a one-tap review count, but it also
+     * means a mistap would otherwise be permanent. So a second press re-rates:
+     * the first call CREATES the review, every later one PATCHES it, which the
+     * backend accepts for as long as the review is still pending moderation.
+     */
     async function commitRating(value: number) {
-        if (busy || committed) return;
+        if (busy || value === rating) return;
         setBusy(true);
         setError(null);
         try {
-            await startReview(token, value);
+            if (committed) {
+                await enrichReview(token, { rating: value });
+            } else {
+                await startReview(token, value);
+            }
             setRating(value);
         } catch {
             setError(dict.error);
@@ -136,27 +149,33 @@ export function ReviewSubmitFlow({
     return (
         <Card>
             {heroImage && (
-                <div className='relative mb-5 h-40 w-full overflow-hidden rounded-[12px] bg-it-border'>
+                <div className='relative mb-6 h-48 w-full overflow-hidden rounded-[12px] bg-it-border sm:h-56'>
                     <Image
                         src={heroImage}
                         alt=''
                         fill
-                        sizes='(max-width: 640px) 100vw, 480px'
+                        sizes='(max-width: 768px) 100vw, 768px'
                         className='object-cover'
                     />
                 </div>
             )}
 
-            <h1 className='m-0 font-medium text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
-                {guestFirstName ? `${guestFirstName}, ` : ''}
-                {dict.step1Header}
-            </h1>
-            <p className='mt-1.5 mb-0 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                {tourName}
-            </p>
+            {/* The ask is centred: this is one question, and a left-aligned
+                heading over a wide card reads as the first field of a long form. */}
+            <div className='text-center'>
+                <h1 className='m-0 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[30px]'>
+                    {guestFirstName ? `${guestFirstName}, ` : ''}
+                    {dict.step1Header}
+                </h1>
+                <p className='mt-2 mb-0 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    {tourName}
+                </p>
+            </div>
 
-            {/* STEP 1 - required, one tap, commits immediately */}
-            <div className='mt-5 flex items-center gap-2'>
+            {/* STEP 1 - required, one tap, commits immediately. Big and centred:
+                it is the only thing on the page that must happen, and a 44px
+                target is a comfortable thumb tap on a phone. */}
+            <div className='mt-6 flex items-center justify-center gap-2 sm:gap-3'>
                 {[1, 2, 3, 4, 5].map(star => {
                     const filled = (hovered ?? rating ?? 0) >= star;
                     return (
@@ -164,8 +183,8 @@ export function ReviewSubmitFlow({
                             key={star}
                             type='button'
                             aria-label={`${star}`}
-                            disabled={busy || committed}
-                            onMouseEnter={() => !committed && setHovered(star)}
+                            disabled={busy}
+                            onMouseEnter={() => setHovered(star)}
                             onMouseLeave={() => setHovered(null)}
                             onClick={() => void commitRating(star)}
                             whileTap={{ scale: 0.9 }}
@@ -178,21 +197,28 @@ export function ReviewSubmitFlow({
                                         : '/icons/star-empty.svg'
                                 }
                                 alt=''
-                                width={32}
-                                height={32}
-                                className='size-8 shrink-0'
+                                width={44}
+                                height={44}
+                                className='size-10 shrink-0 transition-transform duration-200 sm:size-11'
                             />
                         </MotionButton>
                     );
                 })}
             </div>
             {!committed && (
-                <p className='mt-2 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='mt-3 mb-0 text-center text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.step1Hint}
                 </p>
             )}
             {committed && (
-                <p className='mt-2 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                <p className='mt-3 mb-0 flex items-center justify-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                    <Image
+                        src='/icons/review-verified.svg'
+                        alt=''
+                        width={16}
+                        height={16}
+                        className='size-4 shrink-0'
+                    />
                     {dict.savedNote}
                 </p>
             )}
@@ -214,23 +240,18 @@ export function ReviewSubmitFlow({
                                 comment.trim().length >= 10 &&
                                 void save({ comment: comment.trim() })
                             }
-                            rows={4}
+                            rows={5}
                             placeholder={dict.step2Placeholder}
                             className='w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
                         />
                     </Step>
 
                     <Step header={dict.step3Header} helper={dict.step3Helper}>
-                        <input
-                            type='url'
-                            value={photos}
-                            onChange={e => setPhotos(e.target.value)}
-                            onBlur={() =>
-                                photos.trim() &&
-                                void save({ photos: [photos.trim()] })
-                            }
-                            placeholder='https://'
-                            className='w-full rounded-[10px] border border-it-border bg-it-white p-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                        <ReviewPhotoUploader
+                            token={token}
+                            photos={photos}
+                            onChange={setPhotos}
+                            dict={dict}
                         />
                     </Step>
 
@@ -246,7 +267,7 @@ export function ReviewSubmitFlow({
                                         setGuestType(g.value);
                                         void save({ reviewerType: g.value });
                                     }}
-                                    className={`cursor-pointer rounded-it-full border px-4 py-2 text-[14px] leading-[1.2] transition-colors ${
+                                    className={`cursor-pointer rounded-it-full border px-5 py-2.5 text-[15px] leading-[1.2] transition-colors ${
                                         guestType === g.value
                                             ? 'border-it-primary bg-it-primary text-it-white'
                                             : 'border-it-border bg-it-white text-it-heading hover:border-it-primary'
@@ -340,7 +361,7 @@ export function ReviewSubmitFlow({
 
 function Card({ children }: { children: React.ReactNode }) {
     return (
-        <div className='w-full max-w-125 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
+        <div className='w-full max-w-xl rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-8'>
             {children}
         </div>
     );
@@ -356,7 +377,7 @@ function Step({
     children: React.ReactNode;
 }) {
     return (
-        <div className='mt-7'>
+        <div className='mt-7 border-t border-it-border/70 pt-7'>
             <span className='font-medium text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                 {header}
             </span>

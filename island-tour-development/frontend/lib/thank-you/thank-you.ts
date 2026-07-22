@@ -121,6 +121,15 @@ export interface ThankYouBooking {
     operatorPhone: string;
     supportEmail: string;
     payment: ThankYouPayment;
+    /**
+     * True once the tour has finished.
+     *
+     * Decided HERE rather than in the component, for the same reason `canCancel`
+     * is: a render that reads the clock is impure (the React compiler rejects
+     * it) and would also drift between the server pass and hydration. Drives
+     * whether "add to calendar" is offered at all - the event is in the past.
+     */
+    departed: boolean;
     /** ISO start/end used for the add-to-calendar link. */
     startsAtIso: string;
     endsAtIso: string;
@@ -367,6 +376,7 @@ export async function getThankYouBooking(
             payBeforeLabel: start ? fmtDate(start, locale) : '',
             payBeforeShort: start ? fmtShortDayMonth(start, locale) : '',
         },
+        departed: end ? end.getTime() <= Date.now() : false,
         // Local wall-clock ISO for the calendar link (floating time, so the event
         // lands at the destination's 8am regardless of the traveller's zone).
         startsAtIso: start ? `${typ.localDate}T${typ.startTime}:00` : '',

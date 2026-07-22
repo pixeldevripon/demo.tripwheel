@@ -1,7 +1,10 @@
+import Image from 'next/image';
+import { MotionLink } from '@/components/frontend/motion-link';
 import { MountReveal } from '@/components/frontend/mount-reveal';
+import { springPop } from '@/lib/motion';
 import { ReviewSubmitFlow } from '@/components/frontend/review/review-submit-flow';
-import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getReviewInvitation } from '@/lib/api/public/review-invitation';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -47,14 +50,42 @@ async function ReviewBody({
     // them, and neither should the page.
     if (!invitation) {
         return (
-            <div className='w-full max-w-125 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
-                    {rd.invalidTitle}
-                </span>
-                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    {rd.invalidBody}
-                </p>
-            </div>
+            <MountReveal>
+                <div className='w-full max-w-xl rounded-[16px] bg-it-white p-8 text-center shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)] sm:p-12'>
+                    <Image
+                        src='/icons/review-verified.svg'
+                        alt=''
+                        width={56}
+                        height={56}
+                        className='mx-auto size-14 opacity-25'
+                    />
+                    <h1 className='mx-auto mt-6 mb-0 max-w-md font-medium text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
+                        {rd.invalidTitle}
+                    </h1>
+                    <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                        {rd.invalidBody}
+                    </p>
+                    {/* A dead end is where people leave. Give them somewhere to
+                        go: their bookings if the link was theirs, tours if they
+                        were only curious. */}
+                    <div className='mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row'>
+                        <MotionLink
+                            href={localizeHref(locale, '/bookings')}
+                            whileTap={{ scale: 0.98 }}
+                            transition={springPop}
+                            className='flex w-full items-center justify-center rounded-it-full bg-it-primary px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover sm:w-auto'>
+                            {rd.invalidFindBooking}
+                        </MotionLink>
+                        <MotionLink
+                            href={localizeHref(locale, '/')}
+                            whileTap={{ scale: 0.98 }}
+                            transition={springPop}
+                            className='flex w-full items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading sm:w-auto'>
+                            {rd.invalidBrowse}
+                        </MotionLink>
+                    </div>
+                </div>
+            </MountReveal>
         );
     }
 
@@ -62,7 +93,7 @@ async function ReviewBody({
         invitation.destinationSlug && invitation.tourSlug
             ? localizeHref(
                   locale,
-                  `/${invitation.destinationSlug}/${invitation.tourSlug}`,
+                  `/${invitation.destinationSlug}/${invitation.tourSlug}`
               )
             : null;
 
@@ -88,13 +119,16 @@ async function ReviewBody({
 
 function ReviewSkeleton() {
     return (
-        <div className='w-full max-w-125 animate-pulse rounded-[16px] bg-it-white p-6'>
+        <div className='w-full max-w-xl animate-pulse rounded-[16px] bg-it-white p-6 sm:p-8'>
             <div className='h-40 w-full rounded-[12px] bg-it-border' />
             <div className='mt-5 h-7 w-3/4 rounded-[6px] bg-it-border' />
             <div className='mt-2 h-4 w-1/2 rounded-[6px] bg-it-border' />
             <div className='mt-5 flex gap-2'>
                 {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className='size-8 rounded-[6px] bg-it-border' />
+                    <div
+                        key={i}
+                        className='size-8 rounded-[6px] bg-it-border'
+                    />
                 ))}
             </div>
         </div>
@@ -112,7 +146,7 @@ export default async function ReviewPage({
 
     return (
         <section className='it-section flex min-h-[70vh] items-center justify-center bg-it-surface'>
-            <div className='it-container flex justify-center'>
+            <div className='it-container [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-xl'>
                 <Suspense fallback={<ReviewSkeleton />}>
                     <ReviewBody token={token} locale={locale} />
                 </Suspense>
@@ -120,3 +154,4 @@ export default async function ReviewPage({
         </section>
     );
 }
+

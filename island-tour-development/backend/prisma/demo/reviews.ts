@@ -21,6 +21,7 @@ import {
   DEMO_TOUR_REF,
   dateAt,
   dayOffset,
+  eurFxRate,
   intBetween,
   log,
   makeDisplayRef,
@@ -245,6 +246,7 @@ export async function seedReviews(): Promise<void> {
   // Depth top-up runs BEFORE the recompute below, so the extra reviews are
   // included in the aggregates rather than needing a second pass.
   const depth = await topUpReviewDepth();
+  await repairMoneylessBookings();
   for (const id of depth.tourIds) touchedTours.add(id);
   for (const id of depth.operatorIds) touchedOperators.add(id);
 
@@ -417,6 +419,59 @@ async function selectDepthTours(): Promise<DepthTour[]> {
   return chosen;
 }
 
+/**
+ * Repair depth-top-up bookings written before this file set their money fields.
+ *
+ * An earlier version of {@link topUpReviewDepth} created REDEEMED bookings with
+ * `totalRetail` but no `totalEur`, no `fxRateToEur` and no `utcConfirmedAt`.
+ * `totalEur` is what every aggregate SUMS (customer lifetime spend, revenue
+ * analytics) and `utcConfirmedAt` what they date by, so those rows showed a
+ * customer with six trips, zero spend and a blank "last booking".
+ *
+ * This lives in the seed rather than in a one-off script because any environment
+ * already carrying those rows - the VPS above all - only heals on the next
+ * `pnpm prisma:seed:demo`, and a repair that has to be remembered is a repair
+ * that will not be run. Idempotent: the predicate is unsatisfiable once fixed.
+ *
+ * Scoped to rows that are BOTH `totalEur`-null AND `utcConfirmedAt`-null, which
+ * a booking created by the real flow can never be - it cannot touch live data.
+ */
+async function repairMoneylessBookings(): Promise<void> {
+  const broken = await prisma.booking.findMany({
+    where: {
+      status: { in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED] },
+      totalEur: null,
+      utcConfirmedAt: null,
+    },
+    select: {
+      id: true,
+      totalRetail: true,
+      currency: true,
+      localDate: true,
+      tourEndDateTime: true,
+    },
+  });
+  if (broken.length === 0) return;
+
+  for (const b of broken) {
+    const rate = eurFxRate(b.currency);
+    await prisma.booking.update({
+      where: { id: b.id },
+      data: {
+        totalEur: money(b.totalRetail.times(rate)),
+        fxRateToEur: rate,
+        // Booked a week before travel, redeemed when the tour ended - the
+        // ordering every downstream aggregate assumes.
+        utcConfirmedAt: new Date(b.localDate.getTime() - 7 * 86_400_000),
+        utcRedeemedAt: b.tourEndDateTime,
+      },
+    });
+  }
+  log(
+    `Repaired ${broken.length} booking(s) that carried no EUR value or confirmation stamp.`,
+  );
+}
+
 export async function topUpReviewDepth(): Promise<{
   tourIds: string[];
   operatorIds: string[];
@@ -493,6 +548,17 @@ export async function topUpReviewDepth(): Promise<{
           totalRetail: money(120),
           depositAmount: money(24),
           balanceAmount: money(96),
+          // A REDEEMED booking that never confirmed and carries no EUR value is
+          // corrupt data, not a shortcut: `totalEur` is what every aggregate
+          // sums (customer lifetime spend, revenue analytics) and
+          // `utcConfirmedAt` is what they date by. Omitting them left customers
+          // showing 6 trips, no spend and a blank "last booking".
+          totalEur: money(money(120).times(eurFxRate(tour.defaultCurrency))),
+          fxRateToEur: eurFxRate(tour.defaultCurrency),
+          // Booked a week before travel, redeemed when the tour ended - the
+          // ordering every downstream aggregate assumes.
+          utcConfirmedAt: new Date(localDate.getTime() - 7 * 86_400_000),
+          utcRedeemedAt: dateAt(localDate, '16:00'),
           taxes: [],
           contactFirstName: firstName,
           contactLastName: lastName,

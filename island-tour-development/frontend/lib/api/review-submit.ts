@@ -35,6 +35,8 @@ export function startReview(
 export function enrichReview(
   token: string,
   patch: {
+    /** Correct a mistapped star while the review is still pending. */
+    rating?: number;
     comment?: string;
     title?: string;
     photos?: string[];
@@ -42,6 +44,37 @@ export function enrichReview(
   },
 ): Promise<{ reviewId: string; saved: boolean }> {
   return post(`/reviews/invitation/${token}`, patch, 'PATCH');
+}
+
+/**
+ * Step 3 - real photo upload (BE-16).
+ *
+ * Multipart to our own backend, which puts the file on Cloudinary under
+ * `reviews/<reviewId>/` and returns every photo now attached. The guest is on a
+ * phone straight off a boat: asking them to host an image somewhere and paste a
+ * URL is asking them not to bother.
+ *
+ * Not a plain `post()` - that sets a JSON content-type, and multipart needs the
+ * browser to set its own boundary.
+ */
+export async function uploadReviewPhotos(
+  token: string,
+  files: File[],
+): Promise<{ reviewId: string; photos: string[] }> {
+  const form = new FormData();
+  for (const file of files) form.append('files', file);
+  const res = await fetch(`${BASE_URL}/reviews/invitation/${token}/photos`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const msg = await res
+      .json()
+      .then((b: { message?: string }) => b.message)
+      .catch(() => null);
+    throw new Error(msg || `Upload failed (${res.status})`);
+  }
+  return (await res.json()) as { reviewId: string; photos: string[] };
 }
 
 /**
