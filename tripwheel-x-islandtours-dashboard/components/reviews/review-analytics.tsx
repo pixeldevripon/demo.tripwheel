@@ -99,9 +99,7 @@ export function ReviewAnalytics() {
             <div className='grid gap-4 lg:grid-cols-2'>
                 <Card>
                     <CardHeader>
-                        <CardTitle className='font-heading text-lg font-semibold tracking-wider uppercase'>
-                            Rating trend
-                        </CardTitle>
+                        <CardTitle>Rating trend</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {hasTrend ? (
@@ -142,9 +140,7 @@ export function ReviewAnalytics() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className='font-heading text-lg font-semibold tracking-wider uppercase'>
-                            Review velocity
-                        </CardTitle>
+                        <CardTitle>Review velocity</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {chartData.length > 0 ? (
@@ -183,9 +179,7 @@ export function ReviewAnalytics() {
             <div className='grid gap-4 lg:grid-cols-2'>
                 <Card>
                     <CardHeader>
-                        <CardTitle className='font-heading text-lg font-semibold tracking-wider uppercase'>
-                            What guests mention
-                        </CardTitle>
+                        <CardTitle>What guests mention</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {data.themes.length > 0 ? (
@@ -225,9 +219,7 @@ export function ReviewAnalytics() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className='font-heading text-lg font-semibold tracking-wider uppercase'>
-                            Queue and standing
-                        </CardTitle>
+                        <CardTitle>Queue and standing</CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-4'>
                         <div className='grid grid-cols-4 gap-3'>
