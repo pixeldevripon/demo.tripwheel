@@ -1,4 +1,5 @@
 import type {
+  ReviewStats,
   AdminReview,
   BulkModeratePayload,
   DeleteReviewPayload,
@@ -131,5 +132,12 @@ export const reviewsApi = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
+  },
+};
+
+/** DASH-9 review analytics. Scoped server-side by the caller's role. */
+export const reviewAnalyticsApi = {
+  get(params: { from?: string; to?: string; granularity?: 'month' | 'day' } = {}) {
+    return apiFetch<ReviewStats>(`/analytics/reviews${buildQuery({ ...params })}`);
   },
 };

@@ -137,3 +137,41 @@ export interface DeleteReviewPayload {
   /** Required for a moderator; optional when an author removes their own. */
   reason?: string;
 }
+
+// ── DASH-9 review analytics ────────────────────────────────────────────────
+
+export interface ReviewTrendPoint {
+  /** Bucket start, `YYYY-MM-DD`. */
+  period: string;
+  /** Average of APPROVED reviews in the bucket; null when none. */
+  avgRating: number | null;
+  /**
+   * Reviews SUBMITTED in the bucket - the traveller-behaviour signal.
+   * Deliberately not "approved": approval latency is ours, and charting it
+   * would make a moderation backlog look like a collapse in review volume.
+   */
+  created: number;
+  approved: number;
+}
+
+export interface ReviewStats {
+  granularity: 'month' | 'day';
+  trend: ReviewTrendPoint[];
+  /** Current STATE, so it ignores the date range (stock, not flow). */
+  moderation: {
+    pending: number;
+    approved: number;
+    held: number;
+    rejected: number;
+  };
+  themes: { tag: string; count: number }[];
+  /**
+   * Operator eligibility metrics from the nightly job. Null for a platform-wide
+   * caller, which has no single operator to report.
+   */
+  eligibility: {
+    aggregateRating: number | null;
+    aggregateReviewCount: number;
+    cancellationRate90d: number;
+  } | null;
+}
