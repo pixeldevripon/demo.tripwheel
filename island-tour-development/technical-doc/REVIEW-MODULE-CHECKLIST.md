@@ -700,6 +700,10 @@
         queue now), the same stock-vs-flow split the dashboard stats already make.
       - Trend + velocity come from ONE bucketed SQL pass (`date_trunc`): they are per-bucket
         aggregates over the same rows, so two scans would be two answers to one question.
+      - Lives as a **Reviews tab on the Statistics page**, alongside Revenue & Bookings /
+        Booking flow / Status overview / Breakdowns - not on the moderation queue. The queue
+        is the work; these are statistics, and they belong with the other statistics under
+        the same range and scope controls. (Built on the queue page first, moved on review.)
       - Dashboard panel composes the shared `ChartContainer` and `Progress` primitives, not
         hand-rolled bars - `Progress` already routes a runtime width through a CSS custom
         property, which is what the repo's no-inline-style rule requires. Renders nothing at
