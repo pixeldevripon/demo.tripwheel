@@ -1,6 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConsumes,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -17,6 +18,7 @@ import {
 import {
   AdminReviewResponseDto,
   ReviewResponseDto,
+  ReviewPhotoUploadResultDto,
   ReviewSummaryDto,
   TranslateReviewResultDto,
 } from './dto/review.dto';
@@ -173,6 +175,22 @@ export const ApiThemeTagsDocs = () =>
       summary: 'Set highlight chips (pre-AI LD29 Tier 3). Admin-only.',
     }),
     ApiOkResponse({ type: ReviewResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+  );
+
+export const ApiUploadReviewPhotosDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Attach photos to a review via its invitation token (BE-16).',
+      description:
+        'Multipart `files`. Anonymous by necessity - the single-use token is ' +
+        'the credential, as for every other write in this flow. Images only, ' +
+        '8 MB each, capped per review across uploads. A spent, revoked or ' +
+        'unknown token 404s before anything is stored.',
+    }),
+    ApiConsumes('multipart/form-data'),
+    ApiOkResponse({ type: ReviewPhotoUploadResultDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 

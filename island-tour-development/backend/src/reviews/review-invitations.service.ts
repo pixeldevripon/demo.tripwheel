@@ -12,8 +12,10 @@ import {
   ReviewModerationStatus,
   ReviewSource,
 } from '@prisma/client';
+import { CloudinaryService } from '@/media-gallery/cloudinary.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { containsBannedWord, reviewerInitial } from './review-display.util';
+import { MAX_REVIEW_PHOTOS } from './dto/review-invitation.dto';
 import type {
   EnrichReviewDto,
   StartReviewDto,
@@ -44,7 +46,10 @@ import type {
 export class ReviewInvitationsService {
   private readonly logger = new Logger(ReviewInvitationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   // ════════════════════════════════════════════════════════════════════════
   // Token resolution
@@ -147,6 +152,68 @@ export class ReviewInvitationsService {
   // ════════════════════════════════════════════════════════════════════════
   // Steps 2 / 3 / 3b - optional enrichment of the review step 1 created
   // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * BE-16 - token-scoped photo upload (D4).
+   *
+   * Photos are Step 3 of the submit flow and they gate the >= 3 photo-review
+   * carousel, so they have to be uploadable by a guest who is NOT logged in:
+   * the whole flow is tokenized precisely because a login wall between "we
+   * emailed you" and "tell us how it went" is where review collection dies.
+   *
+   * ## What stands in for authentication
+   * The invitation token. It is single-use, unguessable, revocable, and already
+   * the credential for every other write in this flow. `loadEnrichable` is
+   * reused verbatim rather than re-checked here, so an upload can never be
+   * accepted on a token that could not also submit the review it belongs to -
+   * a spent, revoked or unknown token 404s before a byte reaches Cloudinary.
+   *
+   * ## Why the ceilings are tighter than the media library's
+   * That endpoint is for admins uploading tour galleries (100 MB, any media).
+   * This one is an anonymous surface, so it takes IMAGES ONLY, at 8 MB, at most
+   * {@link MAX_REVIEW_PHOTOS} per review including any already attached. An
+   * open unauthenticated upload with the media library's limits would be free
+   * hosting for anyone who ever received an invitation.
+   *
+   * Uploaded under a `reviews/<reviewId>` folder rather than a user folder:
+   * the guest may have no user account of their own, and grouping by review is
+   * what makes a later moderation deletion able to find the assets.
+   */
+  async uploadPhotos(token: string, files: Express.Multer.File[]) {
+    const { review } = await this.loadEnrichable(token);
+
+    if (!files?.length) {
+      throw new BadRequestException('At least one photo is required');
+    }
+
+    const existing = review.photos?.length ?? 0;
+    if (existing + files.length > MAX_REVIEW_PHOTOS) {
+      throw new BadRequestException(
+        `A review may carry at most ${MAX_REVIEW_PHOTOS} photos`,
+      );
+    }
+
+    const uploaded: string[] = [];
+    for (const file of files) {
+      const res = await this.cloudinary.uploadFile(
+        file,
+        review.id,
+        `reviews/${review.id}`,
+      );
+      uploaded.push(res.url);
+    }
+
+    const photos = [...(review.photos ?? []), ...uploaded];
+    await this.prisma.review.update({
+      where: { id: review.id },
+      data: { photos },
+    });
+
+    this.logger.log(
+      `Review ${review.id}: ${uploaded.length} photo(s) uploaded via invitation`,
+    );
+    return { reviewId: review.id, photos };
+  }
 
   async enrich(token: string, dto: EnrichReviewDto) {
     const { invitation, review } = await this.loadEnrichable(token);
@@ -291,7 +358,9 @@ export class ReviewInvitationsService {
 
     const review = await this.prisma.review.findUnique({
       where: { id: invitation.reviewId },
-      select: { id: true, moderationStatus: true },
+      // `photos` is selected for the BE-16 upload cap - the ceiling counts what
+      // is already attached, not just what this request carries.
+      select: { id: true, moderationStatus: true, photos: true },
     });
     if (!review) throw new NotFoundException('Review not found');
 

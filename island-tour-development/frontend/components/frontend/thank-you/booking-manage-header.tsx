@@ -21,10 +21,13 @@ type ThankYouDict = Dictionary['thankYou'];
 export function BookingManageHeader({
     booking,
     cancelHref,
+    reviewHref,
     dict,
 }: {
     booking: ThankYouBooking;
     cancelHref: string;
+    /** Locale-prefixed `/review/{token}` path, built by the caller. */
+    reviewHref: string;
     dict: ThankYouDict;
 }) {
     // The server owns the verdict (already requested? departed? not
@@ -106,6 +109,33 @@ export function BookingManageHeader({
                         </p>
                     )}
                 </MountReveal>
+
+                {/* FE-12. The one surface a returning traveller actually
+                    reaches, so it is where the review ask belongs. Gated on the
+                    server's `canReview` - the same predicate the create endpoint
+                    enforces - so it can never offer a review the API refuses.
+                    The token is only ever present on a verified payload. */}
+                {booking.canReview && booking.reviewToken && (
+                    <MountReveal delay={0.05}>
+                        <div className='flex flex-col gap-3 rounded-[16px] border border-it-border bg-it-surface p-5 sm:flex-row sm:items-center sm:justify-between'>
+                            <div className='flex flex-col gap-1'>
+                                <span className='font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                                    {dict.reviewPrompt}
+                                </span>
+                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                                    {dict.reviewPromptBody}
+                                </span>
+                            </div>
+                            <MotionA
+                                href={reviewHref}
+                                whileTap={{ scale: 0.98 }}
+                                transition={springPop}
+                                className='flex shrink-0 items-center justify-center rounded-full bg-it-primary px-7 py-[11px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
+                                {dict.reviewCta}
+                            </MotionA>
+                        </div>
+                    </MountReveal>
+                )}
 
                 <MountReveal
                     delay={0.1}

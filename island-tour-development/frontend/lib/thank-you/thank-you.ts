@@ -72,6 +72,14 @@ export interface ThankYouBooking {
      * `status` alone, or the page offers a request the API will refuse.
      */
     canCancel: boolean;
+    /**
+     * FE-12. Server-decided, and gated behind a VERIFIED payload - the token is
+     * a write credential, so a shared `publicRef` link never carries one.
+     * `canReview` is the same predicate the create endpoint enforces.
+     */
+    canReview: boolean;
+    reviewed: boolean;
+    reviewToken: string | null;
     /** Set once the traveller has asked; the page shows a pending notice. */
     cancellationRequestedAt: string | null;
     /** Set once an admin has actually processed it. */
@@ -308,6 +316,9 @@ export async function getThankYouBooking(
         displayRef: typ.displayRef,
         status: typ.status,
         canCancel: typ.canRequestCancellation,
+        canReview: typ.review?.canReview ?? false,
+        reviewed: typ.review?.reviewed ?? false,
+        reviewToken: typ.review?.reviewToken ?? null,
         cancellationRequestedAt: typ.cancellationRequestedAt,
         cancelledAt: typ.cancelledAt,
         tourId: typ.tourId,

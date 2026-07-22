@@ -2210,6 +2210,59 @@ export class BookingsService {
    * confirmed booking with a non-null EUR commission - otherwise `conversion: null`
    * so the frontend renders an error and fires nothing (rule #22).
    */
+  /**
+   * Statuses that can produce a review. Mirrors `REVIEWABLE_STATUSES` in
+   * ReviewsService - the CTA and the create gate must agree, or the button
+   * offers something the API refuses.
+   */
+  private static readonly REVIEWABLE_BOOKING_STATUSES: BookingStatus[] = [
+    BookingStatus.CONFIRMED,
+    BookingStatus.REDEEMED,
+  ];
+
+  /**
+   * Whether this booking can still produce a review, and the token to do it
+   * with. Null-safe: a booking with no invitation simply cannot review yet.
+   *
+   * `canReview` deliberately mirrors the create gate rather than re-deciding it
+   * - a CTA that offers something the API then refuses is worse than no CTA.
+   */
+  private async reviewStateFor(booking: {
+    id: string;
+    status: BookingStatus;
+    localDate: Date;
+    tourEndDateTime: Date | null;
+    tourTimeZone: string | null;
+  }) {
+    const [existing, invitation] = await Promise.all([
+      this.prisma.review.findUnique({
+        where: { bookingId: booking.id },
+        select: { id: true },
+      }),
+      this.prisma.reviewInvitation.findUnique({
+        where: { bookingId: booking.id },
+        select: { token: true, revokedAt: true, completedAt: true },
+      }),
+    ]);
+
+    const completed = BookingsService.REVIEWABLE_BOOKING_STATUSES.includes(
+      booking.status,
+    );
+    const end =
+      booking.tourEndDateTime ?? new Date(booking.localDate.getTime() + 864e5);
+    const finished = end <= new Date();
+    const usableToken =
+      invitation && !invitation.revokedAt && !invitation.completedAt
+        ? invitation.token
+        : null;
+
+    return {
+      reviewed: Boolean(existing),
+      canReview: Boolean(completed && finished && !existing && usableToken),
+      reviewToken: existing ? null : usableToken,
+    };
+  }
+
   async getThankYou(publicRef: string, sessionToken?: string | null) {
     const booking = await this.prisma.booking.findUnique({
       where: { publicRef },
@@ -2314,8 +2367,17 @@ export class BookingsService {
     const { canRequest, reason: cancellationBlockedReason } =
       cancellationEligibility(booking);
 
+    // FE-12: the "leave a review" affordance.
+    //
+    // Gated behind `verified` like every other identifying field: `publicRef` is
+    // unguessable but shareable, and the invitation token is a WRITE credential
+    // - anyone holding it can submit a review as this guest. It must never ride
+    // on a payload an unverified viewer can fetch.
+    const review = verified ? await this.reviewStateFor(booking) : null;
+
     return {
       verified,
+      review,
       cancellationRequestedAt:
         booking.utcCancellationRequestedAt?.toISOString() ?? null,
       cancelledAt: booking.utcCancelledAt?.toISOString() ?? null,

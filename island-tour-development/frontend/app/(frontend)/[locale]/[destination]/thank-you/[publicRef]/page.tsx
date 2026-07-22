@@ -142,6 +142,7 @@ async function ThankYouBody({
                 <BookingManageHeader
                     booking={booking}
                     cancelHref={cancelHref}
+                    reviewHref={`/${locale}/review/${booking.reviewToken ?? ''}`}
                     dict={dict.thankYou}
                 />
             )}

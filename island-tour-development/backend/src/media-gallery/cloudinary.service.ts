@@ -90,8 +90,17 @@ export class CloudinaryService {
   async uploadFile(
     file: Express.Multer.File,
     userId: string,
+    /**
+     * Folder RELATIVE to the platform root, overriding the per-user default.
+     * Review photos (BE-16) are uploaded by a guest who may have no account of
+     * their own, so they group by review rather than by user - and grouping by
+     * review is what lets a later moderation deletion find the assets.
+     */
+    subFolder?: string,
   ): Promise<CloudinaryUploadResult> {
-    const folder = this.userFolder(userId);
+    const folder = subFolder
+      ? `${CLOUDINARY_ROOT_FOLDER}/${subFolder}`
+      : this.userFolder(userId);
 
     // Convert buffer to base64 data URI - eliminates stream overhead
     const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;

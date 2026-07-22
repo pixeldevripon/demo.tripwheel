@@ -1,4 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+/**
+ * Ceiling on photos per review. Shared by the JSON `photos` field below and the
+ * BE-16 multipart upload, which counts what is already attached - two entry
+ * points into the same column must not disagree about its limit.
+ */
+export const MAX_REVIEW_PHOTOS = 8;
 import { Locale, ReviewerType } from '@prisma/client';
 import {
   ArrayMaxSize,
@@ -78,10 +85,13 @@ export class EnrichReviewDto {
   @IsEnum(Locale)
   locale?: Locale;
 
-  @ApiPropertyOptional({ type: [String], description: 'Photo URLs (max 8).' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: `Photo URLs (max ${MAX_REVIEW_PHOTOS}).`,
+  })
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(8)
+  @ArrayMaxSize(MAX_REVIEW_PHOTOS)
   @IsString({ each: true })
   photos?: string[];
 

@@ -172,6 +172,15 @@ export class ThemeFacetDto {
   count!: number;
 }
 
+export class ReviewPhotoUploadResultDto {
+  @ApiProperty() reviewId!: string;
+  @ApiProperty({
+    type: [String],
+    description: 'Every photo now attached, including any uploaded earlier.',
+  })
+  photos!: string[];
+}
+
 export class TranslateReviewResultDto {
   @ApiProperty() reviewId!: string;
   @ApiProperty({

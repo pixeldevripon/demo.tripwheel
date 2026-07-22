@@ -18,14 +18,14 @@
 |---|---|---|---|---|
 | 0 | Fix silent bugs | 6 | 6 | **DONE 2026-07-22** |
 | 1 | Schema + moderation backbone (BE) | 14 | 14 | **DONE 2026-07-22** |
-| 2 | Collection flow (BE + FE) | 17 | 16 | **DONE 2026-07-22** (FE-12 deferred, BE-16 open) |
+| 2 | Collection flow (BE + FE) | 18 | 18 | **DONE 2026-07-22** (BE-16 + FE-12 now shipped; FE-12b dashboard pending) |
 | 3 | Dashboard moderation module | 14 | 14 | **DONE 2026-07-22** |
 | 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips now visible - seed depth cleared the 20 gate) |
 | 5 | LD32 translation | 8 | 8 | **DONE 2026-07-22** (needs a Google Translate key to do anything) |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
 | T | Test pass | 23 | 23 | **DONE 2026-07-22** - found + fixed a cross-operator read bug; 9 public-site tests since marked `test.fixme`, see the correction below |
-| **Total** | | **112** | **97** | |
+| **Total** | | **114** | **99** | |
 
 ---
 
@@ -215,10 +215,21 @@
       privacy-safe `"Wei C."`, travel month/year derived from the booking, EN translation
       upserted, 1 genesis audit row, invitation `completedAt` set and `reviewId` linked.
       Test rows cleaned up afterwards.
-- [ ] **BE-16** (D4: token-scoped) `POST /reviews/invitation/:token/photos` - token-scoped
-      upload, mimetype and size capped, `reviews/` folder, NSFWJS band routing to the
-      queue. *Deferred to the end of Phase 2: `PATCH` already accepts photo URLs, so the
-      flow is unblocked and this is only the upload transport for them.*
+- [x] **BE-16** Token-scoped photo upload - `POST /reviews/invitation/:token/photos`
+      (multipart), Cloudinary, `@Public()`.
+      **The token IS the credential.** `loadEnrichable` is reused verbatim, so an upload can
+      never be accepted on a token that could not also submit the review it belongs to - a
+      spent, revoked or unknown token 404s before a byte reaches Cloudinary.
+      Ceilings are deliberately far tighter than the media library's admin upload (100 MB,
+      any mimetype): **images only, 8 MB each, 8 per review counted across uploads**. An open
+      unauthenticated endpoint with the library's limits would be free file hosting.
+      `MAX_REVIEW_PHOTOS` now lives with the DTO and is shared by the JSON `photos` field and
+      the multipart path, so the two entry points into the same column cannot disagree.
+      Assets land under `islandtours/reviews/<reviewId>/` rather than a user folder - the
+      guest may have no account, and grouping by review is what lets a later moderation
+      deletion find them (added an optional folder override to `CloudinaryService`).
+      **Verified live:** real upload returns a Cloudinary URL and persists; a `.txt` is 400
+      "Only image files can be attached"; an unknown token is 404; a 9th photo is 400.
 
 ### 2b. Scheduling and email (BE) · **COMPLETE 2026-07-22**
 
@@ -318,7 +329,7 @@
 > bounces. Root cause: the job had no master switch and `RESEND_API_KEY` is live in `.env`.
 > The `enabled = false` default above exists because of this and prevents recurrence.
 
-### 2c. The review page (FE) · **COMPLETE 2026-07-22** (FE-12 deferred, see below)
+### 2c. The review page (FE) · **COMPLETE 2026-07-22**
 
 - [x] **FE-1a** `app/(frontend)/[locale]/review/[token]/page.tsx`.
       Mirrors the cancel page exactly: `generateStaticParams` returning one
@@ -349,14 +360,23 @@
       submitted through the real endpoints is stored **in full** (`rating 2`,
       `reviewerType FRIENDS`, comment intact) and enters the normal `PENDING` queue - the
       private feedback channel did **not** divert or suppress it. Test rows cleaned up.
-- [ ] **FE-12** "Leave a review" entry point for completed bookings.
-      **DEFERRED, with reason - there is no surface to attach it to.**
-      `app/(login)/[locale]/bookings` is a lookup *form*, not a booking list, and it routes
-      straight to the thank-you page for a single booking. The only candidate host is the
-      TYP, and putting the review token there would mean exposing a single-use credential
-      on a page reachable with just `publicRef`, weakening the token model for a secondary
-      entry point. **The email is the primary and sufficient channel.** Revisit when a real
-      account booking-list exists (see `project_customer_accounts`).
+- [x] **FE-12** "Leave a review" CTA on the **booking-management view**
+      (`/{locale}/{destination}/thank-you/{publicRef}`) - the surface a returning traveller
+      actually reaches via the `/bookings` lookup. Chosen over a new bookings-list route
+      after confirming none exists: `/bookings` is a login form, not a list.
+      Backend adds a `review` block to the TYP payload (`reviewed`, `canReview`,
+      `reviewToken`), **gated behind `verified`**: `publicRef` is unguessable but shareable,
+      and the invitation token is a WRITE credential - anyone holding it can submit a review
+      as this guest. Verified live that an unverified fetch returns `review: null`.
+      `canReview` mirrors the create gate (completed status + tour finished + no existing
+      review + a usable invitation) rather than re-deciding it, so the button can never offer
+      something the API refuses - the same rule the cancel affordance already follows.
+      Copy in all 7 locales (thankYou block, 65 keys, parity asserted).
+- [ ] **FE-12b** The same CTA in the **dashboard's customer bookings list**
+      (`tripwheel-x-islandtours-dashboard`, `customerNav` -> My Bookings). NOT done: the
+      customer booking LIST payload carries no review state, so this needs the same
+      `review` block added to the bookings list endpoint first. The TYP surface above is the
+      one a traveller reaches from the review email and the lookup; this is the second.
 
 ---
 

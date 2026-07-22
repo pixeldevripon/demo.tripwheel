@@ -198,6 +198,26 @@ export class BookingLookupResponseDto {
 }
 
 /** Thank-you-page payload (TYP route - noindex, no locale prefix). */
+export class ThankYouReviewStateDto {
+  @ApiProperty({ example: false, description: 'A review already exists.' })
+  reviewed!: boolean;
+  @ApiProperty({
+    example: true,
+    description:
+      'Tour finished, booking completed, no review yet, and a usable ' +
+      'invitation exists. Mirrors the create gate so the CTA cannot offer ' +
+      'something the API then refuses.',
+  })
+  canReview!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Single-use invitation token for the review page. A WRITE credential - ' +
+      'present only on a verified payload, never for a shared publicRef.',
+  })
+  reviewToken!: string | null;
+}
+
 export class ThankYouResponseDto {
   @ApiProperty({
     description:
@@ -209,6 +229,12 @@ export class ThankYouResponseDto {
       'not identity.',
   })
   verified!: boolean;
+  @ApiPropertyOptional({
+    type: ThankYouReviewStateDto,
+    nullable: true,
+    description: 'FE-12 review affordance. Null on an unverified payload.',
+  })
+  review!: ThankYouReviewStateDto | null;
 
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
