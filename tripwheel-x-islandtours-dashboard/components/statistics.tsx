@@ -19,6 +19,7 @@ import {
     type ChartConfig,
 } from '@/components/ui/chart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ReviewAnalytics } from '@/components/reviews/review-analytics';
 import {
     Tooltip,
     TooltipContent,
@@ -1325,7 +1326,11 @@ function StatisticsContent({
                         its own. */}
                     <Tabs defaultValue='revenue' className='space-y-6'>
                         <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-                            <TabsList className='grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4'>
+                            {/* Five columns, not four: the Reviews tab was rendering into a
+                                hidden second grid row, so it existed in the DOM and was
+                                invisible on screen. Column count must track the trigger
+                                count. */}
+                            <TabsList className='grid w-full max-w-3xl grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'>
                                 <TabsTrigger value='revenue'>
                                     Revenue &amp; Bookings
                                 </TabsTrigger>
@@ -1337,6 +1342,9 @@ function StatisticsContent({
                                 </TabsTrigger>
                                 <TabsTrigger value='breakdowns'>
                                     Breakdowns
+                                </TabsTrigger>
+                                <TabsTrigger value='reviews'>
+                                    Reviews
                                 </TabsTrigger>
                             </TabsList>
                             <div className='flex shrink-0 flex-wrap items-center gap-2 text-2xs text-muted-foreground'>
@@ -2109,6 +2117,14 @@ function StatisticsContent({
                                     </CardContent>
                                 </Card>
                             )}
+                        </TabsContent>
+
+                        {/* DASH-9. Lives here rather than on the reviews queue:
+                            the queue is the work, and these are statistics -
+                            which belong with the other statistics, under the
+                            same date range and scope selector. */}
+                        <TabsContent value='reviews' className='space-y-4'>
+                            <ReviewAnalytics />
                         </TabsContent>
                     </Tabs>
                 </>

@@ -5,6 +5,8 @@ import type {
   UpdatePlatformReviewsPayload,
   MailchimpConfiguration,
   MollieConfiguration,
+  ReviewRequestSettings,
+  UpdateReviewRequestsPayload,
   SiteInfo,
   SiteSEO,
   SocialMediaSettings,
@@ -111,6 +113,19 @@ export const settingsApi = {
   },
   updateMailchimp(payload: UpdateMailchimpConfigurationPayload): Promise<MailchimpConfiguration> {
     return apiFetch<MailchimpConfiguration>('/settings/mailchimp', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Post-tour review requests (cadence) ───────────────────────────────────
+  getReviewRequests(): Promise<ReviewRequestSettings> {
+    return apiFetch<ReviewRequestSettings>('/settings/review-requests');
+  },
+  updateReviewRequests(
+    payload: UpdateReviewRequestsPayload,
+  ): Promise<ReviewRequestSettings> {
+    return apiFetch<ReviewRequestSettings>('/settings/review-requests', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

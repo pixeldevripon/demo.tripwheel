@@ -62,6 +62,15 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.VIEW_BOOKINGS],
             },
             {
+                // A daily inbox, the same shape as Cancellations and Spotlight:
+                // three queues, one pattern. Operators see it too, scoped by the
+                // backend to their own tours (read + flag only).
+                title: 'Reviews',
+                url: 'reviews',
+                icon: StarIcon,
+                permissions: [Permission.VIEW_REVIEWS],
+            },
+            {
                 title: 'Payments',
                 url: 'payments',
                 icon: CreditCardIcon,
@@ -218,8 +227,8 @@ const dashboardNav: NavGroup[] = [
     },
 
     // Enquiries and Leads stay deleted: the master doc's model is "book
-    // instantly, no enquiry model". Reviews returns with its module (blocked
-    // on A2). "Users" above is the Staff & Teams module.
+    // instantly, no enquiry model". Reviews shipped 2026-07-22 and now sits in
+    // Operate above. "Users" above is the Staff & Teams module.
 ];
 
 /**

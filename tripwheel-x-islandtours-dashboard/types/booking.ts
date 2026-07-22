@@ -18,8 +18,27 @@ export type BookingPaymentModel =
     | 'PAID_IN_FULL'
     | 'OPERATOR_FULL';
 
+/**
+ * FE-12b review affordance. Present ONLY on the self-scoped customer branch of
+ * `GET /bookings` - an admin or operator listing other people's bookings never
+ * receives one, because `reviewToken` is a WRITE credential: anyone holding it
+ * can submit a review as that traveller.
+ */
+export interface BookingReviewState {
+    reviewed: boolean;
+    /**
+     * Same predicate the create endpoint enforces (completed + tour finished +
+     * no existing review + a usable invitation). Gate the CTA on this alone -
+     * never on `status`, or the button offers a review the API refuses.
+     */
+    canReview: boolean;
+    reviewToken: string | null;
+}
+
 export interface BookingListItem {
     id: string;
+    /** Undefined for admin/operator listings - see {@link BookingReviewState}. */
+    review?: BookingReviewState;
     displayRef: string;
     publicRef: string;
     tourId: string;

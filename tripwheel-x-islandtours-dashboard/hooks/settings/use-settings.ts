@@ -8,6 +8,7 @@ import type {
   UpdatePlatformReviewsPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
+  UpdateReviewRequestsPayload,
   UpdateSiteInfoPayload,
   UpdateSiteSEOPayload,
   UpdateSocialMediaPayload,
@@ -24,6 +25,7 @@ export const settingsKeys = {
   mollie: () => [...settingsKeys.all, 'mollie'] as const,
   mailchimp: () => [...settingsKeys.all, 'mailchimp'] as const,
   platformReviews: () => [...settingsKeys.all, 'platform-reviews'] as const,
+  reviewRequests: () => [...settingsKeys.all, 'review-requests'] as const,
 };
 
 const onError = (err: Error) => toast.error(err.message || 'Failed to save settings');
@@ -172,6 +174,32 @@ export function useRefreshPlatformReviews() {
         );
       } else {
         toast.error(result.error || 'Fetch failed');
+      }
+    },
+    onError,
+  });
+}
+
+// ── Post-tour review requests (cadence) ────────────────────────────────────
+export function useReviewRequests() {
+  return useQuery({
+    queryKey: settingsKeys.reviewRequests(),
+    queryFn: settingsApi.getReviewRequests,
+  });
+}
+export function useUpdateReviewRequests() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateReviewRequestsPayload) =>
+      settingsApi.updateReviewRequests(payload),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: settingsKeys.reviewRequests() });
+      // The master switch mails real customers, so its state is confirmed
+      // explicitly rather than under a generic "Settings saved".
+      if (result.enabled) {
+        toast.success('Review requests are ON - customers will be emailed');
+      } else {
+        toast.success('Review requests are OFF - no emails will be sent');
       }
     },
     onError,

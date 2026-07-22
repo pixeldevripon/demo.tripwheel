@@ -46,7 +46,7 @@ export default async function DashboardPage({
     const preset = parseRangePreset(
         typeof params[RANGE_PARAM] === 'string'
             ? params[RANGE_PARAM]
-            : undefined,
+            : undefined
     );
     const activeRange = resolveRange(preset);
     const statsPromise = getDashboardStats(cookie, activeRange);
@@ -71,3 +71,4 @@ export default async function DashboardPage({
         </div>
     );
 }
+

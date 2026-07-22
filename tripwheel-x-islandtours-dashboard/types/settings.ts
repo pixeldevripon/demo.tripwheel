@@ -176,3 +176,37 @@ export interface RefreshPlatformReviewsResult {
   rating?: number;
   error?: string;
 }
+
+// ── Post-tour review requests (cadence) ────────────────────────────────────
+
+/**
+ * The schedule for the post-tour review invitation. `enabled` is the master
+ * switch and ships FALSE - the job mails real customers, so a person turns it
+ * on deliberately rather than a deploy turning it on by accident.
+ */
+export interface ReviewRequestSettings {
+  id: string;
+  enabled: boolean;
+  /** Local hour in the TOUR's timezone (0-23) for the first touch. */
+  firstSendLocalHour: number;
+  /** Days after the tour before the first touch. 1 = the morning after. */
+  firstSendDelayDays: number;
+  reminderEnabled: boolean;
+  /** Days after the first touch before the single reminder. */
+  reminderAfterDays: number;
+  /** Stop chasing a booking older than this. */
+  giveUpAfterDays: number;
+  /** Max invitations processed per hourly run. */
+  batchSize: number;
+  updatedAt: string;
+}
+
+export interface UpdateReviewRequestsPayload {
+  enabled?: boolean;
+  firstSendLocalHour?: number;
+  firstSendDelayDays?: number;
+  reminderEnabled?: boolean;
+  reminderAfterDays?: number;
+  giveUpAfterDays?: number;
+  batchSize?: number;
+}
