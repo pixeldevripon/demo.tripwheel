@@ -205,6 +205,11 @@ export class TranslateReviewResultDto {
   reason?: string;
 }
 
+export class ReviewFacetDto {
+  @ApiProperty({ example: 'COUPLE' }) value!: string;
+  @ApiProperty({ example: 9 }) count!: number;
+}
+
 export class ReviewSummaryDto {
   @ApiProperty() tourId!: string;
   @ApiProperty({
@@ -243,6 +248,21 @@ export class ReviewSummaryDto {
       'value for GET /reviews.',
   })
   themes!: ThemeFacetDto[];
+  @ApiProperty({
+    type: [ReviewFacetDto],
+    description:
+      'Guest types present on this tour (LD36), most-used first. Valid ' +
+      '`reviewerType` filter values - the UI offers only options that return ' +
+      'something, so a filter is never a dead end.',
+  })
+  guestTypes!: ReviewFacetDto[];
+  @ApiProperty({
+    type: [ReviewFacetDto],
+    description:
+      'Languages reviews were WRITTEN in (source rows), most-used first. ' +
+      'Valid `writtenIn` filter values.',
+  })
+  languages!: ReviewFacetDto[];
   @ApiProperty({
     example: 7,
     description:
@@ -318,6 +338,37 @@ export class ListReviewsQueryDto {
   // master, so there is no vote to sort by at launch. `@IsIn` rather than a bare
   // `@IsString`, so an unsupported sort is a 400 instead of silently falling
   // through to newest and looking like the sort control is broken.
+  @ApiPropertyOptional({
+    enum: ReviewerType,
+    description:
+      'Traveller-type filter (LD36). Past the LD30 20-review gate on the ' +
+      'frontend; the API itself does not gate, so a deep link still works.',
+  })
+  @IsOptional()
+  @IsEnum(ReviewerType)
+  reviewerType?: ReviewerType;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Only reviews carrying at least one photo.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  withPhotos?: boolean;
+
+  @ApiPropertyOptional({
+    enum: Locale,
+    description:
+      'Language the review was WRITTEN in - not the display locale. Matches ' +
+      'the source translation row (`isMachineTranslated = false`), so it means ' +
+      '"reviews from Dutch speakers", never "reviews I can read in Dutch" ' +
+      '(LD32 makes every review readable in every locale).',
+  })
+  @IsOptional()
+  @IsEnum(Locale)
+  writtenIn?: Locale;
+
   @ApiPropertyOptional({
     enum: REVIEW_SORTS,
     default: 'newest',

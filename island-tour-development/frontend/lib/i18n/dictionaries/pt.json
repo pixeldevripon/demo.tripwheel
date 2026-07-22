@@ -463,6 +463,10 @@
                 "operatorFallback": "Novo na Island Tours. Esta excursão é operada por {operator}, com classificação {rating} em {count} avaliações.",
                 "earlyReviews": "{count} primeiras avaliações",
                 "howWeHandle": "Como lidamos com as avaliações",
+                "filterGuest": "Tipo de viagem",
+                "filterLanguage": "Escrito em",
+                "filterWithPhotos": "Com fotos",
+                "filterAny": "Todos",
                 "translatedBy": "Traduzido pelo Google",
                 "showOriginal": "Ver original ({language})",
                 "showTranslation": "Ver tradução"

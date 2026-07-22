@@ -734,6 +734,8 @@ export async function TourDetailContent({
                                             operatorName={reviewHostLabel}
                                             histogram={reviewHistogram}
                                             themes={reviewSummary.themes}
+                                            guestTypes={reviewSummary.guestTypes}
+                                            languages={reviewSummary.languages}
                                             photoCount={reviewSummary.photoCount}
                                             hostLabel={reviewHostLabel}
                                             explainerHref={`/${locale}/reviews-policy`}

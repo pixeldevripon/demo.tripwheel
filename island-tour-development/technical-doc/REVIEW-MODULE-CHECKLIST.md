@@ -23,9 +23,9 @@
 | 4 | Tour-page display completion (FE) | 14 | 14 | **DONE 2026-07-22** (FE-9 chips now visible - seed depth cleared the 20 gate) |
 | 5 | LD32 translation | 8 | 8 | **DONE 2026-07-22** (needs a Google Translate key to do anything) |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
-| 7 | Depth + operator partnership | 8 | 0 | Not started |
+| 7 | Depth + operator partnership | 8 | 3 | Filters DONE 2026-07-22; photo-forward cards + DASH-9 + LD37 open; LD28 & helpful votes are V2 by the master |
 | T | Test pass | 23 | 23 | **DONE 2026-07-22** - found + fixed a cross-operator read bug; 9 public-site tests since marked `test.fixme`, see the correction below |
-| **Total** | | **114** | **100** | |
+| **Total** | | **114** | **103** | |
 
 ---
 
@@ -652,9 +652,30 @@
 > platform-authored means the Island Tours team writes every reply, and that stops scaling
 > well before the 20-review gate that unlocks the rest of this phase.
 
-- [ ] Traveler-type filter (past the 20-review LD30 gate).
-- [ ] With-photos filter.
-- [ ] Language filter.
+- [x] **Traveler-type filter** (`reviewerType`, LD36) - past the 20-review LD30 gate.
+- [x] **With-photos filter** (`withPhotos`).
+- [x] **Language filter** (`writtenIn`) - the language a review was **WRITTEN** in, matched
+      on the source translation row (`isMachineTranslated = false`). NOT the display locale:
+      LD32 makes every review readable in every locale, so filtering on the displayed
+      translation would return everything. This means "reviews from Dutch speakers".
+- [x] **Facets drive the controls.** `GET /reviews/summary` now returns `guestTypes[]` and
+      `languages[]` alongside `themes[]`, so the UI offers only values that return something
+      - a filter that yields an empty list is a dead end the user has to undo. Same ordering
+      rule as the chips (most-used, alphabetical on a tie) so a bar cannot reshuffle between
+      requests. Computed in the same bounded per-tour query as the theme facets, not a
+      second pass.
+- [x] **A one-option filter is not offered at all.** With every seeded review written in
+      English, `languages` has a single entry and the language control is hidden - it could
+      only ever be a no-op or an empty list. Verified in the DOM: on a 36-review tour the
+      guest and photo filters render and the language one does not.
+- [x] **`loadPage` refactored to take a filter OBJECT.** Positional parameters stopped
+      scaling at five filters: every addition meant touching every call site, and a
+      mis-ordered argument would have silently filtered by the wrong thing.
+- [x] **Verified:** every filter's result matches its facet count exactly (COUPLE 8 -> 8,
+      SOLO 7 -> 7, photos 16 -> 16, `writtenIn=en` 36 -> 36, `writtenIn=nl` -> 0), filters
+      combine (COUPLE + photos -> 2), a bad enum is a 400, and the whole bar is absent under
+      the 20-review gate. 98 backend unit tests (1 new covering both facets), copy in all 7
+      locales (32 keys, parity asserted).
 - [ ] Photo-forward cards.
 - [ ] AI review summaries + AI theme chips at 30 reviews per tour (LD28, LD29 Tier 3).
 - [ ] Helpful votes re-enabled with identity binding.

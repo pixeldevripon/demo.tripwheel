@@ -8,7 +8,7 @@ import { fetchTourReviews } from '@/lib/api/reviews';
 import { toFullReview } from '@/lib/reviews/review-view';
 import { MotionButton } from '@/components/frontend/motion-primitives';
 import { springPop } from '@/lib/motion';
-import type { ReviewSort, ThemeFacet } from '@/types/review';
+import type { ReviewFacet, ReviewSort, ThemeFacet } from '@/types/review';
 
 export type ReviewHistogramRow = { stars: number; count: number };
 
@@ -73,6 +73,11 @@ export type TourReviewsSectionDict = {
     earlyReviews: string;
     /** FE-11 Omnibus disclosure link. */
     howWeHandle: string;
+    /** Phase 7 depth filters. */
+    filterGuest: string;
+    filterLanguage: string;
+    filterWithPhotos: string;
+    filterAny: string;
     /** FE-6 LD32 translation label + toggle. */
     translatedBy: string;
     showOriginal: string;
@@ -111,6 +116,17 @@ const GUEST_TYPE_KEYS: Record<string, keyof TourReviewsSectionDict> = {
     FRIENDS: 'guestFriends',
     SOLO: 'guestSolo',
 };
+
+/** Locale code -> its name in the READER's language ("nl" -> "Dutch"). */
+function languageLabel(code: string, locale: Locale): string {
+    try {
+        return (
+            new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code
+        );
+    } catch {
+        return code;
+    }
+}
 
 function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
     return (
@@ -155,6 +171,8 @@ export function TourReviewsSection({
     operatorName,
     histogram,
     themes,
+    guestTypes,
+    languages,
     photoCount,
     initialReviews,
     total,
@@ -181,6 +199,9 @@ export function TourReviewsSection({
     operatorName: string;
     histogram: ReviewHistogramRow[];
     themes: ThemeFacet[];
+    /** Phase 7 depth facets - only options that return something. */
+    guestTypes: ReviewFacet[];
+    languages: ReviewFacet[];
     /** Approved reviews carrying photos - the FE-10 carousel gate. */
     photoCount: number;
     initialReviews: FullReview[];
@@ -200,14 +221,28 @@ export function TourReviewsSection({
     // seed and must stay put so clearing a filter restores the right paging.
     const [starFilter, setStarFilter] = useState<number | null>(null);
     const [themeFilter, setThemeFilter] = useState<string | null>(null);
+    // Phase 7 depth filters. Same round-trip model as the star bar and chips.
+    const [guestFilter, setGuestFilter] = useState<string | null>(null);
+    const [photoFilter, setPhotoFilter] = useState(false);
+    const [languageFilter, setLanguageFilter] = useState<string | null>(null);
     const [matchTotal, setMatchTotal] = useState(total);
 
-    const isFiltered = starFilter !== null || themeFilter !== null;
+    const isFiltered =
+        starFilter !== null ||
+        themeFilter !== null ||
+        guestFilter !== null ||
+        photoFilter ||
+        languageFilter !== null;
     const hasMore = reviews.length < matchTotal;
     const showChart = ownReviewCount >= MIN_REVIEWS_FOR_CHART;
     const showSort = ownReviewCount >= MIN_REVIEWS_FOR_SORT;
-    const showThemeChips =
-        ownReviewCount >= MIN_REVIEWS_FOR_FILTERS && themes.length > 0;
+    const pastFilterGate = ownReviewCount >= MIN_REVIEWS_FOR_FILTERS;
+    const showThemeChips = pastFilterGate && themes.length > 0;
+    // A one-option filter is not a filter - it can only ever be a no-op or an
+    // empty list, so it is never offered.
+    const showGuestFilter = pastFilterGate && guestTypes.length > 1;
+    const showLanguageFilter = pastFilterGate && languages.length > 1;
+    const showPhotoFilter = pastFilterGate && photoCount > 0;
     const showPhotoStrip = photoCount >= MIN_PHOTO_REVIEWS;
     /**
      * FE-7b low-volume state, keyed off `'none'` rather than `'tour'`.
@@ -226,11 +261,34 @@ export function TourReviewsSection({
         ? reviews.flatMap(r => r.photos ?? []).slice(0, PHOTO_STRIP_LIMIT)
         : [];
 
+    /**
+     * The active filter set, as ONE object.
+     *
+     * Positional parameters stopped scaling at five filters - every new one
+     * meant touching every call site, and a mis-ordered argument would have
+     * silently filtered by the wrong thing. Handlers pass an override rather
+     * than the whole set, so adding a filter is a one-line change here.
+     */
+    type ReviewFilters = {
+        star: number | null;
+        theme: string | null;
+        guest: string | null;
+        photos: boolean;
+        language: string | null;
+    };
+
+    const activeFilters: ReviewFilters = {
+        star: starFilter,
+        theme: themeFilter,
+        guest: guestFilter,
+        photos: photoFilter,
+        language: languageFilter,
+    };
+
     async function loadPage(
         page: number,
         nextSort: ReviewSort,
-        nextStar: number | null,
-        nextTheme: string | null,
+        f: ReviewFilters,
         append: boolean
     ) {
         setLoading(true);
@@ -241,8 +299,11 @@ export function TourReviewsSection({
                 sort: nextSort,
                 page,
                 limit: pageSize,
-                ...(nextStar !== null && { rating: nextStar }),
-                ...(nextTheme !== null && { themeTag: nextTheme }),
+                ...(f.star !== null && { rating: f.star }),
+                ...(f.theme !== null && { themeTag: f.theme }),
+                ...(f.guest !== null && { reviewerType: f.guest }),
+                ...(f.photos && { withPhotos: true }),
+                ...(f.language !== null && { writtenIn: f.language }),
             });
             const mapped = res.data.map(r => toFullReview(r, locale, hostLabel));
             setReviews(prev => (append ? [...prev, ...mapped] : mapped));
@@ -255,37 +316,46 @@ export function TourReviewsSection({
         }
     }
 
+    /** Apply one filter change and refetch from page 1. */
+    function applyFilter(patch: Partial<ReviewFilters>) {
+        if (loading) return;
+        const next = { ...activeFilters, ...patch };
+        setStarFilter(next.star);
+        setThemeFilter(next.theme);
+        setGuestFilter(next.guest);
+        setPhotoFilter(next.photos);
+        setLanguageFilter(next.language);
+        void loadPage(1, sort, next, false);
+    }
+
     function handleSortChange(next: ReviewSort) {
         if (next === sort || loading) return;
         setSort(next);
-        void loadPage(1, next, starFilter, themeFilter, false);
+        void loadPage(1, next, activeFilters, false);
     }
 
     function handleShowMore() {
         if (loading || !hasMore) return;
-        void loadPage(loadedPages + 1, sort, starFilter, themeFilter, true);
+        void loadPage(loadedPages + 1, sort, activeFilters, true);
     }
 
-    /** Clicking the active bar clears it, so the chart is its own toggle (FE-3). */
+    /** Clicking the active option clears it - every control is its own toggle. */
     function handleStarClick(stars: number) {
-        if (loading) return;
-        const next = starFilter === stars ? null : stars;
-        setStarFilter(next);
-        void loadPage(1, sort, next, themeFilter, false);
+        applyFilter({ star: starFilter === stars ? null : stars });
     }
 
     function handleThemeClick(tag: string) {
-        if (loading) return;
-        const next = themeFilter === tag ? null : tag;
-        setThemeFilter(next);
-        void loadPage(1, sort, starFilter, next, false);
+        applyFilter({ theme: themeFilter === tag ? null : tag });
     }
 
     function handleClearFilters() {
-        if (loading) return;
-        setStarFilter(null);
-        setThemeFilter(null);
-        void loadPage(1, sort, null, null, false);
+        applyFilter({
+            star: null,
+            theme: null,
+            guest: null,
+            photos: false,
+            language: null,
+        });
     }
 
     // FE-7b: a tour with no reviews and no operator rating to borrow renders NO
@@ -447,6 +517,75 @@ export function TourReviewsSection({
                             </MotionButton>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Depth filters (Phase 7), same 20-review LD30 gate as the chips.
+                Each control offers only values the facets say will return
+                something, so a filter is never a dead end. */}
+            {(showGuestFilter || showLanguageFilter || showPhotoFilter) && (
+                <div className='flex flex-wrap items-center gap-3'>
+                    {showGuestFilter && (
+                        <label className='flex items-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            {dict.filterGuest}
+                            <select
+                                value={guestFilter ?? ''}
+                                disabled={loading}
+                                onChange={e =>
+                                    applyFilter({ guest: e.target.value || null })
+                                }
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                <option value=''>{dict.filterAny}</option>
+                                {guestTypes.map(g => (
+                                    <option key={g.value} value={g.value}>
+                                        {(dict[GUEST_TYPE_KEYS[g.value]] ??
+                                            g.value) as string}{' '}
+                                        ({g.count})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
+
+                    {showLanguageFilter && (
+                        <label className='flex items-center gap-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                            {dict.filterLanguage}
+                            <select
+                                value={languageFilter ?? ''}
+                                disabled={loading}
+                                onChange={e =>
+                                    applyFilter({
+                                        language: e.target.value || null,
+                                    })
+                                }
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                <option value=''>{dict.filterAny}</option>
+                                {languages.map(l => (
+                                    <option key={l.value} value={l.value}>
+                                        {languageLabel(l.value, locale)} ({l.count})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
+
+                    {showPhotoFilter && (
+                        <MotionButton
+                            type='button'
+                            onClick={() => applyFilter({ photos: !photoFilter })}
+                            disabled={loading}
+                            aria-pressed={photoFilter}
+                            whileTap={{ scale: 0.95 }}
+                            transition={springPop}
+                            className={`cursor-pointer rounded-it-full border px-4 py-2 text-[14px] leading-[1.6] tracking-[-0.012em] transition-colors disabled:cursor-default disabled:opacity-60 ${
+                                photoFilter
+                                    ? 'border-it-heading bg-it-heading text-it-white'
+                                    : 'border-it-border bg-it-white text-it-heading hover:border-it-heading'
+                            }`}>
+                            {dict.filterWithPhotos}
+                            <span className='ml-2 opacity-60'>{photoCount}</span>
+                        </MotionButton>
+                    )}
                 </div>
             )}
 

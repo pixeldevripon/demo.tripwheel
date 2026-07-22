@@ -463,6 +463,10 @@
                 "operatorFallback": "New on Island Tours. This tour is run by {operator}, rated {rating} across {count} reviews.",
                 "earlyReviews": "{count} early reviews",
                 "howWeHandle": "How we handle reviews",
+                "filterGuest": "Travelling as",
+                "filterLanguage": "Written in",
+                "filterWithPhotos": "With photos",
+                "filterAny": "Any",
                 "translatedBy": "Translated by Google",
                 "showOriginal": "Show original ({language})",
                 "showTranslation": "Show translation"

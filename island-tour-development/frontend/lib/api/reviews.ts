@@ -24,10 +24,26 @@ export async function fetchTourReviews(params: {
   rating?: number;
   /** Exact theme-tag match (the theme chips, FE-9). */
   themeTag?: string;
+  /** Phase 7 depth filters. */
+  reviewerType?: string;
+  withPhotos?: boolean;
+  /** Language the review was WRITTEN in - not the display locale. */
+  writtenIn?: string;
 }): Promise<PublicReviewList> {
-  const { tourId, locale, sort, page, limit, rating, themeTag } = params;
+  const {
+    tourId,
+    locale,
+    sort,
+    page,
+    limit,
+    rating,
+    themeTag,
+    reviewerType,
+    withPhotos,
+    writtenIn,
+  } = params;
   const res = await fetch(
-    `${BASE_URL}/reviews${buildQuery({ tourId, locale, sort, page, limit, rating, themeTag })}`,
+    `${BASE_URL}/reviews${buildQuery({ tourId, locale, sort, page, limit, rating, themeTag, reviewerType, withPhotos, writtenIn })}`,
     { headers: { 'Content-Type': 'application/json' } },
   );
   if (!res.ok) throw new Error(`Failed to load reviews (${res.status})`);

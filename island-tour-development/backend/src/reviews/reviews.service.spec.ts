@@ -165,9 +165,24 @@ describe('ReviewsService', () => {
       // The theme/photo facet query. Counted in JS from this one bounded read,
       // so every summary test needs it even when it asserts nothing about it.
       prisma.review.findMany.mockResolvedValue([
-        { themeTags: ['Great guide', 'Good value'], photos: ['a.jpg'] },
-        { themeTags: ['Great guide'], photos: [] },
-        { themeTags: [], photos: ['b.jpg', 'c.jpg'] },
+        {
+          themeTags: ['Great guide', 'Good value'],
+          photos: ['a.jpg'],
+          reviewerType: 'COUPLE',
+          translations: [{ locale: 'en' }],
+        },
+        {
+          themeTags: ['Great guide'],
+          photos: [],
+          reviewerType: 'COUPLE',
+          translations: [{ locale: 'nl' }],
+        },
+        {
+          themeTags: [],
+          photos: ['b.jpg', 'c.jpg'],
+          reviewerType: null,
+          translations: [{ locale: 'en' }],
+        },
       ]);
     });
 
@@ -263,6 +278,34 @@ describe('ReviewsService', () => {
       expect(s.photoCount).toBe(2);
     });
 
+    it('facets guest type and SOURCE language, skipping rows that have neither', async () => {
+      prisma.tour.findUnique.mockResolvedValue({
+        id: 't1',
+        operator: { aggregateRating: 4.9, aggregateReviewCount: 99 },
+      });
+      prisma.review.aggregate.mockResolvedValue({
+        _count: 3,
+        _avg: {
+          rating: 4.6,
+          ratingValue: null,
+          ratingGuide: null,
+          ratingSafety: null,
+        },
+      });
+
+      const s = await svc.summary('t1');
+
+      // Guest type is optional (step 3b), so the null row contributes nothing
+      // rather than becoming an "Unknown" filter option nobody wants.
+      expect(s.guestTypes).toEqual([{ value: 'COUPLE', count: 2 }]);
+      // Language is the SOURCE row - what the guest wrote in, not what a reader
+      // can see. Filtering on the display translation would match everything.
+      expect(s.languages).toEqual([
+        { value: 'en', count: 2 },
+        { value: 'nl', count: 1 },
+      ]);
+    });
+
     it('breaks a theme-count tie alphabetically so chip order is stable', async () => {
       prisma.tour.findUnique.mockResolvedValue({
         id: 't1',
@@ -281,7 +324,12 @@ describe('ReviewsService', () => {
       // explicit tiebreak these come back Map-insertion-ordered, so the chip bar
       // would reshuffle between requests and read as a rendering bug.
       prisma.review.findMany.mockResolvedValue([
-        { themeTags: ['Zesty', 'Attentive'], photos: [] },
+        {
+          themeTags: ['Zesty', 'Attentive'],
+          photos: [],
+          reviewerType: null,
+          translations: [],
+        },
       ]);
 
       const s = await svc.summary('t1');

@@ -79,6 +79,8 @@ export async function getTourReviewSummary(
       approvedCount: 0,
       distribution: [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 })),
       themes: [],
+      guestTypes: [],
+      languages: [],
       photoCount: 0,
       avgValue: null,
       avgGuide: null,
@@ -93,6 +95,8 @@ export async function getTourReviewSummary(
   return {
     ...res,
     themes: res.themes ?? [],
+    guestTypes: res.guestTypes ?? [],
+    languages: res.languages ?? [],
     photoCount: res.photoCount ?? 0,
   };
 }

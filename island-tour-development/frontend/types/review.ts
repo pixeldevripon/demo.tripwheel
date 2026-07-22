@@ -97,6 +97,15 @@ export interface ThemeFacet {
 }
 
 /**
+ * A depth-filter option that actually returns something (Phase 7). The UI
+ * offers only these, so a filter can never be a dead end the user has to undo.
+ */
+export interface ReviewFacet {
+  value: string;
+  count: number;
+}
+
+/**
  * `GET /reviews/summary?tourId=…` - the single source of LD11 truth.
  *
  * The backend resolves which rating to display: a tour shows its OWN rating at
@@ -122,6 +131,14 @@ export interface PublicReviewSummary {
   distribution: RatingBucket[];
   /** Theme tags on this tour's approved reviews, most-used first (FE-9). */
   themes: ThemeFacet[];
+  /** Guest types present (LD36). Valid `reviewerType` filter values. */
+  guestTypes: ReviewFacet[];
+  /**
+   * Languages reviews were WRITTEN in - not what a reader can see. LD32 makes
+   * every review readable in every locale, so filtering on the display locale
+   * would match everything; this is "reviews from Dutch speakers".
+   */
+  languages: ReviewFacet[];
   /**
    * Approved reviews carrying at least one photo. The photo carousel is gated
    * on this at >= 3 (FE-10) - it counts REVIEWS, not photos, so one guest's

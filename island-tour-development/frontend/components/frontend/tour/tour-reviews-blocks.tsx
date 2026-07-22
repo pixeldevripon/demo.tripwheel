@@ -5,7 +5,7 @@ import { getTourReviews } from '@/lib/api/public/reviews';
 import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { ThemeFacet } from '@/types/review';
+import type { ReviewFacet, ThemeFacet } from '@/types/review';
 import {
     buildTourReviewJsonLd,
     type TourJsonLdProduct,
@@ -76,6 +76,9 @@ interface TourReviewsBlockProps {
     operatorName: string;
     histogram: { stars: number; count: number }[];
     themes: ThemeFacet[];
+    /** Phase 7 depth facets. */
+    guestTypes: ReviewFacet[];
+    languages: ReviewFacet[];
     /** Approved reviews carrying photos - the FE-10 carousel gate. */
     photoCount: number;
     hostLabel: string;
@@ -97,6 +100,8 @@ export async function TourReviewsBlock({
     operatorName,
     histogram,
     themes,
+    guestTypes,
+    languages,
     photoCount,
     hostLabel,
     explainerHref,
@@ -146,6 +151,8 @@ export async function TourReviewsBlock({
                 operatorName={operatorName}
                 histogram={histogram}
                 themes={themes}
+                guestTypes={guestTypes}
+                languages={languages}
                 photoCount={photoCount}
                 initialReviews={fullReviews}
                 total={reviewList.total}

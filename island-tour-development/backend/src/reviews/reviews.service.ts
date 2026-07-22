@@ -191,6 +191,16 @@ export class ReviewsService {
       // FE-9: theme chips. `has` is an exact array-element match, so a tag is
       // never matched by prefix - "Great guide" cannot be selected by "Great".
       ...(query.themeTag && { themeTags: { has: query.themeTag } }),
+      // Phase 7 depth filters.
+      ...(query.reviewerType && { reviewerType: query.reviewerType }),
+      ...(query.withPhotos && { NOT: { photos: { isEmpty: true } } }),
+      // Language WRITTEN in, matched on the source row. Filtering on the
+      // display translation would return every review once LD32 has run.
+      ...(query.writtenIn && {
+        translations: {
+          some: { locale: query.writtenIn, isMachineTranslated: false },
+        },
+      }),
     };
 
     const [total, rows] = await Promise.all([
@@ -245,18 +255,50 @@ export class ReviewsService {
       // them. One tour's approved reviews are tens to low hundreds of rows.
       this.prisma.review.findMany({
         where,
-        select: { themeTags: true, photos: true },
+        select: {
+          themeTags: true,
+          photos: true,
+          reviewerType: true,
+          // Source-language facet: the row the guest actually wrote.
+          translations: {
+            where: { isMachineTranslated: false },
+            select: { locale: true },
+          },
+        },
       }),
     ]);
 
     const themeCounts = new Map<string, number>();
+    const guestCounts = new Map<string, number>();
+    const languageCounts = new Map<string, number>();
     let photoCount = 0;
     for (const row of facetRows) {
       if (row.photos.length > 0) photoCount++;
       for (const tag of row.themeTags) {
         themeCounts.set(tag, (themeCounts.get(tag) ?? 0) + 1);
       }
+      if (row.reviewerType) {
+        guestCounts.set(
+          row.reviewerType,
+          (guestCounts.get(row.reviewerType) ?? 0) + 1,
+        );
+      }
+      const source = row.translations[0]?.locale;
+      if (source) {
+        languageCounts.set(source, (languageCounts.get(source) ?? 0) + 1);
+      }
     }
+
+    // Same ordering rule as the theme chips: most-used first, alphabetical on a
+    // tie, so a filter bar cannot reshuffle between requests.
+    const byCount = (a: { count: number; value: string }, b: typeof a) =>
+      b.count - a.count || a.value.localeCompare(b.value);
+    const guestTypes = [...guestCounts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort(byCount);
+    const languages = [...languageCounts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort(byCount);
     // Most-used first, then alphabetical so the chip order is stable across
     // requests when counts tie - an unstable chip bar reads as a rendering bug.
     const themes = [...themeCounts.entries()]
@@ -288,6 +330,10 @@ export class ReviewsService {
       approvedCount,
       distribution,
       themes,
+      // Phase 7 facets. The UI offers only options that return something - a
+      // filter that yields an empty list is a dead end the user has to undo.
+      guestTypes,
+      languages,
       photoCount,
       avgValue: roundRating(agg._avg.ratingValue),
       avgGuide: roundRating(agg._avg.ratingGuide),
