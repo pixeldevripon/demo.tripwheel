@@ -84,6 +84,10 @@ Every gap gets an ID used by the checklist.
 
 ### 2.1 Bugs in what is already built (fix first, they are cheap)
 
+> **ALL SIX FIXED 2026-07-22.** Kept here as the record of what was wrong and why.
+> Execution notes, including two deviations from the plan, are in
+> `REVIEW-MODULE-CHECKLIST.md` → Phase 0.
+
 | ID | Gap | Impact |
 |---|---|---|
 | **BUG-1** | `recomputeAggregates()` writes only `aggregateRating` + `aggregateReviewCount`. `Tour.ratingDistribution`, `Tour.photoReviewCount` and `Tour.aggregatesUpdatedAt` are declared in `tours.prisma:94-96`, selected in `tours.service.ts:156`, typed in the DTO and consumed by the frontend histogram - and **never written by anything** | The tour page star chart renders five zero-width bars forever. The >= 3 photo-review carousel gate can never fire |

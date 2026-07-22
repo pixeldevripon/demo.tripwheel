@@ -10,7 +10,11 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { PublicReviewList, ReviewSort } from '@/types/review';
+import type {
+  PublicReviewList,
+  PublicReviewSummary,
+  ReviewSort,
+} from '@/types/review';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 import { buildQuery, publicGet } from './fetch';
@@ -40,4 +44,43 @@ export async function getTourReviews(params: {
     `/reviews${buildQuery({ tourId, locale, sort, page, limit })}`,
   );
   return res ?? { total: 0, page: 1, limit: limit ?? 10, data: [] };
+}
+
+/**
+ * LD11 rating summary for a tour: which rating to show, the count behind it, and
+ * the approved-only star distribution.
+ *
+ * This exists because the tour payload's `aggregateRating` / `aggregateReviewCount`
+ * are the TOUR's own numbers and cannot express the cold-start fallback. Only this
+ * endpoint knows whether a rating is the tour's, borrowed from the operator, or
+ * absent - so read `source` here rather than re-deriving the 3 / 10 / 4.0
+ * thresholds on the frontend, where they would drift from
+ * `backend/src/reviews/review-display.util.ts`.
+ *
+ * Returns a `none` summary if the backend is unreachable, so an outage hides the
+ * rating rather than breaking the page.
+ */
+export async function getTourReviewSummary(
+  tourId: string,
+): Promise<PublicReviewSummary> {
+  'use cache';
+  cacheLife('days');
+  cacheTag('reviews', `tour:${tourId}`);
+
+  const res = await publicGet<PublicReviewSummary>(
+    `/reviews/summary${buildQuery({ tourId })}`,
+  );
+  return (
+    res ?? {
+      tourId,
+      source: 'none',
+      rating: null,
+      reviewCount: 0,
+      approvedCount: 0,
+      distribution: [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 })),
+      avgValue: null,
+      avgGuide: null,
+      avgSafety: null,
+    }
+  );
 }

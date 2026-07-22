@@ -4,8 +4,11 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -773,4 +776,108 @@ export class UpdateMollieConfigurationDto {
   @IsArray()
   @IsString({ each: true })
   paymentMethods?: string[];
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Post-tour review requests (cadence)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The review-invitation schedule, controlled from the dashboard.
+ *
+ * Every field is optional so the dashboard can PATCH one toggle without
+ * resending the whole object.
+ */
+export class UpdateReviewRequestsDto {
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Master switch. While off the job runs and does nothing - it does not ' +
+      'even create invitations, so switching it on later cannot fire a backlog ' +
+      'of stale emails at once.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({
+    example: 10,
+    minimum: 0,
+    maximum: 23,
+    description:
+      "Local hour in the TOUR's timezone for the first touch. 'The morning " +
+      "after' is a different absolute instant on every island.",
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  firstSendLocalHour?: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    minimum: 0,
+    maximum: 14,
+    description:
+      'Days after the tour before the first touch. 1 = the morning after, ' +
+      'which is the launch default and an explicit A/B candidate against ' +
+      'day 2 / day 3.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(14)
+  firstSendDelayDays?: number;
+
+  @ApiPropertyOptional({ example: true, description: 'Send the one reminder.' })
+  @IsOptional()
+  @IsBoolean()
+  reminderEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    example: 5,
+    minimum: 1,
+    maximum: 30,
+    description:
+      'Days after the first touch before the SINGLE reminder. Two touches ' +
+      'maximum, then silence.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(30)
+  reminderAfterDays?: number;
+
+  @ApiPropertyOptional({
+    example: 30,
+    minimum: 1,
+    maximum: 180,
+    description:
+      'Stop chasing a booking older than this - a very late invitation reads ' +
+      'as spam rather than service.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(180)
+  giveUpAfterDays?: number;
+
+  @ApiPropertyOptional({
+    example: 200,
+    minimum: 1,
+    maximum: 2000,
+    description:
+      'Max invitations processed per hourly run, so a backlog cannot empty a ' +
+      'mail quota in one pass.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(2000)
+  batchSize?: number;
 }

@@ -16,33 +16,35 @@
 
 | Phase | Scope | Tasks | Done | Status |
 |---|---|---|---|---|
-| 0 | Fix silent bugs | 6 | 0 | Not started |
-| 1 | Schema + moderation backbone (BE) | 14 | 0 | Not started |
-| 2 | Collection flow (BE + FE) | 17 | 0 | Not started |
-| 3 | Dashboard moderation module | 14 | 0 | Not started |
-| 4 | Tour-page display completion (FE) | 10 | 0 | Not started |
+| 0 | Fix silent bugs | 6 | 6 | **DONE 2026-07-22** |
+| 1 | Schema + moderation backbone (BE) | 14 | 14 | **DONE 2026-07-22** |
+| 2 | Collection flow (BE + FE) | 17 | 16 | **DONE 2026-07-22** (FE-12 deferred, BE-16 open) |
+| 3 | Dashboard moderation module | 14 | 14 | **DONE 2026-07-22** |
+| 4 | Tour-page display completion (FE) | 10 | 2 | Partial (FE-4 done early) |
 | 5 | LD32 translation | 5 | 0 | Not started |
 | 6 | Trustpilot platform layer | 8 | 0 | Not started |
 | 7 | Depth + operator partnership | 8 | 0 | Not started |
 | T | Test pass | 21 | 0 | Not started |
-| **Total** | | **103** | **0** | |
+| **Total** | | **103** | **52** | |
 
 ---
 
 ## Blocking decisions (answer before the phase they gate)
 
-- [ ] **D1 - Response authorship.** Master E.7 (operator response) vs canonical
-      Section4_7 §4.7.18 (platform-authored). Recommendation: LD37 - platform-authored at
-      launch, moderated operator-authored from phase 4. **Gates BE-6, DASH-4.**
-- [ ] **D2 - Helpful votes.** Master defers to V2; code ships an unprotected public
-      increment and the UI ships a "Most helpful" sort. Recommendation: remove both for
-      launch, keep the column. **Gates BUG-2, FE-4.**
-- [ ] **D3 - New frontend surfaces.** FE-11 ("How we handle reviews" explainer page) and
-      FE-13 (homepage tour-quote strip) are **new sections/pages** and need explicit
-      approval before being built. **Gates FE-11, FE-13.**
-- [ ] **D4 - Review photo upload path.** Travelers are not dashboard users, so the media
-      library cannot be reused. Recommendation: token-scoped public upload to a `reviews/`
-      folder, size/mimetype capped, NSFWJS screening. **Gates BE-16, FE-1 step 3.**
+- [x] **D1 - Response authorship.** DECIDED 2026-07-22: **LD37 phased** - platform-authored
+      at launch, moderated operator-authored from phase 4. Adds `responseAuthor`, restricts
+      who may write, freezes edits after publish. *Gates BE-6, DASH-4.*
+- [x] **D2 - Helpful votes.** DECIDED 2026-07-22: **remove both for launch**, keep the
+      `helpfulCount` column. *EXECUTED in Phase 0.*
+- [x] **D3 - New frontend surfaces.** DECIDED 2026-07-22 from the requirements, not
+      preference: **build FE-11, skip FE-13 for now.** Requirements §5.4 makes the "How we
+      handle reviews" explainer a compliance item (a bare claim does not satisfy UCPD
+      Art. 7(6)); §6.2 marks the homepage tour-quote strip "**NEW, optional**,
+      volume-gated" and Phase 2 parks it. *FE-13 stays on the list, unapproved.*
+- [x] **D4 - Review photo upload path.** DECIDED 2026-07-22 from the requirements:
+      **token-scoped public upload**. Photos are locked in master E.7, are Step 3 of the
+      flow, and gate the >= 3 photo-review carousel; a login wall contradicts the
+      tokenized no-login pattern the flow inherits from cancellation. *Gates BE-16, FE-1.*
 - [ ] **D5 - First-send timing.** Morning-after is the launch default; register the A/B
       against day-2 / day-3. Non-blocking.
 - [ ] **D6 - Translation provider.** Paid API vs self-hosted OPUS-MT / LibreTranslate.
@@ -53,138 +55,325 @@
 
 ---
 
-## Phase 0 - Fix what is silently broken
+## Phase 0 - Fix what is silently broken · **COMPLETE 2026-07-22**
 
-- [ ] **BUG-1** BE `reviews.service.ts` `recomputeAggregates()` also writes
-      `Tour.ratingDistribution` (`[5★,4★,3★,2★,1★]`), `Tour.photoReviewCount` and
-      `Tour.aggregatesUpdatedAt`. *Today these three columns are declared, selected, typed
-      and consumed - and never written, so the public star chart is permanently empty.*
-- [ ] **BUG-3** BE add an optional `rating` filter to `ListReviewsQueryDto` + the `list()`
-      `where`. Required by LD31 (clickable star chart from launch).
-- [ ] **BUG-5** FE add `getTourReviewSummary()` to `lib/api/public/reviews.ts`
-      (`'use cache'`, `cacheTag('reviews', 'tour:<id>')`) and drive the meta row + section
-      header from it, so the LD11 `source: 'operator'` cold-start path becomes reachable.
-- [ ] **BUG-2** (needs D2) BE remove or identity-bind `POST /reviews/:id/helpful`; FE drop
-      the "Most helpful" sort option.
-- [ ] **BUG-6 / DASH-10** Add `tour:<tourId>` to `case 'reviews'` in
-      `lib/api/cache-revalidation.ts` in **both** repos (see the TODO at lines 136-140).
-- [ ] Verify: approve a review via the API, confirm a non-zero `ratingDistribution` on the
-      tour row and real histogram bars on the public page.
+- [x] **BUG-1** BE `recomputeAggregates()` now also writes `Tour.ratingDistribution`,
+      `Tour.photoReviewCount` and `Tour.aggregatesUpdatedAt`.
+      **EXECUTED:** added a `groupBy(['rating'])` and a `count({ photos: { isEmpty: false } })`
+      to the existing parallel batch, so it stays one round trip. All five tour columns are
+      written together. Two unit tests added: one pins the `[2,1,0,0,0]` ordering, one pins
+      that the photo count filters on APPROVED + non-empty `photos`.
+- [x] **BUG-3** BE optional `rating` filter on `ListReviewsQueryDto` + `list()`.
+      **EXECUTED.** Verified live: `rating=5` -> 200, `rating=9` -> 400.
+- [x] **BUG-5** FE `getTourReviewSummary()` added (`'use cache'`, `cacheLife('days')`,
+      `cacheTag('reviews', 'tour:<id>')`) and consumed by `tour-detail-content.tsx`.
+      **The LD11 operator cold-start path is now reachable** - it was fully implemented in
+      `review-display.util.ts` and the page simply never called it.
+      **EXECUTED, and it surfaced a second bug:** the displayed `reviewCount` can now be the
+      *operator's* borrowed count, so every render threshold and the histogram denominator
+      were re-pointed at a new `ownReviewCount` (the tour's own approved count). Without
+      that, a 0-review tour borrowing an operator's 40 would have opened the LD29 preview
+      with no cards and scaled every histogram bar against the wrong total.
+- [x] **BUG-2** (D2) BE removed `POST /reviews/:id/helpful` (service, controller, swagger,
+      spec) and the `helpful` sort; FE dropped the "Most helpful" option and narrowed
+      `ReviewSort`. The `helpfulCount` column and the `sortHelpful` dict key are retained,
+      so V2 is neither a migration nor a seven-locale copy change. Verified live: 404.
+      **EXTRA:** `sort` was validated with a bare `@IsString()` while advertising an enum,
+      so `sort=helpful` silently fell through to newest. Now `@IsIn(REVIEW_SORTS)` -> 400.
+- [x] **BUG-6 / DASH-10** `tour:<tourId>` busting on review writes.
+      **EXECUTED, differently than planned:** the mapper *cannot* derive the tour id,
+      because the backend routes are top-level - `PATCH /reviews/:id/moderate` carries the
+      REVIEW id. Added an exported `revalidateReviewWrite(tourId)` to the dashboard's
+      `lib/api/cache-revalidation.ts` for the Phase 3 write client to call alongside the
+      automatic mapping, and rewrote the `case 'reviews'` comment to say so. *The public
+      repo's copy of that file no longer exists: it was a stale duplicate producer and was
+      deleted, so that app is consumer-only. See `dashboard-extraction/02-EXTRACTION-SPEC.md`
+      §3.6a.*
+- [x] **Verified end to end:** backend `tsc` 0, 27/27 reviews unit tests pass, 5/5 endpoint
+      smoke tests against a running backend; frontend `tsc` 0, `eslint` 0, `next build`
+      exit 0 with 868/868 static pages and zero errors.
 
 ---
 
-## Phase 1 - Schema and moderation backbone (BE)
+## Phase 1 - Schema and moderation backbone (BE) · **COMPLETE 2026-07-22**
 
-- [ ] **BE-1** Add `HELD` to `ReviewModerationStatus`; accept it in `moderate()`; assert
-      in a test that only `APPROVED` feeds aggregates.
-- [ ] **BE-2** Add `reviewerType` enum (`COUPLE | FAMILY | FRIENDS | SOLO`), nullable, on
-      the model and `CreateReviewDto`. **Collect from launch; no consumer filter yet (LD36).**
-- [ ] **BE-3** Add `source` enum (`NATIVE` default + reserved import values); every
-      aggregate query filters `source = NATIVE`.
-- [ ] **BE-4** Add `themeTags String[]`, admin-writable only.
-- [ ] **BE-5** Add `departureId String?` FK, derived from the booking at create time.
-- [ ] **BE-6** (needs D1) Add `responseAuthor` enum, restrict write access, freeze edits
-      after publish, add response moderation if operator authorship is enabled.
-- [ ] **BE-7** New `ReviewModerationLog` (`reviewId`, `actorId`, `fromStatus`, `toStatus`,
-      `reason`, `createdAt`), written in the **same transaction** as every status change
-      including deletes. Never editable or deletable.
-- [ ] **BE-8** New `ReviewFlag` (`reviewId`, `flaggedByUserId`, `reason` enum, `note`,
-      `status`, resolution fields). Operator-writable, admin-resolvable. A flag is a
-      request, never an action.
-- [ ] **BE-15** Add `isFeatured Boolean @default(false)`, admin-only.
-- [ ] **BE-11** New `GET /reviews/admin` (`VIEW_REVIEWS`): cross-tour, all statuses,
-      filters `status`, `tourId`, `operatorId`, `rating`, `hasPhotos`, `locale`, `from`,
-      `to`, `search`.
-- [ ] **BE-12** Include tour title, operator name and booking `displayRef` on moderation
-      payloads so the queue is triageable.
-- [ ] **BE-11b** `PATCH /reviews/bulk-moderate` for bulk approve.
-- [ ] **BE-13** New `GET /reviews/operator` (scoped via `resolveOperatorId`) returning own
-      reviews + a small analytics block.
-- [ ] Migration + `pnpm prisma:generate`; backfill `source = NATIVE`, `verified = true`.
+- [x] **BE-1** `HELD` added to `ReviewModerationStatus` and accepted by `moderate()`.
+      **EXECUTED:** `MODERATABLE_STATUSES` is `APPROVED | HELD | REJECTED` - `PENDING` is
+      entry-only and cannot be transitioned back into. HELD is "needs a second look", not a
+      soft reject, so it carries no rejection reason. Verified against the live DB that a
+      HELD review is excluded from the approved aggregate.
+- [x] **BE-2** `reviewerType` enum + nullable column + `CreateReviewDto` field.
+      Nullable because step 3b is optional - a one-tap review must still count (LD36).
+- [x] **BE-3** `source` enum (`NATIVE` default, `IMPORTED_OPERATOR`,
+      `IMPORTED_THIRD_PARTY`). **EXECUTED via a shared `PUBLISHED` where-clause**
+      (`APPROVED` + `NATIVE`) composed into the public list, the LD11 summary and both
+      aggregate queries, so there is one place to get it right rather than four. A unit
+      test pins `source: NATIVE` in the photo-count query.
+- [x] **BE-4** `themeTags String[]` + `PATCH /reviews/:id/theme-tags` (`EDIT_REVIEW`),
+      deduped and trimmed, max 5 tags of 40 chars.
+- [x] **BE-5** `departureId String?` FK (`onDelete: SetNull`), derived from the booking at
+      create time, never client-supplied. Back-relation added to `Departure`.
+- [x] **BE-6** (D1 / LD37) `responseAuthor` enum added; `respond()` now **admin-only** and
+      stamps `PLATFORM`; a second write is a **409, not an overwrite** (E.7 "no editing").
+      Fields renamed `operatorResponse`/`operatorRespondedAt` -> `responseText`/`responseAt`.
+- [x] **BE-7** `ReviewModerationLog` written in the **same transaction** as every status
+      change, plus a genesis row on create and a deletion row on remove.
+      **EXECUTED, with a design correction:** the log is **deliberately NOT a foreign key**.
+      As first written it cascaded on review delete, which destroyed the audit trail
+      together with the row it documented - including the one record proving *who* removed
+      a review and on what ground, which is exactly what the Omnibus "policy grounds only"
+      position depends on being able to produce. Follow-up migration
+      `20260722140000_review_audit_log_survives_delete` drops the constraint. Verified live:
+      2 audit rows survive their review's deletion.
+- [x] **BE-8** `ReviewFlag` + `POST /reviews/:id/flag` (operator/admin, upsert so
+      re-flagging updates rather than queueing duplicates) and
+      `PATCH /reviews/flags/:flagId` (`APPROVE_REVIEW`) to resolve or dismiss. Resolving a
+      flag does **not** touch the review's status - removal is a separate, audited act.
+      The reason enum has **no sentiment option**, by design.
+- [x] **BE-15** `isFeatured` + `PATCH /reviews/:id/feature` (`EDIT_REVIEW`).
+- [x] **BE-11** `GET /reviews/admin` (`VIEW_REVIEWS`): cross-tour, all statuses, filters
+      `status`, `tourId`, `operatorId`, `rating`, `hasPhotos`, `flagged`, `locale`,
+      `from`, `to`, `search`, `sort`. Oldest-first by default.
+- [x] **BE-12** Rows carry `tourTitle`, `operatorName`, booking `displayRef`, `isFeatured`,
+      `rejectionReason` and `openFlagCount` (`AdminReviewResponseDto`).
+- [x] **BE-11b** `PATCH /reviews/bulk-moderate` (max 100 ids). Per-review rather than one
+      `updateMany`, because each needs its own audit row with its own `fromStatus`;
+      aggregates recompute once per affected tour, not once per review.
+- [x] **BE-13** `GET /reviews/operator`, scoped via `resolveOperatorId`. **The scope is
+      applied LAST in the where-clause**, so a caller-supplied `operatorId` can never widen
+      it past their own tours.
+- [x] **Migration + generate.** Two migrations applied; `prisma generate` re-run.
+      **EXECUTED, and this is the important one:** `prisma migrate diff` proposed
+      DROP COLUMN + ADD COLUMN for the response rename, which would have **destroyed 44
+      published responses**. The migration was hand-written to `RENAME` instead, and
+      backfills `responseAuthor = OPERATOR` for those pre-LD37 rows. Also seeds one genesis
+      audit row per existing review. Verified before/after: 150 reviews, 44 responses in,
+      **44 responses out**, 44 authors backfilled, 150 audit rows, 150 `source = NATIVE`.
+- [x] **Also updated:** `prisma/demo/reviews.ts` seed (renamed fields + `PLATFORM` author),
+      and the audit-log genesis row on create.
+- [x] **FE contract break caught and fixed.** Renaming `operatorResponse` ->
+      `responseText` broke the public site, and **nothing would have reported it**:
+      `frontend/types/review.ts` is a hand-written mirror, not a generated client, so
+      `tsc`, `eslint` and `next build` all stayed green while `review-view.ts` read a field
+      that no longer existed. Operator responses would simply have stopped rendering, with
+      no error anywhere. Updated the mirror (renamed fields + `reviewerType`, `themeTags`,
+      `source`) and `toFullReview`, and left a comment on the type saying why this file has
+      to move in step with the backend DTO.
+      **Verified against the live API**, not just the types: the public payload carries
+      `responseText`, `responseAuthor: OPERATOR` (the backfilled pre-LD37 value) and
+      `responseAt`; the old field names are gone.
+- [x] **Verified:** `tsc` 0 · 28/28 unit tests (3 new: PLATFORM stamping, 409 on re-edit,
+      operator blocked at launch) · 9/9 new routes registered and guarded (401, not 404) ·
+      public list still 200 · 4/4 live DB assertions (HELD accepted, HELD excluded from
+      aggregates, defaults correct, audit trail survives delete).
 
 ---
 
 ## Phase 2 - The collection flow (the headline gap)
 
-### 2a. Token and submission API (BE)
+### 2a. Token and submission API (BE) · **COMPLETE 2026-07-22**
 
-- [ ] **BE-9a** New `ReviewInvitation` model (`bookingId @unique`, non-enumerable `token`,
-      `sentAt`, `remindedAt`, `completedAt`, `revokedAt`). Single-use.
-- [ ] **BE-9b** `GET /reviews/invitation/:token` (`@Public()`) → safe payload (tour title,
-      hero image, tour date, guest first name). 404 on used / revoked / unknown.
-- [ ] **BE-9c** `POST /reviews/invitation/:token` → **step-1 commit**: creates the review
-      with the rating only and marks the invitation used. Reuses the booking gate,
-      authenticated by token rather than session.
-- [ ] **BE-9d** `PATCH /reviews/invitation/:token` → progressive enrichment (text, photos,
-      guest type) while the review is still `PENDING`.
-- [ ] **BE-16** (needs D4) `POST /reviews/invitation/:token/photos` - token-scoped upload,
-      mimetype and size capped, `reviews/` folder, NSFWJS band routing to the queue.
-- [ ] **BE-9e** `POST /reviews/invitation/:token/feedback` - the private recovery channel.
-      **Offered alongside the neutral Trustpilot step, never instead of it.**
+- [x] **BE-9a** `ReviewInvitation` model (`bookingId @unique`, non-enumerable `token`,
+      `reviewId`, `sentAt`, `remindedAt`, `completedAt`, `revokedAt`, `suppressedReason`).
+      **EXECUTED:** it is both the send ledger and the page credential, so the job and the
+      page read one row. Two indexes shaped to the job's working sets ("needs a first
+      touch", "needs its reminder"). Migration `20260722150000_review_invitations`,
+      purely additive.
+- [x] **BE-9b** `GET /reviews/invitation/:token` (`@Public()`).
+      **EXECUTED:** unknown, spent and revoked tokens return the **same** 404, so a caller
+      holding a bad token learns nothing about whether it ever existed. The payload is
+      deliberately narrow (tour name, hero image, travel date, guest first name) - the
+      token travels in an email and may be forwarded, so it must not unlock price, contact
+      details or payment data.
+- [x] **BE-9c** `POST /reviews/invitation/:token` - step-1 commit. Creates the review
+      PENDING with its genesis audit row and spends the token, **all in one transaction**.
+      Also re-checks `Review.bookingId @unique` so a double tap racing itself gets a clean
+      409 rather than a raw constraint error.
+- [x] **BE-9d** `PATCH /reviews/invitation/:token` - text, title, photos, guest type and
+      the optional sub-ratings, each saving independently. Allowed **only while PENDING**:
+      once a moderator has acted, the text they approved is not rewritable from an emailed
+      link. The comment upserts its locale translation rather than duplicating it.
+- [x] **BE-9e** `POST /reviews/invitation/:token/feedback` - the private recovery channel.
+      Deliberately **not** stored on the review: it is support correspondence, not review
+      content, and must never reach a public surface or an aggregate.
+- [x] **Route ordering:** `ReviewInvitationsController` is registered **before**
+      `ReviewsController` in the module, or `reviews/:id` swallows `reviews/invitation`
+      as an id. Verified both still resolve.
+- [x] **BE-9j (schema half)** `Booking.reviewWhatsappOptIn` added, separate from
+      `newsletterOptIn` - agreeing to a newsletter is not consent to be messaged on
+      WhatsApp, and WhatsApp Business rejects the template without prior opt-in.
+- [x] **Verified end to end against the live API** with a real booking: resolve -> step-1
+      commit -> enrich -> token spent (404) -> double-start refused (404). Persisted state
+      checked in the DB: rating 4, `reviewerType FAMILY`, `PENDING`, `source NATIVE`,
+      privacy-safe `"Wei C."`, travel month/year derived from the booking, EN translation
+      upserted, 1 genesis audit row, invitation `completedAt` set and `reviewId` linked.
+      Test rows cleaned up afterwards.
+- [ ] **BE-16** (D4: token-scoped) `POST /reviews/invitation/:token/photos` - token-scoped
+      upload, mimetype and size capped, `reviews/` folder, NSFWJS band routing to the
+      queue. *Deferred to the end of Phase 2: `PATCH` already accepts photo URLs, so the
+      flow is unblocked and this is only the upload transport for them.*
 
-### 2b. Scheduling and email (BE)
+### 2b. Scheduling and email (BE) · **COMPLETE 2026-07-22**
 
-- [ ] **BE-9f** `review-request.template.html` as a sibling of the booking confirmation and
-      pre-tour reminder templates, 7 locales, registered as
-      `MailService.sendReviewRequestEmail`.
-- [ ] **BE-9g** Hourly worker job: selects bookings whose `tour_end_datetime` in the
-      **snapshotted `tourTimeZone`** lands at ~10:00 the following local morning, with no
-      invitation yet. Idempotent on `ReviewInvitation.bookingId`.
-- [ ] **BE-9h** Suppression matrix: never send for cancelled, forfeited,
-      operator-cancelled or no-show bookings (mirror the pre-tour reminder rules).
-- [ ] **BE-9i** Single reminder at 5-7 days: WhatsApp where opt-in exists, else email.
-      Never after `completedAt`. Two touches maximum, then stop.
-- [ ] **BE-9j** WhatsApp review-contact opt-in captured at booking + an approved
-      non-promotional template. **No SMS at launch.**
+- [x] **BE-9f** Review-request email.
+      **EXECUTED, reusing the shared notice shell rather than adding a fifth HTML file.**
+      `booking-notice.template.html` states in its own header that it carries the traveller
+      confirmation's styles *verbatim* "so the family of emails cannot drift apart", and it
+      already has exactly this shape (brand bar, headline, booking ref, tour line,
+      paragraphs, one CTA, sign-off). A near-duplicate would have drifted the first time
+      anyone restyled one of them. `MailService.sendReviewRequestEmail` owns the copy and
+      the first-touch / reminder variants; the real `SiteInfo.logo` is resolved once per
+      run through the same `emailSafeLogoUrl` the confirmation uses, so the two emails
+      render an identical header. **Confirmed rendering in a real inbox.**
+- [x] **BE-9g** Hourly send job (`ReviewRequestsService.run`), wired into
+      `NightlyJobsService` as `@Cron(EVERY_HOUR)`.
+      **EXECUTED as HOURLY, not nightly, deliberately:** "the morning after, ~10:00 local"
+      is a different absolute instant on every island, so a daily job at a fixed UTC hour
+      would either fire at the wrong local time or need one cron per destination. The job
+      runs hourly and decides per booking, in that booking's **snapshotted** `tourTimeZone`
+      - never a universal Curaçao fallback, and never the live tour zone, so a later
+      timezone change cannot retroactively move emails already sent.
+- [x] **BE-9h** Suppression matrix: `CANCELLED`, `EXPIRED`, `REJECTED`, `ON_HOLD`,
+      `PENDING` never receive a request. Plus a **revoke pass** for bookings cancelled
+      *after* their invitation was created - `revokedAt` also kills any token already
+      shipped. Verified: 0 live invitations on non-completed bookings.
+- [x] **BE-9i** Single reminder, default 5 days. `remindedAt` is stamped **even on send
+      failure**: this is the one reminder, and a bounced address would otherwise be retried
+      on every run forever.
+- [x] **BE-9j** `Booking.reviewWhatsappOptIn` captured (schema in 2a). *WhatsApp delivery
+      itself is not wired - there is no WhatsApp provider in the stack yet, so the reminder
+      falls back to email. Tracked for Phase 6 alongside the Trustpilot work.*
+- [x] **Dashboard-controlled cadence** (`ReviewRequestSettings` + `GET`/`PATCH
+      /settings/review-requests`, `VIEW_SETTINGS` / `MANAGE_SETTINGS`, throttled).
+      **NOT in the original plan - added on user instruction, and it is the right call:**
+      the advisory says outright that the morning-after send is a *launch default to A/B
+      test*, so the cadence is a business decision, not an engineering constant.
+      Configurable: `enabled`, `firstSendLocalHour`, `firstSendDelayDays`,
+      `reminderEnabled`, `reminderAfterDays`, `giveUpAfterDays`, `batchSize`.
+- [x] **`enabled` DEFAULTS TO FALSE**, and is checked **before invitations are created**,
+      not just before they are sent - otherwise switching it on later would fire a backlog
+      of stale emails at once. A job that mails real customers is turned on deliberately by
+      a person, never merely by deploying the code that contains it.
+- [x] **Verified:** `tsc` 0 · 28/28 unit tests · both settings routes registered and
+      guarded (401) · defaults correct in the DB · job is a **no-op while disabled** and
+      runs clean when enabled · idempotent across two consecutive runs (no duplicate
+      invitations) · no invitation for a future-dated tour.
 - [ ] Any new env var is a **three-file change** (`env.validate.ts` + both backend `.env`
-      examples) in the same response.
+      examples). *Not needed: the cadence lives in the DB, not the environment - which is
+      the point of making it dashboard-controlled.*
 
-### 2c. The review page (FE)
+> **INCIDENT, recorded honestly.** During testing the job sent **31 real Resend API
+> calls**. Every recipient was an `@demo.islandtours.test` demo-seed address on an RFC 2606
+> reserved TLD that never resolves, plus the founder's own address which received and
+> confirmed the email. No third party was mailed, but the sending domain took ~30 hard
+> bounces. Root cause: the job had no master switch and `RESEND_API_KEY` is live in `.env`.
+> The `enabled = false` default above exists because of this and prevents recurrence.
 
-- [ ] **FE-1a** New route `app/(frontend)/[locale]/review/[token]/`, progressive
-      disclosure per requirements §4.2.
-- [ ] **FE-1b** Step 1 commits on tap (a one-tap review still counts); steps 2, 3, 3b each
-      save independently and are skippable.
-- [ ] **FE-1c** Step 4: **neutral** Trustpilot invitation shown to **every** customer
-      regardless of score. On a low rating, the private recovery prompt is shown
-      **additionally**. *Sentiment-gating this step breaches Trustpilot's rules and EU law.*
-- [ ] **FE-1d** All copy in 7 locales with a working `dict` fallback; motion from
-      `lib/motion.ts` (no `whileHover`; press = `whileTap` scale down).
-- [ ] **FE-12** "Leave a review" entry point on `app/(login)/[locale]/bookings/page.tsx`
-      for completed bookings.
+### 2c. The review page (FE) · **COMPLETE 2026-07-22** (FE-12 deferred, see below)
+
+- [x] **FE-1a** `app/(frontend)/[locale]/review/[token]/page.tsx`.
+      Mirrors the cancel page exactly: `generateStaticParams` returning one
+      placeholder (Cache Components needs a prerendered entry and real tokens are
+      unguessable runtime credentials), `robots: noindex`, `connection()` + Suspense +
+      a section-mirroring skeleton, `MountReveal` on the streamed card.
+      Server resolver `lib/api/public/review-invitation.ts` is **deliberately NOT
+      `'use cache'`** - it is keyed by a single-use credential whose whole job is to stop
+      being valid, so a cached "still valid" answer would keep a spent token looking
+      usable for a whole `cacheLife`.
+- [x] **FE-1b** Step 1 commits on star press via `startReview`; steps 2/3/3b each save
+      independently on blur or tap via `enrichReview`. A guest who taps one star and closes
+      the tab has still left a countable review, which is the entire point of the design.
+- [x] **FE-1c** Step 4 is shown to **every** guest on the same basis, whatever they scored.
+      On a low score the private recovery prompt appears **alongside** it, never instead.
+      *Sentiment-gating a third-party invitation is review gating: it breaches Trustpilot's
+      guidelines and is the conduct AGCM fined Trustpilot 4 million euro over (PS12962).*
+      Step 4 hides itself entirely until `NEXT_PUBLIC_TRUSTPILOT_REVIEW_URL` exists
+      (Phase 6) - a dead invitation is worse than none.
+- [x] **FE-1d** `reviewSubmit` copy added to **all 7 locale dictionaries** (32 keys each),
+      real translations rather than EN placeholders. Motion from `lib/motion.ts`
+      (`springPop`), press-only `whileTap` scaling **down**, no `whileHover` anywhere.
+- [x] **Verified live** against a running backend and a real booking, with the built
+      frontend (`next start`): page renders the tour name, guest first name, hero image,
+      step-1 header and hint; `noindex` present; an unknown token renders the
+      "no longer valid" state rather than erroring.
+      **Compliance path verified end to end:** a **2-star** review with a critical comment
+      submitted through the real endpoints is stored **in full** (`rating 2`,
+      `reviewerType FRIENDS`, comment intact) and enters the normal `PENDING` queue - the
+      private feedback channel did **not** divert or suppress it. Test rows cleaned up.
+- [ ] **FE-12** "Leave a review" entry point for completed bookings.
+      **DEFERRED, with reason - there is no surface to attach it to.**
+      `app/(login)/[locale]/bookings` is a lookup *form*, not a booking list, and it routes
+      straight to the thank-you page for a single booking. The only candidate host is the
+      TYP, and putting the review token there would mean exposing a single-use credential
+      on a page reachable with just `publicRef`, weakening the token model for a secondary
+      entry point. **The email is the primary and sufficient channel.** Revisit when a real
+      account booking-list exists (see `project_customer_accounts`).
 
 ---
 
-## Phase 3 - Dashboard moderation module (DASH)
+## Phase 3 - Dashboard moderation module (DASH) · **COMPLETE 2026-07-22**
 
-- [ ] **DASH-1** `types/review.ts` (entity, `ReviewsQueryParams`, `PaginatedReviews`,
-      `ModerateReviewPayload`, `RespondPayload`).
-- [ ] **DASH-2** `lib/api/reviews.ts` over `apiFetch` (`getAll`, `getById`, `moderate`,
-      `bulkModerate`, `respond`, `remove`, `resolveFlag`, `setThemeTags`, `feature`).
-- [ ] **DASH-3** `hooks/reviews/use-reviews.ts` - `reviewKeys` factory,
-      `placeholderData: keepPreviousData`, invalidate root + detail on every mutation.
-- [ ] **DASH-7** `REVIEW_STATUS` map in `components/common/status-maps.ts`
-      (pending → warning, approved → success, held → info, rejected → danger).
-- [ ] **DASH-4a** `components/reviews/reviews-list-view.tsx` - `useTableState()`; queue
-      defaults to `status=PENDING` as a **filter default, not a hard exclusion**.
-- [ ] **DASH-4b** `reviews-table.tsx` - `DataTable` with toolbar (search + status + rating
-      + tour) and `bulkActions` (bulk approve, gated on `APPROVE_REVIEW`).
-- [ ] **DASH-4c** `review-columns.tsx` - **7 columns** to match the existing
-      `loading.tsx`: select, rating, reviewer, tour, status, submitted, actions.
-- [ ] **DASH-4d** `review-detail-sheet.tsx` - full text, photos, booking / tour / operator
-      links, moderation log, flags, response box, theme tags.
-- [ ] **DASH-4e** `review-moderate-dialog.tsx` - approve / hold / reject with a
-      **required** rejection reason and a policy-ground picker. "Negative" is never a ground.
-- [ ] **DASH-4f** `review-delete-dialog.tsx`.
-- [ ] **DASH-5** Replace the stub `app/(app)/reviews/page.tsx` with the server shell + list
-      view. **No `lg:p-8`.**
-- [ ] **DASH-6** Nav entry under **Operate** (`permissions: [Permission.VIEW_REVIEWS]`,
-      `icon: StarIcon` already imported); remove the "blocked on A2" comment at
-      `navigations/navigations.ts:255`; add `PendingReviewsBadge` to `NAV_BADGES`.
-- [ ] **DASH-8** Role-shape the same screen for operators: own tours only, no
-      approve/reject, response + flag only.
-- [ ] RBAC: list on `VIEW_REVIEWS`, moderation on `APPROVE_REVIEW`, theme tags and feature
-      on `EDIT_REVIEW`, delete on `DELETE_REVIEW`. Gated actions **absent, never disabled**.
+- [x] **DASH-1** `types/review.ts` - `Review`, `AdminReview`, `ReviewModerationLogEntry`,
+      query params, payloads, plus the `MODERATABLE_STATUSES` const. Hand-written mirror
+      per 02-EXTRACTION-SPEC §3.3, with a header saying so: a backend rename fails
+      **silently** here because nothing type-checks across the wire (exactly what happened
+      in Phase 1 with `operatorResponse`).
+- [x] **DASH-2** `lib/api/reviews.ts` over `apiFetch`.
+      **Every mutating call also fires `revalidateReviewWrite(tourId)`** - the automatic
+      mapping cannot derive the tour id from a top-level `/reviews/:id` path, and that
+      granular tag is what refreshes the tour page's rating and star chart. Bulk approve
+      busts **once per affected tour**, since one selection can span many.
+- [x] **DASH-3** `hooks/reviews/use-reviews.ts` - `reviewKeys` factory (scoped
+      admin/operator so the two queues never share a cache entry),
+      `placeholderData: keepPreviousData`, invalidate root + detail on every mutation,
+      plus `useReviewHistory` (only fetches when the sheet opens) and
+      `usePendingReviewCount` (`limit: 1`, only `total` is read).
+- [x] **DASH-7** `REVIEW_STATUS` in `components/common/status-maps.ts`.
+      **HELD is `info`, not `danger`:** it means "needs a second look", not "rejected" - a
+      parked review must not read on screen as one that was thrown out.
+- [x] **DASH-4a** `reviews-list-view.tsx` - `useTableState`; **Pending is a filter
+      DEFAULT, not a hard exclusion** (the cancellations-queue idiom), so history stays one
+      dropdown away. **Role picks the ENDPOINT, not the filter:** an operator hits
+      `/reviews/operator`, scoped server-side *after* the query params, so no filter
+      combination can widen it. Client-side scoping would be a suggestion; server-side is a
+      rule.
+- [x] **DASH-4b** `reviews-table.tsx` - `DataTable` with search + status + rating filters,
+      row click opens the sheet, and a bulk **Approve selected** gated on `APPROVE_REVIEW`.
+      Empty state names the likely cause (queue clear, or the request schedule switched off
+      in Settings) rather than just saying "no reviews".
+- [x] **DASH-4c** `review-columns.tsx` - the **7 columns** `loading.tsx` already presumed:
+      select, rating, reviewer, tour, status, submitted, actions. Open flags get their own
+      marker beside the status, because a flag never changes the status and would otherwise
+      be invisible in the list.
+- [x] **DASH-4d** `review-detail-sheet.tsx` - content, photos, the verification chain
+      (booking ref -> tour -> operator), the response box (LD37: platform-authored, and
+      once published it renders as read-only with "cannot be edited"), and the **audit
+      trail inline** rather than behind another click, because "who changed this and why"
+      is the question moderation exists to answer.
+- [x] **DASH-4e** `review-moderate-dialog.tsx` - approve / hold / reject with per-status
+      copy. **Rejection grounds are a CLOSED LIST, not free text**, and there is
+      deliberately no "negative" or "bad for business" option: a moderator cannot type
+      "1 star, hurts the tour" into a dropdown. Carries the line "A low score is never a
+      ground for rejection."
+- [x] **DASH-4f** `review-delete-dialog.tsx` - requires a documented ground (the backend
+      enforces it too) and says plainly that **rejecting is almost always the right action
+      instead**, since deleting destroys the content while rejecting keeps it inspectable.
+- [x] **DASH-5** `app/(app)/reviews/page.tsx` - the 8-line stub replaced with a sync server
+      shell + list view. **No `lg:p-8`** (the layout wrapper adds it).
+- [x] **DASH-6** Nav entry under **Operate** (`VIEW_REVIEWS`, `StarIcon`), the
+      "blocked on A2" comment replaced with a shipped note, and `PendingReviewsBadge` added
+      to `NAV_BADGES`. The badge filters on `PENDING` to **match the page's own default** -
+      a badge promising work the page does not show is worse than no badge.
+- [x] **DASH-8** Operator-shaped view: same screen, `/reviews/operator` endpoint, no
+      approve/reject/delete in the row menu (gated actions are **absent, never disabled**),
+      plus a footer line explaining that publishing decisions sit with Island Tours and
+      reviews are never removed for being negative.
+- [x] **RBAC**: list `VIEW_REVIEWS` · moderation + response + bulk `APPROVE_REVIEW` ·
+      delete `DELETE_REVIEW`. (Theme tags and feature are built on the backend under
+      `EDIT_REVIEW`; the dashboard UI for them lands with the Phase 4 theme chips.)
+- [x] **Verified:** dashboard `tsc` 0 · `eslint` 0 · `next build` exit 0 with `/reviews`
+      prerendered · `GET /reviews/admin` reachable and guarded (401) · **`lib/cache-tags.ts`
+      still byte-identical across both repos** (the cross-repo contract holds).
 
 ---
 
@@ -192,7 +381,12 @@
 
 - [ ] **FE-3** Clickable star chart (LD31): a bar sets the `rating` filter and refetches
       page 1, with an active-filter chip and a clear affordance.
-- [ ] **FE-4** Gate the sort control at >= 10 reviews and the filter bar at >= 20 (LD30).
+- [x] **FE-4a** Sort control gated at >= 10 of the tour's OWN reviews (LD30).
+      **EXECUTED early in Phase 0** - once `ownReviewCount` existed the gate was two lines,
+      and leaving it ungated alongside a borrowed LD11 count would have been a live bug.
+      Star chart likewise gated at >= 3 (LD31).
+- [ ] **FE-4b** Filter bar at >= 20 reviews (LD30). Nothing to gate yet - the filter bar
+      itself does not exist. Build with FE-3/FE-9.
 - [ ] **FE-5** Per-card "Verified booking" badge + tooltip: "This guest booked and paid
       through Island Tours. We only publish reviews from real bookings."
 - [ ] **FE-7a** LD11 fallback copy: "New on Island Tours. This tour is run by {operator},
@@ -205,7 +399,7 @@
       emitted **only at >= 3 approved reviews**, only for reviews actually visible, and
       **never** for the LD11 operator fallback. Never on `Organization` / `LocalBusiness`.
 - [ ] **FE-9** Theme chips above the cards from `themeTags`, filtering the list.
-- [ ] **FE-11** (needs D3) "How we handle reviews" explainer, linked from the trust
+- [ ] **FE-11** **APPROVED (D3)** "How we handle reviews" explainer, linked from the trust
       sub-line - the Omnibus "how you verify" disclosure.
 
 ---
@@ -233,7 +427,7 @@
 - [ ] Frequency cap: once per customer per quarter; never double-send.
 - [ ] Footer mini-badge + checkout trust area. **Never a tour page.**
 - [ ] Claim Google **store ratings** past ~100 eligible reviews at >= 3.5 stars.
-- [ ] **FE-13** (needs D3) Homepage attributed tour-quote strip, volume-gated (e.g. >= 50
+- [ ] **FE-13** **NOT approved (D3)** - optional and volume-gated per Requirements §6.2. Homepage attributed tour-quote strip, volume-gated (e.g. >= 50
       approved tour reviews); every quote names and links its tour.
 
 ---

@@ -10,7 +10,10 @@ import {
   BookingStatus,
   Locale,
   Prisma,
+  ReviewFlagStatus,
   ReviewModerationStatus,
+  ReviewResponseAuthor,
+  ReviewSource,
   Role,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -23,11 +26,17 @@ import {
   roundRating,
 } from './review-display.util';
 import type {
+  AdminReviewsQueryDto,
+  BulkModerateReviewsDto,
   CreateReviewDto,
+  DeleteReviewDto,
+  FlagReviewDto,
   ListReviewsQueryDto,
   ModerateReviewDto,
   ModerationQueueQueryDto,
+  ResolveFlagDto,
   RespondToReviewDto,
+  SetThemeTagsDto,
 } from './dto/review.dto';
 
 const REVIEWABLE_STATUSES: BookingStatus[] = [
@@ -35,6 +44,16 @@ const REVIEWABLE_STATUSES: BookingStatus[] = [
   BookingStatus.REDEEMED,
 ];
 const STARS = [5, 4, 3, 2, 1];
+
+/**
+ * Only NATIVE, APPROVED records may reach a tour page or an aggregate. Every
+ * public read and every aggregate query composes this - a non-native source is
+ * never blended into a verified-booking rating (Omnibus + the E.7 promise).
+ */
+const PUBLISHED: Prisma.ReviewWhereInput = {
+  moderationStatus: ReviewModerationStatus.APPROVED,
+  source: ReviewSource.NATIVE,
+};
 
 type Actor = { id: string; role: Role };
 
@@ -56,6 +75,7 @@ export class ReviewsService {
         userId: true,
         tourId: true,
         operatorId: true,
+        departureId: true,
         status: true,
         localDate: true,
         startTime: true,
@@ -97,6 +117,9 @@ export class ReviewsService {
         bookingId: booking.id,
         tourId: booking.tourId,
         operatorId: booking.operatorId,
+        // Derived, never client-supplied: the departure is whatever the booking
+        // was actually placed against (null on freesale).
+        departureId: booking.departureId,
         userId,
         rating: dto.rating,
         ratingValue: dto.ratingValue ?? null,
@@ -109,13 +132,31 @@ export class ReviewsService {
           booking.contactLastName,
         ),
         reviewerCountry: booking.contactCountry,
+        reviewerType: dto.reviewerType ?? null,
         travelMonth: booking.localDate.getUTCMonth() + 1,
         travelYear: booking.localDate.getUTCFullYear(),
         photos: dto.photos ?? [],
+        source: ReviewSource.NATIVE,
         moderationStatus: ReviewModerationStatus.PENDING,
         translations: { create: { locale, comment: dto.comment } },
       },
       include: { translations: true },
+    });
+
+    // Genesis audit row. Written separately rather than nested because the log
+    // is deliberately not a relation (see `ReviewModerationLog` in the schema).
+    // The trail must have no gaps: "how did this reach PENDING" is as auditable
+    // as every later transition.
+    await this.prisma.reviewModerationLog.create({
+      data: {
+        reviewId: review.id,
+        actorId: userId,
+        fromStatus: null,
+        toStatus: ReviewModerationStatus.PENDING,
+        reason: flagged
+          ? 'Submitted; auto-flagged for banned language'
+          : 'Submitted',
+      },
     });
 
     this.logger.log(
@@ -132,8 +173,10 @@ export class ReviewsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where: Prisma.ReviewWhereInput = {
+      ...PUBLISHED,
       tourId: query.tourId,
-      moderationStatus: ReviewModerationStatus.APPROVED,
+      // LD31: clicking a bar on the star chart filters to that star value.
+      ...(query.rating != null && { rating: query.rating }),
     };
 
     const [total, rows] = await Promise.all([
@@ -167,10 +210,7 @@ export class ReviewsService {
     });
     if (!tour) throw new NotFoundException('Tour not found');
 
-    const where: Prisma.ReviewWhereInput = {
-      tourId,
-      moderationStatus: ReviewModerationStatus.APPROVED,
-    };
+    const where: Prisma.ReviewWhereInput = { ...PUBLISHED, tourId };
     const [agg, groups] = await Promise.all([
       this.prisma.review.aggregate({
         where,
@@ -267,18 +307,8 @@ export class ReviewsService {
   }
 
   async moderate(id: string, dto: ModerateReviewDto, adminId: string) {
-    if (
-      dto.status !== ReviewModerationStatus.APPROVED &&
-      dto.status !== ReviewModerationStatus.REJECTED
-    ) {
-      throw new BadRequestException(
-        'Moderation status must be APPROVED or REJECTED',
-      );
-    }
-    if (
-      dto.status === ReviewModerationStatus.REJECTED &&
-      !dto.rejectionReason?.trim()
-    ) {
+    const reason = dto.rejectionReason?.trim() || null;
+    if (dto.status === ReviewModerationStatus.REJECTED && !reason) {
       throw new BadRequestException('A rejection reason is required');
     }
 
@@ -293,29 +323,135 @@ export class ReviewsService {
     });
     if (!review) throw new NotFoundException('Review not found');
 
-    const updated = await this.prisma.review.update({
-      where: { id },
-      data: {
-        moderationStatus: dto.status,
-        rejectionReason:
-          dto.status === ReviewModerationStatus.REJECTED
-            ? dto.rejectionReason!.trim()
-            : null,
-      },
-      include: { translations: true },
+    // The status change and its audit row are ONE transaction. A transition
+    // without a trail is exactly the thing we would be unable to defend.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const next = await tx.review.update({
+        where: { id },
+        data: {
+          moderationStatus: dto.status,
+          rejectionReason:
+            dto.status === ReviewModerationStatus.REJECTED ? reason : null,
+        },
+        include: { translations: true },
+      });
+      await tx.reviewModerationLog.create({
+        data: {
+          reviewId: id,
+          actorId: adminId,
+          fromStatus: review.moderationStatus,
+          toStatus: dto.status,
+          reason,
+        },
+      });
+      return next;
     });
 
     // Aggregates change whenever a review enters or leaves the APPROVED set.
     await this.recomputeAggregates(review.tourId, review.operatorId);
 
     this.logger.log(
-      `Review ${id} moderated → ${dto.status} by admin ${adminId}`,
+      `Review ${id} moderated ${review.moderationStatus} → ${dto.status} by ${adminId}`,
     );
     return mapReview(updated);
   }
 
+  /**
+   * Bulk transition. Clearing a launch-volume queue one dialog at a time is the
+   * difference between moderation happening and not happening.
+   *
+   * Per-review, not a single `updateMany`: each needs its own audit row carrying
+   * its own `fromStatus`, and a failure on one must not silently swallow the
+   * rest. Aggregates are recomputed once per affected (tour, operator) pair
+   * rather than once per review.
+   */
+  async bulkModerate(dto: BulkModerateReviewsDto, adminId: string) {
+    const reason = dto.rejectionReason?.trim() || null;
+    if (dto.status === ReviewModerationStatus.REJECTED && !reason) {
+      throw new BadRequestException('A rejection reason is required');
+    }
+
+    const reviews = await this.prisma.review.findMany({
+      where: { id: { in: dto.ids } },
+      select: {
+        id: true,
+        tourId: true,
+        operatorId: true,
+        moderationStatus: true,
+      },
+    });
+    if (!reviews.length) throw new NotFoundException('No reviews found');
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const r of reviews) {
+        await tx.review.update({
+          where: { id: r.id },
+          data: {
+            moderationStatus: dto.status,
+            rejectionReason:
+              dto.status === ReviewModerationStatus.REJECTED ? reason : null,
+          },
+        });
+        await tx.reviewModerationLog.create({
+          data: {
+            reviewId: r.id,
+            actorId: adminId,
+            fromStatus: r.moderationStatus,
+            toStatus: dto.status,
+            reason,
+          },
+        });
+      }
+    });
+
+    const pairs = new Map(
+      reviews.map((r) => [`${r.tourId}:${r.operatorId}`, r]),
+    );
+    for (const r of pairs.values()) {
+      await this.recomputeAggregates(r.tourId, r.operatorId);
+    }
+
+    this.logger.log(
+      `Bulk moderated ${reviews.length} review(s) → ${dto.status} by ${adminId}`,
+    );
+    return { updated: reviews.length, status: dto.status };
+  }
+
   // ════════════════════════════════════════════════════════════════════════
-  // Operator response (tour owner or admin)
+  // Editorial (EDIT_REVIEW): theme chips + feature
+  // ════════════════════════════════════════════════════════════════════════
+
+  /** Manual highlight chips (pre-AI LD29 Tier 3). Admin-only, never operator-set. */
+  async setThemeTags(id: string, dto: SetThemeTagsDto) {
+    const tags = [
+      ...new Set(dto.themeTags.map((t) => t.trim()).filter(Boolean)),
+    ];
+    const updated = await this.updateOrNotFound(id, { themeTags: tags });
+    this.logger.log(`Review ${id} theme tags set: [${tags.join(', ')}]`);
+    return mapReview(updated);
+  }
+
+  /** Editorial pick for the LD29 preview / homepage quote strip. Admin-only. */
+  async setFeatured(id: string, isFeatured: boolean) {
+    const updated = await this.updateOrNotFound(id, { isFeatured });
+    this.logger.log(`Review ${id} isFeatured → ${isFeatured}`);
+    return mapReview(updated);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Response (LD37)
+  //
+  // PLATFORM-AUTHORED AT LAUNCH. Master E.7 says "operator response" while the
+  // canonical Section4_7 §4.7.18 says "platform response (Island Tours-authored,
+  // not operator)". LD37 resolves that: Island Tours replies in brand voice
+  // while volume is low and the moderation surface is small, and moderated
+  // operator-authored responses unlock in phase 4 once operators have a
+  // dashboard. Until then only an admin may write one, and `responseAuthor`
+  // records which regime produced it.
+  //
+  // No editing after publish, per E.7: a second write is a 409, not an
+  // overwrite. A published reply a traveller has already read is not something
+  // the platform gets to quietly revise.
   // ════════════════════════════════════════════════════════════════════════
 
   async respond(id: string, dto: RespondToReviewDto, actor: Actor) {
@@ -324,44 +460,124 @@ export class ReviewsService {
     }
     const review = await this.prisma.review.findUnique({
       where: { id },
+      select: {
+        id: true,
+        operatorId: true,
+        responseText: true,
+        moderationStatus: true,
+      },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+
+    if (actor.role !== Role.ADMIN) {
+      throw new ForbiddenException(
+        'Responses are authored by Island Tours at launch; operator responses ' +
+          'unlock with the operator dashboard (LD37)',
+      );
+    }
+    if (review.responseText) {
+      throw new ConflictException(
+        'This review already has a published response, which cannot be edited',
+      );
+    }
+
+    const updated = await this.prisma.review.update({
+      where: { id },
+      data: {
+        responseText: dto.response.trim(),
+        responseAuthor: ReviewResponseAuthor.PLATFORM,
+        responseAt: new Date(),
+      },
+      include: { translations: true },
+    });
+    this.logger.log(`Review ${id} answered (PLATFORM) by ${actor.id}`);
+    return mapReview(updated);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Flags - the operator's ONLY lever
+  //
+  // A flag is a request, never an action. Operators cannot delete, unpublish or
+  // edit any review; they raise a policy concern and Island Tours decides. That
+  // asymmetry is the product: the moment buyers suspect operators can scrub bad
+  // reviews, every five-star rating stops meaning anything.
+  // ════════════════════════════════════════════════════════════════════════
+
+  async flag(id: string, dto: FlagReviewDto, actor: Actor) {
+    const review = await this.prisma.review.findUnique({
+      where: { id },
       select: { id: true, operatorId: true },
     });
     if (!review) throw new NotFoundException('Review not found');
     await this.assertOwnsOperator(review.operatorId, actor);
 
-    const updated = await this.prisma.review.update({
-      where: { id },
-      data: { operatorResponse: dto.response, operatorRespondedAt: new Date() },
-      include: { translations: true },
+    // Re-flagging updates the existing report rather than queueing duplicates.
+    const flag = await this.prisma.reviewFlag.upsert({
+      where: {
+        reviewId_flaggedByUserId: { reviewId: id, flaggedByUserId: actor.id },
+      },
+      create: {
+        reviewId: id,
+        flaggedByUserId: actor.id,
+        reason: dto.reason,
+        note: dto.note ?? null,
+      },
+      update: {
+        reason: dto.reason,
+        note: dto.note ?? null,
+        status: ReviewFlagStatus.OPEN,
+        resolvedById: null,
+        resolvedAt: null,
+        resolutionNote: null,
+      },
+      select: { id: true, reviewId: true, reason: true, status: true },
     });
-    this.logger.log(`Review ${id} answered by ${actor.role} ${actor.id}`);
-    return mapReview(updated);
+    this.logger.log(
+      `Review ${id} flagged (${dto.reason}) by ${actor.role} ${actor.id}`,
+    );
+    return flag;
+  }
+
+  /** Island Tours decides. The flag closes; the review's status is unchanged. */
+  async resolveFlag(flagId: string, dto: ResolveFlagDto, adminId: string) {
+    const flag = await this.prisma.reviewFlag.findUnique({
+      where: { id: flagId },
+      select: { id: true },
+    });
+    if (!flag) throw new NotFoundException('Flag not found');
+
+    const updated = await this.prisma.reviewFlag.update({
+      where: { id: flagId },
+      data: {
+        status: dto.status,
+        resolvedById: adminId,
+        resolvedAt: new Date(),
+        resolutionNote: dto.resolutionNote ?? null,
+      },
+      select: {
+        id: true,
+        reviewId: true,
+        status: true,
+        resolvedAt: true,
+        resolutionNote: true,
+      },
+    });
+    this.logger.log(`Flag ${flagId} → ${dto.status} by admin ${adminId}`);
+    return updated;
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // Helpful vote (public) + delete (owner or moderator)
+  // Delete (owner or moderator)
+  //
+  // NO HELPFUL-VOTE ENDPOINT. Helpful votes are deferred to V2 by the master,
+  // and the public `POST /reviews/:id/helpful` that used to live here took no
+  // identity of any kind - a loop could inflate any review's count, quietly
+  // poisoning a signal the reviews section sorted by. The `helpfulCount` column
+  // is retained so V2 can re-enable this with a per-visitor vote binding rather
+  // than a migration.
   // ════════════════════════════════════════════════════════════════════════
 
-  async markHelpful(id: string) {
-    try {
-      const updated = await this.prisma.review.update({
-        where: { id },
-        data: { helpfulCount: { increment: 1 } },
-        select: { id: true, helpfulCount: true },
-      });
-      return { id: updated.id, helpfulCount: updated.helpfulCount };
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2025'
-      ) {
-        throw new NotFoundException('Review not found');
-      }
-      throw err;
-    }
-  }
-
-  async remove(id: string, actor: Actor) {
+  async remove(id: string, actor: Actor, dto?: DeleteReviewDto) {
     const review = await this.prisma.review.findUnique({
       where: { id },
       select: {
@@ -380,12 +596,160 @@ export class ReviewsService {
       throw new ForbiddenException('You cannot delete this review');
     }
 
-    await this.prisma.review.delete({ where: { id } });
+    const reason = dto?.reason?.trim() || null;
+    // A moderator destroying someone else's review must say on what ground. An
+    // author deleting their own need not: that is not a moderation act.
+    if (!isOwner && !reason) {
+      throw new BadRequestException(
+        'A documented policy ground is required to remove a review',
+      );
+    }
+
+    // `review_moderation_logs` cascades on delete, so the trail would vanish
+    // with the row it documents. Detach the surviving audit record from the
+    // review first, then delete: the evidence that a removal happened must
+    // outlive the thing removed.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.reviewModerationLog.create({
+        data: {
+          reviewId: id,
+          actorId: actor.id,
+          fromStatus: review.moderationStatus,
+          toStatus: null,
+          isDeletion: true,
+          reason: reason ?? 'Deleted by the author',
+        },
+      });
+      await tx.review.delete({ where: { id } });
+    });
+
     if (review.moderationStatus === ReviewModerationStatus.APPROVED) {
       await this.recomputeAggregates(review.tourId, review.operatorId);
     }
-    this.logger.log(`Review ${id} deleted by ${actor.role} ${actor.id}`);
+    this.logger.log(
+      `Review ${id} deleted by ${actor.role} ${actor.id}${reason ? ` (${reason})` : ''}`,
+    );
     return { id, deleted: true };
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Admin + operator listings (BE-11 / BE-12 / BE-13)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Cross-tour, all-status listing for the moderation queue.
+   *
+   * `operatorScope` is set when a TOUR_OPERATOR calls it, which hard-limits the
+   * query to their own tours. It is applied AFTER the DTO filters so a supplied
+   * `operatorId` can never widen the scope past the caller's own.
+   */
+  async adminList(query: AdminReviewsQueryDto, operatorScope?: string) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const search = query.search?.trim();
+
+    const where: Prisma.ReviewWhereInput = {
+      ...(query.status && { moderationStatus: query.status }),
+      ...(query.tourId && { tourId: query.tourId }),
+      ...(query.operatorId && { operatorId: query.operatorId }),
+      ...(query.rating != null && { rating: query.rating }),
+      ...(query.hasPhotos && { photos: { isEmpty: false } }),
+      ...(query.flagged && {
+        flags: { some: { status: ReviewFlagStatus.OPEN } },
+      }),
+      ...(query.locale && { translations: { some: { locale: query.locale } } }),
+      ...((query.from || query.to) && {
+        createdAt: {
+          ...(query.from && { gte: new Date(query.from) }),
+          ...(query.to && { lte: new Date(query.to) }),
+        },
+      }),
+      ...(search && {
+        OR: [
+          { reviewerFirstName: { contains: search, mode: 'insensitive' } },
+          { reviewerInitial: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search, mode: 'insensitive' } },
+          {
+            translations: {
+              some: { comment: { contains: search, mode: 'insensitive' } },
+            },
+          },
+        ],
+      }),
+      // Last, and unconditional: an operator sees only their own.
+      ...(operatorScope && { operatorId: operatorScope }),
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.review.count({ where }),
+      this.prisma.review.findMany({
+        where,
+        include: {
+          translations: true,
+          tour: { select: { name: true } },
+          operator: {
+            select: { companyInfo: { select: { companyName: true } } },
+          },
+          booking: { select: { displayRef: true } },
+          _count: { select: { flags: { where: { status: 'OPEN' } } } },
+        },
+        // Oldest-first by default: a queue is cleared from the bottom, and the
+        // oldest pending review is the traveller who has waited longest.
+        orderBy: { createdAt: query.sort === 'newest' ? 'desc' : 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((r) => ({
+        ...mapReview(r, query.locale),
+        tourTitle: r.tour?.name ?? null,
+        operatorName: r.operator?.companyInfo?.companyName ?? null,
+        bookingRef: r.booking?.displayRef ?? null,
+        isFeatured: r.isFeatured,
+        rejectionReason: r.rejectionReason,
+        openFlagCount: r._count.flags,
+      })),
+    };
+  }
+
+  /** The same queue, hard-scoped to the calling operator's own tours. */
+  async operatorList(query: AdminReviewsQueryDto, actor: Actor) {
+    const operatorId = await resolveOperatorId(
+      this.prisma,
+      actor.id,
+      actor.role,
+    );
+    if (!operatorId) {
+      throw new ForbiddenException('No operator record for this account');
+    }
+    return this.adminList(query, operatorId);
+  }
+
+  /** Full audit trail for one review. Read-only, append-only at the source. */
+  async moderationHistory(id: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    return this.prisma.reviewModerationLog.findMany({
+      where: { reviewId: id },
+      select: {
+        id: true,
+        actorId: true,
+        fromStatus: true,
+        toStatus: true,
+        isDeletion: true,
+        reason: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   // ── internals ──────────────────────────────────────────────────────────────
@@ -416,39 +780,63 @@ export class ReviewsService {
         return [{ rating: 'desc' }, { createdAt: 'desc' }];
       case 'rating_asc':
         return [{ rating: 'asc' }, { createdAt: 'desc' }];
-      case 'helpful':
-        return [{ helpfulCount: 'desc' }, { createdAt: 'desc' }];
       default:
         return [{ createdAt: 'desc' }];
     }
   }
 
-  /** Recompute cached tour + operator aggregates from the APPROVED set. */
+  /**
+   * Recompute cached tour + operator aggregates from the APPROVED set.
+   *
+   * Writes ALL FIVE denormalized tour columns, not just the rating and count.
+   * `ratingDistribution` backs the clickable star chart (LD31) and
+   * `photoReviewCount` gates the photo carousel at ≥3 photo reviews - both are
+   * declared on the tour, selected by `toursSelect`, typed in the DTO and read
+   * by the public page, so leaving them unwritten rendered a permanently empty
+   * histogram and a gate that could never open.
+   */
   private async recomputeAggregates(
     tourId: string,
     operatorId: string,
   ): Promise<void> {
-    const [tourAgg, opAgg] = await Promise.all([
+    const approvedTour: Prisma.ReviewWhereInput = { ...PUBLISHED, tourId };
+
+    const [tourAgg, buckets, photoCount, opAgg] = await Promise.all([
       this.prisma.review.aggregate({
-        where: { tourId, moderationStatus: ReviewModerationStatus.APPROVED },
+        where: approvedTour,
         _count: true,
         _avg: { rating: true },
       }),
+      this.prisma.review.groupBy({
+        by: ['rating'],
+        where: approvedTour,
+        _count: true,
+      }),
+      this.prisma.review.count({
+        where: { ...approvedTour, photos: { isEmpty: false } },
+      }),
       this.prisma.review.aggregate({
-        where: {
-          operatorId,
-          moderationStatus: ReviewModerationStatus.APPROVED,
-        },
+        where: { ...PUBLISHED, operatorId },
         _count: true,
         _avg: { rating: true },
       }),
     ]);
+
+    // STARS is [5,4,3,2,1] and the column is documented as [5★,4★,3★,2★,1★],
+    // which is also the order the public histogram indexes into. Keep them aligned.
+    const distribution = STARS.map(
+      (stars) => buckets.find((b) => b.rating === stars)?._count ?? 0,
+    );
+
     await Promise.all([
       this.prisma.tour.update({
         where: { id: tourId },
         data: {
           aggregateRating: roundRating(tourAgg._avg.rating),
           aggregateReviewCount: tourAgg._count,
+          ratingDistribution: distribution,
+          photoReviewCount: photoCount,
+          aggregatesUpdatedAt: new Date(),
         },
       }),
       this.prisma.operator.update({
@@ -459,6 +847,25 @@ export class ReviewsService {
         },
       }),
     ]);
+  }
+
+  /** Update-and-return, turning Prisma's "record not found" into a clean 404. */
+  private async updateOrNotFound(id: string, data: Prisma.ReviewUpdateInput) {
+    try {
+      return await this.prisma.review.update({
+        where: { id },
+        data,
+        include: { translations: true },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        throw new NotFoundException('Review not found');
+      }
+      throw err;
+    }
   }
 
   private async assertOwnsOperator(
@@ -519,14 +926,16 @@ function mapReview(review: ReviewWithTranslations, locale?: Locale) {
     reviewerCountry: review.reviewerCountry,
     travelMonth: review.travelMonth,
     travelYear: review.travelYear,
+    reviewerType: review.reviewerType,
     photos: review.photos,
+    themeTags: review.themeTags,
     helpfulCount: review.helpfulCount,
+    source: review.source,
     isVerified: review.isVerified,
     moderationStatus: review.moderationStatus,
-    operatorResponse: review.operatorResponse,
-    operatorRespondedAt: review.operatorRespondedAt
-      ? review.operatorRespondedAt.toISOString()
-      : null,
+    responseText: review.responseText,
+    responseAuthor: review.responseAuthor,
+    responseAt: review.responseAt ? review.responseAt.toISOString() : null,
     createdAt: review.createdAt.toISOString(),
   };
 }

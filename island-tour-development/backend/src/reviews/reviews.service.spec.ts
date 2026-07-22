@@ -7,14 +7,16 @@ import {
   BookingStatus,
   Locale,
   ReviewModerationStatus,
+  ReviewResponseAuthor,
+  ReviewSource,
   Role,
 } from '@prisma/client';
 import { ReviewsService } from './reviews.service';
 
 const PAST = new Date('2020-06-01T00:00:00.000Z');
 
-function mockPrisma() {
-  return {
+function mockPrisma(): any {
+  const base: any = {
     booking: { findUnique: jest.fn() },
     review: {
       findUnique: jest.fn(),
@@ -26,9 +28,15 @@ function mockPrisma() {
       aggregate: jest.fn(),
       groupBy: jest.fn(),
     },
+    reviewModerationLog: { create: jest.fn(), findMany: jest.fn() },
+    reviewFlag: { upsert: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
     tour: { findUnique: jest.fn(), update: jest.fn() },
     operator: { findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
-  } as any;
+    // Run the callback against the same mock: these transactions exist to keep a
+    // status change and its audit row atomic, not to change the query surface.
+    $transaction: jest.fn((fn: any) => fn(base)),
+  };
+  return base;
 }
 
 function reviewableBooking(over: Record<string, unknown> = {}) {
@@ -62,12 +70,16 @@ function createdReview(over: Record<string, unknown> = {}) {
     reviewerCountry: 'NL',
     travelMonth: 6,
     travelYear: 2020,
+    reviewerType: null,
     photos: [],
+    themeTags: [],
     helpfulCount: 0,
+    source: 'NATIVE',
     isVerified: true,
     moderationStatus: ReviewModerationStatus.PENDING,
-    operatorResponse: null,
-    operatorRespondedAt: null,
+    responseText: null,
+    responseAuthor: null,
+    responseAt: null,
     createdAt: PAST,
     translations: [{ locale: Locale.en, comment: 'Wonderful sunset cruise' }],
     ...over,
@@ -231,6 +243,12 @@ describe('ReviewsService', () => {
         _count: 3,
         _avg: { rating: 4.5 },
       });
+      // Two 5-star, one 4-star, and one of those carries photos.
+      prisma.review.groupBy.mockResolvedValue([
+        { rating: 5, _count: 2 },
+        { rating: 4, _count: 1 },
+      ]);
+      prisma.review.count.mockResolvedValue(1);
       prisma.tour.update.mockResolvedValue({});
       prisma.operator.update.mockResolvedValue({});
 
@@ -244,10 +262,54 @@ describe('ReviewsService', () => {
       expect(prisma.tour.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 't1' },
-          data: { aggregateRating: 4.5, aggregateReviewCount: 3 },
+          data: expect.objectContaining({
+            aggregateRating: 4.5,
+            aggregateReviewCount: 3,
+            // [5★,4★,3★,2★,1★] - the order the public histogram indexes into.
+            ratingDistribution: [2, 1, 0, 0, 0],
+            photoReviewCount: 1,
+            aggregatesUpdatedAt: expect.any(Date),
+          }),
         }),
       );
       expect(prisma.operator.update).toHaveBeenCalled();
+    });
+
+    it('counts only APPROVED reviews with a non-empty photos array', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        tourId: 't1',
+        operatorId: 'op1',
+        moderationStatus: ReviewModerationStatus.PENDING,
+      });
+      prisma.review.update.mockResolvedValue(
+        createdReview({ moderationStatus: ReviewModerationStatus.APPROVED }),
+      );
+      prisma.review.aggregate.mockResolvedValue({
+        _count: 1,
+        _avg: { rating: 5 },
+      });
+      prisma.review.groupBy.mockResolvedValue([{ rating: 5, _count: 1 }]);
+      prisma.review.count.mockResolvedValue(0);
+      prisma.tour.update.mockResolvedValue({});
+      prisma.operator.update.mockResolvedValue({});
+
+      await svc.moderate(
+        'r1',
+        { status: ReviewModerationStatus.APPROVED },
+        'admin1',
+      );
+
+      // `source: NATIVE` is part of the contract, not incidental: an imported or
+      // syndicated review must never enter a verified-booking aggregate.
+      expect(prisma.review.count).toHaveBeenCalledWith({
+        where: {
+          tourId: 't1',
+          moderationStatus: ReviewModerationStatus.APPROVED,
+          source: ReviewSource.NATIVE,
+          photos: { isEmpty: false },
+        },
+      });
     });
 
     it('requires a reason to reject', async () => {
@@ -272,15 +334,17 @@ describe('ReviewsService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('lets an admin respond', async () => {
+    it('lets an admin respond, stamped PLATFORM (LD37)', async () => {
       prisma.review.findUnique.mockResolvedValue({
         id: 'r1',
         operatorId: 'op1',
+        responseText: null,
       });
       prisma.review.update.mockResolvedValue(
         createdReview({
-          operatorResponse: 'Thank you!',
-          operatorRespondedAt: PAST,
+          responseText: 'Thank you!',
+          responseAuthor: ReviewResponseAuthor.PLATFORM,
+          responseAt: PAST,
         }),
       );
       const res = await svc.respond(
@@ -288,15 +352,38 @@ describe('ReviewsService', () => {
         { response: 'Thank you!' },
         { id: 'admin1', role: Role.ADMIN },
       );
-      expect(res.operatorResponse).toBe('Thank you!');
+      expect(res.responseText).toBe('Thank you!');
+      expect(res.responseAuthor).toBe(ReviewResponseAuthor.PLATFORM);
+      expect(prisma.review.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            responseAuthor: ReviewResponseAuthor.PLATFORM,
+          }),
+        }),
+      );
     });
 
-    it('blocks an operator who does not own the tour', async () => {
+    it('refuses to edit a response that is already published (E.7)', async () => {
       prisma.review.findUnique.mockResolvedValue({
         id: 'r1',
         operatorId: 'op1',
+        responseText: 'Already answered',
       });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op2' }); // resolveOperatorId → op2
+      await expect(
+        svc.respond(
+          'r1',
+          { response: 'Revised answer' },
+          { id: 'admin1', role: Role.ADMIN },
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('blocks an operator at launch - responses are platform-authored (LD37)', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        operatorId: 'op1',
+        responseText: null,
+      });
       await expect(
         svc.respond(
           'r1',
@@ -307,13 +394,7 @@ describe('ReviewsService', () => {
     });
   });
 
-  describe('markHelpful / remove', () => {
-    it('increments helpfulCount', async () => {
-      prisma.review.update.mockResolvedValue({ id: 'r1', helpfulCount: 4 });
-      const res = await svc.markHelpful('r1');
-      expect(res).toEqual({ id: 'r1', helpfulCount: 4 });
-    });
-
+  describe('remove', () => {
     it('lets the author delete their own review', async () => {
       prisma.review.findUnique.mockResolvedValue({
         id: 'r1',

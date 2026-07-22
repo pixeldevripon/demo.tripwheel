@@ -428,10 +428,61 @@ enum SpotlightStatus {
 
 // ── Reviews (E.7) ─────────────────────────────────────────────────────────────
 
+/// Only APPROVED feeds tour/operator aggregates and the public list.
+/// HELD is "needs a second look", not a soft reject: it parks a review that a
+/// moderator cannot decide alone (a policy question, an operator flag under
+/// investigation) without publishing it or issuing a rejection reason.
 enum ReviewModerationStatus {
   PENDING
   APPROVED
+  HELD
   REJECTED
+}
+
+/// Guest type (LD36). Collected from LAUNCH so the traveler-type filter and
+/// snippet selection can ship later with no backfill; the consumer filter UI
+/// itself stays V2 behind the LD30 20-review gate.
+enum ReviewerType {
+  COUPLE
+  FAMILY
+  FRIENDS
+  SOLO
+}
+
+/// Where a review came from. NATIVE is booking-gated and the ONLY source that
+/// may appear on a tour page or enter a tour aggregate. The imported values are
+/// reserved so any future syndicated content is unambiguously distinguishable
+/// and can be labelled, never silently blended (Omnibus + the verified-booking
+/// promise).
+enum ReviewSource {
+  NATIVE
+  IMPORTED_OPERATOR
+  IMPORTED_THIRD_PARTY
+}
+
+/// Who wrote the published response (LD37). Platform-authored at launch;
+/// operator-authored unlocks in phase 4 behind moderation.
+enum ReviewResponseAuthor {
+  PLATFORM
+  OPERATOR
+}
+
+/// Narrow, documented grounds on which a review may be flagged or removed.
+/// "Negative", "low" and "commercially inconvenient" are deliberately absent:
+/// suppressing a review for its sentiment is an unfair commercial practice under
+/// the Omnibus Directive, and it is what makes every other rating worthless.
+enum ReviewFlagReason {
+  FAKE
+  ABUSIVE
+  OFF_TOPIC
+  PERSONAL_DATA
+  NOT_A_CUSTOMER
+}
+
+enum ReviewFlagStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
 }
 
 // ── OCTO notifications (octo/notifications webhooks) ───────────────────────────

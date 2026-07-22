@@ -3,6 +3,7 @@ import {
     TourReviewsSectionSkeleton,
 } from '@/components/frontend/skeletons/tour-page-skeleton';
 import { getDestinationCategories } from '@/lib/api/public/categories';
+import { getTourReviewSummary } from '@/lib/api/public/reviews';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getServerCurrency } from '@/lib/currency/server';
 import { type Locale } from '@/lib/constants/locales';
@@ -113,6 +114,12 @@ export async function TourDetailContent({
     });
     if (!detail) notFound();
 
+    // LD11 lives on the backend (`review-display.util.ts`), not here: the tour
+    // payload only carries the tour's OWN aggregates and cannot express the
+    // cold-start fallback to the operator's rating. Fetched after the detail
+    // because it is keyed by the resolved tour id.
+    const reviewSummary = await getTourReviewSummary(detail.id);
+
     const tourDict = dict.destination.tour;
 
     // Live header / breadcrumb / title values (localized with EN fallback applied
@@ -120,8 +127,15 @@ export async function TourDetailContent({
     // name; `breadcrumbLabel` is the shorter English crumb, falling back to title.
     const title = detail.translation?.title ?? detail.name;
     const breadcrumbLabel = detail.breadcrumbLabel ?? title;
-    const rating = detail.aggregateRating;
-    const reviewCount = detail.aggregateReviewCount;
+    // The DISPLAYED rating and its count - the tour's own, or the operator's when
+    // LD11 borrows it, or null when neither qualifies.
+    const rating = reviewSummary.rating;
+    const reviewCount = reviewSummary.reviewCount;
+    // The tour's OWN approved count. Every render threshold keys off this, never
+    // off `reviewCount`, which may belong to the operator: a tour with 0 reviews
+    // borrowing an operator's 40 must not thereby unlock the star chart, the sort
+    // control or the LD29 preview - none of that data is about this tour.
+    const ownReviewCount = reviewSummary.approvedCount;
     const isLocalsFavourite = detail.isLocalsFavourite;
     const locationLabel = detail.departureCity
         ? `${detail.departureCity}, ${destinationName}`
@@ -313,10 +327,9 @@ export async function TourDetailContent({
     // header rating); the individual cards stream in a separate boundary from the
     // reviews list. A review's operator IS the tour's operator.
     const reviewHostLabel = detail.operatorName ?? '';
-    const reviewHistogram = [5, 4, 3, 2, 1].map((stars, i) => ({
-        stars,
-        count: detail.ratingDistribution[i] ?? 0,
-    }));
+    // Straight from the summary (approved-only, already ordered [5*..1*]) rather
+    // than from the tour row, so the chart cannot disagree with the number above it.
+    const reviewHistogram = reviewSummary.distribution;
 
     // In-page tab nav over the detail sections. Each tab scrolls to its `#id`
     // section; sections are added incrementally (each is collapsible, separated
@@ -405,9 +418,13 @@ export async function TourDetailContent({
                         {/* Left column content: reviews preview + section tabs +
                             all detail sections + full reviews. */}
                         <div className='flex min-w-0 flex-col gap-10 lg:col-start-1 lg:row-start-2'>
-                            {/* Review preview streams in its own boundary; only
-                                rendered when the aggregate says there are reviews. */}
-                            {reviewCount > 0 && (
+                            {/* LD29 review preview, streamed in its own boundary.
+                                Gated on the tour's OWN approved count and its own
+                                rating: hidden under 3 reviews, and under a 4.0
+                                aggregate. A borrowed operator rating never opens
+                                this - the cards would have to come from reviews of
+                                a different tour. */}
+                            {ownReviewCount >= 3 && (rating ?? 0) >= 4 && (
                                 <Suspense
                                     fallback={<TourReviewsPreviewSkeleton />}>
                                     <TourReviewsPreview
@@ -679,7 +696,7 @@ export async function TourDetailContent({
                             <Suspense
                                 fallback={
                                     <TourReviewsSectionSkeleton
-                                        count={Math.min(10, reviewCount)}
+                                        count={Math.min(10, ownReviewCount)}
                                     />
                                 }>
                                 <TourReviewsBlock
@@ -687,6 +704,7 @@ export async function TourDetailContent({
                                     locale={locale}
                                     rating={rating ?? 0}
                                     reviewCount={reviewCount}
+                                    ownReviewCount={ownReviewCount}
                                     histogram={reviewHistogram}
                                     hostLabel={reviewHostLabel}
                                     dict={{

@@ -1,10 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Locale, ReviewModerationStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import {
+  Locale,
+  ReviewFlagReason,
+  ReviewFlagStatus,
+  ReviewModerationStatus,
+  ReviewResponseAuthor,
+  ReviewSource,
+  ReviewerType,
+} from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
+  IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -14,6 +25,13 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+/**
+ * Supported sort orders for the public review list. `helpful` is deliberately
+ * not here: helpful votes are deferred to V2 by the master.
+ */
+export const REVIEW_SORTS = ['newest', 'rating_desc', 'rating_asc'] as const;
+export type ReviewSort = (typeof REVIEW_SORTS)[number];
 
 // ════════════════════════════════════════════════════════════════════════════
 // Response DTOs
@@ -52,6 +70,12 @@ export class ReviewResponseDto {
   @ApiPropertyOptional({ nullable: true, example: 'NL' }) reviewerCountry!:
     | string
     | null;
+  @ApiPropertyOptional({
+    enum: ReviewerType,
+    nullable: true,
+    description: 'Guest type (LD36). Null when the reviewer skipped step 3b.',
+  })
+  reviewerType!: ReviewerType | null;
   @ApiPropertyOptional({ nullable: true, example: 7 }) travelMonth!:
     | number
     | null;
@@ -59,17 +83,59 @@ export class ReviewResponseDto {
     | number
     | null;
   @ApiProperty({ type: [String], example: [] }) photos!: string[];
-  @ApiProperty({ example: 0 }) helpfulCount!: number;
+  @ApiProperty({
+    type: [String],
+    example: ['calm water', 'great crew'],
+    description: 'Admin-set highlight chips (pre-AI LD29 Tier 3).',
+  })
+  themeTags!: string[];
+  @ApiProperty({
+    example: 0,
+    description: 'Deferred to V2; never incremented.',
+  })
+  helpfulCount!: number;
+  @ApiProperty({
+    enum: ReviewSource,
+    description: 'Only NATIVE appears on tour pages or in tour aggregates.',
+  })
+  source!: ReviewSource;
   @ApiProperty({
     example: true,
-    description: 'Always true - reviews are booking-gated.',
+    description: 'Always true for NATIVE - reviews are booking-gated.',
   })
   isVerified!: boolean;
   @ApiProperty({ enum: ReviewModerationStatus })
   moderationStatus!: ReviewModerationStatus;
-  @ApiPropertyOptional({ nullable: true }) operatorResponse!: string | null;
-  @ApiPropertyOptional({ nullable: true }) operatorRespondedAt!: string | null;
+  @ApiPropertyOptional({ nullable: true }) responseText!: string | null;
+  @ApiPropertyOptional({ enum: ReviewResponseAuthor, nullable: true })
+  responseAuthor!: ReviewResponseAuthor | null;
+  @ApiPropertyOptional({ nullable: true }) responseAt!: string | null;
   @ApiProperty() createdAt!: string;
+}
+
+/**
+ * A moderation-queue row. Extends the public shape with the operational context
+ * a moderator needs to triage without opening three other screens: which tour,
+ * which operator, which booking, and whether anyone has flagged it.
+ */
+export class AdminReviewResponseDto extends ReviewResponseDto {
+  @ApiPropertyOptional({ nullable: true, example: 'Klein Curaçao Day Trip' })
+  tourTitle!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Blue Bay Charters' })
+  operatorName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'IT-2026-00042',
+    description: 'Human booking reference - the verification audit trail.',
+  })
+  bookingRef!: string | null;
+  @ApiProperty({ example: false }) isFeatured!: boolean;
+  @ApiPropertyOptional({ nullable: true }) rejectionReason!: string | null;
+  @ApiProperty({
+    example: 0,
+    description: 'Open flags awaiting an Island Tours decision.',
+  })
+  openFlagCount!: number;
 }
 
 export class RatingBucketDto {
@@ -143,12 +209,30 @@ export class ListReviewsQueryDto {
   limit?: number;
 
   @ApiPropertyOptional({
-    enum: ['newest', 'rating_desc', 'rating_asc', 'helpful'],
+    minimum: 1,
+    maximum: 5,
+    description:
+      'Filter to a single star value. Backs the clickable star distribution ' +
+      'chart, which is live from launch (LD31).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
+  // `helpful` is deliberately absent: helpful votes are deferred to V2 by the
+  // master, so there is no vote to sort by at launch. `@IsIn` rather than a bare
+  // `@IsString`, so an unsupported sort is a 400 instead of silently falling
+  // through to newest and looking like the sort control is broken.
+  @ApiPropertyOptional({
+    enum: REVIEW_SORTS,
     default: 'newest',
   })
   @IsOptional()
-  @IsString()
-  sort?: 'newest' | 'rating_desc' | 'rating_asc' | 'helpful';
+  @IsIn(REVIEW_SORTS)
+  sort?: ReviewSort;
 
   @ApiPropertyOptional({
     enum: Locale,
@@ -163,6 +247,101 @@ export class SummaryQueryDto {
   @ApiProperty()
   @IsUUID()
   tourId!: string;
+}
+
+/**
+ * Cross-tour admin/operator listing. Unlike the public list this is NOT scoped to
+ * one tour and NOT limited to APPROVED - moderating a queue you cannot see the
+ * whole of is not moderating.
+ */
+export class AdminReviewsQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiPropertyOptional({
+    enum: ReviewModerationStatus,
+    description: 'Omit for every status.',
+  })
+  @IsOptional()
+  @IsEnum(ReviewModerationStatus)
+  status?: ReviewModerationStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  tourId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  operatorId?: string;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 5 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+
+  @ApiPropertyOptional({ description: 'Only reviews carrying photos.' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  hasPhotos?: boolean;
+
+  @ApiPropertyOptional({ description: 'Only reviews with an open flag.' })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  flagged?: boolean;
+
+  @ApiPropertyOptional({ enum: Locale })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale;
+
+  @ApiPropertyOptional({ description: 'Submitted on or after (ISO date).' })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({ description: 'Submitted on or before (ISO date).' })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+
+  @ApiPropertyOptional({
+    description: 'Free text over the reviewer name, title and comment.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+
+  @ApiPropertyOptional({
+    enum: ['oldest', 'newest'],
+    default: 'oldest',
+    description:
+      'Queue default is oldest-first: a moderation backlog is cleared from the ' +
+      'bottom, and the oldest pending review is the one a traveller has been ' +
+      'waiting on longest.',
+  })
+  @IsOptional()
+  @IsIn(['oldest', 'newest'])
+  sort?: 'oldest' | 'newest';
 }
 
 export class ModerationQueueQueryDto {
@@ -273,14 +452,55 @@ export class CreateReviewDto {
   @ArrayMaxSize(8)
   @IsString({ each: true })
   photos?: string[];
+
+  @ApiPropertyOptional({
+    enum: ReviewerType,
+    description:
+      'Guest type (LD36). Collected from launch; the consumer filter is V2.',
+  })
+  @IsOptional()
+  @IsEnum(ReviewerType)
+  reviewerType?: ReviewerType;
 }
+
+/** Statuses a moderator may transition INTO. PENDING is entry-only. */
+export const MODERATABLE_STATUSES = [
+  ReviewModerationStatus.APPROVED,
+  ReviewModerationStatus.HELD,
+  ReviewModerationStatus.REJECTED,
+] as const;
 
 export class ModerateReviewDto {
   @ApiProperty({
-    enum: [ReviewModerationStatus.APPROVED, ReviewModerationStatus.REJECTED],
+    enum: MODERATABLE_STATUSES,
+    description:
+      'APPROVED publishes and feeds aggregates. HELD parks a review that needs ' +
+      'a second look without publishing or rejecting it. REJECTED requires a reason.',
   })
-  @IsEnum(ReviewModerationStatus)
-  status!: ReviewModerationStatus;
+  @IsIn(MODERATABLE_STATUSES)
+  status!: (typeof MODERATABLE_STATUSES)[number];
+
+  @ApiPropertyOptional({
+    description:
+      'Required when rejecting. Must be a documented POLICY ground (fake, ' +
+      'abusive, off-topic, personal data) - never that the review is negative.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  rejectionReason?: string;
+}
+
+export class BulkModerateReviewsDto {
+  @ApiProperty({ type: [String], maxItems: 100 })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsUUID('4', { each: true })
+  ids!: string[];
+
+  @ApiProperty({ enum: MODERATABLE_STATUSES })
+  @IsIn(MODERATABLE_STATUSES)
+  status!: (typeof MODERATABLE_STATUSES)[number];
 
   @ApiPropertyOptional({ description: 'Required when rejecting.' })
   @IsOptional()
@@ -295,4 +515,68 @@ export class RespondToReviewDto {
   @MinLength(2)
   @MaxLength(2000)
   response!: string;
+}
+
+export class SetThemeTagsDto {
+  @ApiProperty({
+    type: [String],
+    maxItems: 5,
+    example: ['calm water', 'great crew'],
+    description: 'Highlight chips shown above the review cards. Admin-only.',
+  })
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  themeTags!: string[];
+}
+
+export class FeatureReviewDto {
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  isFeatured!: boolean;
+}
+
+export class FlagReviewDto {
+  @ApiProperty({
+    enum: ReviewFlagReason,
+    description:
+      'The policy ground. There is deliberately no "negative" or "unfair" ' +
+      'option: sentiment is not a removal ground under the Omnibus Directive.',
+  })
+  @IsEnum(ReviewFlagReason)
+  reason!: ReviewFlagReason;
+
+  @ApiPropertyOptional({ maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
+
+export class ResolveFlagDto {
+  @ApiProperty({
+    enum: [ReviewFlagStatus.RESOLVED, ReviewFlagStatus.DISMISSED],
+  })
+  @IsIn([ReviewFlagStatus.RESOLVED, ReviewFlagStatus.DISMISSED])
+  status!: ReviewFlagStatus;
+
+  @ApiPropertyOptional({ maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  resolutionNote?: string;
+}
+
+export class DeleteReviewDto {
+  @ApiPropertyOptional({
+    maxLength: 500,
+    description:
+      'The documented policy ground, recorded on the audit trail. Required for ' +
+      'a moderator; optional when an author deletes their own review.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }

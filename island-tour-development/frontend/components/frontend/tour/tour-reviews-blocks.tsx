@@ -59,8 +59,12 @@ export async function TourReviewsPreview({
 interface TourReviewsBlockProps {
     tourId: string;
     locale: Locale;
+    /** DISPLAYED rating - the tour's own, or the operator's under LD11. */
     rating: number;
+    /** Count behind the displayed rating (the operator's when borrowed). */
     reviewCount: number;
+    /** The tour's OWN approved count. Drives every LD30/LD31 render threshold. */
+    ownReviewCount: number;
     histogram: { stars: number; count: number }[];
     hostLabel: string;
     dict: ComponentProps<typeof TourReviewsSection>['dict'];
@@ -72,6 +76,7 @@ export async function TourReviewsBlock({
     locale,
     rating,
     reviewCount,
+    ownReviewCount,
     histogram,
     hostLabel,
     dict,
@@ -92,6 +97,7 @@ export async function TourReviewsBlock({
             locale={locale}
             rating={rating}
             reviewCount={reviewCount}
+            ownReviewCount={ownReviewCount}
             histogram={histogram}
             initialReviews={fullReviews}
             total={reviewList.total}

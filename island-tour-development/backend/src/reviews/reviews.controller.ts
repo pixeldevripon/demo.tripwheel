@@ -16,34 +16,54 @@ import { RequirePermissions } from '@/auth/decorators/require-permissions.decora
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { ReviewsService } from './reviews.service';
 import {
+  AdminReviewsQueryDto,
+  BulkModerateReviewsDto,
   CreateReviewDto,
+  DeleteReviewDto,
+  FeatureReviewDto,
+  FlagReviewDto,
   ListReviewsQueryDto,
   ModerateReviewDto,
   ModerationQueueQueryDto,
+  ResolveFlagDto,
   RespondToReviewDto,
+  SetThemeTagsDto,
   SummaryQueryDto,
 } from './dto/review.dto';
 import {
+  ApiAdminListReviewsDocs,
+  ApiBulkModerateDocs,
   ApiCreateReviewDocs,
   ApiDeleteReviewDocs,
+  ApiFeatureReviewDocs,
+  ApiFlagReviewDocs,
   ApiGetReviewDocs,
-  ApiHelpfulReviewDocs,
   ApiListReviewsDocs,
   ApiModerateReviewDocs,
+  ApiModerationHistoryDocs,
   ApiModerationQueueDocs,
   ApiMyReviewsDocs,
+  ApiOperatorListReviewsDocs,
+  ApiResolveFlagDocs,
   ApiRespondReviewDocs,
   ApiReviewSummaryDocs,
+  ApiThemeTagsDocs,
 } from './reviews.swagger';
 
 /**
  * ReviewsController - per-tour, booking-gated reviews with moderation.
  *
  * ## Access
- * - Public: list approved reviews, rating summary, get an approved review, helpful +1.
- * - Authenticated: create (booking owner), own list, operator response (tour owner/admin),
- *   delete (author/admin).
- * - `APPROVE_REVIEW`: moderation queue + approve/reject.
+ * - Public: list approved reviews, rating summary, get an approved review.
+ * - Authenticated: create (booking owner), own list, delete (author/admin),
+ *   flag (tour owner/admin).
+ * - `VIEW_REVIEWS`: the cross-tour admin queue and one review's audit trail.
+ * - `APPROVE_REVIEW`: moderate, bulk-moderate, respond, resolve flags.
+ * - `EDIT_REVIEW`: theme chips and the editorial feature toggle.
+ *
+ * There is deliberately NO helpful-vote endpoint (deferred to V2) and no
+ * operator write path other than flagging: operators cannot delete, unpublish
+ * or edit a review, only ask Island Tours to look at one.
  *
  * Static routes precede `:id` routes (NestJS matches top-to-bottom).
  */
@@ -81,6 +101,26 @@ export class ReviewsController {
     return this.reviews.listMine(user.id);
   }
 
+  @Get('admin')
+  @RequirePermissions(Permission.VIEW_REVIEWS)
+  @ApiAdminListReviewsDocs()
+  adminList(@Query() query: AdminReviewsQueryDto) {
+    return this.reviews.adminList(query);
+  }
+
+  @Get('operator')
+  @RequirePermissions(Permission.VIEW_REVIEWS)
+  @ApiOperatorListReviewsDocs()
+  operatorList(
+    @Query() query: AdminReviewsQueryDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.reviews.operatorList(query, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
   @Get('pending')
   @RequirePermissions(Permission.APPROVE_REVIEW)
   @ApiModerationQueueDocs()
@@ -88,14 +128,18 @@ export class ReviewsController {
     return this.reviews.moderationQueue(query);
   }
 
-  @Post(':id/helpful')
-  @Public()
-  @ApiHelpfulReviewDocs()
-  helpful(@Param('id') id: string) {
-    return this.reviews.markHelpful(id);
+  @Patch('bulk-moderate')
+  @RequirePermissions(Permission.APPROVE_REVIEW)
+  @ApiBulkModerateDocs()
+  bulkModerate(
+    @Body() dto: BulkModerateReviewsDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.reviews.bulkModerate(dto, user.id);
   }
 
   @Post(':id/response')
+  @RequirePermissions(Permission.APPROVE_REVIEW)
   @ApiRespondReviewDocs()
   respond(
     @Param('id') id: string,
@@ -103,6 +147,27 @@ export class ReviewsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.reviews.respond(id, dto, { id: user.id, role: user.role });
+  }
+
+  @Post(':id/flag')
+  @ApiFlagReviewDocs()
+  flag(
+    @Param('id') id: string,
+    @Body() dto: FlagReviewDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.reviews.flag(id, dto, { id: user.id, role: user.role });
+  }
+
+  @Patch('flags/:flagId')
+  @RequirePermissions(Permission.APPROVE_REVIEW)
+  @ApiResolveFlagDocs()
+  resolveFlag(
+    @Param('flagId') flagId: string,
+    @Body() dto: ResolveFlagDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.reviews.resolveFlag(flagId, dto, user.id);
   }
 
   @Patch(':id/moderate')
@@ -116,10 +181,35 @@ export class ReviewsController {
     return this.reviews.moderate(id, dto, user.id);
   }
 
+  @Patch(':id/theme-tags')
+  @RequirePermissions(Permission.EDIT_REVIEW)
+  @ApiThemeTagsDocs()
+  setThemeTags(@Param('id') id: string, @Body() dto: SetThemeTagsDto) {
+    return this.reviews.setThemeTags(id, dto);
+  }
+
+  @Patch(':id/feature')
+  @RequirePermissions(Permission.EDIT_REVIEW)
+  @ApiFeatureReviewDocs()
+  setFeatured(@Param('id') id: string, @Body() dto: FeatureReviewDto) {
+    return this.reviews.setFeatured(id, dto.isFeatured);
+  }
+
+  @Get(':id/history')
+  @RequirePermissions(Permission.VIEW_REVIEWS)
+  @ApiModerationHistoryDocs()
+  history(@Param('id') id: string) {
+    return this.reviews.moderationHistory(id);
+  }
+
   @Delete(':id')
   @ApiDeleteReviewDocs()
-  remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
-    return this.reviews.remove(id, { id: user.id, role: user.role });
+  remove(
+    @Param('id') id: string,
+    @Body() dto: DeleteReviewDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.reviews.remove(id, { id: user.id, role: user.role }, dto);
   }
 
   @Get(':id')

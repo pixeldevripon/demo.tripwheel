@@ -39,15 +39,23 @@ export type TourReviewsSectionDict = {
     empty: string;
 };
 
+// No "Most helpful" option: helpful votes are deferred to V2 by the master, and
+// the endpoint that backed them took no identity at all, so the counter was
+// forgeable. `sortHelpful` stays in the dict (unused) so re-enabling it in V2 is
+// not a seven-locale copy change.
 const SORT_OPTIONS: { value: ReviewSort; labelKey: keyof TourReviewsSectionDict }[] = [
     { value: 'newest', labelKey: 'sortNewest' },
     { value: 'rating_desc', labelKey: 'sortRatingHigh' },
     { value: 'rating_asc', labelKey: 'sortRatingLow' },
-    { value: 'helpful', labelKey: 'sortHelpful' },
 ];
 
 // Cap the customer-photo strip so a long review set doesn't render hundreds of tiles.
 const PHOTO_STRIP_LIMIT = 12;
+
+/** LD31: the star distribution chart renders at 3 or more reviews. */
+const MIN_REVIEWS_FOR_CHART = 3;
+/** LD30: the sort control is hidden under 10 reviews. */
+const MIN_REVIEWS_FOR_SORT = 10;
 
 function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
     return (
@@ -82,6 +90,7 @@ export function TourReviewsSection({
     locale,
     rating,
     reviewCount,
+    ownReviewCount,
     histogram,
     initialReviews,
     total,
@@ -91,8 +100,16 @@ export function TourReviewsSection({
 }: {
     tourId: string;
     locale: Locale;
+    /** DISPLAYED rating - the tour's own, or the operator's under LD11. */
     rating: number;
+    /** Count behind the displayed rating (the operator's when borrowed). */
     reviewCount: number;
+    /**
+     * The tour's OWN approved count, which is what the LD30/LD31 thresholds are
+     * about. A tour borrowing an operator's rating has no distribution of its own
+     * to chart and nothing to sort, however large `reviewCount` looks.
+     */
+    ownReviewCount: number;
     histogram: ReviewHistogramRow[];
     initialReviews: FullReview[];
     total: number;
@@ -106,6 +123,8 @@ export function TourReviewsSection({
     const [loading, setLoading] = useState(false);
 
     const hasMore = reviews.length < total;
+    const showChart = ownReviewCount >= MIN_REVIEWS_FOR_CHART;
+    const showSort = ownReviewCount >= MIN_REVIEWS_FOR_SORT;
     const photoStrip = reviews
         .flatMap(r => r.photos ?? [])
         .slice(0, PHOTO_STRIP_LIMIT);
@@ -184,7 +203,11 @@ export function TourReviewsSection({
                         <span>{dict.reviewsCount.replace('{count}', String(reviewCount))}</span>
                     </div>
 
-                    {/* Histogram */}
+                    {/* Histogram (LD31) - renders at 3 or more of the tour's OWN
+                        reviews. The denominator is `ownReviewCount`, never
+                        `reviewCount`: under LD11 the latter can be the operator's,
+                        which would scale every bar against the wrong total. */}
+                    {showChart && (
                     <div className='flex max-w-91 flex-col gap-1'>
                         {histogram.map(row => (
                             <div key={row.stars} className='flex items-center gap-3'>
@@ -202,7 +225,7 @@ export function TourReviewsSection({
                                     <span
                                         className='absolute inset-y-0 left-0 rounded-it-full bg-it-primary'
                                         style={{
-                                            width: `${reviewCount ? (row.count / reviewCount) * 100 : 0}%`,
+                                            width: `${ownReviewCount ? (row.count / ownReviewCount) * 100 : 0}%`,
                                         }}
                                     />
                                 </span>
@@ -212,10 +235,13 @@ export function TourReviewsSection({
                             </div>
                         ))}
                     </div>
+                    )}
                 </div>
             </div>
 
-            {/* Sort control */}
+            {/* Sort control (LD30) - hidden under 10 of the tour's own reviews;
+                below that there is not enough to reorder for it to mean anything. */}
+            {showSort && (
             <div className='flex items-center gap-8'>
                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.sortBy}
@@ -242,6 +268,7 @@ export function TourReviewsSection({
                     />
                 </div>
             </div>
+            )}
 
             {/* Customer photo strip - real review photos */}
             {photoStrip.length > 0 && (

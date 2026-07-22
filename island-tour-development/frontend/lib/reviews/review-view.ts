@@ -66,12 +66,12 @@ export function toFullReview(
     text: review.comment ?? '',
     photos: review.photos.length > 0 ? review.photos : undefined,
   };
-  if (review.operatorResponse) {
+  if (review.responseText) {
     full.response = {
-      text: review.operatorResponse,
+      text: review.responseText,
       name: hostLabel,
-      date: review.operatorRespondedAt
-        ? formatReviewDate(review.operatorRespondedAt, locale)
+      date: review.responseAt
+        ? formatReviewDate(review.responseAt, locale)
         : '',
     };
   }

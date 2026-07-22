@@ -315,3 +315,29 @@ export function ApiUpdateMollieConfigurationDocs() {
     ...adminErrors,
   );
 }
+
+export const ApiGetReviewRequestsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Get the post-tour review request schedule',
+      description:
+        'Cadence for the review invitation: master switch, first-send hour and ' +
+        'delay, reminder toggle and interval, give-up window, batch size.',
+    }),
+    ApiResponse({ status: 200, description: 'ReviewRequestSettings' }),
+  );
+
+export const ApiUpdateReviewRequestsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Update the post-tour review request schedule',
+      description:
+        'Every field is optional, so one toggle can be PATCHed alone. ' +
+        '`enabled` starts FALSE and is the master switch: while off the job ' +
+        'creates no invitations at all, so turning it on cannot fire a backlog ' +
+        'of stale emails. Timing is a business decision - the morning-after ' +
+        'send is a launch default to A/B test, not a proven optimum.',
+    }),
+    ApiResponse({ status: 200, description: 'ReviewRequestSettings' }),
+    ApiResponse({ status: 400, type: BadRequestErrorDto }),
+  );

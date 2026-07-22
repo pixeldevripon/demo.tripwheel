@@ -8,6 +8,7 @@ import { SettingsService } from './settings.service';
 import {
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
+  UpdateReviewRequestsDto,
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
@@ -32,7 +33,9 @@ import {
   ApiGetSocialMediaDocs,
   ApiUpdateSocialMediaDocs,
   ApiGetMailchimpDocs,
+  ApiGetReviewRequestsDocs,
   ApiUpdateMailchimpDocs,
+  ApiUpdateReviewRequestsDocs,
 } from './settings.swagger';
 
 @ApiTags('Settings')
@@ -351,5 +354,34 @@ export class SettingsController {
   @ApiUpdateMailchimpDocs()
   updateMailchimp(@Body() dto: UpdateMailchimpDto) {
     return this.settingsService.updateMailchimp(dto);
+  }
+
+  // ── Post-tour review requests (cadence) ────────────────────────────────────
+
+  /**
+   * GET /settings/review-requests
+   *
+   * The post-tour review invitation schedule.
+   * Security: requires VIEW_SETTINGS.
+   */
+  @Get('review-requests')
+  @RequirePermissions(Permission.VIEW_SETTINGS)
+  @ApiGetReviewRequestsDocs()
+  getReviewRequests() {
+    return this.settingsService.getReviewRequests();
+  }
+
+  /**
+   * PATCH /settings/review-requests
+   *
+   * Updates the schedule. `enabled` is the master switch for a job that emails
+   * real customers, so this is throttled and requires MANAGE_SETTINGS.
+   */
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Patch('review-requests')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdateReviewRequestsDocs()
+  updateReviewRequests(@Body() dto: UpdateReviewRequestsDto) {
+    return this.settingsService.updateReviewRequests(dto);
   }
 }

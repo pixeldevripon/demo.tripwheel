@@ -9,6 +9,7 @@ import {
   Locale,
   Prisma,
   ReviewModerationStatus,
+  ReviewResponseAuthor,
 } from '@prisma/client';
 import {
   ALL_LOCALES,
@@ -153,8 +154,10 @@ export async function seedReviews(): Promise<void> {
           moderationStatus === ReviewModerationStatus.REJECTED
             ? 'Off-topic / does not describe the tour experience.'
             : null,
-        operatorResponse: addResponse ? pick(OPERATOR_RESPONSES, r()) : null,
-        operatorRespondedAt: addResponse ? new Date() : null,
+        responseText: addResponse ? pick(OPERATOR_RESPONSES, r()) : null,
+        // LD37: responses are platform-authored at launch.
+        responseAuthor: addResponse ? ReviewResponseAuthor.PLATFORM : null,
+        responseAt: addResponse ? new Date() : null,
         translations: {
           create: ALL_LOCALES.map((locale) => ({
             locale,
