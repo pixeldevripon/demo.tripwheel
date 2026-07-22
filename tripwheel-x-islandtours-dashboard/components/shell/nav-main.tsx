@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import { useBookings } from '@/hooks/bookings/use-bookings';
+import { usePendingReviewCount } from '@/hooks/reviews/use-reviews';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
 import type { NavGroup } from '@/lib/rbac-utils';
 import { cn } from '@/lib/utils';
@@ -51,6 +52,17 @@ function CancellationsBadge() {
     return <CountChip count={data?.total ?? 0} />;
 }
 
+/**
+ * Reviews awaiting a moderation decision.
+ *
+ * `status: PENDING` must match the queue page's own default, or the badge
+ * promises work the page does not show when you click through.
+ */
+function PendingReviewsBadge() {
+    const { data } = usePendingReviewCount();
+    return <CountChip count={data ?? 0} />;
+}
+
 /** Spotlight requests waiting for an approve/reject decision. */
 function SpotlightBadge() {
     const { data } = useSpotlightQueue({ status: 'REQUESTED' });
@@ -64,6 +76,7 @@ function SpotlightBadge() {
  */
 const NAV_BADGES: Record<string, React.ComponentType> = {
     'cancellation-requests': CancellationsBadge,
+    reviews: PendingReviewsBadge,
     spotlight: SpotlightBadge,
 };
 

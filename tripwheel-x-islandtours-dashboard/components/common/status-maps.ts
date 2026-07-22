@@ -8,6 +8,7 @@ import type {
     AvailabilityScheduleStatus,
     TripStatus,
 } from '@/types/trip';
+import type { ReviewModerationStatus } from '@/types/review';
 import { SPOTLIGHT_STATUS_LABELS, type SpotlightStatus } from '@/types/tier';
 import type { StatusVariant } from './status-badge';
 
@@ -102,4 +103,18 @@ export const STAFF_MEMBER_STATUS: Record<
     INVITED: { label: 'Invited', variant: 'info' },
     ACTIVE: { label: 'Active', variant: 'success' },
     SUSPENDED: { label: 'Suspended', variant: 'danger' },
+};
+
+/**
+ * Review moderation states.
+ *
+ * HELD is `info`, not `danger`: it means "needs a second look", not "rejected".
+ * A moderator parking a review they cannot decide alone must not read on the
+ * screen as one they have thrown out.
+ */
+export const REVIEW_STATUS: Record<ReviewModerationStatus, StatusMeta> = {
+    PENDING: { label: 'Pending', variant: 'warning' },
+    APPROVED: { label: 'Approved', variant: 'success' },
+    HELD: { label: 'Held', variant: 'info' },
+    REJECTED: { label: 'Rejected', variant: 'danger' },
 };

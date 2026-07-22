@@ -130,14 +130,21 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('hubs', ...slug);
       break;
 
-    // Review moderation (approve/edit/delete). `getTourReviews` is tagged
-    // `reviews` (+ `tour:<id>`), and tour cards carry the rating aggregate via
-    // `tours`/`search`, so bust all three. NOTE: the tour DETAIL rating aggregate
-    // (`getTourBySlug`, tagged `tour:<id>`) is only refreshed here if the review
-    // write is nested under `/tours/:tourId/reviews/...` (handled by the `tours`
-    // branch, which pushes `tour:<tourId>`). If reviews get a top-level
-    // `/reviews/:id` write path instead, add `tour:<tourId>` busting when the
-    // reviews module lands (the write client knows the tourId).
+    // Review moderation (approve/hold/reject/respond/delete). `getTourReviews`
+    // and `getTourReviewSummary` are tagged `reviews` + `tour:<id>`, and tour
+    // cards carry the rating aggregate via `tours`/`search`.
+    //
+    // The backend routes are TOP-LEVEL (`PATCH /reviews/:id/moderate`), so the
+    // path carries the REVIEW id, not the tour id - `seg1` here is useless for
+    // busting, and `tour:<tourId>` cannot be derived from the URL. That granular
+    // tag is what refreshes the tour detail page's rating, count and star chart
+    // (`getTourBySlug` + `getTourReviewSummary`), so without it an approval
+    // updates the review list while the number above it stays stale for a full
+    // `cacheLife('days')`.
+    //
+    // Following the URL is the bug; follow the DATA. The write client knows the
+    // tourId from the row it just moderated, so it calls
+    // `revalidateReviewWrite(tourId)` below IN ADDITION to this mapping.
     case 'reviews':
       tags.push('reviews', 'tours', 'search');
       break;
@@ -245,4 +252,27 @@ export function revalidatePublicForPath(path: string, method?: string): void {
   if (!tags.length) return;
 
   enqueueRevalidation(tags);
+}
+
+/**
+ * Bust the granular `tour:<tourId>` tag after a review write.
+ *
+ * Call this from the reviews API client alongside the automatic
+ * `revalidatePublicForPath` that `apiFetch` fires. It exists because review
+ * routes are top-level (`PATCH /reviews/:id/moderate`), so the path carries the
+ * review id and the tour id is only known to the caller - see the `case 'reviews'`
+ * note above.
+ *
+ * What goes stale without it: the tour detail page's rating, review count and
+ * star distribution chart, all of which read `getTourBySlug` /
+ * `getTourReviewSummary` under `tour:<id>` with `cacheLife('days')`. The review
+ * LIST would refresh (it also carries the coarse `reviews` tag) while the
+ * aggregate above it did not, which reads as a bug to whoever just approved.
+ *
+ * Fire-and-forget, same contract as `revalidatePublicForPath`: never awaited,
+ * never throws, never blocks the write.
+ */
+export function revalidateReviewWrite(tourId: string | null | undefined): void {
+  if (!tourId) return;
+  enqueueRevalidation([`tour:${tourId}`]);
 }
