@@ -52,7 +52,7 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 | Scheduled payout after cancel window | 🔴 not built | needs Settlement ledger + delayed payout job (RECORDED -> PAID_OUT, clawback-safe) |
 | Payout / settlement | 🔴 not built | no Settlement model, no rows at confirm, no net_position convention (Connect = v2) |
 | Cancellation + refunds | 🟡 ~60% | refund is category-only: no real Stripe refund, no REFUND row, no per-model amount, no tokenized cancel page |
-| Provider-backed FX | 🟡 ~85% | only a real provider impl (Stripe FX Quotes) behind the existing seam remains |
+| Provider-backed FX | 🟢 ~95% | ECB keyless reference feed live (#83); only the Stripe charge-rate (currency_conversion on the PaymentIntent, payments phase #28/5C) remains |
 | Frontend widget / checkout | 🟡 ~80% | pickup, add-ons, timing affordances; real-TYP data still demo |
 | Tracking / analytics | 🔴 ~5% | whole §8.2/§8.3 browser + CAPI + GTM + consent layer |
 
@@ -601,7 +601,11 @@ only differences. 1038 tests / 48 suites green.
 - [ ] G2 Hold-expiry cron (pairs with D2)
 - [ ] G3 Discount/coupon engine (deferred - re-add validated when Coupon engine ships)
 - [ ] G4 Currency-change guard (block/relabel `defaultCurrency` once prices exist)
-- [ ] G5 Real FX provider impl (Stripe FX Quotes) behind existing seam
+- [~] G5 Real FX provider. FEED done 2026-07-25 (#83): `EcbFxProvider` (keyless ECB via
+  Frankfurter) selected by `FX_PROVIDER=ecb`, hybrid fallback in `FxModule` factory (composite+static
+  in non-prod, ecb-alone/fail-closed in prod). 2 new spec suites (11 tests). REMAINING: Stripe
+  `currency_conversion` CHARGE rate on the PaymentIntent (payments phase #28/5C) - Stripe FX is
+  charge-coupled, not a feed provider (FX Quotes API is a gated preview, absent from SDK v22.2.2).
 - [x] **G6 Backend suite green** (2026-07-16). `bookings.service.spec.ts` mocks swapped from
   `$executeRaw` to `departure.updateMany`/`update` (`$executeRaw` is gone from service code entirely);
   `rawSqlTexts` SQL-substring matching replaced with `claimCalls`/`releaseCalls` asserting real Prisma
@@ -858,8 +862,9 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     email footer CTA/anti-fraud line, `?text={greeting}` x7 locales.
 
 **Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
-16. D1: real FX provider implementation behind the ready seam (Stripe FX Quotes) + currency-change
-    guard on `defaultCurrency`.
+16. D1: FEED done 2026-07-25 (#83) - `EcbFxProvider` (keyless ECB via Frankfurter), env-selected,
+    hybrid fallback. REMAINING: Stripe `currency_conversion` CHARGE rate on the PaymentIntent
+    (payments phase #28/5C) + currency-change guard on `defaultCurrency`.
 17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
     completion, quote-currency 5C (#28).
 18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator

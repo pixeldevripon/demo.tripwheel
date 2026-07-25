@@ -5,9 +5,10 @@
 > (`island-tours-platform-master.html` v1.9), the master wins.
 >
 > Status: backend M1 (FX foundation) + M2 (pricing/quote/reserve wiring) + M3 (public-API
-> display conversion via `money`) + M4 (refresh scheduler + startup warm-up) BUILT and
-> tested. Still on the STATIC provider - a real `FxProvider` (Stripe FX Quotes) and M5
-> (frontend) are tracked in `03-implementation/BOOKING-CHECKLIST.md` section 6.
+> display conversion via `money`) + M4 (refresh scheduler + startup warm-up) + M5 (frontend)
+> BUILT and tested. A real **keyless ECB reference provider** now backs the rate cache feed
+> (`FX_PROVIDER=ecb`, 2026-07-25). The CHARGE-side rate (Stripe `currency_conversion` on the
+> PaymentIntent) is deferred to the payments phase - see "Which provider we use" below.
 
 ---
 
@@ -110,16 +111,28 @@ effectiveCommissionRate(tourId, at):
 
 ## Which provider we use
 
-**Right now: `StaticFxProvider` (dev/static), in every environment.** Correct for local and
-tests; NOT production-grade. The guide (20.1) mandates a real provider and "fail closed" for
-production checkout.
+FX splits into TWO rate paths with DIFFERENT providers (this was the design decision on
+2026-07-25 - Stripe FX is charge-coupled, not a batch rate feed, and its FX Quotes API is a
+gated preview absent from the installed SDK v22.2.2):
 
-- **Recommended production provider: Stripe FX Quotes** - it locks a quote you can attach to
-  the PaymentIntent, so the displayed converted amount and the charged payment share one rate.
-- **Open Exchange Rates** is a good display/cache fallback; **ECB** as a reference/audit source.
+- **Display / quote cache feed** (cards, the widget quote - the `FxProvider.fetchRates` seam):
+  **ECB reference rates**, live now. `EcbFxProvider` (`providers/ecb-fx.provider.ts`, name
+  `ecb`) pulls the ECB daily reference rates as keyless JSON via Frankfurter
+  (`api.frankfurter.dev`, no account/key). Selected by `FX_PROVIDER=ecb`. `StaticFxProvider`
+  (0.92) remains the default for local/tests (`FX_PROVIDER` unset / `static`).
+- **Charge rate** (what the traveler actually pays): **Stripe**, via `currency_conversion` on
+  the PaymentIntent, so the displayed and charged amounts share one locked rate. Deferred to
+  the payments phase (task #28 / 5C) where the PaymentIntent is created - NOT wired here, and
+  NOT usable as a `fetchRates` provider.
 
-Swapping in a real provider = implement the `FxProvider` interface + rebind `FX_PROVIDER` in
-`FxModule`. Nothing else changes (booking/tour code depends only on `FxRatesService`).
+**Hybrid outage policy** (`FxModule` factory, `createFxProvider`): in **non-production**, `ecb`
+is wrapped in `CompositeFxProvider` so any pair the provider fails to return is filled from the
+static rate - local dev/staging always converts. In **production**, `ecb` runs ALONE: an outage
+writes no rows and cross-currency **fails closed** downstream (`getRate` 503), never silently
+charging the stale static rate.
+
+Adding another feed provider (e.g. Open Exchange Rates, keyed) = implement `FxProvider` + add a
+branch to `createFxProvider`. Nothing else changes (callers depend only on `FxRatesService`).
 
 ---
 
@@ -139,19 +152,18 @@ defaults apply when unset).
 
 **Local:** nothing required - runs on defaults. Optionally set `FX_USD_TO_EUR` to test rates.
 
-### Production (guide-listed, NOT YET consumed)
-
-These activate only when a real provider class lands (the scheduler in M4 already runs; it
-just refreshes via `StaticFxProvider` until a real provider is bound):
+### Provider selection (consumed since 2026-07-25)
 
 ```
-FX_PROVIDER=stripe            # selects the provider impl (no effect yet)
-FX_PROVIDER_API_KEY=...       # provider credential (no effect yet)
+FX_PROVIDER=ecb               # 'static' (default) | 'ecb'. 'ecb' = keyless ECB reference feed.
+FX_PROVIDER_API_KEY=...       # RESERVED - not consumed; ECB needs no key. Add when a keyed
+                              # feed provider (e.g. Open Exchange Rates) lands.
 ```
 
-> WARNING: setting `FX_PROVIDER` / `FX_PROVIDER_API_KEY` does nothing today - the binding is
-> hardcoded to `StaticFxProvider` in `FxModule`. They take effect once a real provider class
-> is implemented and bound.
+- Validated in `env.validate.ts` (`FX_PROVIDER` must be `static` or `ecb`).
+- `FX_PROVIDER=ecb` in production; leave unset/`static` for local + tests.
+- `FX_PROVIDER_API_KEY` does nothing today (ECB is keyless); kept as a reserved name for a
+  future keyed provider.
 
 ---
 
@@ -200,9 +212,10 @@ amount and the charged amount share one rate.
 
 ## What is still needed for true production
 
-1. A real `FxProvider` implementation (Stripe FX Quotes) + rebind in `FxModule` (see above).
-2. Then production genuinely fails closed on cross-currency when the provider is down, instead
-   of leaning on the static default.
+1. DONE (2026-07-25): a real feed provider (`EcbFxProvider`) + env-selected binding in `FxModule`;
+   production now genuinely fails closed on cross-currency when ECB is down (no static injection).
+2. REMAINING (payments phase, task #28/5C): Stripe `currency_conversion` on the PaymentIntent so the
+   traveler is CHARGED at Stripe's own locked rate and the displayed ECB rate is reconciled to it.
 
 ---
 
