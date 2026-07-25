@@ -5,6 +5,8 @@ import type {
   UpdatePlatformReviewsPayload,
   MailchimpConfiguration,
   MollieConfiguration,
+  PaymentProviderSettings,
+  UpdatePaymentProviderPayload,
   ReviewRequestSettings,
   UpdateReviewRequestsPayload,
   SiteInfo,
@@ -80,6 +82,19 @@ export const settingsApi = {
   },
   updateCompany(payload: UpdateCompanyInformationsPayload): Promise<CompanyInformations> {
     return apiFetch<CompanyInformations>('/settings/company', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Payments: active provider switch ───────────────────────────────────────
+  getPaymentProvider(): Promise<PaymentProviderSettings> {
+    return apiFetch<PaymentProviderSettings>('/settings/payment/provider');
+  },
+  updatePaymentProvider(
+    payload: UpdatePaymentProviderPayload,
+  ): Promise<PaymentProviderSettings> {
+    return apiFetch<PaymentProviderSettings>('/settings/payment/provider', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

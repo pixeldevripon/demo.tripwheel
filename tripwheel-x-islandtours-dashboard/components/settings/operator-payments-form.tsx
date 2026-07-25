@@ -1,21 +1,29 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Field } from '@/components/ui/field';
-import { Label } from '@/components/ui/label';
-import { MultiSelect } from '@/components/ui/multi-select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   useOperatorMollieConfig,
+  useOperatorPaymentProvider,
   useOperatorStripeConfig,
   useUpdateOperatorMollieConfig,
+  useUpdateOperatorPaymentProvider,
   useUpdateOperatorStripeConfig,
 } from '@/hooks/operators/use-operator-settings';
-import { MOLLIE_PAYMENT_METHODS, STRIPE_PAYMENT_METHODS } from './payment-methods';
+import type { PaymentProvider } from '@/types/settings';
 import {
-  CheckboxField,
   ConnectionStatus,
   SecretField,
   SettingsCard,
@@ -23,14 +31,106 @@ import {
   TextField,
 } from './settings-fields';
 
+// ── Active provider (single switch - same setup as admin Settings > Payments,
+//    but with PAYOUT semantics: the operator RECEIVES payouts through this
+//    provider; travelers are always charged by the platform, never here) ──────
+
+const PROVIDERS: { value: PaymentProvider; label: string }[] = [
+  { value: 'STRIPE', label: 'Stripe' },
+  { value: 'MOLLIE', label: 'Mollie' },
+];
+
+function ActiveProviderCard({ operatorId }: { operatorId: string }) {
+  const { data, isLoading } = useOperatorPaymentProvider(operatorId);
+  const { mutate, isPending } = useUpdateOperatorPaymentProvider(operatorId);
+  // The provider awaiting confirmation; the dialog is open while set.
+  const [pending, setPending] = useState<PaymentProvider | null>(null);
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  const current = data?.activeProvider ?? 'STRIPE';
+  const pendingLabel = PROVIDERS.find((p) => p.value === pending)?.label;
+
+  return (
+    <SettingsCard
+      title="Payout Provider"
+      description="Which provider Island Tours uses to send your payouts. Travelers are always charged by the platform - this never changes the checkout."
+      onSubmit={() => {}}
+      isSaving={false}
+      canSave={false}
+    >
+      <div className="flex flex-wrap gap-2">
+        {PROVIDERS.map((opt) => {
+          const isCurrent = current === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (!isCurrent) setPending(opt.value);
+              }}
+              aria-pressed={isCurrent}
+              className={`flex w-full flex-1 items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                isCurrent
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/40'
+              } ${isPending ? 'opacity-60' : ''}`}
+            >
+              <span
+                className={`grid size-4 shrink-0 place-items-center rounded-full border ${
+                  isCurrent ? 'border-primary' : 'border-muted-foreground/40'
+                }`}
+              >
+                {isCurrent && <span className="size-2 rounded-full bg-primary" />}
+              </span>
+              <span className="text-sm font-semibold">{opt.label}</span>
+              {isCurrent && (
+                <span className="ml-auto rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success-fg">
+                  Active
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Receive payouts through {pendingLabel}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Future payouts will be sent to your {pendingLabel} account. Its API
+              keys must be configured below or the switch is rejected. Booking
+              payments are unaffected - travelers are always charged by the
+              platform, and payouts already in progress keep their provider.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) mutate({ activeProvider: pending });
+                setPending(null);
+              }}
+            >
+              Switch to {pendingLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SettingsCard>
+  );
+}
+
 // ── Stripe ─────────────────────────────────────────────────────────────────
+// Which provider is live is decided by the Active Provider switch above (the
+// per-card isActive flags are synced server-side); the card only holds keys.
 
 const stripeSchema = z.object({
   publishableKey: z.string().optional(),
   secretKey: z.string().optional(),
   webhookSecret: z.string().optional(),
-  paymentMethods: z.array(z.string()),
-  isActive: z.boolean(),
 });
 type StripeFormValues = z.infer<typeof stripeSchema>;
 
@@ -42,12 +142,10 @@ function StripeCard({ operatorId }: { operatorId: string }) {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<StripeFormValues>({
     resolver: zodResolver(stripeSchema),
-    defaultValues: { publishableKey: '', secretKey: '', webhookSecret: '', paymentMethods: [], isActive: false },
+    defaultValues: { publishableKey: '', secretKey: '', webhookSecret: '' },
   });
 
   useEffect(() => {
@@ -56,8 +154,6 @@ function StripeCard({ operatorId }: { operatorId: string }) {
         publishableKey: data.publishableKey ?? '',
         secretKey: '',
         webhookSecret: '',
-        paymentMethods: data.paymentMethods ?? [],
-        isActive: data.isActive ?? false,
       });
     }
   }, [data, reset]);
@@ -65,8 +161,6 @@ function StripeCard({ operatorId }: { operatorId: string }) {
   function onSubmit(values: StripeFormValues) {
     mutate({
       publishableKey: values.publishableKey,
-      paymentMethods: values.paymentMethods,
-      isActive: values.isActive,
       ...(values.secretKey ? { secretKey: values.secretKey } : {}),
       ...(values.webhookSecret ? { webhookSecret: values.webhookSecret } : {}),
     });
@@ -74,12 +168,10 @@ function StripeCard({ operatorId }: { operatorId: string }) {
 
   if (isLoading) return <SettingsCardSkeleton />;
 
-  const selected = watch('paymentMethods');
-
   return (
     <SettingsCard
       title="Stripe"
-      description="Connect your own Stripe account to receive payments for your tours."
+      description="Connect your own Stripe account to receive payouts for your bookings."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
       status={<ConnectionStatus connected={!!data?.secretKey} />}
@@ -99,22 +191,6 @@ function StripeCard({ operatorId }: { operatorId: string }) {
         placeholder="whsec_..."
         description={data?.webhookSecret ? `Current: ${data.webhookSecret}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
-      <Field>
-        <Label>Payment Methods</Label>
-        <MultiSelect
-          options={STRIPE_PAYMENT_METHODS}
-          value={selected}
-          onChange={(next) => setValue('paymentMethods', next, { shouldDirty: true })}
-          placeholder="Select payment methods"
-        />
-      </Field>
-      <CheckboxField
-        id="stripeActive"
-        label="Active"
-        description="Enable Stripe as a checkout option for your tours."
-        checked={watch('isActive')}
-        onChange={(c) => setValue('isActive', c, { shouldDirty: true })}
-      />
     </SettingsCard>
   );
 }
@@ -123,8 +199,6 @@ function StripeCard({ operatorId }: { operatorId: string }) {
 
 const mollieSchema = z.object({
   apiKey: z.string().optional(),
-  paymentMethods: z.array(z.string()),
-  isActive: z.boolean(),
 });
 type MollieFormValues = z.infer<typeof mollieSchema>;
 
@@ -136,40 +210,28 @@ function MollieCard({ operatorId }: { operatorId: string }) {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<MollieFormValues>({
     resolver: zodResolver(mollieSchema),
-    defaultValues: { apiKey: '', paymentMethods: [], isActive: false },
+    defaultValues: { apiKey: '' },
   });
 
   useEffect(() => {
-    if (data) {
-      reset({
-        apiKey: '',
-        paymentMethods: data.paymentMethods ?? [],
-        isActive: data.isActive ?? false,
-      });
-    }
+    if (data) reset({ apiKey: '' });
   }, [data, reset]);
 
   function onSubmit(values: MollieFormValues) {
     mutate({
-      paymentMethods: values.paymentMethods,
-      isActive: values.isActive,
       ...(values.apiKey ? { apiKey: values.apiKey } : {}),
     });
   }
 
   if (isLoading) return <SettingsCardSkeleton />;
 
-  const selected = watch('paymentMethods');
-
   return (
     <SettingsCard
       title="Mollie"
-      description="Connect your own Mollie account to receive payments for your tours."
+      description="Connect your own Mollie account to receive payouts for your bookings."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
       status={<ConnectionStatus connected={!!data?.apiKey} />}
@@ -181,22 +243,6 @@ function MollieCard({ operatorId }: { operatorId: string }) {
         placeholder="live_..."
         description={data?.apiKey ? `Current: ${data.apiKey}. Leave blank to keep it.` : 'Stored encrypted.'}
       />
-      <Field>
-        <Label>Payment Methods</Label>
-        <MultiSelect
-          options={MOLLIE_PAYMENT_METHODS}
-          value={selected}
-          onChange={(next) => setValue('paymentMethods', next, { shouldDirty: true })}
-          placeholder="Select payment methods"
-        />
-      </Field>
-      <CheckboxField
-        id="mollieActive"
-        label="Active"
-        description="Enable Mollie as a checkout option for your tours."
-        checked={watch('isActive')}
-        onChange={(c) => setValue('isActive', c, { shouldDirty: true })}
-      />
     </SettingsCard>
   );
 }
@@ -204,8 +250,9 @@ function MollieCard({ operatorId }: { operatorId: string }) {
 export function OperatorPaymentsForm({ operatorId }: { operatorId: string }) {
   return (
     <div className="space-y-6">
+      <ActiveProviderCard operatorId={operatorId} />
       <StripeCard operatorId={operatorId} />
-      {/* <MollieCard operatorId={operatorId} /> */}
+      <MollieCard operatorId={operatorId} />
     </div>
   );
 }

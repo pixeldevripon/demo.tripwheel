@@ -116,10 +116,25 @@ export interface UpdateStripeConfigurationPayload {
   paymentMethods?: string[];
 }
 
+/** Which PSP charges travellers at checkout. Never retroactive: existing payments keep their own provider. */
+export type PaymentProvider = 'STRIPE' | 'MOLLIE';
+
+export interface PaymentProviderSettings {
+  id: string;
+  activeProvider: PaymentProvider;
+  updatedAt: string;
+}
+
+export interface UpdatePaymentProviderPayload {
+  activeProvider: PaymentProvider;
+}
+
 export interface MollieConfiguration {
   id: string;
   paymentLabel: string;
   apiKey: string | null;
+  /** Mollie profile id (pfl_..., public) - enables the inline Components card form. */
+  profileId: string;
   paymentMethods: string[];
   createdAt: string;
   updatedAt: string;
@@ -128,6 +143,7 @@ export interface MollieConfiguration {
 export interface UpdateMollieConfigurationPayload {
   paymentLabel?: string;
   apiKey?: string;
+  profileId?: string;
   paymentMethods?: string[];
 }
 

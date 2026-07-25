@@ -6,6 +6,7 @@ import { operatorSettingsApi } from '@/lib/api/operator-settings';
 import type {
   UpdateOperatorCompanyInfoPayload,
   UpdateOperatorMollieConfigPayload,
+  UpdateOperatorPaymentProviderPayload,
   UpdateOperatorStripeConfigPayload,
 } from '@/types/operator-settings';
 
@@ -13,6 +14,7 @@ export const operatorSettingsKeys = {
   all: ['operator-settings'] as const,
   company: (id: string) => [...operatorSettingsKeys.all, 'company', id] as const,
   stripe: (id: string) => [...operatorSettingsKeys.all, 'stripe', id] as const,
+  provider: (id: string) => [...operatorSettingsKeys.all, 'provider', id] as const,
   mollie: (id: string) => [...operatorSettingsKeys.all, 'mollie', id] as const,
 };
 
@@ -35,6 +37,30 @@ export function useUpdateOperatorCompanyInfo(operatorId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: operatorSettingsKeys.company(operatorId) });
       saved();
+    },
+    onError,
+  });
+}
+
+// ── Payments: active provider (single switch) ──────────────────────────────
+export function useOperatorPaymentProvider(operatorId: string | undefined) {
+  return useQuery({
+    queryKey: operatorSettingsKeys.provider(operatorId ?? ''),
+    queryFn: () => operatorSettingsApi.getPaymentProvider(operatorId!),
+    enabled: !!operatorId,
+  });
+}
+export function useUpdateOperatorPaymentProvider(operatorId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateOperatorPaymentProviderPayload) =>
+      operatorSettingsApi.updatePaymentProvider(operatorId, payload),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: operatorSettingsKeys.provider(operatorId) });
+      // isActive flags on both configs are synced server-side by the switch.
+      qc.invalidateQueries({ queryKey: operatorSettingsKeys.stripe(operatorId) });
+      qc.invalidateQueries({ queryKey: operatorSettingsKeys.mollie(operatorId) });
+      toast.success(`Payouts will be sent through ${data.activeProvider === 'MOLLIE' ? 'Mollie' : 'Stripe'}`);
     },
     onError,
   });

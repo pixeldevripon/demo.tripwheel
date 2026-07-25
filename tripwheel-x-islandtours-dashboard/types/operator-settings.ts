@@ -1,3 +1,5 @@
+import type { PaymentProvider } from './settings';
+
 // Mirrors backend: src/operators/dto/operator.dto.ts (operator-scoped settings).
 // Operators self-manage these. Personal info + social media live in the profile page,
 // so they are intentionally NOT modelled here.
@@ -38,6 +40,15 @@ export interface UpdateOperatorStripeConfigPayload {
   webhookSecret?: string;
   paymentMethods?: string[];
   isActive?: boolean;
+}
+
+export interface OperatorPaymentProvider {
+  activeProvider: PaymentProvider;
+  updatedAt: string;
+}
+
+export interface UpdateOperatorPaymentProviderPayload {
+  activeProvider: PaymentProvider;
 }
 
 export interface OperatorMollieConfig {

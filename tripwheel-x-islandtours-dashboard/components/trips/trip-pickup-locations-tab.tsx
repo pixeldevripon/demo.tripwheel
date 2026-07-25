@@ -253,7 +253,7 @@ const MODEL_DESCRIPTION: Record<PickupModel, string> = {
     INCLUDED:
         'Hotel / meeting points where travelers can be collected, with pickup windows. Pickup is included in the tour price, so zones here are free to select.',
     PAID_ADDON:
-        'Pickup zones travelers can buy at checkout. Each zone carries a per-person price ("Pickup location (From $X p.p.)"); free zones are allowed too.',
+        'Pickup zones travelers can buy at checkout. Each zone carries a per-person price ("Pickup location (From X p.p.)" in the tour currency); free zones are allowed too.',
     NONE: 'Pickup is disabled for this tour (Pickup model on the Details tab is "None"), so these locations are NOT offered at checkout. Switch the model to Included or Paid add-on to use them.',
 };
 
