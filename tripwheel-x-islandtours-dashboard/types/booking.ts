@@ -145,7 +145,8 @@ export interface BookingsQueryParams {
     page?: number;
     limit?: number;
     tourId?: string;
-    status?: BookingStatus;
+    /** Accepts derived display statuses too (FORFEITED / NON_PAYMENT_REPORTED / CANCELLATION_REQUESTED). */
+    status?: BookingDisplayStatus;
     paymentModel?: BookingPaymentModel;
     search?: string;
     /** Travel-date range (localDate), YYYY-MM-DD. */

@@ -18,7 +18,8 @@ import {
 } from '@/components/ui/select';
 import { useRole } from '@/contexts/role-context';
 import { useState } from 'react';
-import type { BookingListItem } from '@/types/booking';
+import { BOOKING_DISPLAY_STATUS } from '@/components/common/status-maps';
+import type { BookingDisplayStatus, BookingListItem } from '@/types/booking';
 import { makeBookingColumns } from './booking-columns';
 import { BookingDetailsSheet } from './booking-details-sheet';
 import { BookingRowActions } from './booking-row-actions';
@@ -39,13 +40,18 @@ interface BookingsTableProps {
   filters?: Record<string, string | undefined>;
 }
 
+// Raw statuses + the derived refinements the chips show (backend translates
+// the derived values to their defining predicates; labels from the shared map).
 const STATUS_OPTIONS = [
   'ON_HOLD',
   'PENDING',
   'CONFIRMED',
+  'CANCELLATION_REQUESTED',
+  'NON_PAYMENT_REPORTED',
   'REDEEMED',
   'EXPIRED',
   'CANCELLED',
+  'FORFEITED',
   'REJECTED',
 ] as const;
 
@@ -171,7 +177,8 @@ export function BookingsTable({
                 <SelectItem value='all'>All Status</SelectItem>
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s.charAt(0) + s.slice(1).toLowerCase().replace('_', ' ')}
+                    {BOOKING_DISPLAY_STATUS[s as BookingDisplayStatus]?.label ??
+                      s.charAt(0) + s.slice(1).toLowerCase().replaceAll('_', ' ')}
                   </SelectItem>
                 ))}
               </SelectContent>
