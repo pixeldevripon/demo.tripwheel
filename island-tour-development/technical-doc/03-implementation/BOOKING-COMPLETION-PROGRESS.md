@@ -1109,8 +1109,64 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     byte-identical behavior. Frontend untouched. 6 new tests (2 Stripe derive/skip, 2 Mollie
     derive/skip, 2 finalize reconcile/EUR-ignore); 6 existing arity assertions updated. Suite
     1576/73 green; tsc + eslint clean. **NEXT = B6 #51 (outbox + queued idempotent jobs).**
-11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
-    (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
+10i. [x] D-FORFEIT - operator non-payment report + admin-confirmed forfeit (DONE 2026-07-25,
+    guide §15, both repos). BACKEND: `Booking.utcNonPaymentReportedAt` + `utcForfeitedAt`
+    (migration `add_non_payment_forfeit`); `POST /bookings/:id/report-non-payment`
+    (EDIT_BOOKING; operator must OWN the booking, foreign ids 404; OPERATOR_LINK + CONFIRMED
+    only; idempotent first-report stamp), `POST /bookings/:id/forfeit` + `/dismiss-non-payment`
+    (MANAGE_BOOKINGS - NEW permission granted to ADMIN only, mirrored in dashboard rbac.ts).
+    Forfeit terminates the booking CANCELLED + utcForfeitedAt in one tx (seats released incl.
+    exclusive charters, unit items cancelled, cancellationRefund=NONE, cancelledBy=ADMIN) with
+    NO refund and NO settlement reversal - the deposit (~= commission) stays earned; the
+    settlement self-heal cron (`reverseStaleCancelledSettlements`) now EXCLUDES forfeited
+    bookings or it would zero the kept commission. Display statuses NON_PAYMENT_REPORTED
+    (CONFIRMED + pending report; outranked by CANCELLATION_REQUESTED) and FORFEITED
+    (CANCELLED + utcForfeitedAt) via `deriveBookingDisplayStatus`; list DTO/mapper carry both
+    stamps. DASHBOARD: status chips w/ hints; row actions - operator "Report non-payment"
+    (confirm dialog), admin "Confirm forfeit" (destructive confirm) + "Dismiss report";
+    hooks/API wired, lists invalidate. No traveller/operator emails in v1 (§15 mandates none;
+    logged loudly server-side). Backend 1594+8 tests green incl. 5 forfeit unit tests + 3
+    display-status cases; dashboard tsc/eslint clean.
+10j. D decisions logged 2026-07-25: **discount/coupon engine DEFERRED by founder** ("we dont
+    need discount at this moment"); **age-restriction validation CLOSED as-is** ("keep it
+    simple as is" - tour min-age only, band max/coverage checks deliberately not built);
+    **G4 currency-change guard SUPERSEDED** by the founder's chosen policy (trip-editor
+    currency switch shows a confirmation dialog - prices keep their numbers, operator retunes
+    them; booking snapshots are immutable so no backend block is needed); **invoice attachment
+    BLOCKED ON A DECISION** - neither PSP issues customer invoices for plain payments (Stripe
+    Invoicing = separate paid product; Mollie invoices bill the merchant), so the options are
+    our own generated PDF (needs founder sign-off on layout, like the locked email wireframe)
+    or a Stripe receipt link. Pre-tour reminder ships with B6's queue as planned.
+    **NEXT = B6 #51 (outbox + queued idempotent jobs).**
+11. [x] B6 = CP7 - TRANSACTIONAL OUTBOX + QUEUED IDEMPOTENT JOBS (DONE 2026-07-25, #51).
+    MODEL: `OutboxEvent` (`prisma/outbox.prisma`) + Booking guard columns
+    `utcConfirmationEmailSentAt`/`utcOperatorNoticeSentAt`/`utcReminderSentAt` (migration
+    `add_outbox_and_job_guards`). PRODUCERS never touch BullMQ - they commit outbox rows in
+    their own transactions: `finalizeConfirmation`'s mark-first winner commits
+    `booking.confirmed` ATOMICALLY with the `conversionFiredAt` guard ($transaction), and
+    `cancel()` commits `booking.refund-owed` inside the cancellation tx when the verdict is
+    FULL. RELAY: `workers/outbox-relay.service.ts` - 5s @Interval, overlap-guarded, batch 50,
+    enqueue-then-stamp (crash between the two re-enqueues the same deterministic jobIds, which
+    BullMQ dedups); fans `booking.confirmed` out to confirmation-email + operator-notice +
+    CAPI + (start >24h away) a DELAYED pre-tour reminder. QUEUE: new `platform-jobs`
+    (workers module owns it; 5 attempts, 1s exponential backoff, removeOnComplete 1000,
+    removeOnFail 5000 - failures retained, §5.5). CONSUMERS: `PlatformJobsProcessor` (thin
+    switch, concurrency 5) -> idempotent `run*Job` methods on BookingsService that reload the
+    booking, RE-VALIDATE state (cancelled booking gets no confirmation), check their DB guard,
+    act, stamp. Email jobs call the senders with `rethrow: true` (the inline paths swallow;
+    a swallowed failure would fake-complete the job) and stamp only after a clean send. CAPI
+    keeps the master-8.1.4 dedup contract (event_id = publicRef, asserted in tests); a null
+    commission throws bullmq `UnrecoverableError` (loud failed-set entry, no retry loop).
+    Reminder consumer is a state-checked STUB until the founder supplies the template
+    (delayed plumbing live, guard column ready). Refund job re-invokes the idempotent
+    executeRefund. NOTHING customer-facing fires inline at confirm anymore (provisioning
+    stays fire-and-forget; cancellation emails stay inline by design - traveller-initiated,
+    must surface failures). Sweeper/payout stay as their existing idempotent crons (already
+    off-inline; re-architecting them onto delayed jobs adds risk, not durability). SUPERSEDES
+    the "Email is NOT queued" contract for CONFIRM-time sends only; the TYP resend +
+    cancellation-request paths still send inline and throw to the caller. 19 new tests
+    (6 relay, 6 processor, 7 job-runner/finalize contract). Suite 1613/76 green.
+    **B PHASE COMPLETE. NEXT = C3 #82 (booking-lookup login), then C4 WhatsApp #59/#60.**
 
 **Phase C - Product gaps (widget §3 + master 6.4/6.6; tasks #52, #59, #60)**
 12. C1: [x] DONE 2026-07-25 (see 10d) - widget add-ons behind "Show extras" into totals + reserve payload.
@@ -1126,10 +1182,11 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
 16. D1: FEED done 2026-07-25 (#83) - `EcbFxProvider` (keyless ECB via Frankfurter), env-selected,
     hybrid fallback. CHARGE RATE done 2026-07-25 (#28/5C, entry 10h) - PSP conversion reconciled
     at confirmation for BOTH PSPs. REMAINING: currency-change guard on `defaultCurrency` (G4).
-17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
-    completion. ~~quote-currency 5C (#28)~~ DONE 2026-07-25 (entry 10h).
-18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator
-    non-payment forfeit flow (guide §15), Mollie webhook confirm (Mollie stays block-commented).
+17. D2: ~~discount subtracted from totals~~ DEFERRED (founder 2026-07-25); ~~age-restriction
+    completion~~ CLOSED as-is (founder 2026-07-25); ~~quote-currency 5C (#28)~~ DONE (entry 10h).
+18. D3: invoice attachment (BLOCKED on founder decision - see 10j), pre-tour reminder content
+    (C3; job ships in B6), ~~operator non-payment forfeit flow (guide §15)~~ DONE 2026-07-25
+    (entry 10i), ~~Mollie webhook confirm~~ DONE (10e).
 
 Blocked-on-founder ledger: GTM/Pixel/CMP creds (A5), Resend confirm (B1), two Cloudinary
 accounts, `start:prod` path bug, Segoe-UI Gmail fallback (wireframe edit), master wording update

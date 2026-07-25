@@ -36,6 +36,7 @@ import {
 import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
 import { MollieService } from '@/payments/mollie.service';
 import { StripeService } from '@/payments/stripe.service';
+import { UnrecoverableError } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
@@ -1155,19 +1156,41 @@ export class BookingsService {
 
     // ATOMIC mark-first (rule #22 / master §5.1): the guarded `updateMany` on
     // `conversionFiredAt IS NULL` lets exactly one caller win, even when settle
-    // and the webhook race. Only the winner (count === 1) sends emails + fires
-    // the conversion; the loser returns without side effects, so a booking
-    // never double-emails or double-counts a conversion.
+    // and the webhook race. B6 (§5.2 transactional outbox): the WINNER commits
+    // the `booking.confirmed` domain event in the SAME transaction as the
+    // guard, so the confirmation email / operator notice / CAPI conversion /
+    // pre-tour reminder can never be lost between commit and enqueue - the
+    // relay publishes the row to the durable queue with retry + backoff.
     const firedAt = new Date();
-    const { count } = await this.prisma.booking.updateMany({
-      where: { id: booking.id, conversionFiredAt: null },
-      data: {
-        fxRateToEur: fxRate,
-        totalEur,
-        commissionAmount,
-        conversionFiredAt: firedAt,
-        ...fxAudit,
-      },
+    const count = await this.prisma.$transaction(async (tx) => {
+      const res = await tx.booking.updateMany({
+        where: { id: booking.id, conversionFiredAt: null },
+        data: {
+          fxRateToEur: fxRate,
+          totalEur,
+          commissionAmount,
+          conversionFiredAt: firedAt,
+          ...fxAudit,
+        },
+      });
+      if (res.count === 1) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'booking',
+            aggregateId: booking.id,
+            type: 'booking.confirmed',
+            payload: {
+              bookingId: booking.id,
+              publicRef: booking.publicRef,
+              paymentModel: booking.paymentModel,
+              tourStartDateTime: booking.tourStartDateTime
+                ? booking.tourStartDateTime.toISOString()
+                : null,
+            },
+          },
+        });
+      }
+      return res.count;
     });
     if (count === 0) return booking; // another caller already finalized
 
@@ -1197,22 +1220,158 @@ export class BookingsService {
       await this.writeSettlement(updated, totalEur, commissionAmount, fxRate);
     }
 
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: updated.tourId },
-      select: { name: true, destination: { select: { slug: true } } },
-    });
+    // B6: the confirmation email, operator notice, CAPI conversion, and
+    // pre-tour reminder now ride the `booking.confirmed` outbox row committed
+    // with the guard above - the relay enqueues them as durable, retried,
+    // idempotent jobs (PlatformJobsProcessor calls the run*Job methods below).
+    // Nothing customer-facing fires inline here anymore, so a mail-provider
+    // blip can never lose an email or block a webhook response.
 
-    await this.sendConfirmationEmail(updated);
-    await this.sendOperatorNotification(updated);
-    if (commissionAmount != null) {
-      await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
-    }
     // Customer account provisioning (welcome email + booking backfill-link).
     // Winner branch only, so it fires once per booking; fire-and-forget - it
     // must never fail or slow the confirmation. OPERATOR_FULL bookings have no
     // contact yet here (provisioning no-ops) and are covered by update().
     void this.customerProvisioning.provisionForBooking(updated);
     return updated;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // B6 queued-job consumers (PlatformJobsProcessor entry points)
+  // ════════════════════════════════════════════════════════════════════════
+  // Every method is IDEMPOTENT (EVENT-DRIVEN-AND-QUEUES §5.1): it reloads the
+  // booking, re-validates state (the booking may have been cancelled between
+  // enqueue and run), checks its own DB guard column, acts, then stamps the
+  // guard. A throw makes BullMQ retry with backoff; a clean return completes.
+
+  /** Traveller confirmation email - guard: `utcConfirmationEmailSentAt`. */
+  async runConfirmationEmailJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (booking.utcConfirmationEmailSentAt) return; // already sent
+    // Re-validate: REDEEMED still deserves its email (confirmed then walked in);
+    // a cancelled/expired booking must not receive a confirmation.
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `Confirmation email skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    await this.sendConfirmationEmail(booking, { rethrow: true });
+    await this.prisma.booking.updateMany({
+      where: { id: bookingId, utcConfirmationEmailSentAt: null },
+      data: { utcConfirmationEmailSentAt: new Date() },
+    });
+  }
+
+  /** Operator "Booking Received" notice - guard: `utcOperatorNoticeSentAt`. */
+  async runOperatorNoticeJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (booking.utcOperatorNoticeSentAt) return; // already sent
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `Operator notice skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    await this.sendOperatorNotification(booking, { rethrow: true });
+    await this.prisma.booking.updateMany({
+      where: { id: bookingId, utcOperatorNoticeSentAt: null },
+      data: { utcOperatorNoticeSentAt: new Date() },
+    });
+  }
+
+  /**
+   * Server-side CAPI conversion. No guard column: Meta dedups by event id
+   * (`publicRef` - the same id the browser push carries), so a redelivery is
+   * absorbed at the destination. A confirmed booking with a null commission is
+   * data corruption (master §8/rule #22): fail UNRECOVERABLY so the job lands
+   * in the failed set loudly instead of retrying a value that cannot heal.
+   */
+  async runCapiConversionJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `CAPI conversion skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    if (booking.commissionAmount == null) {
+      this.logger.error(
+        `Booking ${booking.displayRef} confirmed with null commissionAmount - conversion NOT fired (data corruption)`,
+      );
+      throw new UnrecoverableError(
+        `null commissionAmount on ${booking.displayRef}`,
+      );
+    }
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: booking.tourId },
+      select: { name: true },
+    });
+    await this.fireConversion(
+      booking,
+      tour?.name ?? null,
+      booking.commissionAmount,
+    );
+  }
+
+  /**
+   * Pre-tour reminder (24h before start) - guard: `utcReminderSentAt`.
+   * CONTENT IS PENDING A FOUNDER DECISION (D3): the delayed job plumbing ships
+   * with B6 so future bookings are already scheduled; until the template lands
+   * this logs and leaves the guard null (so shipping content later picks up
+   * any booking whose reminder has not fired yet).
+   */
+  async runPreTourReminderJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        displayRef: true,
+        status: true,
+        utcReminderSentAt: true,
+      },
+    });
+    if (!booking) return;
+    if (booking.utcReminderSentAt) return;
+    if (booking.status !== BookingStatus.CONFIRMED) return; // cancelled/expired since
+    this.logger.log(
+      `Pre-tour reminder due for ${booking.displayRef} - template pending founder decision, nothing sent`,
+    );
+  }
+
+  /**
+   * Durable refund retry: re-invokes the idempotent executor (skips when a
+   * SUCCEEDED or in-flight PROCESSING refund already exists; a FAILED attempt
+   * retries with a fresh idempotency key). A throw retries with backoff.
+   */
+  async runRefundJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { id: true, displayRef: true, cancellationRefund: true },
+    });
+    if (!booking) return;
+    if (booking.cancellationRefund !== CancellationRefund.FULL) return;
+    await this.executeRefund(booking.id, booking.displayRef);
   }
 
   /**
@@ -1351,6 +1510,7 @@ export class BookingsService {
    */
   private async sendOperatorNotification(
     booking: BookingWithItems,
+    { rethrow = false }: { rethrow?: boolean } = {},
   ): Promise<void> {
     try {
       const operator = await this.prisma.operator.findUnique({
@@ -1396,6 +1556,7 @@ export class BookingsService {
         `Operator notification failed for ${booking.displayRef}`,
         err as Error,
       );
+      if (rethrow) throw err;
     }
   }
 
@@ -2243,6 +2404,20 @@ export class BookingsService {
         where: { bookingId: booking.id },
         data: { status: BookingStatus.CANCELLED },
       });
+      // B6 durable refund retry: a FULL-refund cancellation commits its
+      // `booking.refund-owed` event with the cancellation itself, so the
+      // refund is retried with backoff even if the inline attempt below dies
+      // with the process (executeRefund is idempotent - the job re-invokes it).
+      if (!heldOnly && refund === CancellationRefund.FULL) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'booking',
+            aggregateId: booking.id,
+            type: 'booking.refund-owed',
+            payload: { bookingId: booking.id },
+          },
+        });
+      }
       return tx.booking.update({
         where: { id: booking.id },
         data: {
@@ -3212,7 +3387,24 @@ export class BookingsService {
       actor.role !== Role.TOUR_OPERATOR;
 
     if (query.tourId) where.tourId = query.tourId;
-    if (query.status) where.status = query.status;
+    // Status filter accepts DERIVED display statuses too (the chips the table
+    // shows), translated to their defining predicates; raw enum values pass
+    // through unchanged (so CANCELLED still includes forfeited rows - the
+    // derived options are refinements, not a partition).
+    if (query.status === 'FORFEITED') {
+      where.status = BookingStatus.CANCELLED;
+      where.utcForfeitedAt = { not: null };
+    } else if (query.status === 'NON_PAYMENT_REPORTED') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcNonPaymentReportedAt = { not: null };
+      where.utcForfeitedAt = null;
+    } else if (query.status === 'CANCELLATION_REQUESTED') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcCancellationRequestedAt = { not: null };
+      where.utcCancelledAt = null;
+    } else if (query.status) {
+      where.status = query.status;
+    }
     if (query.paymentModel) where.paymentModel = query.paymentModel;
     if (query.cancellationRequested)
       where.utcCancellationRequestedAt = { not: null };

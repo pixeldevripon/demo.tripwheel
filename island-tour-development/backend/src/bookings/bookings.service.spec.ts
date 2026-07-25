@@ -29,6 +29,8 @@ import {
 } from '@nestjs/common';
 import {
   BookingStatus,
+  CancellationRefund,
+  CancelledBy,
   PaymentModel,
   PickupModel,
   Prisma,
@@ -79,7 +81,12 @@ function mockPrisma() {
     },
     tour: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
     // Settlement ledger (B3): one row per booking at confirmation.
-    settlement: { upsert: jest.fn().mockResolvedValue({}) },
+    settlement: {
+      upsert: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    // B6 transactional outbox - written with the finalize guard / cancel tx.
+    outboxEvent: { create: jest.fn().mockResolvedValue({}) },
     // The confirmation email reads site branding (logo + WhatsApp). Default to the
     // singleton being absent: the template's wordmark/no-WhatsApp fallbacks are the
     // correct render then, and no test should depend on real settings rows.
@@ -994,6 +1001,267 @@ describe('BookingsService', () => {
       await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
       // Release resets the fill to zero rather than counting down the headcount.
       expect(releaseCalls(m).some((c) => c.data.bookedCount === 0)).toBe(true);
+    });
+  });
+
+  // B6 queued-job consumers: idempotent (DB guard columns), state-revalidating.
+  describe('platform job runners (B6)', () => {
+    const confirmed = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        contactFirstName: 'Ada',
+        contactFullName: 'Ada Byron',
+        operatorId: 'op1',
+        commissionAmount: D('18.40'),
+        utcConfirmationEmailSentAt: null,
+        utcOperatorNoticeSentAt: null,
+        ...over,
+      });
+
+    beforeEach(() => {
+      m.operator.findUnique.mockResolvedValue({
+        contactEmail: 'op@x.test',
+        companyInfo: { companyEmail: 'co@x.test', companyName: 'Op' },
+      });
+      m.tour.findUnique.mockResolvedValue({
+        name: 'Tour',
+        destination: { slug: 'curacao' },
+      });
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('confirmation-email job sends once, stamps its guard, and rethrows failures for retry', async () => {
+      const send = jest
+        .spyOn(svc as never, 'sendConfirmationEmail' as never)
+        .mockResolvedValue(undefined as never);
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await svc.runConfirmationEmailJob('b1');
+      // The job path must RETHROW send failures so BullMQ retries with backoff
+      // (the inline path swallows them) - and stamp only after a clean send.
+      expect(send).toHaveBeenCalledWith(expect.anything(), { rethrow: true });
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'b1', utcConfirmationEmailSentAt: null },
+          data: { utcConfirmationEmailSentAt: expect.any(Date) },
+        }),
+      );
+
+      // Redelivered job: guard already stamped -> nothing sent again.
+      send.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({ utcConfirmationEmailSentAt: new Date() }),
+      );
+      await svc.runConfirmationEmailJob('b1');
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('confirmation-email job re-validates state - a cancelled booking gets NO email', async () => {
+      const send = jest
+        .spyOn(svc as never, 'sendConfirmationEmail' as never)
+        .mockResolvedValue(undefined as never);
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({ status: BookingStatus.CANCELLED }),
+      );
+      await svc.runConfirmationEmailJob('b1');
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it('operator-notice job sends once and stamps its guard', async () => {
+      const send = jest
+        .spyOn(svc as never, 'sendOperatorNotification' as never)
+        .mockResolvedValue(undefined as never);
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await svc.runOperatorNoticeJob('b1');
+      expect(send).toHaveBeenCalledWith(expect.anything(), { rethrow: true });
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcOperatorNoticeSentAt: expect.any(Date) },
+        }),
+      );
+    });
+
+    it('CAPI job fires with event_id == publicRef (master 8.1.4 dedup contract)', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await svc.runCapiConversionJob('b1');
+      // The server CAPI event_id MUST equal the booking publicRef - the SAME id
+      // the browser push carries - so Meta dedups the Pixel event against it.
+      expect(tracking.fireBookingComplete).toHaveBeenCalledWith(
+        expect.objectContaining({ eventId: 'p1' }), // fakeBooking().publicRef
+      );
+    });
+
+    it('CAPI job fails UNRECOVERABLY on a null commission (data corruption - no retry loop)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({ commissionAmount: null }),
+      );
+      await expect(svc.runCapiConversionJob('b1')).rejects.toMatchObject({
+        name: 'UnrecoverableError',
+      });
+      expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
+    });
+
+    it('refund job re-invokes the idempotent executor only for a FULL verdict', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // no prior REFUND row
+        .mockResolvedValueOnce({
+          amount: D('41.99'),
+          currency: 'EUR',
+          intentId: 'pi_1',
+          chargeId: 'ch_1',
+          provider: 'STRIPE',
+        });
+      m.payment.count.mockResolvedValue(0);
+      await svc.runRefundJob('b1');
+      expect(stripe.refundIntent).toHaveBeenCalled();
+
+      // NONE verdict -> nothing owed, executor never invoked.
+      stripe.refundIntent.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'NONE',
+        }),
+      );
+      await svc.runRefundJob('b1');
+      expect(stripe.refundIntent).not.toHaveBeenCalled();
+    });
+
+    it('pre-tour reminder job is a state-checked stub until the template lands', async () => {
+      m.booking.findUnique.mockResolvedValue({
+        id: 'b1',
+        displayRef: 'IT-2030-AAAA',
+        status: BookingStatus.CONFIRMED,
+        utcReminderSentAt: null,
+      });
+      await expect(svc.runPreTourReminderJob('b1')).resolves.toBeUndefined();
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  // Guide s15: operator reports non-payment of the OPERATOR_LINK balance; only an
+  // admin confirmation forfeits the deposit (kept - no refund, settlement NOT
+  // reversed) and releases the spot. Never automatic.
+  describe('non-payment forfeit (guide s15)', () => {
+    const admin = { id: 'admin-1', role: Role.ADMIN };
+    const confirmedLink = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        utcConfirmedAt: new Date('2030-06-01T00:00:00Z'),
+        utcNonPaymentReportedAt: null,
+        utcForfeitedAt: null,
+        ...over,
+      });
+
+    it('report stamps utcNonPaymentReportedAt (and repeats are idempotent no-ops)', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmedLink());
+      m.booking.update.mockResolvedValue(
+        confirmedLink({ utcNonPaymentReportedAt: new Date() }),
+      );
+      await svc.reportNonPayment('b1', admin);
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcNonPaymentReportedAt: expect.any(Date) },
+        }),
+      );
+
+      // Second report: already stamped -> returns without writing.
+      m.booking.update.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        confirmedLink({ utcNonPaymentReportedAt: new Date('2030-06-02') }),
+      );
+      await svc.reportNonPayment('b1', admin);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('report rejects a non-OPERATOR_LINK booking (409)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmedLink({ paymentModel: PaymentModel.PAID_IN_FULL }),
+      );
+      await expect(svc.reportNonPayment('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('forfeit terminates CANCELLED+forfeited, keeps the deposit (no refund, no settlement reversal), releases seats', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmedLink({
+          utcNonPaymentReportedAt: new Date('2030-06-02T00:00:00Z'),
+        }),
+      );
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 4,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        confirmedLink({
+          status: BookingStatus.CANCELLED,
+          utcForfeitedAt: new Date(),
+          utcCancelledAt: new Date(),
+        }),
+      );
+
+      await svc.confirmForfeit('b1', admin);
+
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: BookingStatus.CANCELLED,
+            utcForfeitedAt: expect.any(Date),
+            cancellationRefund: CancellationRefund.NONE,
+            cancelledBy: CancelledBy.ADMIN,
+          }),
+        }),
+      );
+      // Seats go back to inventory...
+      expect(releaseCalls(m).length).toBeGreaterThan(0);
+      // ...but the money does NOT move: deposit kept, commission stays earned.
+      expect(stripe.refundIntent).not.toHaveBeenCalled();
+      expect(m.settlement.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('forfeit without a prior report is rejected (409, never automatic)', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmedLink());
+      await expect(svc.confirmForfeit('b1', admin)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('dismiss clears the report; a forfeited booking cannot be dismissed', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmedLink({
+          utcNonPaymentReportedAt: new Date('2030-06-02T00:00:00Z'),
+        }),
+      );
+      m.booking.update.mockResolvedValue(confirmedLink());
+      await svc.dismissNonPaymentReport('b1', admin);
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { utcNonPaymentReportedAt: null },
+        }),
+      );
+
+      m.booking.update.mockClear();
+      m.booking.findUnique.mockResolvedValue(
+        confirmedLink({
+          status: BookingStatus.CANCELLED,
+          utcNonPaymentReportedAt: new Date('2030-06-02T00:00:00Z'),
+          utcForfeitedAt: new Date('2030-06-03T00:00:00Z'),
+        }),
+      );
+      await expect(
+        svc.dismissNonPaymentReport('b1', admin),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(m.booking.update).not.toHaveBeenCalled();
     });
   });
 
@@ -2117,21 +2385,27 @@ describe('BookingsService', () => {
       });
     });
 
-    it('the caller that WINS the flip fires the conversion + booking event once', async () => {
+    it('the caller that WINS the flip commits the outbox event + booking event once (B6)', async () => {
       m.booking.updateMany.mockResolvedValue({ count: 1 }); // transition + guard both win
       m.booking.findUnique.mockResolvedValue(confirmable());
 
       await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
 
-      // Conversion + event emit are independent of the (swallowed) email sends.
-      expect(tracking.fireBookingComplete).toHaveBeenCalledTimes(1);
-      expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
-      // DEDUP CONTRACT (master 8.1.4): the server CAPI event_id MUST equal the
-      // booking publicRef - the SAME id the browser push carries - so Meta
-      // deduplicates the Pixel event against this CAPI event.
-      expect(tracking.fireBookingComplete).toHaveBeenCalledWith(
-        expect.objectContaining({ eventId: 'p1' }), // fakeBooking().publicRef
+      // B6: the winner commits the `booking.confirmed` domain event in the SAME
+      // transaction as the mark-first guard - the email/CAPI/reminder jobs ride
+      // the outbox relay, NOTHING customer-facing fires inline anymore.
+      expect(m.outboxEvent.create).toHaveBeenCalledTimes(1);
+      expect(m.outboxEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: 'booking.confirmed',
+            aggregateId: 'b1',
+          }),
+        }),
       );
+      expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+      expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
     });
 
     it('reconciles every EUR figure onto the PSP charge rate when one is supplied (5C)', async () => {
@@ -2258,9 +2532,10 @@ describe('BookingsService', () => {
 
       await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
 
-      // Re-claimed inventory (guarded departure count-up) + confirmed once.
+      // Re-claimed inventory (guarded departure count-up) + confirmed once:
+      // the finalize winner commits exactly one `booking.confirmed` outbox event.
       expect(m.departure.updateMany).toHaveBeenCalled();
-      expect(tracking.fireBookingComplete).toHaveBeenCalledTimes(1);
+      expect(m.outboxEvent.create).toHaveBeenCalledTimes(1);
       // Availability changed (seats re-claimed), so the availability event fires too.
       expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
     });

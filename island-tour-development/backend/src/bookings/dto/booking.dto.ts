@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -1174,10 +1175,17 @@ export class ListBookingsQueryDto {
   @IsString()
   tourId?: string;
 
-  @ApiPropertyOptional({ enum: BookingStatus })
+  @ApiPropertyOptional({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Raw statuses match the persisted enum as-is. The three DERIVED values ' +
+      'refine them: CANCELLATION_REQUESTED (confirmed + pending request), ' +
+      'NON_PAYMENT_REPORTED (confirmed + pending report), FORFEITED ' +
+      '(cancelled via an admin-confirmed non-payment forfeit).',
+  })
   @IsOptional()
-  @IsEnum(BookingStatus)
-  status?: BookingStatus;
+  @IsIn(BOOKING_DISPLAY_STATUSES)
+  status?: BookingDisplayStatus;
 
   @ApiPropertyOptional({ enum: PaymentModel })
   @IsOptional()

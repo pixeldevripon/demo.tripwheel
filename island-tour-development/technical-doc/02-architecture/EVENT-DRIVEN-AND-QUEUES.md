@@ -10,6 +10,14 @@ version: a queue is the **wrong** tool for capacity/overbooking, and the **right
 that happens after the seat and money are settled. BullMQ is already in the stack; this note makes its
 use deliberate.
 
+> **Status (2026-07-25, B6/#51): BUILT.** `OutboxEvent` (§5.2) + the `platform-jobs` queue are live:
+> `booking.confirmed` commits with the finalize guard and fans out to the confirmation-email /
+> operator-notice / CAPI jobs + a delayed pre-tour reminder; `booking.refund-owed` commits in the
+> cancel transaction and drives the durable refund retry. Relay: `workers/outbox-relay.service.ts`;
+> consumers: `workers/platform-jobs.processor.ts` -> idempotent `run*Job` methods (per-booking guard
+> columns). Hold-expiry sweep, payout release, and the nightly commercial jobs remain in-process
+> `@nestjs/schedule` crons - they are idempotent recomputes, already durable by rerun.
+
 ---
 
 ## 1. Decision summary

@@ -45,4 +45,43 @@ describe('deriveBookingDisplayStatus', () => {
       }),
     ).toBe(BookingStatus.REDEEMED);
   });
+
+  // Non-payment forfeit lifecycle (guide s15).
+  it('layers NON_PAYMENT_REPORTED on a CONFIRMED booking with a pending report', () => {
+    expect(
+      deriveBookingDisplayStatus({
+        status: BookingStatus.CONFIRMED,
+        utcCancellationRequestedAt: null,
+        utcCancelledAt: null,
+        utcNonPaymentReportedAt: at('2026-07-25T10:00:00.000Z'),
+        utcForfeitedAt: null,
+      }),
+    ).toBe('NON_PAYMENT_REPORTED');
+  });
+
+  it('layers FORFEITED on a CANCELLED booking whose forfeit was confirmed', () => {
+    expect(
+      deriveBookingDisplayStatus({
+        status: BookingStatus.CANCELLED,
+        utcCancellationRequestedAt: null,
+        utcCancelledAt: at('2026-07-26T09:00:00.000Z'),
+        utcNonPaymentReportedAt: at('2026-07-25T10:00:00.000Z'),
+        utcForfeitedAt: at('2026-07-26T09:00:00.000Z'),
+      }),
+    ).toBe('FORFEITED');
+  });
+
+  it('a pending cancellation request outranks a non-payment report', () => {
+    // Both stamps can coexist; the traveller-initiated request is the one an
+    // admin must act on first, so it wins the chip.
+    expect(
+      deriveBookingDisplayStatus({
+        status: BookingStatus.CONFIRMED,
+        utcCancellationRequestedAt: at('2026-07-25T09:00:00.000Z'),
+        utcCancelledAt: null,
+        utcNonPaymentReportedAt: at('2026-07-25T10:00:00.000Z'),
+        utcForfeitedAt: null,
+      }),
+    ).toBe('CANCELLATION_REQUESTED');
+  });
 });
