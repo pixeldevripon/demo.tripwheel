@@ -333,6 +333,8 @@ export interface PickupLocation {
   latitude: number | null;
   longitude: number | null;
   address: string | null;
+  /** Per-person zone price (tour currency); charged only when pickupModel = PAID_ADDON. */
+  price: string | null;
   minutesPrior: number | null;
   windowStart: string | null; // 'HH:MM'
   windowEnd: string | null; // 'HH:MM'
@@ -726,6 +728,8 @@ export interface CreatePickupLocationPayload {
   latitude?: number;
   longitude?: number;
   address?: string;
+  /** Per-person zone price (tour currency); only meaningful on PAID_ADDON tours. */
+  price?: string;
   minutesPrior?: number;
   windowStart?: string;
   windowEnd?: string;
@@ -737,6 +741,8 @@ export interface UpdatePickupLocationPayload {
   latitude?: number | null;
   longitude?: number | null;
   address?: string | null;
+  /** Per-person zone price (tour currency); explicit null clears it. */
+  price?: string | null;
   minutesPrior?: number | null;
   windowStart?: string | null;
   windowEnd?: string | null;

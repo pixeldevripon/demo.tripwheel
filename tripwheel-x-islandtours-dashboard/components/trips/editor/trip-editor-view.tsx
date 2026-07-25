@@ -166,7 +166,13 @@ function SectionPanel({
         case 'itinerary':
             return <TripLocationsTab tripId={trip.id} />;
         case 'pickups':
-            return <TripPickupLocationsTab tripId={trip.id} />;
+            return (
+                <TripPickupLocationsTab
+                    tripId={trip.id}
+                    pickupModel={trip.pickupModel}
+                    currency={trip.defaultCurrency}
+                />
+            );
         case 'info':
             return <TripFeaturesTab tripId={trip.id} />;
         case 'attributes':
@@ -192,14 +198,22 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
               ? 'copy'
               : rawTab;
     const group: TripEditorGroup = TAB_TO_GROUP[normalized] ?? 'setup';
-    const tabs = GROUP_TABS[group];
-    const activeTab = tabs.some(t => t.value === normalized)
-        ? normalized
-        : (tabs[0]?.value ?? '');
 
     const { data: trip, isLoading } = useTrip(id);
     const { data: enTranslation } = useTripTranslationByLocale(id, 'en');
     const { can } = useRole();
+
+    // Pickups is meaningless while the tour's pickup model (Details tab) is
+    // "None" - hide the section entirely instead of rendering a dead editor.
+    // Switching the model to Included / Paid add-on brings the tab back.
+    const hidePickups = trip?.pickupModel === 'NONE';
+    const visibleSections = (list: { value: string; label: string }[]) =>
+        hidePickups ? list.filter(t => t.value !== 'pickups') : list;
+    const tabs = visibleSections(GROUP_TABS[group]);
+    const activeTab = tabs.some(t => t.value === normalized)
+        ? normalized
+        : (tabs[0]?.value ?? '');
+    const flatSections = visibleSections(FLAT_SECTIONS);
     const [warnings, setWarnings] = useState<string[]>([]);
     const [archiveOpen, setArchiveOpen] = useState(false);
 
@@ -424,7 +438,7 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
 
             {/* Visited sections stay mounted (hidden) - instant switches,
                 no silently-discarded edits, queries stay warm. */}
-            {FLAT_SECTIONS.map(sec => {
+            {flatSections.map(sec => {
                 if (!visited.has(sec.value)) return null;
                 const active = currentSection === sec.value;
                 return (
@@ -441,13 +455,13 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
             {/* Linear walk: complete the whole tour without hunting tabs. */}
             <div className='mt-8 flex items-center justify-between border-t border-line pt-4'>
                 {(() => {
-                    const idx = FLAT_SECTIONS.findIndex(
+                    const idx = flatSections.findIndex(
                         sec => sec.value === currentSection,
                     );
-                    const prev = idx > 0 ? FLAT_SECTIONS[idx - 1] : null;
+                    const prev = idx > 0 ? flatSections[idx - 1] : null;
                     const next =
-                        idx >= 0 && idx < FLAT_SECTIONS.length - 1
-                            ? FLAT_SECTIONS[idx + 1]
+                        idx >= 0 && idx < flatSections.length - 1
+                            ? flatSections[idx + 1]
                             : null;
                     const go = (v: string) => switchTab(v);
                     return (
