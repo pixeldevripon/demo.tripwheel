@@ -116,10 +116,25 @@ export interface UpdateStripeConfigurationPayload {
   paymentMethods?: string[];
 }
 
+/** Which PSP charges travellers at checkout. Never retroactive: existing payments keep their own provider. */
+export type PaymentProvider = 'STRIPE' | 'MOLLIE';
+
+export interface PaymentProviderSettings {
+  id: string;
+  activeProvider: PaymentProvider;
+  updatedAt: string;
+}
+
+export interface UpdatePaymentProviderPayload {
+  activeProvider: PaymentProvider;
+}
+
 export interface MollieConfiguration {
   id: string;
   paymentLabel: string;
   apiKey: string | null;
+  /** Mollie profile id (pfl_..., public) - enables the inline Components card form. */
+  profileId: string;
   paymentMethods: string[];
   createdAt: string;
   updatedAt: string;
@@ -128,6 +143,7 @@ export interface MollieConfiguration {
 export interface UpdateMollieConfigurationPayload {
   paymentLabel?: string;
   apiKey?: string;
+  profileId?: string;
   paymentMethods?: string[];
 }
 
@@ -143,6 +159,25 @@ export interface UpdateMailchimpConfigurationPayload {
   apiKey?: string;
   audienceId?: string;
   serverPrefix?: string;
+}
+
+// ── Integrations (Meta CAPI + Google Translate) ─────────────────────────────
+
+/** GET response - secrets are masked by the backend (bullet prefix + last 4) or null. */
+export interface IntegrationsConfiguration {
+  id: string;
+  metaCapiToken: string | null;
+  metaCapiTestCode: string | null;
+  googleTranslateApiKey: string | null;
+  googleTranslateProjectId: string | null;
+}
+
+export interface UpdateIntegrationsConfigurationPayload {
+  /** Omit to keep the stored secret; only send when a new value is entered. */
+  metaCapiToken?: string;
+  metaCapiTestCode?: string;
+  googleTranslateApiKey?: string;
+  googleTranslateProjectId?: string;
 }
 
 // ── Platform reviews (Trustpilot / Google) ─────────────────────────────────

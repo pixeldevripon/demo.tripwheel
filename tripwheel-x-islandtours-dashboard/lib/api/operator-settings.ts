@@ -1,9 +1,11 @@
 import type {
   OperatorCompanyInfo,
   OperatorMollieConfig,
+  OperatorPaymentProvider,
   OperatorStripeConfig,
   UpdateOperatorCompanyInfoPayload,
   UpdateOperatorMollieConfigPayload,
+  UpdateOperatorPaymentProviderPayload,
   UpdateOperatorStripeConfigPayload,
 } from '@/types/operator-settings';
 import { apiFetch } from './fetch';
@@ -23,6 +25,20 @@ export const operatorSettingsApi = {
     payload: UpdateOperatorCompanyInfoPayload,
   ): Promise<OperatorCompanyInfo> {
     return apiFetch<OperatorCompanyInfo>(`/operators/${operatorId}/company-info`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ── Payments: active provider (single switch) ──────────────────────────────
+  getPaymentProvider(operatorId: string): Promise<OperatorPaymentProvider> {
+    return apiFetch<OperatorPaymentProvider>(`/operators/${operatorId}/payment-provider`);
+  },
+  updatePaymentProvider(
+    operatorId: string,
+    payload: UpdateOperatorPaymentProviderPayload,
+  ): Promise<OperatorPaymentProvider> {
+    return apiFetch<OperatorPaymentProvider>(`/operators/${operatorId}/payment-provider`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

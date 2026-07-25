@@ -6,8 +6,10 @@ import { settingsApi } from '@/lib/api/settings';
 import type {
   UpdateCompanyInformationsPayload,
   UpdatePlatformReviewsPayload,
+  UpdateIntegrationsConfigurationPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
+  UpdatePaymentProviderPayload,
   UpdateReviewRequestsPayload,
   UpdateSiteInfoPayload,
   UpdateSiteSEOPayload,
@@ -23,7 +25,9 @@ export const settingsKeys = {
   company: () => [...settingsKeys.all, 'company'] as const,
   stripe: () => [...settingsKeys.all, 'stripe'] as const,
   mollie: () => [...settingsKeys.all, 'mollie'] as const,
+  paymentProvider: () => [...settingsKeys.all, 'payment-provider'] as const,
   mailchimp: () => [...settingsKeys.all, 'mailchimp'] as const,
+  integrations: () => [...settingsKeys.all, 'integrations'] as const,
   platformReviews: () => [...settingsKeys.all, 'platform-reviews'] as const,
   reviewRequests: () => [...settingsKeys.all, 'review-requests'] as const,
 };
@@ -95,6 +99,29 @@ export function useUpdateCompanyInfo() {
   });
 }
 
+// ── Payments: active provider switch ─────────────────────────────────────────
+export function usePaymentProvider() {
+  return useQuery({
+    queryKey: settingsKeys.paymentProvider(),
+    queryFn: settingsApi.getPaymentProvider,
+  });
+}
+export function useUpdatePaymentProvider() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdatePaymentProviderPayload) =>
+      settingsApi.updatePaymentProvider(payload),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: settingsKeys.paymentProvider() });
+      toast.success(
+        `${data.activeProvider === 'MOLLIE' ? 'Mollie' : 'Stripe'} is now taking checkout payments`,
+      );
+    },
+    // Backend rejects a switch to an unconfigured provider with a clear message.
+    onError,
+  });
+}
+
 // ── Payments: Stripe ───────────────────────────────────────────────────────
 export function useStripeConfig() {
   return useQuery({ queryKey: settingsKeys.stripe(), queryFn: settingsApi.getStripe });
@@ -121,6 +148,26 @@ export function useUpdateMollieConfig() {
     mutationFn: (payload: UpdateMollieConfigurationPayload) => settingsApi.updateMollie(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.mollie() });
+      saved();
+    },
+    onError,
+  });
+}
+
+// ── Integrations (Meta CAPI + Google Translate) ─────────────────────────────
+export function useIntegrationsConfig() {
+  return useQuery({
+    queryKey: settingsKeys.integrations(),
+    queryFn: settingsApi.getIntegrations,
+  });
+}
+export function useUpdateIntegrationsConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateIntegrationsConfigurationPayload) =>
+      settingsApi.updateIntegrations(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: settingsKeys.integrations() });
       saved();
     },
     onError,

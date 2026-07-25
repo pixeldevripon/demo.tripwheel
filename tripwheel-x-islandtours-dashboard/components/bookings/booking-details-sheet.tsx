@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
-import { BOOKING_STATUS } from '@/components/common/status-maps';
+import { BOOKING_DISPLAY_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { bookingMoney as money, paymentModelLabel, refundDue } from '@/lib/bookings/format';
 import type { BookingListItem } from '@/types/booking';
@@ -106,7 +106,7 @@ export function BookingDetailsSheet({
   position?: { index: number; count: number };
 }) {
   const due = refundDue(b);
-  const statusMeta = BOOKING_STATUS[b.status];
+  const statusMeta = BOOKING_DISPLAY_STATUS[b.displayStatus];
 
   const copyRef = async () => {
     try {
@@ -125,7 +125,7 @@ export function BookingDetailsSheet({
             <div className="min-w-0">
               <div className="flex items-center gap-2.5">
                 <SheetTitle className="font-mono">{b.displayRef}</SheetTitle>
-                <StatusBadge variant={statusMeta.variant}>
+                <StatusBadge variant={statusMeta.variant} hint={statusMeta.hint}>
                   {statusMeta.label}
                 </StatusBadge>
               </div>

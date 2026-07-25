@@ -13,8 +13,8 @@ import { DataTable } from '@/components/data-table/data-table';
 import { useTableState } from '@/components/data-table/use-table-state';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
+    BOOKING_DISPLAY_STATUS,
     BOOKING_PAYMENT_STATE,
-    BOOKING_STATUS,
 } from '@/components/common/status-maps';
 import {
     useBookings,
@@ -85,11 +85,11 @@ export function CustomerBookingsView() {
             header: 'Status',
             cell: ({ row }) => {
                 const b = row.original;
-                const meta = BOOKING_STATUS[b.status];
+                const meta = BOOKING_DISPLAY_STATUS[b.displayStatus];
                 const freeUntil = freeCancellationNote(b);
                 return (
                     <div className='min-w-0 space-y-1'>
-                        <StatusBadge variant={meta.variant}>
+                        <StatusBadge variant={meta.variant} hint={meta.hint}>
                             {meta.label}
                         </StatusBadge>
                         {freeUntil ? (
@@ -109,7 +109,7 @@ export function CustomerBookingsView() {
                 const meta = BOOKING_PAYMENT_STATE[b.paymentStatus];
                 return (
                     <div className='min-w-0 space-y-1'>
-                        <StatusBadge variant={meta.variant}>
+                        <StatusBadge variant={meta.variant} hint={meta.hint}>
                             {meta.label}
                         </StatusBadge>
                         <span className='block text-xs text-muted-foreground'>

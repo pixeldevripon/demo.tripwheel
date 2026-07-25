@@ -84,7 +84,11 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
     header: 'Status',
     cell: ({ row }) => {
       const meta = ACTIVE_STATUS[row.original.isActive ? 'active' : 'inactive'];
-      return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+      return (
+        <StatusBadge variant={meta.variant} hint={meta.hint}>
+          {meta.label}
+        </StatusBadge>
+      );
     },
     enableSorting: true,
   },

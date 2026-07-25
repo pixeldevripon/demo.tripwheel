@@ -3,8 +3,11 @@ import type {
   PlatformReviewsConfig,
   RefreshPlatformReviewsResult,
   UpdatePlatformReviewsPayload,
+  IntegrationsConfiguration,
   MailchimpConfiguration,
   MollieConfiguration,
+  PaymentProviderSettings,
+  UpdatePaymentProviderPayload,
   ReviewRequestSettings,
   UpdateReviewRequestsPayload,
   SiteInfo,
@@ -12,6 +15,7 @@ import type {
   SocialMediaSettings,
   StripeConfiguration,
   UpdateCompanyInformationsPayload,
+  UpdateIntegrationsConfigurationPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
   UpdateSiteInfoPayload,
@@ -85,6 +89,19 @@ export const settingsApi = {
     });
   },
 
+  // ── Payments: active provider switch ───────────────────────────────────────
+  getPaymentProvider(): Promise<PaymentProviderSettings> {
+    return apiFetch<PaymentProviderSettings>('/settings/payment/provider');
+  },
+  updatePaymentProvider(
+    payload: UpdatePaymentProviderPayload,
+  ): Promise<PaymentProviderSettings> {
+    return apiFetch<PaymentProviderSettings>('/settings/payment/provider', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
   // ── Payments: Stripe ───────────────────────────────────────────────────────
   getStripe(): Promise<StripeConfiguration> {
     return apiFetch<StripeConfiguration>('/settings/payment/stripe');
@@ -108,6 +125,17 @@ export const settingsApi = {
   },
 
   // ── Mailchimp ──────────────────────────────────────────────────────────────
+  getIntegrations(): Promise<IntegrationsConfiguration> {
+    return apiFetch<IntegrationsConfiguration>('/settings/integrations');
+  },
+  updateIntegrations(
+    payload: UpdateIntegrationsConfigurationPayload,
+  ): Promise<IntegrationsConfiguration> {
+    return apiFetch<IntegrationsConfiguration>('/settings/integrations', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
   getMailchimp(): Promise<MailchimpConfiguration> {
     return apiFetch<MailchimpConfiguration>('/settings/mailchimp');
   },

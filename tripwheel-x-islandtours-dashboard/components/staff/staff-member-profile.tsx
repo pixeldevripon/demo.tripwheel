@@ -245,7 +245,9 @@ export function StaffMemberProfile({ id }: { id: string }) {
                                 <h1 className='truncate text-2xl font-semibold'>
                                     {member.user.name}
                                 </h1>
-                                <StatusBadge variant={statusMeta.variant}>
+                                <StatusBadge
+                                    variant={statusMeta.variant}
+                                    hint={statusMeta.hint}>
                                     {statusMeta.label}
                                 </StatusBadge>
                                 {canRename && (

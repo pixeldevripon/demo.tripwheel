@@ -14,6 +14,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -34,10 +44,12 @@ import {
   useRemoveAgeBand,
   useUpdateTrip,
 } from '@/hooks/trips/use-trips';
+import { formatPriceFrom } from '@/lib/currency/current';
 import type {
   AddOnUnit,
   AgeBandType,
   BandParticipation,
+  Currency,
   TourAddOn,
   TourAgeBand,
   TripListItem,
@@ -106,9 +118,11 @@ function formatAgeRange(minAge: number | null, maxAge: number | null): string {
 interface AgeBandRowProps {
   ageBand: TourAgeBand;
   tripId: string;
+  /** Tour pricing currency - every money display follows it, never a hardcoded $. */
+  currency: Currency;
 }
 
-function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
+function AgeBandRow({ ageBand, tripId, currency }: AgeBandRowProps) {
   const { mutate: updateAgeBand, isPending: isUpdating } = useUpdateAgeBand();
   const { mutate: removeAgeBand, isPending: isRemoving } = useRemoveAgeBand();
   const [editing, setEditing] = useState(false);
@@ -189,12 +203,12 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
             <Badge variant="outline" className="text-xs">Spectator</Badge>
           )}
           <Badge variant="outline" className="text-xs">{formatAgeRange(ageBand.minAge, ageBand.maxAge)}</Badge>
-          <span className="text-sm text-muted-foreground">${ageBand.price}</span>
+          <span className="text-sm text-muted-foreground">{formatPriceFrom(ageBand.price, currency, 'en')}</span>
           {ageBand.priceOriginal && (
-            <span className="text-xs text-muted-foreground line-through">${ageBand.priceOriginal}</span>
+            <span className="text-xs text-muted-foreground line-through">{formatPriceFrom(ageBand.priceOriginal, currency, 'en')}</span>
           )}
           {ageBand.priceNet && (
-            <span className="text-xs text-muted-foreground">net ${ageBand.priceNet}</span>
+            <span className="text-xs text-muted-foreground">net {formatPriceFrom(ageBand.priceNet, currency, 'en')}</span>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -265,7 +279,7 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
               <Input value={label} onChange={(e) => setLabel(e.target.value)} />
             </Field>
             <Field>
-              <Label>Price</Label>
+              <Label>Price ({currency})</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="79.00" />
             </Field>
           </div>
@@ -281,12 +295,12 @@ function AgeBandRow({ ageBand, tripId }: AgeBandRowProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label>Original Price</Label>
+              <Label>Original Price ({currency})</Label>
               <Input value={priceOriginal} onChange={(e) => setPriceOriginal(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional pre-discount price, shown struck through to signal a deal.</FieldDescription>
             </Field>
             <Field>
-              <Label>Net Price</Label>
+              <Label>Net Price ({currency})</Label>
               <Input value={priceNet} onChange={(e) => setPriceNet(e.target.value)} placeholder="Optional" />
               <FieldDescription>Optional operator net (what you keep). Internal only - not shown to travelers.</FieldDescription>
             </Field>
@@ -328,9 +342,11 @@ type AddAddOnFormValues = {
 interface AddOnRowProps {
   addOn: TourAddOn;
   tripId: string;
+  /** Tour pricing currency - every money display follows it, never a hardcoded $. */
+  currency: Currency;
 }
 
-function AddOnRow({ addOn, tripId }: AddOnRowProps) {
+function AddOnRow({ addOn, tripId, currency }: AddOnRowProps) {
   const { mutate: updateAddOn, isPending: isUpdating } = useUpdateAddOn();
   const { mutate: removeAddOn, isPending: isRemoving } = useRemoveAddOn();
 
@@ -398,7 +414,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
         <div className="flex items-center gap-3 min-w-0">
           <span className={`size-1.5 rounded-full shrink-0 ${addOn.isActive ? 'bg-success-solid' : 'bg-muted-foreground'}`} />
           <span className="text-sm font-medium truncate">{addOn.name}</span>
-          <span className="text-sm text-muted-foreground">${addOn.price}</span>
+          <span className="text-sm text-muted-foreground">{formatPriceFrom(addOn.price, currency, 'en')}</span>
           <Badge variant="outline" className="text-xs">{addOn.unit === 'PER_PERSON' ? '/person' : 'flat'}</Badge>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -441,7 +457,7 @@ function AddOnRow({ addOn, tripId }: AddOnRowProps) {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Snorkel Equipment" />
             </Field>
             <Field>
-              <Label>Price</Label>
+              <Label>Price ({currency})</Label>
               <Input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="19.99" />
             </Field>
           </div>
@@ -524,11 +540,15 @@ type PricingFormValues = {
 
 function PricingBasicsCard({ trip }: { trip: TripListItem }) {
   const { mutate: updateTrip, isPending } = useUpdateTrip();
+  // Currency switches are confirmed first: prices are NOT converted, so the
+  // operator must acknowledge that every number stays as-is in the new currency.
+  const [pendingCurrency, setPendingCurrency] = useState<Currency | null>(null);
   const {
     register,
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<PricingFormValues>({
     resolver: zodResolver(pricingSchema) as unknown as Resolver<PricingFormValues>,
@@ -542,6 +562,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
     },
   });
   const isUnit = watch('pricingModel') === 'UNIT';
+  const currency = watch('defaultCurrency');
   // The included-guests + extra-person surcharge applies ONLY to GROUP pricing;
   // boat/vehicle/aircraft/package charters are a flat whole-unit price.
   const isGroupUnit = isUnit && watch('wholeUnitType') === 'GROUP';
@@ -607,7 +628,12 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
                 name="defaultCurrency"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => {
+                      if (v !== field.value) setPendingCurrency(v as Currency);
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -623,7 +649,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <Label>Base Price</Label>
+              <Label>Base Price ({currency})</Label>
               <Input {...register('basePrice')} placeholder="e.g. 49.99" aria-invalid={!!errors.basePrice} />
               <FieldDescription>
                 {isUnit
@@ -673,7 +699,7 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
                 <FieldError>{errors.unitIncludedGuests?.message}</FieldError>
               </Field>
               <Field>
-                <Label>Extra Person Price</Label>
+                <Label>Extra Person Price ({currency})</Label>
                 <Input
                   {...register('extraPersonPrice')}
                   placeholder="e.g. 175.00"
@@ -692,6 +718,35 @@ function PricingBasicsCard({ trip }: { trip: TripListItem }) {
           </div>
         </form>
       </CardContent>
+
+      <AlertDialog
+        open={pendingCurrency !== null}
+        onOpenChange={(open) => !open && setPendingCurrency(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch pricing currency to {pendingCurrency}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Prices are not converted. The base price, age bands, add-ons, and pickup
+              zone prices all keep the same numbers and will be charged in {pendingCurrency}.
+              Review and adjust each price yourself, then hit Save Pricing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingCurrency) {
+                  setValue('defaultCurrency', pendingCurrency, { shouldDirty: true });
+                }
+                setPendingCurrency(null);
+              }}
+            >
+              Switch to {pendingCurrency}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -853,7 +908,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
           ) : (
             <div className="space-y-2">
               {(ageBands ?? []).map((band) => (
-                <AgeBandRow key={band.id} ageBand={band} tripId={tripId} />
+                <AgeBandRow key={band.id} ageBand={band} tripId={tripId} currency={trip.defaultCurrency} />
               ))}
               {(ageBands?.length ?? 0) === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
@@ -923,7 +978,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.label?.message}</FieldError>
               </Field>
               <Field>
-                <Label>Price</Label>
+                <Label>Price ({trip.defaultCurrency})</Label>
                 <Input
                   {...registerAgeBand('price')}
                   placeholder="79.00"
@@ -962,7 +1017,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <Label>Original Price</Label>
+                <Label>Original Price ({trip.defaultCurrency})</Label>
                 <Input
                   {...registerAgeBand('priceOriginal')}
                   placeholder="Optional (strikethrough)"
@@ -972,7 +1027,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{ageBandErrors.priceOriginal?.message}</FieldError>
               </Field>
               <Field>
-                <Label>Net Price</Label>
+                <Label>Net Price ({trip.defaultCurrency})</Label>
                 <Input
                   {...registerAgeBand('priceNet')}
                   placeholder="Optional (operator net)"
@@ -1024,7 +1079,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
           ) : (
             <div className="space-y-2">
               {(addOns ?? []).map((addOn) => (
-                <AddOnRow key={addOn.id} addOn={addOn} tripId={tripId} />
+                <AddOnRow key={addOn.id} addOn={addOn} tripId={tripId} currency={trip.defaultCurrency} />
               ))}
               {(addOns?.length ?? 0) === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">No add-ons defined yet.</p>
@@ -1045,7 +1100,7 @@ export function TripPricingTab({ trip }: TripPricingTabProps) {
                 <FieldError>{addOnErrors.name?.message}</FieldError>
               </Field>
               <Field>
-                <Label>Price</Label>
+                <Label>Price ({trip.defaultCurrency})</Label>
                 <Input
                   {...registerAddOn('price')}
                   placeholder="19.99"

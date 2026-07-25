@@ -988,7 +988,7 @@ function StatisticsContent({
     const UNTRACKED_NOTE_PLATFORM =
         "Balances collected on the operator's own payment rails. Island Tours does not track whether these payments were received.";
     const PAYOUT_NOTE =
-        'Earned and not yet settled. No settlements ledger exists yet, so this is an amount owed, not a completed transfer.';
+        'Reads the settlements ledger: paid-in-full nets recorded at confirmation and not yet released - always the same figure as the Settlements page. Payouts release automatically once the free-cancellation window closes; released amounts leave this number. A balance, not a flow: the date-range filter does not apply to it.';
 
     // ─── KPI cards ───────────────────────────────────────────────────────
     const sharedTailCards: KpiCard[] = [
@@ -1059,7 +1059,7 @@ function StatisticsContent({
             key: 'payout',
             label: 'Payouts due to operators',
             eur: revenue.payoutDueEur,
-            support: 'Paid in full, unsettled',
+            support: 'Matches the Settlements page',
             note: PAYOUT_NOTE,
             icon: Coins01Icon,
             tile: 'warning',
@@ -1104,7 +1104,7 @@ function StatisticsContent({
             key: 'payout',
             label: 'Payout due from Island Tours',
             eur: revenue.payoutDueEur,
-            support: 'On completed paid-in-full bookings',
+            support: 'Matches your Settlements page',
             note: PAYOUT_NOTE,
             icon: Coins01Icon,
         },

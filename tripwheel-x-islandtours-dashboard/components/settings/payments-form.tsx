@@ -1,11 +1,124 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useStripeConfig, useUpdateStripeConfig } from '@/hooks/settings/use-settings';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  useMollieConfig,
+  usePaymentProvider,
+  useStripeConfig,
+  useUpdateMollieConfig,
+  useUpdatePaymentProvider,
+  useUpdateStripeConfig,
+} from '@/hooks/settings/use-settings';
+import type { PaymentProvider } from '@/types/settings';
 import { ConnectionStatus, SecretField, SettingsCard, SettingsCardSkeleton, TextField } from './settings-fields';
+
+// ── Active provider switch ──────────────────────────────────────────────────
+// Exactly ONE provider charges travellers at checkout (Stripe = inline card
+// fields, Mollie = hosted redirect page). Switching goes through a CONFIRM
+// dialog - it changes how every new booking is charged. The backend REJECTS
+// switching to a provider without usable credentials, so a switch can never
+// brick checkout. Never retroactive: existing payments keep their provider
+// for webhooks/refunds.
+
+const PROVIDERS: { value: PaymentProvider; label: string }[] = [
+  { value: 'STRIPE', label: 'Stripe' },
+  { value: 'MOLLIE', label: 'Mollie' },
+];
+
+function ActiveProviderCard() {
+  const { data, isLoading } = usePaymentProvider();
+  const { mutate, isPending } = useUpdatePaymentProvider();
+  // The provider awaiting confirmation; the dialog is open while set.
+  const [pending, setPending] = useState<PaymentProvider | null>(null);
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  const current = data?.activeProvider ?? 'STRIPE';
+  const pendingLabel = PROVIDERS.find((p) => p.value === pending)?.label;
+
+  return (
+    <SettingsCard
+      title="Active Provider"
+      description="Which provider charges travelers at checkout. Existing payments keep their original provider for refunds."
+      onSubmit={() => {}}
+      isSaving={false}
+      canSave={false}
+    >
+      <div className="flex flex-wrap gap-2">
+        {PROVIDERS.map((opt) => {
+          const isCurrent = current === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (!isCurrent) setPending(opt.value);
+              }}
+              aria-pressed={isCurrent}
+              className={`flex w-full flex-1 items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                isCurrent
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/40'
+              } ${isPending ? 'opacity-60' : ''}`}
+            >
+              <span
+                className={`grid size-4 shrink-0 place-items-center rounded-full border ${
+                  isCurrent ? 'border-primary' : 'border-muted-foreground/40'
+                }`}
+              >
+                {isCurrent && <span className="size-2 rounded-full bg-primary" />}
+              </span>
+              <span className="text-sm font-semibold">{opt.label}</span>
+              {isCurrent && (
+                <span className="ml-auto rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success-fg">
+                  Active
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch checkout payments to {pendingLabel}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every new booking will be charged through {pendingLabel} immediately.
+              Its API keys must be configured below or the switch is rejected.
+              Existing payments keep their original provider for refunds and webhooks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) mutate({ activeProvider: pending });
+                setPending(null);
+              }}
+            >
+              Switch to {pendingLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </SettingsCard>
+  );
+}
 
 // ── Stripe ─────────────────────────────────────────────────────────────────
 // The Payment Methods selector was removed from this card: the offered-methods
@@ -88,18 +201,15 @@ function StripeCard() {
 }
 
 // ── Mollie ─────────────────────────────────────────────────────────────────
-// HIDDEN for v1: the checkout collects card via Stripe and redirects to
-// PayPal/iDEAL via Stripe, so Mollie is not wired yet. The card below is kept
-// (commented, not deleted) - to restore it, uncomment this block AND its
-// <MollieCard /> render, and re-add the imports:
-//   import { MultiSelect } from '@/components/ui/multi-select';
-//   import { useMollieConfig, useUpdateMollieConfig } from '@/hooks/settings/use-settings';
-//   import { MOLLIE_PAYMENT_METHODS } from './payment-methods';
-/*
+// Like the Stripe card, the offered-methods multiselect is not admin-facing
+// for v1 (an empty stored list lets Mollie's hosted page offer every eligible
+// method). Only the API key is needed - Mollie has no webhook secret: the
+// backend verifies webhooks by re-fetching the payment with this key.
+
 const mollieSchema = z.object({
   paymentLabel: z.string().optional(),
   apiKey: z.string().optional(),
-  paymentMethods: z.array(z.string()),
+  profileId: z.string().optional(),
 });
 type MollieFormValues = z.infer<typeof mollieSchema>;
 
@@ -111,12 +221,10 @@ function MollieCard() {
     register,
     handleSubmit,
     reset,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<MollieFormValues>({
     resolver: zodResolver(mollieSchema),
-    defaultValues: { paymentLabel: 'Mollie', apiKey: '', paymentMethods: [] },
+    defaultValues: { paymentLabel: 'Mollie', apiKey: '', profileId: '' },
   });
 
   useEffect(() => {
@@ -124,60 +232,64 @@ function MollieCard() {
       reset({
         paymentLabel: data.paymentLabel ?? 'Mollie',
         apiKey: '',
-        paymentMethods: data.paymentMethods ?? [],
+        profileId: data.profileId ?? '',
       });
     }
   }, [data, reset]);
 
   function onSubmit(values: MollieFormValues) {
+    // Ids/keys pasted from Mollie's dashboard can carry stray whitespace or
+    // zero-width characters - never part of a real value, always stripped.
+    const clean = (v?: string) =>
+      v?.replace(/[\s\u200B-\u200D\uFEFF]/g, '') ?? '';
+    const apiKey = clean(values.apiKey);
     mutate({
       paymentLabel: values.paymentLabel,
-      paymentMethods: values.paymentMethods,
-      ...(values.apiKey ? { apiKey: values.apiKey } : {}),
+      profileId: clean(values.profileId),
+      // Only send the key when a new value is entered; blank keeps the current one.
+      ...(apiKey ? { apiKey } : {}),
     });
   }
 
   if (isLoading) return <SettingsCardSkeleton />;
 
-  const selected = watch('paymentMethods');
-
   return (
     <SettingsCard
       title="Mollie"
-      description="European payment processing via Mollie."
+      description="Hosted checkout via Mollie (cards, iDEAL, Bancontact, PayPal and more)."
       onSubmit={handleSubmit(onSubmit)}
       isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.apiKey} />}
     >
       <div className="grid gap-6 sm:grid-cols-2">
         <TextField label="Payment Label" registration={register('paymentLabel')} error={errors.paymentLabel?.message} placeholder="Mollie" />
+        <TextField
+          label="Profile ID"
+          registration={register('profileId')}
+          error={errors.profileId?.message}
+          placeholder="pfl_..."
+        />
       </div>
+      <p className="-mt-4 text-xs text-muted-foreground normal-case tracking-normal font-normal">
+        The profile ID (public) enables the inline card form at checkout; leave it empty to always use Mollie&apos;s hosted payment page.
+      </p>
       <SecretField
         label="API Key"
         registration={register('apiKey')}
         error={errors.apiKey?.message}
         placeholder="live_..."
-        description={data?.apiKey ? `Current: ${data.apiKey}. Leave blank to keep it.` : 'Stored encrypted.'}
+        description={data?.apiKey ? `Current: ${data.apiKey}. Leave blank to keep it.` : 'Stored encrypted. Use test_... for test mode.'}
       />
-      <Field>
-        <Label>Payment Methods</Label>
-        <MultiSelect
-          options={MOLLIE_PAYMENT_METHODS}
-          value={selected}
-          onChange={(next) => setValue('paymentMethods', next, { shouldDirty: true })}
-          placeholder="Select payment methods"
-        />
-        <FieldDescription>Methods offered to travelers at checkout.</FieldDescription>
-      </Field>
     </SettingsCard>
   );
 }
-*/
 
 export function PaymentsForm() {
   return (
     <div className="space-y-6">
+      <ActiveProviderCard />
       <StripeCard />
-      {/* <MollieCard /> - hidden for v1 (see the commented Mollie block above) */}
+      <MollieCard />
     </div>
   );
 }

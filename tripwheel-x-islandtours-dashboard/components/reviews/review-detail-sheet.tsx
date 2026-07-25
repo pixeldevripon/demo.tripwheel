@@ -86,7 +86,9 @@ export function ReviewDetailSheet({
               />
               {review.rating}
             </span>
-            <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>
+            <StatusBadge variant={meta.variant} hint={meta.hint}>
+              {meta.label}
+            </StatusBadge>
           </SheetTitle>
           <SheetDescription>
             {review.tourTitle ?? 'Unknown tour'}

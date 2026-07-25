@@ -1,7 +1,11 @@
 import type {
+    BookingDisplayStatus,
     BookingPaymentStatus,
     BookingStatus,
     PaymentStatus,
+    RefundStatus,
+    SettlementMethod,
+    SettlementStatus,
 } from '@/types/booking';
 import type { OperatorVerificationStatus } from '@/types/operator';
 import type {
@@ -24,26 +28,174 @@ import type { StatusVariant } from './status-badge';
 export interface StatusMeta {
     label: string;
     variant: StatusVariant;
+    /** One-line plain-English meaning, shown as a hover tooltip on the chip. */
+    hint?: string;
 }
 
 export const BOOKING_STATUS: Record<BookingStatus, StatusMeta> = {
-    ON_HOLD: { label: 'On hold', variant: 'warning' },
-    PENDING: { label: 'Pending', variant: 'warning' },
-    CONFIRMED: { label: 'Confirmed', variant: 'success' },
-    REDEEMED: { label: 'Redeemed', variant: 'success' },
-    EXPIRED: { label: 'Expired', variant: 'neutral' },
-    CANCELLED: { label: 'Cancelled', variant: 'danger' },
-    REJECTED: { label: 'Rejected', variant: 'danger' },
+    ON_HOLD: {
+        label: 'On hold',
+        variant: 'warning',
+        hint: 'Seats held during checkout; not yet paid',
+    },
+    PENDING: {
+        label: 'Pending',
+        variant: 'warning',
+        hint: 'Payment started; awaiting confirmation',
+    },
+    CONFIRMED: {
+        label: 'Confirmed',
+        variant: 'success',
+        hint: 'Paid and confirmed',
+    },
+    REDEEMED: {
+        label: 'Redeemed',
+        variant: 'success',
+        hint: 'Guest has taken the tour',
+    },
+    EXPIRED: {
+        label: 'Expired',
+        variant: 'neutral',
+        hint: 'Checkout hold lapsed; seats released',
+    },
+    CANCELLED: {
+        label: 'Cancelled',
+        variant: 'danger',
+        hint: 'Cancelled; refund handled per policy',
+    },
+    REJECTED: {
+        label: 'Rejected',
+        variant: 'danger',
+        hint: 'Booking declined; no charge kept',
+    },
+};
+
+/**
+ * Display-status map: every BookingStatus plus the derived CANCELLATION_REQUESTED
+ * overlay (a CONFIRMED booking whose traveller has asked to cancel, pending an
+ * admin decision). Render `booking.displayStatus` through this map in status
+ * chips; the raw `booking.status` stays CONFIRMED for logic. Mirrors the backend
+ * `deriveBookingDisplayStatus`.
+ */
+export const BOOKING_DISPLAY_STATUS: Record<BookingDisplayStatus, StatusMeta> = {
+    ...BOOKING_STATUS,
+    CANCELLATION_REQUESTED: {
+        label: 'Cancellation requested',
+        variant: 'warning',
+        hint: 'Traveller asked to cancel; awaiting an admin decision',
+    },
+    NON_PAYMENT_REPORTED: {
+        label: 'Non-payment reported',
+        variant: 'warning',
+        hint: 'Operator reported the balance unpaid; awaiting an admin decision',
+    },
+    FORFEITED: {
+        label: 'Forfeited',
+        variant: 'danger',
+        hint: 'Non-payment confirmed by an admin - deposit kept, spot released',
+    },
 };
 
 export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {
-    REQUIRES_PAYMENT: { label: 'Requires payment', variant: 'warning' },
-    PROCESSING: { label: 'Processing', variant: 'info' },
-    SUCCEEDED: { label: 'Succeeded', variant: 'success' },
-    FAILED: { label: 'Failed', variant: 'danger' },
-    REFUNDED: { label: 'Refunded', variant: 'neutral' },
-    PARTIALLY_REFUNDED: { label: 'Partially refunded', variant: 'neutral' },
-    CANCELLED: { label: 'Cancelled', variant: 'danger' },
+    REQUIRES_PAYMENT: {
+        label: 'Requires payment',
+        variant: 'warning',
+        hint: 'Awaiting a successful charge',
+    },
+    PROCESSING: {
+        label: 'Processing',
+        variant: 'info',
+        hint: 'Charge submitted; awaiting settlement',
+    },
+    SUCCEEDED: {
+        label: 'Succeeded',
+        variant: 'success',
+        hint: 'Charge captured',
+    },
+    FAILED: {
+        label: 'Failed',
+        variant: 'danger',
+        hint: 'Charge attempt failed',
+    },
+    REFUNDED: {
+        label: 'Refunded',
+        variant: 'neutral',
+        hint: 'Full amount refunded to the guest',
+    },
+    PARTIALLY_REFUNDED: {
+        label: 'Partially refunded',
+        variant: 'neutral',
+        hint: 'Part of the charge refunded to the guest',
+    },
+    CANCELLED: {
+        label: 'Cancelled',
+        variant: 'danger',
+        hint: 'Payment cancelled before capture',
+    },
+};
+
+/** Settlement-ledger lifecycle (`SettlementListItem.status`). */
+export const SETTLEMENT_STATUS: Record<SettlementStatus, StatusMeta> = {
+    RECORDED: {
+        label: 'Recorded',
+        variant: 'neutral',
+        hint: 'Ledger row written; nothing paid out yet',
+    },
+    PAID_OUT: {
+        label: 'Paid out',
+        variant: 'success',
+        hint: 'Operator payout released after the cancellation window',
+    },
+    INVOICED: {
+        label: 'Invoiced',
+        variant: 'info',
+        hint: 'Commission invoice raised to the operator',
+    },
+    SETTLED: {
+        label: 'Settled',
+        variant: 'success',
+        hint: 'Settlement closed; balance cleared',
+    },
+    REVERSED: {
+        label: 'Reversed',
+        variant: 'neutral',
+        hint: 'Booking cancelled; the operator payout was voided (refund tracked separately)',
+    },
+};
+
+/**
+ * TRUE refund state from the payment ledger (never assumed from the cancel
+ * verdict). PENDING means a refund is owed but has not executed yet - the money
+ * is still held. Only REFUNDED means it actually went back to the traveller.
+ */
+export const REFUND_STATUS: Record<RefundStatus, StatusMeta> = {
+    NONE: {
+        label: 'No refund',
+        variant: 'neutral',
+        hint: 'No refund is owed on this booking',
+    },
+    PENDING: {
+        label: 'Refund pending',
+        variant: 'warning',
+        hint: 'A refund is owed but has not been processed yet; money still held',
+    },
+    PARTIAL: {
+        label: 'Partially refunded',
+        variant: 'info',
+        hint: 'Part of the charge has been returned to the traveller',
+    },
+    REFUNDED: {
+        label: 'Refunded',
+        variant: 'success',
+        hint: 'The charge was returned to the traveller',
+    },
+};
+
+/** HOW a booking settles - short label (method is not a colored status). */
+export const SETTLEMENT_METHOD_LABEL: Record<SettlementMethod, string> = {
+    SELF_SETTLING: 'Self-settling',
+    OPERATOR_PAYOUT: 'Operator payout',
+    COMMISSION_INVOICE: 'Commission invoice',
 };
 
 /**
@@ -52,47 +204,119 @@ export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {
  * views and available to the operator bookings table.
  */
 export const BOOKING_PAYMENT_STATE: Record<BookingPaymentStatus, StatusMeta> = {
-    PAID: { label: 'Paid', variant: 'success' },
-    PARTIALLY_PAID: { label: 'Partially paid', variant: 'warning' },
-    UNPAID: { label: 'Unpaid', variant: 'neutral' },
-    REFUNDED: { label: 'Refunded', variant: 'info' },
+    PAID: { label: 'Paid', variant: 'success', hint: 'Full amount collected' },
+    PARTIALLY_PAID: {
+        label: 'Partially paid',
+        variant: 'warning',
+        hint: 'Deposit taken; balance still due',
+    },
+    UNPAID: {
+        label: 'Unpaid',
+        variant: 'neutral',
+        hint: 'No payment collected yet',
+    },
+    REFUNDED: {
+        label: 'Refunded',
+        variant: 'info',
+        hint: 'Amount returned to the guest',
+    },
 };
 
 export const TRIP_STATUS: Record<TripStatus, StatusMeta> = {
-    DRAFT: { label: 'Draft', variant: 'neutral' },
-    LIVE: { label: 'Live', variant: 'success' },
-    PAUSED: { label: 'Paused', variant: 'warning' },
-    ARCHIVED: { label: 'Archived', variant: 'neutral' },
+    DRAFT: {
+        label: 'Draft',
+        variant: 'neutral',
+        hint: 'Not published; hidden from travelers',
+    },
+    LIVE: { label: 'Live', variant: 'success', hint: 'Published and bookable' },
+    PAUSED: {
+        label: 'Paused',
+        variant: 'warning',
+        hint: 'Temporarily hidden; no new bookings',
+    },
+    ARCHIVED: {
+        label: 'Archived',
+        variant: 'neutral',
+        hint: 'Retired; kept for records only',
+    },
 };
 
 export const SCHEDULE_STATUS: Record<AvailabilityScheduleStatus, StatusMeta> = {
-    ACTIVE: { label: 'Active', variant: 'success' },
-    PAUSED: { label: 'Paused', variant: 'warning' },
+    ACTIVE: {
+        label: 'Active',
+        variant: 'success',
+        hint: 'Generating departures',
+    },
+    PAUSED: {
+        label: 'Paused',
+        variant: 'warning',
+        hint: 'Not generating new departures',
+    },
 };
 
 /** Labels stay in types/tier.ts (SPOTLIGHT_STATUS_LABELS has other importers). */
 export const SPOTLIGHT_STATUS: Record<SpotlightStatus, StatusMeta> = {
-    REQUESTED: { label: SPOTLIGHT_STATUS_LABELS.REQUESTED, variant: 'warning' },
-    APPROVED: { label: SPOTLIGHT_STATUS_LABELS.APPROVED, variant: 'info' },
-    ACTIVE: { label: SPOTLIGHT_STATUS_LABELS.ACTIVE, variant: 'success' },
-    REJECTED: { label: SPOTLIGHT_STATUS_LABELS.REJECTED, variant: 'danger' },
-    EXPIRED: { label: SPOTLIGHT_STATUS_LABELS.EXPIRED, variant: 'neutral' },
+    REQUESTED: {
+        label: SPOTLIGHT_STATUS_LABELS.REQUESTED,
+        variant: 'warning',
+        hint: 'Awaiting admin approval',
+    },
+    APPROVED: {
+        label: SPOTLIGHT_STATUS_LABELS.APPROVED,
+        variant: 'info',
+        hint: 'Approved; not yet running',
+    },
+    ACTIVE: {
+        label: SPOTLIGHT_STATUS_LABELS.ACTIVE,
+        variant: 'success',
+        hint: 'Currently featured in the destination spotlight',
+    },
+    REJECTED: {
+        label: SPOTLIGHT_STATUS_LABELS.REJECTED,
+        variant: 'danger',
+        hint: 'Spotlight request declined',
+    },
+    EXPIRED: {
+        label: SPOTLIGHT_STATUS_LABELS.EXPIRED,
+        variant: 'neutral',
+        hint: 'Spotlight run has ended',
+    },
 };
 
 export const OPERATOR_VERIFICATION: Record<
     OperatorVerificationStatus,
     StatusMeta
 > = {
-    VERIFIED: { label: 'Verified', variant: 'success' },
-    PENDING: { label: 'Pending', variant: 'warning' },
-    UNVERIFIED: { label: 'Unverified', variant: 'neutral' },
-    REJECTED: { label: 'Rejected', variant: 'danger' },
+    VERIFIED: {
+        label: 'Verified',
+        variant: 'success',
+        hint: 'Identity and payout details confirmed',
+    },
+    PENDING: {
+        label: 'Pending',
+        variant: 'warning',
+        hint: 'Verification in progress',
+    },
+    UNVERIFIED: {
+        label: 'Unverified',
+        variant: 'neutral',
+        hint: 'Not yet submitted for verification',
+    },
+    REJECTED: {
+        label: 'Rejected',
+        variant: 'danger',
+        hint: 'Verification declined',
+    },
 };
 
 /** Boolean actives (destinations, hubs, categories, collections, operators). */
 export const ACTIVE_STATUS: Record<'active' | 'inactive', StatusMeta> = {
-    active: { label: 'Active', variant: 'success' },
-    inactive: { label: 'Inactive', variant: 'neutral' },
+    active: { label: 'Active', variant: 'success', hint: 'Visible and in use' },
+    inactive: {
+        label: 'Inactive',
+        variant: 'neutral',
+        hint: 'Hidden; not in use',
+    },
 };
 
 /** Staff members / team seats (types/staff.ts StaffStatus). */
@@ -100,9 +324,21 @@ export const STAFF_MEMBER_STATUS: Record<
     'INVITED' | 'ACTIVE' | 'SUSPENDED',
     StatusMeta
 > = {
-    INVITED: { label: 'Invited', variant: 'info' },
-    ACTIVE: { label: 'Active', variant: 'success' },
-    SUSPENDED: { label: 'Suspended', variant: 'danger' },
+    INVITED: {
+        label: 'Invited',
+        variant: 'info',
+        hint: 'Invite sent; not yet accepted',
+    },
+    ACTIVE: {
+        label: 'Active',
+        variant: 'success',
+        hint: 'Active team member',
+    },
+    SUSPENDED: {
+        label: 'Suspended',
+        variant: 'danger',
+        hint: 'Access suspended',
+    },
 };
 
 /**
@@ -113,10 +349,22 @@ export const STAFF_MEMBER_STATUS: Record<
  * screen as one they have thrown out.
  */
 export const REVIEW_STATUS: Record<ReviewModerationStatus, StatusMeta> = {
-    PENDING: { label: 'Pending', variant: 'warning' },
-    APPROVED: { label: 'Approved', variant: 'success' },
-    HELD: { label: 'Held', variant: 'info' },
-    REJECTED: { label: 'Rejected', variant: 'danger' },
+    PENDING: {
+        label: 'Pending',
+        variant: 'warning',
+        hint: 'Awaiting moderation',
+    },
+    APPROVED: {
+        label: 'Approved',
+        variant: 'success',
+        hint: 'Published on the site',
+    },
+    HELD: {
+        label: 'Held',
+        variant: 'info',
+        hint: 'Parked for a second look; not yet decided',
+    },
+    REJECTED: { label: 'Rejected', variant: 'danger', hint: 'Not published' },
 };
 
 /**
@@ -127,9 +375,13 @@ export const REVIEW_STATUS: Record<ReviewModerationStatus, StatusMeta> = {
 export type CustomerTier = 'new' | 'repeat' | 'loyal';
 
 export const CUSTOMER_TIER: Record<CustomerTier, StatusMeta> = {
-    new: { label: 'New', variant: 'neutral' },
-    repeat: { label: 'Repeat', variant: 'info' },
-    loyal: { label: 'Loyal', variant: 'success' },
+    new: { label: 'New', variant: 'neutral', hint: 'First booking, or none yet' },
+    repeat: { label: 'Repeat', variant: 'info', hint: 'Has booked 2-4 times' },
+    loyal: {
+        label: 'Loyal',
+        variant: 'success',
+        hint: 'Has booked 5 or more times',
+    },
 };
 
 export function customerTier(bookingsCount: number): CustomerTier {
@@ -148,7 +400,19 @@ export const CUSTOMER_REVIEW_STATE: Record<
     'awaiting' | 'all_reviewed' | 'none',
     StatusMeta
 > = {
-    awaiting: { label: 'Awaiting', variant: 'warning' },
-    all_reviewed: { label: 'All reviewed', variant: 'success' },
-    none: { label: 'No reviews', variant: 'neutral' },
+    awaiting: {
+        label: 'Awaiting',
+        variant: 'warning',
+        hint: 'Has a redeemed tour not yet reviewed',
+    },
+    all_reviewed: {
+        label: 'All reviewed',
+        variant: 'success',
+        hint: 'Left a review for every eligible tour',
+    },
+    none: {
+        label: 'No reviews',
+        variant: 'neutral',
+        hint: 'No reviews eligible yet',
+    },
 };

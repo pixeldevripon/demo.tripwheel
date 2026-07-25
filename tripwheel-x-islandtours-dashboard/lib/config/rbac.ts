@@ -84,6 +84,7 @@ export const Permission = {
   VIEW_BOOKINGS: 'VIEW_BOOKINGS',
   EDIT_BOOKING: 'EDIT_BOOKING',
   DELETE_BOOKING: 'DELETE_BOOKING',
+  MANAGE_BOOKINGS: 'MANAGE_BOOKINGS',
 
   // Payments
   VIEW_PAYMENTS: 'VIEW_PAYMENTS',
@@ -199,6 +200,8 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_BOOKINGS',
     'EDIT_BOOKING',
     'DELETE_BOOKING',
+    // Admin-only booking ops (non-payment forfeit confirmation - guide s15).
+    'MANAGE_BOOKINGS',
     'VIEW_PAYMENTS',
     'EDIT_PAYMENT',
     'DELETE_PAYMENT',

@@ -89,7 +89,10 @@ function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo })
 
   return (
     <div className="min-w-44 space-y-1.5">
-      <StatusBadge variant={meta.variant} icon={<HugeiconsIcon icon={Icon} className="size-3" />}>
+      <StatusBadge
+        variant={meta.variant}
+        hint={meta.hint}
+        icon={<HugeiconsIcon icon={Icon} className="size-3" />}>
         {meta.label}
       </StatusBadge>
       <p className="text-xs leading-5 text-muted-foreground">{extras.description}</p>

@@ -10,7 +10,10 @@ import type {
     CustomerBookingSummary,
     PaginatedBookings,
     PaginatedPayments,
+    PaginatedSettlements,
     PaymentsQueryParams,
+    SettlementSummary,
+    SettlementsQueryParams,
 } from '@/types/booking';
 import { apiFetch } from './fetch';
 
@@ -47,6 +50,32 @@ export const bookingsDashboardApi = {
         });
     },
 
+    // ── Non-payment forfeit (guide s15) ─────────────────────────────────────
+
+    /** Operator reports the OPERATOR_LINK balance unpaid (idempotent stamp). */
+    reportNonPayment(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/report-non-payment`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    /** Admin confirms the forfeit: deposit kept, spot released. NO refund. */
+    confirmForfeit(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/forfeit`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    /** Admin dismisses a report (traveller paid after all). */
+    dismissNonPayment(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/dismiss-non-payment`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
     /** Customer stat row - always the caller's OWN bookings (self-scoped). */
     getMyBookingSummary(): Promise<CustomerBookingSummary> {
         return apiFetch<CustomerBookingSummary>('/bookings/me/summary');
@@ -74,5 +103,18 @@ export const paymentsDashboardApi = {
     /** Scoped server-side like bookings; requires VIEW_PAYMENTS. */
     list(params: PaymentsQueryParams = {}): Promise<PaginatedPayments> {
         return apiFetch<PaginatedPayments>(`/payments${buildQuery(params)}`);
+    },
+};
+
+export const settlementsDashboardApi = {
+    /** Money-movement ledger. Admin sees all; operator scoped server-side. VIEW_PAYMENTS. */
+    list(params: SettlementsQueryParams = {}): Promise<PaginatedSettlements> {
+        return apiFetch<PaginatedSettlements>(
+            `/settlements${buildQuery(params)}`,
+        );
+    },
+    /** Roll-up: EUR owed out (pending) vs released. Same scoping as list(). */
+    summary(): Promise<SettlementSummary> {
+        return apiFetch<SettlementSummary>('/settlements/summary');
     },
 };

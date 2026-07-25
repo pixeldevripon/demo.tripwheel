@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * StatusBadge - the ONLY way to color a status (03 §5.1).
@@ -9,6 +10,10 @@ import { cn } from '@/lib/utils';
  * mandatory: color must never be the sole carrier of meaning (WCAG 1.4.1
  * Level A) - a red/green deficit reader must still tell a confirmed booking
  * from a cancelled one.
+ *
+ * Pass `hint` (the plain-English meaning from ./status-maps.ts) to get a
+ * smooth hover/focus tooltip explaining the state. The tooltip relies on the
+ * global TooltipProvider mounted in app/layout.tsx.
  *
  * Do not add a status color anywhere else. If a state is missing, add it to
  * the domain maps in ./status-maps.ts.
@@ -37,6 +42,12 @@ interface StatusBadgeProps {
     /** Optional leading icon; render it at `size-3`. */
     icon?: ReactNode;
     className?: string;
+    /**
+     * Optional one-line plain-English meaning. When set, the badge gains a
+     * smooth hover/focus tooltip carrying it. When omitted, the badge renders
+     * exactly as before.
+     */
+    hint?: string;
     /** The label. Required - it is the non-color cue. */
     children: ReactNode;
 }
@@ -45,9 +56,10 @@ export function StatusBadge({
     variant = 'neutral',
     icon,
     className,
+    hint,
     children,
 }: StatusBadgeProps) {
-    return (
+    const badge = (
         <span
             className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs font-medium whitespace-nowrap',
@@ -61,5 +73,14 @@ export function StatusBadge({
             {icon}
             {children}
         </span>
+    );
+
+    if (!hint) return badge;
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent>{hint}</TooltipContent>
+        </Tooltip>
     );
 }

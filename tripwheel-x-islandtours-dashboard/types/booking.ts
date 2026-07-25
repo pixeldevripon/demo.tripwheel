@@ -12,6 +12,18 @@ export type BookingStatus =
     | 'PENDING'
     | 'REJECTED';
 
+/**
+ * Server-derived status for display. Equals `status`, except a CONFIRMED
+ * booking with a pending cancellation request reads CANCELLATION_REQUESTED.
+ * Render this in status chips; use `status` for logic. Mirrors the backend
+ * `deriveBookingDisplayStatus` in `src/bookings/dto/booking.dto.ts`.
+ */
+export type BookingDisplayStatus =
+    | BookingStatus
+    | 'CANCELLATION_REQUESTED'
+    | 'NON_PAYMENT_REPORTED'
+    | 'FORFEITED';
+
 export type BookingPaymentModel =
     | 'OPERATOR_LINK'
     | 'ON_ARRIVAL'
@@ -44,6 +56,8 @@ export interface BookingListItem {
     tourId: string;
     departureId: string | null;
     status: BookingStatus;
+    /** Derived status for chips (CANCELLATION_REQUESTED overlay). Render this. */
+    displayStatus: BookingDisplayStatus;
     freesale: boolean;
     utcExpiresAt: string | null;
     utcConfirmedAt: string | null;
@@ -69,6 +83,9 @@ export interface BookingListItem {
     partySize: number;
     createdAt: string;
     utcCancellationRequestedAt: string | null;
+    /** Non-payment forfeit lifecycle (guide s15) - drives report/forfeit actions. */
+    utcNonPaymentReportedAt: string | null;
+    utcForfeitedAt: string | null;
     freeCancelDeadline: string | null;
     requestedInFreeWindow: boolean | null;
     /** Ledger-derived: net paid vs totalRetail (see backend derivePaymentState). */
@@ -82,7 +99,22 @@ export interface BookingListItem {
      */
     canRequestCancellation: boolean;
     cancellationBlockedReason: CancellationBlockedReason | null;
+    /** Settlement-ledger status of this booking (null until confirmed). */
+    settlementStatus: SettlementStatus | null;
+    /** HOW this booking settles. */
+    settlementMethod: SettlementMethod | null;
+    /** Payout held by a pending cancellation request (render "On hold"). */
+    settlementHeld: boolean;
+    /**
+     * TRUE refund state from the payment ledger. PENDING = a cancel owes a refund
+     * that has NOT executed yet (money still held - e.g. Stripe unconfigured);
+     * REFUNDED = the charge was actually returned. Never assume "refunded" from
+     * the cancel verdict - render this.
+     */
+    refundStatus: RefundStatus;
 }
+
+export type RefundStatus = 'NONE' | 'PENDING' | 'PARTIAL' | 'REFUNDED';
 
 export type CancellationBlockedReason =
     | 'ALREADY_REQUESTED'
@@ -113,7 +145,8 @@ export interface BookingsQueryParams {
     page?: number;
     limit?: number;
     tourId?: string;
-    status?: BookingStatus;
+    /** Accepts derived display statuses too (FORFEITED / NON_PAYMENT_REPORTED / CANCELLATION_REQUESTED). */
+    status?: BookingDisplayStatus;
     paymentModel?: BookingPaymentModel;
     search?: string;
     /** Travel-date range (localDate), YYYY-MM-DD. */
@@ -152,6 +185,12 @@ export interface PaymentListItem {
     contactFullName: string | null;
     bookingLocalDate: string;
     paymentModel: BookingPaymentModel;
+    /** Settlement status of the parent booking (null until confirmed). */
+    settlementStatus: SettlementStatus | null;
+    /** HOW the parent booking settles. */
+    settlementMethod: SettlementMethod;
+    /** Payout held by a pending cancellation request (render "On hold"). */
+    settlementHeld: boolean;
 }
 
 export interface PaginatedPayments {
@@ -169,6 +208,80 @@ export interface PaymentsQueryParams {
     provider?: PaymentProvider;
     search?: string;
     /** Created-at range, YYYY-MM-DD (UTC days). */
+    from?: string;
+    to?: string;
+}
+
+// ── Settlements (money-movement ledger; backend `SettlementListItemDto`) ────────
+
+export type SettlementStatus =
+    | 'RECORDED'
+    | 'PAID_OUT'
+    | 'INVOICED'
+    | 'SETTLED'
+    | 'REVERSED';
+
+/** HOW a booking settles (derived from its payment model). */
+export type SettlementMethod =
+    | 'SELF_SETTLING'
+    | 'OPERATOR_PAYOUT'
+    | 'COMMISSION_INVOICE';
+
+export interface SettlementSummary {
+    /** EUR still owed out to operators (paid_in_full nets not yet released). */
+    owedPending: string;
+    owedCount: number;
+    /** EUR already released. */
+    released: string;
+    releasedCount: number;
+}
+
+export interface SettlementListItem {
+    id: string;
+    bookingId: string;
+    displayRef: string;
+    operatorId: string;
+    operatorName: string | null;
+    tourName: string | null;
+    paymentModel: BookingPaymentModel;
+    /** All amounts EUR. */
+    amountCollected: string;
+    commissionOwed: string;
+    /** + = Island Tours owes the operator; - = operator owes IT. */
+    netPosition: string;
+    operatorPayout: string | null;
+    status: SettlementStatus;
+    currency: string;
+    settledAt: string | null;
+    createdAt: string;
+    /** paid_in_full net owed, past its clawback window, still RECORDED -> ready to pay. */
+    payoutEligible: boolean;
+    /** HOW it settles. */
+    method: SettlementMethod;
+    /** WHEN the operator payout releases (free-cancel window close); null unless OPERATOR_PAYOUT. */
+    payoutReleaseAt: string | null;
+    /**
+     * RECORDED paid_in_full payout HELD by a pending cancellation request (a
+     * refund may still be owed - master 6.4). The release cron skips it until
+     * the request is resolved. Render as "On hold", never "Ready to pay out".
+     */
+    payoutHeld: boolean;
+}
+
+export interface PaginatedSettlements {
+    total: number;
+    page: number;
+    limit: number;
+    data: SettlementListItem[];
+}
+
+export interface SettlementsQueryParams {
+    page?: number;
+    limit?: number;
+    operatorId?: string;
+    status?: SettlementStatus;
+    paymentModel?: BookingPaymentModel;
+    /** Recorded-at range, YYYY-MM-DD (UTC days). */
     from?: string;
     to?: string;
 }

@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useSeo, useUpdateSeo } from '@/hooks/settings/use-settings';
 import {
+  CheckboxField,
   ImageField,
   SettingsCard,
   SettingsCardSkeleton,
@@ -30,6 +31,10 @@ const schema = z.object({
   googleSearchConsole: z.string().optional(),
   facebookPixelId: z.string().optional(),
   cookiebotCbid: z.string().optional(),
+  robotsTxt: z.string().optional(),
+  // Stored as a string flag ('true' | 'false') to match the backend column;
+  // the checkbox below maps it to/from a boolean.
+  autoGenerateSitemap: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -40,6 +45,7 @@ const EMPTY: FormValues = {
   twitterTitle: '', twitterDescription: '', twitterImage: '',
   googleAnalyticsId: '', googleTagManagerId: '', googleSearchConsole: '', facebookPixelId: '',
   cookiebotCbid: '',
+  robotsTxt: '', autoGenerateSitemap: '',
 };
 
 export function SeoForm() {
@@ -74,6 +80,8 @@ export function SeoForm() {
         googleSearchConsole: data.googleSearchConsole ?? '',
         facebookPixelId: data.facebookPixelId ?? '',
         cookiebotCbid: data.cookiebotCbid ?? '',
+        robotsTxt: data.robotsTxt ?? '',
+        autoGenerateSitemap: data.autoGenerateSitemap ?? '',
       });
     }
   }, [data, reset]);
@@ -132,6 +140,24 @@ export function SeoForm() {
           placeholder="12345678-abcd-1234-abcd-123456789abc"
         />
       </div>
+
+      <CheckboxField
+        id="autoGenerateSitemap"
+        label="Advertise sitemap in robots.txt"
+        description="When on, the generated robots.txt links to /sitemap.xml so crawlers discover every page. Ignored if a custom robots.txt is set below."
+        checked={watch('autoGenerateSitemap') !== 'false'}
+        onChange={(c) =>
+          setValue('autoGenerateSitemap', c ? 'true' : 'false', {
+            shouldDirty: true,
+          })
+        }
+      />
+      <TextareaField
+        label="Custom robots.txt"
+        description="Optional. When set, this exact text is served at /robots.txt verbatim. Leave empty to use the generated default (blocks checkout/booking/private routes and links the sitemap)."
+        registration={register('robotsTxt')}
+        error={errors.robotsTxt?.message}
+      />
     </SettingsCard>
   );
 }

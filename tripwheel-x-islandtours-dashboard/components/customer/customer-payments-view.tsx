@@ -104,7 +104,7 @@ export function CustomerPaymentsView() {
             cell: ({ row }) => {
                 const meta = PAYMENT_STATUS[row.original.status];
                 return (
-                    <StatusBadge variant={meta.variant}>
+                    <StatusBadge variant={meta.variant} hint={meta.hint}>
                         {meta.label}
                     </StatusBadge>
                 );

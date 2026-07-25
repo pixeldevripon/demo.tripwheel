@@ -60,6 +60,54 @@ export function useRequestCancellation() {
     });
 }
 
+/** Operator reports the OPERATOR_LINK balance unpaid (guide s15). */
+export function useReportNonPayment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.reportNonPayment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('Non-payment reported - an admin will review it.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to report non-payment.',
+            ),
+    });
+}
+
+/** Admin confirms the forfeit: deposit kept, spot released (guide s15). */
+export function useConfirmForfeit() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.confirmForfeit(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('Forfeit confirmed - deposit kept, spot released.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to confirm forfeit.',
+            ),
+    });
+}
+
+/** Admin dismisses a non-payment report (traveller paid after all). */
+export function useDismissNonPayment() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.dismissNonPayment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('Report dismissed - the booking stays confirmed.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to dismiss report.',
+            ),
+    });
+}
+
 /** Admin "mark cancelled" (master 6.4) - invalidates every bookings list. */
 export function useCancelBooking() {
     const queryClient = useQueryClient();

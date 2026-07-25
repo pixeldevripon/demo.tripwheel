@@ -19,15 +19,24 @@ import {
     useRemovePickupLocation,
     useUpdatePickupLocation,
 } from '@/hooks/trips/use-trips';
+import { formatPriceFrom } from '@/lib/currency/current';
 import type {
     CreatePickupLocationPayload,
+    Currency,
     PickupLocation,
+    PickupModel,
     UpdatePickupLocationPayload,
 } from '@/types/trip';
 import { EditableListSection } from './editable-list-section';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const timeField = z.string().regex(HHMM, 'Use HH:MM').optional().or(z.literal(''));
+// Same money shape as the Pricing tab add-on price (2 dp max).
+const priceField = z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Use a number like 17 or 17.50')
+    .optional()
+    .or(z.literal(''));
 
 const addPickupSchema = z.object({
     name: z.string().min(2, 'At least 2 characters').max(160),
@@ -35,6 +44,7 @@ const addPickupSchema = z.object({
     latitude: z.string().optional(),
     longitude: z.string().optional(),
     address: z.string().max(240).optional().or(z.literal('')),
+    price: priceField,
     minutesPrior: z.string().optional(),
     windowStart: timeField,
     windowEnd: timeField,
@@ -46,6 +56,7 @@ const editPickupSchema = z.object({
     latitude: z.string().optional(),
     longitude: z.string().optional(),
     address: z.string().max(240).optional().or(z.literal('')),
+    price: priceField,
     minutesPrior: z.string().optional(),
     windowStart: timeField,
     windowEnd: timeField,
@@ -65,9 +76,13 @@ const strOrNull = (v: string | undefined): string | null =>
 function PickupDetailsEditor({
     pickup,
     tripId,
+    isPaidPickup,
+    currency,
 }: {
     pickup: PickupLocation;
     tripId: string;
+    isPaidPickup: boolean;
+    currency: Currency;
 }) {
     const { mutate: updatePickup, isPending: isUpdating } =
         useUpdatePickupLocation();
@@ -85,6 +100,7 @@ function PickupDetailsEditor({
             latitude: pickup.latitude != null ? String(pickup.latitude) : '',
             longitude: pickup.longitude != null ? String(pickup.longitude) : '',
             address: pickup.address ?? '',
+            price: pickup.price ?? '',
             minutesPrior:
                 pickup.minutesPrior != null ? String(pickup.minutesPrior) : '',
             windowStart: pickup.windowStart ?? '',
@@ -108,6 +124,9 @@ function PickupDetailsEditor({
             displayOrder: numOrUndef(values.displayOrder),
             isActive: values.isActive,
         };
+        // Only a PAID_ADDON tour edits zone prices; never touch the field otherwise
+        // so switching the model back and forth keeps previously entered prices.
+        if (isPaidPickup) payload.price = strOrNull(values.price);
         updatePickup(
             { tripId, pickupLocationId: pickup.id, payload },
             {
@@ -134,6 +153,22 @@ function PickupDetailsEditor({
                     placeholder='Hotel / street address'
                 />
             </Field>
+            {isPaidPickup && (
+                <Field>
+                    <Label>Price per person ({currency})</Label>
+                    <Input
+                        {...register('price')}
+                        inputMode='decimal'
+                        placeholder='17.00'
+                        aria-invalid={!!errors.price}
+                    />
+                    <FieldDescription>
+                        Charged per traveler when this zone is picked at
+                        checkout. Leave empty for a free zone.
+                    </FieldDescription>
+                    <FieldError>{errors.price?.message}</FieldError>
+                </Field>
+            )}
             <div className='grid grid-cols-2 gap-3'>
                 <Field>
                     <Label>Latitude</Label>
@@ -208,9 +243,26 @@ function PickupDetailsEditor({
 
 interface TripPickupLocationsTabProps {
     tripId: string;
+    /** Tour pickup model (Details tab) - PAID_ADDON zones carry per-person prices. */
+    pickupModel: PickupModel;
+    /** Tour currency the zone prices are entered in. */
+    currency: Currency;
 }
 
-export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) {
+const MODEL_DESCRIPTION: Record<PickupModel, string> = {
+    INCLUDED:
+        'Hotel / meeting points where travelers can be collected, with pickup windows. Pickup is included in the tour price, so zones here are free to select.',
+    PAID_ADDON:
+        'Pickup zones travelers can buy at checkout. Each zone carries a per-person price ("Pickup location (From X p.p.)" in the tour currency); free zones are allowed too.',
+    NONE: 'Pickup is disabled for this tour (Pickup model on the Details tab is "None"), so these locations are NOT offered at checkout. Switch the model to Included or Paid add-on to use them.',
+};
+
+export function TripPickupLocationsTab({
+    tripId,
+    pickupModel,
+    currency,
+}: TripPickupLocationsTabProps) {
+    const isPaidPickup = pickupModel === 'PAID_ADDON';
     const { data: pickups, isLoading } = usePickupLocations(tripId);
     const { mutate: addPickup, isPending: isAdding } = useAddPickupLocation();
     const { mutate: removePickup, isPending: isRemoving } =
@@ -229,6 +281,7 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
             latitude: '',
             longitude: '',
             address: '',
+            price: '',
             minutesPrior: '',
             windowStart: '',
             windowEnd: '',
@@ -242,6 +295,7 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
             latitude: numOrUndef(values.latitude),
             longitude: numOrUndef(values.longitude),
             address: values.address || undefined,
+            price: isPaidPickup ? values.price || undefined : undefined,
             minutesPrior: numOrUndef(values.minutesPrior),
             windowStart: values.windowStart || undefined,
             windowEnd: values.windowEnd || undefined,
@@ -269,7 +323,7 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
     return (
         <EditableListSection
             title='Pickup Locations'
-            description='Hotel / meeting points where travelers can be collected, with pickup windows.'
+            description={MODEL_DESCRIPTION[pickupModel]}
             items={pickups}
             isLoading={isLoading}
             getId={p => p.id}
@@ -285,6 +339,13 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
                             Inactive
                         </Badge>
                     )}
+                    {isPaidPickup && (
+                        <Badge variant='secondary' className='shrink-0 text-xs'>
+                            {p.price != null && Number(p.price) > 0
+                                ? `${formatPriceFrom(p.price, currency, 'en')} p.p.`
+                                : 'Free'}
+                        </Badge>
+                    )}
                     {(p.windowStart || p.windowEnd) && (
                         <Badge variant='secondary' className='shrink-0 text-xs'>
                             {p.windowStart ?? '—'}–{p.windowEnd ?? '—'}
@@ -293,7 +354,12 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
                 </span>
             )}
             renderExpanded={p => (
-                <PickupDetailsEditor pickup={p} tripId={tripId} />
+                <PickupDetailsEditor
+                    pickup={p}
+                    tripId={tripId}
+                    isPaidPickup={isPaidPickup}
+                    currency={currency}
+                />
             )}
             onDelete={p =>
                 removePickup(
@@ -338,6 +404,23 @@ export function TripPickupLocationsTab({ tripId }: TripPickupLocationsTabProps) 
                                 placeholder='Street address'
                             />
                         </Field>
+                        {isPaidPickup && (
+                            <Field>
+                                <Label>Price per person ({currency})</Label>
+                                <Input
+                                    {...register('price')}
+                                    inputMode='decimal'
+                                    placeholder='17.00'
+                                    aria-invalid={!!errors.price}
+                                />
+                                <FieldDescription>
+                                    Charged per traveler when this zone is
+                                    picked at checkout. Leave empty for a free
+                                    zone.
+                                </FieldDescription>
+                                <FieldError>{errors.price?.message}</FieldError>
+                            </Field>
+                        )}
                         <div className='grid grid-cols-2 gap-3'>
                             <Field>
                                 <Label>Latitude</Label>
