@@ -290,6 +290,36 @@ export function ApiUpdateStripeConfigurationDocs() {
   );
 }
 
+// ── Integrations Configuration (Meta CAPI + Google Translate) ────────────────
+
+export function ApiGetIntegrationsConfigurationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get integrations configuration - secrets masked (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Integration config (Meta CAPI + Google Translate); secrets returned masked',
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateIntegrationsConfigurationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update integrations configuration (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Integration config updated; an omitted/blank secret is left untouched',
+    }),
+    ...adminErrors,
+  );
+}
+
 // ── Mollie Configuration ─────────────────────────────────────────────────────
 
 export function ApiGetMollieConfigurationDocs() {

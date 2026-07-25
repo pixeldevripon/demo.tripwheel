@@ -27,7 +27,7 @@ These are ranked. Each is expanded in its section below.
 1. [x] **`ON_ARRIVAL` is now a deposit model.** `splitDeposit` + `chargeFor` capture the deposit up front (same as OPERATOR_LINK; balance collected on-site vs via link). Deposit secures the booking + commission. `Ref:` [Guide §2](./BOOKING-FLOW-DESIGN-GUIDE.md#2-payment-models), [Guide §20.6/§20.7](./BOOKING-FLOW-DESIGN-GUIDE.md#206-fix-payment-model-split) · `Code:` `booking-pricing.util.ts:splitDeposit`, `payments.service.ts:chargeFor`, `bookings.service.ts` email deposit line. Tests updated.
 2. [ ] **Discount/coupon DEFERRED (blocked on a coupon-validation engine).** Decision 2026-07-16 (founder): a client-supplied `discountAmount`/`couponCode` is untrusted with no server-side coupon engine (a client could grant itself 100% off), so we do NOT apply it - full price stays authoritative and no phantom discount is written. Removed the untrusted DTO fields + write-through. Re-add (validated) when a `Coupon` engine ships. `Ref:` [Guide §9 retail total](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic) · `Code:` `bookings.service.ts:reserve`, `dto/booking.dto.ts`
 3. [x] **`UNIT` pricing implemented** (Phase 3, 2026-07-16). `loadContext` selects unit fields; `computeUnitLines` prices `basePrice + surcharge`; charter/whole-unit tours book. `Ref:` [Guide §9 UNIT](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic) · `Code:` `bookings.service.ts:loadContext`, `booking-pricing.util.ts:computeUnitLines`
-4. [ ] **Hold-expiry sweeper not scheduled.** `expireStaleHolds()` exists but no cron/queue calls it, so expired holds keep seats and cause phantom sold-outs. `Ref:` [Guide §11](./BOOKING-FLOW-DESIGN-GUIDE.md#11-hold-expiry), [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · `Code:` `bookings.service.ts:expireStaleHolds` (unwired)
+4. [x] **Hold-expiry sweeper scheduled.** DONE 2026-07-25 (task #47). `NightlyJobsService.holdExpirySweep` `@Cron(EVERY_MINUTE)` drives `expireStaleHolds()` (in-process schedule, matching the FX/nightly convention - idempotent recompute, no BullMQ). Phantom sold-outs now clear within a minute. `Code:` `workers/nightly-jobs.service.ts`, `bookings.service.ts:expireStaleHolds`
 5. [~] **Conversion/email fire inline with mark-first stamp, no queue/outbox.** `conversionFiredAt` is set before email/CAPI run; a CAPI/email failure is then never retried and the conversion is lost. `Ref:` [Queues §5.1](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#51-idempotent-consumers), [§5.2](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#52-transactional-outbox) · `Code:` `bookings.service.ts:finalizeConfirmation`
 6. [x] **`OPERATOR_FULL` rejected in v1.** `loadContext` throws `422` for an OPERATOR_FULL tour, so neither reserve nor quote can create a confirmed payment-free booking. `Ref:` [Settlement Part 2](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#part-2---locked-decision-founder-2026-07-15) · `Code:` `bookings.service.ts:loadContext`. Test updated.
 7. [~] **Mollie webhook is a stub.** It records the event but never confirms the booking; Mollie-paid bookings never reach CONFIRMED. `Ref:` [Guide §16](./BOOKING-FLOW-DESIGN-GUIDE.md#16-api-surface) · `Code:` `payments.service.ts:handleMollieWebhook`
@@ -112,7 +112,7 @@ These are ranked. Each is expanded in its section below.
 - [x] **Synchronous "settle on return" so the TYP redirect never waits on the webhook.** EXECUTED 2026-07-19 (reviewed - security + code): `POST /payments/typ/:publicRef/settle` (@Public, keyed on publicRef, throttled short/medium/long) re-reads the PaymentIntent from Stripe (expand latest_charge; NEVER trusts the client) and, when Stripe reports `succeeded`, runs the same idempotent `onIntentSucceeded` -> `confirmFromPayment` as the webhook - so the card/billing snapshot is captured immediately too. The `/payment/processing` page calls settle first and redirects to the TYP on CONFIRMED (~1s), polling only as the backstop; the webhook remains the source of truth for redirect-return methods. Fixes the multi-second stall AND the "missing card row" on the fresh booker's TYP. **Race-hardened (both reviewers):** settle + webhook can hit `confirmFromPayment` in the same second, so the `ON_HOLD->CONFIRMED` transition and the `conversionFiredAt` mark are now ATOMIC guarded `updateMany`s (master §5.1 mark-first) - exactly one caller emits emails + fires the conversion; the loser only backfills billing. Per-target rate cap (`TargetRateLimiter`, 5/publicRef/min) added so a multi-IP caller can't spray the shared Stripe API. Verdict: NOT the removed `mark-fired` class (Stripe re-verification neutralizes forgery). `Code:` `payments.service.ts:settleFromReturn`, `bookings.service.ts:confirmFromPayment`+`finalizeConfirmation` (atomic), `stripe.service.ts:retrievePaymentIntent`, `checkout-processing.tsx`. Tests: race winner/loser + finalize-race + rate-limit (`bookings`/`payments` specs).
 - [~] **Mollie webhook confirms bookings.** Ledger-only stub; no status map/confirm. `Ref:` [Guide §16](./BOOKING-FLOW-DESIGN-GUIDE.md#16-api-surface) · `Code:` `payments.service.ts:handleMollieWebhook` (see flaw 7)
 - [x] **`OPERATOR_FULL` bypasses charge/webhook, created CONFIRMED at commit** (v2 behavior; keep for when it returns). `Ref:` [Guide §10 operator_full](./BOOKING-FLOW-DESIGN-GUIDE.md#10-payment-flow) · `Code:` `bookings.service.ts:reserve`
-- [ ] **Payment-succeeds-after-hold-expired reconciliation** (confirmFromPayment only confirms when ON_HOLD; an expired booking whose payment later settles must be voided/refunded). `Ref:` [Guide §17 payment](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` `bookings.service.ts:confirmFromPayment` (no refund/void branch)
+- [~] **Payment-succeeds-after-hold-expired reconciliation.** DONE 2026-07-25 (task #47): `confirmFromPayment` now (a) fires side effects ONLY for a CONFIRMED booking - an EXPIRED booking whose payment lands no longer sends a false confirmation email/conversion; (b) attempts pay-after-expiry RECOVERY - `recoverExpiredBooking` re-claims seats in a guarded tx and confirms if capacity remains. REMAINING: when seats are gone the booking stays EXPIRED and a SUCCEEDED payment sits on it (refund owed) - the actual Stripe refund + apology email is B5/#50 (shared refund path). `Code:` `bookings.service.ts:confirmFromPayment`+`recoverExpiredBooking`
 
 ---
 
@@ -134,7 +134,7 @@ These are ranked. Each is expanded in its section below.
 ## 7. Hold expiry
 
 - [x] **Expiry logic** (find ON_HOLD past `utcExpiresAt`, release seats, mark unit items + booking EXPIRED, idempotent). `Ref:` [Guide §11](./BOOKING-FLOW-DESIGN-GUIDE.md#11-hold-expiry) · `Code:` `bookings.service.ts:expireStaleHolds`
-- [ ] **Scheduled sweeper wiring** (BullMQ repeatable / cron drives `expireStaleHolds`). `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory), [§5.4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#54-delayed-and-scheduled-jobs) · unwired (see flaw 4)
+- [x] **Scheduled sweeper wiring.** DONE 2026-07-25 (#47): `@Cron(EVERY_MINUTE)` `holdExpirySweep` in `NightlyJobsService` (in-process, not BullMQ - idempotent recompute). `Code:` `workers/nightly-jobs.service.ts`
 - [x] **Seat release recomputes departure status** (SOLD_OUT -> OPEN when seats free). `Ref:` [Guide §7](./BOOKING-FLOW-DESIGN-GUIDE.md#7-departure-state-machine) · `Code:` `bookings.service.ts:releaseSeats/recomputeStoredStatus`
 
 ---
@@ -192,7 +192,7 @@ These are ranked. Each is expanded in its section below.
 - [x] **Mark-first idempotency via `conversionFiredAt` (DB, not localStorage).** `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · `Code:` `bookings.service.ts:finalizeConfirmation`
 - [x] **Conversion value = `commissionAmount` EUR, never GMV.** `Ref:` [Guide §9 tracking value](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic), [Settlement - tracking](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#tracking-stays-unchanged) · `Code:` `tracking.service.ts`
 - [x] **Click-id (gclid/gbraid/wbraid/fbclid) + UTM captured at reserve.** DONE 2026-07-25 (task #81; see flaw 9). `Code:` `bookings.service.ts:reserve`, `lib/tracking/attribution.ts`
-- [ ] **One `booking_complete` -> 4 GTM tags + Meta CAPI (server-side, dedup by event id).** `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · frontend GTM + CAPI job pending
+- [~] **One `booking_complete` -> 4 GTM tags + Meta CAPI (server-side, dedup by event id).** Server CAPI DONE 2026-07-25 (task #44): fires once at confirm, `event_id`=publicRef == browser push (dedup-ready), fbc/event_source_url hardened. REMAINING: the 4-tag GTM fan-out that consumes the dataLayer push + fires the browser Pixel with the shared eventID (A5/#45, blocked on founder GTM/Pixel/CMP creds). `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · `Code:` `tracking.service.ts`
 
 ---
 
@@ -229,7 +229,7 @@ These are ranked. Each is expanded in its section below.
 - [ ] **Transactional outbox** (write `OutboxEvent` in the booking transaction; relay -> BullMQ). `Ref:` [Queues §5.2](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#52-transactional-outbox) · not built (see flaw 5)
 - [ ] **Confirmation-email job (queued, retry+backoff)** instead of inline send. `Ref:` [Queues §4, §5.3](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · inline today
 - [ ] **CAPI conversion job (queued, idempotent by event id).** `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · inline today
-- [ ] **Hold-expiry sweep job (repeatable).** `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · unwired (flaw 4)
+- [x] **Hold-expiry sweep job (repeatable).** DONE 2026-07-25 (#47): in-process `@Cron(EVERY_MINUTE)` (not BullMQ - idempotent recompute). `Code:` `workers/nightly-jobs.service.ts:holdExpirySweep`
 - [ ] **Scheduled `paid_in_full` payout job (delayed).** `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · not built
 - [ ] **Pre-tour reminder job (delayed).** `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · not built
 - [ ] **Affiliate postback job (delayed, approve after window).** `Ref:` [Queues §4](../02-architecture/EVENT-DRIVEN-AND-QUEUES.md#4-job-inventory) · not built
@@ -301,7 +301,7 @@ comprehensive filters, search, date-range) and permission-gated per master RBAC 
 - [x] Party size exceeds remaining -> claim fails.
 - [x] Payment intent retried -> same provider intent (idem key).
 - [x] Webhook redelivered -> skipped via event ledger.
-- [ ] Payment succeeds after hold expired -> reconcile/void/refund (not handled).
+- [~] Payment succeeds after hold expired -> DONE 2026-07-25 (#47): no false confirm; recover (re-claim seats) if possible, else stays EXPIRED with a refund owed (Stripe refund itself = B5/#50).
 - [x] Payment fails -> booking stays ON_HOLD until retry/expiry.
 - [x] Later tier/price/age-band/add-on/pickup edits do not mutate existing bookings (snapshots).
 - [x] TYP refresh / email revisit does not double-fire conversion.
@@ -441,8 +441,10 @@ reconcile before it is:
   OPERATOR_LINK booking, so the TYP card line is empty - §5 marks the billing/card snapshot `[x]`,
   so confirm whether the Stripe webhook path actually writes it.
 
-- [ ] **5. PII hashing** (server-side SHA-256 of email/phone[libphonenumber-normalized]/name/
-  address) for Enhanced Conversions + Advanced Matching (§8.1 item 3).
+- [x] **5. PII hashing** DONE 2026-07-25 (task #43). Server-side SHA-256 of email/phone
+  (libphonenumber-js E.164)/name/address, ONE normalize+hash pass serving both Google EC (browser
+  push `user_data`, hashed server-side - raw PII never sent) and Meta AM (CAPI). §8.1 item 3 / 8.3.
+  `Code:` `tracking/pii-hash.util.ts`, `bookings.service.ts:buildConversionPayload`, `tracking.service.ts`.
 
 - [ ] **6. Meta CAPI** (server, parallel to the Pixel, dedup by shared event id) - needs the
   Meta Pixel id + CAPI access token (external creds).

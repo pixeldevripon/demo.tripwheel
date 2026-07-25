@@ -11,6 +11,10 @@ function mockPrisma(): any {
   return {
     review: { findUnique: jest.fn(), findMany: jest.fn() },
     reviewTranslation: { upsert: jest.fn().mockResolvedValue({}) },
+    // DB config absent -> the service falls back to the env vars these tests set.
+    integrationsConfiguration: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 }
 
@@ -63,7 +67,6 @@ describe('ReviewTranslationService', () => {
   describe('when unconfigured', () => {
     it('is inert rather than throwing', async () => {
       delete process.env.GOOGLE_TRANSLATE_API_KEY;
-      expect(svc.isEnabled).toBe(false);
 
       const res = await svc.translateReview('r1');
 

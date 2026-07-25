@@ -1584,14 +1584,20 @@ describe('BookingsService', () => {
         issueTravelerSession('guest@example.test'),
       );
 
-      expect(conversion).toEqual({
-        event: 'Purchase',
-        eventId: 'p1', // publicRef - MUST match the server CAPI event_id for dedup
-        currency: 'EUR',
-        value: '31.99',
-        contentId: 't1',
-        contentName: 'Sunset Sail',
-      });
+      expect(conversion).toEqual(
+        expect.objectContaining({
+          event: 'Purchase',
+          eventId: 'p1', // publicRef - MUST match the server CAPI event_id for dedup
+          currency: 'EUR',
+          value: '31.99',
+          contentId: 't1',
+          contentName: 'Sunset Sail',
+        }),
+      );
+      // Hashed PII for Enhanced Conversions (server-side; raw never sent).
+      expect(conversion?.userData?.sha256_email_address).toEqual(
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      );
       // Mark-first guard is on conversionPushedAt (NOT conversionFiredAt).
       expect(m.booking.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1698,6 +1704,12 @@ describe('BookingsService', () => {
       // Conversion + event emit are independent of the (swallowed) email sends.
       expect(tracking.fireBookingComplete).toHaveBeenCalledTimes(1);
       expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
+      // DEDUP CONTRACT (master 8.1.4): the server CAPI event_id MUST equal the
+      // booking publicRef - the SAME id the browser push carries - so Meta
+      // deduplicates the Pixel event against this CAPI event.
+      expect(tracking.fireBookingComplete).toHaveBeenCalledWith(
+        expect.objectContaining({ eventId: 'p1' }), // fakeBooking().publicRef
+      );
     });
 
     it('the caller that LOSES the status flip fires NO side effects (still backfills billing)', async () => {
@@ -1730,6 +1742,57 @@ describe('BookingsService', () => {
 
       expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
       expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+
+    // Pay-after-expiry (task #47): the hold was swept to EXPIRED before the payment
+    // landed. The seat-claim guard on the initial ON_HOLD->CONFIRMED matches 0 rows,
+    // so recovery re-claims inventory in a guarded transaction.
+    it('recovers an EXPIRED booking when seats can be re-claimed (confirms once)', async () => {
+      m.booking.updateMany
+        .mockResolvedValueOnce({ count: 0 }) // ON_HOLD guard: not on hold (expired)
+        .mockResolvedValue({ count: 1 }); // EXPIRED->CONFIRMED flip, then conversion guard
+      m.booking.findUnique
+        .mockResolvedValueOnce(confirmable({ status: BookingStatus.EXPIRED }))
+        .mockResolvedValue(confirmable({ status: BookingStatus.CONFIRMED }));
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 2,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.departure.updateMany.mockResolvedValue({ count: 1 }); // seats available
+
+      await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
+
+      // Re-claimed inventory (guarded departure count-up) + confirmed once.
+      expect(m.departure.updateMany).toHaveBeenCalled();
+      expect(tracking.fireBookingComplete).toHaveBeenCalledTimes(1);
+      // Availability changed (seats re-claimed), so the availability event fires too.
+      expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT confirm an EXPIRED booking when seats are gone (refund owed, no side effects)', async () => {
+      const err = jest
+        .spyOn((svc as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      m.booking.updateMany
+        .mockResolvedValueOnce({ count: 0 }) // ON_HOLD guard: expired
+        .mockResolvedValue({ count: 1 }); // flip wins in-tx, but claim below fails -> rollback
+      // Booking stays EXPIRED (the tx rolls back on sold-out).
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({ status: BookingStatus.EXPIRED }),
+      );
+      m.departure.findUnique.mockResolvedValue({ capacity: 10 });
+      m.departure.updateMany.mockResolvedValue({ count: 0 }); // SOLD OUT
+
+      await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
+
+      expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+      expect(notifications.emitBookingUpdate).not.toHaveBeenCalled();
+      // Refund-owed is logged loudly, never silent.
+      expect(err).toHaveBeenCalledWith(expect.stringContaining('refund owed'));
+      err.mockRestore();
     });
   });
 

@@ -13,6 +13,7 @@ import {
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
   UpdateSocialMediaDto,
+  UpdateIntegrationsConfigurationDto,
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
 import {
@@ -24,7 +25,9 @@ import {
   ApiUpdateSiteInfoDocs,
   ApiGetSiteSEODocs,
   ApiUpdateSiteSEODocs,
+  ApiGetIntegrationsConfigurationDocs,
   ApiGetStripeConfigurationDocs,
+  ApiUpdateIntegrationsConfigurationDocs,
   ApiUpdateStripeConfigurationDocs,
   ApiGetMollieConfigurationDocs,
   ApiUpdateMollieConfigurationDocs,
@@ -211,6 +214,37 @@ export class SettingsController {
   @ApiUpdateStripeConfigurationDocs()
   updateStripeConfiguration(@Body() dto: UpdateStripeConfigurationDto) {
     return this.settingsService.updateStripeConfiguration(dto);
+  }
+
+  // ── Integrations (Meta CAPI + Google Translate secrets) ──────────────────────
+
+  /**
+   * GET /settings/integrations
+   *
+   * Server-side integration secrets (Meta CAPI token, Google Translate key), with
+   * the secrets MASKED. Security: requires MANAGE_SETTINGS.
+   */
+  @Get('integrations')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiGetIntegrationsConfigurationDocs()
+  getIntegrationsConfiguration() {
+    return this.settingsService.getIntegrationsConfiguration();
+  }
+
+  /**
+   * PATCH /settings/integrations
+   *
+   * Update integration secrets. An omitted/blank secret leaves the stored value
+   * untouched. Security: requires MANAGE_SETTINGS.
+   */
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Patch('integrations')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdateIntegrationsConfigurationDocs()
+  updateIntegrationsConfiguration(
+    @Body() dto: UpdateIntegrationsConfigurationDto,
+  ) {
+    return this.settingsService.updateIntegrationsConfiguration(dto);
   }
 
   // ── Payment Configuration (Mollie) ──────────────────────────────────────────

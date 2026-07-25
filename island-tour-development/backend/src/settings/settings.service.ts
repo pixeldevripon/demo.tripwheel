@@ -9,6 +9,7 @@ import {
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
   UpdateReviewRequestsDto,
+  UpdateIntegrationsConfigurationDto,
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
@@ -292,6 +293,45 @@ export class SettingsService {
       apiKey: result.apiKey
         ? '••••••••' + decrypt(result.apiKey).slice(-4)
         : null,
+    };
+  }
+
+  // ── Integrations Configuration (Meta CAPI + Google Translate secrets) ────────
+
+  async getIntegrationsConfiguration() {
+    const config = await this.prisma.integrationsConfiguration.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+    return {
+      ...config,
+      metaCapiToken: this.maskSecret(config.metaCapiToken),
+      googleTranslateApiKey: this.maskSecret(config.googleTranslateApiKey),
+    };
+  }
+
+  async updateIntegrationsConfiguration(
+    dto: UpdateIntegrationsConfigurationDto,
+  ) {
+    const data = {
+      ...dto,
+      // Encrypt secrets on write; a blank/omitted field leaves the stored value
+      // untouched (never overwrite a saved secret with an empty string).
+      ...(dto.metaCapiToken && { metaCapiToken: encrypt(dto.metaCapiToken) }),
+      ...(dto.googleTranslateApiKey && {
+        googleTranslateApiKey: encrypt(dto.googleTranslateApiKey),
+      }),
+    };
+    const result = await this.prisma.integrationsConfiguration.upsert({
+      where: { id: 'default' },
+      update: data,
+      create: { id: 'default', ...data },
+    });
+    return {
+      ...result,
+      metaCapiToken: this.maskSecret(result.metaCapiToken),
+      googleTranslateApiKey: this.maskSecret(result.googleTranslateApiKey),
     };
   }
 

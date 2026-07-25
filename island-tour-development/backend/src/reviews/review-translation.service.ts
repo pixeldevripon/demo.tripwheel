@@ -3,6 +3,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Locale, ReviewModerationStatus } from '@prisma/client';
 import type { Queue } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
+import { safeDecrypt } from '@/common/utils/crypto.util';
 
 /**
  * LD32 - machine translation of review text.
@@ -71,16 +72,27 @@ export class ReviewTranslationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get apiKey(): string | undefined {
-    return process.env.GOOGLE_TRANSLATE_API_KEY?.trim() || undefined;
-  }
-
-  private get projectId(): string | undefined {
-    return process.env.GOOGLE_TRANSLATE_PROJECT_ID?.trim() || undefined;
-  }
-
-  get isEnabled(): boolean {
-    return Boolean(this.apiKey && this.projectId);
+  /**
+   * Resolve Google Translate credentials: dashboard DB first, env fallback (DB
+   * wins). API key is a secret (encrypted in `IntegrationsConfiguration`); the
+   * project id is non-secret. Env vars (`GOOGLE_TRANSLATE_API_KEY` /
+   * `GOOGLE_TRANSLATE_PROJECT_ID`) remain the local-dev / first-boot fallback.
+   */
+  private async resolveConfig(): Promise<{
+    apiKey?: string;
+    projectId?: string;
+  }> {
+    const row = await this.prisma.integrationsConfiguration.findUnique({
+      where: { id: 'default' },
+      select: { googleTranslateApiKey: true, googleTranslateProjectId: true },
+    });
+    const apiKey =
+      safeDecrypt(row?.googleTranslateApiKey)?.trim() ||
+      process.env.GOOGLE_TRANSLATE_API_KEY?.trim();
+    const projectId =
+      row?.googleTranslateProjectId?.trim() ||
+      process.env.GOOGLE_TRANSLATE_PROJECT_ID?.trim();
+    return { apiKey: apiKey || undefined, projectId: projectId || undefined };
   }
 
   /** SHA-1 of a source string - the cache key for "has this already been done". */
@@ -94,11 +106,12 @@ export class ReviewTranslationService {
    * Idempotent: a second call with an unchanged source writes nothing.
    */
   async translateReview(reviewId: string): Promise<TranslateResult> {
-    if (!this.isEnabled) {
+    const cfg = await this.resolveConfig();
+    if (!cfg.apiKey || !cfg.projectId) {
       if (!this.warnedUnconfigured) {
         this.warnedUnconfigured = true;
         this.logger.warn(
-          'GOOGLE_TRANSLATE_API_KEY / GOOGLE_TRANSLATE_PROJECT_ID are not set - ' +
+          'Google Translate is not configured (no key/project id in dashboard or env) - ' +
             'review translation (LD32) is inert. Reviews display in their original language.',
         );
       }
@@ -162,6 +175,7 @@ export class ReviewTranslationService {
         [source.comment],
         source.locale,
         locale,
+        cfg,
       );
       if (!translated) continue;
 
@@ -221,15 +235,17 @@ export class ReviewTranslationService {
     contents: string[],
     from: Locale,
     to: Locale,
+    cfg: { apiKey?: string; projectId?: string },
   ): Promise<string[]> {
     if (contents.length === 0) return [];
+    if (!cfg.apiKey || !cfg.projectId) return [];
     if (contents.length > MAX_CONTENTS_PER_CALL) {
       contents = contents.slice(0, MAX_CONTENTS_PER_CALL);
     }
 
     const url =
-      `https://translation.googleapis.com/v3/projects/${this.projectId}:translateText` +
-      `?key=${encodeURIComponent(this.apiKey!)}`;
+      `https://translation.googleapis.com/v3/projects/${cfg.projectId}:translateText` +
+      `?key=${encodeURIComponent(cfg.apiKey)}`;
 
     try {
       const res = await fetch(url, {
@@ -275,7 +291,9 @@ export class ReviewTranslationService {
    * The backfill pass picks it up later either way.
    */
   async enqueue(queue: Queue | undefined, reviewId: string): Promise<void> {
-    if (!queue || !this.isEnabled) return;
+    if (!queue) return;
+    const cfg = await this.resolveConfig();
+    if (!cfg.apiKey || !cfg.projectId) return;
     try {
       await queue.add(
         'translate',
@@ -306,7 +324,8 @@ export class ReviewTranslationService {
   async translatePending(
     limit = 50,
   ): Promise<{ processed: number; written: number }> {
-    if (!this.isEnabled) return { processed: 0, written: 0 };
+    const cfg = await this.resolveConfig();
+    if (!cfg.apiKey || !cfg.projectId) return { processed: 0, written: 0 };
 
     const candidates = await this.prisma.review.findMany({
       where: { moderationStatus: ReviewModerationStatus.APPROVED },

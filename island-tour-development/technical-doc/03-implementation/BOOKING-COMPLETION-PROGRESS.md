@@ -524,7 +524,15 @@ only differences. 1038 tests / 48 suites green.
 
 ### D. Async / queue hardening (0/8)
 - [ ] D1 Transactional outbox (`OutboxEvent` written in booking txn; relay -> BullMQ)
-- [ ] D2 Hold-expiry sweeper wiring (repeatable job drives `expireStaleHolds`)
+- [x] **D2 Hold-expiry sweeper wiring** (2026-07-25, task #47). `NightlyJobsService.holdExpirySweep`
+  `@Cron(EVERY_MINUTE)` drives `expireStaleHolds()` (in-process, matching the FX/nightly convention;
+  idempotent recompute, no BullMQ). PLUS the pay-after-expiry safety the scheduler makes reachable:
+  `confirmFromPayment` now fires side effects ONLY for a CONFIRMED booking (no false confirm email/
+  conversion on an EXPIRED one) and attempts recovery via `recoverExpiredBooking` (guarded re-claim of
+  seats -> confirm if capacity remains). Seats-gone stays EXPIRED with a refund owed (SUCCEEDED payment
+  on a non-CONFIRMED booking) for B5/#50. `Code:` `workers/nightly-jobs.service.ts`,
+  `bookings.service.ts:confirmFromPayment`+`recoverExpiredBooking`+`expireStaleHolds`. 2 new recovery
+  tests (re-claim-confirms / sold-out-no-confirm); backend 1503/70 green.
 - [ ] D3 Confirmation-email job (queued, retry + backoff) instead of inline
 - [ ] D4 CAPI conversion job (queued, idempotent by event id)
 - [ ] D5 Scheduled `paid_in_full` payout job (delayed) - pairs with A4/A5
@@ -532,7 +540,7 @@ only differences. 1038 tests / 48 suites green.
 - [ ] D7 Affiliate postback job (delayed, approve after window)
 - [ ] D8 Retries + exponential backoff, keep failed jobs (no silent drop)
 
-### E. Tracking / analytics (4/8)
+### E. Tracking / analytics (6/8)
 - [x] **E1 `booking_complete` browser push on TYP** (2026-07-25, task #42). The TYP server
   component (`ThankYouBody`) claims the push mark-first via `claimConversionPush` (server-side POST,
   forwards the HttpOnly traveler session) and passes the payload to the `<ConversionPush>` client
@@ -583,8 +591,27 @@ only differences. 1038 tests / 48 suites green.
   Affiliate id excluded (promo-code path). `Code:` `lib/tracking/attribution.ts`,
   `components/frontend/attribution-capture.tsx`, `bookings.service.ts:reserve`, `AttributionDto`.
   3 backend tests; backend suite green (1480/67), frontend build green.
-- [ ] E5 Server-side PII hashing (SHA-256 email/phone/name/address) for EC/AM
-- [ ] E6 Meta CAPI (server, parallel to Pixel, dedup by shared event id) - needs external creds
+- [x] **E5 Server-side PII hashing (SHA-256) for EC/AM** (2026-07-25, task #43). New
+  `tracking/pii-hash.util.ts`: `computeHashedPii` normalizes ONCE (email lower/trim, phone -> E.164
+  via `libphonenumber-js`, name/geo lower/trim) then SHA-256s each field; `toGoogleUserData` (nested
+  `sha256_*` + `address`) and `toMetaUserData` (`em`/`ph`/`fn`/`ln`/`ct`/`zp`/`country`) map the SAME
+  hashes onto each envelope - "one pass serves both" (master 8.3). The browser push now carries
+  `userData` (Google EC), hashed server-side in `buildConversionPayload` so raw PII never reaches the
+  browser; `TrackingService.fireBookingComplete` (Meta CAPI) refactored onto the shared util (address
+  prefers the Stripe billing snapshot, contact fallback). `Code:` `pii-hash.util.ts`,
+  `bookings.service.ts:buildConversionPayload`+`fireConversion`, `tracking.service.ts`, frontend
+  `booking-complete.ts` + `TypConversion.userData`. Tests: new util spec + conversion-push userData
+  assertion. Backend 1498/70 green, frontend build green. Added dep: `libphonenumber-js`.
+- [x] **E6 Meta CAPI (server, dedup by shared event id)** (2026-07-25, task #44). Server CAPI
+  (`TrackingService.fireBookingComplete`) fires ONCE per booking at confirm (`finalizeConfirmation` ->
+  `fireConversion`, guarded by `conversionFiredAt`), value = EUR commission, `event_id` = booking
+  `publicRef` == the browser push's id, so Meta dedups the Pixel event against CAPI (master 8.1.4).
+  Hardened this pass: `event_source_url` = the TYP URL; `fbc` now the Meta cookie format
+  `fb.1.<ts>.<fbclid>` (was raw fbclid; already-formatted passthrough); user_data via the shared
+  hash util (A3). Creds dashboard-managed (#84), env fallback. Config-gated no-op without a token.
+  Tests: dedup-id assertion (CAPI event_id == publicRef), fbc-format, event_source_url, DB-wins.
+  NOTE: the browser Pixel that dedups AGAINST this fires via GTM (A5, #45, blocked on founder creds) -
+  our side of the dedup contract is complete. Still inline (not queued) - the outbox move is B6/#51.
 - [ ] E7 GTM container + 4-tag fan-out - needs GTM container id
 - [ ] E8 Consent Mode v2 + CMP (EEA denied default) - needs CMP choice
 
@@ -598,7 +625,7 @@ only differences. 1038 tests / 48 suites green.
 
 ### G. Correctness / misc (0/6)
 - [ ] G1 Mollie webhook confirm (currently ledger-only stub)
-- [ ] G2 Hold-expiry cron (pairs with D2)
+- [x] G2 Hold-expiry cron (pairs with D2) - `@Cron(EVERY_MINUTE)` holdExpirySweep (2026-07-25, #47).
 - [ ] G3 Discount/coupon engine (deferred - re-add validated when Coupon engine ships)
 - [ ] G4 Currency-change guard (block/relabel `defaultCurrency` once prices exist)
 - [~] G5 Real FX provider. FEED done 2026-07-25 (#83): `EcbFxProvider` (keyless ECB via
@@ -652,7 +679,11 @@ Plus, opportunistically: G1 (Mollie confirm), G4 (currency guard), G6 (spec gree
 
 - **Email provider (step 2):** confirm **Resend** (with Postmark fallback) is what we wire for C1/C4.
 - **Tracking creds (step 8):** Meta Pixel id + CAPI access token (E6); GTM container id (E7); CMP
-  choice - Cookiebot vs Iubenda (E8).
+  choice - Cookiebot vs Iubenda (E8). As of 2026-07-25 these are DASHBOARD-managed (backend #84):
+  Pixel ID / GTM / GA4 in `SiteSEO` (public), CAPI token + Google-Translate key ENCRYPTED in the new
+  `IntegrationsConfiguration` (Admin -> Settings), env vars kept as local-dev fallback. Founder still
+  needs to supply the actual values (via the dashboard now, not env) + the Settings->Integrations form
+  in the dashboard repo (task #85).
 
 ---
 
@@ -828,9 +859,16 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
    `AttributionDto` + reserve write (creation-only); frontend landing-URL capture -> `it.attribution`
    cookie -> checkout payload. Column question resolved: `clickId` RENAMED -> `gclid` (master E.8/8.3).
    Backend 1480/67 green; frontend build green. **NEXT resume point = A3 (#43).**
-3. A3 = #43: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
+3. [x] A3 = #43 (DONE 2026-07-25): server-side PII hashing. `pii-hash.util.ts` (one normalize+hash
+   pass, `libphonenumber-js` E.164), browser push carries Google-EC `userData` hashed server-side,
+   CAPI refactored onto the shared util. Backend 1498/70 + frontend build green. **NEXT = A4 (#44).**
+   Original: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
    Matching payloads.
-4. A4 = #44: Meta CAPI server-side send (dedup by event id; inline first, queued in B6).
+4. [x] A4 = #44 (DONE 2026-07-25): Meta CAPI server-side, dedup by event id. Fires once at confirm,
+   `event_id`=publicRef == browser push; hardened fbc format + event_source_url; creds from dashboard.
+   Our side of the dedup contract complete; the browser Pixel that dedups against it is A5/GTM. Still
+   inline (queued in B6). **NEXT = A5 (#45, BLOCKED on founder GTM/Pixel/CMP creds) -> so effectively
+   Phase B (money) is the next UNBLOCKED work.**
 5. A5 = #45: GTM fan-out (4 tags) + Consent Mode v2 - BLOCKED on founder: GTM container id,
    Pixel id, CMP choice (Cookiebot/Iubenda).
 
@@ -838,7 +876,10 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
 6. B1 = CP2: operator-balance email on `operator_link` (C1, names operator + secure balance link)
    + C5 verify never-name-operator-pre-payment in template copy; Resend provider switch (C4) is
    BLOCKED on founder confirm.
-7. B2 = CP3: hold-expiry sweeper (BullMQ repeatable -> `expireStaleHolds`) + the
+7. [x] B2 = CP3 (DONE 2026-07-25, #47): hold-expiry sweeper (`@Cron(EVERY_MINUTE)` -> `expireStaleHolds`,
+   in-process not BullMQ) + pay-after-expiry safety: `confirmFromPayment` fires side effects only when
+   CONFIRMED, `recoverExpiredBooking` re-claims seats when capacity remains, else stays EXPIRED + refund
+   owed (B5/#50). Backend 1503/70 green. Original note follows: hold-expiry sweeper + the
    payment-succeeds-after-expiry reconciliation branch in `confirmFromPayment`.
 8. B3 = CP4: `Settlement` model + one row per booking at confirmation + `net_position` sign
    convention (deposit models net ~0).

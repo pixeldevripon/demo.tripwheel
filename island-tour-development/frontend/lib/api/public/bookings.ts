@@ -18,6 +18,20 @@ import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
  * `POST typ/:publicRef/conversion` endpoint (wired in A1/#42) so the browser
  * pixel cannot double-fire across refreshes / the processing poller.
  */
+/** SHA-256 hashed PII for Google Enhanced Conversions (master 8.3), hashed
+ *  server-side; raw PII never reaches the browser. */
+export interface ConversionUserData {
+    sha256_email_address?: string;
+    sha256_phone_number?: string;
+    sha256_first_name?: string;
+    sha256_last_name?: string;
+    address?: {
+        sha256_city?: string;
+        sha256_postal_code?: string;
+        sha256_country?: string;
+    };
+}
+
 export interface TypConversion {
     event: string;
     eventId: string;
@@ -25,6 +39,8 @@ export interface TypConversion {
     value: string;
     contentId: string;
     contentName: string | null;
+    /** Hashed PII (Enhanced Conversions); null when there is no email to hash. */
+    userData: ConversionUserData | null;
 }
 
 /** Operator contact (named deliberately post-booking - guide §13). */

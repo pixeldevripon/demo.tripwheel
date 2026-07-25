@@ -17,6 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
+import type { GoogleUserData } from '@/tracking/pii-hash.util';
 import {
   BookingStatus,
   CancelledBy,
@@ -60,6 +61,14 @@ export class BookingConversionDto {
   value!: string;
   @ApiProperty() contentId!: string;
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'SHA-256 hashed PII for Google Enhanced Conversions (master 8.3 user_data), ' +
+      'hashed server-side so raw PII never reaches the browser. Null when there is ' +
+      'no email to hash. Same hash pass the server CAPI uses.',
+  })
+  userData!: GoogleUserData | null;
 }
 
 /** Operator contact shown on the TYP (named deliberately post-booking - guide §13). */

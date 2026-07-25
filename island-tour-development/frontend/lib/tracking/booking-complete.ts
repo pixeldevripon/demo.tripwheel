@@ -71,5 +71,8 @@ export function pushBookingComplete(conversion: TypConversion | null): void {
         quantity: 1,
       },
     ],
+    // Hashed PII for Google Enhanced Conversions (master 8.3), hashed server-side;
+    // omitted entirely when there is no email to hash.
+    ...(conversion.userData ? { user_data: conversion.userData } : {}),
   });
 }

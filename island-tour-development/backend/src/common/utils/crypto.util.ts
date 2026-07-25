@@ -42,3 +42,20 @@ export function decrypt(ciphertext: string): string {
 
   return decipher.update(encrypted).toString('utf8') + decipher.final('utf8');
 }
+
+/**
+ * Decrypt without throwing. Returns the plaintext, or `null` when the value is
+ * empty or cannot be decrypted (e.g. `ENCRYPTION_KEY` rotated). For read paths
+ * that must degrade gracefully rather than 500 - the caller decides the fallback
+ * (typically an env var) and should log the null.
+ */
+export function safeDecrypt(
+  ciphertext: string | null | undefined,
+): string | null {
+  if (!ciphertext) return null;
+  try {
+    return decrypt(ciphertext);
+  } catch {
+    return null;
+  }
+}

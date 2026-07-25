@@ -778,6 +778,39 @@ export class UpdateMollieConfigurationDto {
   paymentMethods?: string[];
 }
 
+/**
+ * Server-side integration SECRETS (admin-only). Send a secret only when changing
+ * it - an omitted/blank secret leaves the stored (encrypted) value untouched.
+ * On read these come back masked (`•••• + last4`), never in plaintext.
+ */
+export class UpdateIntegrationsConfigurationDto {
+  @ApiPropertyOptional({
+    description: 'Meta Conversions API access token (secret)',
+  })
+  @IsOptional()
+  @IsString()
+  metaCapiToken?: string;
+
+  @ApiPropertyOptional({
+    description: 'Meta CAPI test_event_code (non-secret)',
+  })
+  @IsOptional()
+  @IsString()
+  metaCapiTestCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Google Cloud Translation API key (secret)',
+  })
+  @IsOptional()
+  @IsString()
+  googleTranslateApiKey?: string;
+
+  @ApiPropertyOptional({ description: 'Google Cloud project id (non-secret)' })
+  @IsOptional()
+  @IsString()
+  googleTranslateProjectId?: string;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Post-tour review requests (cadence)
 // ════════════════════════════════════════════════════════════════════════════

@@ -43,6 +43,7 @@ import {
 import { CustomerProvisioningService } from '@/customers/customer-provisioning.service';
 import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
+import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
   dashboardAppBase,
@@ -113,6 +114,14 @@ import type {
 const DEFAULT_HOLD_MINUTES = 30;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
 const QUOTE_TTL_MINUTES = 15;
+
+/**
+ * Internal control-flow signal for pay-after-expiry recovery: thrown inside the
+ * recovery transaction to roll it back for a KNOWN, non-error reason (someone else
+ * won the flip, or seats are gone). Caught by `recoverExpiredBooking` -> returns
+ * false, distinct from an unexpected DB error.
+ */
+class HoldRecoveryAbort extends Error {}
 
 /**
  * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
@@ -834,7 +843,7 @@ export class BookingsService {
         ...billingData,
       },
     });
-    const transitioned = count === 1;
+    let transitioned = count === 1;
 
     // Loser (or a webhook arriving after settle already confirmed): still
     // backfill the card/billing snapshot onto the confirmed booking, but fire
@@ -846,7 +855,7 @@ export class BookingsService {
       });
     }
 
-    const current = await this.prisma.booking.findUnique({
+    let current = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { unitItems: true },
     });
@@ -854,14 +863,148 @@ export class BookingsService {
       this.logger.error(`confirmFromPayment: booking ${bookingId} not found`);
       return;
     }
+
+    // Pay-after-expiry recovery (task #47): the hold was swept to EXPIRED before
+    // this payment landed (a slow async method or a very late webhook). The money
+    // is captured, so try to HONOR the booking by re-claiming seats; success
+    // confirms it as if it had never lapsed. This is the ONLY confirm path that
+    // re-claims inventory (a normal confirm reuses the seats held at reserve).
+    let recovered = false;
+    if (!transitioned && current.status === BookingStatus.EXPIRED) {
+      recovered = await this.recoverExpiredBooking(current, billingData);
+      // Reload so `current` reflects the outcome - ours, or a concurrent late
+      // payment that recovered/confirmed the same booking first.
+      current =
+        (await this.prisma.booking.findUnique({
+          where: { id: bookingId },
+          include: { unitItems: true },
+        })) ?? current;
+      if (recovered) transitioned = true;
+    }
+
+    // Loser billing backfill: only meaningful on an already-CONFIRMED booking (the
+    // settle/webhook race). Never resurrect billing onto an EXPIRED/CANCELLED
+    // booking. (`?? undefined` still stops a late webhook nulling a saved field.)
+    if (
+      !transitioned &&
+      billing &&
+      current.status === BookingStatus.CONFIRMED
+    ) {
+      await this.prisma.booking.updateMany({
+        where: { id: bookingId },
+        data: billingData,
+      });
+    }
+
     if (transitioned) {
       this.logger.log(`Booking ${current.displayRef} confirmed via payment`);
     }
 
-    const finalized = await this.finalizeConfirmation(current);
-    if (transitioned) {
-      // Status changed via payment; seats unchanged (already held at reserve).
-      this.emitBookingEvents(finalized, { availability: false });
+    // SIDE EFFECTS FIRE ONLY FOR A CONFIRMED BOOKING (the fix). `finalizeConfirmation`
+    // is idempotent via `conversionFiredAt`, so a settle/webhook race-loser no-ops
+    // here; a booking that could NOT be recovered stays EXPIRED and NEVER finalizes -
+    // no false confirmation email, no conversion, no account provisioning.
+    if (current.status === BookingStatus.CONFIRMED) {
+      const finalized = await this.finalizeConfirmation(current);
+      if (transitioned) {
+        // Recovery re-claimed seats (availability changed); a plain race-win did
+        // not (seats were already held at reserve).
+        this.emitBookingEvents(finalized, { availability: recovered });
+      }
+    } else {
+      // Payment captured but the booking is not confirmable (hold lapsed + sold
+      // out, or cancelled). Money is owed back: the refund path (#50 / B5)
+      // reconciles a SUCCEEDED payment against a non-CONFIRMED booking. Here we
+      // only refuse to fire confirmation side effects, and log loudly so it is
+      // never silent.
+      this.logger.error(
+        `confirmFromPayment: booking ${current.displayRef} is ${current.status} but its ` +
+          `payment succeeded - refund owed (hold lapsed / cancelled). NOT confirming; ` +
+          `no email/conversion fired.`,
+      );
+    }
+  }
+
+  /**
+   * Pay-after-expiry recovery. The hold lapsed (swept to EXPIRED) before the
+   * payment landed; the money is captured, so try to honor the booking by
+   * re-claiming inventory. ATOMIC: flip EXPIRED->CONFIRMED (guarded, one winner),
+   * then re-claim seats in the SAME transaction - if seats are gone the whole thing
+   * rolls back and the booking stays EXPIRED (the refund path handles the captured
+   * payment). Freesale bookings (no departure) simply flip. Returns whether it
+   * recovered.
+   */
+  private async recoverExpiredBooking(
+    booking: BookingWithItems,
+    billingData: Record<string, unknown>,
+  ): Promise<boolean> {
+    const seats = booking.unitItems.length;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Guard-flip EXPIRED -> CONFIRMED: exactly one caller wins even if two late
+        // payment callbacks race the same expired booking.
+        const flip = await tx.booking.updateMany({
+          where: { id: booking.id, status: BookingStatus.EXPIRED },
+          data: {
+            status: BookingStatus.CONFIRMED,
+            utcConfirmedAt: new Date(),
+            ...billingData,
+          },
+        });
+        if (flip.count === 0) throw new HoldRecoveryAbort('already handled');
+
+        if (booking.departureId) {
+          const dep = await tx.departure.findUnique({
+            where: { id: booking.departureId },
+            select: { capacity: true },
+          });
+          if (!dep) throw new HoldRecoveryAbort('departure gone');
+          // Same guarded seat-claim as reserve (master §5): exclusive charter takes
+          // the whole still-empty departure; else a conditional count-up.
+          const claim = booking.exclusiveDeparture
+            ? await tx.departure.updateMany({
+                where: {
+                  id: booking.departureId,
+                  tourId: booking.tourId,
+                  status: DepartureStatus.OPEN,
+                  bookedCount: 0,
+                },
+                data: { bookedCount: dep.capacity },
+              })
+            : await tx.departure.updateMany({
+                where: {
+                  id: booking.departureId,
+                  tourId: booking.tourId,
+                  status: DepartureStatus.OPEN,
+                  bookedCount: { lte: dep.capacity - seats },
+                },
+                data: { bookedCount: { increment: seats } },
+              });
+          if (claim.count === 0) throw new HoldRecoveryAbort('sold out');
+          await this.recomputeStoredStatus(tx, booking.departureId);
+        }
+
+        await tx.bookingUnitItem.updateMany({
+          where: { bookingId: booking.id },
+          data: { status: BookingStatus.CONFIRMED },
+        });
+      });
+      this.logger.warn(
+        `Booking ${booking.displayRef} recovered after hold expiry (re-claimed ${seats} seat(s)).`,
+      );
+      return true;
+    } catch (err) {
+      if (err instanceof HoldRecoveryAbort) {
+        this.logger.warn(
+          `Booking ${booking.displayRef} not recovered after expiry (${err.message}); refund owed.`,
+        );
+        return false;
+      }
+      this.logger.error(
+        `recoverExpiredBooking failed for ${booking.displayRef}`,
+        err as Error,
+      );
+      return false;
     }
   }
 
@@ -1784,9 +1927,15 @@ export class BookingsService {
       phone: booking.contactPhone,
       firstName: booking.contactFirstName,
       lastName: booking.contactLastName,
-      country: booking.contactCountry,
-      postalCode: booking.contactPostalCode,
+      // Address prefers the Stripe billing snapshot (master 8.3), falling back to
+      // the contact fields for models with no card (on_arrival / operator_full).
+      city: booking.billingCity,
+      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+      country: booking.billingCountry ?? booking.contactCountry,
       clickId: booking.fbclid,
+      // The TYP is where the browser Pixel fires the matching event (same event_id);
+      // Meta wants the server event to carry the same source URL for attribution.
+      eventSourceUrl: `${islandToursBase()}/${booking.island}/thank-you/${booking.publicRef}`,
       eventTimeSec: Math.floor(
         (booking.utcConfirmedAt ?? new Date()).getTime() / 1000,
       ),
@@ -2506,6 +2655,16 @@ export class BookingsService {
         commissionAmount: true,
         tourId: true,
         contactEmail: true,
+        // Hashed server-side for the booking_complete user_data (Enhanced
+        // Conversions); raw PII never leaves the backend for tracking.
+        contactPhone: true,
+        contactFirstName: true,
+        contactLastName: true,
+        contactPostalCode: true,
+        contactCountry: true,
+        billingCity: true,
+        billingPostalCode: true,
+        billingCountry: true,
         tour: { select: { name: true } },
       },
     });
@@ -2547,17 +2706,37 @@ export class BookingsService {
    * The browser `booking_complete` payload for a confirmed booking. `eventId` is
    * the booking `publicRef` - it MUST match the server CAPI `event_id`
    * (`fireConversion`) so Meta deduplicates the browser Pixel against the CAPI
-   * event (master 8.1 item 4). The GA4 transaction id (`display_ref`, master 8.3
-   * `booking_ref`) and hashed PII / click ids are layered on by the later
-   * A-phase tasks; A1 ships the value + dedup id.
+   * event (master 8.1 item 4). `userData` carries the SHA-256 hashed PII for Google
+   * Enhanced Conversions, hashed server-side via the SAME pass the CAPI uses
+   * (master 8.3) so the raw email/phone never reach the browser.
    */
   private buildConversionPayload(booking: {
     publicRef: string;
     commissionAmount: Prisma.Decimal | null;
     tourId: string;
     tour: { name: string } | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    contactFirstName: string | null;
+    contactLastName: string | null;
+    contactPostalCode: string | null;
+    contactCountry: string | null;
+    billingCity: string | null;
+    billingPostalCode: string | null;
+    billingCountry: string | null;
   }): BookingConversionDto | null {
     if (booking.commissionAmount == null) return null;
+    const userData = toGoogleUserData(
+      computeHashedPii({
+        email: booking.contactEmail,
+        phone: booking.contactPhone,
+        firstName: booking.contactFirstName,
+        lastName: booking.contactLastName,
+        city: booking.billingCity,
+        postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+        country: booking.billingCountry ?? booking.contactCountry,
+      }),
+    );
     return {
       event: 'Purchase',
       eventId: booking.publicRef,
@@ -2565,6 +2744,7 @@ export class BookingsService {
       value: booking.commissionAmount.toString(),
       contentId: booking.tourId,
       contentName: booking.tour?.name ?? null,
+      userData: userData ?? null,
     };
   }
 

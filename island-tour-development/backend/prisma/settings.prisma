@@ -159,6 +159,32 @@ model mollieConfiguration {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Integrations configuration (singleton) — admin-only SECRETS for server-side
+// integrations. Distinct from SiteSEO (which holds the PUBLIC ids: facebookPixelId,
+// googleTagManagerId, googleAnalyticsId — read by the public frontend). Secrets here
+// are ENCRYPTED at rest (crypto.util) and NEVER exposed to public reads. The env vars
+// (META_CAPI_TOKEN, GOOGLE_TRANSLATE_*) remain a local-dev / first-boot fallback.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntegrationsConfiguration {
+  id String @id @default("default")
+
+  // Meta Conversions API (server-side booking_complete). The Pixel ID is public and
+  // lives in SiteSEO.facebookPixelId; only the access token is a secret.
+  metaCapiToken    String? // encrypted
+  metaCapiTestCode String? @default("") // test_event_code (non-secret)
+
+  // Google Cloud Translation (AI translation jobs).
+  googleTranslateApiKey    String? // encrypted
+  googleTranslateProjectId String? @default("") // non-secret
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("integrations_configuration")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Third-party platform reviews (Trustpilot / Google) — admin-configured
 // (singleton). The fetched payload is cached here so public reads never hit
 // the third-party API on the request path.
