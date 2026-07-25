@@ -17,6 +17,11 @@ use deliberate.
 > consumers: `workers/platform-jobs.processor.ts` -> idempotent `run*Job` methods (per-booking guard
 > columns). Hold-expiry sweep, payout release, and the nightly commercial jobs remain in-process
 > `@nestjs/schedule` crons - they are idempotent recomputes, already durable by rerun.
+>
+> **Founder amendment (same day): confirm-time EMAILS also send INLINE** for immediate delivery -
+> `finalizeConfirmation` invokes the email job methods directly (swallowing failures); the queued
+> jobs act as the durable retry BACKSTOP via the shared guard columns (inline success -> job no-ops;
+> inline failure -> job retries). CAPI and the pre-tour reminder are queue-only.
 
 ---
 

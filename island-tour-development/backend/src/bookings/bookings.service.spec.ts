@@ -2385,15 +2385,23 @@ describe('BookingsService', () => {
       });
     });
 
-    it('the caller that WINS the flip commits the outbox event + booking event once (B6)', async () => {
+    it('the caller that WINS the flip commits the outbox event once + sends the emails inline (B6 + founder restore)', async () => {
       m.booking.updateMany.mockResolvedValue({ count: 1 }); // transition + guard both win
       m.booking.findUnique.mockResolvedValue(confirmable());
+      const emailJob = jest
+        .spyOn(svc, 'runConfirmationEmailJob')
+        .mockResolvedValue(undefined);
+      const noticeJob = jest
+        .spyOn(svc, 'runOperatorNoticeJob')
+        .mockResolvedValue(undefined);
 
       await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
 
       // B6: the winner commits the `booking.confirmed` domain event in the SAME
-      // transaction as the mark-first guard - the email/CAPI/reminder jobs ride
-      // the outbox relay, NOTHING customer-facing fires inline anymore.
+      // transaction as the mark-first guard; the queued jobs are the durable
+      // retry backstop. Founder restore (2026-07-25): the EMAILS also send
+      // INLINE right here (guard columns make the later job a no-op); CAPI and
+      // the reminder stay queue-only.
       expect(m.outboxEvent.create).toHaveBeenCalledTimes(1);
       expect(m.outboxEvent.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -2403,9 +2411,24 @@ describe('BookingsService', () => {
           }),
         }),
       );
+      expect(emailJob).toHaveBeenCalledWith('b1');
+      expect(noticeJob).toHaveBeenCalledWith('b1');
       expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
-      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
       expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('an inline email failure never fails the confirmation (the queued job retries it)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(confirmable());
+      jest
+        .spyOn(svc, 'runConfirmationEmailJob')
+        .mockRejectedValue(new Error('mail down'));
+      jest.spyOn(svc, 'runOperatorNoticeJob').mockResolvedValue(undefined);
+
+      await expect(
+        svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' }),
+      ).resolves.toBeUndefined();
+      expect(m.outboxEvent.create).toHaveBeenCalledTimes(1); // backstop committed
     });
 
     it('reconciles every EUR figure onto the PSP charge rate when one is supplied (5C)', async () => {
@@ -2653,6 +2676,43 @@ describe('BookingsService', () => {
         payments: [], // included by list() for the paymentStatus derivation
         ...over,
       });
+
+    it('translates the FORFEITED display-status filter to its defining predicate', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list(
+        { status: 'FORFEITED' },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const where = prisma.booking.findMany.mock.calls.at(-1)[0].where;
+      expect(where.status).toBe(BookingStatus.CANCELLED);
+      expect(where.utcForfeitedAt).toEqual({ not: null });
+    });
+
+    it('translates NON_PAYMENT_REPORTED to confirmed + pending report', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list(
+        { status: 'NON_PAYMENT_REPORTED' },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const where = prisma.booking.findMany.mock.calls.at(-1)[0].where;
+      expect(where.status).toBe(BookingStatus.CONFIRMED);
+      expect(where.utcNonPaymentReportedAt).toEqual({ not: null });
+      expect(where.utcForfeitedAt).toBeNull();
+    });
+
+    it('passes raw enum statuses through unchanged (CANCELLED includes forfeited)', async () => {
+      prisma.booking.count.mockResolvedValue(0);
+      prisma.booking.findMany.mockResolvedValue([]);
+      await svc.list(
+        { status: BookingStatus.CANCELLED },
+        { id: 'admin-1', role: Role.ADMIN },
+      );
+      const where = prisma.booking.findMany.mock.calls.at(-1)[0].where;
+      expect(where.status).toBe(BookingStatus.CANCELLED);
+      expect(where.utcForfeitedAt).toBeUndefined();
+    });
 
     it('maps the list row (tourName, partySize, deadline, window verdict)', async () => {
       prisma.booking.count.mockResolvedValue(1);

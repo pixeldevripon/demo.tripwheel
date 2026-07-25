@@ -1127,6 +1127,13 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     hooks/API wired, lists invalidate. No traveller/operator emails in v1 (§15 mandates none;
     logged loudly server-side). Backend 1594+8 tests green incl. 5 forfeit unit tests + 3
     display-status cases; dashboard tsc/eslint clean.
+    FILTER ADDENDUM (founder, same day): the bookings-list status filter now accepts the
+    DERIVED display statuses - `GET /bookings?status=` takes FORFEITED (cancelled +
+    utcForfeitedAt), NON_PAYMENT_REPORTED (confirmed + pending report), and
+    CANCELLATION_REQUESTED (confirmed + pending request), translated server-side to their
+    defining predicates; raw enum values pass through unchanged (CANCELLED still INCLUDES
+    forfeited rows - derived options are refinements, not a partition). Dashboard status
+    select lists all of them with the shared status-map labels. 3 new list-filter tests.
 10j. D decisions logged 2026-07-25: **discount/coupon engine DEFERRED by founder** ("we dont
     need discount at this moment"); **age-restriction validation CLOSED as-is** ("keep it
     simple as is" - tour min-age only, band max/coverage checks deliberately not built);
@@ -1159,12 +1166,16 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     commission throws bullmq `UnrecoverableError` (loud failed-set entry, no retry loop).
     Reminder consumer is a state-checked STUB until the founder supplies the template
     (delayed plumbing live, guard column ready). Refund job re-invokes the idempotent
-    executeRefund. NOTHING customer-facing fires inline at confirm anymore (provisioning
-    stays fire-and-forget; cancellation emails stay inline by design - traveller-initiated,
+    executeRefund. FOUNDER RESTORE (same day): confirm-time EMAILS send
+    INLINE again (immediate delivery) - `finalizeConfirmation` calls
+    `runConfirmationEmailJob`/`runOperatorNoticeJob` directly in a local try/catch; the
+    queued jobs remain the DURABLE RETRY BACKSTOP. The shared guard columns compose the two:
+    inline success stamps the guard -> the later job no-ops; inline failure leaves it null ->
+    the job retries with backoff. CAPI + pre-tour reminder stay QUEUE-ONLY. Provisioning
+    stays fire-and-forget; cancellation emails stay inline by design (traveller-initiated,
     must surface failures). Sweeper/payout stay as their existing idempotent crons (already
-    off-inline; re-architecting them onto delayed jobs adds risk, not durability). SUPERSEDES
-    the "Email is NOT queued" contract for CONFIRM-time sends only; the TYP resend +
-    cancellation-request paths still send inline and throw to the caller. 19 new tests
+    off-inline; re-architecting them onto delayed jobs adds risk, not durability). The TYP
+    resend + cancellation-request paths still send inline and throw to the caller. 19 new tests
     (6 relay, 6 processor, 7 job-runner/finalize contract). Suite 1613/76 green.
     **B PHASE COMPLETE. NEXT = C3 #82 (booking-lookup login), then C4 WhatsApp #59/#60.**
 

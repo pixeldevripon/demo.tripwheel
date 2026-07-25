@@ -1220,12 +1220,22 @@ export class BookingsService {
       await this.writeSettlement(updated, totalEur, commissionAmount, fxRate);
     }
 
-    // B6: the confirmation email, operator notice, CAPI conversion, and
-    // pre-tour reminder now ride the `booking.confirmed` outbox row committed
-    // with the guard above - the relay enqueues them as durable, retried,
-    // idempotent jobs (PlatformJobsProcessor calls the run*Job methods below).
-    // Nothing customer-facing fires inline here anymore, so a mail-provider
-    // blip can never lose an email or block a webhook response.
+    // Founder (2026-07-25): confirm-time EMAILS send INLINE so they land the
+    // moment the booking confirms - the queued jobs (enqueued via the outbox
+    // row committed above) remain the DURABLE RETRY BACKSTOP. The shared guard
+    // columns make the two compose: a successful inline send stamps the guard,
+    // so the later job no-ops; a failed inline send leaves it null, so the job
+    // retries with backoff. CAPI + the pre-tour reminder stay queue-only.
+    try {
+      await this.runConfirmationEmailJob(updated.id);
+    } catch {
+      // Logged inside; the queued job retries with backoff.
+    }
+    try {
+      await this.runOperatorNoticeJob(updated.id);
+    } catch {
+      // Logged inside; the queued job retries with backoff.
+    }
 
     // Customer account provisioning (welcome email + booking backfill-link).
     // Winner branch only, so it fires once per booking; fire-and-forget - it
