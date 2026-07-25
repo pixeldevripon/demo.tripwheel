@@ -16,6 +16,7 @@ import {
 import { localizeHref, type Currency, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
+import { readAttribution } from '@/lib/tracking/attribution';
 import { storeTravelerSession } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -223,6 +224,9 @@ export function CheckoutForm({
                 ...reserveSelection,
                 ...pickupFields(),
                 notes: contact.special.trim() || undefined,
+                // Ad click ids + UTM captured on the landing page (master 8.1.6);
+                // written onto the booking on first reserve only.
+                attribution: readAttribution() ?? undefined,
             });
 
             const { firstName, lastName } = splitName(contact.fullName);

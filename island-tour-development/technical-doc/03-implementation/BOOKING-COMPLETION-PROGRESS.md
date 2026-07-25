@@ -45,7 +45,7 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 
 | Stage | Status | Remaining |
 |---|---|---|
-| Booking / reserve | 🟢 ~95% | attribution (utm/gclid) not captured at reserve; age-restriction validation partial |
+| Booking / reserve | 🟢 ~97% | attribution (utm/gclid) now captured at reserve (#81); age-restriction validation partial |
 | Payment (card / PayPal / iDEAL) | 🟢 ~90% | Mollie webhook is a stub; payment-succeeds-after-hold-expired reconciliation |
 | Confirmation email | 🟡 ~75% | Resend transport live (2026-07-19); no invoice attachment; sent inline not queued |
 | Operator payment-link email | 🔴 not built | second `operator_link` balance email (names operator + secure link) |
@@ -532,9 +532,38 @@ only differences. 1038 tests / 48 suites green.
 - [ ] D7 Affiliate postback job (delayed, approve after window)
 - [ ] D8 Retries + exponential backoff, keep failed jobs (no silent drop)
 
-### E. Tracking / analytics (0/8)
-- [ ] E1 `booking_complete` browser push on TYP (once; prod-only guard)
-- [ ] E2 Fire-point reconciliation: add `conversion_pushed_at` guard (separate from `conversion_fired_at`)
+### E. Tracking / analytics (4/8)
+- [x] **E1 `booking_complete` browser push on TYP** (2026-07-25, task #42). The TYP server
+  component (`ThankYouBody`) claims the push mark-first via `claimConversionPush` (server-side POST,
+  forwards the HttpOnly traveler session) and passes the payload to the `<ConversionPush>` client
+  leaf, which pushes `booking_complete` to `window.dataLayer` once per load. Master 8.2 architecture:
+  server marks before render, client pushes (a push that never runs = accepted false negative). Gated
+  on `verified`; value = EUR commission (rule #22); `event_id` = publicRef (matches server CAPI for
+  dedup). Staging guard = `NEXT_PUBLIC_ENABLE_TRACKING === 'true'` (prod-only; both prod+staging are
+  NODE_ENV=production, added to both frontend env examples). Client de-dupe is a module-level Set (NOT
+  localStorage, 8.1 item 5); the real once-guard is E2's server `conversion_pushed_at`. `Code:`
+  `lib/tracking/booking-complete.ts`, `components/frontend/thank-you/conversion-push.tsx`,
+  `lib/api/public/bookings.ts:claimConversionPush`, `lib/api/public/fetch.ts:publicPost`, TYP `page.tsx`.
+  Frontend prod build green; tsc + eslint clean. GTM fan-out (A5) + hashed PII (A3) + click ids (A2)
+  are the remaining enrichment of the SAME push.
+- [x] **E2 Fire-point reconciliation: `conversion_pushed_at` guard** (2026-07-25, task #39).
+  New nullable `Booking.conversionPushedAt` column (migration
+  `20260725044039_add_conversion_pushed_at_browser_push_guard`), SEPARATE from
+  `conversionFiredAt` (that one is already set at webhook/settle confirm in `finalizeConfirmation`,
+  so a browser push gated on it would never fire). The `booking_complete` payload was REMOVED from
+  the plain `GET typ/:publicRef` (that GET is also the /payment/processing poller, so returning it
+  double-fired the pixel on refresh) and is now served ONCE, mark-first, by a dedicated
+  `POST /bookings/typ/:publicRef/conversion` (`claimConversionPush`): verified-session + CONFIRMED +
+  non-null-commission gated, `updateMany({where:{id, conversionPushedAt:null}})` -> winner gets the
+  payload, everyone else gets `{conversion:null}`. `eventId` stays `publicRef` (MUST match the server
+  CAPI `event_id` in `fireConversion` for Meta dedup). Data-corruption (confirmed + null commission)
+  logs + fires nothing + does NOT burn the guard. `Code:` `bookings.service.ts:claimConversionPush`
+  + `buildConversionPayload`, `bookings.controller.ts:claimConversion`, `booking.dto.ts:ConversionPushResponseDto`,
+  `bookings.swagger.ts:ApiClaimConversionDocs`. Frontend types synced (removed `conversion` from
+  `TypResponse`/poller `ThankYouBooking` + dead `commissionAmountEur`). Tests: 7 new cases (winner/loser/
+  unverified/not-confirmed/null-commission/404 + GET-drops-conversion). Full backend suite green
+  (1477/67). NOTE vs master 8.2: master conflates this with `conversion_fired_at`; here they are two
+  distinct guards (server fire at confirm vs browser push at TYP) - master wording needs that split.
 - [x] **E3 Real-TYP payload** (2026-07-16). Backend `getThankYou` + `ThankYouResponseDto` expanded
   (guest name/phone, party grouped by age band, deposit/balance + paymentModel, card brand/last4,
   durationMinutes, cancellationHours, computed free-cancel deadline local+UTC, operator contact via
@@ -545,7 +574,15 @@ only differences. 1038 tests / 48 suites green.
   correct (start `2026-07-24T13:30` - 48h = `2026-07-22T13:30`).
   `Code:` `bookings.service.ts:getThankYou`, `dto/booking.dto.ts`, `lib/thank-you/thank-you.ts`,
   `lib/api/public/bookings.ts`, TYP `page.tsx`
-- [ ] E4 Attribution captured at reserve (utm/gclid/gbraid/wbraid/fbclid + affiliate)
+- [x] **E4 Attribution captured at reserve** (2026-07-25, task #81). `AttributionDto`
+  (gclid/gbraid/wbraid/fbclid + 5 UTM) on `ReserveBookingDto`; written onto the booking at creation
+  only (idempotent re-reserve never overwrites). Frontend `<AttributionCapture>` (in the (frontend)
+  layout) reads the landing-URL params into the `it.attribution` first-party cookie (last-click wins,
+  persists through the funnel); the checkout reserve call threads it in. Generic `clickId` column
+  RENAMED -> `gclid` to match master E.8/8.3 (migration `20260725045827_...`, RENAME not drop+add).
+  Affiliate id excluded (promo-code path). `Code:` `lib/tracking/attribution.ts`,
+  `components/frontend/attribution-capture.tsx`, `bookings.service.ts:reserve`, `AttributionDto`.
+  3 backend tests; backend suite green (1480/67), frontend build green.
 - [ ] E5 Server-side PII hashing (SHA-256 email/phone/name/address) for EC/AM
 - [ ] E6 Meta CAPI (server, parallel to Pixel, dedup by shared event id) - needs external creds
 - [ ] E7 GTM container + 4-tag fan-out - needs GTM container id
@@ -776,12 +813,17 @@ Order per founder: PRICE1 first, then the listing pages, then resume #42/#39 tra
 Dependency-ordered plan to clear every remaining `[ ]`/`[~]` across BOOKING-CHECKLIST,
 BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; skip and continue.
 
-**Phase A - Tracking & conversion (resume point; tasks #42/#39, #43-#45)**
-1. A1 = #42+#39: `booking_complete` dataLayer push on the TYP, fired ONCE per booking - server-side
-   `conversion_pushed_at` guard (fire-point reconciliation), value = EUR `commission_amount`
-   (rule #22, CONFIRMED + non-null commission only; corrupt -> render error, no push).
-2. A2: click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at reserve (columns exist, flaw 9) +
-   decide the `gclid` vs generic `clickId` column question.
+**Phase A - Tracking & conversion (resume point; tasks #43-#45; #39 + #42 DONE)**
+1. [x] A1 = #42+#39 (DONE 2026-07-25): `booking_complete` dataLayer push on the TYP, fired ONCE per
+   booking. Backend #39: new `conversion_pushed_at` guard (separate from `conversion_fired_at`),
+   payload moved off the GET into mark-first `POST typ/:publicRef/conversion`. Frontend #42: TYP
+   server component claims mark-first + `<ConversionPush>` client leaf pushes to dataLayer once
+   (prod-only via `NEXT_PUBLIC_ENABLE_TRACKING`; value = EUR commission, rule #22; corrupt = no push).
+   Backend suite green (1477/67); frontend build + tsc + eslint green. **NEXT resume point = A2.**
+2. [x] A2 = #81 (DONE 2026-07-25): click-id (gclid/gbraid/wbraid/fbclid) + UTM captured at reserve.
+   `AttributionDto` + reserve write (creation-only); frontend landing-URL capture -> `it.attribution`
+   cookie -> checkout payload. Column question resolved: `clickId` RENAMED -> `gclid` (master E.8/8.3).
+   Backend 1480/67 green; frontend build green. **NEXT resume point = A3 (#43).**
 3. A3 = #43: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
    Matching payloads.
 4. A4 = #44: Meta CAPI server-side send (dedup by event id; inline first, queued in B6).

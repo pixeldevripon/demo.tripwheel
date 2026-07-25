@@ -32,7 +32,17 @@ These are ranked. Each is expanded in its section below.
 6. [x] **`OPERATOR_FULL` rejected in v1.** `loadContext` throws `422` for an OPERATOR_FULL tour, so neither reserve nor quote can create a confirmed payment-free booking. `Ref:` [Settlement Part 2](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#part-2---locked-decision-founder-2026-07-15) · `Code:` `bookings.service.ts:loadContext`. Test updated.
 7. [~] **Mollie webhook is a stub.** It records the event but never confirms the booking; Mollie-paid bookings never reach CONFIRMED. `Ref:` [Guide §16](./BOOKING-FLOW-DESIGN-GUIDE.md#16-api-surface) · `Code:` `payments.service.ts:handleMollieWebhook`
 8. [ ] **No settlements ledger.** Required in v1 for `paid_in_full` payout and future extension. `Ref:` [Settlement - ledger](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#the-settlements-ledger-build-in-v1-extend-later)
-9. [ ] **Attribution never captured at reserve.** utm/click-id/affiliate columns exist but are not in the DTO or written; conversion adjustments and affiliate attribution break. `Ref:` [Guide §3 Booking](./BOOKING-FLOW-DESIGN-GUIDE.md#3-core-entities), [Tracking](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#tracking-stays-unchanged) · `Code:` `bookings.service.ts:reserve`, `dto/booking.dto.ts:ReserveBookingDto`
+9. [x] **Attribution captured at reserve.** DONE 2026-07-25 (task #81). `AttributionDto`
+   (gclid/gbraid/wbraid/fbclid + 5 UTM, all optional, length-capped) on `ReserveBookingDto`; the
+   reserve service writes them onto the booking at CREATION only (the idempotent re-reserve
+   early-return never overwrites the original). Frontend captures them from the landing URL into a
+   first-party `it.attribution` cookie (`lib/tracking/attribution.ts`, last-click wins per param,
+   90-day, persists through the funnel) via `<AttributionCapture>` mounted in the (frontend) layout,
+   and the checkout reserve call reads the cookie into the payload. `Code:`
+   `bookings.service.ts:reserve`, `dto/booking.dto.ts:AttributionDto`,
+   `lib/tracking/attribution.ts`, `components/frontend/attribution-capture.tsx`, `checkout-form.tsx`.
+   Tests: 3 backend cases (write / re-reserve-preserves / organic-null). Affiliate id is NOT part of
+   this (it rides the promo-code path, separate).
 
 ---
 
@@ -49,7 +59,10 @@ These are ranked. Each is expanded in its section below.
 - [x] **Source-currency fields on `Booking`** (sourceCurrency, sourceTotalRetail, sourceDepositAmount, sourceBalanceAmount, sourceFxRateToBooking + FX audit: sourceFx/eurFx provider+asOf). `Ref:` [Guide §20.2](./BOOKING-FLOW-DESIGN-GUIDE.md#202-add-booking-schema-snapshots) · `Code:` `prisma/bookings.prisma:Booking` (migration `20260715221643_multi_currency_fx_rates_and_source_snapshots`)
 - [x] **`FxRate` table** (provider-backed rates, refresh, expiry, isActive history). `Ref:` [Guide §20.1](./BOOKING-FLOW-DESIGN-GUIDE.md#201-build-provider-backed-fx-rates) · `Code:` `prisma/fx.prisma:FxRate`
 - [ ] **`BookingQuote` model** (if quote is DB-backed). `Ref:` [Guide §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · ABSENT
-- [~] **Distinct `gclid` column.** Only a generic `clickId` exists; the tracking spec names `gclid` separately. Decide whether to rename/split. `Ref:` [Guide §3 Booking](./BOOKING-FLOW-DESIGN-GUIDE.md#3-core-entities) · `Code:` `prisma/bookings.prisma:clickId`
+- [x] **Distinct `gclid` column.** DECIDED + DONE 2026-07-25 (task #81): renamed the generic
+  `clickId` -> `gclid` to match master E.8 / 8.3 (migration `20260725045827_...`, a `RENAME COLUMN`
+  not drop+add - the field had zero readers so no data lost). `gbraid`/`wbraid`/`fbclid` already
+  existed. `Code:` `prisma/bookings.prisma:gclid`
 
 ---
 
@@ -178,7 +191,7 @@ These are ranked. Each is expanded in its section below.
 - [x] **Null `commissionAmount` on confirmed booking treated as data corruption -> no conversion.** `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · `Code:` `bookings.service.ts:getThankYou/finalizeConfirmation`
 - [x] **Mark-first idempotency via `conversionFiredAt` (DB, not localStorage).** `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · `Code:` `bookings.service.ts:finalizeConfirmation`
 - [x] **Conversion value = `commissionAmount` EUR, never GMV.** `Ref:` [Guide §9 tracking value](./BOOKING-FLOW-DESIGN-GUIDE.md#9-pricing-and-commission-logic), [Settlement - tracking](../02-architecture/SETTLEMENT-AND-PAYOUTS.md#tracking-stays-unchanged) · `Code:` `tracking.service.ts`
-- [ ] **Click-id (gclid/gbraid/wbraid/fbclid) + UTM captured at reserve.** Columns exist, not wired. `Ref:` [Guide §3 Booking](./BOOKING-FLOW-DESIGN-GUIDE.md#3-core-entities) · `Code:` `bookings.service.ts:reserve` (see flaw 9)
+- [x] **Click-id (gclid/gbraid/wbraid/fbclid) + UTM captured at reserve.** DONE 2026-07-25 (task #81; see flaw 9). `Code:` `bookings.service.ts:reserve`, `lib/tracking/attribution.ts`
 - [ ] **One `booking_complete` -> 4 GTM tags + Meta CAPI (server-side, dedup by event id).** `Ref:` [Guide §12](./BOOKING-FLOW-DESIGN-GUIDE.md#12-thank-you-page-and-tracking) · frontend GTM + CAPI job pending
 
 ---
@@ -392,22 +405,30 @@ The booking->payment->processing->TYP **money flow** is aligned with §8.2 (proc
 The **analytics half of §8.2/§8.3 is NOT built**, and there is one correctness risk to
 reconcile before it is:
 
-- [ ] **1. `booking_complete` browser push on the TYP.** Master §8.2/§8.3: the TYP server
-  component hashes PII + sets `conversion_fired_at` before render (mark-first), the client
-  pushes `booking_complete` **once** (prod only, staging guard), GTM fans out to Conversion
-  Linker / Google Ads / GA4 purchase / Meta Pixel, and CAPI posts server-side with the shared
-  event id. **None of this exists** (tracking module is "to build"; TYP still renders demo data).
+- [~] **1. `booking_complete` browser push on the TYP.** Push itself DONE 2026-07-25 (task #42):
+  the TYP server component claims the push mark-first (`claimConversionPush`, forwarding the traveler
+  session) and the `<ConversionPush>` client leaf pushes `booking_complete` to `window.dataLayer`
+  once per load (prod-only via `NEXT_PUBLIC_ENABLE_TRACKING`, EUR commission value, `event_id` =
+  publicRef for CAPI dedup). `Code:` `lib/tracking/booking-complete.ts`,
+  `components/frontend/thank-you/conversion-push.tsx`, TYP `page.tsx`. REMAINING on this line: the
+  hashed-PII fields (#43), click ids (#81), GTM container fan-out to Conversion Linker / Google Ads /
+  GA4 / Meta Pixel (#45, blocked on founder creds), and server CAPI dedup (#44).
 
-- [ ] **2. FIRE-POINT RECONCILIATION (do this first - double-fire risk).** We set
-  `conversion_fired_at` and fire the conversion at **webhook-confirm** (server,
-  `finalizeConfirmation`), *before any TYP visit*. Master fires at **TYP render** (mark-first)
-  via the **browser** push. These are incompatible as-is: a browser push gated on
-  `conversion_fired_at` would **never fire** (already set at confirm), and `getThankYou`
-  currently returns the `conversion` payload on **every** visit with no once-guard -> the
-  client pixel would **double-fire** (violates §8.1 item 5). Fix when wiring tracking: keep
-  the server CAPI at confirm, and add a **separate** "browser-push delivered" guard
-  (e.g. `conversion_pushed_at`) so the TYP push fires exactly once, independent of the
-  server-side `conversion_fired_at`.
+- [x] **2. FIRE-POINT RECONCILIATION (double-fire risk).** DONE 2026-07-25 (task #39). The server
+  CAPI + email still fire at webhook/settle-confirm (`finalizeConfirmation`, guarded by
+  `conversion_fired_at`); the **browser** push now has its OWN guard, new nullable
+  `Booking.conversionPushedAt` (migration `20260725044039_...`), so it is independent of the
+  already-set `conversion_fired_at`. The `conversion` payload was **removed from `GET typ/:publicRef`**
+  (that GET is also the /payment/processing poller, so returning it double-fired the pixel on refresh -
+  §8.1 item 5) and is now served ONCE, mark-first, by **`POST typ/:publicRef/conversion`**
+  (`claimConversionPush`): verified-session + CONFIRMED + non-null-commission gated,
+  `updateMany({where:{id, conversionPushedAt:null}})` picks the single winner, everyone else gets
+  `{conversion:null}`. Dedicated endpoint (not the GET) so the poller can't consume the one push.
+  `eventId` = `publicRef` (matches the server CAPI `event_id` for Meta dedup). `Code:`
+  `bookings.service.ts:claimConversionPush`, `bookings.controller.ts:claimConversion`,
+  `booking.dto.ts:ConversionPushResponseDto`. Tests: 7 new (winner/loser/unverified/not-confirmed/
+  null-commission/404 + GET-drops-conversion); backend suite green (1477/67). The browser push that
+  CONSUMES this endpoint is item 1 (task #42, next).
 
 - [ ] **3. Operator balance email (`operator_link`).** Master §6: on `operator_link` a
   **second** operator-balance email follows the Island Tours confirmation. The IT confirmation

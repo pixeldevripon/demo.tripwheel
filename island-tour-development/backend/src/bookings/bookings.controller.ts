@@ -34,6 +34,7 @@ import {
 import {
   ApiCalendarDocs,
   ApiCancelDocs,
+  ApiClaimConversionDocs,
   ApiConfirmDocs,
   ApiCustomerCancellationRequestDocs,
   ApiCustomerSummaryDocs,
@@ -177,6 +178,31 @@ export class BookingsController {
     @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
   ) {
     return this.bookings.getThankYou(publicRef, sessionToken);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/conversion
+   *
+   * Serves the one-time `booking_complete` push payload, mark-first (master 8.2):
+   * the first verified TYP render wins the payload, every later call returns
+   * `{ conversion: null }`. A dedicated endpoint - NOT the plain GET above, which
+   * the /payment/processing poller also hits - so the poll can never consume the
+   * single push. Requires the traveler session (business-sensitive commission
+   * value); browser-only, throttled to a human pace per publicRef.
+   */
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 5, ttl: 60_000 },
+    long: { limit: 20, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/conversion')
+  @Public()
+  @ApiClaimConversionDocs()
+  claimConversion(
+    @Param('publicRef') publicRef: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.claimConversionPush(publicRef, sessionToken);
   }
 
   /**

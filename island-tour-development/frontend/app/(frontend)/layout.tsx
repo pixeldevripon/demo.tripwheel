@@ -1,5 +1,6 @@
 import Script from 'next/script';
 
+import { AttributionCapture } from '@/components/frontend/attribution-capture';
 import { SmoothScroll } from '@/components/frontend/smooth-scroll';
 import { getPublicSiteSeo } from '@/lib/api/public/settings';
 
@@ -35,6 +36,9 @@ export default async function FrontendLayout({
                 />
             )}
             {/*   <SmoothScroll /> */}
+            {/* Captures ad click ids + UTM from the landing URL for booking
+                attribution (master 8.1.6); renders nothing. */}
+            <AttributionCapture />
             {children}
         </div>
     );

@@ -94,6 +94,7 @@ import {
 } from './booking-email.context';
 import { buildBookingIcs } from './booking-ics.util';
 import type {
+  BookingConversionDto,
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
   CancelBookingDto,
@@ -534,6 +535,18 @@ export class BookingsService {
               : null,
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
+          // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
+          // the idempotent re-reserve early-return above never overwrites the original
+          // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
+          gclid: dto.attribution?.gclid ?? null,
+          gbraid: dto.attribution?.gbraid ?? null,
+          wbraid: dto.attribution?.wbraid ?? null,
+          fbclid: dto.attribution?.fbclid ?? null,
+          utmSource: dto.attribution?.utmSource ?? null,
+          utmMedium: dto.attribution?.utmMedium ?? null,
+          utmCampaign: dto.attribution?.utmCampaign ?? null,
+          utmTerm: dto.attribution?.utmTerm ?? null,
+          utmContent: dto.attribution?.utmContent ?? null,
           // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
           // engine, a client-supplied discount is untrusted, so we never write one -
           // the full price stays authoritative. Wire this when the coupon engine exists.
@@ -2293,24 +2306,11 @@ export class BookingsService {
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
-    const confirmed = booking.status === BookingStatus.CONFIRMED;
-    const conversion =
-      confirmed && booking.commissionAmount != null
-        ? {
-            event: 'Purchase',
-            eventId: booking.publicRef,
-            currency: 'EUR',
-            value: booking.commissionAmount.toString(),
-            contentId: booking.tourId,
-            contentName: booking.tour?.name ?? null,
-          }
-        : null;
-
-    if (confirmed && conversion == null) {
-      this.logger.error(
-        `TYP for ${booking.displayRef}: confirmed booking has null commissionAmount - no conversion`,
-      );
-    }
+    // NOTE: the booking_complete conversion payload is deliberately NOT returned
+    // here. This GET is hit on every TYP render AND by the /payment/processing
+    // poller, so returning it would let the browser pixel double-fire on refresh
+    // (master 8.1 item 5). The single browser push is served, mark-first, by the
+    // dedicated `claimConversionPush` (POST typ/:publicRef/conversion) instead.
 
     // Group the per-traveler unit items into party lines ("2 x Adult"). UNIT-priced
     // tours carry no age bands (ageBandId null) and collapse into one "Guest" line.
@@ -2463,11 +2463,108 @@ export class BookingsService {
       // HERE - the full guest email never leaves the backend, even to the
       // verified owner's own page (booking screens get screenshotted/shared).
       contactEmail: verified ? maskEmail(booking.contactEmail) : null,
-      // Commission take-rate is business-sensitive: only the verified booker's
-      // page fires the conversion (they are always verified - checkout set the
-      // session before the redirect), so a shared link leaks nothing and
-      // cannot re-fire pixels.
-      conversion: verified ? conversion : null,
+    };
+  }
+
+  /**
+   * Serve the browser `booking_complete` push payload EXACTLY ONCE per booking
+   * (master 8.2), then mark it consumed. The TYP server render calls this before
+   * streaming the page; the first caller (mark-first winner) receives the payload
+   * to push into the dataLayer, and every later caller - a refresh, a second tab,
+   * the celebratory render followed by a later management render, a shared link -
+   * receives `{ conversion: null }` and pushes nothing.
+   *
+   * WHY A DEDICATED ENDPOINT, NOT THE PLAIN GET: the /payment/processing poller
+   * hits `GET typ/:publicRef`. Marking-first there would let the poll consume the
+   * one push, so the real TYP render would push nothing.
+   *
+   * WHY A SEPARATE GUARD (`conversionPushedAt`, not `conversionFiredAt`): the
+   * server fire (CAPI + confirmation email) already set `conversionFiredAt` at
+   * confirm/settle. A browser push gated on it would never fire.
+   *
+   * VERIFIED-GATED: the conversion value is the commission take-rate (business-
+   * sensitive), so a shared publicRef link never fires it. The fresh booker is
+   * always verified (checkout set the session before the redirect).
+   */
+  async claimConversionPush(
+    publicRef: string,
+    sessionToken?: string | null,
+  ): Promise<{ conversion: BookingConversionDto | null }> {
+    // Per-target throttle (mirrors resend/settle): the browser calls this once,
+    // but a hostile multi-IP caller must not hammer one booking's endpoint.
+    this.targetLimiter.consume('conversion-push', publicRef, [
+      { max: 5, windowMs: 60_000 },
+    ]);
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        id: true,
+        publicRef: true,
+        displayRef: true,
+        status: true,
+        commissionAmount: true,
+        tourId: true,
+        contactEmail: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    // Verified owner only - never fire for a bare shared link.
+    const verified = sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+      id: booking.id,
+      contactEmail: booking.contactEmail,
+    });
+    if (!verified) return { conversion: null };
+
+    // Only a CONFIRMED booking with a non-null EUR commission is a real
+    // conversion (rule #22). Neither non-confirmed nor null-commission burns the
+    // guard: a not-yet-confirmed race can fire on a later call, and a null
+    // commission is data corruption to repair, not to silently swallow forever.
+    if (booking.status !== BookingStatus.CONFIRMED) return { conversion: null };
+    if (booking.commissionAmount == null) {
+      this.logger.error(
+        `Conversion push for ${booking.displayRef}: confirmed booking has null commissionAmount - not fired (data corruption)`,
+      );
+      return { conversion: null };
+    }
+
+    // Mark-first: exactly one caller flips `conversionPushedAt` from null and
+    // wins the payload; all others get null (master 8.2 idempotency). A push that
+    // never executes (tab closed before hydration) is an accepted false negative,
+    // never a double fire.
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, conversionPushedAt: null },
+      data: { conversionPushedAt: new Date() },
+    });
+    if (count === 0) return { conversion: null };
+
+    return { conversion: this.buildConversionPayload(booking) };
+  }
+
+  /**
+   * The browser `booking_complete` payload for a confirmed booking. `eventId` is
+   * the booking `publicRef` - it MUST match the server CAPI `event_id`
+   * (`fireConversion`) so Meta deduplicates the browser Pixel against the CAPI
+   * event (master 8.1 item 4). The GA4 transaction id (`display_ref`, master 8.3
+   * `booking_ref`) and hashed PII / click ids are layered on by the later
+   * A-phase tasks; A1 ships the value + dedup id.
+   */
+  private buildConversionPayload(booking: {
+    publicRef: string;
+    commissionAmount: Prisma.Decimal | null;
+    tourId: string;
+    tour: { name: string } | null;
+  }): BookingConversionDto | null {
+    if (booking.commissionAmount == null) return null;
+    return {
+      event: 'Purchase',
+      eventId: booking.publicRef,
+      currency: 'EUR',
+      value: booking.commissionAmount.toString(),
+      contentId: booking.tourId,
+      contentName: booking.tour?.name ?? null,
     };
   }
 

@@ -133,12 +133,6 @@ export interface ThankYouBooking {
     /** ISO start/end used for the add-to-calendar link. */
     startsAtIso: string;
     endsAtIso: string;
-    /**
-     * Conversion value in EUR (critical rule 22: `commission_amount`, never
-     * GMV). A CONFIRMED booking with null commission is data corruption - the
-     * tracking module must fire NO conversion for it.
-     */
-    commissionAmountEur: number | null;
     apartment: ThankYouApartment;
 }
 
@@ -381,9 +375,6 @@ export async function getThankYouBooking(
         // lands at the destination's 8am regardless of the traveller's zone).
         startsAtIso: start ? `${typ.localDate}T${typ.startTime}:00` : '',
         endsAtIso: end ? `${typ.localDate}T${typ.endTime}:00` : '',
-        // Rule #22: EUR commission, never GMV. Null (no conversion) unless the
-        // booking is CONFIRMED with a valid commission - the backend gates this.
-        commissionAmountEur: typ.conversion ? Number(typ.conversion.value) : null,
         apartment: APARTMENT_PROMO,
     };
 }

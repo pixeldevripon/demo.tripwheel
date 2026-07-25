@@ -385,14 +385,26 @@ export class ThankYouResponseDto {
 
   @ApiProperty({ type: ThankYouOperatorDto })
   operator!: ThankYouOperatorDto;
+  // NOTE: the booking_complete `conversion` payload is intentionally NOT on this
+  // GET. It is served ONCE, mark-first, by `POST typ/:publicRef/conversion`
+  // (ConversionPushResponseDto) so the browser pixel cannot double-fire across
+  // refreshes / the processing poller (master 8.1 item 5, 8.2).
+}
 
+/**
+ * Response of `POST typ/:publicRef/conversion` (master 8.2). `conversion` is the
+ * one-time `booking_complete` push payload for the mark-first WINNER; every later
+ * caller (refresh, second tab, shared link, non-verified, not-yet-confirmed)
+ * receives `null` and pushes nothing.
+ */
+export class ConversionPushResponseDto {
   @ApiPropertyOptional({
     type: BookingConversionDto,
     nullable: true,
     description:
-      'Present only for a confirmed booking with a valid EUR commission AND ' +
-      'a verified session (the take-rate is business-sensitive; a bare link ' +
-      'must not see it or re-fire pixels); null otherwise.',
+      'The booking_complete push payload, returned to the mark-first winner ' +
+      'exactly once per booking; null on every subsequent call, an unverified ' +
+      'session, a non-confirmed booking, or a null-commission (corrupt) booking.',
   })
   conversion!: BookingConversionDto | null;
 }
@@ -667,6 +679,69 @@ export class ContactDto {
 // Request DTOs
 // ════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Ad click ids + UTM parameters, captured on the landing page and carried to
+ * reserve (master 8.1 item 6 / E.8 / dev spec 14). Snapshotted onto the booking
+ * at creation only - they feed the `booking_complete` push (8.3 `click_ids`) and,
+ * later, offline-conversion + cancellation/refund adjustments to Google Ads/Meta.
+ * All optional and untrusted display strings; length-capped, never interpreted.
+ */
+export class AttributionDto {
+  @ApiPropertyOptional({ description: 'Google Ads click id', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  gclid?: string;
+
+  @ApiPropertyOptional({ description: 'Google iOS web-to-app', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  gbraid?: string;
+
+  @ApiPropertyOptional({ description: 'Google app-to-web', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  wbraid?: string;
+
+  @ApiPropertyOptional({ description: 'Meta click id', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  fbclid?: string;
+
+  @ApiPropertyOptional({ example: 'google', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmSource?: string;
+
+  @ApiPropertyOptional({ example: 'cpc', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmMedium?: string;
+
+  @ApiPropertyOptional({ example: 'summer-2026', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmCampaign?: string;
+
+  @ApiPropertyOptional({ example: 'snorkeling curacao', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmTerm?: string;
+
+  @ApiPropertyOptional({ example: 'hero-cta', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmContent?: string;
+}
+
 export class ReserveBookingDto {
   @ApiPropertyOptional({
     example: 'f8c3de3d-1fea-4d7c-a8b0-29f63c4c3454',
@@ -775,6 +850,18 @@ export class ReserveBookingDto {
   @IsOptional()
   @IsUUID()
   quoteId?: string;
+
+  @ApiPropertyOptional({
+    type: AttributionDto,
+    description:
+      'Ad click ids + UTM captured on the landing page (master 8.1.6). Written ' +
+      'onto the booking at creation only (first reserve); ignored on an idempotent ' +
+      're-reserve so the original attribution is never overwritten.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttributionDto)
+  attribution?: AttributionDto;
 
   // NOTE: couponCode/discountAmount are intentionally NOT accepted (flaw #2). A
   // client-supplied discount is untrusted without a server-side coupon-validation

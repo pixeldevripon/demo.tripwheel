@@ -401,6 +401,57 @@ describe('BookingsService', () => {
       expect(m.booking.create).not.toHaveBeenCalled();
     });
 
+    it('snapshots attribution (click ids + UTM) at creation (master 8.1.6)', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve({
+        ...reserveDto,
+        attribution: {
+          gclid: 'Cj0aBc',
+          fbclid: 'fb.1.123',
+          utmSource: 'google',
+          utmMedium: 'cpc',
+          utmCampaign: 'summer-2026',
+        },
+      });
+      expect(m.booking.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            gclid: 'Cj0aBc',
+            fbclid: 'fb.1.123',
+            gbraid: null,
+            wbraid: null,
+            utmSource: 'google',
+            utmMedium: 'cpc',
+            utmCampaign: 'summer-2026',
+            utmTerm: null,
+            utmContent: null,
+          }),
+        }),
+      );
+    });
+
+    it('never overwrites original attribution on an idempotent re-reserve', async () => {
+      setupReserveContext(prisma);
+      m.booking.findUnique.mockResolvedValue(fakeBooking());
+      await svc.reserve({
+        ...reserveDto,
+        id: 'b1',
+        attribution: { gclid: 'late-click' },
+      });
+      // The prior booking is returned untouched; no create, so no attribution write.
+      expect(m.booking.create).not.toHaveBeenCalled();
+    });
+
+    it('writes null attribution when none is supplied (organic booking)', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve(reserveDto);
+      expect(m.booking.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ gclid: null, utmSource: null }),
+        }),
+      );
+    });
+
     it('rejects when the atomic claim wins 0 rows (sold out)', async () => {
       setupReserveContext(prisma);
       m.departure.updateMany.mockResolvedValue({ count: 0 });
@@ -1490,6 +1541,121 @@ describe('BookingsService', () => {
       expect(res.party).toEqual([
         { ageBandId: 'gone', label: 'Traveler', quantity: 1 },
       ]);
+    });
+  });
+
+  // Browser booking_complete push served ONCE, mark-first, by a dedicated
+  // endpoint (master 8.2) - separate from the plain GET (which the processing
+  // poller also hits) and from `conversionFiredAt` (the server fire at confirm).
+  describe('claimConversionPush (one-time browser push)', () => {
+    const pushable = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        commissionAmount: D('31.99'),
+        tour: { name: 'Sunset Sail' },
+        ...over,
+      });
+
+    it('the plain GET no longer carries the conversion payload (no double-fire vector)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+          tour: { name: 'T', ageBands: [], cancellationHours: 48 },
+          tourStartDateTime: null,
+          tourTimeZone: null,
+          operator: null,
+        }),
+      );
+      const page = await svc.getThankYou(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect('conversion' in page).toBe(false);
+    });
+
+    it('returns the payload to the mark-first WINNER (verified, confirmed, commission present)', async () => {
+      m.booking.findUnique.mockResolvedValue(pushable());
+      m.booking.updateMany.mockResolvedValue({ count: 1 }); // this caller wins the flip
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+
+      expect(conversion).toEqual({
+        event: 'Purchase',
+        eventId: 'p1', // publicRef - MUST match the server CAPI event_id for dedup
+        currency: 'EUR',
+        value: '31.99',
+        contentId: 't1',
+        contentName: 'Sunset Sail',
+      });
+      // Mark-first guard is on conversionPushedAt (NOT conversionFiredAt).
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'b1', conversionPushedAt: null },
+          data: { conversionPushedAt: expect.any(Date) },
+        }),
+      );
+    });
+
+    it('returns null to the LOSER (a refresh / second tab - guard already burned)', async () => {
+      m.booking.findUnique.mockResolvedValue(pushable());
+      m.booking.updateMany.mockResolvedValue({ count: 0 }); // lost the race
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(conversion).toBeNull();
+    });
+
+    it('never fires for a bare (unverified) link and does NOT burn the guard', async () => {
+      m.booking.findUnique.mockResolvedValue(pushable());
+
+      const { conversion } = await svc.claimConversionPush('p1'); // no session
+      expect(conversion).toBeNull();
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('does not fire (or burn the guard) while the booking is not yet CONFIRMED', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        pushable({ status: BookingStatus.ON_HOLD }),
+      );
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(conversion).toBeNull();
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('logs corruption and fires nothing when a confirmed booking has null commission (rule #22)', async () => {
+      const err = jest
+        .spyOn((svc as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      m.booking.findUnique.mockResolvedValue(
+        pushable({ commissionAmount: null }),
+      );
+
+      const { conversion } = await svc.claimConversionPush(
+        'p1',
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(conversion).toBeNull();
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+      expect(err).toHaveBeenCalled();
+      err.mockRestore();
+    });
+
+    it('404s an unknown publicRef', async () => {
+      m.booking.findUnique.mockResolvedValue(null);
+      await expect(
+        svc.claimConversionPush('nope', issueTravelerSession('x@y.test')),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

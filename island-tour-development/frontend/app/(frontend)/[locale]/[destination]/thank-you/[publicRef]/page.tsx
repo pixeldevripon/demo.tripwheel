@@ -5,9 +5,11 @@ import { ThankYouQuestion } from '@/components/frontend/thank-you/thank-you-ques
 import { ThankYouRelatedTours } from '@/components/frontend/thank-you/thank-you-related-tours';
 import { ThankYouSummary } from '@/components/frontend/thank-you/thank-you-summary';
 import { ThankYouVerifyNotice } from '@/components/frontend/thank-you/thank-you-verify-notice';
+import { ConversionPush } from '@/components/frontend/thank-you/conversion-push';
 import { BookingManageHeader } from '@/components/frontend/thank-you/booking-manage-header';
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
+import { claimConversionPush } from '@/lib/api/public/bookings';
 import {
     DEFAULT_LOCALE,
     isLocale,
@@ -115,10 +117,15 @@ async function ThankYouBody({
     // the destination segment like the TYP - the confirmation email links it too.
     const cancelHref = `/cancel/${booking.publicRef}`;
 
-    // Critical rule 22 (for the pending tracking module): conversion value is
-    // `commission_amount` in EUR, never GMV, and only when status is CONFIRMED
-    // with a non-null `commissionAmountEur` - a confirmed booking with null
-    // commission is data corruption and must fire NO conversion.
+    // booking_complete conversion (master 8.2, rule #22): claim the one-time push
+    // server-side, mark-first. The backend hands back the payload ONLY to the first
+    // verified render of a CONFIRMED booking with a non-null EUR commission, and
+    // null on every later call (refresh / second tab / shared link / not-yet-
+    // confirmed). Gated on `verified` so a bare link never even asks. The value is
+    // the EUR commission; a confirmed booking with null commission fires nothing.
+    const conversion = booking.verified
+        ? await claimConversionPush(publicRef, sessionToken)
+        : null;
 
     // Cross-sell + apartment upsell belong to the celebratory moment only; the
     // management/masked views are utilitarian, so skip the fetch there entirely.
@@ -135,6 +142,10 @@ async function ThankYouBody({
 
     return (
         <>
+            {/* One-time booking_complete dataLayer push (renders nothing). Payload
+                is non-null only on the mark-first winning render; a no-op when
+                tracking is disabled. */}
+            <ConversionPush conversion={conversion} />
             {mode === 'celebratory' && (
                 <ThankYouHero booking={booking} dict={dict.thankYou} />
             )}

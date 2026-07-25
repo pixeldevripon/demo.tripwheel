@@ -9,10 +9,15 @@
  * a traveller with a real booking must never be told it does not exist.
  */
 import 'server-only';
-import { publicGetStrict } from './fetch';
+import { publicGetStrict, publicPost } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
-/** Conversion payload (master booking_complete contract; value = EUR commission). */
+/**
+ * Conversion payload (master booking_complete contract; value = EUR commission).
+ * NOT part of the TYP GET - it is served once, mark-first, by the dedicated
+ * `POST typ/:publicRef/conversion` endpoint (wired in A1/#42) so the browser
+ * pixel cannot double-fire across refreshes / the processing poller.
+ */
 export interface TypConversion {
     event: string;
     eventId: string;
@@ -111,7 +116,6 @@ export interface TypResponse {
     freeCancellationDeadlineLocal: string | null;
     freeCancellationDeadlineUtc: string | null;
     operator: TypOperator;
-    conversion: TypConversion | null;
 }
 
 /**
@@ -128,4 +132,26 @@ export function getTypByRef(
         `/bookings/typ/${encodeURIComponent(publicRef)}`,
         sessionToken ? { [TRAVELER_SESSION_HEADER]: sessionToken } : undefined
     );
+}
+
+/**
+ * Claim the one-time `booking_complete` push for a booking (master 8.2).
+ *
+ * Server-side only: forwards the HttpOnly traveler session so the backend can
+ * verify ownership (the value is the commission take-rate, never exposed to a
+ * bare link). The backend serves the payload to the mark-first WINNER and null to
+ * every later caller, so calling this on each TYP render is safe - only the first
+ * ever call returns a payload. Never throws (`publicPost` swallows to null): a
+ * failed or lost claim simply yields no push, an accepted false negative that can
+ * never blank the TYP or double-fire the pixel.
+ */
+export async function claimConversionPush(
+    publicRef: string,
+    sessionToken?: string | null
+): Promise<TypConversion | null> {
+    const res = await publicPost<{ conversion: TypConversion | null }>(
+        `/bookings/typ/${encodeURIComponent(publicRef)}/conversion`,
+        sessionToken ? { [TRAVELER_SESSION_HEADER]: sessionToken } : undefined
+    );
+    return res?.conversion ?? null;
 }

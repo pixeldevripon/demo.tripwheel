@@ -21,6 +21,7 @@ import {
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
   BookingResponseDto,
+  ConversionPushResponseDto,
   CustomerBookingSummaryDto,
   UpdateBookingResponseDto,
   ListBookingsResponseDto,
@@ -160,10 +161,28 @@ export const ApiThankYouDocs = () =>
     ApiOperation({
       summary: 'Thank-you-page payload by publicRef (public TYP token)',
       description:
-        'Drives the noindex TYP route. Returns the `booking_complete` conversion object only for a ' +
-        'confirmed booking with a valid EUR commission (conversion value = commission_amount EUR).',
+        'Drives the noindex TYP route. Does NOT carry the `booking_complete` ' +
+        'conversion payload (this GET is also the /payment/processing poller, so ' +
+        'returning it would double-fire the pixel); the one-time push is served ' +
+        'by `POST typ/:publicRef/conversion` instead.',
     }),
     ApiOkResponse({ type: ThankYouResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+  );
+
+export const ApiClaimConversionDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Claim the one-time booking_complete push (public TYP token)',
+      description:
+        'Mark-first served (master 8.2): the FIRST verified render of a confirmed ' +
+        'booking gets the `booking_complete` payload to push to the dataLayer; every ' +
+        'later call (refresh, second tab, shared link, unverified, non-confirmed, or ' +
+        'null-commission) returns `{ conversion: null }`. Conversion value = ' +
+        'commission_amount in EUR (rule #22). Requires the X-Traveler-Session owning ' +
+        'the booking. Throttled to 5 per publicRef / minute.',
+    }),
+    ApiOkResponse({ type: ConversionPushResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
   );
 

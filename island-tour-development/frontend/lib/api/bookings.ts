@@ -9,6 +9,7 @@
  * (for the prerendered TYP page).
  */
 import type { Currency } from '@/lib/constants/locales';
+import type { Attribution } from '@/lib/tracking/attribution';
 import { apiFetch } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
@@ -106,6 +107,9 @@ export interface ReserveRequest {
     pickupLocationId?: string;
     notes?: string;
     newsletterOptIn?: boolean;
+    /** Ad click ids + UTM captured on the landing page (master 8.1.6). Written on
+     *  first reserve only; the backend ignores it on an idempotent re-reserve. */
+    attribution?: Attribution;
 }
 
 /** Contact block for `PATCH /bookings/:id` (backend `ContactDto`). */
@@ -156,15 +160,6 @@ export interface PaymentIntentResult {
 }
 
 /** Thank-you-page payload (backend `ThankYouResponseDto`; TYP + processing poll). */
-export interface ThankYouConversion {
-    event: string;
-    eventId: string;
-    currency: string;
-    value: string;
-    contentId: string;
-    contentName: string | null;
-}
-
 export interface ThankYouBooking {
     publicRef: string;
     displayRef: string;
@@ -183,7 +178,6 @@ export interface ThankYouBooking {
     currency: string;
     totalRetail: string;
     contactEmail: string | null;
-    conversion: ThankYouConversion | null;
 }
 
 /**

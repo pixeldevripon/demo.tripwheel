@@ -103,20 +103,21 @@ model Booking {
   reviewWhatsappOptIn Boolean  @default(false)
 
   // Attribution + tracking (master tracking E.8; booking_complete contract)
-  utmSource         String?
-  utmMedium         String?
-  utmCampaign       String?
-  utmTerm           String?
-  utmContent        String?
-  clickId           String? // gclid (kept generic for back-compat)
-  gbraid            String? // Google iOS web-to-app
-  wbraid            String? // Google app-to-web
-  fbclid            String? // Meta click id
-  affiliateId       String? // Trackdesk
-  island            String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
-  customerLocale    String? // locale at time of booking
-  customerId        String? // hashed email (CAPI/advanced matching), not PII
-  conversionFiredAt DateTime? // mark-first idempotency
+  utmSource          String?
+  utmMedium          String?
+  utmCampaign        String?
+  utmTerm            String?
+  utmContent         String?
+  gclid              String? // Google Ads click id (offline conversions + adjustments; master E.8 / 8.3)
+  gbraid             String? // Google iOS web-to-app
+  wbraid             String? // Google app-to-web
+  fbclid             String? // Meta click id
+  affiliateId        String? // Trackdesk
+  island             String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
+  customerLocale     String? // locale at time of booking
+  customerId         String? // hashed email (CAPI/advanced matching), not PII
+  conversionFiredAt  DateTime? // mark-first idempotency for the SERVER fire (CAPI + email) at webhook/settle confirm (finalizeConfirmation)
+  conversionPushedAt DateTime? // SEPARATE mark-first guard for the BROWSER booking_complete dataLayer push on the TYP (master 8.2). Distinct from conversionFiredAt, which is already set at confirm, so a browser push gated on it would never fire.
 
   // Billing snapshot from the payment method (G5; null on operator_full / on_arrival)
   billingCountry     String?
