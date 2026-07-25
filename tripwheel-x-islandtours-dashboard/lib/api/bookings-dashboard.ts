@@ -50,6 +50,32 @@ export const bookingsDashboardApi = {
         });
     },
 
+    // ── Non-payment forfeit (guide s15) ─────────────────────────────────────
+
+    /** Operator reports the OPERATOR_LINK balance unpaid (idempotent stamp). */
+    reportNonPayment(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/report-non-payment`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    /** Admin confirms the forfeit: deposit kept, spot released. NO refund. */
+    confirmForfeit(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/forfeit`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
+    /** Admin dismisses a report (traveller paid after all). */
+    dismissNonPayment(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/dismiss-non-payment`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
     /** Customer stat row - always the caller's OWN bookings (self-scoped). */
     getMyBookingSummary(): Promise<CustomerBookingSummary> {
         return apiFetch<CustomerBookingSummary>('/bookings/me/summary');

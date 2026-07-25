@@ -84,6 +84,16 @@ export const BOOKING_DISPLAY_STATUS: Record<BookingDisplayStatus, StatusMeta> = 
         variant: 'warning',
         hint: 'Traveller asked to cancel; awaiting an admin decision',
     },
+    NON_PAYMENT_REPORTED: {
+        label: 'Non-payment reported',
+        variant: 'warning',
+        hint: 'Operator reported the balance unpaid; awaiting an admin decision',
+    },
+    FORFEITED: {
+        label: 'Forfeited',
+        variant: 'danger',
+        hint: 'Non-payment confirmed by an admin - deposit kept, spot released',
+    },
 };
 
 export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {

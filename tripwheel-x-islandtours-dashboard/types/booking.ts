@@ -18,7 +18,11 @@ export type BookingStatus =
  * Render this in status chips; use `status` for logic. Mirrors the backend
  * `deriveBookingDisplayStatus` in `src/bookings/dto/booking.dto.ts`.
  */
-export type BookingDisplayStatus = BookingStatus | 'CANCELLATION_REQUESTED';
+export type BookingDisplayStatus =
+    | BookingStatus
+    | 'CANCELLATION_REQUESTED'
+    | 'NON_PAYMENT_REPORTED'
+    | 'FORFEITED';
 
 export type BookingPaymentModel =
     | 'OPERATOR_LINK'
@@ -79,6 +83,9 @@ export interface BookingListItem {
     partySize: number;
     createdAt: string;
     utcCancellationRequestedAt: string | null;
+    /** Non-payment forfeit lifecycle (guide s15) - drives report/forfeit actions. */
+    utcNonPaymentReportedAt: string | null;
+    utcForfeitedAt: string | null;
     freeCancelDeadline: string | null;
     requestedInFreeWindow: boolean | null;
     /** Ledger-derived: net paid vs totalRetail (see backend derivePaymentState). */
