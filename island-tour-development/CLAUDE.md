@@ -298,8 +298,10 @@ PrismaModule inside individual modules.
    same transaction). It does **not** seed any slot rows.
 6. **New tours default to `tier_key='standard'`** (`commission_tier=20.0`, `tier_rank=5`). Do not
    create any FeaturedSlot rows — the slot economy is removed.
-7. **`tier_rank` is denormalized from `tier_key` and never client-written.** On tier change all three
-   tier fields update together and `tier_locked_until = now + 30 days`.
+7. **`tier_rank` is denormalized from `tier_key` and never client-written.** On tier change all FOUR
+   tier fields update together - `tier_key`/`commission_tier`/`tier_rank`/**`deposit_pct`** (LD24:
+   the deposit IS the commission collection, so `deposit_pct` always equals the tier rate; this
+   includes the nightly demotion path) - and `tier_locked_until = now + 30 days`.
 8. **Every tour is flat and always writes a `TOUR` `slug_registry` row** on create (toggled on
    archive/restore, removed on hard delete per the 90-day cooldown). Hubs are discovery tags with no
    URL effect.

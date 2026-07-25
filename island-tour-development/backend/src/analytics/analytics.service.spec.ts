@@ -39,7 +39,6 @@ function createMockPrisma(fixtures: RawFixtures = {}) {
             earned_in_previous_range: '0',
             gmv: '0',
             commission: '0',
-            payout_due: '0',
             untracked_balance: '0',
           },
         ],
@@ -96,6 +95,10 @@ function createMockPrisma(fixtures: RawFixtures = {}) {
       groupBy: jest.fn().mockResolvedValue([]),
     },
     payment: { findMany: jest.fn().mockResolvedValue([]) },
+    // Payouts due now reads the settlements LEDGER (owed-pending roll-up).
+    settlement: {
+      aggregate: jest.fn().mockResolvedValue({ _sum: { netPosition: null } }),
+    },
     user: { count: jest.fn().mockResolvedValue(0) },
     operator: { findUnique: jest.fn().mockResolvedValue({ id: 'op-1' }) },
   };
@@ -243,10 +246,12 @@ describe('AnalyticsService', () => {
             earned_in_previous_range: '0',
             gmv: '50154.14',
             commission: '8914.30',
-            payout_due: '11419.19',
             untracked_balance: '20404.53',
           },
         ],
+      });
+      prisma.settlement.aggregate.mockResolvedValue({
+        _sum: { netPosition: new Prisma.Decimal('11419.19') },
       });
       const service = await build(prisma);
 
@@ -254,7 +259,17 @@ describe('AnalyticsService', () => {
 
       // Rounded to cents, not left as a float artefact.
       expect(res.revenue.earnedEur).toBe(8914.3);
+      // Ledger truth: payouts due mirrors the Settlements page owed-pending
+      // roll-up (RECORDED paid_in_full nets), never re-derived from bookings.
       expect(res.revenue.payoutDueEur).toBe(11419.19);
+      expect(prisma.settlement.aggregate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'RECORDED',
+            paymentModel: 'PAID_IN_FULL',
+          }),
+        }),
+      );
     });
 
     it('reports commission separately from GMV', async () => {
@@ -267,7 +282,6 @@ describe('AnalyticsService', () => {
             earned_in_previous_range: '0',
             gmv: '50154.14',
             commission: '8914.30',
-            payout_due: '0',
             untracked_balance: '0',
           },
         ],

@@ -2197,7 +2197,7 @@ export async function seedTours(): Promise<void> {
       cancellationHours: bp.cancellationHours ?? 48,
       startTimes: bp.startTimes,
       paymentModel: bp.paymentModel ?? PaymentModel.OPERATOR_LINK,
-      depositPct: D(20.0),
+      depositPct: D(tier.commission), // LD24: tier-driven, always == commission
       // commercial
       commissionTier: D(tier.commission),
       tierKey: bp.tierKey,
@@ -2338,7 +2338,7 @@ export async function seedTours(): Promise<void> {
           cancellationHours: bp.cancellationHours ?? 48,
           startTimes: bp.startTimes,
           paymentModel: bp.paymentModel ?? PaymentModel.OPERATOR_LINK,
-          depositPct: D(20.0),
+          depositPct: D(tier.commission), // LD24: tier-driven, always == commission
           // commercial
           commissionTier: D(tier.commission),
           tierKey: bp.tierKey,

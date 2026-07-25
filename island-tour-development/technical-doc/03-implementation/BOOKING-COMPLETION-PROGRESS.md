@@ -48,7 +48,7 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 | Booking / reserve | 🟢 ~97% | attribution (utm/gclid) now captured at reserve (#81); age-restriction validation partial |
 | Payment (card / PayPal / iDEAL) | 🟢 ~90% | Mollie webhook is a stub; payment-succeeds-after-hold-expired reconciliation |
 | Confirmation email | 🟡 ~75% | Resend transport live (2026-07-19); no invoice attachment; sent inline not queued |
-| Operator payment-link email | 🔴 not built | second `operator_link` balance email (names operator + secure link) |
+| Operator payment-link email | ⚪ CLOSED (founder 2026-07-25) | "operator confirm email keep it as is" - the existing Booking Received notice is the only operator email; no second balance email will be built |
 | Scheduled payout after cancel window | 🟢 built (#49) | hourly cron flips eligible paid_in_full RECORDED->PAID_OUT after the free-cancel window; v1 release-only (funds manual), Connect auto = v2 |
 | Payout / settlement | 🟢 built (#48/#49) | ledger + row-per-confirmation + net_position + scheduled release + admin GET /settlements + dashboard table; Connect = v2 |
 | Cancellation + refunds | 🟢 ~90% (#50) | real Stripe refund + REFUND row on cancel + pay-after-expiry; model-aware amount; tokenized cancel page + 3-recipient emails done. Remaining: partial-refund policy amounts + durable retry (B6) |
@@ -909,7 +909,9 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
    Pixel id, CMP choice (Cookiebot/Iubenda).
 
 **Phase B - Money correctness (CP2-CP7; tasks #41/#46-#51)**
-6. B1 = CP2: operator-balance email on `operator_link` (C1, names operator + secure balance link)
+6. B1 = CP2: [x] CLOSED by founder 2026-07-25 - Resend transport was already live (2026-07-19)
+   and the operator confirmation email stays AS IS; the second operator-balance email is
+   deliberately NOT built. Do not resurrect without a new founder decision.
    + C5 verify never-name-operator-pre-payment in template copy; Resend provider switch (C4) is
    BLOCKED on founder confirm.
 7. [x] B2 = CP3 (DONE 2026-07-25, #47): hold-expiry sweeper (`@Cron(EVERY_MINUTE)` -> `expireStaleHolds`,
@@ -1184,10 +1186,23 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
 13. C2: [x] DONE 2026-07-25 (see 10d) - cutoff consumed (+ quote-side 422), `pickupRequired` enforced,
     pickup priced + surfaced at checkout per master 5.8, `instantConfirmation` notice, `bookingType`
     (PRIVATE charter affordances were already live).
-14. C3: B.34 booking-lookup login (email + `display_ref`, rate-limited) - the account fallback
-    half of master 6.4.
-15. C4 = WA2/WA3: WhatsApp placements per master 6.6 (footer, tour description, error states) +
-    email footer CTA/anti-fraud line, `?text={greeting}` x7 locales.
+14. C3: [x] DONE - B.34 booking-lookup login was ALREADY BUILT 2026-07-19 with the login
+    hardening (ledger was stale; verified 2026-07-25): `POST /bookings/lookup` +
+    `lookup/recover-reference` with per-credential caps (5/email + 10/reference per 15min,
+    audit + lockout), frontend `/bookings` door (TravelerLogin, email + reference) issuing the
+    24h HMAC session that unmasks the TYP and gates cancellation.
+15. C4 = WA2/WA3: [x] CLOSED AS DONE (founder 2026-07-25, verified same day). WA3/email:
+    the locked template carries the footer CTA ("Chat on WhatsApp" + Mon-Sun 8:00-20:00 hours)
+    and the anti-fraud line gated to operator_link/operator_full, on `{whatsappUrl}` from
+    dashboard settings (ops: keep WhatsApp ENABLED or the email button href renders empty -
+    the locked wireframe has no conditional around it). WA2/frontend LIVE surfaces: NeedHelp
+    FAQ CTA + host avatar (home/destination/category/collection/hub), category trust-strip
+    checkmark, traveler-login button + error link, cancel-page error copy, checkout
+    "other location via WhatsApp" pickup fallback - all via `lib/whatsapp.ts`
+    (`buildWhatsappUrl`, null-hides-surface). RESIDUAL GAPS ACCEPTED AS-IS BY FOUNDER:
+    footer Support links carry no wa.me href; the home + All Tours trust strips show the
+    WhatsApp copy unlinked; no `?text={greeting}` prefill anywhere (links are bare wa.me).
+    Do not build these without a new founder ask.
 
 **Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
 16. D1: FEED done 2026-07-25 (#83) - `EcbFxProvider` (keyless ECB via Frankfurter), env-selected,
@@ -1202,3 +1217,30 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
 Blocked-on-founder ledger: GTM/Pixel/CMP creds (A5), Resend confirm (B1), two Cloudinary
 accounts, `start:prod` path bug, Segoe-UI Gmail fallback (wireframe edit), master wording update
 for the superseded "lowest applicable" from-price line.
+
+## Analytics <-> Settlements reconciliation (2026-07-25, founder: "calculation not matched")
+
+`payoutDueEur` on the dashboard Overview was re-derived from raw bookings (REDEEMED paid_in_full
+in the date range) while the Settlements page summed the LEDGER (RECORDED paid_in_full nets,
+recorded at confirmation, all-time, PAID_OUT excluded) - same label, two different quantities.
+FIXED: analytics now reads the ledger with the exact `SettlementsService.summary` predicate
+(operator-scoped, un-windowed - a balance, not a flow), so the Overview card and the Settlements
+page are always identical; card notes/supports updated ("Matches the Settlements page"), the
+stale "no settlements ledger exists yet" note removed. INTENTIONALLY different and now labelled:
+`earnedEur`/`commissionEur` recognize on COMPLETION (REDEEMED, master rule) while the ledger
+records at CONFIRMATION - revenue recognition vs money owed are different concepts and keep
+different clocks. Backend 1617/76 green (ledger-driven payout test added); dashboard tsc clean.
+
+## Deposit <-> commission sync (LD24 fix, 2026-07-25, founder: Klein Curacao premium at 30% took a 20% deposit)
+
+Master LD24 + COMMERCIAL-MODEL: `tour.deposit_pct` is TIER-DRIVEN (20-30 in 2.5 steps) because the
+deposit collected at checkout IS the platform commission. BUG: `TiersService.changeTier` and the
+nightly demotion (`runEligibilityLifecycle` grace-expiry -> organic) updated
+tierKey/commissionTier/tierRank but never depositPct, so promoted tours kept the 20% default and
+under-collected commission on every deposit-model booking (premium = 10 points short). FIXED: both
+writers now set `depositPct = tier commission` (CLAUDE.md rule #7 now says all FOUR fields move
+together); data migration `20260725141218_sync_deposit_pct_to_tier` backfilled drifted tours
+(verified live: all premium tours now 30.0/30.0); demo seed no longer hardcodes D(20.0) and derives
+from TIER_MAP. Existing bookings keep their snapshots (never retroactive). Spotlight note: its 35%
+commission intentionally exceeds the 30% deposit cap - the settlement ledger records the negative
+net (operator owes IT the difference); that is by design, not this bug. Backend 1617/76 green.

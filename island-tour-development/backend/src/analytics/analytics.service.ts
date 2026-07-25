@@ -5,6 +5,7 @@ import {
   PaymentStatus,
   Prisma,
   Role,
+  SettlementStatus,
   TourStatus,
 } from '@prisma/client';
 
@@ -564,7 +565,7 @@ export class AnalyticsService {
       recent,
       fx,
     ] = await Promise.all([
-      this.getRevenue(scopeB, platformWide, range),
+      this.getRevenue(scopeB, operatorId, platformWide, range),
       this.getBookings(bookingWhere, scopeB, range, now),
       this.getTrips(operatorId, range),
       this.getCustomers(scopeB, range, platformWide),
@@ -620,6 +621,7 @@ export class AnalyticsService {
 
   private async getRevenue(
     scopeB: Prisma.Sql,
+    operatorId: string | null,
     platformWide: boolean,
     range: ResolvedRange,
   ) {
@@ -655,7 +657,7 @@ export class AnalyticsService {
       range.to,
     );
 
-    const [rows, ledger] = await Promise.all([
+    const [rows, ledger, owedOut] = await Promise.all([
       this.prisma.$queryRaw<
         {
           earned: string | null;
@@ -664,7 +666,6 @@ export class AnalyticsService {
           earned_in_previous_range: string | null;
           gmv: string | null;
           commission: string | null;
-          payout_due: string | null;
           untracked_balance: string | null;
         }[]
       >(Prisma.sql`
@@ -688,12 +689,6 @@ export class AnalyticsService {
                           ${createdIn}), 0) AS gmv,
                     COALESCE(SUM(b."commissionAmount") FILTER (
                         WHERE b.status = 'REDEEMED' ${redeemedIn}), 0) AS commission,
-                    -- PAID_IN_FULL over-collects: the platform holds 100% and
-                    -- owes the operator the net once the tour is completed.
-                    COALESCE(SUM(b."totalEur" - b."commissionAmount") FILTER (
-                        WHERE b.status = 'REDEEMED'
-                          AND b."paymentModel"::text = 'PAID_IN_FULL'
-                          ${redeemedIn}), 0) AS payout_due,
                     -- Balance collected on the operator's own rails. The
                     -- platform never sees this money and does not track whether
                     -- it arrived - expected, never received. There is no
@@ -729,6 +724,22 @@ export class AnalyticsService {
                     `,
           )
         : Promise.resolve(null),
+      // Payouts due = the SETTLEMENTS LEDGER's owed-pending roll-up, verbatim
+      // (same predicate as SettlementsService.summary): RECORDED paid_in_full
+      // nets still owed to operators. It is a BALANCE, not a flow - deliberately
+      // NOT windowed by the date range, and already-released (PAID_OUT) money is
+      // excluded - so this card and the Settlements page always show the SAME
+      // number. The ledger is the money-movement SSOT (SETTLEMENT-AND-PAYOUTS);
+      // analytics must never re-derive owed money from raw bookings.
+      this.prisma.settlement.aggregate({
+        where: {
+          status: SettlementStatus.RECORDED,
+          paymentModel: PaymentModel.PAID_IN_FULL,
+          netPosition: { gt: 0 },
+          ...(operatorId ? { operatorId } : {}),
+        },
+        _sum: { netPosition: true },
+      }),
     ]);
 
     const r = rows[0];
@@ -739,7 +750,7 @@ export class AnalyticsService {
       earnedInPreviousRangeEur: this.num(r?.earned_in_previous_range),
       gmvEur: this.num(r?.gmv),
       commissionEur: this.num(r?.commission),
-      payoutDueEur: this.num(r?.payout_due),
+      payoutDueEur: this.num(owedOut._sum.netPosition?.toString()),
       untrackedBalanceEur: this.num(r?.untracked_balance),
       cashCollectedEur: ledger ? this.num(ledger[0]?.gross) : null,
       refundedEur: ledger ? this.num(ledger[0]?.refunded) : null,

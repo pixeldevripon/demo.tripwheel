@@ -14,10 +14,24 @@ import { getPublicSiteSeo } from '@/lib/api/public/settings';
  *     builds NODE_ENV=production, so this explicit flag is the guard), AND
  *   - a configured GTM container ID.
  *
- * Consent: the site runs Cookiebot with `data-blockingmode="auto"`, which holds
- * non-essential tags (GTM included) until the visitor consents. Fine-grained
- * consent signalling is a GTM-container concern (Consent Mode), not app code.
+ * Consent (master 8, item 7 - Consent Mode v2, regional defaults): the inline
+ * script below sets `gtag('consent','default',...)` BEFORE gtm.js loads - same
+ * script, so the ordering is guaranteed. EEA (EU27 + IS/LI/NO) and the UK
+ * default to DENIED on all four v2 signals; everywhere else (incl. US/CA)
+ * defaults to GRANTED. Cookiebot (`data-blockingmode="auto"`, loaded from the
+ * layout) then pushes consent UPDATES on the visitor's choice -
+ * `wait_for_update: 500` holds tag firing long enough for a stored choice to
+ * land. `ads_data_redaction` strips ad click identifiers while ad_storage is
+ * denied, so denied EEA traffic still yields modelled conversions.
  */
+
+/** EEA (EU27 + Iceland/Liechtenstein/Norway) + UK - consent DENIED by default. */
+const DENIED_REGIONS = [
+    'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR',
+    'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK',
+    'SI', 'ES', 'SE', 'IS', 'LI', 'NO', 'GB',
+];
+
 export async function GoogleTagManager() {
     const trackingEnabled = process.env.NEXT_PUBLIC_ENABLE_TRACKING === 'true';
     if (!trackingEnabled) return null;
@@ -26,10 +40,16 @@ export async function GoogleTagManager() {
     const gtmId = seo.googleTagManagerId?.trim();
     if (!gtmId) return null;
 
+    const consentDefaults = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500,region:${JSON.stringify(DENIED_REGIONS)}});
+gtag('consent','default',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted',wait_for_update:500});
+gtag('set','ads_data_redaction',true);`;
+
     return (
         <>
             <Script id='gtm-base' strategy='afterInteractive'>
-                {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');`}
+                {`${consentDefaults}
+(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');`}
             </Script>
             {/* Fallback for no-JS crawlers/agents; harmless when JS is on. */}
             <noscript>

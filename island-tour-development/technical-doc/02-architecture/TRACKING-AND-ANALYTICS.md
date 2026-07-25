@@ -107,10 +107,10 @@ The dev spec's **37 checks**, headlined by:
 
 | Concern | Mechanism | Status |
 |---|---|---|
-| Conversion idempotency | `bookings.conversion_fired_at` (timestamptz, set server-side pre-render) | Not built — Booking model is thin (see [`DATA-MODEL.md` §E.8](./DATA-MODEL.md#e8-bookings)) |
-| Webhook idempotency | dedicated `stripe_webhook_events` table (processed event ids) | Not built — no payments/webhook layer |
-| Click-id / UTM capture | `gclid`/`gbraid`/`wbraid`/`fbclid` + `utm_*` columns on bookings, captured at creation | Not built |
-| PII hashing | SHA-256 server-side, phone normalized via `libphonenumber-js` | Not built |
-| Consent | Consent Mode v2 + CMP (Cookiebot/Iubenda) before GTM build | Not built |
-
-The current `Booking` model carries none of the tracking columns (`public_ref`, `display_ref`, `commission_amount`, `conversion_fired_at`, click-ids, UTM, split customer name, billing fields). Building this architecture depends first on the E.8 booking schema and the payments/webhook layer.
+| Conversion idempotency | `conversion_fired_at` (server fire) + `conversion_pushed_at` (mark-first browser push claim) | BUILT 2026-07-25 (#39/#42) |
+| Webhook idempotency | `stripe_webhook_events` ledger; Mollie = fetch-and-reconcile (state-guarded) | BUILT (Stripe 2026-07; Mollie 2026-07-25) |
+| Click-id / UTM capture | `gclid`/`gbraid`/`wbraid`/`fbclid` + `utm_*` on bookings, captured at reserve via the `it.attribution` first-party cookie | BUILT 2026-07-25 (#81) |
+| PII hashing | SHA-256 server-side (`pii-hash.util.ts`), phone E.164 via `libphonenumber-js`; one hash pass -> Google + Meta envelopes | BUILT 2026-07-25 (#43) |
+| Server CAPI | fires at confirm, `event_id = publicRef` (browser dedup), creds dashboard-managed | BUILT 2026-07-25 (#44) |
+| Consent | Consent Mode v2 regional defaults in the GTM loader (EEA+UK denied, elsewhere granted, `wait_for_update` 500, `ads_data_redaction`) + Cookiebot CMP (dashboard-managed CBID, auto blocking mode) | BUILT 2026-07-25 (A5/#45) |
+| GTM container fan-out | 4 tags (Conversion Linker / Google Ads / GA4 purchase / Meta Pixel w/ eventID) | CONFIGURATION - follow [`GTM-CONTAINER-SETUP.md`](../03-implementation/GTM-CONTAINER-SETUP.md) once the founder's ids exist |

@@ -66,6 +66,11 @@ export class RevenueStatsDto {
     description:
       "FLOW, ranged on utcRedeemedAt. Net owed on completed PAID_IN_FULL bookings, where the platform collected 100% and holds the operator's share. ADMIN: a liability owed OUT. OPERATOR: money owed TO them. No settlements ledger exists yet, so this is the amount earned and not yet settled.",
   })
+  /**
+   * The settlements ledger's owed-pending balance (RECORDED paid_in_full nets),
+   * identical to the Settlements page roll-up. A balance, not a flow: never
+   * windowed by the date range; released (PAID_OUT) money is excluded.
+   */
   payoutDueEur!: number;
 
   @ApiProperty({

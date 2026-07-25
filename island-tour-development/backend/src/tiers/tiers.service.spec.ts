@@ -237,6 +237,11 @@ describe('TiersService', () => {
       expect(updateArg.data.tierKey).toBe(TierKey.premium);
       expect(updateArg.data.tierRank).toBe(1);
       expect(updateArg.data.tierLockedUntil).toBeInstanceOf(Date);
+      // LD24: the deposit collected at checkout IS the commission - deposit_pct
+      // must move WITH the tier (premium 30% -> 30% deposit), or Island Tours
+      // under-collects its commission on every deposit-model booking.
+      expect(updateArg.data.depositPct).toEqual(new Prisma.Decimal(30.0));
+      expect(updateArg.data.depositPct).toEqual(updateArg.data.commissionTier);
     });
 
     it('rejects a tier change while the lock is still in the future', async () => {
@@ -508,6 +513,8 @@ describe('TiersService', () => {
           data: expect.objectContaining({
             tierKey: TierKey.organic,
             tierRank: 4,
+            // LD24: the deposit follows the tier on demotion too.
+            depositPct: new Prisma.Decimal(22.5),
             eligibilityState: 'DEMOTED',
           }),
         }),
