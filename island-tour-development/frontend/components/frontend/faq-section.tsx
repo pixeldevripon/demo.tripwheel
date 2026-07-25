@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
+import { buildFaqJsonLd } from '@/lib/seo/jsonld';
 import { springPop } from '@/lib/motion';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
+import { JsonLd } from './seo/json-ld';
 import { FaqAccordion } from './faq-accordion';
 import { MotionA } from './motion-primitives';
 import { Reveal } from './reveal';
@@ -57,7 +59,15 @@ export async function FaqSection({
     const hostImage = site.faqHostImage || FALLBACK_HOST_IMAGE;
     const hostVideo = site.faqHostVideo || (site.faqHostImage ? null : FALLBACK_HOST_VIDEO);
 
+    // FAQPage rich result, built from the SAME items the accordion renders below
+    // so the markup only ever describes visible Q&A.
+    const faqJsonLd = buildFaqJsonLd(
+        dict.items.map((it) => ({ question: it.q, answer: it.a })),
+    );
+
     return (
+        <>
+            <JsonLd data={faqJsonLd} />
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
                 <Reveal
@@ -186,6 +196,7 @@ export async function FaqSection({
                 </Reveal>
             </div>
         </section>
+        </>
     );
 }
 

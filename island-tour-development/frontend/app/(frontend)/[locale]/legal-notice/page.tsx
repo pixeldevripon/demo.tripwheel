@@ -3,8 +3,18 @@ import { notFound } from 'next/navigation';
 
 import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
 import { isLocale } from '@/lib/constants/locales';
+import { buildAlternates } from '@/lib/seo/alternates';
 
-export const metadata: Metadata = { title: 'Legal Notice' };
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+    const { locale } = await params;
+    const title = 'Legal Notice';
+    if (!isLocale(locale)) return { title };
+    return { title, alternates: buildAlternates(locale, '/legal-notice') };
+}
 
 /**
  * Global legal page - text is the verbatim handover copy from

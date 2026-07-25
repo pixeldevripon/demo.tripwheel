@@ -27,3 +27,25 @@ export function mapStripeRefundStatus(
       return PaymentStatus.SUCCEEDED;
   }
 }
+
+/**
+ * Map a Mollie refund status onto the REFUND `Payment` row - same contract as
+ * the Stripe mapper. Mollie refunds are ALWAYS asynchronous: they start
+ * `queued`/`pending` and settle to `refunded` (or fail) later, reconciled by
+ * the payment webhook re-fetch (Mollie re-posts the payment id when a refund
+ * settles). Only `refunded` is money-moved.
+ */
+export function mapMollieRefundStatus(
+  status: string | null | undefined,
+): PaymentStatus {
+  switch (status) {
+    case 'refunded':
+      return PaymentStatus.SUCCEEDED;
+    case 'failed':
+    case 'canceled':
+      return PaymentStatus.FAILED;
+    default:
+      // queued / pending / processing - accepted but money not yet moved.
+      return PaymentStatus.PROCESSING;
+  }
+}

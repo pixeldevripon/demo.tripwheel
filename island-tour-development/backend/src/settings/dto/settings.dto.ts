@@ -1,16 +1,32 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+
+/**
+ * Strip ALL whitespace + zero-width characters (U+200B..U+200D, U+FEFF) from
+ * a pasted credential/id. Values copied out of provider dashboards (Mollie's
+ * profile id is rendered as a LINK) routinely carry a trailing space or an
+ * invisible zero-width char that then fails the shape validation with a
+ * baffling "but it looks right!" error.
+ */
+const stripPasteJunk = ({ value }: { value: unknown }) =>
+  typeof value === 'string'
+    ? value.replace(/[\s\u200B-\u200D\uFEFF]/g, '')
+    : value;
 import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { PaymentProvider } from '@prisma/client';
 
 // ── Shared DTOs ───────────────────────────────────────────────────────────────
 
@@ -147,8 +163,10 @@ export class PublicSiteInfoResponseDto {
 
 /**
  * Public-safe projection of SiteSEO for the unauthenticated marketing site.
- * Meta/OG/Twitter tags only - analytics IDs, verification codes, and robots.txt
- * stay behind VIEW_SETTINGS.
+ * Meta/OG/Twitter tags plus the public-by-nature tracking IDs (GA4 / GTM / Meta
+ * Pixel - they ship in the browser anyway) and the crawl-output fields
+ * (robotsTxt, autoGenerateSitemap). Secret credentials (Meta CAPI token, Google
+ * Translate key) stay on IntegrationsConfiguration, behind VIEW_SETTINGS.
  */
 export class PublicSiteSEOResponseDto {
   @ApiProperty({
@@ -188,6 +206,22 @@ export class PublicSiteSEOResponseDto {
   twitterImage!: string | null;
 
   @ApiProperty({
+    example: 'G-XXXXXXXXXX',
+    nullable: true,
+    description:
+      'GA4 measurement ID. Public by nature - it ships in the gtag/GTM tag in the browser.',
+  })
+  googleAnalyticsId!: string | null;
+
+  @ApiProperty({
+    example: 'GTM-XXXXXXX',
+    nullable: true,
+    description:
+      'Google Tag Manager container ID. Public by nature - it ships in the GTM script tag in the browser.',
+  })
+  googleTagManagerId!: string | null;
+
+  @ApiProperty({
     example: 'dBw5CvburAxi537Rp9qi5uG2174Vb6JwHwIRwPSLIK8',
     nullable: true,
     description:
@@ -196,12 +230,36 @@ export class PublicSiteSEOResponseDto {
   googleSearchConsole!: string | null;
 
   @ApiProperty({
+    example: '1234567890123456',
+    nullable: true,
+    description:
+      'Meta (Facebook) Pixel ID. Public by nature - it ships in the Pixel base code in the browser. The paired CAPI token stays server-side.',
+  })
+  facebookPixelId!: string | null;
+
+  @ApiProperty({
     example: '12345678-abcd-1234-abcd-123456789abc',
     nullable: true,
     description:
       'Cookiebot domain group ID (data-cbid). Public by nature - it ships in the consent script tag on every page.',
   })
   cookiebotCbid!: string | null;
+
+  @ApiProperty({
+    example: 'User-agent: *\nAllow: /',
+    nullable: true,
+    description:
+      'Custom robots.txt body. When set, the public site serves it verbatim; otherwise it generates a default. Public crawl output.',
+  })
+  robotsTxt!: string | null;
+
+  @ApiProperty({
+    example: 'true',
+    nullable: true,
+    description:
+      'Whether the generated robots.txt advertises the sitemap. Stored as a string flag. Public crawl output.',
+  })
+  autoGenerateSitemap!: string | null;
 }
 
 /** Public-safe SocialMedia projection - the profile URLs, nothing else. */
@@ -443,6 +501,9 @@ export class MollieConfigurationResponseDto {
   @ApiProperty({ example: 'Mollie' })
   paymentLabel!: string;
 
+  @ApiProperty({ example: 'pfl_3RkSN1zuPE' })
+  profileId!: string;
+
   @ApiProperty({ example: ['creditcard'], isArray: true })
   paymentMethods!: string[];
 
@@ -450,6 +511,22 @@ export class MollieConfigurationResponseDto {
   createdAt!: Date;
 
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' })
+  updatedAt!: Date;
+}
+
+export class PaymentProviderSettingsResponseDto {
+  @ApiProperty({ example: 'default' })
+  id!: string;
+
+  @ApiProperty({
+    enum: PaymentProvider,
+    example: PaymentProvider.STRIPE,
+    description:
+      'The PSP that charges travellers at checkout. Never retroactive: existing payments keep their own provider.',
+  })
+  activeProvider!: PaymentProvider;
+
+  @ApiProperty({ example: '2026-07-25T08:00:00.000Z' })
   updatedAt!: Date;
 }
 
@@ -760,16 +837,45 @@ export class UpdateStripeConfigurationDto {
   paymentMethods?: string[];
 }
 
+export class UpdatePaymentProviderDto {
+  @ApiProperty({ enum: PaymentProvider, example: PaymentProvider.MOLLIE })
+  @IsEnum(PaymentProvider)
+  activeProvider!: PaymentProvider;
+}
+
 export class UpdateMollieConfigurationDto {
   @ApiPropertyOptional({ default: 'Mollie' })
   @IsOptional()
   @IsString()
   paymentLabel?: string;
 
-  @ApiPropertyOptional()
+  // Shape-validated at save time: a wrong paste here fails EVERY later call
+  // with confusing downstream errors ("Profile not found" at tokenization,
+  // testmode misdetected), so catch it at the door instead. Mollie keys are
+  // shown only once at creation in their dashboard - an easy copy miss.
+  @ApiPropertyOptional({ example: 'test_dHar4XY7LxsDOtmnkVtjNVWXLSlXsM' })
   @IsOptional()
+  @Transform(stripPasteJunk)
   @IsString()
+  @Matches(/^(test|live)_\w{10,}$/, {
+    message:
+      'apiKey must be a Mollie API key (starts with test_ or live_, from Dashboard → Developers → API keys)',
+  })
   apiKey?: string;
+
+  @ApiPropertyOptional({
+    example: 'pfl_3RkSN1zuPE',
+    description:
+      'Mollie profile id (public) - enables the inline Components card form at checkout. Empty = hosted page only.',
+  })
+  @IsOptional()
+  @Transform(stripPasteJunk)
+  @ValidateIf((o: UpdateMollieConfigurationDto) => o.profileId !== '')
+  @IsString()
+  @Matches(/^pfl_\w+$/, {
+    message: 'profileId must be a Mollie profile id (pfl_...)',
+  })
+  profileId?: string;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()

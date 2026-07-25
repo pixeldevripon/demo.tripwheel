@@ -43,12 +43,16 @@ export function CheckoutProcessing({
     publicRef,
     tourId,
     typHref,
+    checkoutHref,
     dict,
 }: {
     publicRef: string;
     /** Booked tour id - used to clear its saved widget selection on confirm. */
     tourId?: string | null;
     typHref: string;
+    /** Bare checkout path - the FAILED-payment landing (selection restores from
+     *  the per-tour saved URL when available). */
+    checkoutHref: string;
     dict: ProcessingDict;
 }) {
     const router = useRouter();
@@ -90,6 +94,44 @@ export function CheckoutProcessing({
             router.replace(typHref);
         };
 
+        // FAILED payment → back to the checkout to retry, with a message - a
+        // traveller must never sit on an infinite spinner for money that never
+        // moved. The full checkout URL (selection query intact) was saved per
+        // tour when the checkout mounted; the bare path is the fallback.
+        const goToCheckoutFailed = () => {
+            if (!active) return;
+            let target = `${checkoutHref}?payment=failed`;
+            if (tourId) {
+                try {
+                    const saved = window.sessionStorage.getItem(
+                        `it-checkout-return:${tourId}`
+                    );
+                    if (saved) {
+                        const url = new URL(saved, window.location.origin);
+                        url.searchParams.set('payment', 'failed');
+                        target = url.pathname + url.search;
+                    }
+                } catch {
+                    // Storage unavailable: the bare checkout path still works.
+                }
+            }
+            setLeaving(true);
+            router.replace(target);
+        };
+
+        // Stripe appends redirect_status to the return_url of its redirect
+        // methods (iDEAL/PayPal) - a failed/expired hop is known BEFORE any
+        // backend call. Mollie sends no such param; settle detects it below.
+        const redirectStatus = new URLSearchParams(
+            window.location.search
+        ).get('redirect_status');
+        if (redirectStatus === 'failed') {
+            goToCheckoutFailed();
+            return () => {
+                active = false;
+            };
+        }
+
         // Fast path: confirm synchronously, then redirect the moment it reads
         // CONFIRMED - no webhook wait. Falls through to polling on anything else.
         const settleThenPoll = async () => {
@@ -97,6 +139,7 @@ export function CheckoutProcessing({
                 const settled = await settleBooking(publicRef);
                 if (!active) return;
                 if (settled.status === 'CONFIRMED') return goToTyp();
+                if (settled.paymentFailed) return goToCheckoutFailed();
             } catch {
                 // Settle unavailable (throttle/transient): the poll backstop covers it.
             }
@@ -125,7 +168,7 @@ export function CheckoutProcessing({
             active = false;
             if (timer) clearTimeout(timer);
         };
-    }, [publicRef, tourId, typHref, router]);
+    }, [publicRef, tourId, typHref, checkoutHref, router]);
 
     return (
         // No longer 60vh: the page is not empty any more - the booking-summary

@@ -38,7 +38,7 @@ model Booking {
   tourTimeZone      String? // IANA zone snapshot (cancellation window + review eligibility stay correct if the tour/destination zone later changes)
 
   // Pickup (octo/pickups; D12)
-  pickupRequested    Boolean @default(false)
+  pickupRequested    Boolean  @default(false)
   pickupLocationId   String? // selected pickup point (null = no pickup / meet-on-site)
   pickupAddress      String? // snapshot of the selected pickup point address (booking immutability) — master E.8
   // Pickup TIMING snapshot (guide §17: later pickup edits must not mutate existing
@@ -136,6 +136,12 @@ model Booking {
   cancellationReason         String?
   utcCancelledAt             DateTime?
   utcCancellationRequestedAt DateTime? // when the traveler requested cancellation; refund eligibility is judged at this instant, not the admin action time (gap #16, wired in package D)
+
+  // Non-payment forfeit (guide s15, OPERATOR_LINK): the operator reports the balance
+  // was never paid; only an admin confirmation forfeits the deposit (kept - commission
+  // stays earned, settlement NOT reversed) and releases the spot. Never automatic.
+  utcNonPaymentReportedAt DateTime?
+  utcForfeitedAt          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

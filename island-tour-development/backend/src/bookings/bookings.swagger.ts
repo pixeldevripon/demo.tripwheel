@@ -102,6 +102,49 @@ export const ApiCancelDocs = () =>
     ApiConflictResponse({ type: ConflictErrorDto }),
   );
 
+export const ApiReportNonPaymentDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Operator reports the OPERATOR_LINK balance was never paid (guide s15)',
+      description:
+        'Stamps utcNonPaymentReportedAt once (idempotent). Nothing is forfeited ' +
+        'until an admin confirms - forfeiture is never automatic. Operator must ' +
+        'own the booking (admins may report on their behalf).',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiConfirmForfeitDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin confirms a non-payment report: deposit forfeited, spot released',
+      description:
+        'Terminates the booking as CANCELLED with utcForfeitedAt set. NO refund ' +
+        '(the deposit is kept - commission stays earned, settlement is NOT ' +
+        'reversed) and the seats return to inventory. Requires a prior report.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiDismissNonPaymentDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Admin dismisses a non-payment report (traveler paid after all)',
+      description:
+        'Clears utcNonPaymentReportedAt so the booking reads CONFIRMED again. ' +
+        'Rejected once the booking is already forfeited.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
 export const ApiExtendDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'Extend an on-hold reservation window' }),

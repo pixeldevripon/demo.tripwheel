@@ -20,6 +20,7 @@ import {
   Locale,
   PaymentKind,
   PaymentModel,
+  PaymentProvider,
   PaymentStatus,
   PickupModel,
   PricingModel,
@@ -33,6 +34,7 @@ import {
   type BookingUnitItem,
 } from '@prisma/client';
 import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
+import { MollieService } from '@/payments/mollie.service';
 import { StripeService } from '@/payments/stripe.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
@@ -116,7 +118,10 @@ import type {
 } from './dto/booking.dto';
 import { deriveBookingDisplayStatus } from './dto/booking.dto';
 import { deriveRefundState } from './refund-state.util';
-import { mapStripeRefundStatus } from '@/payments/refund-status.util';
+import {
+  mapMollieRefundStatus,
+  mapStripeRefundStatus,
+} from '@/payments/refund-status.util';
 
 const DEFAULT_HOLD_MINUTES = 30;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
@@ -129,6 +134,24 @@ const QUOTE_TTL_MINUTES = 15;
  * false, distinct from an unexpected DB error.
  */
 class HoldRecoveryAbort extends Error {}
+
+/**
+ * The PSP's ACTUAL charge conversion for a succeeded payment (task #28 / 5C).
+ * Derived from Stripe's `balance_transaction.exchange_rate` or Mollie's
+ * `settlementAmount`, and only ever produced when the PSP settled the charge
+ * in EUR - so `rateToEur` is the true bookingCurrency -> EUR rate the money
+ * moved at. When present, confirmation reconciles the booking's EUR figures
+ * (fxRateToEur / totalEur / commissionAmount + the settlement ledger) onto it
+ * instead of the ECB rate snapshotted at reserve.
+ */
+export interface ChargeFx {
+  /** bookingCurrency -> EUR rate the PSP actually converted at (positive). */
+  rateToEur: Prisma.Decimal;
+  /** Which PSP supplied the rate - written to `eurFxProvider` for audit. */
+  provider: 'stripe' | 'mollie';
+  /** PSP timestamp of the conversion - written to `eurFxProviderAsOf`. */
+  asOf: Date;
+}
 
 /**
  * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
@@ -320,6 +343,7 @@ export class BookingsService {
     private readonly targetLimiter: TargetRateLimiter,
     private readonly customerProvisioning: CustomerProvisioningService,
     private readonly stripe: StripeService,
+    private readonly mollie: MollieService,
   ) {}
 
   /**
@@ -878,6 +902,7 @@ export class BookingsService {
       last4?: string | null;
       brand?: string | null;
     },
+    chargeFx?: ChargeFx,
   ): Promise<void> {
     // `?? undefined` so Prisma SKIPS a field rather than nulling an existing
     // value - a late webhook backfilling the card must not wipe what settle set.
@@ -966,7 +991,7 @@ export class BookingsService {
     // here; a booking that could NOT be recovered stays EXPIRED and NEVER finalizes -
     // no false confirmation email, no conversion, no account provisioning.
     if (current.status === BookingStatus.CONFIRMED) {
-      const finalized = await this.finalizeConfirmation(current);
+      const finalized = await this.finalizeConfirmation(current, chargeFx);
       if (transitioned) {
         // Recovery re-claimed seats (availability changed); a plain race-win did
         // not (seats were already held at reserve).
@@ -1080,23 +1105,53 @@ export class BookingsService {
    */
   private async finalizeConfirmation(
     booking: BookingWithItems,
+    chargeFx?: ChargeFx,
   ): Promise<BookingWithItems> {
     if (booking.conversionFiredAt) return booking; // fast path - already fired
 
+    // Charge-rate reconciliation (task #28 / 5C): when the PSP reported its own
+    // bookingCurrency -> EUR conversion for this charge, the money actually
+    // moved at THAT rate - so the EUR normalization below (and the settlement
+    // ledger) uses it instead of the ECB rate snapshotted at reserve. The
+    // commission RATE stays the reserve snapshot (never retroactive, rule #7);
+    // only its EUR value is re-anchored to the true conversion. EUR-charged
+    // bookings never carry a PSP rate (nothing was converted).
+    const psp =
+      chargeFx &&
+      booking.currency !== Currency.EUR &&
+      chargeFx.rateToEur.isFinite() &&
+      chargeFx.rateToEur.gt(0)
+        ? chargeFx
+        : null;
+
     // EUR-normalize the commission snapshot (rule #22 / master G3).
-    const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
-    const totalEur =
-      booking.totalEur ??
-      booking.totalRetail
-        .mul(fxRate)
-        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-    const commissionAmount =
-      booking.commissionAmount ??
-      (booking.commissionRate
+    const fxRate = psp
+      ? psp.rateToEur.toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP)
+      : (booking.fxRateToEur ?? eurFxRate(booking.currency));
+    const totalEur = psp
+      ? booking.totalRetail
+          .mul(fxRate)
+          .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+      : (booking.totalEur ??
+        booking.totalRetail
+          .mul(fxRate)
+          .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP));
+    const commissionAmount = psp
+      ? booking.commissionRate
         ? totalEur
             .mul(booking.commissionRate)
             .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-        : null);
+        : (booking.commissionAmount ?? null)
+      : (booking.commissionAmount ??
+        (booking.commissionRate
+          ? totalEur
+              .mul(booking.commissionRate)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+          : null));
+    // Audit trail: which source supplied the EUR rate that finalization used.
+    const fxAudit = psp
+      ? { eurFxProvider: psp.provider, eurFxProviderAsOf: psp.asOf }
+      : {};
 
     // ATOMIC mark-first (rule #22 / master §5.1): the guarded `updateMany` on
     // `conversionFiredAt IS NULL` lets exactly one caller win, even when settle
@@ -1111,6 +1166,7 @@ export class BookingsService {
         totalEur,
         commissionAmount,
         conversionFiredAt: firedAt,
+        ...fxAudit,
       },
     });
     if (count === 0) return booking; // another caller already finalized
@@ -1123,6 +1179,7 @@ export class BookingsService {
       totalEur,
       commissionAmount,
       conversionFiredAt: firedAt,
+      ...fxAudit,
     };
 
     // Conversion value MUST be a non-null EUR commission (rule #22). Otherwise it is
@@ -2234,6 +2291,146 @@ export class BookingsService {
         updated.operatorId,
       );
     }
+    return mapBookingForActor(updated, actor);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Non-payment forfeit (guide §15, OPERATOR_LINK)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Operator reports the OPERATOR_LINK balance was never paid. This is only a
+   * REPORT - nothing is forfeited until an admin confirms (guide §15: never
+   * automatic). Stamps `utcNonPaymentReportedAt` once; a repeat report is an
+   * idempotent no-op. Admins may report on the operator's behalf.
+   */
+  async reportNonPayment(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    // Ownership: the reporting operator must own the booking (admins bypass).
+    if (
+      !isPlatformWideBookingRole(actor.role) &&
+      booking.operatorId !==
+        (await resolveOperatorId(this.prisma, actor.id, actor.role))
+    ) {
+      // 404, not 403: never confirm a foreign booking's existence.
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.paymentModel !== PaymentModel.OPERATOR_LINK) {
+      throw new ConflictException(
+        'Non-payment reports only apply to operator-link bookings',
+      );
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        `Cannot report non-payment on a ${booking.status} booking`,
+      );
+    }
+    if (booking.utcNonPaymentReportedAt) {
+      return mapBookingForActor(booking, actor); // already reported - idempotent
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNonPaymentReportedAt: new Date() },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `Non-payment reported for booking ${updated.displayRef} (awaiting admin confirmation)`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin confirms a non-payment report: the deposit is FORFEITED (kept - the
+   * commission stays earned, so the settlement is NOT reversed) and the spot is
+   * released. The booking terminates as CANCELLED with `utcForfeitedAt` set and
+   * an explicit NO-refund verdict. Guide §15: only this confirmation may
+   * forfeit; there is no automatic path.
+   */
+  async confirmForfeit(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    if (!booking.utcNonPaymentReportedAt) {
+      throw new ConflictException(
+        'No non-payment report exists for this booking',
+      );
+    }
+    if (booking.utcForfeitedAt) {
+      return mapBookingForActor(booking, actor); // already forfeited - idempotent
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(`Cannot forfeit a ${booking.status} booking`);
+    }
+
+    const seats = booking.unitItems.length;
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (booking.departureId) {
+        await this.releaseSeats(
+          tx,
+          booking.departureId,
+          seats,
+          booking.exclusiveDeparture,
+        );
+      }
+      await tx.bookingUnitItem.updateMany({
+        where: { bookingId: booking.id },
+        data: { status: BookingStatus.CANCELLED },
+      });
+      return tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          utcCancelledAt: now,
+          utcForfeitedAt: now,
+          cancellationRefund: CancellationRefund.NONE, // deposit is kept
+          cancelledBy: CancelledBy.ADMIN,
+          cancellationReason:
+            'Balance not paid to operator (deposit forfeited)',
+        },
+        include: { unitItems: true },
+      });
+    });
+    // NO refund and NO settlement reversal: the deposit (~= commission) stays
+    // earned. The settlement self-heal cron excludes forfeited bookings.
+    this.logger.warn(
+      `Booking ${updated.displayRef} FORFEITED (non-payment confirmed; deposit kept, ${seats} seat(s) released)`,
+    );
+    // Seats returned to inventory + status changed.
+    this.emitBookingEvents(updated, { availability: !!booking.departureId });
+    if (updated.userId) {
+      void this.customerProvisioning.recomputeAggregates(
+        updated.userId,
+        updated.operatorId,
+      );
+    }
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin dismisses a non-payment report (mistake, or the traveler paid after
+   * all): clears the report stamp so the booking reads CONFIRMED again.
+   */
+  async dismissNonPaymentReport(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+    if (!booking.utcNonPaymentReportedAt) {
+      return mapBookingForActor(booking, actor); // nothing to dismiss
+    }
+    if (booking.utcForfeitedAt) {
+      throw new ConflictException(
+        'This booking is already forfeited - the report cannot be dismissed',
+      );
+    }
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNonPaymentReportedAt: null },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `Non-payment report dismissed for booking ${updated.displayRef}`,
+    );
     return mapBookingForActor(updated, actor);
   }
 
@@ -3538,12 +3735,14 @@ export class BookingsService {
    * for paid_in_full.
    *
    * - IDEMPOTENT: skips if a SUCCEEDED REFUND row already exists, and passes a
-   *   stable Stripe idempotency key so a retry never double-refunds.
+   *   stable PSP idempotency key so a retry never double-refunds.
+   * - PROVIDER-ROUTED: reverses through whichever PSP took the charge (the
+   *   Payment row's provider), regardless of the current settings switch.
    * - CONFIG-GATED: no captured on-platform charge (unpaid / operator_full /
-   *   on_arrival balance) or no Stripe config -> nothing to refund, no-op.
+   *   on_arrival balance) or no provider config -> nothing to refund, no-op.
    * - BEST-EFFORT: never throws. The state change that triggered it already
    *   committed (a cancellation, or a pay-after-expiry that can't be honored), so a
-   *   Stripe hiccup must not roll it back - it logs loudly for manual follow-up.
+   *   PSP hiccup must not roll it back - it logs loudly for manual follow-up.
    *   (Durable retry moves to the outbox in B6.)
    */
   private async executeRefund(
@@ -3565,6 +3764,8 @@ export class BookingsService {
       if (already) return;
 
       // The captured charge to reverse: the latest SUCCEEDED non-refund payment.
+      // Its PROVIDER decides which PSP executes the reversal - never the
+      // settings switch, which may have changed since the charge was taken.
       const charge = await this.prisma.payment.findFirst({
         where: {
           bookingId,
@@ -3577,19 +3778,24 @@ export class BookingsService {
           currency: true,
           intentId: true,
           chargeId: true,
+          provider: true,
         },
       });
       if (!charge?.intentId) return; // nothing captured on-platform to refund
 
-      if (!(await this.stripe.isConfigured())) {
+      const viaMollie = charge.provider === PaymentProvider.MOLLIE;
+      const providerConfigured = viaMollie
+        ? await this.mollie.isConfigured()
+        : await this.stripe.isConfigured();
+      if (!providerConfigured) {
         this.logger.warn(
-          `Refund for ${displayRef} skipped - Stripe not configured`,
+          `Refund for ${displayRef} skipped - ${viaMollie ? 'Mollie' : 'Stripe'} not configured`,
         );
         return;
       }
 
       // A retry after an async FAILURE must not reuse the original idempotency
-      // key - Stripe would replay the first (failed) refund from its cache
+      // key - the PSP would replay the first (failed) refund from its cache
       // instead of creating a new one. The key advances per failed attempt.
       const failedAttempts =
         (await this.prisma.payment.count({
@@ -3604,14 +3810,32 @@ export class BookingsService {
           ? `refund-${bookingId}`
           : `refund-${bookingId}-r${failedAttempts}`;
 
-      const refund = await this.stripe.refundIntent(
-        charge.intentId,
-        idempotencyKey,
-      );
-      // The row carries Stripe's ACTUAL answer: cards succeed synchronously, but
-      // bank methods (iDEAL/SEPA) start `pending` -> PROCESSING here, settled
-      // later by the refund.updated/refund.failed webhook. Never assume success.
-      const rowStatus = mapStripeRefundStatus(refund.status);
+      // The row carries the PSP's ACTUAL answer, never an assumed success:
+      // Stripe cards succeed synchronously but bank methods start `pending`;
+      // Mollie refunds are ALWAYS async (`queued`/`pending` first). PROCESSING
+      // rows settle later - Stripe via refund.updated/refund.failed events,
+      // Mollie via the payment webhook re-fetch (embedded refunds).
+      let refundId: string;
+      let rowStatus: PaymentStatus;
+      if (viaMollie) {
+        const refund = await this.mollie.createRefund({
+          paymentId: charge.intentId,
+          amount: charge.amount, // full refund of the captured amount
+          currency: charge.currency,
+          description: `Refund for booking ${displayRef}`,
+          idempotencyKey,
+        });
+        refundId = refund.id;
+        rowStatus = mapMollieRefundStatus(refund.status);
+      } else {
+        const refund = await this.stripe.refundIntent(
+          charge.intentId,
+          idempotencyKey,
+        );
+        refundId = refund.id;
+        rowStatus = mapStripeRefundStatus(refund.status);
+      }
+
       await this.prisma.payment.create({
         data: {
           bookingId,
@@ -3621,16 +3845,17 @@ export class BookingsService {
           currency: charge.currency,
           intentId: charge.intentId,
           chargeId: charge.chargeId,
-          refundId: refund.id,
+          refundId,
+          provider: charge.provider,
         },
       });
       if (rowStatus === PaymentStatus.FAILED) {
         this.logger.error(
-          `Refund for ${displayRef} FAILED at Stripe (${refund.id}) - manual follow-up needed`,
+          `Refund for ${displayRef} FAILED at ${viaMollie ? 'Mollie' : 'Stripe'} (${refundId}) - manual follow-up needed`,
         );
       } else {
         this.logger.log(
-          `Refund ${rowStatus === PaymentStatus.PROCESSING ? 'initiated (pending settlement)' : 'completed'} for ${displayRef}: ${charge.currency} ${charge.amount.toString()} (${refund.id})`,
+          `Refund ${rowStatus === PaymentStatus.PROCESSING ? 'initiated (pending settlement)' : 'completed'} for ${displayRef}: ${charge.currency} ${charge.amount.toString()} (${refundId})`,
         );
       }
     } catch (err) {
@@ -3777,6 +4002,12 @@ function mapBookingListItem(
     utcCancellationRequestedAt: b.utcCancellationRequestedAt
       ? b.utcCancellationRequestedAt.toISOString()
       : null,
+    // Non-payment forfeit lifecycle (guide s15) - drives the dashboard's
+    // report/confirm/dismiss row actions.
+    utcNonPaymentReportedAt: b.utcNonPaymentReportedAt
+      ? b.utcNonPaymentReportedAt.toISOString()
+      : null,
+    utcForfeitedAt: b.utcForfeitedAt ? b.utcForfeitedAt.toISOString() : null,
     freeCancelDeadline: deadline ? deadline.toISOString() : null,
     requestedInFreeWindow:
       b.utcCancellationRequestedAt && deadline

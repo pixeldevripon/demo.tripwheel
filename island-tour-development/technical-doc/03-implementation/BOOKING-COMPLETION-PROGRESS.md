@@ -52,7 +52,7 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 | Scheduled payout after cancel window | 🟢 built (#49) | hourly cron flips eligible paid_in_full RECORDED->PAID_OUT after the free-cancel window; v1 release-only (funds manual), Connect auto = v2 |
 | Payout / settlement | 🟢 built (#48/#49) | ledger + row-per-confirmation + net_position + scheduled release + admin GET /settlements + dashboard table; Connect = v2 |
 | Cancellation + refunds | 🟢 ~90% (#50) | real Stripe refund + REFUND row on cancel + pay-after-expiry; model-aware amount; tokenized cancel page + 3-recipient emails done. Remaining: partial-refund policy amounts + durable retry (B6) |
-| Provider-backed FX | 🟢 ~95% | ECB keyless reference feed live (#83); only the Stripe charge-rate (currency_conversion on the PaymentIntent, payments phase #28/5C) remains |
+| Provider-backed FX | 🟢 built (#83/#28) | ECB keyless reference feed live + PSP charge-rate reconciliation at confirmation (Stripe balance_transaction exchange_rate / Mollie settlementAmount) - EUR figures re-anchor to the rate the money actually moved at |
 | Frontend widget / checkout | 🟡 ~80% | pickup, add-ons, timing affordances; real-TYP data still demo |
 | Tracking / analytics | 🔴 ~5% | whole §8.2/§8.3 browser + CAPI + GTM + consent layer |
 
@@ -663,11 +663,12 @@ only differences. 1038 tests / 48 suites green.
 - [x] G2 Hold-expiry cron (pairs with D2) - `@Cron(EVERY_MINUTE)` holdExpirySweep (2026-07-25, #47).
 - [ ] G3 Discount/coupon engine (deferred - re-add validated when Coupon engine ships)
 - [ ] G4 Currency-change guard (block/relabel `defaultCurrency` once prices exist)
-- [~] G5 Real FX provider. FEED done 2026-07-25 (#83): `EcbFxProvider` (keyless ECB via
+- [x] G5 Real FX provider - COMPLETE. FEED done 2026-07-25 (#83): `EcbFxProvider` (keyless ECB via
   Frankfurter) selected by `FX_PROVIDER=ecb`, hybrid fallback in `FxModule` factory (composite+static
-  in non-prod, ecb-alone/fail-closed in prod). 2 new spec suites (11 tests). REMAINING: Stripe
-  `currency_conversion` CHARGE rate on the PaymentIntent (payments phase #28/5C) - Stripe FX is
-  charge-coupled, not a feed provider (FX Quotes API is a gated preview, absent from SDK v22.2.2).
+  in non-prod, ecb-alone/fail-closed in prod). 2 new spec suites (11 tests). CHARGE RATE done
+  2026-07-25 (#28/5C, entry 10h): the PSP's actual conversion (Stripe `balance_transaction.
+  exchange_rate` / Mollie `settlementAmount`) re-anchors the booking's EUR figures at confirmation
+  for both PSPs; ECB snapshot remains the quote/display feed and the fallback.
 - [x] **G6 Backend suite green** (2026-07-16). `bookings.service.spec.ts` mocks swapped from
   `$executeRaw` to `departure.updateMany`/`update` (`$executeRaw` is gone from service code entirely);
   `rawSqlTexts` SQL-substring matching replaced with `claimCalls`/`releaseCalls` asserting real Prisma
@@ -981,7 +982,133 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     DEMO SEED: `pickup: 'paid'` blueprint flag -> 3 priced zones (12/17/22) on `klein-curacao-full-day-
     catamaran`, `spanish-water-mangrove-day-trip`, `westpoint-snorkel-and-beach-hop` (+`pickupRequired`);
     re-run-safe (prices existing unpriced zones, adds missing ones). Suite 1545/73 green; frontend +
-    dashboard tsc/eslint green. **NEXT = B6 #51 (outbox + queued idempotent jobs).**
+    dashboard tsc/eslint green.
+10e. [x] MOLLIE END-TO-END (DONE 2026-07-25, #98-#104; user-directed phase): Mollie as a switchable
+    drop-in PSP next to Stripe (both kept; admin picks which one charges).
+    SWITCH: new `payment_settings` singleton (`activeProvider` STRIPE|MOLLIE, default STRIPE; migration
+    `20260725102824`) + `GET/PATCH /settings/payment/provider` (MANAGE_SETTINGS, throttled 5/60);
+    switching to an UNCONFIGURED provider is a 400 (never bricks checkout). ONLY intent creation
+    branches on the switch - webhooks/settle/refunds always route by the Payment ROW's `provider`
+    (a switch is never retroactive).
+    BACKEND: `@mollie/api-client` 4.6.0; `MollieService`+`MollieModule` (DB-config lazy client from
+    encrypted `mollie_configuration.apiKey`, key-rotation rebuild, mirrors StripeService; amounts are
+    DECIMAL STRINGS via `toMollieAmount`, not minor units; `toMollieLocale` maps 6/7 locales, zh falls
+    back). `createIntentForBooking(bookingId, {returnUrl, cancelUrl})` -> Mollie leg returns
+    `{provider:'MOLLIE', checkoutUrl}` (hosted redirect); reuses a still-`open` payment, returns
+    SUCCEEDED-no-URL when already paid, replaces a dead payment with a FRESH idempotency key
+    (`mp_<id>_<kind>_<ts>`; reusing the key would replay the dead payment from Mollie's cache);
+    returnUrl/cancelUrl validated against `parseCorsOrigins` (open-redirect guard); `webhookUrl`
+    only attached when PUBLIC_API_URL/BETTER_AUTH_URL is public https (localhost -> settle-on-return,
+    no forwarding tool needed). WEBHOOK (flaw 7 CLOSED): Mollie posts ONLY a payment id, no signature -
+    `handleMollieWebhook` upserts the ledger row and ALWAYS re-fetches + reconciles (`applyMolliePayment`,
+    shared with settle): paid -> SUCCEEDED + `confirmFromPayment` (card snapshot from
+    `details.cardLabel/cardNumber/cardCountryCode`); failed/canceled/expired -> FAILED (stays ON_HOLD);
+    embedded refunds reconcile via the provider-agnostic `reconcileRefundRow` (extracted from
+    onRefundEvent, same transition guards). **KEY DIFFERENCE vs Stripe: redelivery is NOT skipped**
+    (Mollie re-posts the same id on every transition; the old P2002-skip stub would have eaten the
+    refund settlement) - idempotency lives in the state-guarded transitions. `settleFromReturn`
+    branches by row provider. REFUNDS: `executeRefund` routes by the charge row's provider;
+    `mollie.createRefund` (always async: pending -> PROCESSING row, settles via webhook re-fetch);
+    `mapMollieRefundStatus` in refund-status.util.
+    FRONTEND: `createPaymentIntent(bookingId, {returnUrl, cancelUrl})` always sends redirects (backend
+    decides the provider); intent state is a union; MOLLIE renders `checkout-payment-mollie.tsx`
+    (secure hand-off card + consent + "Reserve · Pay $X" -> `window.location.assign(checkoutUrl)`);
+    paid-revisit (SUCCEEDED, no URL) goes straight to processing; dict key
+    `checkout.hostedCheckoutTitle` x7.
+    DASHBOARD: Settings -> Payments gains ActiveProviderCard (radio cards + Active badge +
+    "Switch Provider"; backend 400 surfaces as the toast) + restored MollieCard (label + encrypted
+    API key, ConnectionStatus; methods multiselect stays out per the v1 Stripe-card decision);
+    api/hooks/types (`usePaymentProvider`/`useUpdatePaymentProvider`, `settingsKeys.paymentProvider`).
+    Suite 1564/73 green (+19: Mollie intent branch, webhook reconcile x8, settle-Mollie, Mollie refund
+    routing, provider-switch guards); backend nest build + frontend/dashboard tsc/eslint green.
+    UI ROUND 2 (same day, founder feedback): (a) dashboard provider switch now CONFIRMS via
+    AlertDialog ("Switch checkout payments to X?" - every new booking charged through X immediately)
+    and the selection is minimal single-line radio rows (name + Active badge, no per-option blurbs;
+    no separate Save button - click a row -> confirm -> switch); (b) checkout Mollie panel's leading
+    icon read as a DEAD CHECKBOX - replaced with the shared `Radio` (selected) + `border-it-primary`
+    row so it matches the Stripe panel's selected MethodRow.
+10f. [x] MOLLIE COMPONENTS INLINE CARD (DONE 2026-07-25, #105; founder-requested Stripe parity):
+    the checkout collects the card ON OUR PAGE when Mollie is active.
+    CONFIG: `mollie_configuration.profileId` (pfl_..., PUBLIC - the mollie.js sibling of a
+    publishable key; migration `add_mollie_profile_id`) + dashboard Mollie card "Profile ID" field;
+    empty profileId = hosted page only.
+    BACKEND: the Mollie intent leg is TWO-PHASE - phase 1 (no returnUrl) returns SETUP
+    `{provider, profileId, testmode, amount, ...}` and creates NO payment (the old
+    returnUrl-required 400 is gone); phase 2 (returnUrl) creates the payment - with `cardToken`
+    it forces `method: creditcard` (checkoutUrl = 3DS hop only; frictionless 3DS can return
+    paid/pending with NO link -> respond without checkoutUrl, frontend goes straight to
+    processing), without a token it is the hosted page. **cardToken NEVER reuses an old open
+    payment** (the token belongs to the card just typed; reuse would 3DS the WRONG card).
+    `MollieService.componentsProfile()` (testmode = apiKey `test_` prefix), `createPayment`
+    gains cardToken. `CreatePaymentIntentDto.cardToken`; response DTO gains profileId/testmode.
+    FRONTEND: `lib/mollie/mollie-js.ts` (idempotent js.mollie.com loader + minimal typings;
+    load failure -> hosted fallback, never a dead form); `checkout-payment-mollie.tsx` rebuilt -
+    "Select a payment method" with a Card row (Components iframes styled with the SAME base style
+    as the Stripe Elements, mounted in FieldShell boxes: number, expiry+CVC row, cardHolder as
+    Name-on-card; per-field errors from component change events, localized by mollie.js) + a
+    Pay = createToken -> phase-2 intent -> assign checkoutUrl (3DS) or push processing.
+    checkout-form phase-1 call no longer sends redirects; MOLLIE intent state =
+    {bookingId, publicRef, profileId, testmode}.
+    ROUND 2 (founder feedback): "More payment methods" row REMOVED - card is the only method
+    when Components are configured; the hosted hand-off row shows ONLY as the fallback (no
+    profileId / mollie.js blocked).
+    ROUND 3 (founder feedback + mollie.js source read): the mount target must provide WIDTH
+    ONLY - mollie.js sets the iframe HEIGHT itself (18px attribute + a heightChangedEvent from
+    the inner frame), so forcing `h-full` stretched the iframe to fill the 50px shell and
+    pinned the text/brand icon to the top. Mount divs are plain `w-full`; FieldShell's
+    items-center centers the mollie-managed block. Components also live inside a `<form>`
+    (mollie.js requires one; Enter in a field dispatches its submit -> handlePay). Placeholders
+    are a PLATFORM behavior (only expiry ships one; the styles API has no placeholder option) -
+    do not chase them. Test-mode aid: when `testmode`, an English-only hint under the fields
+    shows Mollie's test cards (4543 4740 0224 9996 Visa / 2223 0000 1047 9399 Mastercard, any
+    future expiry/CVV) - operator-facing, never renders on a live key, so deliberately not in
+    the 7-locale dictionaries.
+    ROUND 4: `UpdateMollieConfigurationDto` now SHAPE-VALIDATES the apiKey (test_/live_ prefix)
+    + profileId (pfl_) and STRIPS pasted whitespace/zero-width chars on both ends (founder
+    pasted a non-key once -> everything downstream failed as "Profile not found" at
+    tokenization; Mollie shows key values only ONCE at creation).
+10g. [x] FAILED-PAYMENT RETURN PATH (DONE 2026-07-25, #106; founder: "while failed user should
+    redirect to checkout page with a message" - both PSPs left the traveller on an infinite
+    processing spinner). BACKEND: `settleFromReturn` returns `paymentFailed` (live PSP read:
+    Mollie status failed/canceled/expired; Stripe intent canceled OR back at
+    requires_payment_method WITH last_payment_error - a fresh error-less intent is NOT failed;
+    row-status FAILED is the fallback when the PSP is unreachable; always false once CONFIRMED).
+    FRONTEND: processing page (a) detects Stripe's `redirect_status=failed` return param
+    immediately (no backend call), (b) checks `settled.paymentFailed` - either way it
+    router.replaces back to the CHECKOUT with `?payment=failed`; the checkout page parses the
+    param and the form opens with a top banner (reuses `dict.paymentError`, no new keys). The
+    exact checkout URL (selection query intact) is saved per tour in sessionStorage
+    (`it-checkout-return:{tourId}`, written on checkout mount with the payment param stripped);
+    bare `/{locale}/{dest}/{slug}/checkout` is the fallback. Poll stall (~20s) remains the
+    backstop for slow-webhook cases. NOTE: a retry after failure re-reserves under a NEW client
+    booking id (page remount regenerates it); the old ON_HOLD booking expires via the hold-expiry
+    sweeper - accepted v1. Suite 1570/73 green; frontend tsc/eslint green.
+10h. [x] 5C / #28 - PSP CHARGE-RATE FX RECONCILIATION, both PSPs (DONE 2026-07-25; founder:
+    "dynamically currency and FX conversion in payment, should work for both payment methods").
+    Audit vs guide §21.6 first: intents ALREADY charge dynamically in `Booking.currency` for
+    both PSPs (Stripe minor units / Mollie decimal string), cross-currency intent reuse is
+    structurally impossible (Payment row keyed per booking+kind; booking currency immutable;
+    currency change → new quote → new booking → new intent), and the checkout renders the live
+    server-quote `payToday` - so the ONLY remaining gap was the FX doc's "charge rate" item.
+    BUILT: at confirmation the PSP's ACTUAL bookingCurrency→EUR conversion re-anchors the EUR
+    figures instead of the reserve-time ECB snapshot. New `ChargeFx` type (bookings.service,
+    exported): `{rateToEur, provider:'stripe'|'mollie', asOf}`. Derivations (payments.service
+    pure helpers): `stripeChargeFx` = `balance_transaction.exchange_rate` (expanded now on BOTH
+    `retrieveCharge` and `retrievePaymentIntent` → `latest_charge.balance_transaction`), ONLY
+    when the balance transaction currency is literally `eur` (a non-EUR-settled Stripe account
+    would supply a wrong-currency rate → skip); `mollieChargeFx` = `settlementAmount.value /
+    amount.value`, only when settlement is EUR and the charge is not (Mollie omits the field for
+    e.g. PayPal-settled amounts → skip). Threaded as the 3rd arg of `confirmFromPayment` from
+    `onIntentSucceeded` + `applyMolliePayment` (webhook AND settle-on-return paths).
+    `finalizeConfirmation(booking, chargeFx?)`: when a positive PSP rate arrives on a non-EUR
+    booking it EXPLICITLY recomputes fxRateToEur (6dp)/totalEur/commissionAmount (2dp HALF_UP,
+    commission RATE stays the reserve snapshot - only its EUR value re-anchors) and stamps
+    `eurFxProvider`/`eurFxProviderAsOf` = the PSP (existing audit columns - NO migration);
+    settlement ledger (`writeSettlement`) flows the same reconciled figures, so conversion
+    value + ledger are PSP-true. No PSP rate / EUR-charged booking → prior ECB-snapshot path,
+    byte-identical behavior. Frontend untouched. 6 new tests (2 Stripe derive/skip, 2 Mollie
+    derive/skip, 2 finalize reconcile/EUR-ignore); 6 existing arity assertions updated. Suite
+    1576/73 green; tsc + eslint clean. **NEXT = B6 #51 (outbox + queued idempotent jobs).**
 11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
     (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
 
@@ -997,10 +1124,10 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
 
 **Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
 16. D1: FEED done 2026-07-25 (#83) - `EcbFxProvider` (keyless ECB via Frankfurter), env-selected,
-    hybrid fallback. REMAINING: Stripe `currency_conversion` CHARGE rate on the PaymentIntent
-    (payments phase #28/5C) + currency-change guard on `defaultCurrency`.
+    hybrid fallback. CHARGE RATE done 2026-07-25 (#28/5C, entry 10h) - PSP conversion reconciled
+    at confirmation for BOTH PSPs. REMAINING: currency-change guard on `defaultCurrency` (G4).
 17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
-    completion, quote-currency 5C (#28).
+    completion. ~~quote-currency 5C (#28)~~ DONE 2026-07-25 (entry 10h).
 18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator
     non-payment forfeit flow (guide §15), Mollie webhook confirm (Mollie stays block-commented).
 

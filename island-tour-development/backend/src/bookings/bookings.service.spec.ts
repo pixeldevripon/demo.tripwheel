@@ -312,6 +312,7 @@ describe('BookingsService', () => {
   let targetLimiter: any;
   let customerProvisioning: any;
   let stripe: any;
+  let mollie: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -359,6 +360,13 @@ describe('BookingsService', () => {
       isConfigured: jest.fn().mockResolvedValue(true),
       refundIntent: jest.fn().mockResolvedValue({ id: 're_test_123' }),
     };
+    // Mollie configured too; refunds route by the charge row's provider.
+    mollie = {
+      isConfigured: jest.fn().mockResolvedValue(true),
+      createRefund: jest
+        .fn()
+        .mockResolvedValue({ id: 're_mollie_1', status: 'pending' }),
+    };
     svc = new BookingsService(
       prisma,
       mail,
@@ -370,6 +378,7 @@ describe('BookingsService', () => {
       targetLimiter,
       customerProvisioning,
       stripe,
+      mollie,
     );
   });
 
@@ -1131,6 +1140,62 @@ describe('BookingsService', () => {
             status: 'SUCCEEDED',
             amount: D('31.99'),
             refundId: 're_test_123',
+          }),
+        }),
+      );
+    });
+
+    // A charge captured through Mollie must be reversed through Mollie - the
+    // Payment ROW's provider routes the refund, never the settings switch.
+    it('routes the refund through Mollie when the charge row is MOLLIE', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // no prior REFUND (idempotency)
+        .mockResolvedValueOnce({
+          amount: D('31.99'),
+          currency: 'EUR',
+          intentId: 'tr_mollie_1',
+          chargeId: null,
+          provider: 'MOLLIE',
+        });
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(mollie.createRefund).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentId: 'tr_mollie_1',
+          currency: 'EUR',
+          idempotencyKey: 'refund-b1',
+        }),
+      );
+      expect(stripe.refundIntent).not.toHaveBeenCalled();
+      // Mollie refunds are ALWAYS async: `pending` records as PROCESSING, and
+      // the payment webhook re-fetch settles it later. Never assume success.
+      expect(m.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            kind: 'REFUND',
+            status: 'PROCESSING',
+            refundId: 're_mollie_1',
+            provider: 'MOLLIE',
           }),
         }),
       );
@@ -2067,6 +2132,78 @@ describe('BookingsService', () => {
       expect(tracking.fireBookingComplete).toHaveBeenCalledWith(
         expect.objectContaining({ eventId: 'p1' }), // fakeBooking().publicRef
       );
+    });
+
+    it('reconciles every EUR figure onto the PSP charge rate when one is supplied (5C)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          currency: 'USD',
+          totalRetail: D('100'),
+          depositAmount: D('20'),
+          fxRateToEur: D('0.92'), // ECB snapshot at reserve
+          totalEur: D('92'),
+          commissionRate: D('0.2'),
+          commissionAmount: D('18.4'),
+        }),
+      );
+
+      await svc.confirmFromPayment('b1', undefined, {
+        rateToEur: D('0.9134'), // Stripe's actual charge conversion
+        provider: 'stripe',
+        asOf: new Date('2026-07-25T10:00:00Z'),
+      });
+
+      // The finalize write re-anchors fxRateToEur/totalEur/commissionAmount to
+      // the PSP's true rate (NOT the ?? fallback path) + stamps the audit trail.
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'b1', conversionFiredAt: null },
+          data: expect.objectContaining({
+            fxRateToEur: D('0.9134'),
+            totalEur: D('91.34'),
+            commissionAmount: D('18.27'),
+            eurFxProvider: 'stripe',
+            eurFxProviderAsOf: new Date('2026-07-25T10:00:00Z'),
+          }),
+        }),
+      );
+      // The settlement ledger row is written from the SAME reconciled figures:
+      // deposit model -> collected = depositAmount * pspRate.
+      const c = m.settlement.upsert.mock.calls[0][0].create;
+      expect(c.commissionOwed).toEqual(D('18.27'));
+      expect(c.amountCollected).toEqual(D('18.27')); // 20 * 0.9134 = 18.268 -> 18.27
+    });
+
+    it('an EUR-charged booking ignores a stray PSP rate (nothing was converted)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          currency: 'EUR',
+          totalRetail: D('100'),
+          fxRateToEur: D('1'),
+          totalEur: D('100'),
+          commissionAmount: D('20'),
+        }),
+      );
+
+      await svc.confirmFromPayment('b1', undefined, {
+        rateToEur: D('0.9'),
+        provider: 'mollie',
+        asOf: new Date('2026-07-25T10:00:00Z'),
+      });
+
+      const finalizeCall = m.booking.updateMany.mock.calls.find(
+        ([arg]: [{ where: { conversionFiredAt?: null } }]) =>
+          arg.where && 'conversionFiredAt' in arg.where,
+      );
+      expect(finalizeCall).toBeDefined();
+      const data = finalizeCall![0].data as Record<string, unknown>;
+      expect(data.fxRateToEur).toEqual(D('1'));
+      expect(data.totalEur).toEqual(D('100'));
+      expect(data.commissionAmount).toEqual(D('20'));
+      expect(data.eurFxProvider).toBeUndefined();
+      expect(data.eurFxProviderAsOf).toBeUndefined();
     });
 
     it('the caller that LOSES the status flip fires NO side effects (still backfills billing)', async () => {

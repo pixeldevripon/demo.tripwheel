@@ -49,6 +49,8 @@ interface CheckoutClientProps {
     addOns: BookingAddOnSelection[];
     destination: string;
     slug: string;
+    /** Traveller bounced back after a FAILED charge (?payment=failed). */
+    paymentFailed?: boolean;
 }
 
 const backBarLabel =
@@ -95,6 +97,7 @@ export function CheckoutClient({
     addOns,
     destination,
     slug,
+    paymentFailed = false,
 }: CheckoutClientProps) {
     const [phase, setPhase] = useState<CheckoutPhase>('contact');
     // Selected pickup, published by the form: the label feeds the summary's
@@ -235,6 +238,7 @@ export function CheckoutClient({
                             addOns={addOns}
                             destination={destination}
                             slug={slug}
+                            paymentFailed={paymentFailed}
                         />
                     </div>
                 </div>

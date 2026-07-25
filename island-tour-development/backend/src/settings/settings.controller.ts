@@ -10,6 +10,7 @@ import {
   UpdateMailchimpDto,
   UpdateReviewRequestsDto,
   UpdateMollieConfigurationDto,
+  UpdatePaymentProviderDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
   UpdateSocialMediaDto,
@@ -31,6 +32,8 @@ import {
   ApiUpdateStripeConfigurationDocs,
   ApiGetMollieConfigurationDocs,
   ApiUpdateMollieConfigurationDocs,
+  ApiGetPaymentProviderDocs,
+  ApiUpdatePaymentProviderDocs,
   ApiGetCompanyInformationsDocs,
   ApiUpdateCompanyInformationsDocs,
   ApiGetSocialMediaDocs,
@@ -245,6 +248,36 @@ export class SettingsController {
     @Body() dto: UpdateIntegrationsConfigurationDto,
   ) {
     return this.settingsService.updateIntegrationsConfiguration(dto);
+  }
+
+  // ── Active payment provider (platform switch) ───────────────────────────────
+
+  /**
+   * GET /settings/payment/provider
+   *
+   * Which PSP (Stripe or Mollie) charges travellers at checkout.
+   * Security: requires MANAGE_SETTINGS (Admin only).
+   */
+  @Get('payment/provider')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiGetPaymentProviderDocs()
+  getPaymentProviderSettings() {
+    return this.settingsService.getPaymentProviderSettings();
+  }
+
+  /**
+   * PATCH /settings/payment/provider
+   *
+   * Switch the checkout PSP. Rejected (400) when the target provider has no
+   * usable credentials yet - a switch must never brick the checkout.
+   * Security: requires MANAGE_SETTINGS.
+   */
+  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Patch('payment/provider')
+  @RequirePermissions(Permission.MANAGE_SETTINGS)
+  @ApiUpdatePaymentProviderDocs()
+  updatePaymentProviderSettings(@Body() dto: UpdatePaymentProviderDto) {
+    return this.settingsService.updatePaymentProviderSettings(dto);
   }
 
   // ── Payment Configuration (Mollie) ──────────────────────────────────────────

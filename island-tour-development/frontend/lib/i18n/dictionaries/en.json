@@ -670,7 +670,8 @@
         "processingViewBooking": "View my booking",
         "processingFailed": "We couldn't confirm your payment. Please contact support with your reference {ref}.",
         "methodUnavailable": "Not available for {currency}",
-        "redirectNote": "You'll be securely redirected to complete your payment, then brought right back."
+        "redirectNote": "You'll be securely redirected to complete your payment, then brought right back.",
+        "hostedCheckoutTitle": "Pay securely online"
     },
     "cancelBooking": {
         "title": "Cancel {tour}, {date}?",

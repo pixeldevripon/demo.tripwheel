@@ -669,6 +669,7 @@
         "processingFailed": "我们无法确认您的付款。请凭参考编号 {ref} 联系客服。",
         "methodUnavailable": "不支持 {currency}",
         "redirectNote": "我们会安全地将您跳转至支付页面完成付款，随后带您返回。",
+        "hostedCheckoutTitle": "安全在线支付",
         "countryPopular": "热门",
         "countryAll": "所有国家/地区"
     },

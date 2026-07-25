@@ -6,12 +6,19 @@ import {
 } from '@/common/utils/invite-provisioning.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role, StaffSeatRole, StaffStatus } from '@prisma/client';
+import {
+  PaymentProvider,
+  Prisma,
+  Role,
+  StaffSeatRole,
+  StaffStatus,
+} from '@prisma/client';
 
 import {
   CreateOperatorDto,
@@ -20,6 +27,7 @@ import {
   UpdateOperatorCompanyInfoDto,
   UpdateOperatorDto,
   UpdateOperatorMollieConfigDto,
+  UpdateOperatorPaymentProviderDto,
   UpdateOperatorSocialMediaDto,
   UpdateOperatorStripeConfigDto,
 } from './dto/operator.dto';
@@ -560,6 +568,84 @@ export class OperatorsService {
     return {
       ...config,
       apiKey: this.maskSecret(config.apiKey),
+    };
+  }
+
+  // ── Active payment provider (mirrors the platform payment_settings switch) ──
+
+  async getPaymentProvider(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
+    return {
+      activeProvider: operator.activePaymentProvider,
+      updatedAt: operator.updatedAt,
+    };
+  }
+
+  /**
+   * Switch the operator's charging PSP. Same contract as the platform switch
+   * (settings.service): the TARGET provider must already hold usable
+   * credentials or the switch is rejected with a 400 - flipping to an
+   * unconfigured provider would dead-end every charge. The per-config
+   * `isActive` flags are kept in sync so config reads stay coherent.
+   */
+  async updatePaymentProvider(
+    operatorId: string,
+    requestingUserId: string,
+    requestingUserRole: Role,
+    dto: UpdateOperatorPaymentProviderDto,
+  ) {
+    const operator = await this.resolveOperator(operatorId);
+    this.assertOwnerOrAdmin(operator, requestingUserId, requestingUserRole);
+
+    if (dto.activeProvider === PaymentProvider.MOLLIE) {
+      const mollie = await this.prisma.operatorMollieConfig.findUnique({
+        where: { operatorId },
+        select: { apiKey: true },
+      });
+      if (!mollie?.apiKey) {
+        throw new BadRequestException(
+          'Configure the Mollie API key before making Mollie the active provider',
+        );
+      }
+    } else {
+      const stripe = await this.prisma.operatorStripeConfig.findUnique({
+        where: { operatorId },
+        select: { secretKey: true, webhookSecret: true },
+      });
+      if (!stripe?.secretKey || !stripe.webhookSecret) {
+        throw new BadRequestException(
+          'Configure the Stripe secret key and webhook secret before making Stripe the active provider',
+        );
+      }
+    }
+
+    const updated = await this.prisma.operator.update({
+      where: { id: operatorId },
+      data: { activePaymentProvider: dto.activeProvider },
+      select: { activePaymentProvider: true, updatedAt: true },
+    });
+    // Keep the per-config isActive flags coherent with the single switch.
+    await this.prisma.operatorStripeConfig.updateMany({
+      where: { operatorId },
+      data: { isActive: dto.activeProvider === PaymentProvider.STRIPE },
+    });
+    await this.prisma.operatorMollieConfig.updateMany({
+      where: { operatorId },
+      data: { isActive: dto.activeProvider === PaymentProvider.MOLLIE },
+    });
+
+    this.logger.log(
+      `Operator ${operatorId} active payment provider set to ${updated.activePaymentProvider}`,
+    );
+    return {
+      activeProvider: updated.activePaymentProvider,
+      updatedAt: updated.updatedAt,
     };
   }
 }

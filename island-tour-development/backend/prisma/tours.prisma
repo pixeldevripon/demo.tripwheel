@@ -441,8 +441,8 @@ model PickupLocation {
   minutesPrior Int? // pickup happens N minutes before departure
   windowStart  String? // pickup window start ('HH:MM') — Figma "7:45–8:15 AM window"
   windowEnd    String? // pickup window end ('HH:MM')
-  displayOrder Int     @default(0)
-  isActive     Boolean @default(true)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
 
   tour         Tour                        @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings     Booking[]

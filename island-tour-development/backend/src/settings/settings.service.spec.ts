@@ -16,6 +16,7 @@ function createMockPrismaService() {
     },
     siteSEO: {
       upsert: jest.fn(),
+      findFirst: jest.fn(),
     },
     companyInformations: {
       upsert: jest.fn(),
@@ -23,8 +24,13 @@ function createMockPrismaService() {
     },
     stripeConfiguration: {
       upsert: jest.fn(),
+      findUnique: jest.fn(),
     },
     mollieConfiguration: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    paymentSettings: {
       upsert: jest.fn(),
     },
   };
@@ -132,6 +138,61 @@ describe('SettingsService', () => {
         update: {},
         create: { id: 'default' },
       });
+    });
+  });
+
+  describe('getPublicSiteSEO', () => {
+    it('exposes the public-by-nature tracking IDs and crawl-output fields', async () => {
+      prisma.siteSEO.findFirst.mockResolvedValue({
+        metaTitle: 'Title',
+        metaDescription: 'Desc',
+        metaKeywords: 'a,b',
+        canonicalUrl: 'https://x.test',
+        robotsMeta: 'index, follow',
+        ogTitle: 'OG',
+        ogDescription: 'OGd',
+        ogImage: 'https://x.test/og.png',
+        twitterTitle: 'TW',
+        twitterDescription: 'TWd',
+        twitterImage: 'https://x.test/tw.png',
+        googleAnalyticsId: 'G-ABC123',
+        googleTagManagerId: 'GTM-XYZ',
+        googleSearchConsole: 'verify-token',
+        facebookPixelId: '1234567890',
+        cookiebotCbid: 'cbid-uuid',
+        robotsTxt: 'User-agent: *\nAllow: /',
+        autoGenerateSitemap: 'true',
+      });
+
+      const result = await service.getPublicSiteSEO();
+
+      // findFirst (never a write) on the default singleton.
+      expect(prisma.siteSEO.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'default' } }),
+      );
+      expect(result.googleAnalyticsId).toBe('G-ABC123');
+      expect(result.googleTagManagerId).toBe('GTM-XYZ');
+      expect(result.facebookPixelId).toBe('1234567890');
+      expect(result.robotsTxt).toBe('User-agent: *\nAllow: /');
+      expect(result.autoGenerateSitemap).toBe('true');
+    });
+
+    it('coerces empty strings and a missing row to null', async () => {
+      prisma.siteSEO.findFirst.mockResolvedValue({
+        googleAnalyticsId: '',
+        googleTagManagerId: '',
+        facebookPixelId: '',
+        robotsTxt: '',
+        autoGenerateSitemap: '',
+      });
+
+      const result = await service.getPublicSiteSEO();
+
+      expect(result.googleAnalyticsId).toBeNull();
+      expect(result.googleTagManagerId).toBeNull();
+      expect(result.facebookPixelId).toBeNull();
+      expect(result.robotsTxt).toBeNull();
+      expect(result.autoGenerateSitemap).toBeNull();
     });
   });
 
@@ -274,6 +335,71 @@ describe('SettingsService', () => {
       expect(prisma.mollieConfiguration.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'default' } }),
       );
+    });
+  });
+
+  // ── Active payment provider switch ───────────────────────────────────────────
+
+  describe('getPaymentProviderSettings', () => {
+    it('upserts and returns the singleton (STRIPE default)', async () => {
+      const row = {
+        id: 'default',
+        activeProvider: 'STRIPE',
+        updatedAt: new Date(),
+      };
+      prisma.paymentSettings.upsert.mockResolvedValue(row);
+
+      const result = await service.getPaymentProviderSettings();
+
+      expect(result.activeProvider).toBe('STRIPE');
+      expect(prisma.paymentSettings.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'default' } }),
+      );
+    });
+  });
+
+  describe('updatePaymentProviderSettings', () => {
+    it('switches to MOLLIE when a Mollie API key is configured', async () => {
+      prisma.mollieConfiguration.findUnique.mockResolvedValue({
+        apiKey: 'encrypted-key',
+      });
+      const row = {
+        id: 'default',
+        activeProvider: 'MOLLIE',
+        updatedAt: new Date(),
+      };
+      prisma.paymentSettings.upsert.mockResolvedValue(row);
+
+      const result = await service.updatePaymentProviderSettings({
+        activeProvider: 'MOLLIE',
+      } as never);
+
+      expect(result.activeProvider).toBe('MOLLIE');
+    });
+
+    it('rejects switching to MOLLIE without an API key (would brick checkout)', async () => {
+      prisma.mollieConfiguration.findUnique.mockResolvedValue({ apiKey: '' });
+
+      await expect(
+        service.updatePaymentProviderSettings({
+          activeProvider: 'MOLLIE',
+        } as never),
+      ).rejects.toThrow('Configure the Mollie API key');
+      expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
+    });
+
+    it('rejects switching to STRIPE without secret + webhook secret', async () => {
+      prisma.stripeConfiguration.findUnique.mockResolvedValue({
+        secretKey: 'enc',
+        webhookSecret: '',
+      });
+
+      await expect(
+        service.updatePaymentProviderSettings({
+          activeProvider: 'STRIPE',
+        } as never),
+      ).rejects.toThrow('Configure the Stripe secret key');
+      expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
     });
   });
 });

@@ -142,6 +142,25 @@ model StripeConfiguration {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Platform payment settings (singleton) — which PSP takes the checkout charge
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The admin-selected checkout PSP. Exactly ONE provider charges travellers at
+/// any time (Stripe inline Elements vs Mollie hosted redirect); the intent
+/// endpoint branches on this row. Switching is never retroactive: existing
+/// Payment rows keep their own `provider`, and webhooks/refunds route by the
+/// ROW's provider, not this setting.
+model PaymentSettings {
+  id             String          @id @default("default")
+  activeProvider PaymentProvider @default(STRIPE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Mollie configuration (singleton)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -149,6 +168,10 @@ model mollieConfiguration {
   id             String   @id @default("default")
   paymentLabel   String   @default("Mollie")
   apiKey         String   @default("")
+  /// Mollie profile id (pfl_...) - NON-secret, needed by mollie.js in the
+  /// browser to tokenize cards for the inline Components form. Empty = no
+  /// inline card form; the checkout falls back to Mollie's hosted page.
+  profileId      String   @default("")
   paymentMethods String[] @default([])
 
   createdAt DateTime @default(now())

@@ -72,11 +72,11 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 | # | Finding | Where |
 |---|---|---|
-| 1 | Mollie-paid bookings stay `ON_HOLD` forever — webhook records an idempotency row but never confirms; no Mollie SDK installed | Part II |
-| 2 | No analytics/tracking layer at all on the public site — `booking_complete` never fires; TYP conversion is a comment, not code | Part III |
+| 1 | ~~Mollie-paid bookings stay `ON_HOLD` forever~~ **STALE, fixed 2026-07-25** — full Mollie integration shipped as a switchable PSP (`@mollie/api-client` installed; webhook fetch-and-reconcile confirms; hosted-redirect checkout; refunds route by the Payment row's provider; admin switch at `/settings/payment/provider` + dashboard Payments tab) | Part II |
+| 2 | ~~No analytics/tracking layer at all on the public site~~ **STALE, fixed 2026-07-25** — `booking_complete` pushes to `dataLayer` and the TYP conversion push is wired; the **GTM container now actually loads** (`google-tag-manager.tsx`, gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID) and fans out to GA4/Ads/Pixel + the server-side container; backend Meta CAPI already fires server-side | Part III |
 | 3 | `StaticFxProvider` is bound in every environment, so production never truly fails closed | Part II |
 | 4 | Nightly jobs run on in-process `@nestjs/schedule` — will double-run under a second replica | Part II |
-| 5 | No `sitemap.ts`, `robots.ts`, or JSON-LD; hreflang/canonical only on the tour-detail route | Part III |
+| 5 | ~~No `sitemap.ts`, `robots.ts`, or JSON-LD; hreflang/canonical only on the tour-detail route~~ **STALE, fixed 2026-07-25** — `/robots.txt` + `/sitemap.xml` (backed by `GET /sitemap/entries`), Organization/WebSite/BreadcrumbList/FAQPage/TouristDestination/TouristTrip JSON-LD, and canonical+hreflang extended to the homepage and legal pages. See A6.8 | Part III |
 | 6 | ~~Homepage CMS loaders have zero callers~~ **STALE, fixed** — `app/(frontend)/[locale]/page.tsx` calls `getHomePageContent` (verified 2026-07-21) | Part III |
 | 7 | `operator_full` specced as live in 5 docs, dropped from v1 by the 2026-07-15 locked decision | Part V |
 | 8 | Category gating built at ≥1 published tour; canonical rule is ≥3 | Part II / V |
@@ -669,7 +669,13 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 #### A6.8 SEO implementation status
 - Backend SEO data (meta tables, `aboutText`, derivable tour fields) is **largely in place**.
-- **The frontend rendering layer (meta emission, canonical/hreflang tags, JSON-LD emitters, sitemaps, robots, breadcrumb JSON-LD) is a build task.**
+- **EXECUTED (2026-07-25) — the frontend SEO rendering layer is now built:**
+  - **`/robots.txt`** — `app/robots.txt/route.ts`; serves the admin's custom `robotsTxt` verbatim when set, else generates a default that disallows the private/noindex flows (checkout, thank-you, cancel, review, bookings, wishlist, search, `/account`, `/api`) and declares the sitemap (gated on `autoGenerateSitemap`).
+  - **`/sitemap.xml`** — `app/sitemap.ts` + cached loader `lib/api/public/sitemap.ts`, fed by the new **backend `GET /sitemap/entries`** (`src/sitemap/`). Published entities only, mirroring each page's 404 gate (active destinations, LIVE tours, ≥1-LIVE-tour categories/hubs, published collections); `lastmod` from `updatedAt`; every URL carries the 7-locale hreflang set + `x-default`; the loader rides the coarse entity tags so any publish/unpublish busts it.
+  - **Tracking** — GTM container now actually loads (`components/frontend/tracking/google-tag-manager.tsx`, mounted in `(frontend)/layout.tsx`), gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID; it consumes the existing `booking_complete` `dataLayer` push and fans out to GA4/Ads/Meta Pixel + the server-side container. GA4/GTM/Pixel IDs are now exposed on `GET /settings/public/seo`.
+  - **Structured data** — `Organization` + `WebSite`(SearchAction) sitewide; `BreadcrumbList` on destination/category/hub/collection/tour/all-tours; `FAQPage` wherever FAQs render; `TouristDestination` (island) and `TouristTrip` (tour) alongside the existing review `Product`. Builders in `lib/seo/jsonld.ts`, emitted via `components/frontend/seo/json-ld.tsx`.
+  - **Metadata** — root `metadataBase` now always resolves (`lib/seo/site-url.ts`: admin Canonical URL → `NEXT_PUBLIC_SITE_URL` → `tripwheel.app`); root OG `type/url/siteName` + `twitter:site/creator`; `<html lang>` synced per-locale client-side (root sits above `[locale]`; SEO signal carried by hreflang); canonical/hreflang added to the homepage and all legal pages; self-canonical on search.
+- **Dashboard** — Settings > SEO now exposes `robotsTxt` (textarea) + `autoGenerateSitemap` (checkbox).
 
 ---
 
@@ -2403,7 +2409,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Card** is **custom / inline** — styled **Stripe Card Elements**, **no raw card fields** and no Stripe-hosted UI.
 - **PayPal and iDEAL are redirect** methods.
 - Eligibility is gated via **`automatic_payment_methods` + the returned `payment_method_types`**.
-- **Mollie is deferred** at the frontend; the backend Mollie confirm path stays block-commented.
+- ~~**Mollie is deferred** at the frontend; the backend Mollie confirm path stays block-commented.~~ **STALE, built 2026-07-25**: when the admin switches `payment_settings.activeProvider` to MOLLIE, the intent endpoint returns `{provider:'MOLLIE', checkoutUrl}` and the checkout's payment step becomes a hosted-redirect hand-off (`checkout-payment-mollie.tsx`); Mollie's hosted page is the method-eligibility truth. Stripe stays the default and its inline path is untouched.
 - Design source (LD26): **payment methods as an equal radio list, card default expanded; wallets device-conditional** (a reversal from express buttons). Figma offers **Card / PayPal / Apple Pay / Google Pay** → hence the `Payment.methodType` gap.
 - **No payment section on `operator_full`** (conflict log 79, C22).
 
@@ -2473,15 +2479,15 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   ```
 - Evaluated at booking-time `now`, snapshotted, **never retroactive** — a later spotlight activation/expiry does not change an existing booking.
 - **The quote shows the spotlight-effective rate** (matching what reserve will charge). If a spotlight flips between quote and reserve, **the reserve snapshot is authoritative**.
-- **Payment never recomputes commission**; `finalizeConfirmation` only **EUR-normalizes the already-snapshotted value** using the snapshot's `fxRateToEur` (**no refetch**).
+- **Payment never recomputes the commission RATE**; `finalizeConfirmation` only **EUR-normalizes the value**. Since 2026-07-25 (task #28/5C) that normalization prefers the **PSP's actual charge rate** (Stripe `balance_transaction.exchange_rate` / Mollie `settlementAmount`, threaded as `ChargeFx` into `finalizeConfirmation`) and falls back to the reserve-time ECB snapshot; **never a live FX refetch**.
 - Tier table driving the rate: `premium` **30%** (rank 1) · `featured` **27.5%** (2) · `boosted` **25%** (3) · `organic` **22.5%** (4) · `standard` **20%** (5, default) · **Destination Spotlight 35%** (separate block, not a rank).
 - **Tier mechanics are internal commercial logic, never user-facing** — travelers never see "tier", commission, or `tier_rank`. In the dashboard, **commission columns are ADMIN-only** (rule #22).
 
 #### C.6.2 EUR conversion
 
 - **EUR tour:** `fxRateToEur = 1`, `totalEur = totalRetail`, `commissionAmount = totalRetail * commissionRate`.
-- **USD tour (USD/EUR flow):** operator enters USD → booking snapshots `currency = USD` → totals / deposit / balance / unit-item / add-on prices stored in USD → the Stripe/Mollie charge is created in USD → **at confirmation the backend uses the FX rate snapshotted from the provider-backed quote** → stores `totalEur = totalRetail * fxRateToEur` → stores `commissionAmount = totalEur * commissionRate` → **the TYP and email display USD while `booking_complete` sends the EUR commission**.
-- **The FX rate is snapshotted so historical commission/conversion never drift.**
+- **USD tour (USD/EUR flow):** operator enters USD → booking snapshots `currency = USD` → totals / deposit / balance / unit-item / add-on prices stored in USD → the Stripe/Mollie charge is created in USD → **at confirmation the backend uses the PSP's actual charge→EUR rate when the PSP reports one (task #28/5C: Stripe `balance_transaction.exchange_rate`, Mollie `settlementAmount`), else the ECB rate snapshotted at reserve** → stores `totalEur = totalRetail * fxRateToEur` → stores `commissionAmount = totalEur * commissionRate` (+ `eurFxProvider`/`eurFxProviderAsOf` audit) → **the TYP and email display USD while `booking_complete` sends the EUR commission**.
+- **The FX rate written at confirmation is final - historical commission/conversion never drift.**
 - Current implementation: the pricing utility can compute the EUR commission **immediately for EUR bookings**; for **USD bookings, confirmation finalization backfills** `fxRateToEur`, `totalEur`, and `commissionAmount` **before the conversion fires**.
 - **Multi-currency safe:** commission is computed on the **EUR value** of the booking total, so a USD- or EUR-charged spotlight tour still yields a correct EUR commission at **35%**.
 - **Edge case:** a USD booking **must be normalized to EUR before the conversion fires**.

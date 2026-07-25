@@ -31,6 +31,35 @@ export class PaymentIntentResponseDto {
   paymentRequired!: boolean;
 
   @ApiPropertyOptional({
+    enum: PaymentProvider,
+    example: PaymentProvider.STRIPE,
+    description:
+      'Which PSP takes this charge (admin-selected). STRIPE → inline Elements via clientSecret; MOLLIE → hosted redirect via checkoutUrl.',
+  })
+  provider?: PaymentProvider;
+
+  @ApiPropertyOptional({
+    example: 'https://www.mollie.com/checkout/select-method/7UhSN1zuXS',
+    description:
+      'Mollie hosted-checkout URL - redirect the traveller here. Absent on the Stripe path; also absent when the Mollie payment is already paid (status SUCCEEDED - go straight to processing).',
+  })
+  checkoutUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'pfl_3RkSN1zuPE',
+    description:
+      'Mollie profile id for the inline Components card form (mollie.js) - PUBLIC, the Mollie sibling of a publishable key. Only on the MOLLIE setup response (no returnUrl yet); absent = inline form not configured, use the hosted page.',
+  })
+  profileId?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Whether the Mollie account runs on a test API key - mollie.js needs the flag to tokenize against the test profile.',
+  })
+  testmode?: boolean;
+
+  @ApiPropertyOptional({
     example: 'pi_3Q…_secret_abc',
     description:
       'Stripe PaymentIntent client secret - hand to Stripe.js to collect the card.',
@@ -87,6 +116,16 @@ export class SettleBookingResponseDto {
 
   @ApiProperty({ description: 'TYP coordinate for the redirect.' })
   publicRef!: string;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'True when the latest charge attempt failed/was canceled/expired at the ' +
+      'PSP (verified live, both providers) - the processing page sends the ' +
+      'traveller back to the checkout to retry instead of polling forever. ' +
+      'Always false once the booking is CONFIRMED.',
+  })
+  paymentFailed!: boolean;
 }
 
 /** One row of the dashboard payments table: the payment + booking context. */
@@ -142,6 +181,45 @@ export class ListPaymentsResponseDto {
 }
 
 // ── Request ─────────────────────────────────────────────────────────────────
+
+/**
+ * Optional intent-creation body. Only the Mollie (hosted redirect) path uses
+ * it: Mollie needs the redirect targets AT payment creation, unlike Stripe
+ * where the browser passes return_url at confirm time. Both URLs are validated
+ * server-side against the CORS origin allow-list.
+ */
+export class CreatePaymentIntentDto {
+  @ApiPropertyOptional({
+    example:
+      'https://islandtours.example/curacao/tour/checkout/processing?ref=…',
+    description:
+      'Where Mollie sends the traveller after the payment attempt (the processing page). Omitting it on the Mollie path returns the SETUP response (Components profile, no payment created); sending it CREATES the payment.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  returnUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://islandtours.example/curacao/tour/checkout?…',
+    description:
+      'Where Mollie sends the traveller when they abort on the hosted page (back to the checkout).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  cancelUrl?: string;
+
+  @ApiPropertyOptional({
+    example: 'tkn_UqAvArS3gw',
+    description:
+      'Mollie Components card token (mollie.js) - creates a creditcard payment for the card typed inline; the checkout URL is then only the 3DS hop.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  cardToken?: string;
+}
 
 /** Mollie posts only the payment id to its webhook (form-urlencoded `id`). */
 export class MollieWebhookDto {

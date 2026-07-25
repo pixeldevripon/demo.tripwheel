@@ -45,7 +45,9 @@ function mockPrisma() {
     },
     operator: { findUnique: jest.fn() },
     stripeWebhookEvent: { create: jest.fn(), update: jest.fn() },
-    mollieWebhookEvent: { create: jest.fn(), update: jest.fn() },
+    mollieWebhookEvent: { upsert: jest.fn(), update: jest.fn() },
+    // No row → activeProvider falls back to STRIPE (the default).
+    paymentSettings: { findUnique: jest.fn().mockResolvedValue(null) },
   } as any;
 }
 
@@ -66,6 +68,7 @@ function booking(over: Record<string, unknown> = {}) {
 describe('PaymentsService', () => {
   let prisma: any;
   let stripe: any;
+  let mollie: any;
   let bookings: any;
   let targetLimiter: any;
   let svc: PaymentsService;
@@ -96,9 +99,19 @@ describe('PaymentsService', () => {
         },
       }),
     };
+    mollie = {
+      isConfigured: jest.fn().mockResolvedValue(true),
+      paymentMethods: jest.fn().mockResolvedValue([]),
+      componentsProfile: jest
+        .fn()
+        .mockResolvedValue({ profileId: 'pfl_test', testmode: true }),
+      createPayment: jest.fn(),
+      getPayment: jest.fn(),
+      createRefund: jest.fn(),
+    };
     bookings = { confirmFromPayment: jest.fn().mockResolvedValue(undefined) };
     targetLimiter = { consume: jest.fn() };
-    svc = new PaymentsService(prisma, stripe, bookings, targetLimiter);
+    svc = new PaymentsService(prisma, stripe, mollie, bookings, targetLimiter);
   });
 
   // Dashboard payments table (DASH2): scoping + row mapping.
@@ -264,6 +277,223 @@ describe('PaymentsService', () => {
     });
   });
 
+  describe('createIntentForBooking (Mollie active)', () => {
+    // With CORS_ORIGINS unset the allow-list defaults to http://localhost:3000.
+    const returnUrl =
+      'http://localhost:3000/curacao/t/checkout/processing?ref=p1';
+
+    beforeEach(() => {
+      prisma.paymentSettings.findUnique.mockResolvedValue({
+        activeProvider: PaymentProvider.MOLLIE,
+      });
+      prisma.payment.findUnique = jest.fn().mockResolvedValue(null);
+      mollie.createPayment.mockResolvedValue({
+        id: 'tr_new',
+        status: 'open',
+        _links: { checkout: { href: 'https://mollie.test/checkout/tr_new' } },
+      });
+    });
+
+    it('creates a hosted-checkout payment and returns its redirect URL', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+
+      const res = await svc.createIntentForBooking('b1', { returnUrl });
+
+      // Decimal string amount in the BOOKING currency, never minor units.
+      expect(mollie.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currency: 'EUR',
+          redirectUrl: returnUrl,
+          metadata: expect.objectContaining({ bookingId: 'b1' }),
+        }),
+      );
+      expect(
+        (
+          mollie.createPayment.mock.calls[0][0].amount as Prisma.Decimal
+        ).toFixed(2),
+      ).toBe('41.99');
+      expect(res).toMatchObject({
+        paymentRequired: true,
+        provider: PaymentProvider.MOLLIE,
+        checkoutUrl: 'https://mollie.test/checkout/tr_new',
+        kind: PaymentKind.DEPOSIT,
+        amount: '41.99',
+      });
+      expect(res.clientSecret).toBeUndefined();
+      // The charge row is stamped MOLLIE so webhook/refund route by the row.
+      expect(prisma.payment.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            provider: PaymentProvider.MOLLIE,
+            intentId: 'tr_new',
+          }),
+        }),
+      );
+      expect(stripe.createPaymentIntent).not.toHaveBeenCalled();
+    });
+
+    it('reuses a still-open Mollie payment instead of creating a new one', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      prisma.payment.findUnique = jest.fn().mockResolvedValue({
+        provider: PaymentProvider.MOLLIE,
+        intentId: 'tr_old',
+      });
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_old',
+        status: 'open',
+        _links: { checkout: { href: 'https://mollie.test/checkout/tr_old' } },
+      });
+
+      const res = await svc.createIntentForBooking('b1', { returnUrl });
+
+      expect(res.checkoutUrl).toBe('https://mollie.test/checkout/tr_old');
+      expect(mollie.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('returns SUCCEEDED with no checkout URL when the payment is already paid', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      prisma.payment.findUnique = jest.fn().mockResolvedValue({
+        provider: PaymentProvider.MOLLIE,
+        intentId: 'tr_old',
+      });
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_old',
+        status: 'paid',
+        _links: {},
+      });
+
+      const res = await svc.createIntentForBooking('b1', { returnUrl });
+
+      expect(res.status).toBe(PaymentStatus.SUCCEEDED);
+      expect(res.checkoutUrl).toBeUndefined();
+      expect(mollie.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('replaces a dead (expired) payment with a FRESH idempotency key', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      prisma.payment.findUnique = jest.fn().mockResolvedValue({
+        provider: PaymentProvider.MOLLIE,
+        intentId: 'tr_dead',
+      });
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_dead',
+        status: 'expired',
+        _links: {},
+      });
+
+      await svc.createIntentForBooking('b1', { returnUrl });
+
+      const key = mollie.createPayment.mock.calls[0][0]
+        .idempotencyKey as string;
+      expect(key).not.toBe('mp_b1_DEPOSIT'); // never replay the dead payment
+      expect(key.startsWith('mp_b1_DEPOSIT_')).toBe(true);
+    });
+
+    it('phase 1 (no returnUrl) returns Components setup WITHOUT creating a payment', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+
+      const res = await svc.createIntentForBooking('b1');
+
+      expect(res).toMatchObject({
+        paymentRequired: true,
+        provider: PaymentProvider.MOLLIE,
+        profileId: 'pfl_test',
+        testmode: true,
+        amount: '41.99',
+        status: PaymentStatus.REQUIRES_PAYMENT,
+      });
+      expect(res.checkoutUrl).toBeUndefined();
+      expect(mollie.createPayment).not.toHaveBeenCalled();
+      expect(prisma.payment.upsert).not.toHaveBeenCalled();
+    });
+
+    it('phase 1 omits profileId when Components are not configured (hosted fallback)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.componentsProfile.mockResolvedValue({
+        profileId: null,
+        testmode: false,
+      });
+
+      const res = await svc.createIntentForBooking('b1');
+
+      expect(res.provider).toBe(PaymentProvider.MOLLIE);
+      expect(res.profileId).toBeUndefined();
+    });
+
+    it('passes the Components cardToken through and NEVER reuses an old open payment for it', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      prisma.payment.findUnique = jest.fn().mockResolvedValue({
+        provider: PaymentProvider.MOLLIE,
+        intentId: 'tr_old',
+      });
+      // Old payment is still open - but the token belongs to the card just
+      // typed, so a fresh creditcard payment must be created anyway.
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_old',
+        status: 'open',
+        _links: { checkout: { href: 'https://mollie.test/checkout/tr_old' } },
+      });
+      mollie.createPayment.mockResolvedValue({
+        id: 'tr_card',
+        status: 'open',
+        _links: { checkout: { href: 'https://mollie.test/3ds/tr_card' } },
+      });
+
+      const res = await svc.createIntentForBooking('b1', {
+        returnUrl,
+        cardToken: 'tkn_abc',
+      });
+
+      expect(mollie.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ cardToken: 'tkn_abc' }),
+      );
+      expect(res.checkoutUrl).toBe('https://mollie.test/3ds/tr_card');
+    });
+
+    it('accepts a tokenized payment with NO checkout link when 3DS was frictionless (paid)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.createPayment.mockResolvedValue({
+        id: 'tr_instant',
+        status: 'paid',
+        _links: {},
+      });
+
+      const res = await svc.createIntentForBooking('b1', {
+        returnUrl,
+        cardToken: 'tkn_abc',
+      });
+
+      expect(res.status).toBe(PaymentStatus.SUCCEEDED);
+      expect(res.checkoutUrl).toBeUndefined();
+    });
+
+    it('rejects a returnUrl outside the CORS allow-list (open-redirect guard)', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      await expect(
+        svc.createIntentForBooking('b1', {
+          returnUrl: 'https://evil.example/phish',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects when Mollie is not configured', async () => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      mollie.isConfigured.mockResolvedValue(false);
+      await expect(
+        svc.createIntentForBooking('b1', { returnUrl }),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+
+    it('still requires no payment for OPERATOR_FULL', async () => {
+      prisma.booking.findUnique.mockResolvedValue(
+        booking({ paymentModel: PaymentModel.OPERATOR_FULL }),
+      );
+      const res = await svc.createIntentForBooking('b1', { returnUrl });
+      expect(res.paymentRequired).toBe(false);
+      expect(mollie.createPayment).not.toHaveBeenCalled();
+    });
+  });
+
   describe('handleWebhook', () => {
     const rawBody = Buffer.from('{}');
 
@@ -291,13 +521,17 @@ describe('PaymentsService', () => {
       // The webhook sends `latest_charge` as a plain string, so the charge must be
       // fetched - otherwise the card/billing snapshot silently stays null.
       expect(stripe.retrieveCharge).toHaveBeenCalledWith('ch_1');
-      expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', {
-        country: 'CW',
-        postalCode: '0000',
-        city: 'Willemstad',
-        last4: '4242',
-        brand: 'visa',
-      });
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        {
+          country: 'CW',
+          postalCode: '0000',
+          city: 'Willemstad',
+          last4: '4242',
+          brand: 'visa',
+        },
+        undefined,
+      );
       expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'evt_1' } }),
       );
@@ -330,6 +564,79 @@ describe('PaymentsService', () => {
       expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
         'b1',
         expect.objectContaining({ last4: '1111', brand: 'mastercard' }),
+        undefined,
+      );
+    });
+
+    it('derives the charge FX from an EUR balance transaction (5C reconciliation)', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_fx',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: {
+              id: 'ch_1',
+              billing_details: {},
+              payment_method_details: { type: 'card', card: {} },
+              // Stripe's ACTUAL presentment->settlement conversion (USD charge
+              // on an EUR-settled account).
+              balance_transaction: {
+                currency: 'eur',
+                exchange_rate: 0.9134,
+                created: 1_753_437_600,
+              },
+            },
+          },
+        },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.anything(),
+        {
+          rateToEur: new Prisma.Decimal(0.9134),
+          provider: 'stripe',
+          asOf: new Date(1_753_437_600 * 1000),
+        },
+      );
+    });
+
+    it('passes NO charge FX when Stripe settles in a non-EUR currency', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_fx2',
+        type: 'payment_intent.succeeded',
+        data: {
+          object: {
+            id: 'pi_1',
+            metadata: { bookingId: 'b1' },
+            latest_charge: {
+              id: 'ch_1',
+              billing_details: {},
+              payment_method_details: { type: 'card', card: {} },
+              // A USD-settled account: the rate converts to the WRONG currency
+              // for our EUR normalization - must fall back to the ECB snapshot.
+              balance_transaction: {
+                currency: 'usd',
+                exchange_rate: 1.0812,
+                created: 1_753_437_600,
+              },
+            },
+          },
+        },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.anything(),
+        undefined,
       );
     });
 
@@ -351,7 +658,11 @@ describe('PaymentsService', () => {
       await svc.handleWebhook(rawBody, 'sig');
 
       // A missing snapshot must never block the booking confirmation.
-      expect(bookings.confirmFromPayment).toHaveBeenCalledWith('b1', undefined);
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        undefined,
+        undefined,
+      );
     });
 
     it('is idempotent - a redelivered event is skipped', async () => {
@@ -456,28 +767,183 @@ describe('PaymentsService', () => {
   });
 
   describe('handleMollieWebhook', () => {
-    it('records the event idempotently and marks it processed', async () => {
-      prisma.mollieWebhookEvent.create.mockResolvedValue({});
+    /** A fetched Mollie payment (the webhook only delivers the id). */
+    const molliePayment = (over: Record<string, unknown> = {}) => ({
+      id: 'tr_abc',
+      status: 'paid',
+      method: 'creditcard',
+      metadata: {
+        bookingId: 'b1',
+        displayRef: 'IT-2026-AAAA',
+        kind: 'DEPOSIT',
+      },
+      details: {
+        cardNumber: '4242',
+        cardLabel: 'Visa',
+        cardCountryCode: 'NL',
+      },
+      _embedded: { refunds: [] },
+      _links: {},
+      ...over,
+    });
+
+    beforeEach(() => {
+      prisma.mollieWebhookEvent.upsert.mockResolvedValue({});
+      prisma.mollieWebhookEvent.update.mockResolvedValue({});
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+    });
+
+    it('fetches the payment, marks it SUCCEEDED, and confirms the booking (paid)', async () => {
+      mollie.getPayment.mockResolvedValue(molliePayment());
+
       await svc.handleMollieWebhook('tr_abc');
-      expect(prisma.mollieWebhookEvent.create).toHaveBeenCalledWith(
+
+      // Verification = fetching with OUR key; the request body is never trusted.
+      expect(mollie.getPayment).toHaveBeenCalledWith('tr_abc');
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ id: 'tr_abc' }),
+          where: { intentId: 'tr_abc', kind: { not: PaymentKind.REFUND } },
+          data: expect.objectContaining({
+            status: PaymentStatus.SUCCEEDED,
+            methodType: 'creditcard',
+          }),
         }),
+      );
+      // Card/billing snapshot from the Mollie card details.
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        {
+          country: 'NL',
+          postalCode: null,
+          city: null,
+          last4: '4242',
+          brand: 'Visa',
+        },
+        undefined,
       );
       expect(prisma.mollieWebhookEvent.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'tr_abc' } }),
       );
     });
 
-    it('is a no-op on redelivery (duplicate id)', async () => {
-      prisma.mollieWebhookEvent.create.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError('dup', {
-          code: 'P2002',
-          clientVersion: 'x',
+    it('derives the charge FX from settlementAmount (5C reconciliation)', async () => {
+      mollie.getPayment.mockResolvedValue(
+        molliePayment({
+          amount: { value: '100.00', currency: 'USD' },
+          // Mollie's actual conversion to the EUR-settled account.
+          settlementAmount: { value: '91.34', currency: 'EUR' },
+          paidAt: '2026-07-25T10:00:00+00:00',
         }),
       );
+
       await svc.handleMollieWebhook('tr_abc');
+
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.anything(),
+        {
+          rateToEur: new Prisma.Decimal('91.34').div('100.00'),
+          provider: 'mollie',
+          asOf: new Date('2026-07-25T10:00:00+00:00'),
+        },
+      );
+    });
+
+    it('passes NO charge FX for an EUR-charged payment (nothing was converted)', async () => {
+      mollie.getPayment.mockResolvedValue(
+        molliePayment({
+          amount: { value: '50.00', currency: 'EUR' },
+          settlementAmount: { value: '50.00', currency: 'EUR' },
+        }),
+      );
+
+      await svc.handleMollieWebhook('tr_abc');
+
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        expect.anything(),
+        undefined,
+      );
+    });
+
+    it('re-processes a redelivered id (Mollie re-posts the SAME id on later transitions)', async () => {
+      mollie.getPayment.mockResolvedValue(molliePayment());
+
+      await svc.handleMollieWebhook('tr_abc');
+      await svc.handleMollieWebhook('tr_abc');
+
+      // No P2002 short-circuit: both deliveries reconcile.
+      expect(mollie.getPayment).toHaveBeenCalledTimes(2);
+      expect(prisma.mollieWebhookEvent.upsert).toHaveBeenCalledTimes(2);
+    });
+
+    it('marks the charge FAILED on failed/canceled/expired and does NOT confirm', async () => {
+      mollie.getPayment.mockResolvedValue(molliePayment({ status: 'expired' }));
+
+      await svc.handleMollieWebhook('tr_abc');
+
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { status: PaymentStatus.FAILED },
+        }),
+      );
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+    });
+
+    it('reconciles embedded refunds (settled bank refund -> SUCCEEDED row)', async () => {
+      mollie.getPayment.mockResolvedValue(
+        molliePayment({
+          _embedded: {
+            refunds: [{ id: 're_m1', status: 'refunded' }],
+          },
+        }),
+      );
+
+      await svc.handleMollieWebhook('tr_abc');
+
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            refundId: 're_m1',
+            kind: PaymentKind.REFUND,
+            status: { in: [PaymentStatus.PROCESSING] },
+          }),
+          data: { status: PaymentStatus.SUCCEEDED },
+        }),
+      );
+    });
+
+    it('ignores an unknown payment id (fetch 404) but still marks the event processed', async () => {
+      const { MollieApiError } = jest.requireActual('@mollie/api-client');
+      const notFound = Object.assign(
+        Object.create(MollieApiError.prototype) as Error,
+        { message: 'not found', statusCode: 404 },
+      );
+      mollie.getPayment.mockRejectedValue(notFound);
+
+      await svc.handleMollieWebhook('tr_forged');
+
+      expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+      expect(prisma.mollieWebhookEvent.update).toHaveBeenCalled();
+    });
+
+    it('rethrows a transient fetch failure so Mollie redelivers (processedAt stays null)', async () => {
+      mollie.getPayment.mockRejectedValue(new Error('mollie down'));
+
+      await expect(svc.handleMollieWebhook('tr_abc')).rejects.toThrow(
+        'mollie down',
+      );
       expect(prisma.mollieWebhookEvent.update).not.toHaveBeenCalled();
+    });
+
+    it('is a safe no-op when Mollie is not configured', async () => {
+      mollie.isConfigured.mockResolvedValue(false);
+
+      await svc.handleMollieWebhook('tr_abc');
+
+      expect(mollie.getPayment).not.toHaveBeenCalled();
+      expect(prisma.mollieWebhookEvent.update).toHaveBeenCalled();
     });
 
     it('rejects a missing payment id', async () => {
@@ -513,11 +979,140 @@ describe('PaymentsService', () => {
       expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
         'b1',
         expect.objectContaining({ last4: '4242', brand: 'visa' }),
+        undefined,
       );
       expect(res).toEqual({
         status: BookingStatus.CONFIRMED,
         publicRef: 'pub-1',
+        paymentFailed: false,
       });
+    });
+
+    it('flags paymentFailed when the Mollie payment failed (traveller returns to checkout)', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({
+        intentId: 'tr_1',
+        provider: PaymentProvider.MOLLIE,
+        status: PaymentStatus.REQUIRES_PAYMENT,
+      });
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_1',
+        status: 'failed',
+        metadata: { bookingId: 'b1' },
+        details: null,
+        _embedded: { refunds: [] },
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(res.paymentFailed).toBe(true);
+      expect(res.status).toBe(BookingStatus.ON_HOLD);
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+    });
+
+    it('flags paymentFailed when the Stripe intent carries a last_payment_error', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({
+        intentId: 'pi_1',
+        provider: PaymentProvider.STRIPE,
+        status: PaymentStatus.REQUIRES_PAYMENT,
+      });
+      stripe.retrievePaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        // A failed redirect-return: back at requires_payment_method WITH the error.
+        status: 'requires_payment_method',
+        last_payment_error: { code: 'payment_intent_authentication_failure' },
+        metadata: { bookingId: 'b1' },
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(res.paymentFailed).toBe(true);
+      expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
+    });
+
+    it('does NOT flag a fresh unconfirmed intent as failed (no error yet)', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({
+        intentId: 'pi_1',
+        provider: PaymentProvider.STRIPE,
+        status: PaymentStatus.REQUIRES_PAYMENT,
+      });
+      stripe.retrievePaymentIntent.mockResolvedValue({
+        id: 'pi_1',
+        status: 'requires_payment_method',
+        last_payment_error: null,
+        metadata: { bookingId: 'b1' },
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(res.paymentFailed).toBe(false);
+    });
+
+    it('settles a MOLLIE charge by re-fetching the Mollie payment (routes by the row provider)', async () => {
+      prisma.booking.findUnique
+        .mockResolvedValueOnce({
+          id: 'b1',
+          status: BookingStatus.ON_HOLD,
+          publicRef: 'pub-1',
+        })
+        .mockResolvedValueOnce({
+          status: BookingStatus.CONFIRMED,
+          publicRef: 'pub-1',
+        });
+      prisma.payment.findFirst.mockResolvedValue({
+        intentId: 'tr_1',
+        provider: PaymentProvider.MOLLIE,
+      });
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+      mollie.getPayment.mockResolvedValue({
+        id: 'tr_1',
+        status: 'paid',
+        method: 'ideal',
+        metadata: { bookingId: 'b1' },
+        details: null,
+        _embedded: { refunds: [] },
+      });
+
+      const res = await svc.settleFromReturn('pub-1');
+
+      expect(mollie.getPayment).toHaveBeenCalledWith('tr_1');
+      expect(stripe.retrievePaymentIntent).not.toHaveBeenCalled();
+      expect(bookings.confirmFromPayment).toHaveBeenCalledWith(
+        'b1',
+        undefined,
+        undefined,
+      );
+      expect(res.status).toBe(BookingStatus.CONFIRMED);
     });
 
     it('is a no-op once the booking is already CONFIRMED (webhook won the race)', async () => {

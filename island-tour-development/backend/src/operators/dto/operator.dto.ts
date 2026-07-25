@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OperatorVerificationStatus } from '@prisma/client';
+import { OperatorVerificationStatus, PaymentProvider } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -115,6 +115,14 @@ export class OperatorStripeConfigResponseDto {
 
   @ApiProperty({ example: true })
   isActive!: boolean;
+}
+
+export class OperatorPaymentProviderResponseDto {
+  @ApiProperty({ enum: PaymentProvider, example: PaymentProvider.STRIPE })
+  activeProvider!: PaymentProvider;
+
+  @ApiProperty({ example: '2026-07-25T12:00:00.000Z' })
+  updatedAt!: Date;
 }
 
 export class OperatorMollieConfigResponseDto {
@@ -348,6 +356,12 @@ export class UpdateOperatorStripeConfigDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+export class UpdateOperatorPaymentProviderDto {
+  @ApiProperty({ enum: PaymentProvider, example: PaymentProvider.MOLLIE })
+  @IsEnum(PaymentProvider)
+  activeProvider!: PaymentProvider;
 }
 
 export class UpdateOperatorMollieConfigDto {

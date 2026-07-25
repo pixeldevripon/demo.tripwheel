@@ -11,6 +11,7 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
   OperatorCompanyInfoResponseDto,
   OperatorMollieConfigResponseDto,
+  OperatorPaymentProviderResponseDto,
   OperatorResponseDto,
   OperatorSocialMediaResponseDto,
   OperatorStripeConfigResponseDto,
@@ -209,6 +210,36 @@ export function ApiUpdateOperatorStripeConfigDocs() {
       status: 200,
       description: 'Stripe config updated successfully',
       type: OperatorStripeConfigResponseDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+export function ApiGetOperatorPaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({ summary: "Get the operator's active payment provider" }),
+    ApiParam({ name: 'id', description: 'Operator UUID' }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider retrieved successfully',
+      type: OperatorPaymentProviderResponseDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+export function ApiUpdateOperatorPaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Switch the operator's active payment provider",
+      description:
+        'Rejected with 400 when the target provider has no usable credentials configured.',
+    }),
+    ApiParam({ name: 'id', description: 'Operator UUID' }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider updated successfully',
+      type: OperatorPaymentProviderResponseDto,
     }),
     ...commonErrors,
   );

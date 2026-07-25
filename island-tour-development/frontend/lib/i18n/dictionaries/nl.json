@@ -669,6 +669,7 @@
         "processingFailed": "We konden je betaling niet bevestigen. Neem contact op met support met je referentie {ref}.",
         "methodUnavailable": "Niet beschikbaar voor {currency}",
         "redirectNote": "Je wordt veilig doorgestuurd om je betaling te voltooien en daarna weer teruggebracht.",
+        "hostedCheckoutTitle": "Betaal veilig online",
         "countryPopular": "Populair",
         "countryAll": "Alle landen"
     },

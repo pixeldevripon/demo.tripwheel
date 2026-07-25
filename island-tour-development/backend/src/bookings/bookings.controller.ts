@@ -34,6 +34,9 @@ import {
 import {
   ApiCalendarDocs,
   ApiCancelDocs,
+  ApiConfirmForfeitDocs,
+  ApiDismissNonPaymentDocs,
+  ApiReportNonPaymentDocs,
   ApiClaimConversionDocs,
   ApiConfirmDocs,
   ApiCustomerCancellationRequestDocs,
@@ -103,6 +106,44 @@ export class BookingsController {
   ) {
     const actor = user ? { id: user.id, role: user.role } : undefined;
     return this.bookings.cancel(id, dto, actor);
+  }
+
+  // ── Non-payment forfeit (guide s15) - authenticated ops actions ──────────
+
+  @Post(':id/report-non-payment')
+  @RequirePermissions(Permission.EDIT_BOOKING)
+  @ApiReportNonPaymentDocs()
+  reportNonPayment(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.reportNonPayment(id, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  @Post(':id/forfeit')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiConfirmForfeitDocs()
+  confirmForfeit(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.confirmForfeit(id, { id: user.id, role: user.role });
+  }
+
+  @Post(':id/dismiss-non-payment')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiDismissNonPaymentDocs()
+  dismissNonPayment(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.dismissNonPaymentReport(id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   @Post(':id/extend')

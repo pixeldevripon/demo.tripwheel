@@ -20,6 +20,7 @@ import {
   UpdateOperatorCompanyInfoDto,
   UpdateOperatorDto,
   UpdateOperatorMollieConfigDto,
+  UpdateOperatorPaymentProviderDto,
   UpdateOperatorSocialMediaDto,
   UpdateOperatorStripeConfigDto,
 } from './dto/operator.dto';
@@ -31,12 +32,14 @@ import {
   ApiGetOperatorByIdDocs,
   ApiGetOperatorCompanyInfoDocs,
   ApiGetOperatorMollieConfigDocs,
+  ApiGetOperatorPaymentProviderDocs,
   ApiGetOperatorSocialMediaDocs,
   ApiGetOperatorStripeConfigDocs,
   ApiOnboardOperatorDocs,
   ApiUpdateOperatorCompanyInfoDocs,
   ApiUpdateOperatorDocs,
   ApiUpdateOperatorMollieConfigDocs,
+  ApiUpdateOperatorPaymentProviderDocs,
   ApiUpdateOperatorSocialMediaDocs,
   ApiUpdateOperatorStripeConfigDocs,
 } from './operators.swagger';
@@ -160,6 +163,34 @@ export class OperatorsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.operatorsService.updateStripeConfig(
+      id,
+      user.id,
+      user.role,
+      dto,
+    );
+  }
+
+  // ── Active payment provider (single switch, mirrors platform settings) ─────
+
+  @Get(':id/payment-provider')
+  @RequirePermissions(Permission.MANAGE_OPERATOR_PAYMENTS)
+  @ApiGetOperatorPaymentProviderDocs()
+  getPaymentProvider(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.getPaymentProvider(id, user.id, user.role);
+  }
+
+  @Patch(':id/payment-provider')
+  @RequirePermissions(Permission.MANAGE_OPERATOR_PAYMENTS)
+  @ApiUpdateOperatorPaymentProviderDocs()
+  updatePaymentProvider(
+    @Param('id') id: string,
+    @Body() dto: UpdateOperatorPaymentProviderDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.operatorsService.updatePaymentProvider(
       id,
       user.id,
       user.role,

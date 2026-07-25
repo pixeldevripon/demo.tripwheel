@@ -669,6 +669,7 @@
         "processingFailed": "No pudimos confirmar tu pago. Contacta con soporte con tu referencia {ref}.",
         "methodUnavailable": "No disponible para {currency}",
         "redirectNote": "Te redirigiremos de forma segura para completar tu pago y luego volverás aquí.",
+        "hostedCheckoutTitle": "Paga en línea de forma segura",
         "countryPopular": "Popular",
         "countryAll": "Todos los países"
     },

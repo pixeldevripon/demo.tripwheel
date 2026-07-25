@@ -18,8 +18,14 @@ export async function generateMetadata({
     const dict = await getDictionary(locale);
     const query = (q ?? '').trim();
     const title = query ? `${dict.search.title}: ${query}` : dict.search.title;
-    // Search result pages should never be indexed.
-    return { title, robots: { index: false, follow: true } };
+    // Search result pages should never be indexed. A self-referencing canonical
+    // to the bare path consolidates the `?q=` variants; hreflang is deliberately
+    // omitted (Google ignores it on noindex pages).
+    return {
+        title,
+        robots: { index: false, follow: true },
+        alternates: { canonical: `/${locale}/search` },
+    };
 }
 
 /**

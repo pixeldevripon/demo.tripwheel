@@ -72,6 +72,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_BOOKINGS,
     Permission.EDIT_BOOKING,
     Permission.DELETE_BOOKING,
+    // Admin-only booking ops (non-payment forfeit confirmation - guide s15).
+    Permission.MANAGE_BOOKINGS,
     Permission.VIEW_PAYMENTS,
     Permission.EDIT_PAYMENT,
     Permission.DELETE_PAYMENT,

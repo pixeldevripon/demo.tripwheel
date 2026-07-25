@@ -44,21 +44,45 @@ import { SettlementMethod } from '@/settlements/dto/settlement.dto';
 export const BOOKING_DISPLAY_STATUSES = [
   ...Object.values(BookingStatus),
   'CANCELLATION_REQUESTED',
+  'NON_PAYMENT_REPORTED',
+  'FORFEITED',
 ] as const;
 
-export type BookingDisplayStatus = BookingStatus | 'CANCELLATION_REQUESTED';
+export type BookingDisplayStatus =
+  | BookingStatus
+  | 'CANCELLATION_REQUESTED'
+  | 'NON_PAYMENT_REPORTED'
+  | 'FORFEITED';
 
 export function deriveBookingDisplayStatus(booking: {
   status: BookingStatus;
   utcCancellationRequestedAt: Date | null;
   utcCancelledAt: Date | null;
+  utcNonPaymentReportedAt?: Date | null;
+  utcForfeitedAt?: Date | null;
 }): BookingDisplayStatus {
+  // Forfeited (guide s15): terminated by an admin-confirmed non-payment report -
+  // the deposit was kept, which "Cancelled" alone would misrepresent.
+  if (
+    booking.status === BookingStatus.CANCELLED &&
+    (booking.utcForfeitedAt ?? null) !== null
+  ) {
+    return 'FORFEITED';
+  }
   if (
     booking.status === BookingStatus.CONFIRMED &&
     booking.utcCancellationRequestedAt !== null &&
     booking.utcCancelledAt === null
   ) {
     return 'CANCELLATION_REQUESTED';
+  }
+  // Operator reported the balance unpaid; awaiting the admin verdict.
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    (booking.utcNonPaymentReportedAt ?? null) !== null &&
+    (booking.utcForfeitedAt ?? null) === null
+  ) {
+    return 'NON_PAYMENT_REPORTED';
   }
   return booking.status;
 }
@@ -550,6 +574,18 @@ export class BookingListItemDto extends BookingResponseDto {
     description: 'When the traveller requested cancellation (master 6.4).',
   })
   utcCancellationRequestedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When the operator reported the balance unpaid (guide s15); awaiting an admin verdict while set.',
+  })
+  utcNonPaymentReportedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When an admin confirmed the forfeit - the deposit was kept and the spot released.',
+  })
+  utcForfeitedAt!: string | null;
   @ApiPropertyOptional({
     nullable: true,
     description:

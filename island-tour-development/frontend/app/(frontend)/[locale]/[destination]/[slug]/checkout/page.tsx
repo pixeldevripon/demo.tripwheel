@@ -103,6 +103,10 @@ async function CheckoutBody({
 }) {
     const sp = await searchParams;
     const selection = parseCheckoutSelection(sp);
+    // ?payment=failed: the processing page bounced a FAILED charge back here -
+    // the form opens with a retry message.
+    const paymentFailed =
+        (Array.isArray(sp.payment) ? sp.payment[0] : sp.payment) === 'failed';
 
     // Price in the currency the widget quoted (URL), else the shopper cookie - both
     // safe here since this body is already dynamic. The reserve will submit
@@ -220,6 +224,7 @@ async function CheckoutBody({
             addOns={addOns}
             destination={destination}
             slug={slug}
+            paymentFailed={paymentFailed}
             summary={
                 <CheckoutSummary
                     dict={dict}

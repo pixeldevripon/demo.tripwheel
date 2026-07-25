@@ -10,6 +10,7 @@ import {
   CompanyInformationsResponseDto,
   MailchimpResponseDto,
   MollieConfigurationResponseDto,
+  PaymentProviderSettingsResponseDto,
   PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
   PublicSiteSEOResponseDto,
@@ -315,6 +316,39 @@ export function ApiUpdateIntegrationsConfigurationDocs() {
       status: 200,
       description:
         'Integration config updated; an omitted/blank secret is left untouched',
+    }),
+    ...adminErrors,
+  );
+}
+
+// ── Active payment provider ──────────────────────────────────────────────────
+
+export function ApiGetPaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get the active checkout payment provider (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider retrieved successfully',
+      type: PaymentProviderSettingsResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdatePaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Switch the active checkout payment provider (Admin only)',
+      description:
+        'Rejected (400) when the target provider has no usable credentials. ' +
+        'Never retroactive: existing payments keep their own provider.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider updated successfully',
+      type: PaymentProviderSettingsResponseDto,
     }),
     ...adminErrors,
   );

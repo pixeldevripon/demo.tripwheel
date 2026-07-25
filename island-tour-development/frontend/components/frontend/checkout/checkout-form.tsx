@@ -47,6 +47,7 @@ import {
     titleClass,
 } from './checkout-fields';
 import { CheckoutPayment } from './checkout-payment';
+import { CheckoutPaymentMollie } from './checkout-payment-mollie';
 import { type CheckoutPhase } from './checkout-steps';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -107,6 +108,9 @@ interface CheckoutFormProps {
     /** For the /payment/processing + TYP hrefs. */
     destination: string;
     slug: string;
+    /** True when the traveller was bounced back here after a FAILED charge
+     *  (?payment=failed from the processing page) - opens with a message. */
+    paymentFailed?: boolean;
 }
 
 /** "Full name" → first / last for the backend ContactDto (both NOT NULL). */
@@ -148,21 +152,53 @@ export function CheckoutForm({
     addOns,
     destination,
     slug,
+    paymentFailed = false,
 }: CheckoutFormProps) {
     const router = useRouter();
+
+    // Remember THIS checkout URL (full selection query) per tour, so the
+    // processing page can send a failed payment back to the exact same
+    // checkout instead of a bare path. The failure flag itself is stripped -
+    // it must never restore into a fresh visit.
+    useEffect(() => {
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('payment');
+            window.sessionStorage.setItem(
+                `it-checkout-return:${tourId}`,
+                url.pathname + url.search
+            );
+        } catch {
+            // Storage unavailable: the processing page falls back to the bare path.
+        }
+    }, [tourId]);
 
     // Client idempotency key: a retried reserve (edit contact → Continue again)
     // returns the same booking instead of double-booking. Lazy init dodges the
     // react-hooks purity rule (no impure calls during render).
     const [bookingId] = useState(() => crypto.randomUUID());
 
-    // Set once the reserve + intent succeed; drives the Payment card.
-    const [intent, setIntent] = useState<{
-        clientSecret: string;
-        publishableKey: string;
-        publicRef: string;
-        methodTypes: string[];
-    } | null>(null);
+    // Set once the reserve + intent succeed; drives the Payment card. The shape
+    // follows the admin-selected PSP: Stripe renders inline Card Elements,
+    // Mollie renders its Components card form (+ hosted-page fallback) - the
+    // Mollie payment itself is only created at Pay, when the card token exists.
+    const [intent, setIntent] = useState<
+        | {
+              provider: 'STRIPE';
+              clientSecret: string;
+              publishableKey: string;
+              publicRef: string;
+              methodTypes: string[];
+          }
+        | {
+              provider: 'MOLLIE';
+              bookingId: string;
+              publicRef: string;
+              profileId: string | null;
+              testmode: boolean;
+          }
+        | null
+    >(null);
     const [reserving, setReserving] = useState(false);
 
     const processingBase = localizeHref(
@@ -306,10 +342,24 @@ export function CheckoutForm({
                 await storeTravelerSession(withContact.sessionToken);
             }
 
+            // Phase-1 intent: Stripe creates its PaymentIntent here; Mollie
+            // only returns the Components profile (the payment is created at
+            // Pay, once the card token - or the hosted hand-off - exists).
             const pi = await createPaymentIntent(booking.id);
             if (!pi.paymentRequired) {
                 // Nothing due now (OPERATOR_FULL is born CONFIRMED at reserve).
                 router.push(processingHref(booking.publicRef));
+                return;
+            }
+            if (pi.provider === 'MOLLIE') {
+                setIntent({
+                    provider: 'MOLLIE',
+                    bookingId: booking.id,
+                    publicRef: booking.publicRef,
+                    profileId: pi.profileId ?? null,
+                    testmode: pi.testmode ?? false,
+                });
+                onPhaseChange('payment');
                 return;
             }
             if (!pi.clientSecret || !pi.publishableKey) {
@@ -318,6 +368,7 @@ export function CheckoutForm({
                 return;
             }
             setIntent({
+                provider: 'STRIPE',
                 clientSecret: pi.clientSecret,
                 publishableKey: pi.publishableKey,
                 publicRef: booking.publicRef,
@@ -378,6 +429,14 @@ export function CheckoutForm({
 
     return (
         <div ref={cardRef} className={`${cardClass} scroll-mt-24`}>
+            {/* Failed-charge return banner (?payment=failed): the traveller is
+                back from the PSP with money NOT moved - say so at the very top
+                before they re-enter anything. */}
+            {paymentFailed && (
+                <div className='mb-8 rounded-[8px] border border-it-primary/30 bg-it-primary/5 px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                    {dict.paymentError}
+                </div>
+            )}
             {/* ── Contact header - swaps to the done-summary row (green check +
                 name/email + Edit) once contact completes ── */}
             <div className='flex min-w-0 items-center justify-between gap-4'>
@@ -646,7 +705,7 @@ export function CheckoutForm({
                             {/* Mounted from the first successful continue on -
                                 collapsing back to edit contact keeps the Stripe
                                 fields (and their entries) alive. */}
-                            {intent && (
+                            {intent?.provider === 'STRIPE' && (
                                 <CheckoutPayment
                                     dict={dict}
                                     locale={locale}
@@ -661,6 +720,22 @@ export function CheckoutForm({
                                     currency={currency}
                                     currencySymbol={currencySymbol}
                                     eligibleMethods={intent.methodTypes}
+                                    processingHref={processingHref(
+                                        intent.publicRef
+                                    )}
+                                />
+                            )}
+                            {/* Mollie: inline Components card form (+ hosted
+                                fallback); the payment is created at Pay. */}
+                            {intent?.provider === 'MOLLIE' && (
+                                <CheckoutPaymentMollie
+                                    dict={dict}
+                                    locale={locale}
+                                    bookingId={intent.bookingId}
+                                    profileId={intent.profileId}
+                                    testmode={intent.testmode}
+                                    payToday={payToday}
+                                    currencySymbol={currencySymbol}
                                     processingHref={processingHref(
                                         intent.publicRef
                                     )}

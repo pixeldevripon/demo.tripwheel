@@ -16,9 +16,15 @@ import {
     getDestinationFaqs,
     getDestinationPageContent,
 } from '@/lib/api/public';
+import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
+import {
+    buildBreadcrumbJsonLd,
+    buildTouristDestinationJsonLd,
+} from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
@@ -129,12 +135,30 @@ async function DestinationContent({
     // Editorial content + FAQs are keyed by island id, so they can only start
     // once the slug resolves; they are independent of each other, so they run
     // together. Both fall back to bundled copy, so neither can fail the page.
-    const [pageContent, faqs] = await Promise.all([
+    const [pageContent, faqs, siteUrl] = await Promise.all([
         getDestinationPageContent(island.id, locale),
         getDestinationFaqs(island.id, locale),
+        getSiteUrl(),
     ]);
 
     const destinationName = island.name;
+
+    // Structured data: breadcrumb trail (Home > Island) + the island itself as a
+    // TouristDestination. FAQPage is emitted by FaqSection below, not here.
+    const destPath = `/${destination}`;
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale,
+        trail: [{ name: destinationName, path: destPath }],
+    });
+    const touristDestinationJsonLd = buildTouristDestinationJsonLd({
+        siteUrl,
+        locale,
+        path: destPath,
+        name: destinationName,
+        description: pageContent?.metaDescription || null,
+        image: island.ogImage || island.heroImage || null,
+    });
 
     // `||` not `??`: an admin who clears the field leaves an empty string, and
     // that must fall back to the bundled copy rather than render a blank block.
@@ -166,6 +190,8 @@ async function DestinationContent({
 
     return (
         <>
+            <JsonLd data={breadcrumbJsonLd} />
+            <JsonLd data={touristDestinationJsonLd} />
             <DestinationHeroSection
                 destination={destination}
                 locale={locale as Locale}

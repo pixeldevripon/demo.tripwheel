@@ -159,6 +159,26 @@ export interface ReservedBooking {
 export interface PaymentIntentResult {
     /** False only when nothing is due now (OPERATOR_FULL) - skip the card step. */
     paymentRequired: boolean;
+    /**
+     * Which PSP takes this charge (admin-selected). STRIPE → inline Elements
+     * via clientSecret; MOLLIE → hosted redirect via checkoutUrl. Absent on
+     * older payloads = STRIPE.
+     */
+    provider?: 'STRIPE' | 'MOLLIE';
+    /**
+     * Mollie hosted-checkout URL - send the traveller here. Absent on the
+     * Stripe path; also absent when the Mollie payment is already paid
+     * (status SUCCEEDED - go straight to processing).
+     */
+    checkoutUrl?: string;
+    /**
+     * Mollie Components profile (pfl_..., public - the mollie.js sibling of a
+     * publishable key). Only on the MOLLIE setup response (phase 1, no
+     * returnUrl); absent = inline card form not configured, hosted page only.
+     */
+    profileId?: string;
+    /** Whether the Mollie account runs on a test API key (mollie.js flag). */
+    testmode?: boolean;
     clientSecret?: string;
     publishableKey?: string;
     /** Amount charged now, in the booking currency (string, never a float). */
@@ -218,16 +238,26 @@ export async function updateBookingContact(
 }
 
 /**
- * Create (or fetch, idempotently) the up-front PaymentIntent for a booking. Returns
- * `paymentRequired: false` when nothing is due now; otherwise a `clientSecret` +
- * `publishableKey` to drive Stripe.js.
+ * Create (or fetch, idempotently) the up-front payment for a booking. Returns
+ * `paymentRequired: false` when nothing is due now; otherwise the shape follows
+ * the admin-selected provider:
+ * - STRIPE: `clientSecret` + `publishableKey` to drive Stripe.js.
+ * - MOLLIE, no `redirects` (phase 1): SETUP only - `profileId`/`testmode` for
+ *   the inline Components card form; no payment exists yet.
+ * - MOLLIE, with `redirects` (phase 2): CREATES the payment - with `cardToken`
+ *   it is a creditcard charge for the inline form (checkoutUrl = the 3DS hop),
+ *   without one it is the hosted method-selection page.
  */
 export async function createPaymentIntent(
-    bookingId: string
+    bookingId: string,
+    redirects?: { returnUrl: string; cancelUrl?: string; cardToken?: string }
 ): Promise<PaymentIntentResult> {
     return apiFetch<PaymentIntentResult>(
         `/payments/bookings/${bookingId}/intent`,
-        { method: 'POST' }
+        {
+            method: 'POST',
+            ...(redirects ? { body: JSON.stringify(redirects) } : {}),
+        }
     );
 }
 
@@ -246,6 +276,12 @@ export async function getThankYouStatus(
 export interface SettleResult {
     status: string;
     publicRef: string;
+    /**
+     * True when the latest charge attempt failed/was canceled/expired at the
+     * PSP (verified live, both providers). The processing page sends the
+     * traveller back to the checkout to retry instead of polling forever.
+     */
+    paymentFailed?: boolean;
 }
 
 /**

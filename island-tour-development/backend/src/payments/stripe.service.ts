@@ -98,23 +98,28 @@ export class StripeService {
   /**
    * A charge by id. Webhook payloads never expand nested objects - a succeeded
    * `payment_intent` carries `latest_charge` as a plain string - so the card /
-   * billing snapshot has to fetch the charge itself.
+   * billing snapshot has to fetch the charge itself. The balance transaction is
+   * expanded too: its `exchange_rate` is Stripe's ACTUAL presentment->settlement
+   * conversion for this charge (task #28 / 5C charge-rate reconciliation).
    */
   async retrieveCharge(chargeId: string): Promise<Stripe.Charge> {
     const client = await this.requireClient();
-    return client.charges.retrieve(chargeId);
+    return client.charges.retrieve(chargeId, {
+      expand: ['balance_transaction'],
+    });
   }
 
   /**
    * A PaymentIntent by id, with its charge expanded. Used by the synchronous
    * "settle on return" path (the client just confirmed and we verify the real
    * status with Stripe rather than trusting the browser) - the expanded charge
-   * gives the card/billing snapshot in one round-trip.
+   * gives the card/billing snapshot + the balance transaction's `exchange_rate`
+   * (charge-rate reconciliation) in one round-trip.
    */
   async retrievePaymentIntent(intentId: string): Promise<Stripe.PaymentIntent> {
     const client = await this.requireClient();
     return client.paymentIntents.retrieve(intentId, {
-      expand: ['latest_charge'],
+      expand: ['latest_charge.balance_transaction'],
     });
   }
 
