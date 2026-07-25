@@ -3,6 +3,7 @@ import type {
     BookingPaymentStatus,
     BookingStatus,
     PaymentStatus,
+    RefundStatus,
     SettlementMethod,
     SettlementStatus,
 } from '@/types/booking';
@@ -144,6 +145,39 @@ export const SETTLEMENT_STATUS: Record<SettlementStatus, StatusMeta> = {
         label: 'Settled',
         variant: 'success',
         hint: 'Settlement closed; balance cleared',
+    },
+    REVERSED: {
+        label: 'Reversed',
+        variant: 'neutral',
+        hint: 'Booking cancelled; the operator payout was voided (refund tracked separately)',
+    },
+};
+
+/**
+ * TRUE refund state from the payment ledger (never assumed from the cancel
+ * verdict). PENDING means a refund is owed but has not executed yet - the money
+ * is still held. Only REFUNDED means it actually went back to the traveller.
+ */
+export const REFUND_STATUS: Record<RefundStatus, StatusMeta> = {
+    NONE: {
+        label: 'No refund',
+        variant: 'neutral',
+        hint: 'No refund is owed on this booking',
+    },
+    PENDING: {
+        label: 'Refund pending',
+        variant: 'warning',
+        hint: 'A refund is owed but has not been processed yet; money still held',
+    },
+    PARTIAL: {
+        label: 'Partially refunded',
+        variant: 'info',
+        hint: 'Part of the charge has been returned to the traveller',
+    },
+    REFUNDED: {
+        label: 'Refunded',
+        variant: 'success',
+        hint: 'The charge was returned to the traveller',
     },
 };
 

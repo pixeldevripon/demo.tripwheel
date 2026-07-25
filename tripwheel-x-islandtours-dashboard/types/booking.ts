@@ -96,7 +96,18 @@ export interface BookingListItem {
     settlementStatus: SettlementStatus | null;
     /** HOW this booking settles. */
     settlementMethod: SettlementMethod | null;
+    /** Payout held by a pending cancellation request (render "On hold"). */
+    settlementHeld: boolean;
+    /**
+     * TRUE refund state from the payment ledger. PENDING = a cancel owes a refund
+     * that has NOT executed yet (money still held - e.g. Stripe unconfigured);
+     * REFUNDED = the charge was actually returned. Never assume "refunded" from
+     * the cancel verdict - render this.
+     */
+    refundStatus: RefundStatus;
 }
+
+export type RefundStatus = 'NONE' | 'PENDING' | 'PARTIAL' | 'REFUNDED';
 
 export type CancellationBlockedReason =
     | 'ALREADY_REQUESTED'
@@ -170,6 +181,8 @@ export interface PaymentListItem {
     settlementStatus: SettlementStatus | null;
     /** HOW the parent booking settles. */
     settlementMethod: SettlementMethod;
+    /** Payout held by a pending cancellation request (render "On hold"). */
+    settlementHeld: boolean;
 }
 
 export interface PaginatedPayments {
@@ -193,7 +206,12 @@ export interface PaymentsQueryParams {
 
 // ── Settlements (money-movement ledger; backend `SettlementListItemDto`) ────────
 
-export type SettlementStatus = 'RECORDED' | 'PAID_OUT' | 'INVOICED' | 'SETTLED';
+export type SettlementStatus =
+    | 'RECORDED'
+    | 'PAID_OUT'
+    | 'INVOICED'
+    | 'SETTLED'
+    | 'REVERSED';
 
 /** HOW a booking settles (derived from its payment model). */
 export type SettlementMethod =
@@ -234,6 +252,12 @@ export interface SettlementListItem {
     method: SettlementMethod;
     /** WHEN the operator payout releases (free-cancel window close); null unless OPERATOR_PAYOUT. */
     payoutReleaseAt: string | null;
+    /**
+     * RECORDED paid_in_full payout HELD by a pending cancellation request (a
+     * refund may still be owed - master 6.4). The release cron skips it until
+     * the request is resolved. Render as "On hold", never "Ready to pay out".
+     */
+    payoutHeld: boolean;
 }
 
 export interface PaginatedSettlements {

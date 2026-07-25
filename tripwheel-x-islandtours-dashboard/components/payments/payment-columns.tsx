@@ -129,9 +129,18 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}
-            <span className="text-xs text-muted-foreground block mt-0.5">
-              {SETTLEMENT_METHOD_LABEL[p.settlementMethod]}
-            </span>
+            {/* Suppress the method on a reversed (cancelled + refunded) row - it
+                paid out nothing, so "Operator payout" would misdescribe it. */}
+            {p.settlementStatus !== 'REVERSED' && (
+              <span className="text-xs text-muted-foreground block mt-0.5">
+                {SETTLEMENT_METHOD_LABEL[p.settlementMethod]}
+              </span>
+            )}
+            {p.settlementHeld && (
+              <span className="text-xs text-warning-fg block mt-0.5">
+                On hold - cancellation requested
+              </span>
+            )}
           </div>
         );
       },

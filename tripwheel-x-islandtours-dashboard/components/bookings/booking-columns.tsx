@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
   BOOKING_DISPLAY_STATUS,
+  REFUND_STATUS,
   SETTLEMENT_METHOD_LABEL,
   SETTLEMENT_STATUS,
 } from '@/components/common/status-maps';
@@ -179,9 +180,18 @@ export function makeBookingColumns({
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}
-            {b.settlementMethod && (
+            {/* A reversed settlement paid out nothing - the method (e.g. "Operator
+                payout") would misdescribe a voided obligation, so suppress it. */}
+            {b.settlementMethod && b.settlementStatus !== 'REVERSED' && (
               <span className="text-xs text-muted-foreground block mt-0.5">
                 {SETTLEMENT_METHOD_LABEL[b.settlementMethod]}
+              </span>
+            )}
+            {/* Same hold cue the Settlements page shows, so it reads consistently
+                wherever the settlement badge appears. */}
+            {b.settlementHeld && (
+              <span className="text-xs text-warning-fg block mt-0.5">
+                On hold - cancellation requested
               </span>
             )}
           </div>
@@ -260,15 +270,33 @@ export function makeBookingColumns({
       },
       {
         id: 'refund',
-        header: 'Refund due',
+        header: 'Refund',
         cell: ({ row }) => {
-          const due = refundDue(row.original);
-          return due ? (
-            <span className="text-sm font-medium tabular-nums text-success-fg">
-              {due}
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">-</span>
+          const b = row.original;
+          const due = refundDue(b);
+          // The refund STATUS is the ledger truth (has the money actually moved),
+          // never assumed from the cancel verdict. A cancelled booking can sit
+          // "Refund pending" with the charge still held (Stripe off / no charge).
+          const showStatus = b.refundStatus && b.refundStatus !== 'NONE';
+          if (!due && !showStatus) {
+            return <span className="text-xs text-muted-foreground">-</span>;
+          }
+          return (
+            <div className="min-w-0 space-y-1">
+              {due && (
+                <span className="text-sm font-medium tabular-nums text-success-fg block">
+                  {due}
+                </span>
+              )}
+              {showStatus && (
+                <StatusBadge
+                  variant={REFUND_STATUS[b.refundStatus].variant}
+                  hint={REFUND_STATUS[b.refundStatus].hint}
+                >
+                  {REFUND_STATUS[b.refundStatus].label}
+                </StatusBadge>
+              )}
+            </div>
           );
         },
         enableSorting: false,

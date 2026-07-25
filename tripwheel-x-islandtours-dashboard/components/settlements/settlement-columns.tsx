@@ -87,24 +87,27 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             cell: ({ row }) => {
                 const s = row.original;
                 const net = Number(s.netPosition);
+                const reversed = s.status === 'REVERSED';
                 // + = IT owes the operator (a payout); - = operator owes IT.
                 const tone =
-                    net > 0
-                        ? 'text-success-fg'
-                        : net < 0
-                          ? 'text-danger-fg'
-                          : 'text-muted-foreground';
+                    reversed || net === 0
+                        ? 'text-muted-foreground'
+                        : net > 0
+                          ? 'text-success-fg'
+                          : 'text-danger-fg';
                 return (
                     <div className='min-w-0'>
                         <span className={`text-sm font-medium tabular-nums block ${tone}`}>
                             {money(s.netPosition, s.currency)}
                         </span>
                         <span className='text-xs text-muted-foreground'>
-                            {net > 0
-                                ? 'owed to operator'
-                                : net < 0
-                                  ? 'operator owes IT'
-                                  : 'self-settling'}
+                            {reversed
+                                ? 'reversed (cancelled)'
+                                : net > 0
+                                  ? 'owed to operator'
+                                  : net < 0
+                                    ? 'operator owes IT'
+                                    : 'self-settling'}
                         </span>
                     </div>
                 );
@@ -117,17 +120,21 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             cell: ({ row }) => {
                 const s = row.original;
                 return (
-                    <div className='flex flex-col gap-1'>
+                    <div className='flex flex-col items-start gap-1'>
                         <StatusBadge
                             variant={SETTLEMENT_STATUS[s.status].variant}
                             hint={SETTLEMENT_STATUS[s.status].hint}>
                             {SETTLEMENT_STATUS[s.status].label}
                         </StatusBadge>
-                        {s.payoutEligible && (
+                        {s.payoutHeld ? (
+                            <span className='text-xs text-warning-fg'>
+                                On hold - cancellation requested
+                            </span>
+                        ) : s.payoutEligible ? (
                             <span className='text-xs text-success-fg'>
                                 Ready to pay out
                             </span>
-                        )}
+                        ) : null}
                     </div>
                 );
             },
@@ -138,18 +145,23 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             header: 'Settles',
             cell: ({ row }) => {
                 const s = row.original;
+                const reversed = s.status === 'REVERSED';
                 // WHEN + HOW. Payout release date only for operator payouts; else the
                 // method label alone says how it settles (self-settling / invoice).
-                const when =
-                    s.status === 'PAID_OUT' && s.settledAt
-                        ? `Paid ${formatDate(s.settledAt)}`
+                // A reversed row never pays out - the obligation was voided.
+                const when = reversed
+                    ? 'Cancelled - no payout'
+                    : s.status === 'PAID_OUT' && s.settledAt
+                      ? `Paid ${formatDate(s.settledAt)}`
+                      : s.payoutHeld
+                        ? 'Held - cancellation requested'
                         : s.payoutReleaseAt
                           ? `Releases ${formatDate(s.payoutReleaseAt)}`
                           : null;
                 return (
                     <div className='min-w-0'>
                         <span className='text-sm block'>
-                            {SETTLEMENT_METHOD_LABEL[s.method]}
+                            {reversed ? '-' : SETTLEMENT_METHOD_LABEL[s.method]}
                         </span>
                         {when && (
                             <span className='text-xs text-muted-foreground'>
