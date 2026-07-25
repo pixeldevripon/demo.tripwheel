@@ -63,6 +63,8 @@ async function ProcessingBody({
     const publicRef = (Array.isArray(raw) ? raw[0] : raw) ?? null;
     // No booking ref - nothing to poll; send them back to browse.
     if (!publicRef) redirect(`/${locale}/${destination}/tours`);
+    const rawTour = sp.tour;
+    const tourId = (Array.isArray(rawTour) ? rawTour[0] : rawTour) ?? null;
 
     // TYP is the one locale-less route (served via the proxy rewrite).
     const typHref = `/${destination}/thank-you/${encodeURIComponent(publicRef)}`;
@@ -70,6 +72,7 @@ async function ProcessingBody({
     return (
         <CheckoutProcessing
             publicRef={publicRef}
+            tourId={tourId}
             typHref={typHref}
             dict={{
                 title: dict.processingTitle,

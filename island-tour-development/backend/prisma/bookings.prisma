@@ -47,6 +47,10 @@ model Booking {
   pickupMinutesPrior Int? // PickupLocation.minutesPrior at booking time
   pickupWindowStart  String? // 'HH:MM' — Figma "7:45–8:15 AM window"
   pickupWindowEnd    String? // 'HH:MM'
+  // Pickup PRICE snapshot (booking currency): per-person zone price × pax, charged only
+  // when the tour's pickupModel = PAID_ADDON at reserve time. Included in totalRetail.
+  pickupUnitPrice    Decimal? @db.Decimal(10, 2) // per-person zone price at booking time
+  pickupTotalPrice   Decimal? @db.Decimal(10, 2) // unitPrice × pax (the charged line)
 
   // UNIT + PRIVATE exclusivity (master E.3 "one booking takes the whole departure").
   // True when a private, unit-priced charter claims the entire departure; release

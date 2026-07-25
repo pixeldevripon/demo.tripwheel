@@ -13,9 +13,9 @@ import type { Attribution } from '@/lib/tracking/attribution';
 import { apiFetch } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
-/** One priced row of a quote breakdown (age-band participant or add-on). */
+/** One priced row of a quote breakdown (participant, add-on, or priced pickup). */
 export interface QuoteLine {
-    kind: 'participant' | 'addon';
+    kind: 'participant' | 'addon' | 'pickup';
     ageBandId: string | null;
     label: string;
     quantity: number;
@@ -51,6 +51,12 @@ export interface BookingQuote {
     lines: QuoteLine[];
 }
 
+/** One chosen extra (backend `ReserveAddOnDto`) - shared by quote + reserve. */
+export interface BookingAddOnSelection {
+    addOnId: string;
+    quantity: number;
+}
+
 /** Body for `POST /bookings/quote` (backend `QuoteBookingDto`). */
 export interface QuoteRequest {
     tourId: string;
@@ -59,8 +65,11 @@ export interface QuoteRequest {
     items?: { ageBandId: string; quantity: number }[];
     /** UNIT (whole-unit / charter): total guest headcount instead of `items`. */
     guests?: number;
+    /** Chosen optional extras; priced into the quote total. */
+    addOns?: BookingAddOnSelection[];
     /** Shopper (booking) currency; defaults to the tour currency server-side. */
     currency?: Currency;
+    /** Selected pickup zone; a priced PAID_ADDON zone adds a per-person line. */
     pickupLocationId?: string;
 }
 
@@ -99,6 +108,8 @@ export interface ReserveRequest {
     items?: ReserveItem[];
     /** UNIT (whole-unit / charter): total guest headcount instead of `items`. */
     guests?: number;
+    /** Chosen optional extras; snapshotted as BookingAddOn rows + priced in. */
+    addOns?: BookingAddOnSelection[];
     /** Shopper (booking) currency; defaults to the tour currency server-side. */
     currency?: Currency;
     /** Server quote id (forward-compat; reserve recomputes and is authoritative). */

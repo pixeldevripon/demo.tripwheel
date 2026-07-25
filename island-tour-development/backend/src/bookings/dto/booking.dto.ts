@@ -14,11 +14,13 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
 import type { GoogleUserData } from '@/tracking/pii-hash.util';
 import {
+  AddOnUnit,
   BookingStatus,
   CancelledBy,
   CancellationRefund,
@@ -124,6 +126,15 @@ export class ThankYouPartyLineDto {
   @ApiPropertyOptional({ nullable: true }) ageBandId!: string | null;
   @ApiProperty({ example: 'Adult' }) label!: string;
   @ApiProperty({ example: 2 }) quantity!: number;
+}
+
+/** One purchased extra (immutable BookingAddOn snapshot), booking currency. */
+export class ThankYouAddOnDto {
+  @ApiProperty({ example: 'Open bar upgrade' }) name!: string;
+  @ApiProperty({ enum: AddOnUnit }) unit!: AddOnUnit;
+  @ApiProperty({ example: 2 }) quantity!: number;
+  @ApiProperty({ example: '25.00' }) unitPrice!: string;
+  @ApiProperty({ example: '100.00' }) totalPrice!: string;
 }
 
 /**
@@ -374,6 +385,12 @@ export class ThankYouResponseDto {
     description: 'Party grouped by age band (renders "2 adults, 1 child").',
   })
   party!: ThankYouPartyLineDto[];
+  @ApiProperty({
+    type: [ThankYouAddOnDto],
+    description:
+      'Purchased extras (BookingAddOn snapshots). Empty when none were bought.',
+  })
+  addOns!: ThankYouAddOnDto[];
 
   // ── Guest (contact snapshot taken at checkout) ──────────────────────────────
   @ApiPropertyOptional({ nullable: true, example: 'Denley' })
@@ -606,10 +623,13 @@ export class ListBookingsResponseDto {
   @ApiProperty({ type: [BookingListItemDto] }) data!: BookingListItemDto[];
 }
 
-/** One priced row of a quote breakdown (age-band participants or an add-on). */
+/** One priced row of a quote breakdown (participants, an add-on, or a priced pickup). */
 export class QuoteLineDto {
-  @ApiProperty({ enum: ['participant', 'addon'], example: 'participant' })
-  kind!: 'participant' | 'addon';
+  @ApiProperty({
+    enum: ['participant', 'addon', 'pickup'],
+    example: 'participant',
+  })
+  kind!: 'participant' | 'addon' | 'pickup';
   @ApiPropertyOptional({
     nullable: true,
     description:
@@ -1097,10 +1117,15 @@ export class UpdateBookingDto {
   @IsBoolean()
   pickupRequested?: boolean;
 
-  @ApiPropertyOptional({ example: 'pickup-uuid' })
+  @ApiPropertyOptional({
+    example: 'pickup-uuid',
+    nullable: true,
+    description: 'New pickup point; explicit null clears the pickup.',
+  })
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
-  pickupLocationId?: string;
+  pickupLocationId?: string | null;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

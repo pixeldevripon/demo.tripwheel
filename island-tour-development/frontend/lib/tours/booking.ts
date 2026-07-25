@@ -8,7 +8,12 @@
  * are derived from the tour's `startTimes` and every slot is selectable for now.
  */
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
-import type { PaymentModel, PricingModel } from '@/types/trip';
+import type {
+    AddOnUnit,
+    PaymentModel,
+    PickupModel,
+    PricingModel,
+} from '@/types/trip';
 
 /**
  * Content for a policy modal (Figma nodes 48125:20233 / 48125:21537). Every
@@ -116,6 +121,15 @@ export type TourBookingDict = {
     /** "Up to {count} travellers per booking" (party at the tour's per-booking max,
      *  not scarcity - keeps capacity messaging honest per master ethical CRO). */
     maxPerBooking: string;
+    /** Add-ons consent toggle ("Show extras") - collapsed by default. */
+    showExtras: string;
+    /** Add-ons section heading ("Optional extras") - widget S4 (master E.3). */
+    addOnsTitle: string;
+    /** Price suffix for a FLAT add-on ("/per booking"); PER_PERSON reuses perPersonShort. */
+    perBookingShort: string;
+    /** "Instant confirmation" notice (master 6.1; NOT in the trust strip per LD5). */
+    instantConfirmationTitle: string;
+    instantConfirmationSubtitle: string;
     /** Aria-label for the policy-modal close button. */
     policyClose: string;
     /** Free-cancellation policy modal (opened from the trust line). */
@@ -135,6 +149,27 @@ export interface BookingBand {
     price: number;
     /** The band pre-selected with a starting count (the tour's default age band). */
     isDefault: boolean;
+}
+
+/** An optional extra purchasable in the widget (master E.3 add_ons, never pre-checked). */
+export interface BookingAddOn {
+    id: string;
+    name: string;
+    description: string | null;
+    /** Unit price in the DISPLAY currency (already converted, cents-exact). */
+    price: number;
+    /** PER_PERSON multiplies by the party headcount; FLAT charges once per qty. */
+    unit: AddOnUnit;
+    maxQuantity: number;
+}
+
+/** A pickup zone offered at checkout (master 5.8 "operator zones with prices"). */
+export interface BookingPickupOption {
+    id: string;
+    /** Localized zone label (translation title, falling back to the name). */
+    label: string;
+    /** Per-person price in the DISPLAY currency; null = free (INCLUDED or free zone). */
+    price: number | null;
 }
 
 /** A selectable departure time with its (future) availability state. */
@@ -165,6 +200,7 @@ export interface BookingSlot {
 export type BookingNoticeKind =
     | 'likelyToSellOut'
     | 'mostPopular'
+    | 'instantConfirmation'
     | 'sponsored';
 
 /** Master §3.6: `mostPopular` is earned at >=10 reviews AND >=4.5 rating. */
@@ -197,6 +233,10 @@ function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
     ) {
         notices.push('mostPopular');
     }
+    // "Instant confirmation" affordance (master 6.1). Deliberately NOT a trust
+    // line - LD5 locks the strip to exactly two lines - so it earns a notice
+    // card beneath the widget instead, in the same shape as the other signals.
+    if (detail.instantConfirmation) notices.push('instantConfirmation');
     if (detail.isSponsored) notices.push('sponsored');
     return notices;
 }
@@ -238,6 +278,14 @@ export interface TourBookingData {
     minPartySize: number;
     /** Largest bookable party, or null for no cap. */
     maxPartySize: number | null;
+    /** Optional extras (widget S4, master E.3); empty = no add-ons section. */
+    addOns: BookingAddOn[];
+    /** Pickup model: PAID_ADDON zones charge per person; NONE offers no pickup. */
+    pickupModel: PickupModel;
+    /** True when a pickup choice (zone or "other") is mandatory at reserve. */
+    pickupRequired: boolean;
+    /** Pickup zones for the checkout dropdown (display order, converted prices). */
+    pickupOptions: BookingPickupOption[];
     /** Which notices render beneath the card, already in display order. */
     notices: BookingNoticeKind[];
 }
@@ -306,8 +354,38 @@ export const DUMMY_BOOKING_DATA: TourBookingData = {
     requiresDeposit: true,
     minPartySize: 1,
     maxPartySize: 20,
-    // All three, so the design/demo card exercises the full notice stack.
-    notices: ['likelyToSellOut', 'mostPopular', 'sponsored'],
+    // Two extras so the design card exercises both add-on units.
+    addOns: [
+        {
+            id: 'demo-open-bar',
+            name: 'Open bar upgrade',
+            description: 'Unlimited local beer, rum punch & cocktails',
+            price: 25,
+            unit: 'PER_PERSON',
+            maxQuantity: 1,
+        },
+        {
+            id: 'demo-photos',
+            name: 'GoPro photo package',
+            description: 'Edited photos & video from your trip',
+            price: 39,
+            unit: 'FLAT',
+            maxQuantity: 1,
+        },
+    ],
+    pickupModel: 'PAID_ADDON',
+    pickupRequired: false,
+    pickupOptions: [
+        { id: 'demo-hotel-zone', label: 'Hotel zone pickup', price: 12 },
+        { id: 'demo-cruise', label: 'Cruise terminal pickup', price: 17 },
+    ],
+    // All of them, so the design/demo card exercises the full notice stack.
+    notices: [
+        'likelyToSellOut',
+        'mostPopular',
+        'instantConfirmation',
+        'sponsored',
+    ],
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€' };
@@ -422,6 +500,33 @@ export function buildTourBookingData(
         remaining: null,
     }));
 
+    // Optional extras (master E.3): converted like every other display price;
+    // never pre-selected (master ethical CRO: "no pre-checked add-ons").
+    const addOns: BookingAddOn[] = [...detail.addOns]
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map(a => ({
+            id: a.id,
+            name: a.name,
+            description: a.description,
+            price: conv(a.price),
+            unit: a.unit,
+            maxQuantity: a.maxQuantity,
+        }));
+
+    // Pickup zones (master 5.8). A zone price only means money on the
+    // PAID_ADDON model - INCLUDED zones are free by definition.
+    const isPaidPickup = detail.pickupModel === 'PAID_ADDON';
+    const pickupOptions: BookingPickupOption[] = [...detail.pickupLocations]
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .map(p => ({
+            id: p.id,
+            label: p.title || p.name,
+            price:
+                isPaidPickup && p.price != null && Number(p.price) > 0
+                    ? conv(p.price)
+                    : null,
+        }));
+
     return {
         currencySymbol: symbol,
         priceFrom,
@@ -439,6 +544,10 @@ export function buildTourBookingData(
         requiresDeposit,
         minPartySize: detail.minPartySize,
         maxPartySize: detail.maxPartySize,
+        addOns,
+        pickupModel: detail.pickupModel,
+        pickupRequired: detail.pickupRequired,
+        pickupOptions,
         notices: deriveBookingNotices(detail),
     };
 }

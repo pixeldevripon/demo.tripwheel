@@ -154,6 +154,69 @@ describe('computeBookingPricing', () => {
     expect(p.addOns[1].totalPrice.toString()).toBe('25');
   });
 
+  it('charges a priced pickup per person (unitPrice × pax) into the totals', () => {
+    const p = compute({ pickup: { unitPrice: D('17') } });
+    // base 209.97 + pickup 17*3 = 260.97
+    expect(p.totalRetail.toString()).toBe('260.97');
+    expect(p.sourceTotalRetail.toString()).toBe('260.97');
+    expect(p.pickup?.unitPrice.toString()).toBe('17');
+    expect(p.pickup?.totalPrice.toString()).toBe('51');
+    // Deposit % applies to the TOUR only and extras ride the operator balance
+    // in full (founder 2026-07-25): deposit = 209.97 * 0.20 = 41.99; balance =
+    // 209.97 - 41.99 + pickup 51 = 218.98.
+    expect(p.depositAmount.toString()).toBe('41.99');
+    expect(p.balanceAmount.toString()).toBe('218.98');
+  });
+
+  it('excludes extras from the commission base (tour-only %)', () => {
+    const p = compute({
+      pickup: { unitPrice: D('17') },
+      addOns: [
+        {
+          addOnId: 'a1',
+          name: 'Lunch',
+          unit: AddOnUnit.FLAT,
+          quantity: 1,
+          unitPrice: D('30'),
+        },
+      ],
+    });
+    // Full booking total (master booking_total_eur): 209.97 + 51 + 30 = 290.97.
+    expect(p.totalRetail.toString()).toBe('290.97');
+    expect(p.totalEur?.toString()).toBe('290.97');
+    // Commission = 20% of the TOUR price only (209.97 -> 41.99), never of extras.
+    expect(p.commissionAmount?.toString()).toBe('41.99');
+  });
+
+  it('PAID_IN_FULL still charges tour + extras entirely up front', () => {
+    const p = compute({
+      paymentModel: PaymentModel.PAID_IN_FULL,
+      pickup: { unitPrice: D('17') },
+    });
+    expect(p.depositAmount.toString()).toBe('260.97');
+    expect(p.balanceAmount.toString()).toBe('0');
+  });
+
+  it('converts the pickup line to booking currency like every other line', () => {
+    const p = compute({
+      sourceCurrency: Currency.USD,
+      bookingCurrency: Currency.EUR,
+      sourceFxRateToBooking: D('0.9'),
+      pickup: { unitPrice: D('17') },
+    });
+    // pickup unit 17*0.9=15.30; total 15.30*3=45.90; base (converted) 188.97
+    expect(p.pickup?.unitPrice.toString()).toBe('15.3');
+    expect(p.pickup?.totalPrice.toString()).toBe('45.9');
+    expect(p.totalRetail.toString()).toBe('234.87');
+    expect(p.sourceTotalRetail.toString()).toBe('260.97'); // 209.97 + 17*3 in USD
+  });
+
+  it('ignores a zero/free pickup (no line, no charge)', () => {
+    const p = compute({ pickup: { unitPrice: D('0') } });
+    expect(p.pickup).toBeNull();
+    expect(p.totalRetail.toString()).toBe('209.97');
+  });
+
   it('drops net when any line is missing a net price', () => {
     const p = compute({
       lines: [

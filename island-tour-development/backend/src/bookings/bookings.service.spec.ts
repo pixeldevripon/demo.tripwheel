@@ -30,6 +30,7 @@ import {
 import {
   BookingStatus,
   PaymentModel,
+  PickupModel,
   Prisma,
   PricingModel,
   Role,
@@ -189,6 +190,8 @@ function setupReserveContext(prisma: any, over: Record<string, unknown> = {}) {
     tourId: 't1',
     name: 'Marriott Beach Resort',
     address: 'Piscadera Bay, Willemstad',
+    price: null,
+    isActive: true,
   });
   m.departure.findFirst.mockResolvedValue({
     id: 'dep1',
@@ -558,10 +561,106 @@ describe('BookingsService', () => {
         tourId: 'OTHER',
         name: 'x',
         address: 'y',
+        price: null,
+        isActive: true,
       });
       await expect(
         svc.reserve({ ...reserveDto, pickupLocationId: 'pk1' }),
       ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('rejects a deactivated pickup location', async () => {
+      setupReserveContext(prisma);
+      m.pickupLocation.findUnique.mockResolvedValue({
+        tourId: 't1',
+        name: 'Old zone',
+        address: 'Closed hotel',
+        price: null,
+        isActive: false,
+      });
+      await expect(
+        svc.reserve({ ...reserveDto, pickupLocationId: 'pk1' }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('charges a PAID_ADDON pickup zone per person and snapshots the price', async () => {
+      setupReserveContext(prisma, { pickupModel: PickupModel.PAID_ADDON });
+      m.pickupLocation.findUnique.mockResolvedValue({
+        tourId: 't1',
+        name: 'Marriott Beach Resort',
+        address: 'Piscadera Bay, Willemstad',
+        price: D('17'),
+        isActive: true,
+      });
+      await svc.reserve({
+        ...reserveDto,
+        pickupRequested: true,
+        pickupLocationId: 'pk1',
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      // 2 adults * 79.99 + pickup 17 * 2 pax = 193.98. Deposit = 20% of the
+      // TOUR price only (159.98 -> 32); the pickup rides the balance in full.
+      expect(data.totalRetail.toString()).toBe('193.98');
+      expect(data.depositAmount.toString()).toBe('32');
+      expect(data.balanceAmount.toString()).toBe('161.98'); // 127.98 + 34
+      expect(data.pickupUnitPrice.toString()).toBe('17');
+      expect(data.pickupTotalPrice.toString()).toBe('34');
+    });
+
+    it('never charges the zone price when pickupModel is INCLUDED', async () => {
+      setupReserveContext(prisma, { pickupModel: PickupModel.INCLUDED });
+      m.pickupLocation.findUnique.mockResolvedValue({
+        tourId: 't1',
+        name: 'Marriott Beach Resort',
+        address: 'Piscadera Bay, Willemstad',
+        price: D('17'), // stale price value must be ignored on INCLUDED
+        isActive: true,
+      });
+      await svc.reserve({
+        ...reserveDto,
+        pickupRequested: true,
+        pickupLocationId: 'pk1',
+      });
+      const data = m.booking.create.mock.calls[0][0].data;
+      expect(data.totalRetail.toString()).toBe('159.98');
+      expect(data.pickupUnitPrice).toBeNull();
+      expect(data.pickupTotalPrice).toBeNull();
+    });
+
+    it('rejects a reserve without pickup on a pickupRequired tour', async () => {
+      setupReserveContext(prisma, { pickupRequired: true });
+      await expect(svc.reserve(reserveDto)).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      // The "other location, confirm via WhatsApp" fallback (requested, no id) passes.
+      await expect(
+        svc.reserve({ ...reserveDto, pickupRequested: true }),
+      ).resolves.toBeDefined();
+    });
+
+    it('caps an add-on at its operator-set maxQuantity', async () => {
+      setupReserveContext(prisma);
+      m.tourAddOn.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          name: 'Lunch',
+          unit: 'PER_PERSON',
+          price: D('10'),
+          maxQuantity: 2,
+        },
+      ]);
+      await expect(
+        svc.reserve({
+          ...reserveDto,
+          addOns: [{ addOnId: 'a1', quantity: 3 }],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await expect(
+        svc.reserve({
+          ...reserveDto,
+          addOns: [{ addOnId: 'a1', quantity: 2 }],
+        }),
+      ).resolves.toBeDefined();
     });
   });
 
@@ -728,6 +827,62 @@ describe('BookingsService', () => {
 
     it('rejects a party below the minimum size (validated, not priced)', async () => {
       setupReserveContext(prisma, { minPartySize: 5 });
+      await expect(
+        svc.quote({
+          tourId: 't1',
+          departureId: 'dep1',
+          items: [{ ageBandId: 'adult', quantity: 2 }],
+        }),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('adds a per-person pickup line for a priced PAID_ADDON zone', async () => {
+      setupReserveContext(prisma, { pickupModel: PickupModel.PAID_ADDON });
+      m.pickupLocation.findUnique.mockResolvedValue({
+        tourId: 't1',
+        name: 'Marriott Beach Resort',
+        address: 'Piscadera Bay, Willemstad',
+        price: D('17'),
+        isActive: true,
+      });
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+        pickupLocationId: 'pk1',
+      });
+      // 159.98 participants + 17 * 2 pax pickup = 193.98.
+      expect(res.totalRetail).toBe('193.98');
+      expect(res.lines).toContainEqual({
+        kind: 'pickup',
+        ageBandId: null,
+        label: 'Marriott Beach Resort',
+        quantity: 2,
+        unitPrice: '17',
+        lineTotal: '34',
+      });
+    });
+
+    it('quotes a free zone with no pickup line (INCLUDED model)', async () => {
+      setupReserveContext(prisma, { pickupModel: PickupModel.INCLUDED });
+      const res = await svc.quote({
+        tourId: 't1',
+        departureId: 'dep1',
+        items: [{ ageBandId: 'adult', quantity: 2 }],
+        pickupLocationId: 'pk1',
+      });
+      expect(res.totalRetail).toBe('159.98');
+      expect(res.lines.some((l) => l.kind === 'pickup')).toBe(false);
+    });
+
+    it('rejects a quote for a departure past the booking cutoff', async () => {
+      setupReserveContext(prisma);
+      // A departure in the past is by definition inside any cutoff window.
+      m.departure.findFirst.mockResolvedValue({
+        id: 'dep1',
+        date: day('2020-06-05'),
+        startTime: time('09:00'),
+      });
       await expect(
         svc.quote({
           tourId: 't1',

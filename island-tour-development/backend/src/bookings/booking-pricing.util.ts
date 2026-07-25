@@ -57,6 +57,21 @@ export interface AddOnLineInput {
   unitPrice: Prisma.Decimal;
 }
 
+/**
+ * Priced pickup input (master 5.8 "operator zones with prices"). `unitPrice` is the
+ * PER-PERSON zone price in SOURCE currency; the line total is `unitPrice × pax`.
+ * The caller passes this ONLY when the tour's pickupModel = PAID_ADDON and the
+ * selected zone carries a positive price (INCLUDED/free zones never charge).
+ */
+export interface PickupLineInput {
+  unitPrice: Prisma.Decimal;
+}
+
+export interface ExpandedPickup {
+  unitPrice: Prisma.Decimal;
+  totalPrice: Prisma.Decimal;
+}
+
 export interface ExpandedUnitItem {
   ageBandId: string | null;
   priceRetail: Prisma.Decimal;
@@ -91,6 +106,7 @@ export interface BookingPricing {
   fxRateToEur: Prisma.Decimal | null;
   unitItems: ExpandedUnitItem[]; // priced in BOOKING currency (guide §20.8.7)
   addOns: ExpandedAddOn[]; // priced in BOOKING currency
+  pickup: ExpandedPickup | null; // priced in BOOKING currency; null = free/no pickup
   pax: number;
 }
 
@@ -100,6 +116,8 @@ interface ComputeInput {
   /** Unit path: whole-unit charter. Provide exactly one of `lines` / `unit`. */
   unit?: UnitPricingInput;
   addOns?: AddOnLineInput[];
+  /** Priced pickup zone (PAID_ADDON model only); charged per person. */
+  pickup?: PickupLineInput | null;
   /** Tour (source) currency the age-band/base prices are expressed in. */
   sourceCurrency: Currency;
   /** Currency the traveler is charged/quoted in (== sourceCurrency when not converting). */
@@ -120,6 +138,7 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     lines,
     unit,
     addOns = [],
+    pickup = null,
     sourceFxRateToBooking,
     fxRateToEur,
     paymentModel,
@@ -169,24 +188,55 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     expandedAddOns.push({ ...a, unitPrice, totalPrice });
   }
 
-  // ── Totals: booking currency (charged) + source currency (audit snapshot) ──
-  const totalRetail = money(unitsRetail.plus(addOnsRetail));
-  const totalNet = src.anyNetMissing ? null : money(unitsNet);
-  const sourceTotalRetail = money(src.unitsRetail.plus(sourceAddOnsRetail));
+  // ── Pickup: per-person zone price × pax (master 5.8; PAID_ADDON model only) ──
+  let expandedPickup: ExpandedPickup | null = null;
+  let pickupRetail = D(0);
+  let sourcePickupRetail = D(0);
+  if (pickup && pickup.unitPrice.greaterThan(0)) {
+    sourcePickupRetail = pickup.unitPrice.times(pax);
+    const unitPrice = toBooking(pickup.unitPrice);
+    const totalPrice = money(unitPrice.times(pax));
+    pickupRetail = totalPrice;
+    expandedPickup = { unitPrice, totalPrice };
+  }
 
-  // ── Deposit / balance split (master rule #21), computed in each currency ──
+  // ── Totals: booking currency (charged) + source currency (audit snapshot) ──
+  // Extras = add-ons + priced pickup. They ride in the full booking total but
+  // are EXCLUDED from the deposit-% and commission-% bases (founder decision
+  // 2026-07-25; LD18 "purchaseable in advance"): the percentages apply to the
+  // TOUR price only, while extras are charged 100% up front.
+  const extrasRetail = money(addOnsRetail.plus(pickupRetail));
+  const sourceExtrasRetail = money(sourceAddOnsRetail.plus(sourcePickupRetail));
+  const tourRetail = money(unitsRetail);
+  const totalRetail = money(tourRetail.plus(extrasRetail));
+  const totalNet = src.anyNetMissing ? null : money(unitsNet);
+  const sourceTourRetail = money(src.unitsRetail);
+  const sourceTotalRetail = money(sourceTourRetail.plus(sourceExtrasRetail));
+
+  // ── Deposit / balance split (master rule #21), computed in each currency.
+  // The deposit % applies to the tour price only; on the deposit models the
+  // extras ride on the operator-collected balance in full. ──
   const { depositAmount, balanceAmount } = splitDeposit(
-    totalRetail,
+    tourRetail,
+    extrasRetail,
     paymentModel,
     depositPct,
   );
-  const source = splitDeposit(sourceTotalRetail, paymentModel, depositPct);
+  const source = splitDeposit(
+    sourceTourRetail,
+    sourceExtrasRetail,
+    paymentModel,
+    depositPct,
+  );
 
-  // ── Commission snapshot (master rule #22 - always EUR) ──
+  // ── Commission snapshot (master rule #22 - always EUR). The rate applies to
+  // the TOUR price only (extras excluded); totalEur stays the FULL booking
+  // (master E.8 booking_total_eur = "volledige booking"). ──
   const commissionRate = commissionTier.dividedBy(100).toDecimalPlaces(4);
   const totalEur = fxRateToEur ? money(totalRetail.times(fxRateToEur)) : null;
-  const commissionAmount = totalEur
-    ? money(totalEur.times(commissionRate))
+  const tourEur = fxRateToEur ? money(tourRetail.times(fxRateToEur)) : null;
+  const commissionAmount = tourEur
+    ? money(tourEur.times(commissionRate))
     : null;
 
   return {
@@ -204,6 +254,7 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
     fxRateToEur,
     unitItems,
     addOns: expandedAddOns,
+    pickup: expandedPickup,
     pax,
   };
 }
@@ -273,29 +324,38 @@ function computeUnitLines(unit: UnitPricingInput): ParticipantExpansion {
 }
 
 function splitDeposit(
-  totalRetail: Prisma.Decimal,
+  tourRetail: Prisma.Decimal,
+  extrasRetail: Prisma.Decimal,
   paymentModel: PaymentModel,
   depositPct: Prisma.Decimal,
 ): { depositAmount: Prisma.Decimal; balanceAmount: Prisma.Decimal } {
   switch (paymentModel) {
     case PaymentModel.PAID_IN_FULL:
-      // Platform collects the whole amount up front.
-      return { depositAmount: totalRetail, balanceAmount: money(D(0)) };
+      // Platform collects the whole amount (tour + extras) up front.
+      return {
+        depositAmount: money(tourRetail.plus(extrasRetail)),
+        balanceAmount: money(D(0)),
+      };
     case PaymentModel.OPERATOR_LINK:
     case PaymentModel.ON_ARRIVAL: {
       // Deposit models (master §2 / guide §20.6): platform captures the deposit up
-      // front, operator collects the balance on site. ON_ARRIVAL is a deposit model,
-      // NOT zero-upfront - the deposit secures the booking and the commission.
-      const depositAmount = money(totalRetail.times(depositPct).dividedBy(100));
+      // front, operator collects the balance. The deposit % applies to the TOUR
+      // price only, and extras (add-ons + priced pickup) ride ON THE BALANCE in
+      // full - the traveler pays only the tour deposit today (founder decision
+      // 2026-07-25, superseding the LD18 "purchaseable in advance" reading).
+      const pctPart = money(tourRetail.times(depositPct).dividedBy(100));
       return {
-        depositAmount,
-        balanceAmount: money(totalRetail.minus(depositAmount)),
+        depositAmount: pctPart,
+        balanceAmount: money(tourRetail.minus(pctPart).plus(extrasRetail)),
       };
     }
     case PaymentModel.OPERATOR_FULL:
     default:
       // No up-front charge; full amount settled with the operator. (OPERATOR_FULL is
       // dropped for v1 and rejected at reserve - kept here only for exhaustiveness.)
-      return { depositAmount: money(D(0)), balanceAmount: totalRetail };
+      return {
+        depositAmount: money(D(0)),
+        balanceAmount: money(tourRetail.plus(extrasRetail)),
+      };
   }
 }

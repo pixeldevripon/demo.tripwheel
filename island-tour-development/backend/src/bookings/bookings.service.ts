@@ -21,6 +21,7 @@ import {
   PaymentKind,
   PaymentModel,
   PaymentStatus,
+  PickupModel,
   PricingModel,
   Prisma,
   Role,
@@ -153,10 +154,17 @@ type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
  * (guide §17, same immutability rule as `payment_model`).
  */
 type PickupSnapshot = {
+  name: string | null;
   address: string | null;
   minutesPrior: number | null;
   windowStart: string | null;
   windowEnd: string | null;
+  /**
+   * Per-person zone price in SOURCE (tour) currency - non-null ONLY when the tour's
+   * pickupModel = PAID_ADDON and the zone carries a positive price (master 5.8
+   * "operator zones with prices"). INCLUDED/free zones never charge.
+   */
+  unitPrice: Prisma.Decimal | null;
 };
 
 /** No pickup selected: meet-on-site, so every pickup column stays null. */
@@ -289,10 +297,12 @@ function cancellationEligibility(
 }
 
 const EMPTY_PICKUP: PickupSnapshot = {
+  name: null,
   address: null,
   minutesPrior: null,
   windowStart: null,
   windowEnd: null,
+  unitPrice: null,
 };
 
 @Injectable()
@@ -347,6 +357,10 @@ export class BookingsService {
       lines: ctx.lines,
       unit: ctx.unit,
       addOns: ctx.addOnLines,
+      pickup:
+        ctx.pickupSnapshot.unitPrice != null
+          ? { unitPrice: ctx.pickupSnapshot.unitPrice }
+          : null,
       sourceCurrency,
       bookingCurrency,
       sourceFxRateToBooking: sourceRate.rate,
@@ -429,6 +443,15 @@ export class BookingsService {
     ) {
       throw new UnprocessableEntityException(
         'Booking cutoff has passed for this departure',
+      );
+    }
+
+    // Pickup is a listing requirement on pickupRequired tours (OCTO option flag /
+    // master E.3): the traveler must arrange one - either a real zone or the
+    // "other location, confirm via WhatsApp" fallback (pickupRequested with no id).
+    if (ctx.tour.pickupRequired && !(dto.pickupRequested ?? false)) {
+      throw new UnprocessableEntityException(
+        'This tour requires a pickup location',
       );
     }
 
@@ -543,6 +566,9 @@ export class BookingsService {
           pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
           pickupWindowStart: ctx.pickupSnapshot.windowStart,
           pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+          // Priced pickup snapshot (booking currency) - already inside totalRetail.
+          pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
+          pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
           // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
           // (and misleading in the email) on any other model.
           onArrivalPayment:
@@ -645,6 +671,23 @@ export class BookingsService {
     this.validateRestrictions(ctx);
 
     const now = localNow(ctx.tour.timeZone);
+    // Same live cutoff rule as reserve (master §4): quoting a departure that reserve
+    // would immediately reject only manufactures a dead-end checkout.
+    const localStart = combineDateTime(
+      ctx.departure.date,
+      ctx.departure.startTime,
+    );
+    if (
+      cutoffReached(
+        localStart.getTime(),
+        now.getTime(),
+        ctx.tour.bookingCutoffMinutes,
+      )
+    ) {
+      throw new UnprocessableEntityException(
+        'Booking cutoff has passed for this departure',
+      );
+    }
     const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
     const { sourceCurrency, sourceRate, pricing } = await this.resolvePricing(
       ctx,
@@ -701,6 +744,17 @@ export class BookingsService {
         quantity: a.quantity,
         unitPrice: a.unitPrice.toString(),
         lineTotal: a.totalPrice.toString(),
+      });
+    }
+    // Priced pickup zone (master 5.8): per-person price × pax, PAID_ADDON model only.
+    if (pricing.pickup) {
+      lines.push({
+        kind: 'pickup',
+        ageBandId: null,
+        label: ctx.pickupSnapshot.name ?? 'Pickup',
+        quantity: pricing.pax,
+        unitPrice: pricing.pickup.unitPrice.toString(),
+        lineTotal: pricing.pickup.totalPrice.toString(),
       });
     }
 
@@ -2234,6 +2288,44 @@ export class BookingsService {
         'Verify with your email and booking reference to change contact details',
       );
     }
+    // A post-reserve pickup change must move the SNAPSHOT with it (guide §17) - the
+    // confirmation surfaces render the snapshot, so leaving the old zone's address/
+    // window behind would tell the traveler the wrong place and time. Money fields
+    // (pickupUnitPrice/pickupTotalPrice, totalRetail) stay as charged: repricing a
+    // live booking is a support/refund action, never an implicit side effect.
+    let pickupResnapshot: Record<string, unknown> = {};
+    if (dto.pickupLocationId !== undefined) {
+      if (dto.pickupLocationId === null) {
+        pickupResnapshot = {
+          pickupAddress: null,
+          pickupMinutesPrior: null,
+          pickupWindowStart: null,
+          pickupWindowEnd: null,
+        };
+      } else {
+        const pickup = await this.prisma.pickupLocation.findUnique({
+          where: { id: dto.pickupLocationId },
+          select: {
+            tourId: true,
+            name: true,
+            address: true,
+            isActive: true,
+            minutesPrior: true,
+            windowStart: true,
+            windowEnd: true,
+          },
+        });
+        if (!pickup || pickup.tourId !== booking.tourId || !pickup.isActive) {
+          throw new UnprocessableEntityException('Invalid pickupLocationId');
+        }
+        pickupResnapshot = {
+          pickupAddress: pickup.address ?? pickup.name,
+          pickupMinutesPrior: pickup.minutesPrior,
+          pickupWindowStart: pickup.windowStart,
+          pickupWindowEnd: pickup.windowEnd,
+        };
+      }
+    }
     const updated = await this.prisma.booking.update({
       where: { id: booking.id },
       data: {
@@ -2244,6 +2336,7 @@ export class BookingsService {
         ...(dto.pickupLocationId !== undefined && {
           pickupLocationId: dto.pickupLocationId,
         }),
+        ...pickupResnapshot,
         ...(dto.contact && {
           contactFirstName: dto.contact.firstName,
           contactLastName: dto.contact.lastName,
@@ -2555,6 +2648,17 @@ export class BookingsService {
       where: { publicRef },
       include: {
         unitItems: { select: { id: true, ageBandId: true } },
+        // Purchased extras (snapshot rows) - the TYP lists them like the party.
+        addOns: {
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            quantity: true,
+            unitPrice: true,
+            totalPrice: true,
+          },
+        },
         tour: {
           select: {
             name: true,
@@ -2664,6 +2768,15 @@ export class BookingsService {
       contactPhone: verified ? booking.contactPhone : null,
       pickupRequested: booking.pickupRequested,
       party,
+      // Purchased extras (immutable BookingAddOn snapshots). Like `party`,
+      // these are non-identifying tour facts - visible unverified too.
+      addOns: (booking.addOns ?? []).map((a) => ({
+        name: a.name,
+        unit: a.unit,
+        quantity: a.quantity,
+        unitPrice: a.unitPrice.toString(),
+        totalPrice: a.totalPrice.toString(),
+      })),
       depositAmount: booking.depositAmount.toString(),
       balanceAmount: booking.balanceAmount.toString(),
       paymentModel: booking.paymentModel,
@@ -3106,6 +3219,10 @@ export class BookingsService {
         maxPartySize: true,
         durationMinutesFrom: true,
         minAgeYears: true,
+        // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
+        // pickupRequired makes a pickup choice mandatory at reserve.
+        pickupModel: true,
+        pickupRequired: true,
         // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
         pricingModel: true,
         wholeUnitType: true,
@@ -3153,19 +3270,30 @@ export class BookingsService {
           tourId: true,
           name: true,
           address: true,
+          price: true,
+          isActive: true,
           minutesPrior: true,
           windowStart: true,
           windowEnd: true,
         },
       });
-      if (!pickup || pickup.tourId !== dto.tourId) {
+      if (!pickup || pickup.tourId !== dto.tourId || !pickup.isActive) {
         throw new UnprocessableEntityException('Invalid pickupLocationId');
       }
       pickupSnapshot = {
+        name: pickup.name,
         address: pickup.address ?? pickup.name,
         minutesPrior: pickup.minutesPrior,
         windowStart: pickup.windowStart,
         windowEnd: pickup.windowEnd,
+        // Zone price only ever charges on the PAID_ADDON pickup model (master 5.8);
+        // an INCLUDED tour's zones are free even if a price value is present.
+        unitPrice:
+          tour.pickupModel === PickupModel.PAID_ADDON &&
+          pickup.price != null &&
+          pickup.price.greaterThan(0)
+            ? pickup.price
+            : null,
       };
     }
 
@@ -3270,13 +3398,26 @@ export class BookingsService {
     const ids = dto.addOns.map((a) => a.addOnId);
     const rows = await this.prisma.tourAddOn.findMany({
       where: { id: { in: ids }, tourId: dto.tourId, isActive: true },
-      select: { id: true, name: true, unit: true, price: true },
+      select: {
+        id: true,
+        name: true,
+        unit: true,
+        price: true,
+        maxQuantity: true,
+      },
     });
     const byId = new Map(rows.map((r) => [r.id, r]));
     return dto.addOns.map((a) => {
       const row = byId.get(a.addOnId);
       if (!row)
         throw new UnprocessableEntityException(`Invalid addOnId ${a.addOnId}`);
+      // Operator-set ceiling (master E.3 add_ons; widget checklist §3.5): the client
+      // stepper caps at maxQuantity, so anything above it is a forged payload.
+      if (a.quantity > row.maxQuantity) {
+        throw new UnprocessableEntityException(
+          `Maximum quantity for "${row.name}" is ${row.maxQuantity}`,
+        );
+      }
       return {
         addOnId: row.id,
         name: row.name,

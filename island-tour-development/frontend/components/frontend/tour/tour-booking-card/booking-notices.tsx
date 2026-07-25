@@ -23,6 +23,10 @@ const NOTICE_ICON: Record<BookingNoticeKind, { src: string; size: number }> = {
     // the 24px the other notices sit at. Keep both pointing here until a
     // dedicated 24px Figma icon exists.
     mostPopular: { src: '/icons/sell-out.svg', size: 24 },
+    // Instant confirmation (master 6.1). Deliberately NOT a trust-strip line
+    // (LD5 locks the strip to exactly two); the green check the trust lines use
+    // is the honest glyph for "confirmed the moment payment completes".
+    instantConfirmation: { src: '/icons/booking-check.svg', size: 20 },
     // PLACEHOLDER - there is no "sponsored"/disclosure glyph in public/icons/
     // and a Figma icon must never be substituted with a lucide stand-in, so this
     // borrows the closest informational one. Swap in the real export when it
@@ -41,6 +45,10 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
         mostPopular: {
             title: dict.mostPopularTitle,
             subtitle: dict.mostPopularSubtitle,
+        },
+        instantConfirmation: {
+            title: dict.instantConfirmationTitle,
+            subtitle: dict.instantConfirmationSubtitle,
         },
         sponsored: {
             title: dict.sponsoredTitle,

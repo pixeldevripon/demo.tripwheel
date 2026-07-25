@@ -8,8 +8,10 @@ import {
     buildBookingSelection,
     buildPartyLabel,
     computeCheckoutTotals,
+    formatCheckoutMoney,
     fromDateParam,
     parseCheckoutSelection,
+    shortBandLabel,
 } from '@/lib/checkout/checkout';
 import { getServerCurrency } from '@/lib/currency/server';
 import {
@@ -121,14 +123,68 @@ async function CheckoutBody({
         detail.images.find(img => img.isHero)?.url ??
         detail.images[0]?.url ??
         null;
-    const pickupOptions: CheckoutPickupOption[] = detail.pickupLocations
-        .slice()
-        .sort((a, b) => a.displayOrder - b.displayOrder)
-        .map(p => ({ id: p.id, label: p.title || p.name }));
-
     // Currency-aware pricing - mirrors the booking widget (same converted money).
     const data = buildTourBookingData(detail);
-    const totals = computeCheckoutTotals(data, selection.counts);
+
+    // Pickup dropdown (master 5.8): zones only when the tour offers pickup at
+    // all; PAID_ADDON zone prices are already converted by buildTourBookingData.
+    const pickupOptions: CheckoutPickupOption[] =
+        data.pickupModel === 'NONE' ? [] : data.pickupOptions;
+    // "(From $X p.p.)" label suffix = the cheapest priced zone (paid model only,
+    // no $0.00 decimals - formatCheckoutMoney keeps whole amounts bare).
+    const pricedZones = pickupOptions
+        .map(p => p.price)
+        .filter((p): p is number => p != null && p > 0);
+    const pickupFromLabel =
+        pricedZones.length > 0
+            ? dict.pickupFrom.replace(
+                  '{price}',
+                  formatCheckoutMoney(
+                      Math.min(...pricedZones),
+                      data.currencySymbol,
+                      locale
+                  )
+              )
+            : null;
+
+    // Optional extras chosen in the widget (URL `addons=id:qty`), validated
+    // against the tour's live add-on set (a stale id must not reach reserve).
+    const addOns = Object.entries(selection.addOns)
+        .filter(([id]) => data.addOns.some(a => a.id === id))
+        .map(([addOnId, quantity]) => ({ addOnId, quantity }));
+
+    const totals = computeCheckoutTotals(data, selection.counts, {
+        addOns: selection.addOns,
+    });
+    // Per-line breakdown for the summary (same "label x qty x unit" shape the
+    // widget shows under "Show details"); a pickup re-quote swaps in live lines.
+    const fmt = (n: number) =>
+        formatCheckoutMoney(n, data.currencySymbol, locale);
+    const breakdownRows = [
+        // UNIT charters (and free bands) have no meaningful per-seat price -
+        // drop the "x $0" tail instead of printing it.
+        ...totals.lineItems.map(row => ({
+            id: `band-${row.band.id}`,
+            label:
+                row.band.price > 0
+                    ? `${shortBandLabel(row.band)} x ${row.count} x ${fmt(row.band.price)}`
+                    : `${shortBandLabel(row.band)} x ${row.count}`,
+            amount: row.lineTotal,
+        })),
+        ...data.addOns.flatMap(addOn => {
+            const qty = selection.addOns[addOn.id] ?? 0;
+            if (qty <= 0) return [];
+            const units =
+                addOn.unit === 'PER_PERSON' ? qty * totals.partySize : qty;
+            return [
+                {
+                    id: `addon-${addOn.id}`,
+                    label: `${addOn.name} x ${units} x ${fmt(addOn.price)}`,
+                    amount: Math.round(units * addOn.price * 100) / 100,
+                },
+            ];
+        }),
+    ];
     // Party payload for the reserve call (items/guests), or null if the URL
     // selection can't be reserved (synthetic-only bands / empty).
     const reserveSelection = buildBookingSelection(data, selection.counts);
@@ -152,14 +208,16 @@ async function CheckoutBody({
             locale={locale}
             tourHref={tourHref}
             pickupOptions={pickupOptions}
-            pickupFromLabel={null}
-            payToday={totals.payToday}
+            pickupFromLabel={pickupFromLabel}
+            pickupRequired={data.pickupRequired}
+            totals={totals}
             currencySymbol={data.currencySymbol}
             tourId={detail.id}
             departureId={selection.departureId}
             currency={currency}
             quoteId={selection.quoteId}
             reserveSelection={reserveSelection}
+            addOns={addOns}
             destination={destination}
             slug={slug}
             summary={
@@ -175,6 +233,7 @@ async function CheckoutBody({
                     pickupLabel={dict.noPickup}
                     cancellationHours={data.cancellationHours}
                     totals={totals}
+                    breakdownRows={breakdownRows}
                     currencySymbol={data.currencySymbol}
                 />
             }

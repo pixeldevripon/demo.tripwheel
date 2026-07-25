@@ -456,6 +456,13 @@ export class PickupLocationInlineDto {
   @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
   @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
   @ApiPropertyOptional() address!: string | null;
+  @ApiPropertyOptional({
+    example: '17.00',
+    nullable: true,
+    description:
+      'Per-person pickup price in the tour currency; charged only when pickupModel = PAID_ADDON (master 5.8). Null/0 = free zone.',
+  })
+  price!: string | null;
   @ApiPropertyOptional({ example: 30 }) minutesPrior!: number | null;
   @ApiPropertyOptional({ example: '07:45' }) windowStart!: string | null;
   @ApiPropertyOptional({ example: '08:15' }) windowEnd!: string | null;

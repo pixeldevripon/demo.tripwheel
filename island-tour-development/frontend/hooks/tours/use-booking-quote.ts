@@ -34,6 +34,7 @@ export function useBookingQuote(): void {
         currency,
         data,
         counts,
+        addOnQty,
         selectedDepartureId,
         travelerCount,
         overCapacity,
@@ -41,6 +42,11 @@ export function useBookingQuote(): void {
         setQuoteLoading,
         setQuoteError,
     } = useBooking();
+
+    // Chosen extras ride along on every quote so the server total includes them.
+    const addOns = data.addOns
+        .map(a => ({ addOnId: a.id, quantity: addOnQty[a.id] ?? 0 }))
+        .filter(a => a.quantity > 0);
 
     // Build the request for the current selection, or null when it can't be quoted
     // (incomplete, over capacity, or synthetic-only bands). PER_PERSON sends one
@@ -53,13 +59,20 @@ export function useBookingQuote(): void {
                 departureId: selectedDepartureId,
                 guests: travelerCount,
                 currency,
+                ...(addOns.length > 0 ? { addOns } : {}),
             };
         } else {
             const items = data.bands
                 .map(b => ({ ageBandId: b.id, quantity: counts[b.id] ?? 0 }))
                 .filter(i => i.quantity > 0);
             if (items.length > 0 && !items.some(i => SYNTHETIC_BAND_IDS.has(i.ageBandId))) {
-                req = { tourId, departureId: selectedDepartureId, items, currency };
+                req = {
+                    tourId,
+                    departureId: selectedDepartureId,
+                    items,
+                    currency,
+                    ...(addOns.length > 0 ? { addOns } : {}),
+                };
             }
         }
     }

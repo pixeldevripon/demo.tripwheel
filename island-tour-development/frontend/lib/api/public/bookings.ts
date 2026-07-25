@@ -57,6 +57,15 @@ export interface TypPartyLine {
     quantity: number;
 }
 
+/** One purchased extra (immutable BookingAddOn snapshot), booking currency. */
+export interface TypAddOnLine {
+    name: string;
+    unit: 'PER_PERSON' | 'FLAT';
+    quantity: number;
+    unitPrice: string;
+    totalPrice: string;
+}
+
 /**
  * Backend TYP payload (`ThankYouResponseDto`). Raw values only - all labels are
  * locale-formatted on the frontend (`lib/thank-you/thank-you.ts`).
@@ -114,6 +123,8 @@ export interface TypResponse {
     pickupRequested: boolean;
     partySize: number;
     party: TypPartyLine[];
+    /** Purchased extras (empty when none were bought). */
+    addOns: TypAddOnLine[];
     guestFirstName: string | null;
     guestLastName: string | null;
     guestFullName: string | null;

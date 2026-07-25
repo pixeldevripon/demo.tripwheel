@@ -41,10 +41,13 @@ export interface ProcessingDict {
  */
 export function CheckoutProcessing({
     publicRef,
+    tourId,
     typHref,
     dict,
 }: {
     publicRef: string;
+    /** Booked tour id - used to clear its saved widget selection on confirm. */
+    tourId?: string | null;
     typHref: string;
     dict: ProcessingDict;
 }) {
@@ -69,6 +72,17 @@ export function CheckoutProcessing({
             // /bookings visit. ~15 min, publicRef-scoped, cleared naturally (or
             // eagerly retired when the traveller logs in via /bookings).
             markJustBooked(publicRef);
+            // The trip is booked: drop this tour's saved widget selection so a
+            // later visit starts fresh instead of restoring the booked party.
+            if (tourId) {
+                try {
+                    window.sessionStorage.removeItem(
+                        `it-booking-selection:${tourId}`
+                    );
+                } catch {
+                    // Storage unavailable: nothing to clear.
+                }
+            }
             // Navigation is issued in the same tick, so the fade costs no
             // latency - it just plays over the RSC fetch that was happening
             // anyway. Never `await` an animation before replacing.
@@ -111,7 +125,7 @@ export function CheckoutProcessing({
             active = false;
             if (timer) clearTimeout(timer);
         };
-    }, [publicRef, typHref, router]);
+    }, [publicRef, tourId, typHref, router]);
 
     return (
         // No longer 60vh: the page is not empty any more - the booking-summary

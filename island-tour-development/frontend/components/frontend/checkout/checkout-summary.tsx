@@ -1,12 +1,14 @@
-import {
-    formatCheckoutMoney,
-    type CheckoutTotals,
-} from '@/lib/checkout/checkout';
+import type { CheckoutTotals } from '@/lib/checkout/checkout';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import Image from 'next/image';
 import Link from 'next/link';
-import { CheckoutSummaryPickupRow } from './checkout-pickup-label';
+import {
+    CheckoutLiveAmount,
+    CheckoutSummaryPickupRow,
+    CheckoutSummaryTotals,
+    type CheckoutBreakdownRow,
+} from './checkout-pickup-label';
 
 type CheckoutDict = Dictionary['checkout'];
 
@@ -28,6 +30,9 @@ interface CheckoutSummaryProps {
     pickupLabel: string;
     cancellationHours: number;
     totals: CheckoutTotals;
+    /** Server-derived per-line breakdown (participants + extras) for the URL
+     *  selection; a pickup re-quote swaps in the live lines. */
+    breakdownRows?: CheckoutBreakdownRow[];
     currencySymbol: string;
 }
 
@@ -42,7 +47,7 @@ function SummaryRow({
 }: {
     icon: string;
     label: string;
-    value?: string;
+    value?: React.ReactNode;
     className?: string;
 }) {
     return (
@@ -59,16 +64,6 @@ function SummaryRow({
                 {label}
             </span>
             {value && <span className={rowText}>{value}</span>}
-        </div>
-    );
-}
-
-/** A Total / Pay today / Balance later money row. */
-function TotalRow({ label, value }: { label: string; value: string }) {
-    return (
-        <div className={`flex items-center justify-between gap-1 ${rowText}`}>
-            <span>{label}</span>
-            <span>{value}</span>
         </div>
     );
 }
@@ -95,11 +90,9 @@ export function CheckoutSummary({
     pickupLabel,
     cancellationHours,
     totals,
+    breakdownRows,
     currencySymbol,
 }: CheckoutSummaryProps) {
-    const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
-    const showPayToday = totals.payToday > 0;
-    const showBalance = totals.balanceLater > 0;
 
     return (
         <div className='flex flex-col gap-6 rounded-[16px] bg-it-surface p-4'>
@@ -157,7 +150,14 @@ export function CheckoutSummary({
                         className='py-1'
                         icon='/icons/booking-travelers.svg'
                         label={partyLabel}
-                        value={money(totals.total)}
+                        value={
+                            <CheckoutLiveAmount
+                                kind='total'
+                                fallback={totals.total}
+                                currencySymbol={currencySymbol}
+                                locale={locale}
+                            />
+                        }
                     />
                     {/* Live: reflects the pickup chosen in the checkout form via
                         PickupLabelProvider; this server prop is only the initial
@@ -183,22 +183,24 @@ export function CheckoutSummary({
                     <div className='h-px w-full bg-it-heading/10' />
 
                     <div className='flex flex-col gap-2'>
-                        <TotalRow
-                            label={dict.total}
-                            value={money(totals.total)}
+                        {/* Live: a priced pickup chosen in the form re-quotes
+                            and updates these rows; the server totals are only
+                            the initial fallback. */}
+                        <CheckoutSummaryTotals
+                            fallback={{
+                                total: totals.total,
+                                payToday: totals.payToday,
+                                balanceLater: totals.balanceLater,
+                            }}
+                            fallbackLines={breakdownRows}
+                            labels={{
+                                total: dict.total,
+                                payToday: dict.payToday,
+                                balanceLater: dict.balanceLater,
+                            }}
+                            currencySymbol={currencySymbol}
+                            locale={locale}
                         />
-                        {showPayToday && (
-                            <TotalRow
-                                label={dict.payToday}
-                                value={money(totals.payToday)}
-                            />
-                        )}
-                        {showBalance && (
-                            <TotalRow
-                                label={dict.balanceLater}
-                                value={money(totals.balanceLater)}
-                            />
-                        )}
                         <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
                             {dict.taxesIncluded}
                         </span>

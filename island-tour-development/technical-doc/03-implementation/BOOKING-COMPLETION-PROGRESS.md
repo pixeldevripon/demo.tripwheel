@@ -954,14 +954,42 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
     per the locked doc (founder re-confirmed; Connect = v2). Stripe webhook endpoint must subscribe to
     `refund.updated` + `refund.failed`. Suite 1532/73 green. **NEXT = B6 #51 (outbox + queued idempotent
     jobs - makes the refund/payout/email/CAPI durable with retry).**
+10d. [x] C1+C2 COMPLETE INTEGRATION (DONE 2026-07-25, #92-#97; user-directed phase): add-ons + pickup
+    pricing end-to-end.
+    BACKEND: `PickupLocation.price` (per person, tour ccy; migration `20260725082655`), charged ONLY on
+    `pickupModel=PAID_ADDON` (INCLUDED stays free even with a stale price value); priced pickup line in
+    quote (`kind:'pickup'`) + reserve, snapshotted onto the booking (`pickupUnitPrice`/`pickupTotalPrice`);
+    inactive-pickup + wrong-tour 422s; add-on `maxQuantity` cap 422; cutoff enforced at QUOTE (was reserve
+    only); `pickupRequired` enforced at reserve (zone or "other"/pickupRequested both satisfy);
+    `update()` pickup change now re-snapshots address/timing (was stale); public detail + dashboard pickup
+    DTOs expose `price`.
+    **MONEY RULE (founder, 2 decisions this session): extras (add-ons + priced pickup) are EXCLUDED from
+    the deposit-% AND commission-% bases; on deposit models extras ride the operator balance in full
+    (payToday = tour x pct only); PAID_IN_FULL still charges everything today; commission = rate x
+    tour-only EUR; `totalRetail`/`totalEur` stay the full booking.** Verified live: 2x$139 + $50 addon +
+    $34 pickup -> total 362, payToday 55.60, balance 306.40, commission 89.52 (35% spotlight x tour EUR).
+    FRONTEND: widget "Show extras" consent toggle (collapsed by default, founder decision; nothing
+    pre-checked) -> stepper rows -> optimistic totals + quote `addOns[]` + checkout URL (`addons=id:qty`)
+    -> reserve payload; checkout pickup dropdown per master 5.8 (label "Pickup location (From $X p.p.)",
+    zone options "(+$X p.p.)" no $0.00 decimals, locked "No pickup" default, WhatsApp-other fallback;
+    `pickupRequired` drops "No pickup" + placeholder + blocks Continue); selecting a priced zone RE-QUOTES
+    and live-updates summary money + payment CTA (`CheckoutLiveProvider` totals context);
+    `instantConfirmation` notice card (NOT trust strip, LD5); dict keys x7 (`showExtras`, `addOnsTitle`,
+    `perBookingShort`, `instantConfirmation*`, `pickupSelect`, `pickupPricePP`) + dev dictionary-cache bump.
+    DASHBOARD: Pickups tab is pickupModel-aware (price field on PAID_ADDON only; whole tab HIDDEN on NONE,
+    founder decision); zone price badge via `formatPriceFrom`.
+    DEMO SEED: `pickup: 'paid'` blueprint flag -> 3 priced zones (12/17/22) on `klein-curacao-full-day-
+    catamaran`, `spanish-water-mangrove-day-trip`, `westpoint-snorkel-and-beach-hop` (+`pickupRequired`);
+    re-run-safe (prices existing unpriced zones, adds missing ones). Suite 1545/73 green; frontend +
+    dashboard tsc/eslint green. **NEXT = B6 #51 (outbox + queued idempotent jobs).**
 11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
     (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
 
 **Phase C - Product gaps (widget §3 + master 6.4/6.6; tasks #52, #59, #60)**
-12. C1: widget add-ons (PER_PERSON x party / FLAT once, maxQuantity) into totals + reserve payload.
-13. C2: `bookingCutoffMinutes` consumed in the widget (server already computes it);
-    `pickupRequired` enforcement + pickup surfacing widget-side; `instantConfirmation` +
-    `bookingType` affordances.
+12. C1: [x] DONE 2026-07-25 (see 10d) - widget add-ons behind "Show extras" into totals + reserve payload.
+13. C2: [x] DONE 2026-07-25 (see 10d) - cutoff consumed (+ quote-side 422), `pickupRequired` enforced,
+    pickup priced + surfaced at checkout per master 5.8, `instantConfirmation` notice, `bookingType`
+    (PRIVATE charter affordances were already live).
 14. C3: B.34 booking-lookup login (email + `display_ref`, rate-limited) - the account fallback
     half of master 6.4.
 15. C4 = WA2/WA3: WhatsApp placements per master 6.6 (footer, tour description, error states) +

@@ -4,9 +4,17 @@ import {
     createPaymentIntent,
     reserveBooking,
     updateBookingContact,
+    type BookingAddOnSelection,
     type ReserveRequest,
 } from '@/lib/api/bookings';
-import type { BookingSelectionPayload } from '@/lib/checkout/checkout';
+import {
+    formatCheckoutMoney,
+    type BookingSelectionPayload,
+} from '@/lib/checkout/checkout';
+import {
+    readBookingSelection,
+    writeBookingSelection,
+} from '@/hooks/tours/use-booking-selection-persistence';
 import {
     COUNTRIES,
     composePhone,
@@ -63,6 +71,8 @@ const POPULAR_COUNTRY_OPTIONS = POPULAR_CODES.map((code) => {
 export interface CheckoutPickupOption {
     id: string;
     label: string;
+    /** Per-person price (display currency); null = free zone / INCLUDED model. */
+    price: number | null;
 }
 
 interface CheckoutFormProps {
@@ -72,13 +82,15 @@ interface CheckoutFormProps {
      *  the grid); the form advances it via `onPhaseChange`. */
     phase: CheckoutPhase;
     onPhaseChange: (phase: CheckoutPhase) => void;
-    /** Publishes the chosen pickup's label so the summary card mirrors it live
-     *  (null = nothing chosen yet; the summary falls back to "No pickup"). */
-    onPickupLabelChange: (label: string | null) => void;
+    /** Publishes the chosen pickup (zone id + label) so the summary mirrors it
+     *  live and the parent can re-quote a priced zone (null id = no zone). */
+    onPickupChange: (pickup: { id: string | null; label: string | null }) => void;
     /** Pickup options from the tour; empty hides the pickup field. */
     pickupOptions: CheckoutPickupOption[];
     /** Formatted "(From $X p.p.)" suffix for the pickup label, or null. */
     pickupFromLabel: string | null;
+    /** Pickup is mandatory (master E.3): no "No pickup" option, choice enforced. */
+    pickupRequired: boolean;
     /** Amount charged today; 0 means operator_full (no card step). */
     payToday: number;
     currencySymbol: string;
@@ -90,6 +102,8 @@ interface CheckoutFormProps {
     quoteId: string | null;
     /** Party payload (items/guests); null if the URL selection can't be reserved. */
     reserveSelection: BookingSelectionPayload | null;
+    /** Optional extras chosen in the widget (carried in the URL). */
+    addOns: BookingAddOnSelection[];
     /** For the /payment/processing + TYP hrefs. */
     destination: string;
     slug: string;
@@ -120,9 +134,10 @@ export function CheckoutForm({
     locale,
     phase,
     onPhaseChange,
-    onPickupLabelChange,
+    onPickupChange,
     pickupOptions,
     pickupFromLabel,
+    pickupRequired,
     payToday,
     currencySymbol,
     tourId,
@@ -130,6 +145,7 @@ export function CheckoutForm({
     currency,
     quoteId,
     reserveSelection,
+    addOns,
     destination,
     slug,
 }: CheckoutFormProps) {
@@ -153,8 +169,10 @@ export function CheckoutForm({
         locale,
         `/${destination}/${slug}/checkout/processing`
     );
+    // `tour` rides along so the confirmed handoff can clear this tour's saved
+    // widget selection (sessionStorage) - a booked trip must not restore.
     const processingHref = (publicRef: string) =>
-        `${processingBase}?ref=${encodeURIComponent(publicRef)}`;
+        `${processingBase}?ref=${encodeURIComponent(publicRef)}&tour=${encodeURIComponent(tourId)}`;
 
     // Warm the processing route so the post-reserve transition is instant.
     useEffect(() => {
@@ -166,9 +184,38 @@ export function CheckoutForm({
         email: '',
         country: DEFAULT_COUNTRY_CODE,
         phone: '',
-        pickup: 'none',
+        // Required pickup starts unchosen ('') and is validated on Continue;
+        // otherwise the locked default is "No pickup, meet at location".
+        pickup: pickupRequired ? '' : 'none',
         special: '',
     });
+
+    // Restore a pickup chosen before a checkout round-trip (same per-tour
+    // sessionStorage key the widget's selection persistence uses). The saved
+    // value is re-validated: a zone id must still exist on the tour, and a
+    // saved "No pickup" is ignored when pickup became required meanwhile.
+    useEffect(() => {
+        if (pickupOptions.length === 0) return;
+        const saved = readBookingSelection(tourId)?.pickup;
+        if (!saved) return;
+        const zone = pickupOptions.find((o) => o.id === saved);
+        const valid =
+            zone != null ||
+            saved === 'other' ||
+            (saved === 'none' && !pickupRequired);
+        if (!valid) return;
+        setContact((prev) => ({ ...prev, pickup: saved }));
+        onPickupChange({
+            id: zone?.id ?? null,
+            label: zone
+                ? zone.label
+                : saved === 'other'
+                  ? dict.pickupOther
+                  : null,
+        });
+        // Mount-only restore; the props involved are stable for the page life.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const countryGroups = [
         { label: dict.countryPopular, options: POPULAR_COUNTRY_OPTIONS },
@@ -188,6 +235,11 @@ export function CheckoutForm({
         else if (!EMAIL_RE.test(contact.email.trim()))
             next.email = dict.emailError;
         if (!contact.phone.trim()) next.phone = dict.requiredError;
+        // Mandatory pickup (master E.3): a zone or the "other location" fallback
+        // must be chosen before Continue - the backend rejects the reserve too.
+        if (pickupRequired && pickupOptions.length > 0 && !contact.pickup) {
+            next.pickup = dict.requiredError;
+        }
         setErrors(next);
         return Object.keys(next).length === 0;
     }
@@ -197,7 +249,9 @@ export function CheckoutForm({
         ReserveRequest,
         'pickupRequested' | 'pickupLocationId'
     > {
-        if (contact.pickup === 'none') return { pickupRequested: false };
+        if (contact.pickup === 'none' || contact.pickup === '') {
+            return { pickupRequested: false };
+        }
         if (contact.pickup === 'other') return { pickupRequested: true };
         return { pickupRequested: true, pickupLocationId: contact.pickup };
     }
@@ -222,6 +276,7 @@ export function CheckoutForm({
                 currency,
                 quoteId: quoteId ?? undefined,
                 ...reserveSelection,
+                ...(addOns.length > 0 ? { addOns } : {}),
                 ...pickupFields(),
                 notes: contact.special.trim() || undefined,
                 // Ad click ids + UTM captured on the landing page (master 8.1.6);
@@ -281,9 +336,23 @@ export function CheckoutForm({
         }
     }
 
+    // Priced zones carry their per-person price inline (master 5.8: "operator
+    // zones with prices", no $0.00 decimals - formatCheckoutMoney keeps whole
+    // amounts bare); free zones stay a plain label.
+    const zoneLabel = (o: CheckoutPickupOption) =>
+        o.price != null && o.price > 0
+            ? `${o.label} ${dict.pickupPricePP.replace(
+                  '{price}',
+                  formatCheckoutMoney(o.price, currencySymbol, locale),
+              )}`
+            : o.label;
+    // Required pickup drops "No pickup" and starts on a choose-me placeholder;
+    // the "other location via WhatsApp" fallback stays available on both paths.
     const pickupSelectOptions = [
-        { value: 'none', label: dict.pickupNone },
-        ...pickupOptions.map((o) => ({ value: o.id, label: o.label })),
+        ...(pickupRequired
+            ? [{ value: '', label: dict.pickupSelect }]
+            : [{ value: 'none', label: dict.pickupNone }]),
+        ...pickupOptions.map((o) => ({ value: o.id, label: zoneLabel(o) })),
         { value: 'other', label: dict.pickupOther },
     ];
 
@@ -407,27 +476,54 @@ export function CheckoutForm({
 
                             {/* Pickup (only when the tour offers pickup) */}
                             {pickupOptions.length > 0 && (
-                                <SelectField
-                                    label={
-                                        pickupFromLabel
-                                            ? `${dict.pickup} ${pickupFromLabel}`
-                                            : dict.pickup
-                                    }
-                                    value={contact.pickup}
-                                    onChange={(v) => {
-                                        set('pickup', v);
-                                        // Mirror the choice into the summary card.
-                                        onPickupLabelChange(
-                                            v === 'none'
-                                                ? null
-                                                : (pickupSelectOptions.find(
-                                                      (o) => o.value === v,
-                                                  )?.label ?? null),
-                                        );
-                                    }}
-                                    options={pickupSelectOptions}
-                                    placeholderValue='none'
-                                />
+                                <div className='flex flex-col gap-2'>
+                                    <SelectField
+                                        label={
+                                            pickupFromLabel
+                                                ? `${dict.pickup} ${pickupFromLabel}`
+                                                : dict.pickup
+                                        }
+                                        value={contact.pickup}
+                                        onChange={(v) => {
+                                            set('pickup', v);
+                                            // Survive a round-trip back to the
+                                            // widget and returning here again.
+                                            writeBookingSelection(tourId, {
+                                                pickup: v,
+                                            });
+                                            if (errors.pickup) {
+                                                setErrors((prev) => {
+                                                    const rest = { ...prev };
+                                                    delete rest.pickup;
+                                                    return rest;
+                                                });
+                                            }
+                                            // Publish zone id + label: the label
+                                            // mirrors into the summary card, the id
+                                            // re-quotes a priced zone's total.
+                                            const zone = pickupOptions.find(
+                                                (o) => o.id === v,
+                                            );
+                                            onPickupChange({
+                                                id: zone?.id ?? null,
+                                                label: zone
+                                                    ? zone.label
+                                                    : v === 'other'
+                                                      ? dict.pickupOther
+                                                      : null,
+                                            });
+                                        }}
+                                        options={pickupSelectOptions}
+                                        placeholderValue={
+                                            pickupRequired ? '' : 'none'
+                                        }
+                                    />
+                                    {errors.pickup && (
+                                        <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
+                                            {errors.pickup}
+                                        </span>
+                                    )}
+                                </div>
                             )}
 
                             {/* Special requests */}

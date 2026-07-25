@@ -428,12 +428,16 @@ model TourLocationTranslation {
 // Distinct from TourLocation (itinerary/start/end). A PAID_ADDON pickup is also linked
 // to a TourAddOn for charging; this model carries the geo + selectable point.
 model PickupLocation {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   tourId       String
   name         String // e.g. "Marriott Beach Resort — main lobby"
   latitude     Float?
   longitude    Float?
   address      String?
+  // Per-person pickup price in the tour's defaultCurrency (master 5.8: "operator zones
+  // with prices", label "Pickup location (From $X p.p.)"). Charged ONLY when the tour's
+  // pickupModel = PAID_ADDON; ignored (free) on INCLUDED. Null/0 = free zone.
+  price        Decimal? @db.Decimal(10, 2)
   minutesPrior Int? // pickup happens N minutes before departure
   windowStart  String? // pickup window start ('HH:MM') — Figma "7:45–8:15 AM window"
   windowEnd    String? // pickup window end ('HH:MM')

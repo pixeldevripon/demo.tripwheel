@@ -114,6 +114,8 @@ export interface ThankYouBooking {
     /** Tour's free-cancellation window; the after-window locked copy needs it. */
     cancellationHours: number;
     partyLabel: string;
+    /** Purchased extras, one line each ("2 x Open bar upgrade"); empty = row hidden. */
+    extras: string[];
     operatorName: string;
     /** Casual short name used in payment copy ("Miss ann will email you..."). */
     operatorShortName: string;
@@ -350,6 +352,8 @@ export async function getThankYouBooking(
         freeCancelDeadlineUtc: typ.freeCancellationDeadlineUtc,
         cancellationHours: typ.cancellationHours,
         partyLabel: fmtParty(typ.party),
+        // Snapshot names as booked; quantity shown like the party ("2 x ...").
+        extras: (typ.addOns ?? []).map(a => `${a.quantity} x ${a.name}`),
         operatorName,
         // Casual short form used in the payment copy ("Miss Ann will email you...").
         operatorShortName: operatorName.split(' ').slice(0, 2).join(' '),
