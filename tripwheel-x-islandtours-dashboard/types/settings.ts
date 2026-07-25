@@ -161,6 +161,25 @@ export interface UpdateMailchimpConfigurationPayload {
   serverPrefix?: string;
 }
 
+// ── Integrations (Meta CAPI + Google Translate) ─────────────────────────────
+
+/** GET response - secrets are masked by the backend (bullet prefix + last 4) or null. */
+export interface IntegrationsConfiguration {
+  id: string;
+  metaCapiToken: string | null;
+  metaCapiTestCode: string | null;
+  googleTranslateApiKey: string | null;
+  googleTranslateProjectId: string | null;
+}
+
+export interface UpdateIntegrationsConfigurationPayload {
+  /** Omit to keep the stored secret; only send when a new value is entered. */
+  metaCapiToken?: string;
+  metaCapiTestCode?: string;
+  googleTranslateApiKey?: string;
+  googleTranslateProjectId?: string;
+}
+
 // ── Platform reviews (Trustpilot / Google) ─────────────────────────────────
 
 /** GET response - apiKey is masked by the backend or null. */

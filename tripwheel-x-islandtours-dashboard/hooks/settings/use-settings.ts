@@ -6,6 +6,7 @@ import { settingsApi } from '@/lib/api/settings';
 import type {
   UpdateCompanyInformationsPayload,
   UpdatePlatformReviewsPayload,
+  UpdateIntegrationsConfigurationPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
   UpdatePaymentProviderPayload,
@@ -26,6 +27,7 @@ export const settingsKeys = {
   mollie: () => [...settingsKeys.all, 'mollie'] as const,
   paymentProvider: () => [...settingsKeys.all, 'payment-provider'] as const,
   mailchimp: () => [...settingsKeys.all, 'mailchimp'] as const,
+  integrations: () => [...settingsKeys.all, 'integrations'] as const,
   platformReviews: () => [...settingsKeys.all, 'platform-reviews'] as const,
   reviewRequests: () => [...settingsKeys.all, 'review-requests'] as const,
 };
@@ -146,6 +148,26 @@ export function useUpdateMollieConfig() {
     mutationFn: (payload: UpdateMollieConfigurationPayload) => settingsApi.updateMollie(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.mollie() });
+      saved();
+    },
+    onError,
+  });
+}
+
+// ── Integrations (Meta CAPI + Google Translate) ─────────────────────────────
+export function useIntegrationsConfig() {
+  return useQuery({
+    queryKey: settingsKeys.integrations(),
+    queryFn: settingsApi.getIntegrations,
+  });
+}
+export function useUpdateIntegrationsConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateIntegrationsConfigurationPayload) =>
+      settingsApi.updateIntegrations(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: settingsKeys.integrations() });
       saved();
     },
     onError,

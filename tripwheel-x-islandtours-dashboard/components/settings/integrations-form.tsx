@@ -5,8 +5,10 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
+  useIntegrationsConfig,
   useMailchimpConfig,
   useSiteInfo,
+  useUpdateIntegrationsConfig,
   useUpdateMailchimpConfig,
   useUpdateSiteInfo,
 } from '@/hooks/settings/use-settings';
@@ -85,6 +87,148 @@ function MailchimpCard() {
   );
 }
 
+// ── Meta Conversions API ─────────────────────────────────────────────────--
+//
+// Server-side booking_complete conversions (master 8.1.4). The token is the
+// secret; the test_event_code only routes events to Events Manager's test tab
+// and MUST be cleared for production. DB value wins over the env fallback.
+
+const metaCapiSchema = z.object({
+  metaCapiToken: z.string().optional(),
+  metaCapiTestCode: z.string().optional(),
+});
+type MetaCapiFormValues = z.infer<typeof metaCapiSchema>;
+
+function MetaCapiCard() {
+  const { data, isLoading } = useIntegrationsConfig();
+  const { mutate, isPending } = useUpdateIntegrationsConfig();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<MetaCapiFormValues>({
+    resolver: zodResolver(metaCapiSchema),
+    defaultValues: { metaCapiToken: '', metaCapiTestCode: '' },
+  });
+
+  useEffect(() => {
+    if (data) {
+      reset({
+        metaCapiToken: '',
+        metaCapiTestCode: data.metaCapiTestCode ?? '',
+      });
+    }
+  }, [data, reset]);
+
+  function onSubmit(values: MetaCapiFormValues) {
+    mutate({
+      // Always send the test code: clearing the field must clear the stored
+      // value (it routes production events to the test tab when left behind).
+      metaCapiTestCode: values.metaCapiTestCode,
+      ...(values.metaCapiToken ? { metaCapiToken: values.metaCapiToken } : {}),
+    });
+  }
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  return (
+    <SettingsCard
+      title="Meta Conversions API"
+      description="Server-side booking conversions sent to Meta, deduplicated against the browser pixel. The Pixel ID itself lives on the SEO tab."
+      onSubmit={handleSubmit(onSubmit)}
+      isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.metaCapiToken} />}
+    >
+      <SecretField
+        label="Access Token"
+        registration={register('metaCapiToken')}
+        error={errors.metaCapiToken?.message}
+        placeholder="EAAG..."
+        description={data?.metaCapiToken ? `Current: ${data.metaCapiToken}. Leave blank to keep it.` : 'Stored encrypted.'}
+      />
+      <TextField
+        label="Test Event Code"
+        registration={register('metaCapiTestCode')}
+        error={errors.metaCapiTestCode?.message}
+        placeholder="TEST12345"
+        description="Routes events to Events Manager's Test Events tab. Clear this in production or conversions will not count."
+      />
+    </SettingsCard>
+  );
+}
+
+// ── Google Cloud Translation ─────────────────────────────────────────────--
+//
+// Powers the review auto-translation job (LD32). Config-gated: with no key the
+// worker no-ops. DB value wins over the env fallback.
+
+const googleTranslateSchema = z.object({
+  googleTranslateApiKey: z.string().optional(),
+  googleTranslateProjectId: z.string().optional(),
+});
+type GoogleTranslateFormValues = z.infer<typeof googleTranslateSchema>;
+
+function GoogleTranslateCard() {
+  const { data, isLoading } = useIntegrationsConfig();
+  const { mutate, isPending } = useUpdateIntegrationsConfig();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<GoogleTranslateFormValues>({
+    resolver: zodResolver(googleTranslateSchema),
+    defaultValues: { googleTranslateApiKey: '', googleTranslateProjectId: '' },
+  });
+
+  useEffect(() => {
+    if (data) {
+      reset({
+        googleTranslateApiKey: '',
+        googleTranslateProjectId: data.googleTranslateProjectId ?? '',
+      });
+    }
+  }, [data, reset]);
+
+  function onSubmit(values: GoogleTranslateFormValues) {
+    mutate({
+      googleTranslateProjectId: values.googleTranslateProjectId,
+      ...(values.googleTranslateApiKey
+        ? { googleTranslateApiKey: values.googleTranslateApiKey }
+        : {}),
+    });
+  }
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  return (
+    <SettingsCard
+      title="Google Translate"
+      description="Machine-translates approved reviews into the 6 non-English locales."
+      onSubmit={handleSubmit(onSubmit)}
+      isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.googleTranslateApiKey} />}
+    >
+      <SecretField
+        label="API Key"
+        registration={register('googleTranslateApiKey')}
+        error={errors.googleTranslateApiKey?.message}
+        placeholder="AIza..."
+        description={data?.googleTranslateApiKey ? `Current: ${data.googleTranslateApiKey}. Leave blank to keep it.` : 'Stored encrypted.'}
+      />
+      <TextField
+        label="Project ID"
+        registration={register('googleTranslateProjectId')}
+        error={errors.googleTranslateProjectId?.message}
+        placeholder="my-gcp-project"
+      />
+    </SettingsCard>
+  );
+}
+
 // ── WhatsApp ─────────────────────────────────────────────────────────────--
 //
 // Instagram is NOT here: its switch lives with the handle, layout and tiles it
@@ -149,6 +293,8 @@ function SocialWidgetsCard() {
 export function IntegrationsForm() {
   return (
     <div className="space-y-6">
+      <MetaCapiCard />
+      <GoogleTranslateCard />
       <MailchimpCard />
       <SocialWidgetsCard />
     </div>
