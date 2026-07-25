@@ -4,6 +4,10 @@ model Operator {
   isActive           Boolean                    @default(true)
   verificationStatus OperatorVerificationStatus @default(UNVERIFIED)
 
+  // Which PSP this operator charges through (mirrors the platform's
+  // payment_settings.activeProvider; switch guarded on configured credentials)
+  activePaymentProvider PaymentProvider @default(STRIPE)
+
   // Cached review aggregates (updated on review approve — see LD11 in CLAUDE.md)
   aggregateRating      Float?
   aggregateReviewCount Int       @default(0)

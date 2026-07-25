@@ -3,8 +3,18 @@ import { notFound } from 'next/navigation';
 
 import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
 import { isLocale } from '@/lib/constants/locales';
+import { buildAlternates } from '@/lib/seo/alternates';
 
-export const metadata: Metadata = { title: 'How we handle reviews' };
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+    const { locale } = await params;
+    const title = 'How we handle reviews';
+    if (!isLocale(locale)) return { title };
+    return { title, alternates: buildAlternates(locale, '/reviews-policy') };
+}
 
 /**
  * "How we handle reviews" (FE-11) - the EU Omnibus Directive / UCPD Art. 7(6)

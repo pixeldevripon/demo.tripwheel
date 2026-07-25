@@ -7,9 +7,12 @@ import {
     getDestinationCategories,
 } from '@/lib/api/public';
 import { type Locale } from '@/lib/constants/locales';
+import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { JsonLd } from '../seo/json-ld';
 import { CategoryAbout } from './category-about';
 
 import {
@@ -67,7 +70,7 @@ export async function CategoryPage({
     // categories (for related links) and the destination (for its id, used to
     // scope the dynamic listing) in parallel. The detail gate is authoritative -
     // a `null` means 0 published tours → notFound().
-    const [category, pageContent, faqs, activeCategories, destination] =
+    const [category, pageContent, faqs, activeCategories, destination, siteUrl] =
         await Promise.all([
             getCategoryBySlugForDestination(
                 destinationSlug,
@@ -78,6 +81,7 @@ export async function CategoryPage({
             getCategoryFaqs(categoryId, locale),
             getDestinationCategories(destinationSlug, locale),
             getDestinationBySlug(destinationSlug, locale),
+            getSiteUrl(),
         ]);
 
     if (!category) notFound();
@@ -97,6 +101,18 @@ export async function CategoryPage({
             .replace('{category}', category.name)
             .replace('{destination}', destinationName);
     const breadcrumbLabel = category.breadcrumbLabel ?? category.name;
+
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale,
+        trail: [
+            { name: destinationName, path: `/${destinationSlug}` },
+            {
+                name: breadcrumbLabel,
+                path: `/${destinationSlug}/${categorySlug}`,
+            },
+        ],
+    });
 
     // Subtitle: the category's own localized overview when authored, else the
     // generic promise. It used to be a hardcoded English sentence about boat
@@ -144,6 +160,7 @@ export async function CategoryPage({
 
     return (
         <>
+            <JsonLd data={breadcrumbJsonLd} />
             <ToursBreadcrumb
                 locale={locale}
                 destinationName={destinationName}

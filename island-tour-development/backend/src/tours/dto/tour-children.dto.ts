@@ -23,6 +23,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -925,6 +926,13 @@ export class PickupLocationResponseDto {
   @ApiPropertyOptional({ example: 12.1091 }) latitude!: number | null;
   @ApiPropertyOptional({ example: -68.9316 }) longitude!: number | null;
   @ApiPropertyOptional() address!: string | null;
+  @ApiPropertyOptional({
+    example: '17.00',
+    nullable: true,
+    description:
+      'Per-person pickup price (tour currency). Charged only on pickupModel = PAID_ADDON tours.',
+  })
+  price!: string | null;
   @ApiPropertyOptional({ example: 30 }) minutesPrior!: number | null;
   @ApiPropertyOptional({ example: '07:45' }) windowStart!: string | null;
   @ApiPropertyOptional({ example: '08:15' }) windowEnd!: string | null;
@@ -968,6 +976,18 @@ export class CreatePickupLocationDto {
   @IsString()
   @MaxLength(240)
   address?: string;
+
+  @ApiPropertyOptional({
+    example: '17.00',
+    description:
+      'Per-person pickup price (tour currency); only charged when the tour pickupModel = PAID_ADDON.',
+  })
+  @IsOptional()
+  @IsDecimal(
+    { decimal_digits: '0,2' },
+    { message: 'price must be a decimal with up to 2 digits' },
+  )
+  price?: string;
 
   @ApiPropertyOptional({ example: 30 })
   @IsOptional()
@@ -1015,6 +1035,20 @@ export class UpdatePickupLocationDto {
   @IsString()
   @MaxLength(240)
   address?: string | null;
+
+  @ApiPropertyOptional({
+    example: '17.00',
+    nullable: true,
+    description:
+      'Per-person pickup price (tour currency); explicit null clears it. Only charged when the tour pickupModel = PAID_ADDON.',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsDecimal(
+    { decimal_digits: '0,2' },
+    { message: 'price must be a decimal with up to 2 digits' },
+  )
+  price?: string | null;
 
   @ApiPropertyOptional({ example: 30 })
   @IsOptional()

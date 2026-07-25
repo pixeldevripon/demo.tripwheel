@@ -1697,6 +1697,7 @@ export class ToursService {
             latitude: true,
             longitude: true,
             address: true,
+            price: true,
             minutesPrior: true,
             windowStart: true,
             windowEnd: true,
@@ -1827,6 +1828,9 @@ export class ToursService {
         latitude: p.latitude,
         longitude: p.longitude,
         address: p.address,
+        // Source-currency string; the frontend converts with the same money.fxRate
+        // it already applies to age-band and add-on prices.
+        price: p.price != null ? p.price.toString() : null,
         minutesPrior: p.minutesPrior,
         windowStart: p.windowStart,
         windowEnd: p.windowEnd,

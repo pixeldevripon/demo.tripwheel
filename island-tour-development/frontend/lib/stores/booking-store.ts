@@ -27,6 +27,21 @@ import { createStore } from 'zustand';
 /** Which policy modal (if any) is open, opened from the trust lines. */
 export type PolicyModalKind = null | 'cancellation' | 'deposit';
 
+/**
+ * The traveler's widget selection as persisted to sessionStorage (per tour),
+ * so a checkout round-trip ("Back to tour") restores what they picked. `date`
+ * is a local `YYYY-MM-DD`; zero-count rows are omitted from both maps.
+ */
+export interface PersistedBookingSelection {
+    date: string | null;
+    time: string | null;
+    counts: Record<string, number>;
+    addOnQty: Record<string, number>;
+    /** Checkout pickup select value ('none' | 'other' | a zone id) - written by
+     *  the checkout page into the same per-tour key; the widget ignores it. */
+    pickup?: string | null;
+}
+
 /** Per-day availability for the month calendar (from `/availability/calendar`). */
 export interface CalendarDayState {
     available: boolean;
@@ -82,6 +97,8 @@ export interface BookingConfig {
 /** Mutable source-of-truth state for the flow. */
 export interface BookingState {
     counts: Record<string, number>;
+    /** Chosen quantity per add-on id (zero rows omitted; never pre-selected). */
+    addOnQty: Record<string, number>;
     selectedDate: Date | null;
     selectedTime: string | null;
     calendarOpen: boolean;
@@ -131,6 +148,13 @@ export interface BookingActions {
     setSpectatorsApplied: (applied: boolean) => void;
     setPolicyModal: (kind: PolicyModalKind) => void;
     setBandCount: (band: BookingBand, next: number) => void;
+    /** Set an add-on's quantity (clamped 0..maxQuantity). */
+    setAddOnQty: (addOnId: string, next: number) => void;
+    /** Restore a persisted selection (date/party/extras) after a checkout
+     *  round-trip. Validates everything against the CURRENT tour data; the
+     *  time is NOT restored here - the persistence hook re-selects it once the
+     *  date's live slots confirm it still exists. */
+    hydrateSelection: (sel: PersistedBookingSelection) => void;
     clearSpectatorCounts: () => void;
     pickDate: (date: Date) => void;
     selectTime: (time: string) => void;
@@ -286,6 +310,28 @@ export function deriveBooking(s: BookingStore) {
         total = priceRows.reduce((sum, r) => sum + r.amount, 0);
     }
 
+    // ── Optional extras (master E.3): PER_PERSON multiplies by the party
+    // headcount, FLAT charges its quantity once. Mirrors the backend add-on
+    // math exactly, so the optimistic estimate matches the quote that replaces
+    // it below. Rows fold into the same breakdown as the participant lines.
+    // Tracked separately from the tour total: extras are excluded from the
+    // deposit-% base and charged 100% up front (founder 2026-07-25).
+    const tourTotal = total;
+    let extrasTotal = 0;
+    for (const addOn of s.data.addOns) {
+        const qty = s.addOnQty[addOn.id] ?? 0;
+        if (qty <= 0) continue;
+        const units = addOn.unit === 'PER_PERSON' ? qty * travelerCount : qty;
+        const amount = Math.round(units * addOn.price * 100) / 100;
+        priceRows.push({
+            id: `addon-${addOn.id}`,
+            text: `${addOn.name} x ${units} x ${money(addOn.price)}`,
+            amount,
+        });
+        extrasTotal += amount;
+    }
+    total += extrasTotal;
+
     // ── Payment-model conditional (master §3.1 / §5.8 / §6.1) ────────────────
     // The card's money rows, CTA label, and trust lines are all driven by the
     // tour's real `paymentModel` + `depositPct`.
@@ -302,9 +348,10 @@ export function deriveBooking(s: BookingStore) {
     const usesDeposit =
         isDepositModel && s.data.depositPct > 0 && s.data.depositPct < 100;
     // Deposit estimate rounds to cents, not whole units (the quote's 2dp amounts
-    // replace it below; the optimistic value must not visibly jump).
+    // replace it below; the optimistic value must not visibly jump). The % applies
+    // to the TOUR price only; extras ride the balance in full (founder 2026-07-25).
     let payToday = usesDeposit
-        ? Math.round(total * s.data.depositPct) / 100
+        ? Math.round(tourTotal * s.data.depositPct) / 100
         : isOperatorFull
           ? 0
           : total;
@@ -462,6 +509,7 @@ export function createBookingStore(init: BookingInit) {
 
     const initialState: BookingState = {
         counts: initialCounts,
+        addOnQty: {},
         selectedDate: null,
         selectedTime: null,
         calendarOpen: false,
@@ -512,6 +560,96 @@ export function createBookingStore(init: BookingInit) {
                     band.kind === 'participant' ? true : prev.travelerTouched,
                 availabilityChecked: false,
                 counts: { ...prev.counts, [band.id]: clamped },
+            }));
+        },
+
+        setAddOnQty: (addOnId, next) => {
+            const addOn = get().data.addOns.find(a => a.id === addOnId);
+            if (!addOn) return;
+            const clamped = Math.max(0, Math.min(next, addOn.maxQuantity));
+            set(prev => ({
+                addOnQty: { ...prev.addOnQty, [addOnId]: clamped },
+            }));
+        },
+
+        hydrateSelection: sel => {
+            const s = get();
+
+            // Party counts: only ids that exist on the CURRENT band set, whole
+            // non-negative numbers, and only if the whole party still fits the
+            // tour max - a stale/oversized snapshot keeps the defaults instead.
+            let counts: Record<string, number> | null = null;
+            if (sel.counts && typeof sel.counts === 'object') {
+                const restored: Record<string, number> = {};
+                s.data.bands.forEach(b => (restored[b.id] = 0));
+                let seats = 0;
+                let any = false;
+                for (const band of s.data.bands) {
+                    const n = sel.counts[band.id];
+                    if (typeof n === 'number' && Number.isFinite(n) && n > 0) {
+                        restored[band.id] = Math.floor(n);
+                        seats += restored[band.id];
+                        any = true;
+                    }
+                }
+                if (any && seats >= 1 && seats <= s.maxParty) {
+                    counts = restored;
+                }
+            }
+
+            // Extras: unknown add-on ids dropped, quantities re-clamped against
+            // the CURRENT maxQuantity (the operator may have lowered it).
+            const addOnQty: Record<string, number> = {};
+            if (sel.addOnQty && typeof sel.addOnQty === 'object') {
+                for (const addOn of s.data.addOns) {
+                    const n = sel.addOnQty[addOn.id];
+                    if (typeof n === 'number' && Number.isFinite(n) && n > 0) {
+                        addOnQty[addOn.id] = Math.min(
+                            Math.floor(n),
+                            addOn.maxQuantity
+                        );
+                    }
+                }
+            }
+
+            // Date: local YYYY-MM-DD, only if it is still today-or-future. The
+            // availability sync refetches this date's slots automatically; the
+            // persistence hook re-selects the time once the slots confirm it.
+            let selectedDate: Date | null = null;
+            if (typeof sel.date === 'string') {
+                const [y, m, d] = sel.date.split('-').map(Number);
+                if (y && m && d) {
+                    const date = new Date(y, m - 1, d);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (!Number.isNaN(date.getTime()) && date >= today) {
+                        selectedDate = date;
+                    }
+                }
+            }
+
+            const restoredSpectators =
+                counts != null &&
+                s.spectatorBands.some(b => (counts[b.id] ?? 0) > 0);
+
+            set(prev => ({
+                ...(counts != null && {
+                    counts,
+                    travelerTouched: true,
+                    ...(restoredSpectators && {
+                        spectatorsOn: true,
+                        spectatorsApplied: true,
+                    }),
+                }),
+                addOnQty,
+                ...(selectedDate != null && {
+                    selectedDate,
+                    // Mirror pickDate: drop stale slots and show loading (live
+                    // mode) until the sync fetches this date's departures.
+                    selectedTime: null,
+                    daySlots: null,
+                    slotsLoading: prev.tourId != null,
+                }),
             }));
         },
 

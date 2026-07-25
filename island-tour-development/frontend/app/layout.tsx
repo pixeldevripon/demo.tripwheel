@@ -4,7 +4,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import {
     getPublicSiteInfo,
     getPublicSiteSeo,
+    getPublicSocialMedia,
 } from '@/lib/api/public/settings';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
@@ -56,22 +58,22 @@ const jetbrainsMono = JetBrains_Mono({
  * their own generateMetadata (tour/search/wishlist) still override these.
  */
 export async function generateMetadata(): Promise<Metadata> {
-    const [site, seo] = await Promise.all([
+    const [site, seo, social, siteUrl] = await Promise.all([
         getPublicSiteInfo(),
         getPublicSiteSeo(),
+        getPublicSocialMedia(),
+        getSiteUrl(),
     ]);
 
     const title = seo.metaTitle ?? site.siteName ?? 'Island Tours';
     const description =
         seo.metaDescription ?? site.siteTagline ?? undefined;
+    const siteName = site.siteName ?? 'Island Tours';
 
-    // canonicalUrl doubles as the metadataBase so relative OG images resolve.
-    let metadataBase: URL | undefined;
-    try {
-        if (seo.canonicalUrl) metadataBase = new URL(seo.canonicalUrl);
-    } catch {
-        // Malformed admin input - fall back to Next's default resolution.
-    }
+    // `getSiteUrl` is never empty (canonicalUrl -> NEXT_PUBLIC_SITE_URL -> launch
+    // domain), so metadataBase is always a valid absolute origin and relative
+    // OG/canonical URLs never fall back to localhost in production.
+    const metadataBase = new URL(siteUrl);
 
     // Admins sometimes paste Google's full <meta> tag instead of just the
     // token - accept both by extracting the content value when present.
@@ -79,12 +81,16 @@ export async function generateMetadata(): Promise<Metadata> {
         seo.googleSearchConsole?.match(/content=["']([^"']+)["']/)?.[1] ??
         seo.googleSearchConsole?.trim();
 
+    // Twitter handle from the social profile URL (twitter.com/x.com), as
+    // `@handle` - powers twitter:site / twitter:creator.
+    const twitterHandle = extractTwitterHandle(social.twitterUrl);
+
     return {
         title,
         description,
         ...(seo.metaKeywords ? { keywords: seo.metaKeywords } : {}),
         ...(seo.robotsMeta ? { robots: seo.robotsMeta } : {}),
-        ...(metadataBase ? { metadataBase } : {}),
+        metadataBase,
         // Search Console ownership proof: renders the
         // <meta name="google-site-verification"> tag site-wide.
         ...(googleVerification
@@ -96,6 +102,9 @@ export async function generateMetadata(): Promise<Metadata> {
         // is emitted: the settings URL, or the bundled fallback.
         icons: { icon: site.favicon || '/favicon.ico' },
         openGraph: {
+            type: 'website',
+            siteName,
+            url: siteUrl,
             title: seo.ogTitle ?? title,
             description: seo.ogDescription ?? description,
             ...(seo.ogImage ? { images: [seo.ogImage] } : {}),
@@ -105,9 +114,25 @@ export async function generateMetadata(): Promise<Metadata> {
             title: seo.twitterTitle ?? seo.ogTitle ?? title,
             description:
                 seo.twitterDescription ?? seo.ogDescription ?? description,
+            ...(twitterHandle
+                ? { site: twitterHandle, creator: twitterHandle }
+                : {}),
             ...(seo.twitterImage ? { images: [seo.twitterImage] } : {}),
         },
     };
+}
+
+/** `https://x.com/tripwheel` (or twitter.com) -> `@tripwheel`; null otherwise. */
+function extractTwitterHandle(url: string | null): string | null {
+    if (!url) return null;
+    try {
+        const { hostname, pathname } = new URL(url);
+        if (!/(^|\.)(twitter|x)\.com$/.test(hostname)) return null;
+        const handle = pathname.split('/').filter(Boolean)[0];
+        return handle ? `@${handle.replace(/^@/, '')}` : null;
+    } catch {
+        return null;
+    }
 }
 
 export default function RootLayout({

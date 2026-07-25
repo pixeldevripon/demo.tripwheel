@@ -9,12 +9,13 @@
  * (for the prerendered TYP page).
  */
 import type { Currency } from '@/lib/constants/locales';
+import type { Attribution } from '@/lib/tracking/attribution';
 import { apiFetch } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
-/** One priced row of a quote breakdown (age-band participant or add-on). */
+/** One priced row of a quote breakdown (participant, add-on, or priced pickup). */
 export interface QuoteLine {
-    kind: 'participant' | 'addon';
+    kind: 'participant' | 'addon' | 'pickup';
     ageBandId: string | null;
     label: string;
     quantity: number;
@@ -50,6 +51,12 @@ export interface BookingQuote {
     lines: QuoteLine[];
 }
 
+/** One chosen extra (backend `ReserveAddOnDto`) - shared by quote + reserve. */
+export interface BookingAddOnSelection {
+    addOnId: string;
+    quantity: number;
+}
+
 /** Body for `POST /bookings/quote` (backend `QuoteBookingDto`). */
 export interface QuoteRequest {
     tourId: string;
@@ -58,8 +65,11 @@ export interface QuoteRequest {
     items?: { ageBandId: string; quantity: number }[];
     /** UNIT (whole-unit / charter): total guest headcount instead of `items`. */
     guests?: number;
+    /** Chosen optional extras; priced into the quote total. */
+    addOns?: BookingAddOnSelection[];
     /** Shopper (booking) currency; defaults to the tour currency server-side. */
     currency?: Currency;
+    /** Selected pickup zone; a priced PAID_ADDON zone adds a per-person line. */
     pickupLocationId?: string;
 }
 
@@ -98,6 +108,8 @@ export interface ReserveRequest {
     items?: ReserveItem[];
     /** UNIT (whole-unit / charter): total guest headcount instead of `items`. */
     guests?: number;
+    /** Chosen optional extras; snapshotted as BookingAddOn rows + priced in. */
+    addOns?: BookingAddOnSelection[];
     /** Shopper (booking) currency; defaults to the tour currency server-side. */
     currency?: Currency;
     /** Server quote id (forward-compat; reserve recomputes and is authoritative). */
@@ -106,6 +118,9 @@ export interface ReserveRequest {
     pickupLocationId?: string;
     notes?: string;
     newsletterOptIn?: boolean;
+    /** Ad click ids + UTM captured on the landing page (master 8.1.6). Written on
+     *  first reserve only; the backend ignores it on an idempotent re-reserve. */
+    attribution?: Attribution;
 }
 
 /** Contact block for `PATCH /bookings/:id` (backend `ContactDto`). */
@@ -144,6 +159,26 @@ export interface ReservedBooking {
 export interface PaymentIntentResult {
     /** False only when nothing is due now (OPERATOR_FULL) - skip the card step. */
     paymentRequired: boolean;
+    /**
+     * Which PSP takes this charge (admin-selected). STRIPE → inline Elements
+     * via clientSecret; MOLLIE → hosted redirect via checkoutUrl. Absent on
+     * older payloads = STRIPE.
+     */
+    provider?: 'STRIPE' | 'MOLLIE';
+    /**
+     * Mollie hosted-checkout URL - send the traveller here. Absent on the
+     * Stripe path; also absent when the Mollie payment is already paid
+     * (status SUCCEEDED - go straight to processing).
+     */
+    checkoutUrl?: string;
+    /**
+     * Mollie Components profile (pfl_..., public - the mollie.js sibling of a
+     * publishable key). Only on the MOLLIE setup response (phase 1, no
+     * returnUrl); absent = inline card form not configured, hosted page only.
+     */
+    profileId?: string;
+    /** Whether the Mollie account runs on a test API key (mollie.js flag). */
+    testmode?: boolean;
     clientSecret?: string;
     publishableKey?: string;
     /** Amount charged now, in the booking currency (string, never a float). */
@@ -156,15 +191,6 @@ export interface PaymentIntentResult {
 }
 
 /** Thank-you-page payload (backend `ThankYouResponseDto`; TYP + processing poll). */
-export interface ThankYouConversion {
-    event: string;
-    eventId: string;
-    currency: string;
-    value: string;
-    contentId: string;
-    contentName: string | null;
-}
-
 export interface ThankYouBooking {
     publicRef: string;
     displayRef: string;
@@ -183,7 +209,6 @@ export interface ThankYouBooking {
     currency: string;
     totalRetail: string;
     contactEmail: string | null;
-    conversion: ThankYouConversion | null;
 }
 
 /**
@@ -213,16 +238,26 @@ export async function updateBookingContact(
 }
 
 /**
- * Create (or fetch, idempotently) the up-front PaymentIntent for a booking. Returns
- * `paymentRequired: false` when nothing is due now; otherwise a `clientSecret` +
- * `publishableKey` to drive Stripe.js.
+ * Create (or fetch, idempotently) the up-front payment for a booking. Returns
+ * `paymentRequired: false` when nothing is due now; otherwise the shape follows
+ * the admin-selected provider:
+ * - STRIPE: `clientSecret` + `publishableKey` to drive Stripe.js.
+ * - MOLLIE, no `redirects` (phase 1): SETUP only - `profileId`/`testmode` for
+ *   the inline Components card form; no payment exists yet.
+ * - MOLLIE, with `redirects` (phase 2): CREATES the payment - with `cardToken`
+ *   it is a creditcard charge for the inline form (checkoutUrl = the 3DS hop),
+ *   without one it is the hosted method-selection page.
  */
 export async function createPaymentIntent(
-    bookingId: string
+    bookingId: string,
+    redirects?: { returnUrl: string; cancelUrl?: string; cardToken?: string }
 ): Promise<PaymentIntentResult> {
     return apiFetch<PaymentIntentResult>(
         `/payments/bookings/${bookingId}/intent`,
-        { method: 'POST' }
+        {
+            method: 'POST',
+            ...(redirects ? { body: JSON.stringify(redirects) } : {}),
+        }
     );
 }
 
@@ -241,6 +276,12 @@ export async function getThankYouStatus(
 export interface SettleResult {
     status: string;
     publicRef: string;
+    /**
+     * True when the latest charge attempt failed/was canceled/expired at the
+     * PSP (verified live, both providers). The processing page sends the
+     * traveller back to the checkout to retry instead of polling forever.
+     */
+    paymentFailed?: boolean;
 }
 
 /**

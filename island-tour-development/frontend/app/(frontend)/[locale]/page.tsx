@@ -12,9 +12,10 @@ import {
     getFeaturedExperiences,
     getHomePageContent,
 } from '@/lib/api/public';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { safeRemoteImage } from '@/lib/images/remote-hosts';
+import { buildAlternates } from '@/lib/seo/alternates';
 
 /**
  * The homepage's search-engine listing, per locale, from the dashboard's
@@ -27,8 +28,9 @@ export async function generateMetadata({
     params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
     const { locale } = await params;
+    if (!isLocale(locale)) return {};
     // Same cached loader the page uses, so this costs no extra request.
-    const content = await getHomePageContent(locale as Locale);
+    const content = await getHomePageContent(locale);
 
     return {
         ...(content.metaTitle && { title: content.metaTitle }),
@@ -38,6 +40,9 @@ export async function generateMetadata({
         ...(content.ogImage && {
             openGraph: { images: [{ url: content.ogImage }] },
         }),
+        // Self-referencing canonical + hreflang for the 7 locales (homepage = the
+        // locale root, so the locale-less path is '').
+        alternates: buildAlternates(locale, ''),
     };
 }
 

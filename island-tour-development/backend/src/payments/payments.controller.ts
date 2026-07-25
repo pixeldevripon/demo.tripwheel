@@ -19,7 +19,11 @@ import { RequirePermissions } from '@/auth/decorators/require-permissions.decora
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { PaymentsService } from './payments.service';
-import { ListPaymentsQueryDto, MollieWebhookDto } from './dto/payment.dto';
+import {
+  CreatePaymentIntentDto,
+  ListPaymentsQueryDto,
+  MollieWebhookDto,
+} from './dto/payment.dto';
 import {
   ApiCreateIntentDocs,
   ApiListPaymentsDocs,
@@ -32,7 +36,8 @@ import {
  * PaymentsController - checkout intents + the Stripe webhook.
  *
  * - `POST /payments/bookings/:id/intent` is `@Public()` (traveller checkout, keyed on
- *   the unguessable booking id) and returns a client secret for Stripe.js.
+ *   the unguessable booking id). Returns a Stripe.js client secret OR a Mollie
+ *   hosted-checkout URL, depending on the admin-selected active provider.
  * - `POST /payments/webhook` is `@Public()` + `@SkipThrottle()` (master rule #15):
  *   Stripe signs it, we verify against the **raw** body, and it is idempotent.
  * - `POST /payments/typ/:publicRef/settle` is `@Public()` (keyed on publicRef):
@@ -58,8 +63,8 @@ export class PaymentsController {
   @Post('bookings/:id/intent')
   @Public()
   @ApiCreateIntentDocs()
-  createIntent(@Param('id') id: string) {
-    return this.payments.createIntentForBooking(id);
+  createIntent(@Param('id') id: string, @Body() dto: CreatePaymentIntentDto) {
+    return this.payments.createIntentForBooking(id, dto);
   }
 
   /**

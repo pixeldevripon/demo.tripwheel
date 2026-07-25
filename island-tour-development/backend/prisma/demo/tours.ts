@@ -634,7 +634,11 @@ interface Blueprint {
   fitnessLevel?: FitnessLevel;
   minAgeYears?: number;
   startTimes: string[];
-  pickup?: boolean;
+  // false/absent = no pickup; true = pickup INCLUDED (free zone);
+  // 'paid' = pickupModel PAID_ADDON with per-person priced zones (master 5.8).
+  pickup?: boolean | 'paid';
+  // Pickup choice mandatory at reserve (only meaningful with pickup set).
+  pickupRequired?: boolean;
   paymentModel?: PaymentModel;
   cancellationHours?: 24 | 48 | 72 | 168;
   tierKey: keyof typeof TIER_MAP;
@@ -657,6 +661,75 @@ interface Blueprint {
 }
 
 const L_DEFAULT = ['en', 'es', 'nl'];
+
+// ── Demo pickup zones ──────────────────────────────────────────────────────────
+// INCLUDED tours get one free hotel zone; 'paid' tours get three per-person priced
+// zones so the checkout dropdown shows the master 5.8 shape ("operator zones with
+// prices", label "Pickup location (From $X p.p.)").
+interface DemoPickupZone {
+  name: string;
+  title: string;
+  price: number | null; // per person, tour currency; null = free (INCLUDED)
+  address: string;
+  dLat: number;
+  dLng: number;
+  minutesPrior: number;
+  windowStart: string;
+  windowEnd: string;
+}
+
+function demoPickupZones(city: string, paid: boolean): DemoPickupZone[] {
+  if (!paid) {
+    return [
+      {
+        name: `${city} hotels (main lobby)`,
+        title: `${city} hotel pickup`,
+        price: null,
+        address: `Central ${city} hotel zone`,
+        dLat: 0.01,
+        dLng: 0.01,
+        minutesPrior: 45,
+        windowStart: '07:15',
+        windowEnd: '07:45',
+      },
+    ];
+  }
+  return [
+    {
+      name: `${city} hotel zone`,
+      title: `${city} hotel zone pickup`,
+      price: 12,
+      address: `Central ${city} hotel zone`,
+      dLat: 0.01,
+      dLng: 0.01,
+      minutesPrior: 45,
+      windowStart: '07:15',
+      windowEnd: '07:45',
+    },
+    {
+      name: `Cruise terminal (${city})`,
+      title: 'Cruise terminal pickup',
+      price: 17,
+      address: `Mega Pier, ${city}`,
+      dLat: -0.008,
+      dLng: 0.006,
+      minutesPrior: 60,
+      windowStart: '07:00',
+      windowEnd: '07:30',
+    },
+    {
+      name: 'West coast resorts',
+      title: 'West coast resorts pickup',
+      price: 22,
+      address: 'West coast resort strip',
+      dLat: 0.05,
+      dLng: -0.04,
+      minutesPrior: 75,
+      windowStart: '06:45',
+      windowEnd: '07:15',
+    },
+  ];
+}
 
 // ── Badge showcase (master §3.6/§3.7) ───────────────────────────────────────
 // One tour per badge per LIVE destination (curacao / aruba / sint-maarten), all
@@ -706,7 +779,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     bookingType: TourBookingType.SHARED,
     fitnessLevel: FitnessLevel.EASY,
     startTimes: ['07:00'],
-    pickup: true,
+    pickup: 'paid',
     paymentModel: PaymentModel.OPERATOR_LINK,
     cancellationHours: 48,
     tierKey: 'premium',
@@ -1145,7 +1218,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     fitnessLevel: FitnessLevel.MODERATE,
     minAgeYears: 6,
     startTimes: ['08:30', '13:30'],
-    pickup: true,
+    pickup: 'paid',
+    pickupRequired: true,
     paymentModel: PaymentModel.PAID_IN_FULL,
     cancellationHours: 24,
     tierKey: 'boosted',
@@ -1207,7 +1281,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     bookingType: TourBookingType.SHARED,
     fitnessLevel: FitnessLevel.EASY,
     startTimes: ['09:00'],
-    pickup: true,
+    pickup: 'paid',
     paymentModel: PaymentModel.OPERATOR_LINK,
     cancellationHours: 48,
     tierKey: 'standard',
@@ -2108,8 +2182,13 @@ export async function seedTours(): Promise<void> {
       // operational
       durationMinutesFrom: bp.durationFrom,
       durationMinutesTo: bp.durationTo,
-      pickupModel: bp.pickup ? PickupModel.INCLUDED : PickupModel.NONE,
-      pickupRequired: false,
+      pickupModel:
+        bp.pickup === 'paid'
+          ? PickupModel.PAID_ADDON
+          : bp.pickup
+            ? PickupModel.INCLUDED
+            : PickupModel.NONE,
+      pickupRequired: bp.pickupRequired ?? false,
       minPartySize: 1,
       maxPartySize:
         bp.maxPartySize ??
@@ -2118,7 +2197,7 @@ export async function seedTours(): Promise<void> {
       cancellationHours: bp.cancellationHours ?? 48,
       startTimes: bp.startTimes,
       paymentModel: bp.paymentModel ?? PaymentModel.OPERATOR_LINK,
-      depositPct: D(20.0),
+      depositPct: D(tier.commission), // LD24: tier-driven, always == commission
       // commercial
       commissionTier: D(tier.commission),
       tierKey: bp.tierKey,
@@ -2157,6 +2236,58 @@ export async function seedTours(): Promise<void> {
     });
     if (existing) {
       await prisma.tour.update({ where: { id: existing.id }, data: tourData });
+      // Children are normally left alone on a refresh, but a blueprint flipped to
+      // 'paid' needs its priced zones on a re-run too (the tour row above already
+      // moved pickupModel). Non-destructive: create zones only when the tour has
+      // none; price only zones that are still unpriced.
+      if (bp.pickup === 'paid') {
+        const zones = demoPickupZones(meta.city, true);
+        const existingZones = await prisma.pickupLocation.findMany({
+          where: { tourId: existing.id },
+          orderBy: { displayOrder: 'asc' },
+          select: { id: true, price: true },
+        });
+        for (let i = 0; i < zones.length; i++) {
+          const z = zones[i];
+          const ez = existingZones[i];
+          if (ez) {
+            // Zone already there (e.g. the old free INCLUDED zone): give it a
+            // price if it never had one; leave admin-edited prices alone.
+            if (ez.price == null) {
+              await prisma.pickupLocation.update({
+                where: { id: ez.id },
+                data: { price: money(z.price ?? 0) },
+              });
+            }
+            continue;
+          }
+          const pl = await prisma.pickupLocation.create({
+            data: {
+              tourId: existing.id,
+              name: z.name,
+              latitude: meta.lat + z.dLat,
+              longitude: meta.lng + z.dLng,
+              address: z.address,
+              price: z.price != null ? money(z.price) : null,
+              minutesPrior: z.minutesPrior,
+              windowStart: z.windowStart,
+              windowEnd: z.windowEnd,
+              displayOrder: i,
+              isActive: true,
+            },
+          });
+          await prisma.pickupLocationTranslation.createMany({
+            data: ALL_LOCALES.map((locale) => ({
+              pickupLocationId: pl.id,
+              locale,
+              title: z.title,
+              directions:
+                'Wait at the marked meeting spot; our driver will call your name.',
+              isMachineTranslated: locale !== Locale.en,
+            })),
+          });
+        }
+      }
       refreshed++;
       continue;
     }
@@ -2192,8 +2323,13 @@ export async function seedTours(): Promise<void> {
           // operational
           durationMinutesFrom: bp.durationFrom,
           durationMinutesTo: bp.durationTo,
-          pickupModel: bp.pickup ? PickupModel.INCLUDED : PickupModel.NONE,
-          pickupRequired: false,
+          pickupModel:
+            bp.pickup === 'paid'
+              ? PickupModel.PAID_ADDON
+              : bp.pickup
+                ? PickupModel.INCLUDED
+                : PickupModel.NONE,
+          pickupRequired: bp.pickupRequired ?? false,
           minPartySize: 1,
           maxPartySize:
             bp.maxPartySize ??
@@ -2202,7 +2338,7 @@ export async function seedTours(): Promise<void> {
           cancellationHours: bp.cancellationHours ?? 48,
           startTimes: bp.startTimes,
           paymentModel: bp.paymentModel ?? PaymentModel.OPERATOR_LINK,
-          depositPct: D(20.0),
+          depositPct: D(tier.commission), // LD24: tier-driven, always == commission
           // commercial
           commissionTier: D(tier.commission),
           tierKey: bp.tierKey,
@@ -2451,32 +2587,37 @@ export async function seedTours(): Promise<void> {
         });
       }
 
-      // Pickup location
+      // Pickup zones (one free zone on INCLUDED; three priced zones on 'paid')
       if (bp.pickup) {
-        const pl = await tx.pickupLocation.create({
-          data: {
-            tourId: tour.id,
-            name: `${meta.city} hotels (main lobby)`,
-            latitude: meta.lat + 0.01,
-            longitude: meta.lng + 0.01,
-            address: `Central ${meta.city} hotel zone`,
-            minutesPrior: 45,
-            windowStart: '07:15',
-            windowEnd: '07:45',
-            displayOrder: 0,
-            isActive: true,
-          },
-        });
-        await tx.pickupLocationTranslation.createMany({
-          data: ALL_LOCALES.map((locale) => ({
-            pickupLocationId: pl.id,
-            locale,
-            title: `${meta.city} hotel pickup`,
-            directions:
-              'Wait in your hotel lobby; our driver will call your name.',
-            isMachineTranslated: locale !== Locale.en,
-          })),
-        });
+        const zones = demoPickupZones(meta.city, bp.pickup === 'paid');
+        for (let i = 0; i < zones.length; i++) {
+          const z = zones[i];
+          const pl = await tx.pickupLocation.create({
+            data: {
+              tourId: tour.id,
+              name: z.name,
+              latitude: meta.lat + z.dLat,
+              longitude: meta.lng + z.dLng,
+              address: z.address,
+              price: z.price != null ? money(z.price) : null,
+              minutesPrior: z.minutesPrior,
+              windowStart: z.windowStart,
+              windowEnd: z.windowEnd,
+              displayOrder: i,
+              isActive: true,
+            },
+          });
+          await tx.pickupLocationTranslation.createMany({
+            data: ALL_LOCALES.map((locale) => ({
+              pickupLocationId: pl.id,
+              locale,
+              title: z.title,
+              directions:
+                'Wait at the marked meeting spot; our driver will call your name.',
+              isMachineTranslated: locale !== Locale.en,
+            })),
+          });
+        }
       }
 
       // Translations (EN real + localized templates; titles stay English)

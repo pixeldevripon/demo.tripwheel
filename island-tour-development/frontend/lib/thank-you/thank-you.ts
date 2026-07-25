@@ -114,6 +114,8 @@ export interface ThankYouBooking {
     /** Tour's free-cancellation window; the after-window locked copy needs it. */
     cancellationHours: number;
     partyLabel: string;
+    /** Purchased extras, one line each ("2 x Open bar upgrade"); empty = row hidden. */
+    extras: string[];
     operatorName: string;
     /** Casual short name used in payment copy ("Miss ann will email you..."). */
     operatorShortName: string;
@@ -133,12 +135,6 @@ export interface ThankYouBooking {
     /** ISO start/end used for the add-to-calendar link. */
     startsAtIso: string;
     endsAtIso: string;
-    /**
-     * Conversion value in EUR (critical rule 22: `commission_amount`, never
-     * GMV). A CONFIRMED booking with null commission is data corruption - the
-     * tracking module must fire NO conversion for it.
-     */
-    commissionAmountEur: number | null;
     apartment: ThankYouApartment;
 }
 
@@ -356,6 +352,8 @@ export async function getThankYouBooking(
         freeCancelDeadlineUtc: typ.freeCancellationDeadlineUtc,
         cancellationHours: typ.cancellationHours,
         partyLabel: fmtParty(typ.party),
+        // Snapshot names as booked; quantity shown like the party ("2 x ...").
+        extras: (typ.addOns ?? []).map(a => `${a.quantity} x ${a.name}`),
         operatorName,
         // Casual short form used in the payment copy ("Miss Ann will email you...").
         operatorShortName: operatorName.split(' ').slice(0, 2).join(' '),
@@ -381,9 +379,6 @@ export async function getThankYouBooking(
         // lands at the destination's 8am regardless of the traveller's zone).
         startsAtIso: start ? `${typ.localDate}T${typ.startTime}:00` : '',
         endsAtIso: end ? `${typ.localDate}T${typ.endTime}:00` : '',
-        // Rule #22: EUR commission, never GMV. Null (no conversion) unless the
-        // booking is CONFIRMED with a valid commission - the backend gates this.
-        commissionAmountEur: typ.conversion ? Number(typ.conversion.value) : null,
         apartment: APARTMENT_PROMO,
     };
 }

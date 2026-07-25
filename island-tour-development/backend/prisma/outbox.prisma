@@ -1,0 +1,24 @@
+// Transactional outbox (EVENT-DRIVEN-AND-QUEUES.md §5.2, task B6/#51).
+//
+// The one place event systems lose events is the gap between committing to
+// Postgres and enqueuing the job (commit succeeds, process dies before
+// queue.add - or the enqueue lands and the transaction rolls back). Domain
+// events are therefore written HERE, inside the same transaction as the state
+// change that caused them; the OutboxRelayService polls undispatched rows,
+// publishes them to the BullMQ platform queue (deterministic jobIds), and
+// stamps `dispatchedAt`. Consumers keep their own DB-level idempotency guards -
+// jobId dedup alone is not correctness (removeOnComplete erases the dedup key).
+
+model OutboxEvent {
+  id          String @id @default(uuid())
+  aggregate   String // 'booking'
+  aggregateId String // bookingId
+  type        String // 'booking.confirmed' | 'booking.refund-owed'
+  payload     Json
+
+  dispatchedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([dispatchedAt])
+  @@map("outbox_events")
+}

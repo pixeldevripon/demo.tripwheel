@@ -20,16 +20,23 @@ import {
   Locale,
   PaymentKind,
   PaymentModel,
+  PaymentProvider,
   PaymentStatus,
+  PickupModel,
   PricingModel,
   Prisma,
   Role,
+  SettlementStatus,
   TourBookingType,
   TourStatus,
   WholeUnitType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
+import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
+import { MollieService } from '@/payments/mollie.service';
+import { StripeService } from '@/payments/stripe.service';
+import { UnrecoverableError } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
@@ -43,6 +50,7 @@ import {
 import { CustomerProvisioningService } from '@/customers/customer-provisioning.service';
 import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
+import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
   dashboardAppBase,
@@ -94,6 +102,7 @@ import {
 } from './booking-email.context';
 import { buildBookingIcs } from './booking-ics.util';
 import type {
+  BookingConversionDto,
   BookingLookupResponseDto,
   BookingQuoteResponseDto,
   CancelBookingDto,
@@ -108,10 +117,42 @@ import type {
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
+import { deriveBookingDisplayStatus } from './dto/booking.dto';
+import { deriveRefundState } from './refund-state.util';
+import {
+  mapMollieRefundStatus,
+  mapStripeRefundStatus,
+} from '@/payments/refund-status.util';
 
 const DEFAULT_HOLD_MINUTES = 30;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
 const QUOTE_TTL_MINUTES = 15;
+
+/**
+ * Internal control-flow signal for pay-after-expiry recovery: thrown inside the
+ * recovery transaction to roll it back for a KNOWN, non-error reason (someone else
+ * won the flip, or seats are gone). Caught by `recoverExpiredBooking` -> returns
+ * false, distinct from an unexpected DB error.
+ */
+class HoldRecoveryAbort extends Error {}
+
+/**
+ * The PSP's ACTUAL charge conversion for a succeeded payment (task #28 / 5C).
+ * Derived from Stripe's `balance_transaction.exchange_rate` or Mollie's
+ * `settlementAmount`, and only ever produced when the PSP settled the charge
+ * in EUR - so `rateToEur` is the true bookingCurrency -> EUR rate the money
+ * moved at. When present, confirmation reconciles the booking's EUR figures
+ * (fxRateToEur / totalEur / commissionAmount + the settlement ledger) onto it
+ * instead of the ECB rate snapshotted at reserve.
+ */
+export interface ChargeFx {
+  /** bookingCurrency -> EUR rate the PSP actually converted at (positive). */
+  rateToEur: Prisma.Decimal;
+  /** Which PSP supplied the rate - written to `eurFxProvider` for audit. */
+  provider: 'stripe' | 'mollie';
+  /** PSP timestamp of the conversion - written to `eurFxProviderAsOf`. */
+  asOf: Date;
+}
 
 /**
  * Fields the pricing pipeline (`loadContext` / `loadAddOns`) reads from a request.
@@ -137,10 +178,17 @@ type BookingWithItems = Booking & { unitItems: BookingUnitItem[] };
  * (guide §17, same immutability rule as `payment_model`).
  */
 type PickupSnapshot = {
+  name: string | null;
   address: string | null;
   minutesPrior: number | null;
   windowStart: string | null;
   windowEnd: string | null;
+  /**
+   * Per-person zone price in SOURCE (tour) currency - non-null ONLY when the tour's
+   * pickupModel = PAID_ADDON and the zone carries a positive price (master 5.8
+   * "operator zones with prices"). INCLUDED/free zones never charge.
+   */
+  unitPrice: Prisma.Decimal | null;
 };
 
 /** No pickup selected: meet-on-site, so every pickup column stays null. */
@@ -273,10 +321,12 @@ function cancellationEligibility(
 }
 
 const EMPTY_PICKUP: PickupSnapshot = {
+  name: null,
   address: null,
   minutesPrior: null,
   windowStart: null,
   windowEnd: null,
+  unitPrice: null,
 };
 
 @Injectable()
@@ -293,6 +343,8 @@ export class BookingsService {
     private readonly lookupLimiter: LookupRateLimiter,
     private readonly targetLimiter: TargetRateLimiter,
     private readonly customerProvisioning: CustomerProvisioningService,
+    private readonly stripe: StripeService,
+    private readonly mollie: MollieService,
   ) {}
 
   /**
@@ -330,6 +382,10 @@ export class BookingsService {
       lines: ctx.lines,
       unit: ctx.unit,
       addOns: ctx.addOnLines,
+      pickup:
+        ctx.pickupSnapshot.unitPrice != null
+          ? { unitPrice: ctx.pickupSnapshot.unitPrice }
+          : null,
       sourceCurrency,
       bookingCurrency,
       sourceFxRateToBooking: sourceRate.rate,
@@ -412,6 +468,15 @@ export class BookingsService {
     ) {
       throw new UnprocessableEntityException(
         'Booking cutoff has passed for this departure',
+      );
+    }
+
+    // Pickup is a listing requirement on pickupRequired tours (OCTO option flag /
+    // master E.3): the traveler must arrange one - either a real zone or the
+    // "other location, confirm via WhatsApp" fallback (pickupRequested with no id).
+    if (ctx.tour.pickupRequired && !(dto.pickupRequested ?? false)) {
+      throw new UnprocessableEntityException(
+        'This tour requires a pickup location',
       );
     }
 
@@ -526,6 +591,9 @@ export class BookingsService {
           pickupMinutesPrior: ctx.pickupSnapshot.minutesPrior,
           pickupWindowStart: ctx.pickupSnapshot.windowStart,
           pickupWindowEnd: ctx.pickupSnapshot.windowEnd,
+          // Priced pickup snapshot (booking currency) - already inside totalRetail.
+          pickupUnitPrice: pricing.pickup?.unitPrice ?? null,
+          pickupTotalPrice: pricing.pickup?.totalPrice ?? null,
           // Only ON_ARRIVAL bookings collect on site, so the terms are meaningless
           // (and misleading in the email) on any other model.
           onArrivalPayment:
@@ -534,6 +602,18 @@ export class BookingsService {
               : null,
           notes: dto.notes ?? null,
           newsletterOptIn: dto.newsletterOptIn ?? false,
+          // Attribution snapshot (master 8.1.6 / E.8) - written at creation only, so
+          // the idempotent re-reserve early-return above never overwrites the original
+          // click ids/UTMs. Feeds the booking_complete push (8.3) + later ad adjustments.
+          gclid: dto.attribution?.gclid ?? null,
+          gbraid: dto.attribution?.gbraid ?? null,
+          wbraid: dto.attribution?.wbraid ?? null,
+          fbclid: dto.attribution?.fbclid ?? null,
+          utmSource: dto.attribution?.utmSource ?? null,
+          utmMedium: dto.attribution?.utmMedium ?? null,
+          utmCampaign: dto.attribution?.utmCampaign ?? null,
+          utmTerm: dto.attribution?.utmTerm ?? null,
+          utmContent: dto.attribution?.utmContent ?? null,
           // Discount/coupon deferred (flaw #2): with no server-side coupon-validation
           // engine, a client-supplied discount is untrusted, so we never write one -
           // the full price stays authoritative. Wire this when the coupon engine exists.
@@ -616,6 +696,23 @@ export class BookingsService {
     this.validateRestrictions(ctx);
 
     const now = localNow(ctx.tour.timeZone);
+    // Same live cutoff rule as reserve (master §4): quoting a departure that reserve
+    // would immediately reject only manufactures a dead-end checkout.
+    const localStart = combineDateTime(
+      ctx.departure.date,
+      ctx.departure.startTime,
+    );
+    if (
+      cutoffReached(
+        localStart.getTime(),
+        now.getTime(),
+        ctx.tour.bookingCutoffMinutes,
+      )
+    ) {
+      throw new UnprocessableEntityException(
+        'Booking cutoff has passed for this departure',
+      );
+    }
     const bookingCurrency = dto.currency ?? ctx.tour.defaultCurrency;
     const { sourceCurrency, sourceRate, pricing } = await this.resolvePricing(
       ctx,
@@ -672,6 +769,17 @@ export class BookingsService {
         quantity: a.quantity,
         unitPrice: a.unitPrice.toString(),
         lineTotal: a.totalPrice.toString(),
+      });
+    }
+    // Priced pickup zone (master 5.8): per-person price × pax, PAID_ADDON model only.
+    if (pricing.pickup) {
+      lines.push({
+        kind: 'pickup',
+        ageBandId: null,
+        label: ctx.pickupSnapshot.name ?? 'Pickup',
+        quantity: pricing.pax,
+        unitPrice: pricing.pickup.unitPrice.toString(),
+        lineTotal: pricing.pickup.totalPrice.toString(),
       });
     }
 
@@ -795,6 +903,7 @@ export class BookingsService {
       last4?: string | null;
       brand?: string | null;
     },
+    chargeFx?: ChargeFx,
   ): Promise<void> {
     // `?? undefined` so Prisma SKIPS a field rather than nulling an existing
     // value - a late webhook backfilling the card must not wipe what settle set.
@@ -821,7 +930,7 @@ export class BookingsService {
         ...billingData,
       },
     });
-    const transitioned = count === 1;
+    let transitioned = count === 1;
 
     // Loser (or a webhook arriving after settle already confirmed): still
     // backfill the card/billing snapshot onto the confirmed booking, but fire
@@ -833,7 +942,7 @@ export class BookingsService {
       });
     }
 
-    const current = await this.prisma.booking.findUnique({
+    let current = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: { unitItems: true },
     });
@@ -841,14 +950,147 @@ export class BookingsService {
       this.logger.error(`confirmFromPayment: booking ${bookingId} not found`);
       return;
     }
+
+    // Pay-after-expiry recovery (task #47): the hold was swept to EXPIRED before
+    // this payment landed (a slow async method or a very late webhook). The money
+    // is captured, so try to HONOR the booking by re-claiming seats; success
+    // confirms it as if it had never lapsed. This is the ONLY confirm path that
+    // re-claims inventory (a normal confirm reuses the seats held at reserve).
+    let recovered = false;
+    if (!transitioned && current.status === BookingStatus.EXPIRED) {
+      recovered = await this.recoverExpiredBooking(current, billingData);
+      // Reload so `current` reflects the outcome - ours, or a concurrent late
+      // payment that recovered/confirmed the same booking first.
+      current =
+        (await this.prisma.booking.findUnique({
+          where: { id: bookingId },
+          include: { unitItems: true },
+        })) ?? current;
+      if (recovered) transitioned = true;
+    }
+
+    // Loser billing backfill: only meaningful on an already-CONFIRMED booking (the
+    // settle/webhook race). Never resurrect billing onto an EXPIRED/CANCELLED
+    // booking. (`?? undefined` still stops a late webhook nulling a saved field.)
+    if (
+      !transitioned &&
+      billing &&
+      current.status === BookingStatus.CONFIRMED
+    ) {
+      await this.prisma.booking.updateMany({
+        where: { id: bookingId },
+        data: billingData,
+      });
+    }
+
     if (transitioned) {
       this.logger.log(`Booking ${current.displayRef} confirmed via payment`);
     }
 
-    const finalized = await this.finalizeConfirmation(current);
-    if (transitioned) {
-      // Status changed via payment; seats unchanged (already held at reserve).
-      this.emitBookingEvents(finalized, { availability: false });
+    // SIDE EFFECTS FIRE ONLY FOR A CONFIRMED BOOKING (the fix). `finalizeConfirmation`
+    // is idempotent via `conversionFiredAt`, so a settle/webhook race-loser no-ops
+    // here; a booking that could NOT be recovered stays EXPIRED and NEVER finalizes -
+    // no false confirmation email, no conversion, no account provisioning.
+    if (current.status === BookingStatus.CONFIRMED) {
+      const finalized = await this.finalizeConfirmation(current, chargeFx);
+      if (transitioned) {
+        // Recovery re-claimed seats (availability changed); a plain race-win did
+        // not (seats were already held at reserve).
+        this.emitBookingEvents(finalized, { availability: recovered });
+      }
+    } else {
+      // Payment captured but the booking is not confirmable (hold lapsed + sold
+      // out, or cancelled). Money is owed back - so REFUND it (B5). No confirmation
+      // side effects fire (no email/conversion); executeRefund is idempotent and
+      // best-effort, and logs loudly if the refund itself fails.
+      this.logger.error(
+        `confirmFromPayment: booking ${current.displayRef} is ${current.status} but its ` +
+          `payment succeeded - refunding (hold lapsed / cancelled). NOT confirming.`,
+      );
+      await this.executeRefund(current.id, current.displayRef);
+    }
+  }
+
+  /**
+   * Pay-after-expiry recovery. The hold lapsed (swept to EXPIRED) before the
+   * payment landed; the money is captured, so try to honor the booking by
+   * re-claiming inventory. ATOMIC: flip EXPIRED->CONFIRMED (guarded, one winner),
+   * then re-claim seats in the SAME transaction - if seats are gone the whole thing
+   * rolls back and the booking stays EXPIRED (the refund path handles the captured
+   * payment). Freesale bookings (no departure) simply flip. Returns whether it
+   * recovered.
+   */
+  private async recoverExpiredBooking(
+    booking: BookingWithItems,
+    billingData: Record<string, unknown>,
+  ): Promise<boolean> {
+    const seats = booking.unitItems.length;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Guard-flip EXPIRED -> CONFIRMED: exactly one caller wins even if two late
+        // payment callbacks race the same expired booking.
+        const flip = await tx.booking.updateMany({
+          where: { id: booking.id, status: BookingStatus.EXPIRED },
+          data: {
+            status: BookingStatus.CONFIRMED,
+            utcConfirmedAt: new Date(),
+            ...billingData,
+          },
+        });
+        if (flip.count === 0) throw new HoldRecoveryAbort('already handled');
+
+        if (booking.departureId) {
+          const dep = await tx.departure.findUnique({
+            where: { id: booking.departureId },
+            select: { capacity: true },
+          });
+          if (!dep) throw new HoldRecoveryAbort('departure gone');
+          // Same guarded seat-claim as reserve (master §5): exclusive charter takes
+          // the whole still-empty departure; else a conditional count-up.
+          const claim = booking.exclusiveDeparture
+            ? await tx.departure.updateMany({
+                where: {
+                  id: booking.departureId,
+                  tourId: booking.tourId,
+                  status: DepartureStatus.OPEN,
+                  bookedCount: 0,
+                },
+                data: { bookedCount: dep.capacity },
+              })
+            : await tx.departure.updateMany({
+                where: {
+                  id: booking.departureId,
+                  tourId: booking.tourId,
+                  status: DepartureStatus.OPEN,
+                  bookedCount: { lte: dep.capacity - seats },
+                },
+                data: { bookedCount: { increment: seats } },
+              });
+          if (claim.count === 0) throw new HoldRecoveryAbort('sold out');
+          await this.recomputeStoredStatus(tx, booking.departureId);
+        }
+
+        await tx.bookingUnitItem.updateMany({
+          where: { bookingId: booking.id },
+          data: { status: BookingStatus.CONFIRMED },
+        });
+      });
+      this.logger.warn(
+        `Booking ${booking.displayRef} recovered after hold expiry (re-claimed ${seats} seat(s)).`,
+      );
+      return true;
+    } catch (err) {
+      if (err instanceof HoldRecoveryAbort) {
+        this.logger.warn(
+          `Booking ${booking.displayRef} not recovered after expiry (${err.message}); refund owed.`,
+        );
+        return false;
+      }
+      this.logger.error(
+        `recoverExpiredBooking failed for ${booking.displayRef}`,
+        err as Error,
+      );
+      return false;
     }
   }
 
@@ -864,38 +1106,91 @@ export class BookingsService {
    */
   private async finalizeConfirmation(
     booking: BookingWithItems,
+    chargeFx?: ChargeFx,
   ): Promise<BookingWithItems> {
     if (booking.conversionFiredAt) return booking; // fast path - already fired
 
+    // Charge-rate reconciliation (task #28 / 5C): when the PSP reported its own
+    // bookingCurrency -> EUR conversion for this charge, the money actually
+    // moved at THAT rate - so the EUR normalization below (and the settlement
+    // ledger) uses it instead of the ECB rate snapshotted at reserve. The
+    // commission RATE stays the reserve snapshot (never retroactive, rule #7);
+    // only its EUR value is re-anchored to the true conversion. EUR-charged
+    // bookings never carry a PSP rate (nothing was converted).
+    const psp =
+      chargeFx &&
+      booking.currency !== Currency.EUR &&
+      chargeFx.rateToEur.isFinite() &&
+      chargeFx.rateToEur.gt(0)
+        ? chargeFx
+        : null;
+
     // EUR-normalize the commission snapshot (rule #22 / master G3).
-    const fxRate = booking.fxRateToEur ?? eurFxRate(booking.currency);
-    const totalEur =
-      booking.totalEur ??
-      booking.totalRetail
-        .mul(fxRate)
-        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-    const commissionAmount =
-      booking.commissionAmount ??
-      (booking.commissionRate
+    const fxRate = psp
+      ? psp.rateToEur.toDecimalPlaces(6, Prisma.Decimal.ROUND_HALF_UP)
+      : (booking.fxRateToEur ?? eurFxRate(booking.currency));
+    const totalEur = psp
+      ? booking.totalRetail
+          .mul(fxRate)
+          .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+      : (booking.totalEur ??
+        booking.totalRetail
+          .mul(fxRate)
+          .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP));
+    const commissionAmount = psp
+      ? booking.commissionRate
         ? totalEur
             .mul(booking.commissionRate)
             .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-        : null);
+        : (booking.commissionAmount ?? null)
+      : (booking.commissionAmount ??
+        (booking.commissionRate
+          ? totalEur
+              .mul(booking.commissionRate)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+          : null));
+    // Audit trail: which source supplied the EUR rate that finalization used.
+    const fxAudit = psp
+      ? { eurFxProvider: psp.provider, eurFxProviderAsOf: psp.asOf }
+      : {};
 
     // ATOMIC mark-first (rule #22 / master §5.1): the guarded `updateMany` on
     // `conversionFiredAt IS NULL` lets exactly one caller win, even when settle
-    // and the webhook race. Only the winner (count === 1) sends emails + fires
-    // the conversion; the loser returns without side effects, so a booking
-    // never double-emails or double-counts a conversion.
+    // and the webhook race. B6 (§5.2 transactional outbox): the WINNER commits
+    // the `booking.confirmed` domain event in the SAME transaction as the
+    // guard, so the confirmation email / operator notice / CAPI conversion /
+    // pre-tour reminder can never be lost between commit and enqueue - the
+    // relay publishes the row to the durable queue with retry + backoff.
     const firedAt = new Date();
-    const { count } = await this.prisma.booking.updateMany({
-      where: { id: booking.id, conversionFiredAt: null },
-      data: {
-        fxRateToEur: fxRate,
-        totalEur,
-        commissionAmount,
-        conversionFiredAt: firedAt,
-      },
+    const count = await this.prisma.$transaction(async (tx) => {
+      const res = await tx.booking.updateMany({
+        where: { id: booking.id, conversionFiredAt: null },
+        data: {
+          fxRateToEur: fxRate,
+          totalEur,
+          commissionAmount,
+          conversionFiredAt: firedAt,
+          ...fxAudit,
+        },
+      });
+      if (res.count === 1) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'booking',
+            aggregateId: booking.id,
+            type: 'booking.confirmed',
+            payload: {
+              bookingId: booking.id,
+              publicRef: booking.publicRef,
+              paymentModel: booking.paymentModel,
+              tourStartDateTime: booking.tourStartDateTime
+                ? booking.tourStartDateTime.toISOString()
+                : null,
+            },
+          },
+        });
+      }
+      return res.count;
     });
     if (count === 0) return booking; // another caller already finalized
 
@@ -907,6 +1202,7 @@ export class BookingsService {
       totalEur,
       commissionAmount,
       conversionFiredAt: firedAt,
+      ...fxAudit,
     };
 
     // Conversion value MUST be a non-null EUR commission (rule #22). Otherwise it is
@@ -917,22 +1213,266 @@ export class BookingsService {
       );
     }
 
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: updated.tourId },
-      select: { name: true, destination: { select: { slug: true } } },
-    });
-
-    await this.sendConfirmationEmail(updated);
-    await this.sendOperatorNotification(updated);
+    // Money-movement ledger (master SETTLEMENT-AND-PAYOUTS §2): one row per booking
+    // at confirmation, in EUR. Needs a non-null commission to record what IT is owed;
+    // a null commission is the corruption case above (logged), so skip the row too.
     if (commissionAmount != null) {
-      await this.fireConversion(updated, tour?.name ?? null, commissionAmount);
+      await this.writeSettlement(updated, totalEur, commissionAmount, fxRate);
     }
+
+    // Founder (2026-07-25): confirm-time EMAILS send INLINE so they land the
+    // moment the booking confirms - the queued jobs (enqueued via the outbox
+    // row committed above) remain the DURABLE RETRY BACKSTOP. The shared guard
+    // columns make the two compose: a successful inline send stamps the guard,
+    // so the later job no-ops; a failed inline send leaves it null, so the job
+    // retries with backoff. CAPI + the pre-tour reminder stay queue-only.
+    try {
+      await this.runConfirmationEmailJob(updated.id);
+    } catch {
+      // Logged inside; the queued job retries with backoff.
+    }
+    try {
+      await this.runOperatorNoticeJob(updated.id);
+    } catch {
+      // Logged inside; the queued job retries with backoff.
+    }
+
     // Customer account provisioning (welcome email + booking backfill-link).
     // Winner branch only, so it fires once per booking; fire-and-forget - it
     // must never fail or slow the confirmation. OPERATOR_FULL bookings have no
     // contact yet here (provisioning no-ops) and are covered by update().
     void this.customerProvisioning.provisionForBooking(updated);
     return updated;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // B6 queued-job consumers (PlatformJobsProcessor entry points)
+  // ════════════════════════════════════════════════════════════════════════
+  // Every method is IDEMPOTENT (EVENT-DRIVEN-AND-QUEUES §5.1): it reloads the
+  // booking, re-validates state (the booking may have been cancelled between
+  // enqueue and run), checks its own DB guard column, acts, then stamps the
+  // guard. A throw makes BullMQ retry with backoff; a clean return completes.
+
+  /** Traveller confirmation email - guard: `utcConfirmationEmailSentAt`. */
+  async runConfirmationEmailJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (booking.utcConfirmationEmailSentAt) return; // already sent
+    // Re-validate: REDEEMED still deserves its email (confirmed then walked in);
+    // a cancelled/expired booking must not receive a confirmation.
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `Confirmation email skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    await this.sendConfirmationEmail(booking, { rethrow: true });
+    await this.prisma.booking.updateMany({
+      where: { id: bookingId, utcConfirmationEmailSentAt: null },
+      data: { utcConfirmationEmailSentAt: new Date() },
+    });
+  }
+
+  /** Operator "Booking Received" notice - guard: `utcOperatorNoticeSentAt`. */
+  async runOperatorNoticeJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (booking.utcOperatorNoticeSentAt) return; // already sent
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `Operator notice skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    await this.sendOperatorNotification(booking, { rethrow: true });
+    await this.prisma.booking.updateMany({
+      where: { id: bookingId, utcOperatorNoticeSentAt: null },
+      data: { utcOperatorNoticeSentAt: new Date() },
+    });
+  }
+
+  /**
+   * Server-side CAPI conversion. No guard column: Meta dedups by event id
+   * (`publicRef` - the same id the browser push carries), so a redelivery is
+   * absorbed at the destination. A confirmed booking with a null commission is
+   * data corruption (master §8/rule #22): fail UNRECOVERABLY so the job lands
+   * in the failed set loudly instead of retrying a value that cannot heal.
+   */
+  async runCapiConversionJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { unitItems: true },
+    });
+    if (!booking) return;
+    if (
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.REDEEMED
+    ) {
+      this.logger.warn(
+        `CAPI conversion skipped for ${booking.displayRef} (status ${booking.status})`,
+      );
+      return;
+    }
+    if (booking.commissionAmount == null) {
+      this.logger.error(
+        `Booking ${booking.displayRef} confirmed with null commissionAmount - conversion NOT fired (data corruption)`,
+      );
+      throw new UnrecoverableError(
+        `null commissionAmount on ${booking.displayRef}`,
+      );
+    }
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: booking.tourId },
+      select: { name: true },
+    });
+    await this.fireConversion(
+      booking,
+      tour?.name ?? null,
+      booking.commissionAmount,
+    );
+  }
+
+  /**
+   * Pre-tour reminder (24h before start) - guard: `utcReminderSentAt`.
+   * CONTENT IS PENDING A FOUNDER DECISION (D3): the delayed job plumbing ships
+   * with B6 so future bookings are already scheduled; until the template lands
+   * this logs and leaves the guard null (so shipping content later picks up
+   * any booking whose reminder has not fired yet).
+   */
+  async runPreTourReminderJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        displayRef: true,
+        status: true,
+        utcReminderSentAt: true,
+      },
+    });
+    if (!booking) return;
+    if (booking.utcReminderSentAt) return;
+    if (booking.status !== BookingStatus.CONFIRMED) return; // cancelled/expired since
+    this.logger.log(
+      `Pre-tour reminder due for ${booking.displayRef} - template pending founder decision, nothing sent`,
+    );
+  }
+
+  /**
+   * Durable refund retry: re-invokes the idempotent executor (skips when a
+   * SUCCEEDED or in-flight PROCESSING refund already exists; a FAILED attempt
+   * retries with a fresh idempotency key). A throw retries with backoff.
+   */
+  async runRefundJob(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { id: true, displayRef: true, cancellationRefund: true },
+    });
+    if (!booking) return;
+    if (booking.cancellationRefund !== CancellationRefund.FULL) return;
+    await this.executeRefund(booking.id, booking.displayRef);
+  }
+
+  /**
+   * Write the one-per-booking settlement ledger row (master SETTLEMENT-AND-PAYOUTS
+   * §2). All amounts EUR. `netPosition = amountCollected - commissionOwed`, with the
+   * fixed sign: POSITIVE = Island Tours owes the operator (paid_in_full holds the
+   * remainder to pay out in B4); NEGATIVE = the operator owes IT (operator_full, v2).
+   * Deposit models net ~0 (deposit == commission -> record only). `amountCollected`
+   * is what IT actually took at checkout, converted to EUR:
+   *   paid_in_full -> the full total; operator_full -> 0; deposit models -> the deposit.
+   *
+   * Idempotent (unique `bookingId`; never overwrites an existing row) and best-effort:
+   * a ledger write must NEVER fail a confirmation whose money is already captured -
+   * a miss logs loudly for backfill (durability comes with the outbox in B6).
+   */
+  private async writeSettlement(
+    booking: BookingWithItems,
+    totalEur: Prisma.Decimal,
+    commissionEur: Prisma.Decimal,
+    fxRate: Prisma.Decimal,
+  ): Promise<void> {
+    try {
+      const collected =
+        booking.paymentModel === PaymentModel.PAID_IN_FULL
+          ? totalEur
+          : booking.paymentModel === PaymentModel.OPERATOR_FULL
+            ? new Prisma.Decimal(0)
+            : booking.depositAmount
+                .mul(fxRate)
+                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+      const netPosition = collected
+        .minus(commissionEur)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+      await this.prisma.settlement.upsert({
+        where: { bookingId: booking.id },
+        create: {
+          bookingId: booking.id,
+          operatorId: booking.operatorId,
+          paymentModel: booking.paymentModel,
+          amountCollected: collected,
+          commissionOwed: commissionEur,
+          netPosition,
+          currency: Currency.EUR,
+        },
+        update: {}, // never overwrite an existing ledger row
+      });
+    } catch (err) {
+      this.logger.error(
+        `Settlement ledger write failed for ${booking.displayRef} - backfill needed`,
+        err as Error,
+      );
+    }
+  }
+
+  /**
+   * Void a booking's settlement when the booking is cancelled. A cancelled
+   * booking delivers nothing, so its operator-payout obligation disappears:
+   * `status -> REVERSED`, `netPosition -> 0`, `operatorPayout -> null`. This
+   * keeps the ledger honest after a refund - otherwise a cancelled paid_in_full
+   * booking keeps showing "Recorded / operator payout owed / releases {date}"
+   * and inflates the pending-payout summary, even though the money went back to
+   * the traveller. `amountCollected`/`commissionOwed` are LEFT as the historical
+   * record of what was taken at confirmation (audit trail); only the obligation
+   * (net) is zeroed. Idempotent: skips a row already REVERSED or PAID_OUT.
+   *
+   * v1 note: forfeit (after-window cancel, no refund) also reverses here - the
+   * operator gets nothing on a cancelled booking in v1. A forfeit-to-operator
+   * split is a deferred D-tail policy. Best-effort: never fails the cancel.
+   */
+  private async reverseSettlement(bookingId: string): Promise<void> {
+    try {
+      await this.prisma.settlement.updateMany({
+        where: {
+          bookingId,
+          status: {
+            in: [SettlementStatus.RECORDED, SettlementStatus.INVOICED],
+          },
+        },
+        data: {
+          status: SettlementStatus.REVERSED,
+          netPosition: new Prisma.Decimal(0),
+          operatorPayout: null,
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Settlement reversal failed for booking ${bookingId} - backfill needed`,
+        err as Error,
+      );
+    }
   }
 
   /**
@@ -980,6 +1520,7 @@ export class BookingsService {
    */
   private async sendOperatorNotification(
     booking: BookingWithItems,
+    { rethrow = false }: { rethrow?: boolean } = {},
   ): Promise<void> {
     try {
       const operator = await this.prisma.operator.findUnique({
@@ -1025,6 +1566,7 @@ export class BookingsService {
         `Operator notification failed for ${booking.displayRef}`,
         err as Error,
       );
+      if (rethrow) throw err;
     }
   }
 
@@ -1623,7 +2165,7 @@ export class BookingsService {
     // to what happens next rather than claiming it is already back.
     const refundLine =
       refund === CancellationRefund.FULL
-        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} goes back to your original payment method. Card refunds usually land in 5-10 business days.`
+        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} is on its way back to your original payment method within 3 to 5 business days.`
         : refund === CancellationRefund.PARTIAL
           ? 'A partial refund applies under the cancellation terms for this trip. We will email you the exact amount as it is processed.'
           : 'This cancellation falls outside the free-cancellation window for this trip, so no refund is due. If you think something went wrong, just reply to this email.';
@@ -1771,9 +2313,15 @@ export class BookingsService {
       phone: booking.contactPhone,
       firstName: booking.contactFirstName,
       lastName: booking.contactLastName,
-      country: booking.contactCountry,
-      postalCode: booking.contactPostalCode,
+      // Address prefers the Stripe billing snapshot (master 8.3), falling back to
+      // the contact fields for models with no card (on_arrival / operator_full).
+      city: booking.billingCity,
+      postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+      country: booking.billingCountry ?? booking.contactCountry,
       clickId: booking.fbclid,
+      // The TYP is where the browser Pixel fires the matching event (same event_id);
+      // Meta wants the server event to carry the same source URL for attribution.
+      eventSourceUrl: `${islandToursBase()}/${booking.island}/thank-you/${booking.publicRef}`,
       eventTimeSec: Math.floor(
         (booking.utcConfirmedAt ?? new Date()).getTime() / 1000,
       ),
@@ -1823,6 +2371,13 @@ export class BookingsService {
     }
 
     if (booking.status === BookingStatus.CANCELLED) {
+      // Idempotent retry hook (pre-B6): if this cancellation owed a FULL refund
+      // that never executed (Stripe was down/unconfigured, or the attempt
+      // FAILED asynchronously), re-invoking cancel re-attempts it. Safe: the
+      // executor skips when a SUCCEEDED or in-flight PROCESSING refund exists.
+      if (!heldOnly && booking.cancellationRefund === CancellationRefund.FULL) {
+        await this.executeRefund(booking.id, booking.displayRef);
+      }
       return mapBookingForActor(booking, actor);
     }
     if (
@@ -1859,6 +2414,20 @@ export class BookingsService {
         where: { bookingId: booking.id },
         data: { status: BookingStatus.CANCELLED },
       });
+      // B6 durable refund retry: a FULL-refund cancellation commits its
+      // `booking.refund-owed` event with the cancellation itself, so the
+      // refund is retried with backoff even if the inline attempt below dies
+      // with the process (executeRefund is idempotent - the job re-invokes it).
+      if (!heldOnly && refund === CancellationRefund.FULL) {
+        await tx.outboxEvent.create({
+          data: {
+            aggregate: 'booking',
+            aggregateId: booking.id,
+            type: 'booking.refund-owed',
+            payload: { bookingId: booking.id },
+          },
+        });
+      }
       return tx.booking.update({
         where: { id: booking.id },
         data: {
@@ -1875,6 +2444,20 @@ export class BookingsService {
     this.logger.log(
       `Booking ${updated.displayRef} cancelled (refund ${refund})`,
     );
+    // Execute the REAL refund before the confirmation email (which tells the
+    // traveler their money is on its way). Only a FULL policy verdict moves money -
+    // NONE is out-of-window, nothing due. Refunds the actual captured charge, so it
+    // is payment-model-aware (deposit for deposit models, total for paid_in_full).
+    if (!heldOnly && refund === CancellationRefund.FULL) {
+      await this.executeRefund(updated.id, updated.displayRef);
+    }
+    // Void the settlement: a cancelled booking owes the operator nothing, so its
+    // payout obligation is reversed (net -> 0, never releases). Only confirmed
+    // bookings ever had a settlement row; a released (PAID_OUT) one is left alone
+    // (the money already moved - that is a clawback, handled manually in v1).
+    if (!heldOnly) {
+      await this.reverseSettlement(updated.id);
+    }
     // Close the loop the request ack opened ("We'll email you to confirm once
     // it's done") - until now nothing was ever sent, so a traveller whose
     // request an admin had processed heard nothing at all. Only for bookings
@@ -1893,6 +2476,146 @@ export class BookingsService {
         updated.operatorId,
       );
     }
+    return mapBookingForActor(updated, actor);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Non-payment forfeit (guide §15, OPERATOR_LINK)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Operator reports the OPERATOR_LINK balance was never paid. This is only a
+   * REPORT - nothing is forfeited until an admin confirms (guide §15: never
+   * automatic). Stamps `utcNonPaymentReportedAt` once; a repeat report is an
+   * idempotent no-op. Admins may report on the operator's behalf.
+   */
+  async reportNonPayment(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    // Ownership: the reporting operator must own the booking (admins bypass).
+    if (
+      !isPlatformWideBookingRole(actor.role) &&
+      booking.operatorId !==
+        (await resolveOperatorId(this.prisma, actor.id, actor.role))
+    ) {
+      // 404, not 403: never confirm a foreign booking's existence.
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.paymentModel !== PaymentModel.OPERATOR_LINK) {
+      throw new ConflictException(
+        'Non-payment reports only apply to operator-link bookings',
+      );
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        `Cannot report non-payment on a ${booking.status} booking`,
+      );
+    }
+    if (booking.utcNonPaymentReportedAt) {
+      return mapBookingForActor(booking, actor); // already reported - idempotent
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNonPaymentReportedAt: new Date() },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `Non-payment reported for booking ${updated.displayRef} (awaiting admin confirmation)`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin confirms a non-payment report: the deposit is FORFEITED (kept - the
+   * commission stays earned, so the settlement is NOT reversed) and the spot is
+   * released. The booking terminates as CANCELLED with `utcForfeitedAt` set and
+   * an explicit NO-refund verdict. Guide §15: only this confirmation may
+   * forfeit; there is no automatic path.
+   */
+  async confirmForfeit(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    if (!booking.utcNonPaymentReportedAt) {
+      throw new ConflictException(
+        'No non-payment report exists for this booking',
+      );
+    }
+    if (booking.utcForfeitedAt) {
+      return mapBookingForActor(booking, actor); // already forfeited - idempotent
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(`Cannot forfeit a ${booking.status} booking`);
+    }
+
+    const seats = booking.unitItems.length;
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (booking.departureId) {
+        await this.releaseSeats(
+          tx,
+          booking.departureId,
+          seats,
+          booking.exclusiveDeparture,
+        );
+      }
+      await tx.bookingUnitItem.updateMany({
+        where: { bookingId: booking.id },
+        data: { status: BookingStatus.CANCELLED },
+      });
+      return tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: BookingStatus.CANCELLED,
+          utcCancelledAt: now,
+          utcForfeitedAt: now,
+          cancellationRefund: CancellationRefund.NONE, // deposit is kept
+          cancelledBy: CancelledBy.ADMIN,
+          cancellationReason:
+            'Balance not paid to operator (deposit forfeited)',
+        },
+        include: { unitItems: true },
+      });
+    });
+    // NO refund and NO settlement reversal: the deposit (~= commission) stays
+    // earned. The settlement self-heal cron excludes forfeited bookings.
+    this.logger.warn(
+      `Booking ${updated.displayRef} FORFEITED (non-payment confirmed; deposit kept, ${seats} seat(s) released)`,
+    );
+    // Seats returned to inventory + status changed.
+    this.emitBookingEvents(updated, { availability: !!booking.departureId });
+    if (updated.userId) {
+      void this.customerProvisioning.recomputeAggregates(
+        updated.userId,
+        updated.operatorId,
+      );
+    }
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin dismisses a non-payment report (mistake, or the traveler paid after
+   * all): clears the report stamp so the booking reads CONFIRMED again.
+   */
+  async dismissNonPaymentReport(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+    if (!booking.utcNonPaymentReportedAt) {
+      return mapBookingForActor(booking, actor); // nothing to dismiss
+    }
+    if (booking.utcForfeitedAt) {
+      throw new ConflictException(
+        'This booking is already forfeited - the report cannot be dismissed',
+      );
+    }
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { utcNonPaymentReportedAt: null },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `Non-payment report dismissed for booking ${updated.displayRef}`,
+    );
     return mapBookingForActor(updated, actor);
   }
 
@@ -1947,6 +2670,44 @@ export class BookingsService {
         'Verify with your email and booking reference to change contact details',
       );
     }
+    // A post-reserve pickup change must move the SNAPSHOT with it (guide §17) - the
+    // confirmation surfaces render the snapshot, so leaving the old zone's address/
+    // window behind would tell the traveler the wrong place and time. Money fields
+    // (pickupUnitPrice/pickupTotalPrice, totalRetail) stay as charged: repricing a
+    // live booking is a support/refund action, never an implicit side effect.
+    let pickupResnapshot: Record<string, unknown> = {};
+    if (dto.pickupLocationId !== undefined) {
+      if (dto.pickupLocationId === null) {
+        pickupResnapshot = {
+          pickupAddress: null,
+          pickupMinutesPrior: null,
+          pickupWindowStart: null,
+          pickupWindowEnd: null,
+        };
+      } else {
+        const pickup = await this.prisma.pickupLocation.findUnique({
+          where: { id: dto.pickupLocationId },
+          select: {
+            tourId: true,
+            name: true,
+            address: true,
+            isActive: true,
+            minutesPrior: true,
+            windowStart: true,
+            windowEnd: true,
+          },
+        });
+        if (!pickup || pickup.tourId !== booking.tourId || !pickup.isActive) {
+          throw new UnprocessableEntityException('Invalid pickupLocationId');
+        }
+        pickupResnapshot = {
+          pickupAddress: pickup.address ?? pickup.name,
+          pickupMinutesPrior: pickup.minutesPrior,
+          pickupWindowStart: pickup.windowStart,
+          pickupWindowEnd: pickup.windowEnd,
+        };
+      }
+    }
     const updated = await this.prisma.booking.update({
       where: { id: booking.id },
       data: {
@@ -1957,6 +2718,7 @@ export class BookingsService {
         ...(dto.pickupLocationId !== undefined && {
           pickupLocationId: dto.pickupLocationId,
         }),
+        ...pickupResnapshot,
         ...(dto.contact && {
           contactFirstName: dto.contact.firstName,
           contactLastName: dto.contact.lastName,
@@ -2268,6 +3030,17 @@ export class BookingsService {
       where: { publicRef },
       include: {
         unitItems: { select: { id: true, ageBandId: true } },
+        // Purchased extras (snapshot rows) - the TYP lists them like the party.
+        addOns: {
+          select: {
+            id: true,
+            name: true,
+            unit: true,
+            quantity: true,
+            unitPrice: true,
+            totalPrice: true,
+          },
+        },
         tour: {
           select: {
             name: true,
@@ -2293,24 +3066,11 @@ export class BookingsService {
     });
     if (!booking) throw new NotFoundException('Booking not found');
 
-    const confirmed = booking.status === BookingStatus.CONFIRMED;
-    const conversion =
-      confirmed && booking.commissionAmount != null
-        ? {
-            event: 'Purchase',
-            eventId: booking.publicRef,
-            currency: 'EUR',
-            value: booking.commissionAmount.toString(),
-            contentId: booking.tourId,
-            contentName: booking.tour?.name ?? null,
-          }
-        : null;
-
-    if (confirmed && conversion == null) {
-      this.logger.error(
-        `TYP for ${booking.displayRef}: confirmed booking has null commissionAmount - no conversion`,
-      );
-    }
+    // NOTE: the booking_complete conversion payload is deliberately NOT returned
+    // here. This GET is hit on every TYP render AND by the /payment/processing
+    // poller, so returning it would let the browser pixel double-fire on refresh
+    // (master 8.1 item 5). The single browser push is served, mark-first, by the
+    // dedicated `claimConversionPush` (POST typ/:publicRef/conversion) instead.
 
     // Group the per-traveler unit items into party lines ("2 x Adult"). UNIT-priced
     // tours carry no age bands (ageBandId null) and collapse into one "Guest" line.
@@ -2390,6 +3150,15 @@ export class BookingsService {
       contactPhone: verified ? booking.contactPhone : null,
       pickupRequested: booking.pickupRequested,
       party,
+      // Purchased extras (immutable BookingAddOn snapshots). Like `party`,
+      // these are non-identifying tour facts - visible unverified too.
+      addOns: (booking.addOns ?? []).map((a) => ({
+        name: a.name,
+        unit: a.unit,
+        quantity: a.quantity,
+        unitPrice: a.unitPrice.toString(),
+        totalPrice: a.totalPrice.toString(),
+      })),
       depositAmount: booking.depositAmount.toString(),
       balanceAmount: booking.balanceAmount.toString(),
       paymentModel: booking.paymentModel,
@@ -2427,6 +3196,7 @@ export class BookingsService {
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
       status: booking.status,
+      displayStatus: deriveBookingDisplayStatus(booking),
       tourId: booking.tourId,
       tourName: booking.tour?.name ?? 'Your tour',
       island: booking.island,
@@ -2463,11 +3233,139 @@ export class BookingsService {
       // HERE - the full guest email never leaves the backend, even to the
       // verified owner's own page (booking screens get screenshotted/shared).
       contactEmail: verified ? maskEmail(booking.contactEmail) : null,
-      // Commission take-rate is business-sensitive: only the verified booker's
-      // page fires the conversion (they are always verified - checkout set the
-      // session before the redirect), so a shared link leaks nothing and
-      // cannot re-fire pixels.
-      conversion: verified ? conversion : null,
+    };
+  }
+
+  /**
+   * Serve the browser `booking_complete` push payload EXACTLY ONCE per booking
+   * (master 8.2), then mark it consumed. The TYP server render calls this before
+   * streaming the page; the first caller (mark-first winner) receives the payload
+   * to push into the dataLayer, and every later caller - a refresh, a second tab,
+   * the celebratory render followed by a later management render, a shared link -
+   * receives `{ conversion: null }` and pushes nothing.
+   *
+   * WHY A DEDICATED ENDPOINT, NOT THE PLAIN GET: the /payment/processing poller
+   * hits `GET typ/:publicRef`. Marking-first there would let the poll consume the
+   * one push, so the real TYP render would push nothing.
+   *
+   * WHY A SEPARATE GUARD (`conversionPushedAt`, not `conversionFiredAt`): the
+   * server fire (CAPI + confirmation email) already set `conversionFiredAt` at
+   * confirm/settle. A browser push gated on it would never fire.
+   *
+   * VERIFIED-GATED: the conversion value is the commission take-rate (business-
+   * sensitive), so a shared publicRef link never fires it. The fresh booker is
+   * always verified (checkout set the session before the redirect).
+   */
+  async claimConversionPush(
+    publicRef: string,
+    sessionToken?: string | null,
+  ): Promise<{ conversion: BookingConversionDto | null }> {
+    // Per-target throttle (mirrors resend/settle): the browser calls this once,
+    // but a hostile multi-IP caller must not hammer one booking's endpoint.
+    this.targetLimiter.consume('conversion-push', publicRef, [
+      { max: 5, windowMs: 60_000 },
+    ]);
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: {
+        id: true,
+        publicRef: true,
+        displayRef: true,
+        status: true,
+        commissionAmount: true,
+        tourId: true,
+        contactEmail: true,
+        // Hashed server-side for the booking_complete user_data (Enhanced
+        // Conversions); raw PII never leaves the backend for tracking.
+        contactPhone: true,
+        contactFirstName: true,
+        contactLastName: true,
+        contactPostalCode: true,
+        contactCountry: true,
+        billingCity: true,
+        billingPostalCode: true,
+        billingCountry: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    // Verified owner only - never fire for a bare shared link.
+    const verified = sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+      id: booking.id,
+      contactEmail: booking.contactEmail,
+    });
+    if (!verified) return { conversion: null };
+
+    // Only a CONFIRMED booking with a non-null EUR commission is a real
+    // conversion (rule #22). Neither non-confirmed nor null-commission burns the
+    // guard: a not-yet-confirmed race can fire on a later call, and a null
+    // commission is data corruption to repair, not to silently swallow forever.
+    if (booking.status !== BookingStatus.CONFIRMED) return { conversion: null };
+    if (booking.commissionAmount == null) {
+      this.logger.error(
+        `Conversion push for ${booking.displayRef}: confirmed booking has null commissionAmount - not fired (data corruption)`,
+      );
+      return { conversion: null };
+    }
+
+    // Mark-first: exactly one caller flips `conversionPushedAt` from null and
+    // wins the payload; all others get null (master 8.2 idempotency). A push that
+    // never executes (tab closed before hydration) is an accepted false negative,
+    // never a double fire.
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, conversionPushedAt: null },
+      data: { conversionPushedAt: new Date() },
+    });
+    if (count === 0) return { conversion: null };
+
+    return { conversion: this.buildConversionPayload(booking) };
+  }
+
+  /**
+   * The browser `booking_complete` payload for a confirmed booking. `eventId` is
+   * the booking `publicRef` - it MUST match the server CAPI `event_id`
+   * (`fireConversion`) so Meta deduplicates the browser Pixel against the CAPI
+   * event (master 8.1 item 4). `userData` carries the SHA-256 hashed PII for Google
+   * Enhanced Conversions, hashed server-side via the SAME pass the CAPI uses
+   * (master 8.3) so the raw email/phone never reach the browser.
+   */
+  private buildConversionPayload(booking: {
+    publicRef: string;
+    commissionAmount: Prisma.Decimal | null;
+    tourId: string;
+    tour: { name: string } | null;
+    contactEmail: string | null;
+    contactPhone: string | null;
+    contactFirstName: string | null;
+    contactLastName: string | null;
+    contactPostalCode: string | null;
+    contactCountry: string | null;
+    billingCity: string | null;
+    billingPostalCode: string | null;
+    billingCountry: string | null;
+  }): BookingConversionDto | null {
+    if (booking.commissionAmount == null) return null;
+    const userData = toGoogleUserData(
+      computeHashedPii({
+        email: booking.contactEmail,
+        phone: booking.contactPhone,
+        firstName: booking.contactFirstName,
+        lastName: booking.contactLastName,
+        city: booking.billingCity,
+        postalCode: booking.billingPostalCode ?? booking.contactPostalCode,
+        country: booking.billingCountry ?? booking.contactCountry,
+      }),
+    );
+    return {
+      event: 'Purchase',
+      eventId: booking.publicRef,
+      currency: 'EUR',
+      value: booking.commissionAmount.toString(),
+      contentId: booking.tourId,
+      contentName: booking.tour?.name ?? null,
+      userData: userData ?? null,
     };
   }
 
@@ -2499,7 +3397,24 @@ export class BookingsService {
       actor.role !== Role.TOUR_OPERATOR;
 
     if (query.tourId) where.tourId = query.tourId;
-    if (query.status) where.status = query.status;
+    // Status filter accepts DERIVED display statuses too (the chips the table
+    // shows), translated to their defining predicates; raw enum values pass
+    // through unchanged (so CANCELLED still includes forfeited rows - the
+    // derived options are refinements, not a partition).
+    if (query.status === 'FORFEITED') {
+      where.status = BookingStatus.CANCELLED;
+      where.utcForfeitedAt = { not: null };
+    } else if (query.status === 'NON_PAYMENT_REPORTED') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcNonPaymentReportedAt = { not: null };
+      where.utcForfeitedAt = null;
+    } else if (query.status === 'CANCELLATION_REQUESTED') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcCancellationRequestedAt = { not: null };
+      where.utcCancelledAt = null;
+    } else if (query.status) {
+      where.status = query.status;
+    }
     if (query.paymentModel) where.paymentModel = query.paymentModel;
     if (query.cancellationRequested)
       where.utcCancellationRequestedAt = { not: null };
@@ -2528,6 +3443,7 @@ export class BookingsService {
           unitItems: true,
           tour: { select: { name: true, cancellationHours: true } },
           payments: { select: { kind: true, status: true, amount: true } },
+          settlement: { select: { status: true, paymentModel: true } },
           // FE-12b review state. Selected unconditionally (one join either way)
           // but only PROJECTED on the self-scoped branch below.
           review: { select: { id: true } },
@@ -2702,6 +3618,10 @@ export class BookingsService {
         maxPartySize: true,
         durationMinutesFrom: true,
         minAgeYears: true,
+        // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
+        // pickupRequired makes a pickup choice mandatory at reserve.
+        pickupModel: true,
+        pickupRequired: true,
         // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
         pricingModel: true,
         wholeUnitType: true,
@@ -2749,19 +3669,30 @@ export class BookingsService {
           tourId: true,
           name: true,
           address: true,
+          price: true,
+          isActive: true,
           minutesPrior: true,
           windowStart: true,
           windowEnd: true,
         },
       });
-      if (!pickup || pickup.tourId !== dto.tourId) {
+      if (!pickup || pickup.tourId !== dto.tourId || !pickup.isActive) {
         throw new UnprocessableEntityException('Invalid pickupLocationId');
       }
       pickupSnapshot = {
+        name: pickup.name,
         address: pickup.address ?? pickup.name,
         minutesPrior: pickup.minutesPrior,
         windowStart: pickup.windowStart,
         windowEnd: pickup.windowEnd,
+        // Zone price only ever charges on the PAID_ADDON pickup model (master 5.8);
+        // an INCLUDED tour's zones are free even if a price value is present.
+        unitPrice:
+          tour.pickupModel === PickupModel.PAID_ADDON &&
+          pickup.price != null &&
+          pickup.price.greaterThan(0)
+            ? pickup.price
+            : null,
       };
     }
 
@@ -2866,13 +3797,26 @@ export class BookingsService {
     const ids = dto.addOns.map((a) => a.addOnId);
     const rows = await this.prisma.tourAddOn.findMany({
       where: { id: { in: ids }, tourId: dto.tourId, isActive: true },
-      select: { id: true, name: true, unit: true, price: true },
+      select: {
+        id: true,
+        name: true,
+        unit: true,
+        price: true,
+        maxQuantity: true,
+      },
     });
     const byId = new Map(rows.map((r) => [r.id, r]));
     return dto.addOns.map((a) => {
       const row = byId.get(a.addOnId);
       if (!row)
         throw new UnprocessableEntityException(`Invalid addOnId ${a.addOnId}`);
+      // Operator-set ceiling (master E.3 add_ons; widget checklist §3.5): the client
+      // stepper caps at maxQuantity, so anything above it is a forged payload.
+      if (a.quantity > row.maxQuantity) {
+        throw new UnprocessableEntityException(
+          `Maximum quantity for "${row.name}" is ${row.maxQuantity}`,
+        );
+      }
       return {
         addOnId: row.id,
         name: row.name,
@@ -2984,6 +3928,144 @@ export class BookingsService {
           }),
       },
     });
+  }
+
+  /**
+   * Execute a REAL Stripe refund for a booking and record a REFUND `Payment` row
+   * (master 6.4 / C23). Refunds the actual captured charge, so it is
+   * payment-model-aware for free: the deposit for deposit models, the full total
+   * for paid_in_full.
+   *
+   * - IDEMPOTENT: skips if a SUCCEEDED REFUND row already exists, and passes a
+   *   stable PSP idempotency key so a retry never double-refunds.
+   * - PROVIDER-ROUTED: reverses through whichever PSP took the charge (the
+   *   Payment row's provider), regardless of the current settings switch.
+   * - CONFIG-GATED: no captured on-platform charge (unpaid / operator_full /
+   *   on_arrival balance) or no provider config -> nothing to refund, no-op.
+   * - BEST-EFFORT: never throws. The state change that triggered it already
+   *   committed (a cancellation, or a pay-after-expiry that can't be honored), so a
+   *   PSP hiccup must not roll it back - it logs loudly for manual follow-up.
+   *   (Durable retry moves to the outbox in B6.)
+   */
+  private async executeRefund(
+    bookingId: string,
+    displayRef: string,
+  ): Promise<void> {
+    try {
+      // Never refund twice - a completed refund AND one still in flight
+      // (PROCESSING: bank-debit methods settle asynchronously) both count.
+      // A FAILED attempt does NOT block: that is exactly the retry case.
+      const already = await this.prisma.payment.findFirst({
+        where: {
+          bookingId,
+          kind: PaymentKind.REFUND,
+          status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.PROCESSING] },
+        },
+        select: { id: true },
+      });
+      if (already) return;
+
+      // The captured charge to reverse: the latest SUCCEEDED non-refund payment.
+      // Its PROVIDER decides which PSP executes the reversal - never the
+      // settings switch, which may have changed since the charge was taken.
+      const charge = await this.prisma.payment.findFirst({
+        where: {
+          bookingId,
+          kind: { not: PaymentKind.REFUND },
+          status: PaymentStatus.SUCCEEDED,
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          amount: true,
+          currency: true,
+          intentId: true,
+          chargeId: true,
+          provider: true,
+        },
+      });
+      if (!charge?.intentId) return; // nothing captured on-platform to refund
+
+      const viaMollie = charge.provider === PaymentProvider.MOLLIE;
+      const providerConfigured = viaMollie
+        ? await this.mollie.isConfigured()
+        : await this.stripe.isConfigured();
+      if (!providerConfigured) {
+        this.logger.warn(
+          `Refund for ${displayRef} skipped - ${viaMollie ? 'Mollie' : 'Stripe'} not configured`,
+        );
+        return;
+      }
+
+      // A retry after an async FAILURE must not reuse the original idempotency
+      // key - the PSP would replay the first (failed) refund from its cache
+      // instead of creating a new one. The key advances per failed attempt.
+      const failedAttempts =
+        (await this.prisma.payment.count({
+          where: {
+            bookingId,
+            kind: PaymentKind.REFUND,
+            status: PaymentStatus.FAILED,
+          },
+        })) || 0;
+      const idempotencyKey =
+        failedAttempts === 0
+          ? `refund-${bookingId}`
+          : `refund-${bookingId}-r${failedAttempts}`;
+
+      // The row carries the PSP's ACTUAL answer, never an assumed success:
+      // Stripe cards succeed synchronously but bank methods start `pending`;
+      // Mollie refunds are ALWAYS async (`queued`/`pending` first). PROCESSING
+      // rows settle later - Stripe via refund.updated/refund.failed events,
+      // Mollie via the payment webhook re-fetch (embedded refunds).
+      let refundId: string;
+      let rowStatus: PaymentStatus;
+      if (viaMollie) {
+        const refund = await this.mollie.createRefund({
+          paymentId: charge.intentId,
+          amount: charge.amount, // full refund of the captured amount
+          currency: charge.currency,
+          description: `Refund for booking ${displayRef}`,
+          idempotencyKey,
+        });
+        refundId = refund.id;
+        rowStatus = mapMollieRefundStatus(refund.status);
+      } else {
+        const refund = await this.stripe.refundIntent(
+          charge.intentId,
+          idempotencyKey,
+        );
+        refundId = refund.id;
+        rowStatus = mapStripeRefundStatus(refund.status);
+      }
+
+      await this.prisma.payment.create({
+        data: {
+          bookingId,
+          kind: PaymentKind.REFUND,
+          status: rowStatus,
+          amount: charge.amount, // full refund of the captured amount
+          currency: charge.currency,
+          intentId: charge.intentId,
+          chargeId: charge.chargeId,
+          refundId,
+          provider: charge.provider,
+        },
+      });
+      if (rowStatus === PaymentStatus.FAILED) {
+        this.logger.error(
+          `Refund for ${displayRef} FAILED at ${viaMollie ? 'Mollie' : 'Stripe'} (${refundId}) - manual follow-up needed`,
+        );
+      } else {
+        this.logger.log(
+          `Refund ${rowStatus === PaymentStatus.PROCESSING ? 'initiated (pending settlement)' : 'completed'} for ${displayRef}: ${charge.currency} ${charge.amount.toString()} (${refundId})`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Refund failed for ${displayRef} - manual follow-up needed`,
+        err as Error,
+      );
+    }
   }
 
   private async computeRefund(
@@ -3099,6 +4181,10 @@ function mapBookingListItem(
       status: PaymentStatus;
       amount: Prisma.Decimal;
     }[];
+    settlement: {
+      status: SettlementStatus;
+      paymentModel: PaymentModel;
+    } | null;
   },
 ) {
   const deadline = b.tourStartDateTime
@@ -3118,6 +4204,12 @@ function mapBookingListItem(
     utcCancellationRequestedAt: b.utcCancellationRequestedAt
       ? b.utcCancellationRequestedAt.toISOString()
       : null,
+    // Non-payment forfeit lifecycle (guide s15) - drives the dashboard's
+    // report/confirm/dismiss row actions.
+    utcNonPaymentReportedAt: b.utcNonPaymentReportedAt
+      ? b.utcNonPaymentReportedAt.toISOString()
+      : null,
+    utcForfeitedAt: b.utcForfeitedAt ? b.utcForfeitedAt.toISOString() : null,
     freeCancelDeadline: deadline ? deadline.toISOString() : null,
     requestedInFreeWindow:
       b.utcCancellationRequestedAt && deadline
@@ -3128,6 +4220,24 @@ function mapBookingListItem(
     // enforces.
     canRequestCancellation: cancellation.canRequest,
     cancellationBlockedReason: cancellation.reason,
+    settlementStatus: b.settlement?.status ?? null,
+    settlementMethod: b.settlement
+      ? settlementMethodFor(b.settlement.paymentModel)
+      : null,
+    // Payout HELD by a pending cancellation request - same predicate as the
+    // settlements page `payoutHeld`, surfaced here so the Bookings/Cancellation
+    // tables show "On hold" wherever the settlement badge shows, not just on the
+    // Settlements page.
+    settlementHeld:
+      b.settlement?.status === SettlementStatus.RECORDED &&
+      b.settlement.paymentModel === PaymentModel.PAID_IN_FULL &&
+      b.status === BookingStatus.CONFIRMED &&
+      b.utcCancellationRequestedAt != null &&
+      b.utcCancelledAt == null,
+    // TRUE refund state from the ledger - PENDING when a cancel owes a refund
+    // that has not actually executed (Stripe off / no real charge), so the UI
+    // never claims "refunded" before the money moves.
+    refundStatus: deriveRefundState(b.payments, b.status, b.cancellationRefund),
   };
 }
 
@@ -3177,6 +4287,7 @@ function mapBooking(b: BookingWithItems) {
     tourId: b.tourId,
     departureId: b.departureId,
     status: b.status,
+    displayStatus: deriveBookingDisplayStatus(b),
     freesale: b.freesale,
     utcExpiresAt: b.utcExpiresAt ? b.utcExpiresAt.toISOString() : null,
     utcConfirmedAt: b.utcConfirmedAt ? b.utcConfirmedAt.toISOString() : null,

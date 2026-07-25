@@ -1619,6 +1619,7 @@ export class TourChildrenService {
     latitude: true,
     longitude: true,
     address: true,
+    price: true,
     minutesPrior: true,
     windowStart: true,
     windowEnd: true,
@@ -1662,6 +1663,7 @@ export class TourChildrenService {
           latitude: dto.latitude ?? null,
           longitude: dto.longitude ?? null,
           address: dto.address ?? null,
+          price: dto.price ?? null,
           minutesPrior: dto.minutesPrior ?? null,
           windowStart: dto.windowStart ?? null,
           windowEnd: dto.windowEnd ?? null,
@@ -1711,6 +1713,7 @@ export class TourChildrenService {
         ...('latitude' in dto && { latitude: dto.latitude ?? null }),
         ...('longitude' in dto && { longitude: dto.longitude ?? null }),
         ...('address' in dto && { address: dto.address ?? null }),
+        ...('price' in dto && { price: dto.price ?? null }),
         ...('minutesPrior' in dto && {
           minutesPrior: dto.minutesPrior ?? null,
         }),

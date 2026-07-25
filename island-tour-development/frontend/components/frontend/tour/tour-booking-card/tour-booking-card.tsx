@@ -4,8 +4,10 @@ import { BookingStoreProvider } from '@/contexts/booking-context';
 import { useAvailabilitySync } from '@/hooks/tours/use-availability-sync';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { useBookingQuote } from '@/hooks/tours/use-booking-quote';
+import { useBookingSelectionPersistence } from '@/hooks/tours/use-booking-selection-persistence';
 import type { Currency } from '@/lib/constants/locales';
 import type { TourBookingData, TourBookingDict } from '@/lib/tours/booking';
+import { BookingAddOns } from './booking-add-ons';
 import { BookingCalendar } from './booking-calendar';
 import { BookingCta } from './booking-cta';
 import { DepartureTimes } from './departure-times';
@@ -28,6 +30,9 @@ function TourBookingCardLayout() {
     useAvailabilitySync();
     // Fetches the server-authoritative quote for the live selection (no-op in demo).
     useBookingQuote();
+    // Restores the traveller's selection after a checkout round-trip and keeps
+    // the sessionStorage snapshot current (no-op in demo).
+    useBookingSelectionPersistence();
 
     return (
         <div className='flex flex-col gap-4'>
@@ -57,6 +62,9 @@ function TourBookingCardLayout() {
                     </div>
                     <PartySelector />
                     <SpectatorsPanel />
+                    {/* Optional extras (master E.3) - after the party, before
+                        the pinned CTA; hidden when the tour has none. */}
+                    <BookingAddOns />
                 </div>
 
                 {/* CTA + trust lines — pinned footer, always reachable */}

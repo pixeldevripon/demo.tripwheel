@@ -126,6 +126,8 @@ export interface PublicPickupLocation {
   latitude: number | null;
   longitude: number | null;
   address: string | null;
+  /** Per-person zone price (tour source currency); charged only on PAID_ADDON tours. */
+  price: string | null;
   minutesPrior: number | null;
   windowStart: string | null;
   windowEnd: string | null;

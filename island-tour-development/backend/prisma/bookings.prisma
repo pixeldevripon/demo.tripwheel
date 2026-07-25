@@ -38,7 +38,7 @@ model Booking {
   tourTimeZone      String? // IANA zone snapshot (cancellation window + review eligibility stay correct if the tour/destination zone later changes)
 
   // Pickup (octo/pickups; D12)
-  pickupRequested    Boolean @default(false)
+  pickupRequested    Boolean  @default(false)
   pickupLocationId   String? // selected pickup point (null = no pickup / meet-on-site)
   pickupAddress      String? // snapshot of the selected pickup point address (booking immutability) — master E.8
   // Pickup TIMING snapshot (guide §17: later pickup edits must not mutate existing
@@ -47,6 +47,10 @@ model Booking {
   pickupMinutesPrior Int? // PickupLocation.minutesPrior at booking time
   pickupWindowStart  String? // 'HH:MM' — Figma "7:45–8:15 AM window"
   pickupWindowEnd    String? // 'HH:MM'
+  // Pickup PRICE snapshot (booking currency): per-person zone price × pax, charged only
+  // when the tour's pickupModel = PAID_ADDON at reserve time. Included in totalRetail.
+  pickupUnitPrice    Decimal? @db.Decimal(10, 2) // per-person zone price at booking time
+  pickupTotalPrice   Decimal? @db.Decimal(10, 2) // unitPrice × pax (the charged line)
 
   // UNIT + PRIVATE exclusivity (master E.3 "one booking takes the whole departure").
   // True when a private, unit-priced charter claims the entire departure; release
@@ -103,20 +107,21 @@ model Booking {
   reviewWhatsappOptIn Boolean  @default(false)
 
   // Attribution + tracking (master tracking E.8; booking_complete contract)
-  utmSource         String?
-  utmMedium         String?
-  utmCampaign       String?
-  utmTerm           String?
-  utmContent        String?
-  clickId           String? // gclid (kept generic for back-compat)
-  gbraid            String? // Google iOS web-to-app
-  wbraid            String? // Google app-to-web
-  fbclid            String? // Meta click id
-  affiliateId       String? // Trackdesk
-  island            String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
-  customerLocale    String? // locale at time of booking
-  customerId        String? // hashed email (CAPI/advanced matching), not PII
-  conversionFiredAt DateTime? // mark-first idempotency
+  utmSource          String?
+  utmMedium          String?
+  utmCampaign        String?
+  utmTerm            String?
+  utmContent         String?
+  gclid              String? // Google Ads click id (offline conversions + adjustments; master E.8 / 8.3)
+  gbraid             String? // Google iOS web-to-app
+  wbraid             String? // Google app-to-web
+  fbclid             String? // Meta click id
+  affiliateId        String? // Trackdesk
+  island             String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
+  customerLocale     String? // locale at time of booking
+  customerId         String? // hashed email (CAPI/advanced matching), not PII
+  conversionFiredAt  DateTime? // mark-first idempotency for the SERVER fire (CAPI + email) at webhook/settle confirm (finalizeConfirmation)
+  conversionPushedAt DateTime? // SEPARATE mark-first guard for the BROWSER booking_complete dataLayer push on the TYP (master 8.2). Distinct from conversionFiredAt, which is already set at confirm, so a browser push gated on it would never fire.
 
   // Billing snapshot from the payment method (G5; null on operator_full / on_arrival)
   billingCountry     String?
@@ -132,6 +137,19 @@ model Booking {
   utcCancelledAt             DateTime?
   utcCancellationRequestedAt DateTime? // when the traveler requested cancellation; refund eligibility is judged at this instant, not the admin action time (gap #16, wired in package D)
 
+  // Non-payment forfeit (guide s15, OPERATOR_LINK): the operator reports the balance
+  // was never paid; only an admin confirmation forfeits the deposit (kept - commission
+  // stays earned, settlement NOT reversed) and releases the spot. Never automatic.
+  utcNonPaymentReportedAt DateTime?
+  utcForfeitedAt          DateTime?
+
+  // B6 queued-job idempotency guards (EVENT-DRIVEN-AND-QUEUES.md §5.1): each
+  // consumer checks-then-stamps its own column, so a redelivered job never
+  // double-sends. CAPI needs no column - Meta dedups by event id (publicRef).
+  utcConfirmationEmailSentAt DateTime?
+  utcOperatorNoticeSentAt    DateTime?
+  utcReminderSentAt          DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -145,6 +163,7 @@ model Booking {
   payments         Payment[]
   review           Review?
   reviewInvitation ReviewInvitation?
+  settlement       Settlement?
 
   @@index([tourId])
   @@index([operatorId])
@@ -153,6 +172,38 @@ model Booking {
   @@index([departureId])
   @@index([localDate])
   @@map("bookings")
+}
+
+// ── Settlement ledger (master SETTLEMENT-AND-PAYOUTS §2) ──────────────────────
+// One row per booking, written at confirmation, all amounts in EUR. The money-
+// movement record (distinct from the booking_complete conversion event). v1
+// records only (deposit models net ~0); the extension hooks below let v2 grow into
+// scheduled Connect payouts + operator_full invoicing WITHOUT a data-model rewrite.
+model Settlement {
+  id           String       @id @default(uuid())
+  bookingId    String       @unique
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  operatorId   String
+  paymentModel PaymentModel
+
+  // Core ledger (locked minimum), EUR.
+  amountCollected Decimal @db.Decimal(10, 2) // what IT collected at checkout
+  commissionOwed  Decimal @db.Decimal(10, 2) // IT's commission
+  netPosition     Decimal @db.Decimal(10, 2) // + = IT owes operator; - = operator owes IT
+
+  // Extension hooks (nullable in v1; used by v2 payouts / Connect / invoicing).
+  currency       Currency         @default(EUR)
+  operatorPayout Decimal?         @db.Decimal(10, 2) // amount paid out (paid_in_full, B4)
+  status         SettlementStatus @default(RECORDED)
+  settledAt      DateTime?
+  externalRef    String? // Stripe transfer/payout id or invoice id (v2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([operatorId, status])
+  @@index([status])
+  @@map("settlements")
 }
 
 // One per traveler/ticket, priced at the age band it was sold at.

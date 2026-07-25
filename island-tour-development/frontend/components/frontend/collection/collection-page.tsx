@@ -3,8 +3,11 @@ import { type Locale } from '@/lib/constants/locales';
 import { deriveDisplayRate, formatPriceFrom } from '@/lib/currency/current';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import { collectionTourToListing } from '@/lib/tours/listing';
 import { notFound } from 'next/navigation';
+import { JsonLd } from '../seo/json-ld';
 import { CategoryYouMightLike } from '../category-you-might-like';
 import { CollectionHero } from './collection-hero';
 import { CollectionToursSection } from './collection-tours-section';
@@ -42,9 +45,10 @@ export async function CollectionPage({
     // The render endpoint keys on the destination UUID, so resolve the shopper
     // currency + destination in parallel first, then fetch the full collection
     // payload for this locale + currency (it depends on the destination id).
-    const [currency, destination] = await Promise.all([
+    const [currency, destination, siteUrl] = await Promise.all([
         getServerCurrency(locale),
         getDestinationBySlug(destinationSlug, locale),
+        getSiteUrl(),
     ]);
     const collection = destination
         ? await getCollectionRender(
@@ -62,6 +66,18 @@ export async function CollectionPage({
 
     const breadcrumbLabel = collection.breadcrumbLabel ?? collection.name;
     const heading = collection.h1Override ?? collection.name;
+
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale,
+        trail: [
+            { name: destinationName, path: `/${destinationSlug}` },
+            {
+                name: breadcrumbLabel,
+                path: `/${destinationSlug}/${collectionSlug}`,
+            },
+        ],
+    });
 
     // Collection cards are ALWAYS rendered as a numbered ranked list (Top 10 /
     // Best Things to Do). Order is the product (master 5.6); each card's blurb is
@@ -104,6 +120,7 @@ export async function CollectionPage({
 
     return (
         <>
+            <JsonLd data={breadcrumbJsonLd} />
             {/* Breadcrumb: Home › Curaçao › Collections › {Collection Name} */}
             <ToursBreadcrumb
                 locale={locale}

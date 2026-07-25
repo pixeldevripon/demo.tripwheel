@@ -50,11 +50,13 @@ export async function generateStaticParams() {
 async function ProcessingBody({
     locale,
     destination,
+    slug,
     searchParams,
     dict,
 }: {
     locale: string;
     destination: string;
+    slug: string;
     searchParams: Promise<PageSearch>;
     dict: Awaited<ReturnType<typeof getDictionary>>['checkout'];
 }) {
@@ -63,14 +65,20 @@ async function ProcessingBody({
     const publicRef = (Array.isArray(raw) ? raw[0] : raw) ?? null;
     // No booking ref - nothing to poll; send them back to browse.
     if (!publicRef) redirect(`/${locale}/${destination}/tours`);
+    const rawTour = sp.tour;
+    const tourId = (Array.isArray(rawTour) ? rawTour[0] : rawTour) ?? null;
 
     // TYP is the one locale-less route (served via the proxy rewrite).
     const typHref = `/${destination}/thank-you/${encodeURIComponent(publicRef)}`;
+    // FAILED-payment landing (bare fallback; the saved per-tour URL wins).
+    const checkoutHref = `/${locale}/${destination}/${slug}/checkout`;
 
     return (
         <CheckoutProcessing
             publicRef={publicRef}
+            tourId={tourId}
             typHref={typHref}
+            checkoutHref={checkoutHref}
             dict={{
                 title: dict.processingTitle,
                 subtitle: dict.processingSubtitle,
@@ -96,7 +104,7 @@ export default async function ProcessingPage({
     params: Promise<PageParams>;
     searchParams: Promise<PageSearch>;
 }) {
-    const { locale, destination } = await params;
+    const { locale, destination, slug } = await params;
     if (!isLocale(locale)) notFound();
     const dict = await getDictionary(locale);
 
@@ -114,6 +122,7 @@ export default async function ProcessingPage({
                     <ProcessingBody
                         locale={locale}
                         destination={destination}
+                        slug={slug}
                         searchParams={searchParams}
                         dict={dict.checkout}
                     />

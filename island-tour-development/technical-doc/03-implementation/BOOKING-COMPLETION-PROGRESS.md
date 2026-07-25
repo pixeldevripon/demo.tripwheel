@@ -45,14 +45,14 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 
 | Stage | Status | Remaining |
 |---|---|---|
-| Booking / reserve | 🟢 ~95% | attribution (utm/gclid) not captured at reserve; age-restriction validation partial |
+| Booking / reserve | 🟢 ~97% | attribution (utm/gclid) now captured at reserve (#81); age-restriction validation partial |
 | Payment (card / PayPal / iDEAL) | 🟢 ~90% | Mollie webhook is a stub; payment-succeeds-after-hold-expired reconciliation |
 | Confirmation email | 🟡 ~75% | Resend transport live (2026-07-19); no invoice attachment; sent inline not queued |
-| Operator payment-link email | 🔴 not built | second `operator_link` balance email (names operator + secure link) |
-| Scheduled payout after cancel window | 🔴 not built | needs Settlement ledger + delayed payout job (RECORDED -> PAID_OUT, clawback-safe) |
-| Payout / settlement | 🔴 not built | no Settlement model, no rows at confirm, no net_position convention (Connect = v2) |
-| Cancellation + refunds | 🟡 ~60% | refund is category-only: no real Stripe refund, no REFUND row, no per-model amount, no tokenized cancel page |
-| Provider-backed FX | 🟡 ~85% | only a real provider impl (Stripe FX Quotes) behind the existing seam remains |
+| Operator payment-link email | ⚪ CLOSED (founder 2026-07-25) | "operator confirm email keep it as is" - the existing Booking Received notice is the only operator email; no second balance email will be built |
+| Scheduled payout after cancel window | 🟢 built (#49) | hourly cron flips eligible paid_in_full RECORDED->PAID_OUT after the free-cancel window; v1 release-only (funds manual), Connect auto = v2 |
+| Payout / settlement | 🟢 built (#48/#49) | ledger + row-per-confirmation + net_position + scheduled release + admin GET /settlements + dashboard table; Connect = v2 |
+| Cancellation + refunds | 🟢 ~90% (#50) | real Stripe refund + REFUND row on cancel + pay-after-expiry; model-aware amount; tokenized cancel page + 3-recipient emails done. Remaining: partial-refund policy amounts + durable retry (B6) |
+| Provider-backed FX | 🟢 built (#83/#28) | ECB keyless reference feed live + PSP charge-rate reconciliation at confirmation (Stripe balance_transaction exchange_rate / Mollie settlementAmount) - EUR figures re-anchor to the rate the money actually moved at |
 | Frontend widget / checkout | 🟡 ~80% | pickup, add-ons, timing affordances; real-TYP data still demo |
 | Tracking / analytics | 🔴 ~5% | whole §8.2/§8.3 browser + CAPI + GTM + consent layer |
 
@@ -64,17 +64,44 @@ Legend: 🟢 done/nearly · 🟡 partial · 🔴 not built.
 
 Checkboxes here mirror the two checklists. Tick both when a task lands.
 
-### A. Settlement & payout (0/5 v1; 2 v2 deferred)
-- [ ] A1 `Settlement` model + `SettlementStatus` enum
-- [ ] A2 Write one Settlement row per booking at confirmation (deposit models net ~0)
-- [ ] A3 `net_position` sign convention enforced in writes
-- [ ] A4 `paid_in_full` scheduled payout after cancel window (RECORDED -> PAID_OUT, clawback-safe)
-- [ ] A5 Delayed payout job wiring (depends A1-A4)
+### A. Settlement & payout (5/5 v1; 2 v2 deferred)
+- [x] **A1 `Settlement` model + `SettlementStatus` enum** (2026-07-25, task #48). Migration
+  `20260725060944_add_settlement_ledger`: core EUR ledger (amountCollected, commissionOwed,
+  netPosition) + v2 extension hooks (operatorPayout, status RECORDED|PAID_OUT|INVOICED|SETTLED,
+  settledAt, externalRef, currency). `Code:` `prisma/bookings.prisma:Settlement`, `enums.prisma`.
+- [x] **A2 One Settlement row per booking at confirmation** (2026-07-25, #48). Written in
+  `finalizeConfirmation` (the once-per-booking fire point, so every model gets exactly one row -
+  incl. operator_full born-confirmed at reserve), EUR, idempotent upsert on unique bookingId,
+  best-effort (a ledger miss logs for backfill, never fails a captured-money confirmation).
+  `Code:` `bookings.service.ts:writeSettlement`.
+- [x] **A3 `net_position` sign convention enforced** (2026-07-25, #48). `netPosition = amountCollected
+  - commissionOwed`: + = IT owes operator (paid_in_full remainder), - = operator owes IT (operator_full).
+  amountCollected(EUR) = totalEur (paid_in_full) / 0 (operator_full) / deposit*fxRate (deposit models).
+  3 tests assert each model's sign. Backend 1506/70 green.
+- [x] **A4 `paid_in_full` scheduled payout after cancel window** (2026-07-25, task #49).
+  `SettlementsService.releaseEligiblePayouts` flips eligible paid_in_full nets RECORDED -> PAID_OUT
+  once the booking's free-cancellation window closes - the SAME deadline formula the refund path uses,
+  so a payout is never released while a free refund is still possible. Sets `operatorPayout` +
+  `settledAt`; guarded `updateMany` on `status: RECORDED` (idempotent/race-safe). Only standing
+  bookings (CONFIRMED/REDEEMED). v1 = release only (funds move manually against it; Connect automates
+  in v2). `Code:` `settlements.service.ts:releaseEligiblePayouts`.
+- [x] **A5 Delayed payout job wiring** (2026-07-25, #49). Hourly `@Cron` `settlementPayoutRelease` in
+  `NightlyJobsService` drives it (in-process, matching the sweeper/nightly convention). PLUS the admin
+  read surface bundled in: `GET /settlements` (`SettlementsService.list`, VIEW_PAYMENTS, operator-scoped)
+  + a per-row computed `payoutEligible`, and the **dashboard Settlements table** in the separate repo
+  (`components/settlements/*`, nav entry, SETTLEMENT_STATUS badge). Backend 1511/71 green; dashboard
+  tsc/eslint/build green. `Code:` `settlements` module, `workers/nightly-jobs.service.ts`.
 - [ ] A6 (v2) `operator_full` reintroduced + commission collection rail - deferred
 - [ ] A7 (v2) Stripe Connect Express (destination charge, application_fee) - deferred
 
 ### B. Cancellation & refunds (0/4)
-- [ ] B1 Execute real Stripe refund on cancellation + write `REFUND` Payment row
+- [x] **B1 Execute real Stripe refund on cancellation + write `REFUND` Payment row** (2026-07-25, #50).
+  `BookingsService.executeRefund`: real `stripe.refundIntent` on the captured charge + a `REFUND`
+  Payment row (SUCCEEDED, refundId). Fired from `cancel()` on a FULL verdict and from
+  `confirmFromPayment` on the pay-after-expiry refund-owed case (B2). Model-aware for free (refunds
+  the captured amount). Idempotent (skip if SUCCEEDED REFUND exists + stable idempotency key),
+  config-gated, best-effort. Email copy -> master's "3 to 5 business days". Shared `StripeModule`
+  extracted so Bookings can inject Stripe without a PaymentsModule cycle. 3 new tests; suite 1513/71.
 - [ ] B2 Payment-model-aware refund amount (deposit-only vs full; partial)
 - [x] B3 Tokenized cancel confirmation page (no raw-click) - BUILT 2026-07-16, see round 4 below.
   (The "account fallback" booking-lookup half of B3 is still open.)
@@ -524,17 +551,62 @@ only differences. 1038 tests / 48 suites green.
 
 ### D. Async / queue hardening (0/8)
 - [ ] D1 Transactional outbox (`OutboxEvent` written in booking txn; relay -> BullMQ)
-- [ ] D2 Hold-expiry sweeper wiring (repeatable job drives `expireStaleHolds`)
+- [x] **D2 Hold-expiry sweeper wiring** (2026-07-25, task #47). `NightlyJobsService.holdExpirySweep`
+  `@Cron(EVERY_MINUTE)` drives `expireStaleHolds()` (in-process, matching the FX/nightly convention;
+  idempotent recompute, no BullMQ). PLUS the pay-after-expiry safety the scheduler makes reachable:
+  `confirmFromPayment` now fires side effects ONLY for a CONFIRMED booking (no false confirm email/
+  conversion on an EXPIRED one) and attempts recovery via `recoverExpiredBooking` (guarded re-claim of
+  seats -> confirm if capacity remains). Seats-gone stays EXPIRED with a refund owed (SUCCEEDED payment
+  on a non-CONFIRMED booking) for B5/#50. `Code:` `workers/nightly-jobs.service.ts`,
+  `bookings.service.ts:confirmFromPayment`+`recoverExpiredBooking`+`expireStaleHolds`. 2 new recovery
+  tests (re-claim-confirms / sold-out-no-confirm); backend 1503/70 green.
 - [ ] D3 Confirmation-email job (queued, retry + backoff) instead of inline
 - [ ] D4 CAPI conversion job (queued, idempotent by event id)
-- [ ] D5 Scheduled `paid_in_full` payout job (delayed) - pairs with A4/A5
+- [x] D5 Scheduled `paid_in_full` payout job - hourly `@Cron` `settlementPayoutRelease` (2026-07-25, #49; release-only in v1, Connect auto = v2).
 - [ ] D6 Pre-tour reminder job (delayed) - pairs with C3
 - [ ] D7 Affiliate postback job (delayed, approve after window)
 - [ ] D8 Retries + exponential backoff, keep failed jobs (no silent drop)
 
-### E. Tracking / analytics (0/8)
-- [ ] E1 `booking_complete` browser push on TYP (once; prod-only guard)
-- [ ] E2 Fire-point reconciliation: add `conversion_pushed_at` guard (separate from `conversion_fired_at`)
+> **Settlement visibility (2026-07-25, #86, founder-flagged):** the dashboard now answers
+> which/when/how a booking settles. Settlements rows gained `method` (SELF_SETTLING / OPERATOR_PAYOUT /
+> COMMISSION_INVOICE) + `payoutReleaseAt` (the free-cancel window close = when a paid_in_full payout
+> releases) + a `GET /settlements/summary` roll-up (owed-pending vs released); the Settlements table
+> shows a "Settles" column + a summary header. Bookings + Payments list rows gained a settlement badge
+> (status + method) via `settlementMethodFor` on `BookingListItemDto`/`PaymentListItemDto`. Backend
+> 1511/71 + dashboard build green.
+
+### E. Tracking / analytics (6/8)
+- [x] **E1 `booking_complete` browser push on TYP** (2026-07-25, task #42). The TYP server
+  component (`ThankYouBody`) claims the push mark-first via `claimConversionPush` (server-side POST,
+  forwards the HttpOnly traveler session) and passes the payload to the `<ConversionPush>` client
+  leaf, which pushes `booking_complete` to `window.dataLayer` once per load. Master 8.2 architecture:
+  server marks before render, client pushes (a push that never runs = accepted false negative). Gated
+  on `verified`; value = EUR commission (rule #22); `event_id` = publicRef (matches server CAPI for
+  dedup). Staging guard = `NEXT_PUBLIC_ENABLE_TRACKING === 'true'` (prod-only; both prod+staging are
+  NODE_ENV=production, added to both frontend env examples). Client de-dupe is a module-level Set (NOT
+  localStorage, 8.1 item 5); the real once-guard is E2's server `conversion_pushed_at`. `Code:`
+  `lib/tracking/booking-complete.ts`, `components/frontend/thank-you/conversion-push.tsx`,
+  `lib/api/public/bookings.ts:claimConversionPush`, `lib/api/public/fetch.ts:publicPost`, TYP `page.tsx`.
+  Frontend prod build green; tsc + eslint clean. GTM fan-out (A5) + hashed PII (A3) + click ids (A2)
+  are the remaining enrichment of the SAME push.
+- [x] **E2 Fire-point reconciliation: `conversion_pushed_at` guard** (2026-07-25, task #39).
+  New nullable `Booking.conversionPushedAt` column (migration
+  `20260725044039_add_conversion_pushed_at_browser_push_guard`), SEPARATE from
+  `conversionFiredAt` (that one is already set at webhook/settle confirm in `finalizeConfirmation`,
+  so a browser push gated on it would never fire). The `booking_complete` payload was REMOVED from
+  the plain `GET typ/:publicRef` (that GET is also the /payment/processing poller, so returning it
+  double-fired the pixel on refresh) and is now served ONCE, mark-first, by a dedicated
+  `POST /bookings/typ/:publicRef/conversion` (`claimConversionPush`): verified-session + CONFIRMED +
+  non-null-commission gated, `updateMany({where:{id, conversionPushedAt:null}})` -> winner gets the
+  payload, everyone else gets `{conversion:null}`. `eventId` stays `publicRef` (MUST match the server
+  CAPI `event_id` in `fireConversion` for Meta dedup). Data-corruption (confirmed + null commission)
+  logs + fires nothing + does NOT burn the guard. `Code:` `bookings.service.ts:claimConversionPush`
+  + `buildConversionPayload`, `bookings.controller.ts:claimConversion`, `booking.dto.ts:ConversionPushResponseDto`,
+  `bookings.swagger.ts:ApiClaimConversionDocs`. Frontend types synced (removed `conversion` from
+  `TypResponse`/poller `ThankYouBooking` + dead `commissionAmountEur`). Tests: 7 new cases (winner/loser/
+  unverified/not-confirmed/null-commission/404 + GET-drops-conversion). Full backend suite green
+  (1477/67). NOTE vs master 8.2: master conflates this with `conversion_fired_at`; here they are two
+  distinct guards (server fire at confirm vs browser push at TYP) - master wording needs that split.
 - [x] **E3 Real-TYP payload** (2026-07-16). Backend `getThankYou` + `ThankYouResponseDto` expanded
   (guest name/phone, party grouped by age band, deposit/balance + paymentModel, card brand/last4,
   durationMinutes, cancellationHours, computed free-cancel deadline local+UTC, operator contact via
@@ -545,9 +617,36 @@ only differences. 1038 tests / 48 suites green.
   correct (start `2026-07-24T13:30` - 48h = `2026-07-22T13:30`).
   `Code:` `bookings.service.ts:getThankYou`, `dto/booking.dto.ts`, `lib/thank-you/thank-you.ts`,
   `lib/api/public/bookings.ts`, TYP `page.tsx`
-- [ ] E4 Attribution captured at reserve (utm/gclid/gbraid/wbraid/fbclid + affiliate)
-- [ ] E5 Server-side PII hashing (SHA-256 email/phone/name/address) for EC/AM
-- [ ] E6 Meta CAPI (server, parallel to Pixel, dedup by shared event id) - needs external creds
+- [x] **E4 Attribution captured at reserve** (2026-07-25, task #81). `AttributionDto`
+  (gclid/gbraid/wbraid/fbclid + 5 UTM) on `ReserveBookingDto`; written onto the booking at creation
+  only (idempotent re-reserve never overwrites). Frontend `<AttributionCapture>` (in the (frontend)
+  layout) reads the landing-URL params into the `it.attribution` first-party cookie (last-click wins,
+  persists through the funnel); the checkout reserve call threads it in. Generic `clickId` column
+  RENAMED -> `gclid` to match master E.8/8.3 (migration `20260725045827_...`, RENAME not drop+add).
+  Affiliate id excluded (promo-code path). `Code:` `lib/tracking/attribution.ts`,
+  `components/frontend/attribution-capture.tsx`, `bookings.service.ts:reserve`, `AttributionDto`.
+  3 backend tests; backend suite green (1480/67), frontend build green.
+- [x] **E5 Server-side PII hashing (SHA-256) for EC/AM** (2026-07-25, task #43). New
+  `tracking/pii-hash.util.ts`: `computeHashedPii` normalizes ONCE (email lower/trim, phone -> E.164
+  via `libphonenumber-js`, name/geo lower/trim) then SHA-256s each field; `toGoogleUserData` (nested
+  `sha256_*` + `address`) and `toMetaUserData` (`em`/`ph`/`fn`/`ln`/`ct`/`zp`/`country`) map the SAME
+  hashes onto each envelope - "one pass serves both" (master 8.3). The browser push now carries
+  `userData` (Google EC), hashed server-side in `buildConversionPayload` so raw PII never reaches the
+  browser; `TrackingService.fireBookingComplete` (Meta CAPI) refactored onto the shared util (address
+  prefers the Stripe billing snapshot, contact fallback). `Code:` `pii-hash.util.ts`,
+  `bookings.service.ts:buildConversionPayload`+`fireConversion`, `tracking.service.ts`, frontend
+  `booking-complete.ts` + `TypConversion.userData`. Tests: new util spec + conversion-push userData
+  assertion. Backend 1498/70 green, frontend build green. Added dep: `libphonenumber-js`.
+- [x] **E6 Meta CAPI (server, dedup by shared event id)** (2026-07-25, task #44). Server CAPI
+  (`TrackingService.fireBookingComplete`) fires ONCE per booking at confirm (`finalizeConfirmation` ->
+  `fireConversion`, guarded by `conversionFiredAt`), value = EUR commission, `event_id` = booking
+  `publicRef` == the browser push's id, so Meta dedups the Pixel event against CAPI (master 8.1.4).
+  Hardened this pass: `event_source_url` = the TYP URL; `fbc` now the Meta cookie format
+  `fb.1.<ts>.<fbclid>` (was raw fbclid; already-formatted passthrough); user_data via the shared
+  hash util (A3). Creds dashboard-managed (#84), env fallback. Config-gated no-op without a token.
+  Tests: dedup-id assertion (CAPI event_id == publicRef), fbc-format, event_source_url, DB-wins.
+  NOTE: the browser Pixel that dedups AGAINST this fires via GTM (A5, #45, blocked on founder creds) -
+  our side of the dedup contract is complete. Still inline (not queued) - the outbox move is B6/#51.
 - [ ] E7 GTM container + 4-tag fan-out - needs GTM container id
 - [ ] E8 Consent Mode v2 + CMP (EEA denied default) - needs CMP choice
 
@@ -561,10 +660,15 @@ only differences. 1038 tests / 48 suites green.
 
 ### G. Correctness / misc (0/6)
 - [ ] G1 Mollie webhook confirm (currently ledger-only stub)
-- [ ] G2 Hold-expiry cron (pairs with D2)
+- [x] G2 Hold-expiry cron (pairs with D2) - `@Cron(EVERY_MINUTE)` holdExpirySweep (2026-07-25, #47).
 - [ ] G3 Discount/coupon engine (deferred - re-add validated when Coupon engine ships)
 - [ ] G4 Currency-change guard (block/relabel `defaultCurrency` once prices exist)
-- [ ] G5 Real FX provider impl (Stripe FX Quotes) behind existing seam
+- [x] G5 Real FX provider - COMPLETE. FEED done 2026-07-25 (#83): `EcbFxProvider` (keyless ECB via
+  Frankfurter) selected by `FX_PROVIDER=ecb`, hybrid fallback in `FxModule` factory (composite+static
+  in non-prod, ecb-alone/fail-closed in prod). 2 new spec suites (11 tests). CHARGE RATE done
+  2026-07-25 (#28/5C, entry 10h): the PSP's actual conversion (Stripe `balance_transaction.
+  exchange_rate` / Mollie `settlementAmount`) re-anchors the booking's EUR figures at confirmation
+  for both PSPs; ECB snapshot remains the quote/display feed and the fallback.
 - [x] **G6 Backend suite green** (2026-07-16). `bookings.service.spec.ts` mocks swapped from
   `$executeRaw` to `departure.updateMany`/`update` (`$executeRaw` is gone from service code entirely);
   `rawSqlTexts` SQL-substring matching replaced with `claimCalls`/`releaseCalls` asserting real Prisma
@@ -580,9 +684,9 @@ Ordered so each step de-risks the next and nothing produces wrong money.
 - [ ] **1. Real-TYP data + fire-point reconciliation** (E3 -> E1 -> E2) - foundational; unblocks the browser push. *(TRK2 resume point.)*
 - [ ] **2. Operator-balance email + switch to Resend** (C1 + C4) - completes the two-email requirement.
 - [ ] **3. Hold-expiry sweeper wiring** (D2 / G2) - stops phantom sold-outs; small.
-- [ ] **4. Settlement ledger** (A1-A3) - write one row per booking at confirm.
+- [x] **4. Settlement ledger** (A1-A3) - DONE 2026-07-25 (#48): row per booking at confirm, net_position sign enforced.
 - [ ] **5. Scheduled `paid_in_full` payout after cancel window** (A4/A5, D5) - depends on 4.
-- [ ] **6. Real refund execution** (B1-B2) - actual Stripe refund + REFUND row.
+- [x] **6. Real refund execution** (B1-B2) - DONE 2026-07-25 (#50): real Stripe refund + REFUND row (cancel + pay-after-expiry).
 - [ ] **7. Outbox + queued idempotent jobs** (D1, D3-D4, D8) - hardening once jobs exist.
 - [ ] **8. Tracking fan-out** (E5-E8) - PII hashing, then GTM/CAPI/Consent.
 - [ ] **9. Real FX provider** (G5) - swap the static provider for live rates.
@@ -611,7 +715,11 @@ Plus, opportunistically: G1 (Mollie confirm), G4 (currency guard), G6 (spec gree
 
 - **Email provider (step 2):** confirm **Resend** (with Postmark fallback) is what we wire for C1/C4.
 - **Tracking creds (step 8):** Meta Pixel id + CAPI access token (E6); GTM container id (E7); CMP
-  choice - Cookiebot vs Iubenda (E8).
+  choice - Cookiebot vs Iubenda (E8). As of 2026-07-25 these are DASHBOARD-managed (backend #84):
+  Pixel ID / GTM / GA4 in `SiteSEO` (public), CAPI token + Google-Translate key ENCRYPTED in the new
+  `IntegrationsConfiguration` (Admin -> Settings), env vars kept as local-dev fallback. Founder still
+  needs to supply the actual values (via the dashboard now, not env) + the Settings->Integrations form
+  in the dashboard repo (task #85).
 
 ---
 
@@ -656,7 +764,7 @@ end-to-end and reports correctly"** milestone - steps 1-3 below.
 ### Next session (not tonight)
 
 - [ ] Step 4 - Settlement ledger (#48) -> Step 5 - scheduled payout (#49, blocked by #48)
-- [ ] Step 6 - Real refund execution (#50)
+- [x] Step 6 - Real refund execution (#50) DONE 2026-07-25
 - [ ] Step 7 - Outbox + queued jobs (#51)
 - [ ] Step 8 - Tracking fan-out (#43-#45) - **blocked on creds**
 - [ ] Step 9 - Real FX provider (#53 / G5)
@@ -776,53 +884,363 @@ Order per founder: PRICE1 first, then the listing pages, then resume #42/#39 tra
 Dependency-ordered plan to clear every remaining `[ ]`/`[~]` across BOOKING-CHECKLIST,
 BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; skip and continue.
 
-**Phase A - Tracking & conversion (resume point; tasks #42/#39, #43-#45)**
-1. A1 = #42+#39: `booking_complete` dataLayer push on the TYP, fired ONCE per booking - server-side
-   `conversion_pushed_at` guard (fire-point reconciliation), value = EUR `commission_amount`
-   (rule #22, CONFIRMED + non-null commission only; corrupt -> render error, no push).
-2. A2: click-id (gclid/gbraid/wbraid/fbclid) + UTM capture at reserve (columns exist, flaw 9) +
-   decide the `gclid` vs generic `clickId` column question.
-3. A3 = #43: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
+**Phase A - Tracking & conversion (resume point; tasks #43-#45; #39 + #42 DONE)**
+1. [x] A1 = #42+#39 (DONE 2026-07-25): `booking_complete` dataLayer push on the TYP, fired ONCE per
+   booking. Backend #39: new `conversion_pushed_at` guard (separate from `conversion_fired_at`),
+   payload moved off the GET into mark-first `POST typ/:publicRef/conversion`. Frontend #42: TYP
+   server component claims mark-first + `<ConversionPush>` client leaf pushes to dataLayer once
+   (prod-only via `NEXT_PUBLIC_ENABLE_TRACKING`; value = EUR commission, rule #22; corrupt = no push).
+   Backend suite green (1477/67); frontend build + tsc + eslint green. **NEXT resume point = A2.**
+2. [x] A2 = #81 (DONE 2026-07-25): click-id (gclid/gbraid/wbraid/fbclid) + UTM captured at reserve.
+   `AttributionDto` + reserve write (creation-only); frontend landing-URL capture -> `it.attribution`
+   cookie -> checkout payload. Column question resolved: `clickId` RENAMED -> `gclid` (master E.8/8.3).
+   Backend 1480/67 green; frontend build green. **NEXT resume point = A3 (#43).**
+3. [x] A3 = #43 (DONE 2026-07-25): server-side PII hashing. `pii-hash.util.ts` (one normalize+hash
+   pass, `libphonenumber-js` E.164), browser push carries Google-EC `userData` hashed server-side,
+   CAPI refactored onto the shared util. Backend 1498/70 + frontend build green. **NEXT = A4 (#44).**
+   Original: server-side PII hashing (SHA-256 email/phone) for Enhanced Conversions / Advanced
    Matching payloads.
-4. A4 = #44: Meta CAPI server-side send (dedup by event id; inline first, queued in B6).
+4. [x] A4 = #44 (DONE 2026-07-25): Meta CAPI server-side, dedup by event id. Fires once at confirm,
+   `event_id`=publicRef == browser push; hardened fbc format + event_source_url; creds from dashboard.
+   Our side of the dedup contract complete; the browser Pixel that dedups against it is A5/GTM. Still
+   inline (queued in B6). **NEXT = A5 (#45, BLOCKED on founder GTM/Pixel/CMP creds) -> so effectively
+   Phase B (money) is the next UNBLOCKED work.**
 5. A5 = #45: GTM fan-out (4 tags) + Consent Mode v2 - BLOCKED on founder: GTM container id,
    Pixel id, CMP choice (Cookiebot/Iubenda).
 
 **Phase B - Money correctness (CP2-CP7; tasks #41/#46-#51)**
-6. B1 = CP2: operator-balance email on `operator_link` (C1, names operator + secure balance link)
+6. B1 = CP2: [x] CLOSED by founder 2026-07-25 - Resend transport was already live (2026-07-19)
+   and the operator confirmation email stays AS IS; the second operator-balance email is
+   deliberately NOT built. Do not resurrect without a new founder decision.
    + C5 verify never-name-operator-pre-payment in template copy; Resend provider switch (C4) is
    BLOCKED on founder confirm.
-7. B2 = CP3: hold-expiry sweeper (BullMQ repeatable -> `expireStaleHolds`) + the
+7. [x] B2 = CP3 (DONE 2026-07-25, #47): hold-expiry sweeper (`@Cron(EVERY_MINUTE)` -> `expireStaleHolds`,
+   in-process not BullMQ) + pay-after-expiry safety: `confirmFromPayment` fires side effects only when
+   CONFIRMED, `recoverExpiredBooking` re-claims seats when capacity remains, else stays EXPIRED + refund
+   owed (B5/#50). Backend 1503/70 green. Original note follows: hold-expiry sweeper + the
    payment-succeeds-after-expiry reconciliation branch in `confirmFromPayment`.
-8. B3 = CP4: `Settlement` model + one row per booking at confirmation + `net_position` sign
-   convention (deposit models net ~0).
-9. B4 = CP5: scheduled `paid_in_full` payout after the cancel window (delayed job, clawback-safe,
-   RECORDED -> PAID_OUT).
-10. B5 = CP6: REAL Stripe refund execution + `REFUND` Payment row + payment-model-aware
-    `computeRefund` + the locked "3 to 5 business days" C23-aware FINAL cancellation-confirmation
-    emails (traveller + operator) - wire onto the new `/dashboard/cancellation-requests` Mark
-    cancelled action.
-11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
-    (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
+8. [x] B3 = CP4 (DONE 2026-07-25, #48): `Settlement` model + `SettlementStatus` enum + one row per
+   booking at confirmation (in `finalizeConfirmation`) + `net_position` sign convention (deposit ~0,
+   paid_in_full = +remainder, operator_full = -commission). Backend 1506/70 green. **NEXT = B4 #49
+   (payout executor: RECORDED->PAID_OUT after the cancel window; consumes this ledger).**
+9. [x] B4 = CP5 (DONE 2026-07-25, #49): scheduled `paid_in_full` payout release after the cancel
+   window (hourly `@Cron` -> `releaseEligiblePayouts`, clawback-safe via the refund path's deadline,
+   RECORDED -> PAID_OUT + operatorPayout). Bundled: admin `GET /settlements` + dashboard Settlements
+   table (separate repo). v1 release-only (funds manual); Connect auto = v2. Backend 1511/71 green,
+   dashboard build green. **NEXT = B5 #50 (real Stripe refunds; owns the B2 refund-owed reconciliation).**
+10. [x] B5 = CP6 (DONE 2026-07-25, #50): REAL Stripe refund (`executeRefund`) + `REFUND` Payment row
+    on cancel AND on pay-after-expiry (B2), model-aware amount, idempotent + config-gated + best-effort;
+    email copy -> "3 to 5 business days". The `/dashboard/cancellation-requests` "Mark cancelled" action
+    already calls `POST /bookings/:id/cancel`, so it now triggers the real refund with no dashboard
+    change. Shared `StripeModule` (no PaymentsModule cycle). Suite 1513/71 green.
+10b. [x] DERIVED STATUS (DONE 2026-07-25, #89): "Cancellation requested" is now a first-class DISPLAY
+    status everywhere status shows. Backend `deriveBookingDisplayStatus` (in `bookings/dto/booking.dto.ts`):
+    CONFIRMED + `utcCancellationRequestedAt != null` + `utcCancelledAt == null` -> `CANCELLATION_REQUESTED`,
+    else the raw status. Exposed as a NEW `displayStatus` field on `BookingResponseDto` (so every list item,
+    checkout/actor payload) AND on `ThankYouResponseDto` (TYP); raw `status` still rides for logic. NOT
+    persisted (computed on read), so no migration. Dashboard: new `BOOKING_DISPLAY_STATUS` map + `displayStatus`
+    on the `BookingListItem` type; the bookings table, booking details sheet, and both customer views render
+    `displayStatus`. Public TYP manage-header already derived the same chip locally (identical predicate) - left
+    as-is. Suite 1517/72 green (4 new derivation tests).
+10c. [x] SETTLEMENT LIFECYCLE + REFUND TRUTH (DONE 2026-07-25, #90 + #91): founder-driven hardening pass.
+    #90: payout HOLD while a cancellation request is pending (`isPayoutEligible` + derived `payoutHeld`,
+    "On hold - cancellation requested" rendered EVERYWHERE the settlement badge shows via `settlementHeld`
+    on booking + payment list items); settlement REVERSAL on cancel (`SettlementStatus.REVERSED`, net->0,
+    inline in cancel + hourly `reverseStaleCancelledSettlements` self-heal BEFORE the release sweep);
+    truthful `refundStatus` (NONE|PENDING|PARTIAL|REFUNDED) derived from the payment ledger
+    (`refund-state.util.ts`), rendered in the cancellation queue - never a false "Refunded".
+    #91: refund wiring COMPLETED against Stripe - the REFUND row carries Stripe's actual answer
+    (pending -> PROCESSING via `mapStripeRefundStatus`), webhook reconciles `refund.updated`/`refund.failed`
+    by refundId (out-of-order-safe transitions; SUCCEEDED can still fail late), re-invoking cancel on a
+    CANCELLED booking retries an owed FULL refund with an advancing idempotency key (`refund-{id}-r{n}`),
+    and `payment_intent.payment_failed` no longer stamps REFUND rows. Operator payout stays MANUAL in v1
+    per the locked doc (founder re-confirmed; Connect = v2). Stripe webhook endpoint must subscribe to
+    `refund.updated` + `refund.failed`. Suite 1532/73 green. **NEXT = B6 #51 (outbox + queued idempotent
+    jobs - makes the refund/payout/email/CAPI durable with retry).**
+10d. [x] C1+C2 COMPLETE INTEGRATION (DONE 2026-07-25, #92-#97; user-directed phase): add-ons + pickup
+    pricing end-to-end.
+    BACKEND: `PickupLocation.price` (per person, tour ccy; migration `20260725082655`), charged ONLY on
+    `pickupModel=PAID_ADDON` (INCLUDED stays free even with a stale price value); priced pickup line in
+    quote (`kind:'pickup'`) + reserve, snapshotted onto the booking (`pickupUnitPrice`/`pickupTotalPrice`);
+    inactive-pickup + wrong-tour 422s; add-on `maxQuantity` cap 422; cutoff enforced at QUOTE (was reserve
+    only); `pickupRequired` enforced at reserve (zone or "other"/pickupRequested both satisfy);
+    `update()` pickup change now re-snapshots address/timing (was stale); public detail + dashboard pickup
+    DTOs expose `price`.
+    **MONEY RULE (founder, 2 decisions this session): extras (add-ons + priced pickup) are EXCLUDED from
+    the deposit-% AND commission-% bases; on deposit models extras ride the operator balance in full
+    (payToday = tour x pct only); PAID_IN_FULL still charges everything today; commission = rate x
+    tour-only EUR; `totalRetail`/`totalEur` stay the full booking.** Verified live: 2x$139 + $50 addon +
+    $34 pickup -> total 362, payToday 55.60, balance 306.40, commission 89.52 (35% spotlight x tour EUR).
+    FRONTEND: widget "Show extras" consent toggle (collapsed by default, founder decision; nothing
+    pre-checked) -> stepper rows -> optimistic totals + quote `addOns[]` + checkout URL (`addons=id:qty`)
+    -> reserve payload; checkout pickup dropdown per master 5.8 (label "Pickup location (From $X p.p.)",
+    zone options "(+$X p.p.)" no $0.00 decimals, locked "No pickup" default, WhatsApp-other fallback;
+    `pickupRequired` drops "No pickup" + placeholder + blocks Continue); selecting a priced zone RE-QUOTES
+    and live-updates summary money + payment CTA (`CheckoutLiveProvider` totals context);
+    `instantConfirmation` notice card (NOT trust strip, LD5); dict keys x7 (`showExtras`, `addOnsTitle`,
+    `perBookingShort`, `instantConfirmation*`, `pickupSelect`, `pickupPricePP`) + dev dictionary-cache bump.
+    DASHBOARD: Pickups tab is pickupModel-aware (price field on PAID_ADDON only; whole tab HIDDEN on NONE,
+    founder decision); zone price badge via `formatPriceFrom`.
+    DEMO SEED: `pickup: 'paid'` blueprint flag -> 3 priced zones (12/17/22) on `klein-curacao-full-day-
+    catamaran`, `spanish-water-mangrove-day-trip`, `westpoint-snorkel-and-beach-hop` (+`pickupRequired`);
+    re-run-safe (prices existing unpriced zones, adds missing ones). Suite 1545/73 green; frontend +
+    dashboard tsc/eslint green.
+10e. [x] MOLLIE END-TO-END (DONE 2026-07-25, #98-#104; user-directed phase): Mollie as a switchable
+    drop-in PSP next to Stripe (both kept; admin picks which one charges).
+    SWITCH: new `payment_settings` singleton (`activeProvider` STRIPE|MOLLIE, default STRIPE; migration
+    `20260725102824`) + `GET/PATCH /settings/payment/provider` (MANAGE_SETTINGS, throttled 5/60);
+    switching to an UNCONFIGURED provider is a 400 (never bricks checkout). ONLY intent creation
+    branches on the switch - webhooks/settle/refunds always route by the Payment ROW's `provider`
+    (a switch is never retroactive).
+    BACKEND: `@mollie/api-client` 4.6.0; `MollieService`+`MollieModule` (DB-config lazy client from
+    encrypted `mollie_configuration.apiKey`, key-rotation rebuild, mirrors StripeService; amounts are
+    DECIMAL STRINGS via `toMollieAmount`, not minor units; `toMollieLocale` maps 6/7 locales, zh falls
+    back). `createIntentForBooking(bookingId, {returnUrl, cancelUrl})` -> Mollie leg returns
+    `{provider:'MOLLIE', checkoutUrl}` (hosted redirect); reuses a still-`open` payment, returns
+    SUCCEEDED-no-URL when already paid, replaces a dead payment with a FRESH idempotency key
+    (`mp_<id>_<kind>_<ts>`; reusing the key would replay the dead payment from Mollie's cache);
+    returnUrl/cancelUrl validated against `parseCorsOrigins` (open-redirect guard); `webhookUrl`
+    only attached when PUBLIC_API_URL/BETTER_AUTH_URL is public https (localhost -> settle-on-return,
+    no forwarding tool needed). WEBHOOK (flaw 7 CLOSED): Mollie posts ONLY a payment id, no signature -
+    `handleMollieWebhook` upserts the ledger row and ALWAYS re-fetches + reconciles (`applyMolliePayment`,
+    shared with settle): paid -> SUCCEEDED + `confirmFromPayment` (card snapshot from
+    `details.cardLabel/cardNumber/cardCountryCode`); failed/canceled/expired -> FAILED (stays ON_HOLD);
+    embedded refunds reconcile via the provider-agnostic `reconcileRefundRow` (extracted from
+    onRefundEvent, same transition guards). **KEY DIFFERENCE vs Stripe: redelivery is NOT skipped**
+    (Mollie re-posts the same id on every transition; the old P2002-skip stub would have eaten the
+    refund settlement) - idempotency lives in the state-guarded transitions. `settleFromReturn`
+    branches by row provider. REFUNDS: `executeRefund` routes by the charge row's provider;
+    `mollie.createRefund` (always async: pending -> PROCESSING row, settles via webhook re-fetch);
+    `mapMollieRefundStatus` in refund-status.util.
+    FRONTEND: `createPaymentIntent(bookingId, {returnUrl, cancelUrl})` always sends redirects (backend
+    decides the provider); intent state is a union; MOLLIE renders `checkout-payment-mollie.tsx`
+    (secure hand-off card + consent + "Reserve · Pay $X" -> `window.location.assign(checkoutUrl)`);
+    paid-revisit (SUCCEEDED, no URL) goes straight to processing; dict key
+    `checkout.hostedCheckoutTitle` x7.
+    DASHBOARD: Settings -> Payments gains ActiveProviderCard (radio cards + Active badge +
+    "Switch Provider"; backend 400 surfaces as the toast) + restored MollieCard (label + encrypted
+    API key, ConnectionStatus; methods multiselect stays out per the v1 Stripe-card decision);
+    api/hooks/types (`usePaymentProvider`/`useUpdatePaymentProvider`, `settingsKeys.paymentProvider`).
+    Suite 1564/73 green (+19: Mollie intent branch, webhook reconcile x8, settle-Mollie, Mollie refund
+    routing, provider-switch guards); backend nest build + frontend/dashboard tsc/eslint green.
+    UI ROUND 2 (same day, founder feedback): (a) dashboard provider switch now CONFIRMS via
+    AlertDialog ("Switch checkout payments to X?" - every new booking charged through X immediately)
+    and the selection is minimal single-line radio rows (name + Active badge, no per-option blurbs;
+    no separate Save button - click a row -> confirm -> switch); (b) checkout Mollie panel's leading
+    icon read as a DEAD CHECKBOX - replaced with the shared `Radio` (selected) + `border-it-primary`
+    row so it matches the Stripe panel's selected MethodRow.
+10f. [x] MOLLIE COMPONENTS INLINE CARD (DONE 2026-07-25, #105; founder-requested Stripe parity):
+    the checkout collects the card ON OUR PAGE when Mollie is active.
+    CONFIG: `mollie_configuration.profileId` (pfl_..., PUBLIC - the mollie.js sibling of a
+    publishable key; migration `add_mollie_profile_id`) + dashboard Mollie card "Profile ID" field;
+    empty profileId = hosted page only.
+    BACKEND: the Mollie intent leg is TWO-PHASE - phase 1 (no returnUrl) returns SETUP
+    `{provider, profileId, testmode, amount, ...}` and creates NO payment (the old
+    returnUrl-required 400 is gone); phase 2 (returnUrl) creates the payment - with `cardToken`
+    it forces `method: creditcard` (checkoutUrl = 3DS hop only; frictionless 3DS can return
+    paid/pending with NO link -> respond without checkoutUrl, frontend goes straight to
+    processing), without a token it is the hosted page. **cardToken NEVER reuses an old open
+    payment** (the token belongs to the card just typed; reuse would 3DS the WRONG card).
+    `MollieService.componentsProfile()` (testmode = apiKey `test_` prefix), `createPayment`
+    gains cardToken. `CreatePaymentIntentDto.cardToken`; response DTO gains profileId/testmode.
+    FRONTEND: `lib/mollie/mollie-js.ts` (idempotent js.mollie.com loader + minimal typings;
+    load failure -> hosted fallback, never a dead form); `checkout-payment-mollie.tsx` rebuilt -
+    "Select a payment method" with a Card row (Components iframes styled with the SAME base style
+    as the Stripe Elements, mounted in FieldShell boxes: number, expiry+CVC row, cardHolder as
+    Name-on-card; per-field errors from component change events, localized by mollie.js) + a
+    Pay = createToken -> phase-2 intent -> assign checkoutUrl (3DS) or push processing.
+    checkout-form phase-1 call no longer sends redirects; MOLLIE intent state =
+    {bookingId, publicRef, profileId, testmode}.
+    ROUND 2 (founder feedback): "More payment methods" row REMOVED - card is the only method
+    when Components are configured; the hosted hand-off row shows ONLY as the fallback (no
+    profileId / mollie.js blocked).
+    ROUND 3 (founder feedback + mollie.js source read): the mount target must provide WIDTH
+    ONLY - mollie.js sets the iframe HEIGHT itself (18px attribute + a heightChangedEvent from
+    the inner frame), so forcing `h-full` stretched the iframe to fill the 50px shell and
+    pinned the text/brand icon to the top. Mount divs are plain `w-full`; FieldShell's
+    items-center centers the mollie-managed block. Components also live inside a `<form>`
+    (mollie.js requires one; Enter in a field dispatches its submit -> handlePay). Placeholders
+    are a PLATFORM behavior (only expiry ships one; the styles API has no placeholder option) -
+    do not chase them. Test-mode aid: when `testmode`, an English-only hint under the fields
+    shows Mollie's test cards (4543 4740 0224 9996 Visa / 2223 0000 1047 9399 Mastercard, any
+    future expiry/CVV) - operator-facing, never renders on a live key, so deliberately not in
+    the 7-locale dictionaries.
+    ROUND 4: `UpdateMollieConfigurationDto` now SHAPE-VALIDATES the apiKey (test_/live_ prefix)
+    + profileId (pfl_) and STRIPS pasted whitespace/zero-width chars on both ends (founder
+    pasted a non-key once -> everything downstream failed as "Profile not found" at
+    tokenization; Mollie shows key values only ONCE at creation).
+10g. [x] FAILED-PAYMENT RETURN PATH (DONE 2026-07-25, #106; founder: "while failed user should
+    redirect to checkout page with a message" - both PSPs left the traveller on an infinite
+    processing spinner). BACKEND: `settleFromReturn` returns `paymentFailed` (live PSP read:
+    Mollie status failed/canceled/expired; Stripe intent canceled OR back at
+    requires_payment_method WITH last_payment_error - a fresh error-less intent is NOT failed;
+    row-status FAILED is the fallback when the PSP is unreachable; always false once CONFIRMED).
+    FRONTEND: processing page (a) detects Stripe's `redirect_status=failed` return param
+    immediately (no backend call), (b) checks `settled.paymentFailed` - either way it
+    router.replaces back to the CHECKOUT with `?payment=failed`; the checkout page parses the
+    param and the form opens with a top banner (reuses `dict.paymentError`, no new keys). The
+    exact checkout URL (selection query intact) is saved per tour in sessionStorage
+    (`it-checkout-return:{tourId}`, written on checkout mount with the payment param stripped);
+    bare `/{locale}/{dest}/{slug}/checkout` is the fallback. Poll stall (~20s) remains the
+    backstop for slow-webhook cases. NOTE: a retry after failure re-reserves under a NEW client
+    booking id (page remount regenerates it); the old ON_HOLD booking expires via the hold-expiry
+    sweeper - accepted v1. Suite 1570/73 green; frontend tsc/eslint green.
+10h. [x] 5C / #28 - PSP CHARGE-RATE FX RECONCILIATION, both PSPs (DONE 2026-07-25; founder:
+    "dynamically currency and FX conversion in payment, should work for both payment methods").
+    Audit vs guide §21.6 first: intents ALREADY charge dynamically in `Booking.currency` for
+    both PSPs (Stripe minor units / Mollie decimal string), cross-currency intent reuse is
+    structurally impossible (Payment row keyed per booking+kind; booking currency immutable;
+    currency change → new quote → new booking → new intent), and the checkout renders the live
+    server-quote `payToday` - so the ONLY remaining gap was the FX doc's "charge rate" item.
+    BUILT: at confirmation the PSP's ACTUAL bookingCurrency→EUR conversion re-anchors the EUR
+    figures instead of the reserve-time ECB snapshot. New `ChargeFx` type (bookings.service,
+    exported): `{rateToEur, provider:'stripe'|'mollie', asOf}`. Derivations (payments.service
+    pure helpers): `stripeChargeFx` = `balance_transaction.exchange_rate` (expanded now on BOTH
+    `retrieveCharge` and `retrievePaymentIntent` → `latest_charge.balance_transaction`), ONLY
+    when the balance transaction currency is literally `eur` (a non-EUR-settled Stripe account
+    would supply a wrong-currency rate → skip); `mollieChargeFx` = `settlementAmount.value /
+    amount.value`, only when settlement is EUR and the charge is not (Mollie omits the field for
+    e.g. PayPal-settled amounts → skip). Threaded as the 3rd arg of `confirmFromPayment` from
+    `onIntentSucceeded` + `applyMolliePayment` (webhook AND settle-on-return paths).
+    `finalizeConfirmation(booking, chargeFx?)`: when a positive PSP rate arrives on a non-EUR
+    booking it EXPLICITLY recomputes fxRateToEur (6dp)/totalEur/commissionAmount (2dp HALF_UP,
+    commission RATE stays the reserve snapshot - only its EUR value re-anchors) and stamps
+    `eurFxProvider`/`eurFxProviderAsOf` = the PSP (existing audit columns - NO migration);
+    settlement ledger (`writeSettlement`) flows the same reconciled figures, so conversion
+    value + ledger are PSP-true. No PSP rate / EUR-charged booking → prior ECB-snapshot path,
+    byte-identical behavior. Frontend untouched. 6 new tests (2 Stripe derive/skip, 2 Mollie
+    derive/skip, 2 finalize reconcile/EUR-ignore); 6 existing arity assertions updated. Suite
+    1576/73 green; tsc + eslint clean. **NEXT = B6 #51 (outbox + queued idempotent jobs).**
+10i. [x] D-FORFEIT - operator non-payment report + admin-confirmed forfeit (DONE 2026-07-25,
+    guide §15, both repos). BACKEND: `Booking.utcNonPaymentReportedAt` + `utcForfeitedAt`
+    (migration `add_non_payment_forfeit`); `POST /bookings/:id/report-non-payment`
+    (EDIT_BOOKING; operator must OWN the booking, foreign ids 404; OPERATOR_LINK + CONFIRMED
+    only; idempotent first-report stamp), `POST /bookings/:id/forfeit` + `/dismiss-non-payment`
+    (MANAGE_BOOKINGS - NEW permission granted to ADMIN only, mirrored in dashboard rbac.ts).
+    Forfeit terminates the booking CANCELLED + utcForfeitedAt in one tx (seats released incl.
+    exclusive charters, unit items cancelled, cancellationRefund=NONE, cancelledBy=ADMIN) with
+    NO refund and NO settlement reversal - the deposit (~= commission) stays earned; the
+    settlement self-heal cron (`reverseStaleCancelledSettlements`) now EXCLUDES forfeited
+    bookings or it would zero the kept commission. Display statuses NON_PAYMENT_REPORTED
+    (CONFIRMED + pending report; outranked by CANCELLATION_REQUESTED) and FORFEITED
+    (CANCELLED + utcForfeitedAt) via `deriveBookingDisplayStatus`; list DTO/mapper carry both
+    stamps. DASHBOARD: status chips w/ hints; row actions - operator "Report non-payment"
+    (confirm dialog), admin "Confirm forfeit" (destructive confirm) + "Dismiss report";
+    hooks/API wired, lists invalidate. No traveller/operator emails in v1 (§15 mandates none;
+    logged loudly server-side). Backend 1594+8 tests green incl. 5 forfeit unit tests + 3
+    display-status cases; dashboard tsc/eslint clean.
+    FILTER ADDENDUM (founder, same day): the bookings-list status filter now accepts the
+    DERIVED display statuses - `GET /bookings?status=` takes FORFEITED (cancelled +
+    utcForfeitedAt), NON_PAYMENT_REPORTED (confirmed + pending report), and
+    CANCELLATION_REQUESTED (confirmed + pending request), translated server-side to their
+    defining predicates; raw enum values pass through unchanged (CANCELLED still INCLUDES
+    forfeited rows - derived options are refinements, not a partition). Dashboard status
+    select lists all of them with the shared status-map labels. 3 new list-filter tests.
+10j. D decisions logged 2026-07-25: **discount/coupon engine DEFERRED by founder** ("we dont
+    need discount at this moment"); **age-restriction validation CLOSED as-is** ("keep it
+    simple as is" - tour min-age only, band max/coverage checks deliberately not built);
+    **G4 currency-change guard SUPERSEDED** by the founder's chosen policy (trip-editor
+    currency switch shows a confirmation dialog - prices keep their numbers, operator retunes
+    them; booking snapshots are immutable so no backend block is needed); **invoice attachment
+    BLOCKED ON A DECISION** - neither PSP issues customer invoices for plain payments (Stripe
+    Invoicing = separate paid product; Mollie invoices bill the merchant), so the options are
+    our own generated PDF (needs founder sign-off on layout, like the locked email wireframe)
+    or a Stripe receipt link. Pre-tour reminder ships with B6's queue as planned.
+    **NEXT = B6 #51 (outbox + queued idempotent jobs).**
+11. [x] B6 = CP7 - TRANSACTIONAL OUTBOX + QUEUED IDEMPOTENT JOBS (DONE 2026-07-25, #51).
+    MODEL: `OutboxEvent` (`prisma/outbox.prisma`) + Booking guard columns
+    `utcConfirmationEmailSentAt`/`utcOperatorNoticeSentAt`/`utcReminderSentAt` (migration
+    `add_outbox_and_job_guards`). PRODUCERS never touch BullMQ - they commit outbox rows in
+    their own transactions: `finalizeConfirmation`'s mark-first winner commits
+    `booking.confirmed` ATOMICALLY with the `conversionFiredAt` guard ($transaction), and
+    `cancel()` commits `booking.refund-owed` inside the cancellation tx when the verdict is
+    FULL. RELAY: `workers/outbox-relay.service.ts` - 5s @Interval, overlap-guarded, batch 50,
+    enqueue-then-stamp (crash between the two re-enqueues the same deterministic jobIds, which
+    BullMQ dedups); fans `booking.confirmed` out to confirmation-email + operator-notice +
+    CAPI + (start >24h away) a DELAYED pre-tour reminder. QUEUE: new `platform-jobs`
+    (workers module owns it; 5 attempts, 1s exponential backoff, removeOnComplete 1000,
+    removeOnFail 5000 - failures retained, §5.5). CONSUMERS: `PlatformJobsProcessor` (thin
+    switch, concurrency 5) -> idempotent `run*Job` methods on BookingsService that reload the
+    booking, RE-VALIDATE state (cancelled booking gets no confirmation), check their DB guard,
+    act, stamp. Email jobs call the senders with `rethrow: true` (the inline paths swallow;
+    a swallowed failure would fake-complete the job) and stamp only after a clean send. CAPI
+    keeps the master-8.1.4 dedup contract (event_id = publicRef, asserted in tests); a null
+    commission throws bullmq `UnrecoverableError` (loud failed-set entry, no retry loop).
+    Reminder consumer is a state-checked STUB until the founder supplies the template
+    (delayed plumbing live, guard column ready). Refund job re-invokes the idempotent
+    executeRefund. FOUNDER RESTORE (same day): confirm-time EMAILS send
+    INLINE again (immediate delivery) - `finalizeConfirmation` calls
+    `runConfirmationEmailJob`/`runOperatorNoticeJob` directly in a local try/catch; the
+    queued jobs remain the DURABLE RETRY BACKSTOP. The shared guard columns compose the two:
+    inline success stamps the guard -> the later job no-ops; inline failure leaves it null ->
+    the job retries with backoff. CAPI + pre-tour reminder stay QUEUE-ONLY. Provisioning
+    stays fire-and-forget; cancellation emails stay inline by design (traveller-initiated,
+    must surface failures). Sweeper/payout stay as their existing idempotent crons (already
+    off-inline; re-architecting them onto delayed jobs adds risk, not durability). The TYP
+    resend + cancellation-request paths still send inline and throw to the caller. 19 new tests
+    (6 relay, 6 processor, 7 job-runner/finalize contract). Suite 1613/76 green.
+    **B PHASE COMPLETE. NEXT = C3 #82 (booking-lookup login), then C4 WhatsApp #59/#60.**
 
 **Phase C - Product gaps (widget §3 + master 6.4/6.6; tasks #52, #59, #60)**
-12. C1: widget add-ons (PER_PERSON x party / FLAT once, maxQuantity) into totals + reserve payload.
-13. C2: `bookingCutoffMinutes` consumed in the widget (server already computes it);
-    `pickupRequired` enforcement + pickup surfacing widget-side; `instantConfirmation` +
-    `bookingType` affordances.
-14. C3: B.34 booking-lookup login (email + `display_ref`, rate-limited) - the account fallback
-    half of master 6.4.
-15. C4 = WA2/WA3: WhatsApp placements per master 6.6 (footer, tour description, error states) +
-    email footer CTA/anti-fraud line, `?text={greeting}` x7 locales.
+12. C1: [x] DONE 2026-07-25 (see 10d) - widget add-ons behind "Show extras" into totals + reserve payload.
+13. C2: [x] DONE 2026-07-25 (see 10d) - cutoff consumed (+ quote-side 422), `pickupRequired` enforced,
+    pickup priced + surfaced at checkout per master 5.8, `instantConfirmation` notice, `bookingType`
+    (PRIVATE charter affordances were already live).
+14. C3: [x] DONE - B.34 booking-lookup login was ALREADY BUILT 2026-07-19 with the login
+    hardening (ledger was stale; verified 2026-07-25): `POST /bookings/lookup` +
+    `lookup/recover-reference` with per-credential caps (5/email + 10/reference per 15min,
+    audit + lockout), frontend `/bookings` door (TravelerLogin, email + reference) issuing the
+    24h HMAC session that unmasks the TYP and gates cancellation.
+15. C4 = WA2/WA3: [x] CLOSED AS DONE (founder 2026-07-25, verified same day). WA3/email:
+    the locked template carries the footer CTA ("Chat on WhatsApp" + Mon-Sun 8:00-20:00 hours)
+    and the anti-fraud line gated to operator_link/operator_full, on `{whatsappUrl}` from
+    dashboard settings (ops: keep WhatsApp ENABLED or the email button href renders empty -
+    the locked wireframe has no conditional around it). WA2/frontend LIVE surfaces: NeedHelp
+    FAQ CTA + host avatar (home/destination/category/collection/hub), category trust-strip
+    checkmark, traveler-login button + error link, cancel-page error copy, checkout
+    "other location via WhatsApp" pickup fallback - all via `lib/whatsapp.ts`
+    (`buildWhatsappUrl`, null-hides-surface). RESIDUAL GAPS ACCEPTED AS-IS BY FOUNDER:
+    footer Support links carry no wa.me href; the home + All Tours trust strips show the
+    WhatsApp copy unlinked; no `?text={greeting}` prefill anywhere (links are bare wa.me).
+    Do not build these without a new founder ask.
 
 **Phase D - Correctness/misc tail (task #53 + checklist leftovers)**
-16. D1: real FX provider implementation behind the ready seam (Stripe FX Quotes) + currency-change
-    guard on `defaultCurrency`.
-17. D2: discount subtracted from totals (flaw 2 coupon engine), age-restriction validation
-    completion, quote-currency 5C (#28).
-18. D3: invoice attachment (C2), pre-tour reminder content (C3; job ships in B6), operator
-    non-payment forfeit flow (guide §15), Mollie webhook confirm (Mollie stays block-commented).
+16. D1: FEED done 2026-07-25 (#83) - `EcbFxProvider` (keyless ECB via Frankfurter), env-selected,
+    hybrid fallback. CHARGE RATE done 2026-07-25 (#28/5C, entry 10h) - PSP conversion reconciled
+    at confirmation for BOTH PSPs. REMAINING: currency-change guard on `defaultCurrency` (G4).
+17. D2: ~~discount subtracted from totals~~ DEFERRED (founder 2026-07-25); ~~age-restriction
+    completion~~ CLOSED as-is (founder 2026-07-25); ~~quote-currency 5C (#28)~~ DONE (entry 10h).
+18. D3: invoice attachment (BLOCKED on founder decision - see 10j), pre-tour reminder content
+    (C3; job ships in B6), ~~operator non-payment forfeit flow (guide §15)~~ DONE 2026-07-25
+    (entry 10i), ~~Mollie webhook confirm~~ DONE (10e).
 
 Blocked-on-founder ledger: GTM/Pixel/CMP creds (A5), Resend confirm (B1), two Cloudinary
 accounts, `start:prod` path bug, Segoe-UI Gmail fallback (wireframe edit), master wording update
 for the superseded "lowest applicable" from-price line.
+
+## Analytics <-> Settlements reconciliation (2026-07-25, founder: "calculation not matched")
+
+`payoutDueEur` on the dashboard Overview was re-derived from raw bookings (REDEEMED paid_in_full
+in the date range) while the Settlements page summed the LEDGER (RECORDED paid_in_full nets,
+recorded at confirmation, all-time, PAID_OUT excluded) - same label, two different quantities.
+FIXED: analytics now reads the ledger with the exact `SettlementsService.summary` predicate
+(operator-scoped, un-windowed - a balance, not a flow), so the Overview card and the Settlements
+page are always identical; card notes/supports updated ("Matches the Settlements page"), the
+stale "no settlements ledger exists yet" note removed. INTENTIONALLY different and now labelled:
+`earnedEur`/`commissionEur` recognize on COMPLETION (REDEEMED, master rule) while the ledger
+records at CONFIRMATION - revenue recognition vs money owed are different concepts and keep
+different clocks. Backend 1617/76 green (ledger-driven payout test added); dashboard tsc clean.
+
+## Deposit <-> commission sync (LD24 fix, 2026-07-25, founder: Klein Curacao premium at 30% took a 20% deposit)
+
+Master LD24 + COMMERCIAL-MODEL: `tour.deposit_pct` is TIER-DRIVEN (20-30 in 2.5 steps) because the
+deposit collected at checkout IS the platform commission. BUG: `TiersService.changeTier` and the
+nightly demotion (`runEligibilityLifecycle` grace-expiry -> organic) updated
+tierKey/commissionTier/tierRank but never depositPct, so promoted tours kept the 20% default and
+under-collected commission on every deposit-model booking (premium = 10 points short). FIXED: both
+writers now set `depositPct = tier commission` (CLAUDE.md rule #7 now says all FOUR fields move
+together); data migration `20260725141218_sync_deposit_pct_to_tier` backfilled drifted tours
+(verified live: all premium tours now 30.0/30.0); demo seed no longer hardcodes D(20.0) and derives
+from TIER_MAP. Existing bookings keep their snapshots (never retroactive). Spotlight note: its 35%
+commission intentionally exceeds the 30% deposit cap - the settlement ledger records the negative
+net (operator owes IT the difference); that is by design, not this bug. Backend 1617/76 green.

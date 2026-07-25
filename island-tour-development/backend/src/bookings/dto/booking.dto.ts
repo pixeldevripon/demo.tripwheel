@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -14,16 +15,78 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
+import type { GoogleUserData } from '@/tracking/pii-hash.util';
 import {
+  AddOnUnit,
   BookingStatus,
   CancelledBy,
   CancellationRefund,
   Currency,
   PaymentModel,
+  SettlementStatus,
 } from '@prisma/client';
+import { SettlementMethod } from '@/settlements/dto/settlement.dto';
+
+// ════════════════════════════════════════════════════════════════════════════
+// Derived display status
+// ════════════════════════════════════════════════════════════════════════════
+// `status` is the persisted BookingStatus enum and drives all server logic. But
+// a booking whose traveller has ASKED to cancel is still CONFIRMED until an
+// admin acts on it - showing "Confirmed" then reads as if nothing happened. The
+// display status layers one derived value on top for EVERY status surface
+// (dashboard tables, TYP, customer /bookings): CONFIRMED + a pending request
+// (requested, not yet cancelled) -> CANCELLATION_REQUESTED. It is computed on
+// the server so no client re-derives it (and gets it wrong); the raw `status`
+// still rides alongside for anything that needs the true enum.
+export const BOOKING_DISPLAY_STATUSES = [
+  ...Object.values(BookingStatus),
+  'CANCELLATION_REQUESTED',
+  'NON_PAYMENT_REPORTED',
+  'FORFEITED',
+] as const;
+
+export type BookingDisplayStatus =
+  | BookingStatus
+  | 'CANCELLATION_REQUESTED'
+  | 'NON_PAYMENT_REPORTED'
+  | 'FORFEITED';
+
+export function deriveBookingDisplayStatus(booking: {
+  status: BookingStatus;
+  utcCancellationRequestedAt: Date | null;
+  utcCancelledAt: Date | null;
+  utcNonPaymentReportedAt?: Date | null;
+  utcForfeitedAt?: Date | null;
+}): BookingDisplayStatus {
+  // Forfeited (guide s15): terminated by an admin-confirmed non-payment report -
+  // the deposit was kept, which "Cancelled" alone would misrepresent.
+  if (
+    booking.status === BookingStatus.CANCELLED &&
+    (booking.utcForfeitedAt ?? null) !== null
+  ) {
+    return 'FORFEITED';
+  }
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    booking.utcCancellationRequestedAt !== null &&
+    booking.utcCancelledAt === null
+  ) {
+    return 'CANCELLATION_REQUESTED';
+  }
+  // Operator reported the balance unpaid; awaiting the admin verdict.
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    (booking.utcNonPaymentReportedAt ?? null) !== null &&
+    (booking.utcForfeitedAt ?? null) === null
+  ) {
+    return 'NON_PAYMENT_REPORTED';
+  }
+  return booking.status;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // Response DTOs
@@ -60,6 +123,14 @@ export class BookingConversionDto {
   value!: string;
   @ApiProperty() contentId!: string;
   @ApiPropertyOptional({ nullable: true }) contentName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'SHA-256 hashed PII for Google Enhanced Conversions (master 8.3 user_data), ' +
+      'hashed server-side so raw PII never reaches the browser. Null when there is ' +
+      'no email to hash. Same hash pass the server CAPI uses.',
+  })
+  userData!: GoogleUserData | null;
 }
 
 /** Operator contact shown on the TYP (named deliberately post-booking - guide §13). */
@@ -80,6 +151,15 @@ export class ThankYouPartyLineDto {
   @ApiPropertyOptional({ nullable: true }) ageBandId!: string | null;
   @ApiProperty({ example: 'Adult' }) label!: string;
   @ApiProperty({ example: 2 }) quantity!: number;
+}
+
+/** One purchased extra (immutable BookingAddOn snapshot), booking currency. */
+export class ThankYouAddOnDto {
+  @ApiProperty({ example: 'Open bar upgrade' }) name!: string;
+  @ApiProperty({ enum: AddOnUnit }) unit!: AddOnUnit;
+  @ApiProperty({ example: 2 }) quantity!: number;
+  @ApiProperty({ example: '25.00' }) unitPrice!: string;
+  @ApiProperty({ example: '100.00' }) totalPrice!: string;
 }
 
 /**
@@ -239,6 +319,13 @@ export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+  @ApiProperty({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Derived status for display. CONFIRMED with a pending cancellation ' +
+      'request reads CANCELLATION_REQUESTED; otherwise equals `status`.',
+  })
+  displayStatus!: BookingDisplayStatus;
 
   // ── Cancellation state ──────────────────────────────────────────────────
   // The server owns this verdict. `canRequestCancellation` is the SAME
@@ -323,6 +410,12 @@ export class ThankYouResponseDto {
     description: 'Party grouped by age band (renders "2 adults, 1 child").',
   })
   party!: ThankYouPartyLineDto[];
+  @ApiProperty({
+    type: [ThankYouAddOnDto],
+    description:
+      'Purchased extras (BookingAddOn snapshots). Empty when none were bought.',
+  })
+  addOns!: ThankYouAddOnDto[];
 
   // ── Guest (contact snapshot taken at checkout) ──────────────────────────────
   @ApiPropertyOptional({ nullable: true, example: 'Denley' })
@@ -385,14 +478,26 @@ export class ThankYouResponseDto {
 
   @ApiProperty({ type: ThankYouOperatorDto })
   operator!: ThankYouOperatorDto;
+  // NOTE: the booking_complete `conversion` payload is intentionally NOT on this
+  // GET. It is served ONCE, mark-first, by `POST typ/:publicRef/conversion`
+  // (ConversionPushResponseDto) so the browser pixel cannot double-fire across
+  // refreshes / the processing poller (master 8.1 item 5, 8.2).
+}
 
+/**
+ * Response of `POST typ/:publicRef/conversion` (master 8.2). `conversion` is the
+ * one-time `booking_complete` push payload for the mark-first WINNER; every later
+ * caller (refresh, second tab, shared link, non-verified, not-yet-confirmed)
+ * receives `null` and pushes nothing.
+ */
+export class ConversionPushResponseDto {
   @ApiPropertyOptional({
     type: BookingConversionDto,
     nullable: true,
     description:
-      'Present only for a confirmed booking with a valid EUR commission AND ' +
-      'a verified session (the take-rate is business-sensitive; a bare link ' +
-      'must not see it or re-fire pixels); null otherwise.',
+      'The booking_complete push payload, returned to the mark-first winner ' +
+      'exactly once per booking; null on every subsequent call, an unverified ' +
+      'session, a non-confirmed booking, or a null-commission (corrupt) booking.',
   })
   conversion!: BookingConversionDto | null;
 }
@@ -404,6 +509,14 @@ export class BookingResponseDto {
   @ApiProperty() tourId!: string;
   @ApiPropertyOptional({ nullable: true }) departureId!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+  @ApiProperty({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Derived status for display. Equals `status`, except a CONFIRMED booking ' +
+      'with a pending cancellation request reads CANCELLATION_REQUESTED. Render ' +
+      'this in status chips; use `status` for logic.',
+  })
+  displayStatus!: BookingDisplayStatus;
   @ApiProperty({ example: false }) freesale!: boolean;
   @ApiPropertyOptional({ nullable: true }) utcExpiresAt!: string | null;
   @ApiPropertyOptional({ nullable: true }) utcConfirmedAt!: string | null;
@@ -465,6 +578,18 @@ export class BookingListItemDto extends BookingResponseDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
+      'When the operator reported the balance unpaid (guide s15); awaiting an admin verdict while set.',
+  })
+  utcNonPaymentReportedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When an admin confirmed the forfeit - the deposit was kept and the spot released.',
+  })
+  utcForfeitedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
       'Free-cancellation deadline (tour start - cancellationHours, wall clock).',
   })
   freeCancelDeadline!: string | null;
@@ -495,6 +620,37 @@ export class BookingListItemDto extends BookingResponseDto {
     | 'NOT_CONFIRMED'
     | 'DEPARTED'
     | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: SettlementStatus,
+    description:
+      'Settlement-ledger status for this booking (null until confirmed). See the ' +
+      'Settlements page for the full ledger.',
+  })
+  settlementStatus!: SettlementStatus | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: SettlementMethod,
+    description:
+      'HOW this booking settles: SELF_SETTLING / OPERATOR_PAYOUT / COMMISSION_INVOICE.',
+  })
+  settlementMethod!: SettlementMethod | null;
+  @ApiProperty({
+    description:
+      "True when this booking's paid_in_full payout is HELD by a pending " +
+      'cancellation request (same predicate as the Settlements page). Render ' +
+      '"On hold - cancellation requested" beside the settlement badge.',
+  })
+  settlementHeld!: boolean;
+  @ApiProperty({
+    enum: ['NONE', 'PENDING', 'PARTIAL', 'REFUNDED'],
+    description:
+      'TRUE refund state from the payment ledger. PENDING = a cancel owes a ' +
+      'refund that has NOT executed yet (money still held); REFUNDED = the ' +
+      'charge was actually returned. Never assume "refunded" from the cancel ' +
+      'verdict - render this.',
+  })
+  refundStatus!: 'NONE' | 'PENDING' | 'PARTIAL' | 'REFUNDED';
 }
 
 export class ListBookingsResponseDto {
@@ -504,10 +660,13 @@ export class ListBookingsResponseDto {
   @ApiProperty({ type: [BookingListItemDto] }) data!: BookingListItemDto[];
 }
 
-/** One priced row of a quote breakdown (age-band participants or an add-on). */
+/** One priced row of a quote breakdown (participants, an add-on, or a priced pickup). */
 export class QuoteLineDto {
-  @ApiProperty({ enum: ['participant', 'addon'], example: 'participant' })
-  kind!: 'participant' | 'addon';
+  @ApiProperty({
+    enum: ['participant', 'addon', 'pickup'],
+    example: 'participant',
+  })
+  kind!: 'participant' | 'addon' | 'pickup';
   @ApiPropertyOptional({
     nullable: true,
     description:
@@ -667,6 +826,69 @@ export class ContactDto {
 // Request DTOs
 // ════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Ad click ids + UTM parameters, captured on the landing page and carried to
+ * reserve (master 8.1 item 6 / E.8 / dev spec 14). Snapshotted onto the booking
+ * at creation only - they feed the `booking_complete` push (8.3 `click_ids`) and,
+ * later, offline-conversion + cancellation/refund adjustments to Google Ads/Meta.
+ * All optional and untrusted display strings; length-capped, never interpreted.
+ */
+export class AttributionDto {
+  @ApiPropertyOptional({ description: 'Google Ads click id', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  gclid?: string;
+
+  @ApiPropertyOptional({ description: 'Google iOS web-to-app', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  gbraid?: string;
+
+  @ApiPropertyOptional({ description: 'Google app-to-web', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  wbraid?: string;
+
+  @ApiPropertyOptional({ description: 'Meta click id', maxLength: 512 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  fbclid?: string;
+
+  @ApiPropertyOptional({ example: 'google', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmSource?: string;
+
+  @ApiPropertyOptional({ example: 'cpc', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmMedium?: string;
+
+  @ApiPropertyOptional({ example: 'summer-2026', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmCampaign?: string;
+
+  @ApiPropertyOptional({ example: 'snorkeling curacao', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmTerm?: string;
+
+  @ApiPropertyOptional({ example: 'hero-cta', maxLength: 255 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  utmContent?: string;
+}
+
 export class ReserveBookingDto {
   @ApiPropertyOptional({
     example: 'f8c3de3d-1fea-4d7c-a8b0-29f63c4c3454',
@@ -775,6 +997,18 @@ export class ReserveBookingDto {
   @IsOptional()
   @IsUUID()
   quoteId?: string;
+
+  @ApiPropertyOptional({
+    type: AttributionDto,
+    description:
+      'Ad click ids + UTM captured on the landing page (master 8.1.6). Written ' +
+      'onto the booking at creation only (first reserve); ignored on an idempotent ' +
+      're-reserve so the original attribution is never overwritten.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AttributionDto)
+  attribution?: AttributionDto;
 
   // NOTE: couponCode/discountAmount are intentionally NOT accepted (flaw #2). A
   // client-supplied discount is untrusted without a server-side coupon-validation
@@ -920,10 +1154,15 @@ export class UpdateBookingDto {
   @IsBoolean()
   pickupRequested?: boolean;
 
-  @ApiPropertyOptional({ example: 'pickup-uuid' })
+  @ApiPropertyOptional({
+    example: 'pickup-uuid',
+    nullable: true,
+    description: 'New pickup point; explicit null clears the pickup.',
+  })
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
-  pickupLocationId?: string;
+  pickupLocationId?: string | null;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -936,10 +1175,17 @@ export class ListBookingsQueryDto {
   @IsString()
   tourId?: string;
 
-  @ApiPropertyOptional({ enum: BookingStatus })
+  @ApiPropertyOptional({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Raw statuses match the persisted enum as-is. The three DERIVED values ' +
+      'refine them: CANCELLATION_REQUESTED (confirmed + pending request), ' +
+      'NON_PAYMENT_REPORTED (confirmed + pending report), FORFEITED ' +
+      '(cancelled via an admin-confirmed non-payment forfeit).',
+  })
   @IsOptional()
-  @IsEnum(BookingStatus)
-  status?: BookingStatus;
+  @IsIn(BOOKING_DISPLAY_STATUSES)
+  status?: BookingDisplayStatus;
 
   @ApiPropertyOptional({ enum: PaymentModel })
   @IsOptional()

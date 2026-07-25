@@ -11,6 +11,9 @@ import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getCurrentYear } from '@/lib/current-year';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
+import { JsonLd } from '@/components/frontend/seo/json-ld';
 import type { Metadata } from 'next';
 
 // Fallback slugs for static generation if the backend is unreachable at build
@@ -101,15 +104,29 @@ export default async function AllToursPage({
     const { locale, destination } = await params;
     if (!isLocale(locale)) notFound();
 
-    const [dict, dest] = await Promise.all([
+    const [dict, dest, siteUrl] = await Promise.all([
         getDictionary(locale),
         getDestinationBySlug(destination, locale as Locale),
+        getSiteUrl(),
     ]);
     if (!dest || !dest.isActive) notFound();
     const destinationName = dest.name;
 
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale: locale as Locale,
+        trail: [
+            { name: destinationName, path: `/${destination}` },
+            {
+                name: dict.destination.allTours.breadcrumb.current,
+                path: `/${destination}/tours`,
+            },
+        ],
+    });
+
     return (
         <>
+            <JsonLd data={breadcrumbJsonLd} />
             <ToursBreadcrumb
                 locale={locale as Locale}
                 destinationName={destinationName}

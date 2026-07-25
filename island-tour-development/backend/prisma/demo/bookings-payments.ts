@@ -282,6 +282,17 @@ export async function seedBookingsAndPayments(): Promise<void> {
         quantity: c.qty,
         priceRetail: c.band.price,
       }));
+      // Party size must be >= 1 (guest count): every booking needs at least one
+      // BookingUnitItem, or the dashboard list renders PARTY = 0. PAX_PATTERNS
+      // always yield >= 1, but guard defensively so a future pattern/band change
+      // can never produce a zero-party booking — fall back to one adult.
+      if (lines.length === 0) {
+        lines.push({
+          ageBandId: adultBand.id,
+          quantity: 1,
+          priceRetail: adultBand.price,
+        });
+      }
       const seats = lines.reduce((s, l) => s + l.quantity, 0);
 
       // Optional single add-on.

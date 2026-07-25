@@ -83,6 +83,41 @@ export async function publicGet<T>(path: string): Promise<T | null> {
 }
 
 /**
+ * POST a public backend endpoint as the trusted SSR origin. Returns `null` on ANY
+ * failure (network error, non-2xx, bad JSON) - it never throws, so a side-effect
+ * call made during a render (e.g. the mark-first conversion claim on the TYP)
+ * can never blank the page. Retries 429/503 with the same fixed backoff as GET.
+ *
+ * `extraHeaders` carries PER-REQUEST data (the traveler session header); never
+ * call this from inside a `'use cache'` scope - it mutates and must stay uncached.
+ */
+export async function publicPost<T>(
+  path: string,
+  extraHeaders?: Record<string, string>,
+  body?: unknown,
+): Promise<T | null> {
+  try {
+    const headers = { ...serverHeaders(), ...extraHeaders };
+    const init: RequestInit = { method: 'POST', headers };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    let res = await fetch(`${BASE_URL}${path}`, init);
+    for (
+      let attempt = 0;
+      (res.status === 429 || res.status === 503) &&
+      attempt < RETRY_BACKOFF_MS.length;
+      attempt++
+    ) {
+      await sleep(RETRY_BACKOFF_MS[attempt]);
+      res = await fetch(`${BASE_URL}${path}`, init);
+    }
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Thrown by `publicGetStrict` when the backend is unreachable or answers with
  * anything other than 2xx/404. Extends the base error only to carry a stable
  * `name` for logs; callers are not expected to catch it (see below).

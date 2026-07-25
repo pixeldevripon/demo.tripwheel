@@ -34,6 +34,10 @@ import {
 import {
   ApiCalendarDocs,
   ApiCancelDocs,
+  ApiConfirmForfeitDocs,
+  ApiDismissNonPaymentDocs,
+  ApiReportNonPaymentDocs,
+  ApiClaimConversionDocs,
   ApiConfirmDocs,
   ApiCustomerCancellationRequestDocs,
   ApiCustomerSummaryDocs,
@@ -102,6 +106,44 @@ export class BookingsController {
   ) {
     const actor = user ? { id: user.id, role: user.role } : undefined;
     return this.bookings.cancel(id, dto, actor);
+  }
+
+  // ── Non-payment forfeit (guide s15) - authenticated ops actions ──────────
+
+  @Post(':id/report-non-payment')
+  @RequirePermissions(Permission.EDIT_BOOKING)
+  @ApiReportNonPaymentDocs()
+  reportNonPayment(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.reportNonPayment(id, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  @Post(':id/forfeit')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiConfirmForfeitDocs()
+  confirmForfeit(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.confirmForfeit(id, { id: user.id, role: user.role });
+  }
+
+  @Post(':id/dismiss-non-payment')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiDismissNonPaymentDocs()
+  dismissNonPayment(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.dismissNonPaymentReport(id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   @Post(':id/extend')
@@ -177,6 +219,31 @@ export class BookingsController {
     @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
   ) {
     return this.bookings.getThankYou(publicRef, sessionToken);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/conversion
+   *
+   * Serves the one-time `booking_complete` push payload, mark-first (master 8.2):
+   * the first verified TYP render wins the payload, every later call returns
+   * `{ conversion: null }`. A dedicated endpoint - NOT the plain GET above, which
+   * the /payment/processing poller also hits - so the poll can never consume the
+   * single push. Requires the traveler session (business-sensitive commission
+   * value); browser-only, throttled to a human pace per publicRef.
+   */
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 5, ttl: 60_000 },
+    long: { limit: 20, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/conversion')
+  @Public()
+  @ApiClaimConversionDocs()
+  claimConversion(
+    @Param('publicRef') publicRef: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.claimConversionPush(publicRef, sessionToken);
   }
 
   /**

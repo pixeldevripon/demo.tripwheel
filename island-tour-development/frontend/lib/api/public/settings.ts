@@ -81,10 +81,20 @@ export interface PublicSiteSeo {
     twitterTitle: string | null;
     twitterDescription: string | null;
     twitterImage: string | null;
+    /** GA4 measurement ID (G-XXXX). Public - ships in the GTM/gtag tag. */
+    googleAnalyticsId: string | null;
+    /** Google Tag Manager container ID (GTM-XXXX). Loads the GTM container. */
+    googleTagManagerId: string | null;
     /** Search Console ownership token - rendered as google-site-verification. */
     googleSearchConsole: string | null;
+    /** Meta (Facebook) Pixel ID. Public - ships in the Pixel base code. */
+    facebookPixelId: string | null;
     /** Cookiebot domain group ID (data-cbid) - loads the consent banner. */
     cookiebotCbid: string | null;
+    /** Custom robots.txt body. When set, served verbatim; else generated. */
+    robotsTxt: string | null;
+    /** String flag ('true') - whether robots.txt advertises the sitemap. */
+    autoGenerateSitemap: string | null;
 }
 
 /** The public social profile URLs (footer). */
@@ -138,8 +148,13 @@ export async function getPublicSiteSeo(): Promise<PublicSiteSeo> {
             twitterTitle: null,
             twitterDescription: null,
             twitterImage: null,
+            googleAnalyticsId: null,
+            googleTagManagerId: null,
             googleSearchConsole: null,
+            facebookPixelId: null,
             cookiebotCbid: null,
+            robotsTxt: null,
+            autoGenerateSitemap: null,
         }
     );
 }

@@ -1,7 +1,9 @@
 import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { PaymentProvider } from '@prisma/client';
 import {
+  UpdatePaymentProviderDto,
   PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
   PublicSiteSEOResponseDto,
@@ -9,6 +11,7 @@ import {
   UpdateCompanyInformationsDto,
   UpdateMailchimpDto,
   UpdateReviewRequestsDto,
+  UpdateIntegrationsConfigurationDto,
   UpdateMollieConfigurationDto,
   UpdateSiteInfoDto,
   UpdateSiteSEODto,
@@ -111,8 +114,13 @@ export class SettingsService {
    * Public-safe SiteSEO for the unauthenticated site's meta/OG/Twitter tags.
    *
    * Same contract as getPublicSiteInfo: explicit select, findFirst so an
-   * anonymous GET never writes, and analytics IDs / verification codes /
-   * robots.txt stay out of the world-readable response.
+   * anonymous GET never writes. The analytics IDs (GA4 / GTM / Meta Pixel) ARE
+   * exposed here on purpose: they are public by nature - every one of them ships
+   * in the browser as a container/measurement id the moment tracking loads, so
+   * there is nothing to protect. `robotsTxt` + `autoGenerateSitemap` are crawl
+   * output (they end up in the served robots.txt / sitemap), also public. The
+   * only genuinely secret credentials (Meta CAPI token, Google Translate key)
+   * live on IntegrationsConfiguration and never come near this projection.
    */
   async getPublicSiteSEO(): Promise<PublicSiteSEOResponseDto> {
     const seo = await this.prisma.siteSEO.findFirst({
@@ -129,8 +137,13 @@ export class SettingsService {
         twitterTitle: true,
         twitterDescription: true,
         twitterImage: true,
+        googleAnalyticsId: true,
+        googleTagManagerId: true,
         googleSearchConsole: true,
+        facebookPixelId: true,
         cookiebotCbid: true,
+        robotsTxt: true,
+        autoGenerateSitemap: true,
       },
     });
 
@@ -146,8 +159,13 @@ export class SettingsService {
       twitterTitle: seo?.twitterTitle ?? null,
       twitterDescription: seo?.twitterDescription ?? null,
       twitterImage: seo?.twitterImage ?? null,
+      googleAnalyticsId: seo?.googleAnalyticsId || null,
+      googleTagManagerId: seo?.googleTagManagerId || null,
       googleSearchConsole: seo?.googleSearchConsole ?? null,
+      facebookPixelId: seo?.facebookPixelId || null,
       cookiebotCbid: seo?.cookiebotCbid || null,
+      robotsTxt: seo?.robotsTxt || null,
+      autoGenerateSitemap: seo?.autoGenerateSitemap || null,
     };
   }
 
@@ -261,6 +279,64 @@ export class SettingsService {
     };
   }
 
+  // ── Active payment provider (platform switch) ───────────────────────────────
+
+  /** The singleton payment settings row (which PSP charges at checkout). */
+  async getPaymentProviderSettings() {
+    const row = await this.prisma.paymentSettings.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+    return {
+      id: row.id,
+      activeProvider: row.activeProvider,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  /**
+   * Switch the checkout PSP. Guarded: the TARGET provider must already hold
+   * usable credentials, otherwise the switch would brick every checkout with a
+   * 503 the moment it lands. Never retroactive - existing Payment rows keep
+   * their own provider and webhooks/refunds route by the row.
+   */
+  async updatePaymentProviderSettings(dto: UpdatePaymentProviderDto) {
+    if (dto.activeProvider === PaymentProvider.MOLLIE) {
+      const mollie = await this.prisma.mollieConfiguration.findUnique({
+        where: { id: 'default' },
+        select: { apiKey: true },
+      });
+      if (!mollie?.apiKey) {
+        throw new BadRequestException(
+          'Configure the Mollie API key before making Mollie the active provider',
+        );
+      }
+    } else {
+      const stripe = await this.prisma.stripeConfiguration.findUnique({
+        where: { id: 'default' },
+        select: { secretKey: true, webhookSecret: true },
+      });
+      if (!stripe?.secretKey || !stripe.webhookSecret) {
+        throw new BadRequestException(
+          'Configure the Stripe secret key and webhook secret before making Stripe the active provider',
+        );
+      }
+    }
+
+    const row = await this.prisma.paymentSettings.upsert({
+      where: { id: 'default' },
+      update: { activeProvider: dto.activeProvider },
+      create: { id: 'default', activeProvider: dto.activeProvider },
+    });
+    this.logger.log(`Active payment provider set to ${row.activeProvider}`);
+    return {
+      id: row.id,
+      activeProvider: row.activeProvider,
+      updatedAt: row.updatedAt,
+    };
+  }
+
   // ── Mollie Configuration ───────────────────────────────────────────────────
 
   async getMollieConfiguration() {
@@ -292,6 +368,45 @@ export class SettingsService {
       apiKey: result.apiKey
         ? '••••••••' + decrypt(result.apiKey).slice(-4)
         : null,
+    };
+  }
+
+  // ── Integrations Configuration (Meta CAPI + Google Translate secrets) ────────
+
+  async getIntegrationsConfiguration() {
+    const config = await this.prisma.integrationsConfiguration.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: { id: 'default' },
+    });
+    return {
+      ...config,
+      metaCapiToken: this.maskSecret(config.metaCapiToken),
+      googleTranslateApiKey: this.maskSecret(config.googleTranslateApiKey),
+    };
+  }
+
+  async updateIntegrationsConfiguration(
+    dto: UpdateIntegrationsConfigurationDto,
+  ) {
+    const data = {
+      ...dto,
+      // Encrypt secrets on write; a blank/omitted field leaves the stored value
+      // untouched (never overwrite a saved secret with an empty string).
+      ...(dto.metaCapiToken && { metaCapiToken: encrypt(dto.metaCapiToken) }),
+      ...(dto.googleTranslateApiKey && {
+        googleTranslateApiKey: encrypt(dto.googleTranslateApiKey),
+      }),
+    };
+    const result = await this.prisma.integrationsConfiguration.upsert({
+      where: { id: 'default' },
+      update: data,
+      create: { id: 'default', ...data },
+    });
+    return {
+      ...result,
+      metaCapiToken: this.maskSecret(result.metaCapiToken),
+      googleTranslateApiKey: this.maskSecret(result.googleTranslateApiKey),
     };
   }
 

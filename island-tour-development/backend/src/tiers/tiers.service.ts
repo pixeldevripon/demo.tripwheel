@@ -476,6 +476,11 @@ export class TiersService {
         tierKey: dto.tierKey,
         commissionTier: new Prisma.Decimal(mapped.commission),
         tierRank: mapped.rank,
+        // LD24: deposit_pct is TIER-DRIVEN - the deposit collected at checkout
+        // IS the commission, so it must always equal the tier rate. A premium
+        // (30%) tour taking the default 20% deposit under-collects Island
+        // Tours' commission by 10 points on every deposit-model booking.
+        depositPct: new Prisma.Decimal(mapped.commission),
         tierLockedUntil,
         // A successful pick resets the eligibility lifecycle for this tour.
         eligibilityState: provisional
@@ -740,6 +745,7 @@ export class TiersService {
             tierKey: TierKey.organic,
             commissionTier: new Prisma.Decimal(target.commission),
             tierRank: target.rank,
+            depositPct: new Prisma.Decimal(target.commission), // LD24: tier-driven
             eligibilityState: EligibilityState.DEMOTED,
             graceStartedAt: null,
             graceMetric: null,

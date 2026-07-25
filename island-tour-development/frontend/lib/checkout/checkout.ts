@@ -60,6 +60,8 @@ export interface CheckoutSelection {
     time: string | null;
     /** Chosen count per band id (participants + spectators), zero rows omitted. */
     counts: Record<string, number>;
+    /** Chosen quantity per add-on id (zero rows omitted). */
+    addOns: Record<string, number>;
     /** Real departure id for the picked slot (live mode); reserve keys off it. */
     departureId: string | null;
     /** Server quote id snapshotted in the widget - submitted with the reserve. */
@@ -113,6 +115,7 @@ export function buildCheckoutQuery(selection: {
     date: string | null;
     time: string | null;
     counts: Record<string, number>;
+    addOns?: Record<string, number>;
     departureId?: string | null;
     quoteId?: string | null;
     currency?: string | null;
@@ -125,6 +128,12 @@ export function buildCheckoutQuery(selection: {
         .map(([id, count]) => `${id}:${count}`)
         .join(',');
     if (party) params.set('party', party);
+    // Same `id:qty` encoding as the party pairs.
+    const addons = Object.entries(selection.addOns ?? {})
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => `${id}:${qty}`)
+        .join(',');
+    if (addons) params.set('addons', addons);
     if (selection.departureId) params.set('departure', selection.departureId);
     if (selection.quoteId) params.set('quote', selection.quoteId);
     if (selection.currency) params.set('currency', selection.currency);
@@ -143,20 +152,22 @@ export function parseCheckoutSelection(
         return raw ?? null;
     };
 
-    const counts: Record<string, number> = {};
-    const party = first('party');
-    if (party) {
-        for (const pair of party.split(',')) {
+    const parsePairs = (raw: string | null): Record<string, number> => {
+        const out: Record<string, number> = {};
+        if (!raw) return out;
+        for (const pair of raw.split(',')) {
             const [id, rawCount] = pair.split(':');
             const count = Number(rawCount);
-            if (id && Number.isFinite(count) && count > 0) counts[id] = count;
+            if (id && Number.isFinite(count) && count > 0) out[id] = count;
         }
-    }
+        return out;
+    };
 
     return {
         date: first('date'),
         time: first('time'),
-        counts,
+        counts: parsePairs(first('party')),
+        addOns: parsePairs(first('addons')),
         departureId: first('departure'),
         quoteId: first('quote'),
         currency: first('currency'),
@@ -170,7 +181,13 @@ export function parseCheckoutSelection(
  */
 export function computeCheckoutTotals(
     data: TourBookingData,
-    counts: Record<string, number>
+    counts: Record<string, number>,
+    extras?: {
+        /** Chosen quantity per add-on id (from the widget, via the URL). */
+        addOns?: Record<string, number>;
+        /** Per-person price of the selected pickup zone (display currency). */
+        pickupPrice?: number | null;
+    }
 ): CheckoutTotals {
     const effective = { ...counts };
     const hasAny = Object.values(effective).some(n => n > 0);
@@ -183,6 +200,23 @@ export function computeCheckoutTotals(
         }
     }
 
+    // Optional extras + priced pickup, mirroring the backend math: PER_PERSON
+    // add-ons and pickup prices multiply by the party headcount; FLAT add-ons
+    // charge their quantity once (master E.3 / 5.8).
+    const extrasTotal = (partySize: number): number => {
+        let sum = 0;
+        for (const addOn of data.addOns) {
+            const qty = extras?.addOns?.[addOn.id] ?? 0;
+            if (qty <= 0) continue;
+            const units = addOn.unit === 'PER_PERSON' ? qty * partySize : qty;
+            sum += units * addOn.price;
+        }
+        if (extras?.pickupPrice != null && extras.pickupPrice > 0) {
+            sum += extras.pickupPrice * partySize;
+        }
+        return Math.round(sum * 100) / 100;
+    };
+
     // UNIT (whole-unit / charter): one guests count; total is basePrice plus a
     // per-guest surcharge beyond `unitIncludedGuests` (master §3.2), NOT a sum of
     // per-person bands. Mirrors the widget's `deriveBooking`.
@@ -192,13 +226,16 @@ export function computeCheckoutTotals(
             Math.max(1, data.minPartySize);
         const included = data.unitIncludedGuests ?? guests;
         const extra = Math.max(0, guests - included);
-        const total = data.basePrice + extra * data.extraPersonPrice;
+        const charterTotal = data.basePrice + extra * data.extraPersonPrice;
+        const extrasValue = extrasTotal(guests);
+        const total = charterTotal + extrasValue;
         const guestsBand = data.bands[0];
         const lineItems: CheckoutLineItem[] = guestsBand
-            ? [{ band: guestsBand, count: guests, lineTotal: total }]
+            ? [{ band: guestsBand, count: guests, lineTotal: charterTotal }]
             : [];
+        // Deposit % on the TOUR price only; extras ride the balance in full.
         const payToday = data.requiresDeposit
-            ? Math.round(total * data.depositPct) / 100
+            ? Math.round(charterTotal * data.depositPct) / 100
             : total;
         return {
             lineItems,
@@ -216,9 +253,12 @@ export function computeCheckoutTotals(
         .map(row => ({ ...row, lineTotal: row.count * row.band.price }));
 
     const partySize = lineItems.reduce((sum, row) => sum + row.count, 0);
-    const total = lineItems.reduce((sum, row) => sum + row.lineTotal, 0);
+    const tourTotal = lineItems.reduce((sum, row) => sum + row.lineTotal, 0);
+    const extrasValue = extrasTotal(partySize);
+    const total = tourTotal + extrasValue;
+    // Deposit % on the TOUR price only; extras ride the balance in full.
     const payToday = data.requiresDeposit
-        ? Math.round(total * data.depositPct) / 100
+        ? Math.round(tourTotal * data.depositPct) / 100
         : total;
 
     return {

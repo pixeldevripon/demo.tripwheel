@@ -2,11 +2,17 @@ import {
     TourReviewsPreviewSkeleton,
     TourReviewsSectionSkeleton,
 } from '@/components/frontend/skeletons/tour-page-skeleton';
+import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getTourReviewSummary } from '@/lib/api/public/reviews';
 import { getTourBySlug } from '@/lib/api/public/tours';
 import { getServerCurrency } from '@/lib/currency/server';
 import { type Locale } from '@/lib/constants/locales';
+import {
+    buildBreadcrumbJsonLd,
+    buildTouristTripJsonLd,
+} from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { buildTourBookingData } from '@/lib/tours/booking';
 import { formatDuration } from '@/lib/tours/listing';
@@ -117,8 +123,12 @@ export async function TourDetailContent({
     // LD11 lives on the backend (`review-display.util.ts`), not here: the tour
     // payload only carries the tour's OWN aggregates and cannot express the
     // cold-start fallback to the operator's rating. Fetched after the detail
-    // because it is keyed by the resolved tour id.
-    const reviewSummary = await getTourReviewSummary(detail.id);
+    // because it is keyed by the resolved tour id. `getSiteUrl` (cached) rides
+    // along to absolutize the structured-data URLs.
+    const [reviewSummary, siteUrl] = await Promise.all([
+        getTourReviewSummary(detail.id),
+        getSiteUrl(),
+    ]);
 
     const tourDict = dict.destination.tour;
 
@@ -365,8 +375,37 @@ export async function TourDetailContent({
             : []),
     ];
 
+    // Structured data: the breadcrumb trail mirrors the visible crumb
+    // (Home > Destination > [primary Category] > Tour), and the tour itself as a
+    // TouristTrip. The review Product graph (price + aggregateRating) is emitted
+    // separately inside TourReviewsBlock, so this stays lean to avoid a second
+    // Offer/rating.
+    const tourPath = `/${destinationSlug}/${slug}`;
+    const breadcrumbTrail = [
+        { name: destinationName, path: `/${destinationSlug}` },
+        ...(anchor ? [{ name: anchor.label, path: anchor.href }] : []),
+        { name: breadcrumbLabel, path: tourPath },
+    ];
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale,
+        trail: breadcrumbTrail,
+    });
+    const touristTripJsonLd = buildTouristTripJsonLd({
+        siteUrl,
+        locale,
+        path: tourPath,
+        name: title,
+        description: detail.translation?.shortDescription ?? null,
+        images: detail.images.map(img => img.url).slice(0, 6),
+        destinationName,
+        providerName: detail.operatorName ?? null,
+    });
+
     return (
         <>
+            <JsonLd data={breadcrumbJsonLd} />
+            <JsonLd data={touristTripJsonLd} />
             <ToursBreadcrumb
                 locale={locale}
                 destinationName={destinationName}

@@ -333,30 +333,43 @@ This maps to the master's `original_currency`: the currency charged/displayed to
 
 ### Retail total
 
-Retail total is:
+Retail total is the FULL booking:
 
 ```text
-sum(age band price * quantity) + sum(add-on line totals) - discount
+tourRetail  = sum(age band price * quantity)            (or UNIT charter total)
+extras      = sum(add-on line totals) + pickup line
+totalRetail = tourRetail + extras - discount
 ```
 
 Add-on line totals:
 - `PER_PERSON`: `unitPrice * addOnQuantity * partySize`
 - `FLAT`: `unitPrice * addOnQuantity`
 
+Pickup line (master 5.8): `PickupLocation.price * partySize`, charged ONLY when the
+tour's `pickupModel = PAID_ADDON` and the selected zone carries a positive price.
+
 ### Deposit and balance
 
+**Founder decision 2026-07-25: the deposit % applies to the TOUR price only, and on
+the deposit models the extras (add-ons + priced pickup) ride the operator-collected
+balance in full.**
+
 ```text
-OPERATOR_LINK: deposit = total * depositPct; balance = total - deposit
-ON_ARRIVAL: deposit = total * depositPct; balance = total - deposit
-PAID_IN_FULL: deposit/payToday = total; balance = 0
-OPERATOR_FULL: deposit/payToday = 0; balance = total
+OPERATOR_LINK: deposit = tourRetail * depositPct; balance = tourRetail - deposit + extras
+ON_ARRIVAL:    deposit = tourRetail * depositPct; balance = tourRetail - deposit + extras
+PAID_IN_FULL:  deposit/payToday = totalRetail (tour + extras); balance = 0
+OPERATOR_FULL: deposit/payToday = 0; balance = totalRetail
 ```
 
 ### Commission snapshot
 
+The commission % applies to the TOUR price only (same founder decision - extras are
+excluded); `totalEur` stays the FULL booking (master E.8 `booking_total_eur`).
+
 ```text
 commissionRate = effectiveCommissionPercent / 100
-commissionAmount = totalEur * commissionRate
+tourEur = tourRetail(booking ccy) * fxRateToEur
+commissionAmount = tourEur * commissionRate
 ```
 
 The effective commission may be the active Destination Spotlight rate if applicable. Once written to the booking, it never changes.

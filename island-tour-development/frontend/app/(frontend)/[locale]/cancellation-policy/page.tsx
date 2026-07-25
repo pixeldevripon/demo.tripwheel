@@ -3,8 +3,21 @@ import { notFound } from 'next/navigation';
 
 import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
 import { isLocale } from '@/lib/constants/locales';
+import { buildAlternates } from '@/lib/seo/alternates';
 
-export const metadata: Metadata = { title: 'Cancellation and Refund Policy' };
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+    const { locale } = await params;
+    const title = 'Cancellation and Refund Policy';
+    if (!isLocale(locale)) return { title };
+    return {
+        title,
+        alternates: buildAlternates(locale, '/cancellation-policy'),
+    };
+}
 
 /**
  * Global legal page - text is the verbatim handover copy from

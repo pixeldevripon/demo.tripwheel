@@ -10,6 +10,7 @@ import {
   CompanyInformationsResponseDto,
   MailchimpResponseDto,
   MollieConfigurationResponseDto,
+  PaymentProviderSettingsResponseDto,
   PublicCompanyInfoResponseDto,
   PublicSiteInfoResponseDto,
   PublicSiteSEOResponseDto,
@@ -285,6 +286,69 @@ export function ApiUpdateStripeConfigurationDocs() {
       status: 200,
       description: 'Stripe configuration updated successfully',
       type: StripeConfigurationResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+// ── Integrations Configuration (Meta CAPI + Google Translate) ────────────────
+
+export function ApiGetIntegrationsConfigurationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get integrations configuration - secrets masked (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Integration config (Meta CAPI + Google Translate); secrets returned masked',
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateIntegrationsConfigurationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update integrations configuration (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Integration config updated; an omitted/blank secret is left untouched',
+    }),
+    ...adminErrors,
+  );
+}
+
+// ── Active payment provider ──────────────────────────────────────────────────
+
+export function ApiGetPaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get the active checkout payment provider (Admin only)',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider retrieved successfully',
+      type: PaymentProviderSettingsResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdatePaymentProviderDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Switch the active checkout payment provider (Admin only)',
+      description:
+        'Rejected (400) when the target provider has no usable credentials. ' +
+        'Never retroactive: existing payments keep their own provider.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Active payment provider updated successfully',
+      type: PaymentProviderSettingsResponseDto,
     }),
     ...adminErrors,
   );

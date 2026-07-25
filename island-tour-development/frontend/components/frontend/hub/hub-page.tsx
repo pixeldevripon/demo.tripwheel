@@ -17,6 +17,8 @@ import {
 } from '@/lib/currency/current';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
+import { getSiteUrl } from '@/lib/seo/site-url';
 import {
     priceUnitLabel,
     type PriceUnitLabels,
@@ -31,6 +33,7 @@ import type { SearchHit } from '@/types/search';
 import { notFound } from 'next/navigation';
 import { FaqSection } from '../faq-section';
 import { MountReveal } from '../mount-reveal';
+import { JsonLd } from '../seo/json-ld';
 import { ToursBreadcrumb } from '../tours/tours-breadcrumb';
 import {
     HubAlsoWorthSection,
@@ -465,9 +468,10 @@ export async function HubPage({
     // Resolve the shopper currency + destination UUID in parallel (independent),
     // then fetch the published-only render aggregate for that currency so every
     // hub price (trips, our-picks, comparison, hero) is converted (guide §20.9).
-    const [currency, destination] = await Promise.all([
+    const [currency, destination, siteUrl] = await Promise.all([
         getServerCurrency(locale),
         getDestinationBySlug(destinationSlug, locale),
+        getSiteUrl(),
     ]);
     if (!destination) notFound();
 
@@ -487,6 +491,15 @@ export async function HubPage({
     const hubDict = dict.destination.hub;
     const listingsDict = dict.destination.listings;
     const breadcrumbLabel = render.breadcrumbLabel ?? render.name;
+
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd({
+        siteUrl,
+        locale,
+        trail: [
+            { name: destinationName, path: `/${destinationSlug}` },
+            { name: breadcrumbLabel, path: `/${destinationSlug}/${hubSlug}` },
+        ],
+    });
 
     // Hero meta pills - the 4 Figma pills (48024:11162):
     //   "Full day (8-9h)" · "From $120" · "BBQ lunch" · "Daily"
@@ -610,6 +623,7 @@ export async function HubPage({
 
     return (
         <HubDateProvider>
+            <JsonLd data={breadcrumbJsonLd} />
             {/* Pure fade (no lift - the hero's own MountReveal already lifts its
                 heading) so the skeleton -> page swap is smooth, never a snap. */}
             <MountReveal yOffset={0} duration={0.4}>

@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AvailabilityService } from '@/availability/availability.service';
+import { BookingsService } from '@/bookings/bookings.service';
 import { ReviewRequestsService } from '@/reviews/review-requests.service';
+import { SettlementsService } from '@/settlements/settlements.service';
 import { TiersService } from '@/tiers/tiers.service';
 import { ToursService } from '@/tours/tours.service';
 
@@ -33,7 +35,58 @@ export class NightlyJobsService {
     private readonly availability: AvailabilityService,
     private readonly publicCache: PublicCacheService,
     private readonly reviewRequests: ReviewRequestsService,
+    private readonly bookings: BookingsService,
+    private readonly settlements: SettlementsService,
   ) {}
+
+  /**
+   * Paid_in_full payout release (master SETTLEMENT-AND-PAYOUTS §2, B4). Flips
+   * eligible settlements RECORDED -> PAID_OUT once each booking's free-cancellation
+   * (clawback) window has closed. Hourly is ample - a booking becomes eligible the
+   * moment its window passes, and this catches it within the hour; the flip is
+   * guarded + idempotent, so re-runs never double-release. Actual funds move manually
+   * against the released rows in v1 (Stripe Connect automates it in v2).
+   */
+  @Cron(CronExpression.EVERY_HOUR, {
+    name: 'settlement-payout-release',
+    timeZone: 'UTC',
+  })
+  async settlementPayoutRelease(): Promise<void> {
+    try {
+      // Void stale obligations first (cancelled bookings), THEN release the rest:
+      // reversing before releasing guarantees a cancelled booking can never slip
+      // through into a payout on the same sweep.
+      await this.settlements.reverseStaleCancelledSettlements();
+      await this.settlements.releaseEligiblePayouts();
+    } catch (err) {
+      this.logger.error(
+        `Settlement payout release failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
+
+  /**
+   * Hold-expiry sweeper (master §5 / booking checklist flaw 4). Releases seats from
+   * ON_HOLD bookings past their `utcExpiresAt` so an abandoned checkout never causes
+   * a phantom sold-out. Idempotent recompute over an indexed working set, so a
+   * frequent in-process `@Cron` is the right tool (no BullMQ). Every minute keeps
+   * inventory tight; a no-op in the minutes nothing is stale. A payment that lands
+   * AFTER expiry is handled by `confirmFromPayment`'s pay-after-expiry recovery.
+   */
+  @Cron(CronExpression.EVERY_MINUTE, {
+    name: 'hold-expiry-sweeper',
+    timeZone: 'UTC',
+  })
+  async holdExpirySweep(): Promise<void> {
+    try {
+      await this.bookings.expireStaleHolds();
+    } catch (err) {
+      // Never let a sweep failure kill the scheduler; the next minute retries.
+      this.logger.error(
+        `Hold-expiry sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
 
   /**
    * Post-tour review requests, HOURLY rather than nightly.

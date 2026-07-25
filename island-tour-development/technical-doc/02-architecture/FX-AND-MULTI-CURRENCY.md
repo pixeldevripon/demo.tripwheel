@@ -5,9 +5,12 @@
 > (`island-tours-platform-master.html` v1.9), the master wins.
 >
 > Status: backend M1 (FX foundation) + M2 (pricing/quote/reserve wiring) + M3 (public-API
-> display conversion via `money`) + M4 (refresh scheduler + startup warm-up) BUILT and
-> tested. Still on the STATIC provider - a real `FxProvider` (Stripe FX Quotes) and M5
-> (frontend) are tracked in `03-implementation/BOOKING-CHECKLIST.md` section 6.
+> display conversion via `money`) + M4 (refresh scheduler + startup warm-up) + M5 (frontend)
+> BUILT and tested. A real **keyless ECB reference provider** backs the rate cache feed
+> (`FX_PROVIDER=ecb`, 2026-07-25). The CHARGE-side rate is BUILT too (task #28 / 5C,
+> 2026-07-25): at confirmation the PSP's actual conversion (Stripe
+> `balance_transaction.exchange_rate` / Mollie `settlementAmount`) re-anchors the booking's
+> EUR figures - see "Charge-rate reconciliation" below.
 
 ---
 
@@ -110,16 +113,28 @@ effectiveCommissionRate(tourId, at):
 
 ## Which provider we use
 
-**Right now: `StaticFxProvider` (dev/static), in every environment.** Correct for local and
-tests; NOT production-grade. The guide (20.1) mandates a real provider and "fail closed" for
-production checkout.
+FX splits into TWO rate paths with DIFFERENT providers (this was the design decision on
+2026-07-25 - Stripe FX is charge-coupled, not a batch rate feed, and its FX Quotes API is a
+gated preview absent from the installed SDK v22.2.2):
 
-- **Recommended production provider: Stripe FX Quotes** - it locks a quote you can attach to
-  the PaymentIntent, so the displayed converted amount and the charged payment share one rate.
-- **Open Exchange Rates** is a good display/cache fallback; **ECB** as a reference/audit source.
+- **Display / quote cache feed** (cards, the widget quote - the `FxProvider.fetchRates` seam):
+  **ECB reference rates**, live now. `EcbFxProvider` (`providers/ecb-fx.provider.ts`, name
+  `ecb`) pulls the ECB daily reference rates as keyless JSON via Frankfurter
+  (`api.frankfurter.dev`, no account/key). Selected by `FX_PROVIDER=ecb`. `StaticFxProvider`
+  (0.92) remains the default for local/tests (`FX_PROVIDER` unset / `static`).
+- **Charge rate** (what the money actually converted at): read back from the PSP AFTER a
+  successful charge and reconciled onto the booking at confirmation (task #28 / 5C, built
+  2026-07-25) - see "Charge-rate reconciliation" below. NOT usable as a `fetchRates` provider
+  (it exists only per-charge).
 
-Swapping in a real provider = implement the `FxProvider` interface + rebind `FX_PROVIDER` in
-`FxModule`. Nothing else changes (booking/tour code depends only on `FxRatesService`).
+**Hybrid outage policy** (`FxModule` factory, `createFxProvider`): in **non-production**, `ecb`
+is wrapped in `CompositeFxProvider` so any pair the provider fails to return is filled from the
+static rate - local dev/staging always converts. In **production**, `ecb` runs ALONE: an outage
+writes no rows and cross-currency **fails closed** downstream (`getRate` 503), never silently
+charging the stale static rate.
+
+Adding another feed provider (e.g. Open Exchange Rates, keyed) = implement `FxProvider` + add a
+branch to `createFxProvider`. Nothing else changes (callers depend only on `FxRatesService`).
 
 ---
 
@@ -139,19 +154,18 @@ defaults apply when unset).
 
 **Local:** nothing required - runs on defaults. Optionally set `FX_USD_TO_EUR` to test rates.
 
-### Production (guide-listed, NOT YET consumed)
-
-These activate only when a real provider class lands (the scheduler in M4 already runs; it
-just refreshes via `StaticFxProvider` until a real provider is bound):
+### Provider selection (consumed since 2026-07-25)
 
 ```
-FX_PROVIDER=stripe            # selects the provider impl (no effect yet)
-FX_PROVIDER_API_KEY=...       # provider credential (no effect yet)
+FX_PROVIDER=ecb               # 'static' (default) | 'ecb'. 'ecb' = keyless ECB reference feed.
+FX_PROVIDER_API_KEY=...       # RESERVED - not consumed; ECB needs no key. Add when a keyed
+                              # feed provider (e.g. Open Exchange Rates) lands.
 ```
 
-> WARNING: setting `FX_PROVIDER` / `FX_PROVIDER_API_KEY` does nothing today - the binding is
-> hardcoded to `StaticFxProvider` in `FxModule`. They take effect once a real provider class
-> is implemented and bound.
+- Validated in `env.validate.ts` (`FX_PROVIDER` must be `static` or `ecb`).
+- `FX_PROVIDER=ecb` in production; leave unset/`static` for local + tests.
+- `FX_PROVIDER_API_KEY` does nothing today (ECB is keyless); kept as a reserved name for a
+  future keyed provider.
 
 ---
 
@@ -183,26 +197,60 @@ FX_PROVIDER_API_KEY=...       # provider credential (no effect yet)
   FX refresh is an idempotent recompute, not a retry/concurrency queue.
 - `onModuleDestroy` clears the interval defensively (tests / hot-reload leave no live timer).
 
-## When the real (non-static) provider gets wired
+## Adding another feed provider
 
-The swap is intentionally tiny because the seam already exists:
+The swap is intentionally tiny because the seam already exists (this is how `EcbFxProvider`
+landed):
 
-1. Write ONE class implementing `FxProvider` (`fetchRates(pairs) -> ProviderRate[]`), e.g.
-   `StripeFxProvider`.
-2. Change ONE line in `FxModule` (`useExisting: StaticFxProvider` -> the real provider,
-   selected by `FX_PROVIDER`). Nothing else changes - all consumers depend only on
-   `FxRatesService`, and the M4 scheduler already refreshes whatever provider is bound.
+1. Write ONE class implementing `FxProvider` (`fetchRates(pairs) -> ProviderRate[]`), e.g. a
+   keyed Open Exchange Rates provider.
+2. Add a branch to `createFxProvider` in `FxModule`, selected by `FX_PROVIDER`. Nothing else
+   changes - all consumers depend only on `FxRatesService`, and the M4 scheduler already
+   refreshes whatever provider is bound.
 
-**Timing:** do it before production checkout serves cross-currency, alongside the Stripe
-PaymentIntent work (still pending in the booking phase). **Stripe FX Quotes** is recommended
-because it locks a quote you can attach to the PaymentIntent, so the displayed converted
-amount and the charged amount share one rate.
+(The charge-side rate needs no provider work at all - it is read back from the settled charge,
+see "Charge-rate reconciliation".)
 
 ## What is still needed for true production
 
-1. A real `FxProvider` implementation (Stripe FX Quotes) + rebind in `FxModule` (see above).
-2. Then production genuinely fails closed on cross-currency when the provider is down, instead
-   of leaning on the static default.
+1. DONE (2026-07-25): a real feed provider (`EcbFxProvider`) + env-selected binding in `FxModule`;
+   production now genuinely fails closed on cross-currency when ECB is down (no static injection).
+2. DONE (2026-07-25, task #28/5C): the PSP's actual charge conversion is reconciled onto the
+   booking at confirmation for BOTH PSPs - see "Charge-rate reconciliation" below. (The original
+   idea - Stripe `currency_conversion` ON the PaymentIntent - is a gated-preview API absent from
+   SDK v22.2.2; reading the rate back from the settled charge achieves the same truth without it.)
+
+---
+
+## Charge-rate reconciliation (task #28 / 5C - built 2026-07-25)
+
+The traveler is always CHARGED the fixed `Booking.currency` amount (both PSPs receive exact
+amounts - Stripe minor units, Mollie decimal strings), so the PSP conversion happens on OUR side
+of the money: charge currency -> the EUR settlement account. At confirmation that ACTUAL rate
+replaces the reserve-time ECB snapshot for the booking's EUR normalization:
+
+- **Stripe**: the charge's `balance_transaction.exchange_rate` (expanded on `retrieveCharge` and
+  `retrievePaymentIntent` -> `latest_charge.balance_transaction`). Used ONLY when the balance
+  transaction currency is literally `eur` - a non-EUR-settled Stripe account would supply a rate
+  to the wrong currency.
+- **Mollie**: `settlementAmount.value / amount.value` on the fetched payment. Used only when the
+  settlement currency is EUR and the charge currency is not (Mollie omits the field when it
+  settles nothing, e.g. PayPal-settled amounts).
+
+Mechanics: `stripeChargeFx` / `mollieChargeFx` (payments.service pure helpers) build a `ChargeFx`
+`{rateToEur, provider, asOf}` that rides as the 3rd argument of
+`BookingsService.confirmFromPayment` (webhook AND settle-on-return paths) into
+`finalizeConfirmation`, which - inside the existing mark-first guard - recomputes `fxRateToEur`
+(6dp) / `totalEur` / `commissionAmount` (2dp HALF_UP) and stamps `eurFxProvider` /
+`eurFxProviderAsOf` with the PSP + its timestamp (the pre-existing audit columns; no migration).
+The settlement ledger row is written from the same reconciled figures, so the conversion value
+(rule #22) and what operators are owed both reflect the rate the money actually moved at.
+
+Invariants preserved: the commission RATE stays the reserve snapshot (tier changes are never
+retroactive) - only its EUR value re-anchors. EUR-charged bookings never reconcile (nothing was
+converted; rate stays 1). Missing/foreign-currency PSP data falls back to the prior
+ECB-snapshot path unchanged. The quote/display feed remains ECB - travelers see ECB-derived
+prices and are charged exactly the displayed amount; reconciliation only trues up OUR EUR books.
 
 ---
 

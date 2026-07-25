@@ -121,6 +121,13 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
       ? null
       : 'must be a positive number (e.g. 0.92)';
   },
+  // FX provider selector (default 'static'). 'ecb' = keyless ECB reference rates
+  // (Frankfurter). Charge-side FX (Stripe currency_conversion) is separate (payments
+  // phase). See technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md.
+  FX_PROVIDER: (v) =>
+    ['static', 'ecb'].includes(v.toLowerCase())
+      ? null
+      : "must be 'static' or 'ecb'",
   // FX cache tuning (all optional - code defaults apply when unset). See
   // technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md.
   FX_RATE_TTL_MINUTES: positiveIntEnv, // rate freshness for booking quotes (default 120)

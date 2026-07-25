@@ -169,6 +169,20 @@ export function ThankYouSummary({
                                     label={dict.traveler}>
                                     {booking.partyLabel}
                                 </DetailRow>
+                                {booking.extras.length > 0 && (
+                                    // Same plus-tier icon as the trip row: there is
+                                    // no dedicated Figma "extras" glyph yet - swap
+                                    // it in when one exists.
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-trip.svg'
+                                        label={dict.extras}>
+                                        <span className='flex flex-col items-end gap-0.5'>
+                                            {booking.extras.map(line => (
+                                                <span key={line}>{line}</span>
+                                            ))}
+                                        </span>
+                                    </DetailRow>
+                                )}
                                 {booking.guestLead && (
                                     <DetailRow
                                         icon='/icons/thank-you/detail-profile.svg'
