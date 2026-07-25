@@ -10,7 +10,10 @@ import type {
     CustomerBookingSummary,
     PaginatedBookings,
     PaginatedPayments,
+    PaginatedSettlements,
     PaymentsQueryParams,
+    SettlementSummary,
+    SettlementsQueryParams,
 } from '@/types/booking';
 import { apiFetch } from './fetch';
 
@@ -74,5 +77,18 @@ export const paymentsDashboardApi = {
     /** Scoped server-side like bookings; requires VIEW_PAYMENTS. */
     list(params: PaymentsQueryParams = {}): Promise<PaginatedPayments> {
         return apiFetch<PaginatedPayments>(`/payments${buildQuery(params)}`);
+    },
+};
+
+export const settlementsDashboardApi = {
+    /** Money-movement ledger. Admin sees all; operator scoped server-side. VIEW_PAYMENTS. */
+    list(params: SettlementsQueryParams = {}): Promise<PaginatedSettlements> {
+        return apiFetch<PaginatedSettlements>(
+            `/settlements${buildQuery(params)}`,
+        );
+    },
+    /** Roll-up: EUR owed out (pending) vs released. Same scoping as list(). */
+    summary(): Promise<SettlementSummary> {
+        return apiFetch<SettlementSummary>('/settlements/summary');
     },
 };

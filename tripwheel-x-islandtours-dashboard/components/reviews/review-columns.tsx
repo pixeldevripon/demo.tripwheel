@@ -109,7 +109,9 @@ export function makeReviewColumns(
         const meta = REVIEW_STATUS[row.original.moderationStatus];
         return (
           <span className='flex items-center gap-2'>
-            <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>
+            <StatusBadge variant={meta.variant} hint={meta.hint}>
+              {meta.label}
+            </StatusBadge>
             {row.original.openFlagCount > 0 && (
               // A flag is a request, not an action - it never changes the
               // status, so it needs its own marker or it is invisible.

@@ -88,7 +88,9 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       cell: ({ row }) => {
         const cfg = OPERATOR_VERIFICATION[row.original.verificationStatus];
         return (
-          <StatusBadge variant={cfg.variant}>{cfg.label}</StatusBadge>
+          <StatusBadge variant={cfg.variant} hint={cfg.hint}>
+            {cfg.label}
+          </StatusBadge>
         );
       },
       enableSorting: true,
@@ -99,7 +101,11 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
       cell: ({ row }) => {
         const isActive = row.original.isActive;
         const meta = ACTIVE_STATUS[isActive ? 'active' : 'inactive'];
-        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+        return (
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
+        );
       },
       enableSorting: true,
     },

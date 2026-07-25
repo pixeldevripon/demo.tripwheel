@@ -7,7 +7,11 @@ import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
-import { BOOKING_STATUS } from '@/components/common/status-maps';
+import {
+  BOOKING_DISPLAY_STATUS,
+  SETTLEMENT_METHOD_LABEL,
+  SETTLEMENT_STATUS,
+} from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { bookingMoney, paymentModelLabel, refundDue } from '@/lib/bookings/format';
 import type { BookingListItem } from '@/types/booking';
@@ -127,8 +131,12 @@ export function makeBookingColumns({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const meta = BOOKING_STATUS[row.original.status];
-        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+        const meta = BOOKING_DISPLAY_STATUS[row.original.displayStatus];
+        return (
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
+        );
       },
       enableSorting: true,
     },
@@ -149,6 +157,33 @@ export function makeBookingColumns({
                 ? ` · deposit ${money(b.depositAmount, b.currency)}`
                 : ''}
             </span>
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: 'settlement',
+      header: 'Settlement',
+      cell: ({ row }) => {
+        const b = row.original;
+        return (
+          <div className="min-w-0">
+            {b.settlementStatus ? (
+              <StatusBadge
+                variant={SETTLEMENT_STATUS[b.settlementStatus].variant}
+                hint={SETTLEMENT_STATUS[b.settlementStatus].hint}
+              >
+                {SETTLEMENT_STATUS[b.settlementStatus].label}
+              </StatusBadge>
+            ) : (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
+            {b.settlementMethod && (
+              <span className="text-xs text-muted-foreground block mt-0.5">
+                {SETTLEMENT_METHOD_LABEL[b.settlementMethod]}
+              </span>
+            )}
           </div>
         );
       },

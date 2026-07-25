@@ -114,7 +114,11 @@ export function makeTripColumns({
       header: 'Status',
       cell: ({ row }) => {
         const meta = TRIP_STATUS[row.original.status];
-        return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+        return (
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
+        );
       },
       enableSorting: true,
     },

@@ -32,10 +32,10 @@ export function SiteHeader({ userName, userEmail, userRole, userPermissions, use
         <div className="flex items-center gap-2 md:gap-4">
           <CommandPalette userRole={userRole} userPermissions={userPermissions} />
           <ModeToggle />
-          <HugeiconsIcon
+    {/*       <HugeiconsIcon
             className="cursor-pointer size-5 text-muted-foreground hover:text-foreground transition-colors"
             icon={Notification01Icon}
-          />
+          /> */}
           <ProfileDropdown
             loggedInUser={{
               name: userName,

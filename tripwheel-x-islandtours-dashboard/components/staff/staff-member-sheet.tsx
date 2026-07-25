@@ -42,7 +42,9 @@ export function StaffMemberSheet({
                     <SheetTitle className='flex items-center gap-2'>
                         {member?.user.name}
                         {statusMeta && (
-                            <StatusBadge variant={statusMeta.variant}>
+                            <StatusBadge
+                                variant={statusMeta.variant}
+                                hint={statusMeta.hint}>
                                 {statusMeta.label}
                             </StatusBadge>
                         )}

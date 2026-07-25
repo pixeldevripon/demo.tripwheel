@@ -293,7 +293,9 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
             {/* Status + lifecycle. Publish lives in the readiness bar. */}
             <div className='mb-6 flex flex-wrap items-center justify-between gap-3'>
                 <div className='flex items-center gap-3'>
-                    <StatusBadge variant={statusMeta.variant}>
+                    <StatusBadge
+                        variant={statusMeta.variant}
+                        hint={statusMeta.hint}>
                         {statusMeta.label}
                     </StatusBadge>
                     {trip.isSponsored && (

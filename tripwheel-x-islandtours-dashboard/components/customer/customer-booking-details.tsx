@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
+    BOOKING_DISPLAY_STATUS,
     BOOKING_PAYMENT_STATE,
-    BOOKING_STATUS,
 } from '@/components/common/status-maps';
 import { useRequestCancellation } from '@/hooks/bookings/use-bookings';
 import {
@@ -70,7 +70,7 @@ export function CustomerBookingDetails({
 
     if (!booking) return <Sheet open={false} onOpenChange={onOpenChange} />;
 
-    const statusMeta = BOOKING_STATUS[booking.status];
+    const statusMeta = BOOKING_DISPLAY_STATUS[booking.displayStatus];
     const payMeta = BOOKING_PAYMENT_STATE[booking.paymentStatus];
     const balance = Number(booking.balanceAmount);
     const deposit = Number(booking.depositAmount);
@@ -82,10 +82,12 @@ export function CustomerBookingDetails({
                 <SheetHeader>
                     <SheetTitle className='flex flex-wrap items-center gap-2'>
                         <span className='font-mono'>{booking.displayRef}</span>
-                        <StatusBadge variant={statusMeta.variant}>
+                        <StatusBadge
+                            variant={statusMeta.variant}
+                            hint={statusMeta.hint}>
                             {statusMeta.label}
                         </StatusBadge>
-                        <StatusBadge variant={payMeta.variant}>
+                        <StatusBadge variant={payMeta.variant} hint={payMeta.hint}>
                             {payMeta.label}
                         </StatusBadge>
                     </SheetTitle>

@@ -122,7 +122,9 @@ export function customerColumns(opts: {
             <span className="tabular-nums font-medium">
               {row.original.bookingsCount}
             </span>
-            <StatusBadge variant={tier.variant}>{tier.label}</StatusBadge>
+            <StatusBadge variant={tier.variant} hint={tier.hint}>
+              {tier.label}
+            </StatusBadge>
           </div>
         );
       },
@@ -161,7 +163,7 @@ export function customerColumns(opts: {
               />
               {c.reviewsLeft}
             </span>
-            <StatusBadge variant={state.variant}>
+            <StatusBadge variant={state.variant} hint={state.hint}>
               {/* The count belongs IN the badge when there is one: "Awaiting"
                   alone leaves the reader hunting for how many. */}
               {c.awaitingReview > 0

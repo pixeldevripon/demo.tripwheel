@@ -12,6 +12,14 @@ export type BookingStatus =
     | 'PENDING'
     | 'REJECTED';
 
+/**
+ * Server-derived status for display. Equals `status`, except a CONFIRMED
+ * booking with a pending cancellation request reads CANCELLATION_REQUESTED.
+ * Render this in status chips; use `status` for logic. Mirrors the backend
+ * `deriveBookingDisplayStatus` in `src/bookings/dto/booking.dto.ts`.
+ */
+export type BookingDisplayStatus = BookingStatus | 'CANCELLATION_REQUESTED';
+
 export type BookingPaymentModel =
     | 'OPERATOR_LINK'
     | 'ON_ARRIVAL'
@@ -44,6 +52,8 @@ export interface BookingListItem {
     tourId: string;
     departureId: string | null;
     status: BookingStatus;
+    /** Derived status for chips (CANCELLATION_REQUESTED overlay). Render this. */
+    displayStatus: BookingDisplayStatus;
     freesale: boolean;
     utcExpiresAt: string | null;
     utcConfirmedAt: string | null;
@@ -82,6 +92,10 @@ export interface BookingListItem {
      */
     canRequestCancellation: boolean;
     cancellationBlockedReason: CancellationBlockedReason | null;
+    /** Settlement-ledger status of this booking (null until confirmed). */
+    settlementStatus: SettlementStatus | null;
+    /** HOW this booking settles. */
+    settlementMethod: SettlementMethod | null;
 }
 
 export type CancellationBlockedReason =
@@ -152,6 +166,10 @@ export interface PaymentListItem {
     contactFullName: string | null;
     bookingLocalDate: string;
     paymentModel: BookingPaymentModel;
+    /** Settlement status of the parent booking (null until confirmed). */
+    settlementStatus: SettlementStatus | null;
+    /** HOW the parent booking settles. */
+    settlementMethod: SettlementMethod;
 }
 
 export interface PaginatedPayments {
@@ -169,6 +187,69 @@ export interface PaymentsQueryParams {
     provider?: PaymentProvider;
     search?: string;
     /** Created-at range, YYYY-MM-DD (UTC days). */
+    from?: string;
+    to?: string;
+}
+
+// ── Settlements (money-movement ledger; backend `SettlementListItemDto`) ────────
+
+export type SettlementStatus = 'RECORDED' | 'PAID_OUT' | 'INVOICED' | 'SETTLED';
+
+/** HOW a booking settles (derived from its payment model). */
+export type SettlementMethod =
+    | 'SELF_SETTLING'
+    | 'OPERATOR_PAYOUT'
+    | 'COMMISSION_INVOICE';
+
+export interface SettlementSummary {
+    /** EUR still owed out to operators (paid_in_full nets not yet released). */
+    owedPending: string;
+    owedCount: number;
+    /** EUR already released. */
+    released: string;
+    releasedCount: number;
+}
+
+export interface SettlementListItem {
+    id: string;
+    bookingId: string;
+    displayRef: string;
+    operatorId: string;
+    operatorName: string | null;
+    tourName: string | null;
+    paymentModel: BookingPaymentModel;
+    /** All amounts EUR. */
+    amountCollected: string;
+    commissionOwed: string;
+    /** + = Island Tours owes the operator; - = operator owes IT. */
+    netPosition: string;
+    operatorPayout: string | null;
+    status: SettlementStatus;
+    currency: string;
+    settledAt: string | null;
+    createdAt: string;
+    /** paid_in_full net owed, past its clawback window, still RECORDED -> ready to pay. */
+    payoutEligible: boolean;
+    /** HOW it settles. */
+    method: SettlementMethod;
+    /** WHEN the operator payout releases (free-cancel window close); null unless OPERATOR_PAYOUT. */
+    payoutReleaseAt: string | null;
+}
+
+export interface PaginatedSettlements {
+    total: number;
+    page: number;
+    limit: number;
+    data: SettlementListItem[];
+}
+
+export interface SettlementsQueryParams {
+    page?: number;
+    limit?: number;
+    operatorId?: string;
+    status?: SettlementStatus;
+    paymentModel?: BookingPaymentModel;
+    /** Recorded-at range, YYYY-MM-DD (UTC days). */
     from?: string;
     to?: string;
 }

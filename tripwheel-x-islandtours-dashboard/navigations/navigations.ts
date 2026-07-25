@@ -1,6 +1,7 @@
 import {
     Calendar03Icon,
     CalendarRemove01Icon,
+    Coins01Icon,
     CreditCardIcon,
     DashboardSquare01Icon,
     FilterHorizontalIcon,
@@ -83,6 +84,12 @@ const dashboardNav: NavGroup[] = [
                 title: 'Payments',
                 url: 'payments',
                 icon: CreditCardIcon,
+                permissions: [Permission.VIEW_PAYMENTS],
+            },
+            {
+                title: 'Settlements',
+                url: 'settlements',
+                icon: Coins01Icon,
                 permissions: [Permission.VIEW_PAYMENTS],
             },
         ],
@@ -261,6 +268,12 @@ const customerNav: NavGroup[] = [
                 title: 'Payments',
                 url: 'payments',
                 icon: CreditCardIcon,
+                permissions: [Permission.VIEW_PAYMENTS],
+            },
+            {
+                title: 'Settlements',
+                url: 'settlements',
+                icon: Coins01Icon,
                 permissions: [Permission.VIEW_PAYMENTS],
             },
             {

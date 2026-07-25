@@ -135,7 +135,11 @@ export function buildStaffColumns({
             header: 'Status',
             cell: ({ row }) => {
                 const meta = STAFF_MEMBER_STATUS[row.original.status];
-                return <StatusBadge variant={meta.variant}>{meta.label}</StatusBadge>;
+                return (
+                    <StatusBadge variant={meta.variant} hint={meta.hint}>
+                        {meta.label}
+                    </StatusBadge>
+                );
             },
             enableSorting: true,
         },

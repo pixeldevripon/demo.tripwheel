@@ -2,7 +2,11 @@
 
 import { type ColumnDef } from '@tanstack/react-table';
 import { StatusBadge } from '@/components/common/status-badge';
-import { PAYMENT_STATUS } from '@/components/common/status-maps';
+import {
+  PAYMENT_STATUS,
+  SETTLEMENT_METHOD_LABEL,
+  SETTLEMENT_STATUS,
+} from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
@@ -78,7 +82,10 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <StatusBadge variant={PAYMENT_STATUS[row.original.status].variant}>
+        <StatusBadge
+          variant={PAYMENT_STATUS[row.original.status].variant}
+          hint={PAYMENT_STATUS[row.original.status].hint}
+        >
           {PAYMENT_STATUS[row.original.status].label}
         </StatusBadge>
       ),
@@ -100,6 +107,31 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
                 {p.intentId}
               </span>
             )}
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      id: 'settlement',
+      header: 'Settlement',
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <div className="min-w-0">
+            {p.settlementStatus ? (
+              <StatusBadge
+                variant={SETTLEMENT_STATUS[p.settlementStatus].variant}
+                hint={SETTLEMENT_STATUS[p.settlementStatus].hint}
+              >
+                {SETTLEMENT_STATUS[p.settlementStatus].label}
+              </StatusBadge>
+            ) : (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
+            <span className="text-xs text-muted-foreground block mt-0.5">
+              {SETTLEMENT_METHOD_LABEL[p.settlementMethod]}
+            </span>
           </div>
         );
       },
