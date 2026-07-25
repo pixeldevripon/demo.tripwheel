@@ -15,8 +15,10 @@ import {
   PaymentKind,
   PaymentProvider,
   PaymentStatus,
+  SettlementStatus,
 } from '@prisma/client';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
+import { SettlementMethod } from '@/settlements/dto/settlement.dto';
 
 // ── Response ──────────────────────────────────────────────────────────────────
 
@@ -111,6 +113,25 @@ export class PaymentListItemDto {
     enum: ['OPERATOR_LINK', 'ON_ARRIVAL', 'PAID_IN_FULL', 'OPERATOR_FULL'],
   })
   paymentModel!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: SettlementStatus,
+    description:
+      'Settlement-ledger status of the parent booking (null until confirmed).',
+  })
+  settlementStatus!: SettlementStatus | null;
+  @ApiProperty({
+    enum: SettlementMethod,
+    description:
+      'HOW the parent booking settles (derived from its payment model).',
+  })
+  settlementMethod!: SettlementMethod;
+  @ApiProperty({
+    description:
+      "True when the parent booking's paid_in_full payout is HELD by a pending " +
+      'cancellation request. Render "On hold" beside the settlement badge.',
+  })
+  settlementHeld!: boolean;
 }
 
 export class ListPaymentsResponseDto {

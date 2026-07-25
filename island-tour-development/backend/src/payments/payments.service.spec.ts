@@ -393,6 +393,66 @@ describe('PaymentsService', () => {
       );
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
     });
+
+    // Async refund lifecycle (B5 hardening): executeRefund records bank-method
+    // refunds as PROCESSING; these events are where they settle or fail.
+    it('reconciles an in-flight refund to SUCCEEDED on refund.updated', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_r1',
+        type: 'refund.updated',
+        data: { object: { id: 're_1', status: 'succeeded' } },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: {
+          refundId: 're_1',
+          kind: PaymentKind.REFUND,
+          // Only an in-flight row settles; a FAILED refund never resurrects.
+          status: { in: [PaymentStatus.PROCESSING] },
+        },
+        data: { status: PaymentStatus.SUCCEEDED },
+      });
+    });
+
+    it('flips a refund to FAILED on refund.failed - even from SUCCEEDED (late bank failure)', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_r2',
+        type: 'refund.failed',
+        data: { object: { id: 're_1', status: 'failed' } },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: {
+          refundId: 're_1',
+          kind: PaymentKind.REFUND,
+          status: {
+            in: [PaymentStatus.PROCESSING, PaymentStatus.SUCCEEDED],
+          },
+        },
+        data: { status: PaymentStatus.FAILED },
+      });
+    });
+
+    it('ignores a still-pending refund.updated (no new information)', async () => {
+      stripe.constructEvent.mockResolvedValue({
+        id: 'evt_r3',
+        type: 'refund.updated',
+        data: { object: { id: 're_1', status: 'pending' } },
+      });
+      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+
+      await svc.handleWebhook(rawBody, 'sig');
+
+      expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleMollieWebhook', () => {

@@ -383,6 +383,20 @@ enum PaymentProvider {
   MOLLIE
 }
 
+/// Settlement ledger lifecycle (master SETTLEMENT-AND-PAYOUTS §2).
+/// RECORDED  = row written at confirmation, no money moved yet (v1 default; deposit
+///             models stay here, net ~0).
+/// PAID_OUT  = paid_in_full operator payout released after the cancellation window.
+/// INVOICED  = operator_full commission invoiced (v2).
+/// SETTLED   = fully reconciled / closed.
+enum SettlementStatus {
+  RECORDED
+  PAID_OUT
+  INVOICED
+  SETTLED
+  REVERSED // booking cancelled (+ refunded): the operator-payout obligation is voided, net -> 0
+}
+
 enum PaymentKind {
   DEPOSIT
   BALANCE

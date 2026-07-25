@@ -49,9 +49,9 @@ Uncommitted at doc creation: consent-line tweak (`checkout-payment.tsx`, `en.jso
 | Payment (card / PayPal / iDEAL) | 🟢 ~90% | Mollie webhook is a stub; payment-succeeds-after-hold-expired reconciliation |
 | Confirmation email | 🟡 ~75% | Resend transport live (2026-07-19); no invoice attachment; sent inline not queued |
 | Operator payment-link email | 🔴 not built | second `operator_link` balance email (names operator + secure link) |
-| Scheduled payout after cancel window | 🔴 not built | needs Settlement ledger + delayed payout job (RECORDED -> PAID_OUT, clawback-safe) |
-| Payout / settlement | 🔴 not built | no Settlement model, no rows at confirm, no net_position convention (Connect = v2) |
-| Cancellation + refunds | 🟡 ~60% | refund is category-only: no real Stripe refund, no REFUND row, no per-model amount, no tokenized cancel page |
+| Scheduled payout after cancel window | 🟢 built (#49) | hourly cron flips eligible paid_in_full RECORDED->PAID_OUT after the free-cancel window; v1 release-only (funds manual), Connect auto = v2 |
+| Payout / settlement | 🟢 built (#48/#49) | ledger + row-per-confirmation + net_position + scheduled release + admin GET /settlements + dashboard table; Connect = v2 |
+| Cancellation + refunds | 🟢 ~90% (#50) | real Stripe refund + REFUND row on cancel + pay-after-expiry; model-aware amount; tokenized cancel page + 3-recipient emails done. Remaining: partial-refund policy amounts + durable retry (B6) |
 | Provider-backed FX | 🟢 ~95% | ECB keyless reference feed live (#83); only the Stripe charge-rate (currency_conversion on the PaymentIntent, payments phase #28/5C) remains |
 | Frontend widget / checkout | 🟡 ~80% | pickup, add-ons, timing affordances; real-TYP data still demo |
 | Tracking / analytics | 🔴 ~5% | whole §8.2/§8.3 browser + CAPI + GTM + consent layer |
@@ -64,17 +64,44 @@ Legend: 🟢 done/nearly · 🟡 partial · 🔴 not built.
 
 Checkboxes here mirror the two checklists. Tick both when a task lands.
 
-### A. Settlement & payout (0/5 v1; 2 v2 deferred)
-- [ ] A1 `Settlement` model + `SettlementStatus` enum
-- [ ] A2 Write one Settlement row per booking at confirmation (deposit models net ~0)
-- [ ] A3 `net_position` sign convention enforced in writes
-- [ ] A4 `paid_in_full` scheduled payout after cancel window (RECORDED -> PAID_OUT, clawback-safe)
-- [ ] A5 Delayed payout job wiring (depends A1-A4)
+### A. Settlement & payout (5/5 v1; 2 v2 deferred)
+- [x] **A1 `Settlement` model + `SettlementStatus` enum** (2026-07-25, task #48). Migration
+  `20260725060944_add_settlement_ledger`: core EUR ledger (amountCollected, commissionOwed,
+  netPosition) + v2 extension hooks (operatorPayout, status RECORDED|PAID_OUT|INVOICED|SETTLED,
+  settledAt, externalRef, currency). `Code:` `prisma/bookings.prisma:Settlement`, `enums.prisma`.
+- [x] **A2 One Settlement row per booking at confirmation** (2026-07-25, #48). Written in
+  `finalizeConfirmation` (the once-per-booking fire point, so every model gets exactly one row -
+  incl. operator_full born-confirmed at reserve), EUR, idempotent upsert on unique bookingId,
+  best-effort (a ledger miss logs for backfill, never fails a captured-money confirmation).
+  `Code:` `bookings.service.ts:writeSettlement`.
+- [x] **A3 `net_position` sign convention enforced** (2026-07-25, #48). `netPosition = amountCollected
+  - commissionOwed`: + = IT owes operator (paid_in_full remainder), - = operator owes IT (operator_full).
+  amountCollected(EUR) = totalEur (paid_in_full) / 0 (operator_full) / deposit*fxRate (deposit models).
+  3 tests assert each model's sign. Backend 1506/70 green.
+- [x] **A4 `paid_in_full` scheduled payout after cancel window** (2026-07-25, task #49).
+  `SettlementsService.releaseEligiblePayouts` flips eligible paid_in_full nets RECORDED -> PAID_OUT
+  once the booking's free-cancellation window closes - the SAME deadline formula the refund path uses,
+  so a payout is never released while a free refund is still possible. Sets `operatorPayout` +
+  `settledAt`; guarded `updateMany` on `status: RECORDED` (idempotent/race-safe). Only standing
+  bookings (CONFIRMED/REDEEMED). v1 = release only (funds move manually against it; Connect automates
+  in v2). `Code:` `settlements.service.ts:releaseEligiblePayouts`.
+- [x] **A5 Delayed payout job wiring** (2026-07-25, #49). Hourly `@Cron` `settlementPayoutRelease` in
+  `NightlyJobsService` drives it (in-process, matching the sweeper/nightly convention). PLUS the admin
+  read surface bundled in: `GET /settlements` (`SettlementsService.list`, VIEW_PAYMENTS, operator-scoped)
+  + a per-row computed `payoutEligible`, and the **dashboard Settlements table** in the separate repo
+  (`components/settlements/*`, nav entry, SETTLEMENT_STATUS badge). Backend 1511/71 green; dashboard
+  tsc/eslint/build green. `Code:` `settlements` module, `workers/nightly-jobs.service.ts`.
 - [ ] A6 (v2) `operator_full` reintroduced + commission collection rail - deferred
 - [ ] A7 (v2) Stripe Connect Express (destination charge, application_fee) - deferred
 
 ### B. Cancellation & refunds (0/4)
-- [ ] B1 Execute real Stripe refund on cancellation + write `REFUND` Payment row
+- [x] **B1 Execute real Stripe refund on cancellation + write `REFUND` Payment row** (2026-07-25, #50).
+  `BookingsService.executeRefund`: real `stripe.refundIntent` on the captured charge + a `REFUND`
+  Payment row (SUCCEEDED, refundId). Fired from `cancel()` on a FULL verdict and from
+  `confirmFromPayment` on the pay-after-expiry refund-owed case (B2). Model-aware for free (refunds
+  the captured amount). Idempotent (skip if SUCCEEDED REFUND exists + stable idempotency key),
+  config-gated, best-effort. Email copy -> master's "3 to 5 business days". Shared `StripeModule`
+  extracted so Bookings can inject Stripe without a PaymentsModule cycle. 3 new tests; suite 1513/71.
 - [ ] B2 Payment-model-aware refund amount (deposit-only vs full; partial)
 - [x] B3 Tokenized cancel confirmation page (no raw-click) - BUILT 2026-07-16, see round 4 below.
   (The "account fallback" booking-lookup half of B3 is still open.)
@@ -535,10 +562,18 @@ only differences. 1038 tests / 48 suites green.
   tests (re-claim-confirms / sold-out-no-confirm); backend 1503/70 green.
 - [ ] D3 Confirmation-email job (queued, retry + backoff) instead of inline
 - [ ] D4 CAPI conversion job (queued, idempotent by event id)
-- [ ] D5 Scheduled `paid_in_full` payout job (delayed) - pairs with A4/A5
+- [x] D5 Scheduled `paid_in_full` payout job - hourly `@Cron` `settlementPayoutRelease` (2026-07-25, #49; release-only in v1, Connect auto = v2).
 - [ ] D6 Pre-tour reminder job (delayed) - pairs with C3
 - [ ] D7 Affiliate postback job (delayed, approve after window)
 - [ ] D8 Retries + exponential backoff, keep failed jobs (no silent drop)
+
+> **Settlement visibility (2026-07-25, #86, founder-flagged):** the dashboard now answers
+> which/when/how a booking settles. Settlements rows gained `method` (SELF_SETTLING / OPERATOR_PAYOUT /
+> COMMISSION_INVOICE) + `payoutReleaseAt` (the free-cancel window close = when a paid_in_full payout
+> releases) + a `GET /settlements/summary` roll-up (owed-pending vs released); the Settlements table
+> shows a "Settles" column + a summary header. Bookings + Payments list rows gained a settlement badge
+> (status + method) via `settlementMethodFor` on `BookingListItemDto`/`PaymentListItemDto`. Backend
+> 1511/71 + dashboard build green.
 
 ### E. Tracking / analytics (6/8)
 - [x] **E1 `booking_complete` browser push on TYP** (2026-07-25, task #42). The TYP server
@@ -648,9 +683,9 @@ Ordered so each step de-risks the next and nothing produces wrong money.
 - [ ] **1. Real-TYP data + fire-point reconciliation** (E3 -> E1 -> E2) - foundational; unblocks the browser push. *(TRK2 resume point.)*
 - [ ] **2. Operator-balance email + switch to Resend** (C1 + C4) - completes the two-email requirement.
 - [ ] **3. Hold-expiry sweeper wiring** (D2 / G2) - stops phantom sold-outs; small.
-- [ ] **4. Settlement ledger** (A1-A3) - write one row per booking at confirm.
+- [x] **4. Settlement ledger** (A1-A3) - DONE 2026-07-25 (#48): row per booking at confirm, net_position sign enforced.
 - [ ] **5. Scheduled `paid_in_full` payout after cancel window** (A4/A5, D5) - depends on 4.
-- [ ] **6. Real refund execution** (B1-B2) - actual Stripe refund + REFUND row.
+- [x] **6. Real refund execution** (B1-B2) - DONE 2026-07-25 (#50): real Stripe refund + REFUND row (cancel + pay-after-expiry).
 - [ ] **7. Outbox + queued idempotent jobs** (D1, D3-D4, D8) - hardening once jobs exist.
 - [ ] **8. Tracking fan-out** (E5-E8) - PII hashing, then GTM/CAPI/Consent.
 - [ ] **9. Real FX provider** (G5) - swap the static provider for live rates.
@@ -728,7 +763,7 @@ end-to-end and reports correctly"** milestone - steps 1-3 below.
 ### Next session (not tonight)
 
 - [ ] Step 4 - Settlement ledger (#48) -> Step 5 - scheduled payout (#49, blocked by #48)
-- [ ] Step 6 - Real refund execution (#50)
+- [x] Step 6 - Real refund execution (#50) DONE 2026-07-25
 - [ ] Step 7 - Outbox + queued jobs (#51)
 - [ ] Step 8 - Tracking fan-out (#43-#45) - **blocked on creds**
 - [ ] Step 9 - Real FX provider (#53 / G5)
@@ -881,14 +916,44 @@ BOOKING-WIDGET-CHECKLIST, and this doc. Blocked-on-founder items are marked; ski
    CONFIRMED, `recoverExpiredBooking` re-claims seats when capacity remains, else stays EXPIRED + refund
    owed (B5/#50). Backend 1503/70 green. Original note follows: hold-expiry sweeper + the
    payment-succeeds-after-expiry reconciliation branch in `confirmFromPayment`.
-8. B3 = CP4: `Settlement` model + one row per booking at confirmation + `net_position` sign
-   convention (deposit models net ~0).
-9. B4 = CP5: scheduled `paid_in_full` payout after the cancel window (delayed job, clawback-safe,
-   RECORDED -> PAID_OUT).
-10. B5 = CP6: REAL Stripe refund execution + `REFUND` Payment row + payment-model-aware
-    `computeRefund` + the locked "3 to 5 business days" C23-aware FINAL cancellation-confirmation
-    emails (traveller + operator) - wire onto the new `/dashboard/cancellation-requests` Mark
-    cancelled action.
+8. [x] B3 = CP4 (DONE 2026-07-25, #48): `Settlement` model + `SettlementStatus` enum + one row per
+   booking at confirmation (in `finalizeConfirmation`) + `net_position` sign convention (deposit ~0,
+   paid_in_full = +remainder, operator_full = -commission). Backend 1506/70 green. **NEXT = B4 #49
+   (payout executor: RECORDED->PAID_OUT after the cancel window; consumes this ledger).**
+9. [x] B4 = CP5 (DONE 2026-07-25, #49): scheduled `paid_in_full` payout release after the cancel
+   window (hourly `@Cron` -> `releaseEligiblePayouts`, clawback-safe via the refund path's deadline,
+   RECORDED -> PAID_OUT + operatorPayout). Bundled: admin `GET /settlements` + dashboard Settlements
+   table (separate repo). v1 release-only (funds manual); Connect auto = v2. Backend 1511/71 green,
+   dashboard build green. **NEXT = B5 #50 (real Stripe refunds; owns the B2 refund-owed reconciliation).**
+10. [x] B5 = CP6 (DONE 2026-07-25, #50): REAL Stripe refund (`executeRefund`) + `REFUND` Payment row
+    on cancel AND on pay-after-expiry (B2), model-aware amount, idempotent + config-gated + best-effort;
+    email copy -> "3 to 5 business days". The `/dashboard/cancellation-requests` "Mark cancelled" action
+    already calls `POST /bookings/:id/cancel`, so it now triggers the real refund with no dashboard
+    change. Shared `StripeModule` (no PaymentsModule cycle). Suite 1513/71 green.
+10b. [x] DERIVED STATUS (DONE 2026-07-25, #89): "Cancellation requested" is now a first-class DISPLAY
+    status everywhere status shows. Backend `deriveBookingDisplayStatus` (in `bookings/dto/booking.dto.ts`):
+    CONFIRMED + `utcCancellationRequestedAt != null` + `utcCancelledAt == null` -> `CANCELLATION_REQUESTED`,
+    else the raw status. Exposed as a NEW `displayStatus` field on `BookingResponseDto` (so every list item,
+    checkout/actor payload) AND on `ThankYouResponseDto` (TYP); raw `status` still rides for logic. NOT
+    persisted (computed on read), so no migration. Dashboard: new `BOOKING_DISPLAY_STATUS` map + `displayStatus`
+    on the `BookingListItem` type; the bookings table, booking details sheet, and both customer views render
+    `displayStatus`. Public TYP manage-header already derived the same chip locally (identical predicate) - left
+    as-is. Suite 1517/72 green (4 new derivation tests).
+10c. [x] SETTLEMENT LIFECYCLE + REFUND TRUTH (DONE 2026-07-25, #90 + #91): founder-driven hardening pass.
+    #90: payout HOLD while a cancellation request is pending (`isPayoutEligible` + derived `payoutHeld`,
+    "On hold - cancellation requested" rendered EVERYWHERE the settlement badge shows via `settlementHeld`
+    on booking + payment list items); settlement REVERSAL on cancel (`SettlementStatus.REVERSED`, net->0,
+    inline in cancel + hourly `reverseStaleCancelledSettlements` self-heal BEFORE the release sweep);
+    truthful `refundStatus` (NONE|PENDING|PARTIAL|REFUNDED) derived from the payment ledger
+    (`refund-state.util.ts`), rendered in the cancellation queue - never a false "Refunded".
+    #91: refund wiring COMPLETED against Stripe - the REFUND row carries Stripe's actual answer
+    (pending -> PROCESSING via `mapStripeRefundStatus`), webhook reconciles `refund.updated`/`refund.failed`
+    by refundId (out-of-order-safe transitions; SUCCEEDED can still fail late), re-invoking cancel on a
+    CANCELLED booking retries an owed FULL refund with an advancing idempotency key (`refund-{id}-r{n}`),
+    and `payment_intent.payment_failed` no longer stamps REFUND rows. Operator payout stays MANUAL in v1
+    per the locked doc (founder re-confirmed; Connect = v2). Stripe webhook endpoint must subscribe to
+    `refund.updated` + `refund.failed`. Suite 1532/73 green. **NEXT = B6 #51 (outbox + queued idempotent
+    jobs - makes the refund/payout/email/CAPI durable with retry).**
 11. B6 = CP7: transactional outbox (`OutboxEvent` in the booking tx) + queued idempotent jobs
     (confirmation email, CAPI, sweeper, payout, pre-tour reminder) with retry/backoff.
 

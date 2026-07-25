@@ -13,6 +13,7 @@ import {
   PaymentStatus,
   Prisma,
   Role,
+  SettlementStatus,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BookingsService } from '@/bookings/bookings.service';
@@ -23,6 +24,8 @@ import {
 } from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { dateKey } from '@/common/utils/timezone.util';
+import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
+import { mapStripeRefundStatus } from './refund-status.util';
 import { StripeService, toMinorUnits } from './stripe.service';
 import type {
   ListPaymentsQueryDto,
@@ -122,7 +125,11 @@ export class PaymentsService {
               contactFullName: true,
               localDate: true,
               paymentModel: true,
+              status: true,
+              utcCancellationRequestedAt: true,
+              utcCancelledAt: true,
               tour: { select: { name: true } },
+              settlement: { select: { status: true, paymentModel: true } },
             },
           },
         },
@@ -154,6 +161,16 @@ export class PaymentsService {
         contactFullName: p.booking.contactFullName,
         bookingLocalDate: dateKey(p.booking.localDate),
         paymentModel: p.booking.paymentModel,
+        settlementStatus: p.booking.settlement?.status ?? null,
+        settlementMethod: settlementMethodFor(p.booking.paymentModel),
+        // Payout HELD by a pending cancellation request - same predicate as the
+        // Settlements page, so the badge reads "On hold" wherever it shows.
+        settlementHeld:
+          p.booking.settlement?.status === SettlementStatus.RECORDED &&
+          p.booking.settlement.paymentModel === PaymentModel.PAID_IN_FULL &&
+          p.booking.status === BookingStatus.CONFIRMED &&
+          p.booking.utcCancellationRequestedAt != null &&
+          p.booking.utcCancelledAt == null,
       })),
     };
   }
@@ -294,6 +311,13 @@ export class PaymentsService {
           break;
         case 'payment_intent.payment_failed':
           await this.onIntentFailed(event.data.object);
+          break;
+        // Async refund lifecycle: bank-debit refunds (iDEAL/SEPA) are created
+        // `pending` and only settle - or fail - later. These events reconcile
+        // the REFUND Payment row executeRefund wrote at create time.
+        case 'refund.updated':
+        case 'refund.failed':
+          await this.onRefundEvent(event.data.object);
           break;
         default:
           this.logger.debug(`Unhandled Stripe event type ${event.type}`);
@@ -499,12 +523,58 @@ export class PaymentsService {
 
   private async onIntentFailed(intent: Stripe.PaymentIntent): Promise<void> {
     await this.prisma.payment.updateMany({
-      where: { intentId: intent.id },
+      // REFUND rows share the charge's intentId (B5) - an intent-level failure
+      // event must never re-stamp a refund row; refunds have their own events.
+      where: { intentId: intent.id, kind: { not: PaymentKind.REFUND } },
       data: { status: PaymentStatus.FAILED },
     });
     this.logger.warn(
       `PaymentIntent ${intent.id} failed for booking ${intent.metadata?.bookingId ?? 'unknown'}`,
     );
+  }
+
+  /**
+   * Reconcile an async refund outcome onto the REFUND `Payment` row that
+   * `executeRefund` wrote at create time (keyed by `refundId`).
+   *
+   * Cards refund synchronously, but bank-debit methods (iDEAL/SEPA/ACH) create
+   * the refund `pending` (row = PROCESSING) and settle - or fail - later; this
+   * is the settle point. Transition rules keep out-of-order deliveries safe:
+   *   - -> SUCCEEDED only from PROCESSING (never resurrect a FAILED refund)
+   *   - -> FAILED from PROCESSING or SUCCEEDED (Stripe can fail a bank refund
+   *     days after reporting success)
+   *   - a `pending` update carries no new information - ignored
+   * A failure is LOUD: the traveller was already told their money is coming,
+   * and `refundStatus` flips back to "Refund pending" for the ops queue
+   * (re-running the cancel action retries with a fresh idempotency key).
+   */
+  private async onRefundEvent(refund: Stripe.Refund): Promise<void> {
+    const next = mapStripeRefundStatus(refund.status);
+    const allowedFrom: PaymentStatus[] =
+      next === PaymentStatus.SUCCEEDED
+        ? [PaymentStatus.PROCESSING]
+        : next === PaymentStatus.FAILED
+          ? [PaymentStatus.PROCESSING, PaymentStatus.SUCCEEDED]
+          : [];
+    if (allowedFrom.length === 0) return;
+
+    const { count } = await this.prisma.payment.updateMany({
+      where: {
+        refundId: refund.id,
+        kind: PaymentKind.REFUND,
+        status: { in: allowedFrom },
+      },
+      data: { status: next },
+    });
+    if (count === 0) return; // not ours, or already reconciled
+
+    if (next === PaymentStatus.FAILED) {
+      this.logger.error(
+        `Stripe refund ${refund.id} FAILED after creation - the traveller has NOT received their money; re-run the cancellation action to retry (manual follow-up)`,
+      );
+    } else {
+      this.logger.log(`Stripe refund ${refund.id} settled -> ${next}`);
+    }
   }
 }
 

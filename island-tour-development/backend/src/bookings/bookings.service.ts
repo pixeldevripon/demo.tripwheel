@@ -24,12 +24,15 @@ import {
   PricingModel,
   Prisma,
   Role,
+  SettlementStatus,
   TourBookingType,
   TourStatus,
   WholeUnitType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
+import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
+import { StripeService } from '@/payments/stripe.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
@@ -110,6 +113,9 @@ import type {
   ReserveBookingDto,
   UpdateBookingDto,
 } from './dto/booking.dto';
+import { deriveBookingDisplayStatus } from './dto/booking.dto';
+import { deriveRefundState } from './refund-state.util';
+import { mapStripeRefundStatus } from '@/payments/refund-status.util';
 
 const DEFAULT_HOLD_MINUTES = 30;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
@@ -303,6 +309,7 @@ export class BookingsService {
     private readonly lookupLimiter: LookupRateLimiter,
     private readonly targetLimiter: TargetRateLimiter,
     private readonly customerProvisioning: CustomerProvisioningService,
+    private readonly stripe: StripeService,
   ) {}
 
   /**
@@ -913,15 +920,14 @@ export class BookingsService {
       }
     } else {
       // Payment captured but the booking is not confirmable (hold lapsed + sold
-      // out, or cancelled). Money is owed back: the refund path (#50 / B5)
-      // reconciles a SUCCEEDED payment against a non-CONFIRMED booking. Here we
-      // only refuse to fire confirmation side effects, and log loudly so it is
-      // never silent.
+      // out, or cancelled). Money is owed back - so REFUND it (B5). No confirmation
+      // side effects fire (no email/conversion); executeRefund is idempotent and
+      // best-effort, and logs loudly if the refund itself fails.
       this.logger.error(
         `confirmFromPayment: booking ${current.displayRef} is ${current.status} but its ` +
-          `payment succeeded - refund owed (hold lapsed / cancelled). NOT confirming; ` +
-          `no email/conversion fired.`,
+          `payment succeeded - refunding (hold lapsed / cancelled). NOT confirming.`,
       );
+      await this.executeRefund(current.id, current.displayRef);
     }
   }
 
@@ -1073,6 +1079,13 @@ export class BookingsService {
       );
     }
 
+    // Money-movement ledger (master SETTLEMENT-AND-PAYOUTS §2): one row per booking
+    // at confirmation, in EUR. Needs a non-null commission to record what IT is owed;
+    // a null commission is the corruption case above (logged), so skip the row too.
+    if (commissionAmount != null) {
+      await this.writeSettlement(updated, totalEur, commissionAmount, fxRate);
+    }
+
     const tour = await this.prisma.tour.findUnique({
       where: { id: updated.tourId },
       select: { name: true, destination: { select: { slug: true } } },
@@ -1089,6 +1102,97 @@ export class BookingsService {
     // contact yet here (provisioning no-ops) and are covered by update().
     void this.customerProvisioning.provisionForBooking(updated);
     return updated;
+  }
+
+  /**
+   * Write the one-per-booking settlement ledger row (master SETTLEMENT-AND-PAYOUTS
+   * §2). All amounts EUR. `netPosition = amountCollected - commissionOwed`, with the
+   * fixed sign: POSITIVE = Island Tours owes the operator (paid_in_full holds the
+   * remainder to pay out in B4); NEGATIVE = the operator owes IT (operator_full, v2).
+   * Deposit models net ~0 (deposit == commission -> record only). `amountCollected`
+   * is what IT actually took at checkout, converted to EUR:
+   *   paid_in_full -> the full total; operator_full -> 0; deposit models -> the deposit.
+   *
+   * Idempotent (unique `bookingId`; never overwrites an existing row) and best-effort:
+   * a ledger write must NEVER fail a confirmation whose money is already captured -
+   * a miss logs loudly for backfill (durability comes with the outbox in B6).
+   */
+  private async writeSettlement(
+    booking: BookingWithItems,
+    totalEur: Prisma.Decimal,
+    commissionEur: Prisma.Decimal,
+    fxRate: Prisma.Decimal,
+  ): Promise<void> {
+    try {
+      const collected =
+        booking.paymentModel === PaymentModel.PAID_IN_FULL
+          ? totalEur
+          : booking.paymentModel === PaymentModel.OPERATOR_FULL
+            ? new Prisma.Decimal(0)
+            : booking.depositAmount
+                .mul(fxRate)
+                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+      const netPosition = collected
+        .minus(commissionEur)
+        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+
+      await this.prisma.settlement.upsert({
+        where: { bookingId: booking.id },
+        create: {
+          bookingId: booking.id,
+          operatorId: booking.operatorId,
+          paymentModel: booking.paymentModel,
+          amountCollected: collected,
+          commissionOwed: commissionEur,
+          netPosition,
+          currency: Currency.EUR,
+        },
+        update: {}, // never overwrite an existing ledger row
+      });
+    } catch (err) {
+      this.logger.error(
+        `Settlement ledger write failed for ${booking.displayRef} - backfill needed`,
+        err as Error,
+      );
+    }
+  }
+
+  /**
+   * Void a booking's settlement when the booking is cancelled. A cancelled
+   * booking delivers nothing, so its operator-payout obligation disappears:
+   * `status -> REVERSED`, `netPosition -> 0`, `operatorPayout -> null`. This
+   * keeps the ledger honest after a refund - otherwise a cancelled paid_in_full
+   * booking keeps showing "Recorded / operator payout owed / releases {date}"
+   * and inflates the pending-payout summary, even though the money went back to
+   * the traveller. `amountCollected`/`commissionOwed` are LEFT as the historical
+   * record of what was taken at confirmation (audit trail); only the obligation
+   * (net) is zeroed. Idempotent: skips a row already REVERSED or PAID_OUT.
+   *
+   * v1 note: forfeit (after-window cancel, no refund) also reverses here - the
+   * operator gets nothing on a cancelled booking in v1. A forfeit-to-operator
+   * split is a deferred D-tail policy. Best-effort: never fails the cancel.
+   */
+  private async reverseSettlement(bookingId: string): Promise<void> {
+    try {
+      await this.prisma.settlement.updateMany({
+        where: {
+          bookingId,
+          status: {
+            in: [SettlementStatus.RECORDED, SettlementStatus.INVOICED],
+          },
+        },
+        data: {
+          status: SettlementStatus.REVERSED,
+          netPosition: new Prisma.Decimal(0),
+          operatorPayout: null,
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Settlement reversal failed for booking ${bookingId} - backfill needed`,
+        err as Error,
+      );
+    }
   }
 
   /**
@@ -1779,7 +1883,7 @@ export class BookingsService {
     // to what happens next rather than claiming it is already back.
     const refundLine =
       refund === CancellationRefund.FULL
-        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} goes back to your original payment method. Card refunds usually land in 5-10 business days.`
+        ? `You cancelled within the free-cancellation window, so the full ${booking.currency} ${booking.totalRetail.toString()} is on its way back to your original payment method within 3 to 5 business days.`
         : refund === CancellationRefund.PARTIAL
           ? 'A partial refund applies under the cancellation terms for this trip. We will email you the exact amount as it is processed.'
           : 'This cancellation falls outside the free-cancellation window for this trip, so no refund is due. If you think something went wrong, just reply to this email.';
@@ -1985,6 +2089,13 @@ export class BookingsService {
     }
 
     if (booking.status === BookingStatus.CANCELLED) {
+      // Idempotent retry hook (pre-B6): if this cancellation owed a FULL refund
+      // that never executed (Stripe was down/unconfigured, or the attempt
+      // FAILED asynchronously), re-invoking cancel re-attempts it. Safe: the
+      // executor skips when a SUCCEEDED or in-flight PROCESSING refund exists.
+      if (!heldOnly && booking.cancellationRefund === CancellationRefund.FULL) {
+        await this.executeRefund(booking.id, booking.displayRef);
+      }
       return mapBookingForActor(booking, actor);
     }
     if (
@@ -2037,6 +2148,20 @@ export class BookingsService {
     this.logger.log(
       `Booking ${updated.displayRef} cancelled (refund ${refund})`,
     );
+    // Execute the REAL refund before the confirmation email (which tells the
+    // traveler their money is on its way). Only a FULL policy verdict moves money -
+    // NONE is out-of-window, nothing due. Refunds the actual captured charge, so it
+    // is payment-model-aware (deposit for deposit models, total for paid_in_full).
+    if (!heldOnly && refund === CancellationRefund.FULL) {
+      await this.executeRefund(updated.id, updated.displayRef);
+    }
+    // Void the settlement: a cancelled booking owes the operator nothing, so its
+    // payout obligation is reversed (net -> 0, never releases). Only confirmed
+    // bookings ever had a settlement row; a released (PAID_OUT) one is left alone
+    // (the money already moved - that is a clawback, handled manually in v1).
+    if (!heldOnly) {
+      await this.reverseSettlement(updated.id);
+    }
     // Close the loop the request ack opened ("We'll email you to confirm once
     // it's done") - until now nothing was ever sent, so a traveller whose
     // request an admin had processed heard nothing at all. Only for bookings
@@ -2576,6 +2701,7 @@ export class BookingsService {
       publicRef: booking.publicRef,
       displayRef: booking.displayRef,
       status: booking.status,
+      displayStatus: deriveBookingDisplayStatus(booking),
       tourId: booking.tourId,
       tourName: booking.tour?.name ?? 'Your tour',
       island: booking.island,
@@ -2805,6 +2931,7 @@ export class BookingsService {
           unitItems: true,
           tour: { select: { name: true, cancellationHours: true } },
           payments: { select: { kind: true, status: true, amount: true } },
+          settlement: { select: { status: true, paymentModel: true } },
           // FE-12b review state. Selected unconditionally (one join either way)
           // but only PROJECTED on the self-scoped branch below.
           review: { select: { id: true } },
@@ -3263,6 +3390,116 @@ export class BookingsService {
     });
   }
 
+  /**
+   * Execute a REAL Stripe refund for a booking and record a REFUND `Payment` row
+   * (master 6.4 / C23). Refunds the actual captured charge, so it is
+   * payment-model-aware for free: the deposit for deposit models, the full total
+   * for paid_in_full.
+   *
+   * - IDEMPOTENT: skips if a SUCCEEDED REFUND row already exists, and passes a
+   *   stable Stripe idempotency key so a retry never double-refunds.
+   * - CONFIG-GATED: no captured on-platform charge (unpaid / operator_full /
+   *   on_arrival balance) or no Stripe config -> nothing to refund, no-op.
+   * - BEST-EFFORT: never throws. The state change that triggered it already
+   *   committed (a cancellation, or a pay-after-expiry that can't be honored), so a
+   *   Stripe hiccup must not roll it back - it logs loudly for manual follow-up.
+   *   (Durable retry moves to the outbox in B6.)
+   */
+  private async executeRefund(
+    bookingId: string,
+    displayRef: string,
+  ): Promise<void> {
+    try {
+      // Never refund twice - a completed refund AND one still in flight
+      // (PROCESSING: bank-debit methods settle asynchronously) both count.
+      // A FAILED attempt does NOT block: that is exactly the retry case.
+      const already = await this.prisma.payment.findFirst({
+        where: {
+          bookingId,
+          kind: PaymentKind.REFUND,
+          status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.PROCESSING] },
+        },
+        select: { id: true },
+      });
+      if (already) return;
+
+      // The captured charge to reverse: the latest SUCCEEDED non-refund payment.
+      const charge = await this.prisma.payment.findFirst({
+        where: {
+          bookingId,
+          kind: { not: PaymentKind.REFUND },
+          status: PaymentStatus.SUCCEEDED,
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          amount: true,
+          currency: true,
+          intentId: true,
+          chargeId: true,
+        },
+      });
+      if (!charge?.intentId) return; // nothing captured on-platform to refund
+
+      if (!(await this.stripe.isConfigured())) {
+        this.logger.warn(
+          `Refund for ${displayRef} skipped - Stripe not configured`,
+        );
+        return;
+      }
+
+      // A retry after an async FAILURE must not reuse the original idempotency
+      // key - Stripe would replay the first (failed) refund from its cache
+      // instead of creating a new one. The key advances per failed attempt.
+      const failedAttempts =
+        (await this.prisma.payment.count({
+          where: {
+            bookingId,
+            kind: PaymentKind.REFUND,
+            status: PaymentStatus.FAILED,
+          },
+        })) || 0;
+      const idempotencyKey =
+        failedAttempts === 0
+          ? `refund-${bookingId}`
+          : `refund-${bookingId}-r${failedAttempts}`;
+
+      const refund = await this.stripe.refundIntent(
+        charge.intentId,
+        idempotencyKey,
+      );
+      // The row carries Stripe's ACTUAL answer: cards succeed synchronously, but
+      // bank methods (iDEAL/SEPA) start `pending` -> PROCESSING here, settled
+      // later by the refund.updated/refund.failed webhook. Never assume success.
+      const rowStatus = mapStripeRefundStatus(refund.status);
+      await this.prisma.payment.create({
+        data: {
+          bookingId,
+          kind: PaymentKind.REFUND,
+          status: rowStatus,
+          amount: charge.amount, // full refund of the captured amount
+          currency: charge.currency,
+          intentId: charge.intentId,
+          chargeId: charge.chargeId,
+          refundId: refund.id,
+        },
+      });
+      if (rowStatus === PaymentStatus.FAILED) {
+        this.logger.error(
+          `Refund for ${displayRef} FAILED at Stripe (${refund.id}) - manual follow-up needed`,
+        );
+      } else {
+        this.logger.log(
+          `Refund ${rowStatus === PaymentStatus.PROCESSING ? 'initiated (pending settlement)' : 'completed'} for ${displayRef}: ${charge.currency} ${charge.amount.toString()} (${refund.id})`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Refund failed for ${displayRef} - manual follow-up needed`,
+        err as Error,
+      );
+    }
+  }
+
   private async computeRefund(
     booking: BookingWithItems,
     force: boolean,
@@ -3376,6 +3613,10 @@ function mapBookingListItem(
       status: PaymentStatus;
       amount: Prisma.Decimal;
     }[];
+    settlement: {
+      status: SettlementStatus;
+      paymentModel: PaymentModel;
+    } | null;
   },
 ) {
   const deadline = b.tourStartDateTime
@@ -3405,6 +3646,24 @@ function mapBookingListItem(
     // enforces.
     canRequestCancellation: cancellation.canRequest,
     cancellationBlockedReason: cancellation.reason,
+    settlementStatus: b.settlement?.status ?? null,
+    settlementMethod: b.settlement
+      ? settlementMethodFor(b.settlement.paymentModel)
+      : null,
+    // Payout HELD by a pending cancellation request - same predicate as the
+    // settlements page `payoutHeld`, surfaced here so the Bookings/Cancellation
+    // tables show "On hold" wherever the settlement badge shows, not just on the
+    // Settlements page.
+    settlementHeld:
+      b.settlement?.status === SettlementStatus.RECORDED &&
+      b.settlement.paymentModel === PaymentModel.PAID_IN_FULL &&
+      b.status === BookingStatus.CONFIRMED &&
+      b.utcCancellationRequestedAt != null &&
+      b.utcCancelledAt == null,
+    // TRUE refund state from the ledger - PENDING when a cancel owes a refund
+    // that has not actually executed (Stripe off / no real charge), so the UI
+    // never claims "refunded" before the money moves.
+    refundStatus: deriveRefundState(b.payments, b.status, b.cancellationRefund),
   };
 }
 
@@ -3454,6 +3713,7 @@ function mapBooking(b: BookingWithItems) {
     tourId: b.tourId,
     departureId: b.departureId,
     status: b.status,
+    displayStatus: deriveBookingDisplayStatus(b),
     freesale: b.freesale,
     utcExpiresAt: b.utcExpiresAt ? b.utcExpiresAt.toISOString() : null,
     utcConfirmedAt: b.utcConfirmedAt ? b.utcConfirmedAt.toISOString() : null,

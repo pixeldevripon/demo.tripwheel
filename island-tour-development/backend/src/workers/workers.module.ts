@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AvailabilityModule } from '@/availability/availability.module';
 import { BookingsModule } from '@/bookings/bookings.module';
+import { SettlementsModule } from '@/settlements/settlements.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
 import { ToursModule } from '@/tours/tours.module';
@@ -21,6 +22,7 @@ import { PublicCacheService } from './public-cache.service';
     AvailabilityModule,
     ReviewsModule,
     BookingsModule,
+    SettlementsModule,
   ],
   providers: [NightlyJobsService, PublicCacheService],
 })

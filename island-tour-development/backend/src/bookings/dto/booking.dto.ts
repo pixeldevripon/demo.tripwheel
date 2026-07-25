@@ -24,7 +24,42 @@ import {
   CancellationRefund,
   Currency,
   PaymentModel,
+  SettlementStatus,
 } from '@prisma/client';
+import { SettlementMethod } from '@/settlements/dto/settlement.dto';
+
+// ════════════════════════════════════════════════════════════════════════════
+// Derived display status
+// ════════════════════════════════════════════════════════════════════════════
+// `status` is the persisted BookingStatus enum and drives all server logic. But
+// a booking whose traveller has ASKED to cancel is still CONFIRMED until an
+// admin acts on it - showing "Confirmed" then reads as if nothing happened. The
+// display status layers one derived value on top for EVERY status surface
+// (dashboard tables, TYP, customer /bookings): CONFIRMED + a pending request
+// (requested, not yet cancelled) -> CANCELLATION_REQUESTED. It is computed on
+// the server so no client re-derives it (and gets it wrong); the raw `status`
+// still rides alongside for anything that needs the true enum.
+export const BOOKING_DISPLAY_STATUSES = [
+  ...Object.values(BookingStatus),
+  'CANCELLATION_REQUESTED',
+] as const;
+
+export type BookingDisplayStatus = BookingStatus | 'CANCELLATION_REQUESTED';
+
+export function deriveBookingDisplayStatus(booking: {
+  status: BookingStatus;
+  utcCancellationRequestedAt: Date | null;
+  utcCancelledAt: Date | null;
+}): BookingDisplayStatus {
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    booking.utcCancellationRequestedAt !== null &&
+    booking.utcCancelledAt === null
+  ) {
+    return 'CANCELLATION_REQUESTED';
+  }
+  return booking.status;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // Response DTOs
@@ -248,6 +283,13 @@ export class ThankYouResponseDto {
   @ApiProperty() publicRef!: string;
   @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+  @ApiProperty({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Derived status for display. CONFIRMED with a pending cancellation ' +
+      'request reads CANCELLATION_REQUESTED; otherwise equals `status`.',
+  })
+  displayStatus!: BookingDisplayStatus;
 
   // ── Cancellation state ──────────────────────────────────────────────────
   // The server owns this verdict. `canRequestCancellation` is the SAME
@@ -425,6 +467,14 @@ export class BookingResponseDto {
   @ApiProperty() tourId!: string;
   @ApiPropertyOptional({ nullable: true }) departureId!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
+  @ApiProperty({
+    enum: BOOKING_DISPLAY_STATUSES,
+    description:
+      'Derived status for display. Equals `status`, except a CONFIRMED booking ' +
+      'with a pending cancellation request reads CANCELLATION_REQUESTED. Render ' +
+      'this in status chips; use `status` for logic.',
+  })
+  displayStatus!: BookingDisplayStatus;
   @ApiProperty({ example: false }) freesale!: boolean;
   @ApiPropertyOptional({ nullable: true }) utcExpiresAt!: string | null;
   @ApiPropertyOptional({ nullable: true }) utcConfirmedAt!: string | null;
@@ -516,6 +566,37 @@ export class BookingListItemDto extends BookingResponseDto {
     | 'NOT_CONFIRMED'
     | 'DEPARTED'
     | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: SettlementStatus,
+    description:
+      'Settlement-ledger status for this booking (null until confirmed). See the ' +
+      'Settlements page for the full ledger.',
+  })
+  settlementStatus!: SettlementStatus | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: SettlementMethod,
+    description:
+      'HOW this booking settles: SELF_SETTLING / OPERATOR_PAYOUT / COMMISSION_INVOICE.',
+  })
+  settlementMethod!: SettlementMethod | null;
+  @ApiProperty({
+    description:
+      "True when this booking's paid_in_full payout is HELD by a pending " +
+      'cancellation request (same predicate as the Settlements page). Render ' +
+      '"On hold - cancellation requested" beside the settlement badge.',
+  })
+  settlementHeld!: boolean;
+  @ApiProperty({
+    enum: ['NONE', 'PENDING', 'PARTIAL', 'REFUNDED'],
+    description:
+      'TRUE refund state from the payment ledger. PENDING = a cancel owes a ' +
+      'refund that has NOT executed yet (money still held); REFUNDED = the ' +
+      'charge was actually returned. Never assume "refunded" from the cancel ' +
+      'verdict - render this.',
+  })
+  refundStatus!: 'NONE' | 'PENDING' | 'PARTIAL' | 'REFUNDED';
 }
 
 export class ListBookingsResponseDto {

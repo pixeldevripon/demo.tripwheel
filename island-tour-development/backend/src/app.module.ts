@@ -32,6 +32,7 @@ import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsModule } from '@/bookings/bookings.module';
 import { CustomersModule } from '@/customers/customers.module';
 import { PaymentsModule } from '@/payments/payments.module';
+import { SettlementsModule } from '@/settlements/settlements.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
@@ -77,6 +78,7 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     BookingsModule,
     CustomersModule,
     PaymentsModule,
+    SettlementsModule,
     TrackingModule,
     ReviewsModule,
     NotificationsModule,

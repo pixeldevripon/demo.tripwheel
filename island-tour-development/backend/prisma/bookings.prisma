@@ -146,6 +146,7 @@ model Booking {
   payments         Payment[]
   review           Review?
   reviewInvitation ReviewInvitation?
+  settlement       Settlement?
 
   @@index([tourId])
   @@index([operatorId])
@@ -154,6 +155,38 @@ model Booking {
   @@index([departureId])
   @@index([localDate])
   @@map("bookings")
+}
+
+// ── Settlement ledger (master SETTLEMENT-AND-PAYOUTS §2) ──────────────────────
+// One row per booking, written at confirmation, all amounts in EUR. The money-
+// movement record (distinct from the booking_complete conversion event). v1
+// records only (deposit models net ~0); the extension hooks below let v2 grow into
+// scheduled Connect payouts + operator_full invoicing WITHOUT a data-model rewrite.
+model Settlement {
+  id           String       @id @default(uuid())
+  bookingId    String       @unique
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  operatorId   String
+  paymentModel PaymentModel
+
+  // Core ledger (locked minimum), EUR.
+  amountCollected Decimal @db.Decimal(10, 2) // what IT collected at checkout
+  commissionOwed  Decimal @db.Decimal(10, 2) // IT's commission
+  netPosition     Decimal @db.Decimal(10, 2) // + = IT owes operator; - = operator owes IT
+
+  // Extension hooks (nullable in v1; used by v2 payouts / Connect / invoicing).
+  currency       Currency         @default(EUR)
+  operatorPayout Decimal?         @db.Decimal(10, 2) // amount paid out (paid_in_full, B4)
+  status         SettlementStatus @default(RECORDED)
+  settledAt      DateTime?
+  externalRef    String? // Stripe transfer/payout id or invoice id (v2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([operatorId, status])
+  @@index([status])
+  @@map("settlements")
 }
 
 // One per traveler/ticket, priced at the age band it was sold at.

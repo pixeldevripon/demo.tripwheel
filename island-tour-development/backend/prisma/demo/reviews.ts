@@ -5,6 +5,7 @@
 // Enough reviews are APPROVED to clear the homepage social-proof gate (>=100).
 
 import {
+  AgeBandType,
   BookingStatus,
   Currency,
   Locale,
@@ -343,6 +344,7 @@ type DepthTour = {
   paymentModel: PaymentModel;
   timeZone: string;
   destinationId: string;
+  ageBands: { id: string; bandType: AgeBandType; price: Prisma.Decimal }[];
 };
 
 /**
@@ -369,6 +371,7 @@ async function selectDepthTours(): Promise<DepthTour[]> {
     paymentModel: true,
     timeZone: true,
     destinationId: true,
+    ageBands: { select: { id: true, bandType: true, price: true } },
   } as const;
 
   const candidates = await prisma.tour.findMany({
@@ -492,6 +495,12 @@ export async function topUpReviewDepth(): Promise<{
 
   let added = 0;
   for (const [tIdx, tour] of tours.entries()) {
+    // The unit item's age band. A booking with zero BookingUnitItem rows renders
+    // PARTY = 0 in the dashboard list (partySize = unitItems.length), so every
+    // depth booking below gets one adult seat.
+    const adultBand =
+      tour.ageBands.find((b) => b.bandType === AgeBandType.ADULT) ??
+      tour.ageBands[0];
     const have = await prisma.review.count({
       where: {
         tourId: tour.id,
@@ -564,6 +573,26 @@ export async function topUpReviewDepth(): Promise<{
           contactLastName: lastName,
           contactEmail: `depth+${id.slice(0, 8)}@${DEMO_EMAIL_DOMAIN}`,
           contactCountry: pick(['NL', 'US', 'DE', 'FR', 'GB', 'BE'], r()),
+          // One redeemed adult seat so the dashboard shows PARTY >= 1. Priced at
+          // the full booking total (single-seat depth booking); ticketed +
+          // redeemed to match the REDEEMED booking status.
+          ...(adultBand
+            ? {
+                unitItems: {
+                  create: [
+                    {
+                      status: BookingStatus.REDEEMED,
+                      ageBandId: adultBand.id,
+                      priceRetail: money(120),
+                      contactFirstName: firstName,
+                      contactLastName: lastName,
+                      ticketCode: `TKT-${id.slice(0, 8).toUpperCase()}`,
+                      utcRedeemedAt: dateAt(localDate, '16:00'),
+                    },
+                  ],
+                },
+              }
+            : {}),
         },
       });
 

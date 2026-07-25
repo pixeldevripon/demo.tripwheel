@@ -5,6 +5,7 @@ import { TrackingModule } from '@/tracking/tracking.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { FxModule } from '@/fx/fx.module';
+import { StripeModule } from '@/payments/stripe.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 import { LookupRateLimiter } from './lookup-rate-limiter';
@@ -24,6 +25,7 @@ import { LookupRateLimiter } from './lookup-rate-limiter';
     FxModule,
     CustomersModule,
     RateLimitModule,
+    StripeModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, LookupRateLimiter],

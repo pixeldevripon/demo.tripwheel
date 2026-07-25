@@ -77,6 +77,8 @@ function mockPrisma() {
       findMany: jest.fn(),
     },
     tour: { findUnique: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    // Settlement ledger (B3): one row per booking at confirmation.
+    settlement: { upsert: jest.fn().mockResolvedValue({}) },
     // The confirmation email reads site branding (logo + WhatsApp). Default to the
     // singleton being absent: the template's wordmark/no-WhatsApp fallbacks are the
     // correct render then, and no test should depend on real settings rows.
@@ -101,6 +103,12 @@ function mockPrisma() {
     payment: {
       groupBy: jest.fn().mockResolvedValue([]),
       aggregate: jest.fn().mockResolvedValue({ _sum: { amount: D('999999') } }),
+      // executeRefund: default null -> no captured charge found -> refund no-ops,
+      // so existing cancel tests are unaffected. Refund tests override per-case.
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({}),
+      // executeRefund's failed-attempt counter (idempotency-key advance).
+      count: jest.fn().mockResolvedValue(0),
     },
   };
   p.$transaction = jest.fn((arg: unknown) =>
@@ -300,6 +308,7 @@ describe('BookingsService', () => {
   let lookupLimiter: any;
   let targetLimiter: any;
   let customerProvisioning: any;
+  let stripe: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -342,6 +351,11 @@ describe('BookingsService', () => {
       provisionForBooking: jest.fn().mockResolvedValue(undefined),
       recomputeAggregates: jest.fn().mockResolvedValue(undefined),
     };
+    // Stripe configured by default; refundIntent returns a fake refund id.
+    stripe = {
+      isConfigured: jest.fn().mockResolvedValue(true),
+      refundIntent: jest.fn().mockResolvedValue({ id: 're_test_123' }),
+    };
     svc = new BookingsService(
       prisma,
       mail,
@@ -352,6 +366,7 @@ describe('BookingsService', () => {
       lookupLimiter,
       targetLimiter,
       customerProvisioning,
+      stripe,
     );
   });
 
@@ -917,6 +932,193 @@ describe('BookingsService', () => {
       // Seats are released via the clamped count-down (master §3).
       expect(m.departure.update).toHaveBeenCalled();
       expect(res.cancellationRefund).toBe('FULL');
+    });
+
+    // B5: a FULL-refund cancellation executes a real Stripe refund of the captured
+    // charge and records a REFUND Payment row.
+    it('executes a real Stripe refund + writes a REFUND row on a FULL cancellation', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // no prior REFUND (idempotency)
+        .mockResolvedValueOnce({
+          amount: D('31.99'),
+          currency: 'EUR',
+          intentId: 'pi_1',
+          chargeId: 'ch_1',
+        });
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      // Stable idempotency key so a retry never double-refunds.
+      expect(stripe.refundIntent).toHaveBeenCalledWith('pi_1', 'refund-b1');
+      expect(m.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            kind: 'REFUND',
+            status: 'SUCCEEDED',
+            amount: D('31.99'),
+            refundId: 're_test_123',
+          }),
+        }),
+      );
+    });
+
+    it('does NOT refund again when a SUCCEEDED refund already exists (idempotent)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst.mockResolvedValueOnce({ id: 'existing-refund' });
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(stripe.refundIntent).not.toHaveBeenCalled();
+      expect(m.payment.create).not.toHaveBeenCalled();
+    });
+
+    // Stripe's answer is the row's truth: bank-method refunds (iDEAL/SEPA) are
+    // created `pending` and must be recorded PROCESSING - the refund.updated
+    // webhook settles them later. Never assume success.
+    it('records a pending Stripe refund as PROCESSING, not SUCCEEDED', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        amount: D('31.99'),
+        currency: 'EUR',
+        intentId: 'pi_1',
+        chargeId: 'ch_1',
+      });
+      stripe.refundIntent.mockResolvedValueOnce({
+        id: 're_pending_1',
+        status: 'pending',
+      });
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(m.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            kind: 'REFUND',
+            status: 'PROCESSING',
+            refundId: 're_pending_1',
+          }),
+        }),
+      );
+    });
+
+    // A retry after an async FAILURE must not reuse the original idempotency
+    // key - Stripe would replay the failed refund from its cache instead of
+    // creating a new one.
+    it('advances the idempotency key after a prior FAILED refund attempt', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 1,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+        }),
+      );
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // FAILED rows do not block the retry
+        .mockResolvedValueOnce({
+          amount: D('31.99'),
+          currency: 'EUR',
+          intentId: 'pi_1',
+          chargeId: 'ch_1',
+        });
+      m.payment.count.mockResolvedValueOnce(1); // one FAILED attempt on record
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(stripe.refundIntent).toHaveBeenCalledWith('pi_1', 'refund-b1-r1');
+    });
+
+    // Pre-B6 retry hook: re-invoking cancel on an already-CANCELLED booking
+    // that owes a FULL refund re-attempts the refund instead of only echoing
+    // state (Stripe was down, or the async refund FAILED).
+    it('re-attempts an owed refund when cancel() hits an already-CANCELLED booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+          utcConfirmedAt: new Date('2026-01-01T00:00:00.000Z'),
+        }),
+      );
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // no SUCCEEDED/PROCESSING refund yet
+        .mockResolvedValueOnce({
+          amount: D('31.99'),
+          currency: 'EUR',
+          intentId: 'pi_1',
+          chargeId: 'ch_1',
+        });
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      expect(stripe.refundIntent).toHaveBeenCalledWith('pi_1', 'refund-b1');
+      // Early return: the booking itself is not re-cancelled.
+      expect(m.booking.update).not.toHaveBeenCalled();
     });
 
     // The request ack promises "We'll email you to confirm once it's done".
@@ -1771,7 +1973,7 @@ describe('BookingsService', () => {
       expect(notifications.emitBookingUpdate).toHaveBeenCalledTimes(1);
     });
 
-    it('does NOT confirm an EXPIRED booking when seats are gone (refund owed, no side effects)', async () => {
+    it('does NOT confirm an EXPIRED booking when seats are gone - refunds the captured payment (B5)', async () => {
       const err = jest
         .spyOn((svc as any).logger, 'error')
         .mockImplementation(() => undefined);
@@ -1784,15 +1986,90 @@ describe('BookingsService', () => {
       );
       m.departure.findUnique.mockResolvedValue({ capacity: 10 });
       m.departure.updateMany.mockResolvedValue({ count: 0 }); // SOLD OUT
+      // A captured payment exists to reverse.
+      m.payment.findFirst
+        .mockResolvedValueOnce(null) // no prior REFUND
+        .mockResolvedValueOnce({
+          amount: D('120'),
+          currency: 'EUR',
+          intentId: 'pi_x',
+          chargeId: 'ch_x',
+        });
 
       await svc.confirmFromPayment('b1', { last4: '4242', brand: 'visa' });
 
+      // No confirmation side effects...
       expect(tracking.fireBookingComplete).not.toHaveBeenCalled();
       expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
       expect(notifications.emitBookingUpdate).not.toHaveBeenCalled();
-      // Refund-owed is logged loudly, never silent.
-      expect(err).toHaveBeenCalledWith(expect.stringContaining('refund owed'));
+      // ...but the captured money is refunded (B2 refund-owed reconciliation).
+      expect(stripe.refundIntent).toHaveBeenCalledWith('pi_x', 'refund-b1');
+      expect(m.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ kind: 'REFUND' }),
+        }),
+      );
       err.mockRestore();
+    });
+
+    // Settlement ledger (B3): exactly one row per booking at confirmation, in EUR.
+    // netPosition = amountCollected - commissionOwed (+ = IT owes operator).
+    const settlementCreate = () => m.settlement.upsert.mock.calls[0][0].create;
+
+    it('records a ~0 settlement for a deposit model (deposit == commission)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          paymentModel: PaymentModel.OPERATOR_LINK,
+          depositAmount: D('20'),
+          totalRetail: D('100'),
+          commissionRate: D('0.2'), // -> commission 20
+        }),
+      );
+
+      await svc.confirmFromPayment('b1');
+
+      const c = settlementCreate();
+      expect(c.paymentModel).toBe(PaymentModel.OPERATOR_LINK);
+      expect(c.amountCollected.toString()).toBe('20'); // the deposit
+      expect(c.commissionOwed.toString()).toBe('20');
+      expect(c.netPosition.toString()).toBe('0'); // self-settling
+    });
+
+    it('records a POSITIVE net for paid_in_full (IT owes the operator the remainder)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          paymentModel: PaymentModel.PAID_IN_FULL,
+          totalRetail: D('100'),
+          commissionRate: D('0.2'),
+        }),
+      );
+
+      await svc.confirmFromPayment('b1');
+
+      const c = settlementCreate();
+      expect(c.amountCollected.toString()).toBe('100'); // full total collected
+      expect(c.commissionOwed.toString()).toBe('20');
+      expect(c.netPosition.toString()).toBe('80'); // + = IT owes operator
+    });
+
+    it('records a NEGATIVE net for operator_full (operator owes IT the commission)', async () => {
+      m.booking.updateMany.mockResolvedValue({ count: 1 });
+      m.booking.findUnique.mockResolvedValue(
+        confirmable({
+          paymentModel: PaymentModel.OPERATOR_FULL,
+          totalRetail: D('100'),
+          commissionRate: D('0.2'),
+        }),
+      );
+
+      await svc.confirmFromPayment('b1');
+
+      const c = settlementCreate();
+      expect(c.amountCollected.toString()).toBe('0'); // IT collected nothing
+      expect(c.commissionOwed.toString()).toBe('20');
+      expect(c.netPosition.toString()).toBe('-20'); // - = operator owes IT
     });
   });
 
