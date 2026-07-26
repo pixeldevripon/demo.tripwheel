@@ -5,9 +5,11 @@ import { Coins01Icon } from '@hugeicons/core-free-icons';
 import { DataTable } from '@/components/data-table/data-table';
 import {
     DataTableActions,
+    DataTableSearch,
     DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { DatePickerField } from '@/components/date-picker-field';
+import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
 import {
     Select,
     SelectContent,
@@ -24,24 +26,21 @@ interface SettlementsTableProps {
     page: number;
     limit: number;
     isLoading: boolean;
+    isAdmin: boolean;
+    searchValue: string;
+    onSearchChange: (value: string) => void;
     onPageChange: (page: number) => void;
     onLimitChange: (limit: number) => void;
     onFilterChange: (key: string, value: string | undefined) => void;
     filters?: Record<string, string | undefined>;
 }
 
+// Only the states this ledger actually produces - plain words, matching the
+// row badges (Payout due / Paid out / Reversed).
 const STATUS_OPTIONS = [
-    ['RECORDED', 'Recorded'],
+    ['RECORDED', 'Payout due'],
     ['PAID_OUT', 'Paid out'],
-    ['INVOICED', 'Invoiced'],
-    ['SETTLED', 'Settled'],
-] as const;
-
-const MODEL_OPTIONS = [
-    ['PAID_IN_FULL', 'Paid in full'],
-    ['OPERATOR_LINK', 'Operator link'],
-    ['ON_ARRIVAL', 'On arrival'],
-    ['OPERATOR_FULL', 'Operator full'],
+    ['REVERSED', 'Reversed (cancelled)'],
 ] as const;
 
 export function SettlementsTable({
@@ -50,12 +49,15 @@ export function SettlementsTable({
     page,
     limit,
     isLoading,
+    isAdmin,
+    searchValue,
+    onSearchChange,
     onPageChange,
     onLimitChange,
     onFilterChange,
     filters = {},
 }: SettlementsTableProps) {
-    const columns = makeSettlementColumns();
+    const columns = makeSettlementColumns(isAdmin);
 
     return (
         <DataTable
@@ -65,22 +67,29 @@ export function SettlementsTable({
             pagination={{ total, page, limit, onPageChange, onLimitChange }}
             empty={{
                 icon: Coins01Icon,
-                title: 'No settlements found.',
-                description: 'No settlement rows match the current filters.',
+                title: 'No payouts found.',
+                description: isAdmin
+                    ? 'No paid-in-full bookings match the current filters. Deposit-model bookings settle themselves and never appear here.'
+                    : 'No payouts match the current filters. Only your paid-in-full bookings appear here - deposit bookings settle themselves.',
             }}
             toolbar={(table) => (
                 <>
+                    <DataTableSearch
+                        value={searchValue}
+                        onChange={onSearchChange}
+                        placeholder='Search booking ref...'
+                    />
                     <Select
                         value={filters.status ?? 'all'}
                         onValueChange={(v) =>
                             onFilterChange('status', v === 'all' ? undefined : v)
                         }
                     >
-                        <SelectTrigger className='w-44 shrink-0'>
+                        <SelectTrigger className='w-48 shrink-0'>
                             <SelectValue placeholder='Status' />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value='all'>All Status</SelectItem>
+                            <SelectItem value='all'>All statuses</SelectItem>
                             {STATUS_OPTIONS.map(([value, label]) => (
                                 <SelectItem key={value} value={value}>
                                     {label}
@@ -88,27 +97,12 @@ export function SettlementsTable({
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select
-                        value={filters.paymentModel ?? 'all'}
-                        onValueChange={(v) =>
-                            onFilterChange(
-                                'paymentModel',
-                                v === 'all' ? undefined : v,
-                            )
-                        }
-                    >
-                        <SelectTrigger className='w-40 shrink-0'>
-                            <SelectValue placeholder='Model' />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value='all'>All Models</SelectItem>
-                            {MODEL_OPTIONS.map(([value, label]) => (
-                                <SelectItem key={value} value={value}>
-                                    {label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {isAdmin && (
+                        <OperatorFilterPopover
+                            value={filters.operatorId}
+                            onChange={(v) => onFilterChange('operatorId', v)}
+                        />
+                    )}
                     <div className='flex shrink-0 items-center gap-1'>
                         <div className='w-36'>
                             <DatePickerField

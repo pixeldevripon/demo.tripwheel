@@ -134,17 +134,21 @@ export const PAYMENT_STATUS: Record<PaymentStatus, StatusMeta> = {
     },
 };
 
-/** Settlement-ledger lifecycle (`SettlementListItem.status`). */
+/**
+ * Operator-payout lifecycle (`SettlementListItem.status`). Every row is a
+ * paid_in_full booking; payout is MANUAL - PAID_OUT always means an admin
+ * confirmed the transfer was actually made.
+ */
 export const SETTLEMENT_STATUS: Record<SettlementStatus, StatusMeta> = {
     RECORDED: {
-        label: 'Recorded',
-        variant: 'neutral',
-        hint: 'Ledger row written; nothing paid out yet',
+        label: 'Payout due',
+        variant: 'warning',
+        hint: 'Island Tours holds this money; the operator has not been paid yet',
     },
     PAID_OUT: {
         label: 'Paid out',
         variant: 'success',
-        hint: 'Operator payout released after the cancellation window',
+        hint: 'An admin confirmed the transfer to the operator was made',
     },
     INVOICED: {
         label: 'Invoiced',
@@ -159,7 +163,7 @@ export const SETTLEMENT_STATUS: Record<SettlementStatus, StatusMeta> = {
     REVERSED: {
         label: 'Reversed',
         variant: 'neutral',
-        hint: 'Booking cancelled; the operator payout was voided (refund tracked separately)',
+        hint: 'Booking cancelled - nothing is owed (the traveller refund is tracked separately)',
     },
 };
 

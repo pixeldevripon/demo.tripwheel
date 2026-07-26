@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { PaymentKind, PaymentListItem } from '@/types/booking';
+import { PaymentRowActions } from './payment-row-actions';
 
 const kindLabel: Record<PaymentKind, string> = {
   DEPOSIT: 'Deposit',
@@ -155,6 +156,13 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
         </span>
       ),
       enableSorting: true,
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => <PaymentRowActions payment={row.original} />,
+      enableSorting: false,
+      enableHiding: false,
     },
   ];
 }

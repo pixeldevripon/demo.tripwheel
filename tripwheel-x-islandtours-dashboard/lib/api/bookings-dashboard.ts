@@ -12,6 +12,7 @@ import type {
     PaginatedPayments,
     PaginatedSettlements,
     PaymentsQueryParams,
+    SettlementActionResult,
     SettlementSummary,
     SettlementsQueryParams,
 } from '@/types/booking';
@@ -107,14 +108,28 @@ export const paymentsDashboardApi = {
 };
 
 export const settlementsDashboardApi = {
-    /** Money-movement ledger. Admin sees all; operator scoped server-side. VIEW_PAYMENTS. */
+    /** Operator-payout ledger. Admin sees all (operator-filterable); operator scoped server-side. VIEW_PAYMENTS. */
     list(params: SettlementsQueryParams = {}): Promise<PaginatedSettlements> {
         return apiFetch<PaginatedSettlements>(
             `/settlements${buildQuery(params)}`,
         );
     },
-    /** Roll-up: EUR owed out (pending) vs released. Same scoping as list(). */
+    /** Roll-up: EUR payout due vs actually paid out. Same scoping as list(). */
     summary(): Promise<SettlementSummary> {
         return apiFetch<SettlementSummary>('/settlements/summary');
+    },
+    /** Admin confirms the manual transfer happened (RECORDED -> PAID_OUT). MANAGE_BOOKINGS. */
+    markPaid(id: string): Promise<SettlementActionResult> {
+        return apiFetch<SettlementActionResult>(
+            `/settlements/${id}/mark-paid`,
+            { method: 'PATCH' },
+        );
+    },
+    /** Admin reverts a mis-clicked mark-paid (PAID_OUT -> RECORDED). MANAGE_BOOKINGS. */
+    markUnpaid(id: string): Promise<SettlementActionResult> {
+        return apiFetch<SettlementActionResult>(
+            `/settlements/${id}/mark-unpaid`,
+            { method: 'PATCH' },
+        );
     },
 };

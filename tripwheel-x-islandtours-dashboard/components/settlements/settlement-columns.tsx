@@ -2,29 +2,29 @@
 
 import { type ColumnDef } from '@tanstack/react-table';
 import { StatusBadge } from '@/components/common/status-badge';
-import {
-    SETTLEMENT_METHOD_LABEL,
-    SETTLEMENT_STATUS,
-} from '@/components/common/status-maps';
+import { SETTLEMENT_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
-import type { BookingPaymentModel, SettlementListItem } from '@/types/booking';
-
-const modelLabel: Record<BookingPaymentModel, string> = {
-    OPERATOR_LINK: 'Operator link',
-    ON_ARRIVAL: 'On arrival',
-    PAID_IN_FULL: 'Paid in full',
-    OPERATOR_FULL: 'Operator full',
-};
+import type { SettlementListItem } from '@/types/booking';
+import { SettlementRowActions } from './settlement-row-actions';
 
 function money(amount: string, rawCurrency: string): string {
     const currency: Currency = isCurrency(rawCurrency) ? rawCurrency : 'EUR';
     return formatPriceFrom(amount, currency, 'en');
 }
 
-export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
-    return [
+/**
+ * Payout-ledger columns, self-describing for BOTH sides (founder 2026-07-26:
+ * "no ambiguity, no guessing"). Every row is a paid_in_full booking:
+ * Island Tours collected the total, keeps its commission, and owes the
+ * operator the rest. The status cell always says what happens next in plain
+ * words; the admin additionally gets the manual "Mark as paid" action.
+ */
+export function makeSettlementColumns(
+    isAdmin: boolean,
+): ColumnDef<SettlementListItem>[] {
+    const columns: ColumnDef<SettlementListItem>[] = [
         {
             accessorKey: 'displayRef',
             header: 'Booking',
@@ -43,7 +43,10 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             },
             enableSorting: true,
         },
-        {
+    ];
+
+    if (isAdmin) {
+        columns.push({
             id: 'operator',
             header: 'Operator',
             cell: ({ row }) => (
@@ -52,20 +55,13 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
                 </span>
             ),
             enableSorting: false,
-        },
-        {
-            id: 'model',
-            header: 'Model',
-            cell: ({ row }) => (
-                <span className='text-sm'>
-                    {modelLabel[row.original.paymentModel]}
-                </span>
-            ),
-            enableSorting: false,
-        },
+        });
+    }
+
+    columns.push(
         {
             id: 'collected',
-            header: 'Collected / Commission',
+            header: 'Booking total',
             cell: ({ row }) => {
                 const s = row.original;
                 return (
@@ -74,7 +70,8 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
                             {money(s.amountCollected, s.currency)}
                         </span>
                         <span className='text-xs text-muted-foreground tabular-nums'>
-                            comm. {money(s.commissionOwed, s.currency)}
+                            Island Tours keeps{' '}
+                            {money(s.commissionOwed, s.currency)}
                         </span>
                     </div>
                 );
@@ -82,33 +79,35 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             enableSorting: false,
         },
         {
-            id: 'net',
-            header: 'Net position',
+            id: 'payout',
+            header: isAdmin ? 'Payout to operator' : 'Your payout',
             cell: ({ row }) => {
                 const s = row.original;
-                const net = Number(s.netPosition);
                 const reversed = s.status === 'REVERSED';
-                // + = IT owes the operator (a payout); - = operator owes IT.
-                const tone =
-                    reversed || net === 0
-                        ? 'text-muted-foreground'
-                        : net > 0
-                          ? 'text-success-fg'
-                          : 'text-danger-fg';
+                // A reversed row's net was zeroed; show the would-have-been
+                // payout struck through so the history stays readable.
+                const wouldHaveBeen = (
+                    Number(s.amountCollected) - Number(s.commissionOwed)
+                ).toFixed(2);
                 return (
                     <div className='min-w-0'>
-                        <span className={`text-sm font-medium tabular-nums block ${tone}`}>
-                            {money(s.netPosition, s.currency)}
+                        <span
+                            className={`text-sm font-medium tabular-nums block ${
+                                reversed
+                                    ? 'text-muted-foreground line-through'
+                                    : ''
+                            }`}
+                        >
+                            {money(
+                                reversed ? wouldHaveBeen : s.netPosition,
+                                s.currency,
+                            )}
                         </span>
-                        <span className='text-xs text-muted-foreground'>
-                            {reversed
-                                ? 'reversed (cancelled)'
-                                : net > 0
-                                  ? 'owed to operator'
-                                  : net < 0
-                                    ? 'operator owes IT'
-                                    : 'self-settling'}
-                        </span>
+                        {reversed && (
+                            <span className='text-xs text-muted-foreground'>
+                                cancelled - nothing owed
+                            </span>
+                        )}
                     </div>
                 );
             },
@@ -119,59 +118,45 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             header: 'Status',
             cell: ({ row }) => {
                 const s = row.original;
+                // One plain-words line about what happens NEXT - nobody should
+                // have to decode a badge.
+                const next = s.payoutHeld
+                    ? 'On hold - cancellation requested'
+                    : s.status === 'PAID_OUT' && s.settledAt
+                      ? `Paid ${formatDate(s.settledAt)}`
+                      : s.status === 'RECORDED' && s.payoutEligible
+                        ? isAdmin
+                            ? 'Ready to pay'
+                            : 'Awaiting transfer from Island Tours'
+                        : s.status === 'RECORDED' && s.payoutReleaseAt
+                          ? `Clears for payout ${formatDate(s.payoutReleaseAt)}`
+                          : null;
                 return (
                     <div className='flex flex-col items-start gap-1'>
                         <StatusBadge
                             variant={SETTLEMENT_STATUS[s.status].variant}
-                            hint={SETTLEMENT_STATUS[s.status].hint}>
+                            hint={SETTLEMENT_STATUS[s.status].hint}
+                        >
                             {SETTLEMENT_STATUS[s.status].label}
                         </StatusBadge>
-                        {s.payoutHeld ? (
-                            <span className='text-xs text-warning-fg'>
-                                On hold - cancellation requested
-                            </span>
-                        ) : s.payoutEligible ? (
-                            <span className='text-xs text-success-fg'>
-                                Ready to pay out
-                            </span>
-                        ) : null}
-                    </div>
-                );
-            },
-            enableSorting: true,
-        },
-        {
-            id: 'settle',
-            header: 'Settles',
-            cell: ({ row }) => {
-                const s = row.original;
-                const reversed = s.status === 'REVERSED';
-                // WHEN + HOW. Payout release date only for operator payouts; else the
-                // method label alone says how it settles (self-settling / invoice).
-                // A reversed row never pays out - the obligation was voided.
-                const when = reversed
-                    ? 'Cancelled - no payout'
-                    : s.status === 'PAID_OUT' && s.settledAt
-                      ? `Paid ${formatDate(s.settledAt)}`
-                      : s.payoutHeld
-                        ? 'Held - cancellation requested'
-                        : s.payoutReleaseAt
-                          ? `Releases ${formatDate(s.payoutReleaseAt)}`
-                          : null;
-                return (
-                    <div className='min-w-0'>
-                        <span className='text-sm block'>
-                            {reversed ? '-' : SETTLEMENT_METHOD_LABEL[s.method]}
-                        </span>
-                        {when && (
-                            <span className='text-xs text-muted-foreground'>
-                                {when}
+                        {next && (
+                            <span
+                                className={`text-xs ${
+                                    s.payoutHeld
+                                        ? 'text-warning-fg'
+                                        : s.payoutEligible &&
+                                            s.status === 'RECORDED'
+                                          ? 'text-success-fg'
+                                          : 'text-muted-foreground'
+                                }`}
+                            >
+                                {next}
                             </span>
                         )}
                     </div>
                 );
             },
-            enableSorting: false,
+            enableSorting: true,
         },
         {
             accessorKey: 'createdAt',
@@ -183,5 +168,17 @@ export function makeSettlementColumns(): ColumnDef<SettlementListItem>[] {
             ),
             enableSorting: true,
         },
-    ];
+    );
+
+    if (isAdmin) {
+        columns.push({
+            id: 'actions',
+            header: '',
+            cell: ({ row }) => <SettlementRowActions row={row.original} />,
+            enableSorting: false,
+            enableHiding: false,
+        });
+    }
+
+    return columns;
 }
