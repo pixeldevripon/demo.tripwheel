@@ -117,13 +117,19 @@ export class AnalyticsService {
    * renders the USD equivalent from this ONE rate so the two readings can
    * never disagree with each other.
    *
-   * Returns null when no fresh rate is available. That is deliberate: the UI
-   * then shows EUR alone rather than a converted figure derived from a stale
-   * or invented rate.
+   * This is a DISPLAY figure (the UI renders it as "≈"), so it uses the
+   * display-grade lookup: fresh preferred, a stale rate within the display
+   * window accepted - the ≈USD line must not vanish because one refresh cycle
+   * failed. Only when not even a stale rate exists does it fall back to the
+   * strict transactional path (which attempts an on-demand provider refresh -
+   * the cold-database case). Returns null when no rate is available at all;
+   * the UI then shows EUR alone rather than a figure from an invented rate.
    */
   private async getFxDisplay() {
     try {
-      const quote = await this.fx.getRate(Currency.EUR, Currency.USD);
+      const quote =
+        (await this.fx.getDisplayRate(Currency.EUR, Currency.USD)) ??
+        (await this.fx.getRate(Currency.EUR, Currency.USD));
       return {
         base: Currency.EUR as string,
         quote: Currency.USD as string,
@@ -132,7 +138,7 @@ export class AnalyticsService {
       };
     } catch {
       this.logger.warn(
-        'No fresh EUR->USD rate available; dashboard will display EUR only',
+        'No EUR->USD rate available (not even stale); dashboard will display EUR only',
       );
       return null;
     }
