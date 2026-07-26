@@ -62,7 +62,7 @@ export function StaffAccessFields({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value='STAFF'>Staff</SelectItem>
+                                <SelectItem value='STAFF'>User</SelectItem>
                                 <SelectItem value='MANAGER'>Manager</SelectItem>
                             </SelectContent>
                         </Select>

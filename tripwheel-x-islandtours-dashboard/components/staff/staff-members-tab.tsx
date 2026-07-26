@@ -58,7 +58,7 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
     const inviteButton = (
         <Button size='sm' onClick={() => setInviteOpen(true)}>
             <HugeiconsIcon icon={UserAdd02Icon} />
-            {scope === 'platform' ? 'Invite Staff' : 'Invite Member'}
+            {scope === 'platform' ? 'Invite User' : 'Invite Member'}
         </Button>
     );
 
@@ -95,7 +95,7 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
                               icon: UserGroupIcon,
                               title:
                                   scope === 'platform'
-                                      ? 'No staff members yet.'
+                                      ? 'No users yet.'
                                       : 'No team members yet.',
                               description:
                                   'Invite your first member - they get a set-password email and sign in with their own account.',

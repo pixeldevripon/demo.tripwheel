@@ -159,8 +159,10 @@ export const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
     SUSPENDED: 'Suspended',
 };
 
+// Display rename (owner decision): the STAFF seat reads "User" everywhere in
+// the UI; the enum value stays STAFF because it is the backend contract.
 export const SEAT_ROLE_LABEL: Record<StaffSeatRole, string> = {
     OWNER: 'Owner',
     MANAGER: 'Manager',
-    STAFF: 'Staff',
+    STAFF: 'User',
 };
