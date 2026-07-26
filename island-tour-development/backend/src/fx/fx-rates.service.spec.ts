@@ -25,7 +25,7 @@ function mockPrisma() {
     fxRate: {
       findFirst: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      create: jest.fn().mockResolvedValue({}),
+      upsert: jest.fn().mockResolvedValue({}),
     },
     $transaction: jest.fn().mockResolvedValue([{}, {}]),
   } as any;
@@ -94,7 +94,7 @@ describe('FxRatesService', () => {
     expect(rate.rate.toString()).toBe('0.92');
   });
 
-  it('refreshRates writes a new active row and deactivates the prior one', async () => {
+  it('refreshRates UPSERTS the snapshot row and deactivates the prior active one', async () => {
     await svc.refreshRates();
     expect(prisma.fxRate.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -102,13 +102,25 @@ describe('FxRatesService', () => {
         data: { isActive: false },
       }),
     );
-    expect(prisma.fxRate.create).toHaveBeenCalledWith(
+    // Upsert on (base, quote, providerAsOf, provider): a re-fetched SAME
+    // provider snapshot (ECB is daily; every restart/refresh inside the day
+    // re-sees it) must re-activate + extend the row, never P2002 on create.
+    expect(prisma.fxRate.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
+        where: expect.objectContaining({
+          baseCurrency_quoteCurrency_providerAsOf_provider:
+            expect.objectContaining({
+              baseCurrency: Currency.USD,
+              quoteCurrency: Currency.EUR,
+              provider: 'static-dev',
+            }),
+        }),
+        create: expect.objectContaining({
           baseCurrency: Currency.USD,
           quoteCurrency: Currency.EUR,
           provider: 'static-dev',
         }),
+        update: expect.objectContaining({ isActive: true }),
       }),
     );
     expect(prisma.$transaction).toHaveBeenCalled();
@@ -124,7 +136,7 @@ describe('FxRatesService', () => {
       },
     ]);
     await svc.refreshRates();
-    expect(prisma.fxRate.create).not.toHaveBeenCalled();
+    expect(prisma.fxRate.upsert).not.toHaveBeenCalled();
   });
 
   describe('getDisplayRate', () => {
