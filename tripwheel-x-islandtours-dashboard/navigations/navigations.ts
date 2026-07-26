@@ -6,6 +6,7 @@ import {
     DashboardSquare01Icon,
     FilterHorizontalIcon,
     Globe02Icon,
+    File02Icon,
     Home01Icon,
     Image02Icon,
     Layers01Icon,
@@ -201,6 +202,14 @@ const dashboardNav: NavGroup[] = [
                 title: 'Homepage',
                 url: 'homepage',
                 icon: Home01Icon,
+                permissions: [Permission.MANAGE_EDITORIAL],
+            },
+            {
+                // The Pages system: legal/policy permalinks (terms,
+                // privacy-policy, ...) edited through the TipTap editor.
+                title: 'Pages',
+                url: 'pages',
+                icon: File02Icon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],

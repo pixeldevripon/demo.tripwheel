@@ -206,6 +206,14 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('homepage');
       break;
 
+    // The Pages system (legal/policy permalinks): create/edit/publish/rename/
+    // delete and per-locale content at `/pages/:id/translations/:locale`. One
+    // coarse tag - a rename must bust the OLD slug's cached entry too, which a
+    // per-slug tag could not (the producer only knows the new one).
+    case 'pages':
+      tags.push('pages');
+      break;
+
     // "Top Island Experiences" curation. Same coarse tag as the rest of the
     // homepage - the public loader carries both `homepage` and `tours`, and this
     // is the curation half.
