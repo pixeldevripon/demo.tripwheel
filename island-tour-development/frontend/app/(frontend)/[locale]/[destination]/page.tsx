@@ -10,12 +10,16 @@ import {
 } from '@/components/frontend/destination/destination-page-sections';
 import { FaqSection } from '@/components/frontend/faq-section';
 import { DestinationPageSkeleton } from '@/components/frontend/skeletons/destination-page-skeleton';
+import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
+import { PageBody } from '@/components/frontend/legal/page-body';
 import {
     getActiveDestinations,
     getDestinationBySlug,
     getDestinationFaqs,
     getDestinationPageContent,
+    getPublishedPage,
 } from '@/lib/api/public';
+import { getSitemapEntries } from '@/lib/api/public/sitemap';
 import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -26,7 +30,7 @@ import {
 } from '@/lib/seo/jsonld';
 import { getSiteUrl } from '@/lib/seo/site-url';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
 
 const LAUNCH_DESTINATION_SLUGS = [
@@ -37,17 +41,46 @@ const LAUNCH_DESTINATION_SLUGS = [
     'bahamas',
 ];
 
-/** Prerender the active destinations from the backend (public cached loader). */
+/**
+ * Prerender the active destinations PLUS every published Page (public cached
+ * loaders). This route is the fall-through for both: `/{locale}/{slug}` is a
+ * destination first, else a published Page (legal/policy permalinks), else 404.
+ */
 export async function generateStaticParams() {
+    const params: { destination: string }[] = [];
     try {
         const destinations = await getActiveDestinations();
         if (destinations && destinations.length > 0) {
-            return destinations.map(d => ({ destination: d.slug }));
+            params.push(...destinations.map(d => ({ destination: d.slug })));
         }
     } catch {
         // Fallback if backend is unavailable during build
     }
-    return LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }));
+    if (params.length === 0) {
+        params.push(
+            ...LAUNCH_DESTINATION_SLUGS.map(destination => ({ destination }))
+        );
+    }
+
+    // Published pages ride the sitemap enumeration (type 'page' = `/{path}`),
+    // so there is no second endpoint to keep in sync. Only SINGLE-segment
+    // permalinks belong to this route - nested ones (`legal/terms`) resolve
+    // through the entity route / the deep catch-all. Best-effort: a page that
+    // is not prerendered still renders on demand.
+    try {
+        const entries = await getSitemapEntries();
+        params.push(
+            ...entries
+                .filter(e => e.type === 'page')
+                .map(e => e.path.replace(/^\//, ''))
+                .filter(path => !path.includes('/'))
+                .map(destination => ({ destination }))
+        );
+    } catch {
+        // Pages render on-demand when the enumeration is unavailable.
+    }
+
+    return params;
 }
 
 /**
@@ -72,7 +105,25 @@ export async function generateMetadata({
     const alternates = buildAlternates(locale, `/${destination}`);
 
     const island = await getDestinationBySlug(destination, locale);
-    if (!island) return { alternates };
+    if (!island) {
+        // Fall-through: not an island - maybe a published Page (legal/policy
+        // permalink). Same metadata contract as the hand-authored legal pages:
+        // title + canonical/hreflang; description/OG only when authored.
+        const page = await getPublishedPage(destination, locale);
+        if (page && !page.redirectToSlug) {
+            return {
+                title: page.metaTitle || page.title,
+                ...(page.metaDescription && {
+                    description: page.metaDescription,
+                }),
+                ...(page.ogImage && {
+                    openGraph: { images: [{ url: page.ogImage }] },
+                }),
+                alternates,
+            };
+        }
+        return { alternates };
+    }
 
     const pageContent = await getDestinationPageContent(island.id, locale);
 
@@ -128,9 +179,30 @@ async function DestinationContent({
         getDictionary(locale),
         getDestinationBySlug(destination, locale),
     ]);
-    // Unknown or not-yet-launched (inactive) island → 404. getDestinationBySlug
-    // resolves any slug, so we gate on isActive here for the public site.
-    if (!island || !island.isActive) notFound();
+    // Unknown or not-yet-launched (inactive) island → fall through to the
+    // Pages system before 404ing: `/{locale}/{slug}` is a destination first,
+    // else a published Page (the legal/policy permalinks live here), else 404.
+    // getDestinationBySlug resolves any slug, so we gate on isActive for the
+    // public site.
+    if (!island || !island.isActive) {
+        const page = await getPublishedPage(destination, locale);
+        if (!page) notFound();
+
+        // A renamed permalink: send the crawler and the visitor to the new
+        // slug permanently (the backend collapses chains to one hop).
+        if (page.redirectToSlug) {
+            permanentRedirect(`/${locale}/${page.redirectToSlug}`);
+        }
+
+        return (
+            <LegalPageShell
+                locale={locale}
+                title={page.title}
+                showEnglishNotice={page.isEnglishFallback}>
+                <PageBody html={page.body} />
+            </LegalPageShell>
+        );
+    }
 
     // Editorial content + FAQs are keyed by island id, so they can only start
     // once the slug resolves; they are independent of each other, so they run

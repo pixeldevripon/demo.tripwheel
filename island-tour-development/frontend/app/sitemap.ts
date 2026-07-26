@@ -11,26 +11,19 @@ import { getSiteUrl } from '@/lib/seo/site-url';
  * (7 locales + x-default), following the Next localized-sitemap convention (one
  * `url` per page = the English default, alternates in `alternates.languages`):
  *
- *   - STATIC routes this app owns (home, each destination's All-Tours page, the
- *     legal pages) - it knows these without the backend.
+ *   - STATIC routes this app owns (home, each destination's All-Tours page) -
+ *     it knows these without the backend.
  *   - DYNAMIC entities from `GET /sitemap/entries` (active destinations, LIVE
- *     tours, tour-gated categories/hubs, published collections).
+ *     tours, tour-gated categories/hubs, published collections, and published
+ *     Pages - the legal/policy permalinks arrive as `type: 'page'` rather than
+ *     being hardcoded here, so publishing/unpublishing one updates the sitemap).
  *
  * changeFrequency/priority are assigned by page kind. Private / noindex routes
  * (checkout, thank-you, cancel, review, bookings, wishlist, search) are never
  * enumerated here and are also blocked in robots.txt.
  */
 
-const LEGAL_PATHS = [
-    '/terms',
-    '/privacy-policy',
-    '/cookie-policy',
-    '/cancellation-policy',
-    '/reviews-policy',
-    '/legal-notice',
-];
-
-const PRIORITY: Record<SitemapEntryType | 'home' | 'allTours' | 'legal', number> = {
+const PRIORITY: Record<SitemapEntryType | 'home' | 'allTours', number> = {
     home: 1,
     destination: 0.9,
     tour: 0.8,
@@ -38,11 +31,11 @@ const PRIORITY: Record<SitemapEntryType | 'home' | 'allTours' | 'legal', number>
     category: 0.7,
     hub: 0.6,
     collection: 0.6,
-    legal: 0.3,
+    page: 0.3,
 };
 
 const CHANGE_FREQ: Record<
-    SitemapEntryType | 'home' | 'allTours' | 'legal',
+    SitemapEntryType | 'home' | 'allTours',
     MetadataRoute.Sitemap[number]['changeFrequency']
 > = {
     home: 'daily',
@@ -52,7 +45,7 @@ const CHANGE_FREQ: Record<
     category: 'weekly',
     hub: 'weekly',
     collection: 'weekly',
-    legal: 'yearly',
+    page: 'yearly',
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -88,10 +81,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Home.
     urls.push(toUrl('', 'home', now));
 
-    // Legal pages.
-    for (const path of LEGAL_PATHS) urls.push(toUrl(path, 'legal', now));
-
-    // Dynamic entities + each destination's All-Tours page.
+    // Dynamic entities + each destination's All-Tours page. Legal/policy
+    // pages arrive as `type: 'page'` entries from the Pages system.
     for (const entry of entries) {
         urls.push(toUrl(entry.path, entry.type, entry.lastModified));
         if (entry.type === 'destination') {
