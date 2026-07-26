@@ -24,7 +24,10 @@ export function settlementMethodFor(model: PaymentModel): SettlementMethod {
 
 // ── Response ─────────────────────────────────────────────────────────────────
 
-/** One settlement-ledger row for the admin dashboard, joined to its booking. */
+/**
+ * One operator-payout row, joined to its booking. Every row is a `paid_in_full`
+ * booking - the only model where Island Tours holds money it owes the operator.
+ */
 export class SettlementListItemDto {
   @ApiProperty() id!: string;
   @ApiProperty() bookingId!: string;
@@ -32,69 +35,97 @@ export class SettlementListItemDto {
   @ApiProperty() operatorId!: string;
   @ApiPropertyOptional({ nullable: true }) operatorName!: string | null;
   @ApiPropertyOptional({ nullable: true }) tourName!: string | null;
-  @ApiProperty({ enum: PaymentModel }) paymentModel!: PaymentModel;
 
   // All amounts EUR (rule #22 / settlement ledger).
-  @ApiProperty({ example: '100.00' }) amountCollected!: string;
-  @ApiProperty({ example: '20.00' }) commissionOwed!: string;
+  @ApiProperty({
+    example: '100.00',
+    description: 'The booking total Island Tours collected at checkout (EUR).',
+  })
+  amountCollected!: string;
+  @ApiProperty({
+    example: '20.00',
+    description: 'The commission Island Tours keeps (EUR).',
+  })
+  commissionOwed!: string;
   @ApiProperty({
     example: '80.00',
-    description: '+ = Island Tours owes the operator; - = operator owes IT.',
+    description:
+      'The payout owed to the operator (collected - commission, EUR). Zero on a ' +
+      'REVERSED row (booking cancelled - the obligation was voided).',
   })
   netPosition!: string;
-  @ApiPropertyOptional({ nullable: true, example: '80.00' })
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '80.00',
+    description: 'The amount actually paid out (set when marked paid).',
+  })
   operatorPayout!: string | null;
 
-  @ApiProperty({ enum: SettlementStatus }) status!: SettlementStatus;
+  @ApiProperty({
+    enum: SettlementStatus,
+    description:
+      'RECORDED = payout due (money held by Island Tours, not yet paid). ' +
+      'PAID_OUT = an admin confirmed the transfer was made. ' +
+      'REVERSED = booking cancelled, nothing owed.',
+  })
+  status!: SettlementStatus;
   @ApiProperty({ enum: Currency }) currency!: Currency;
-  @ApiPropertyOptional({ nullable: true }) settledAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'When the admin marked this payout as paid (ISO UTC).',
+  })
+  settledAt!: string | null;
   @ApiProperty() createdAt!: string;
   @ApiProperty({
     description:
-      'True when this row is a paid_in_full payout owed to the operator that is ' +
-      'past its clawback (free-cancellation) window and still RECORDED - i.e. ready ' +
-      'to release/pay. Computed server-side.',
+      'True when this payout is READY TO PAY: still RECORDED, the booking ' +
+      'stands, no cancellation request pending, and the free-cancellation ' +
+      '(clawback) window has closed. The "Mark as paid" action is only allowed ' +
+      'on eligible rows. Computed server-side.',
   })
   payoutEligible!: boolean;
-
-  @ApiProperty({
-    enum: SettlementMethod,
-    description:
-      'HOW this booking settles: SELF_SETTLING (deposit models - nothing to move), ' +
-      'OPERATOR_PAYOUT (paid_in_full - IT pays the operator the net), ' +
-      'COMMISSION_INVOICE (operator_full - IT invoices the operator, v2).',
-  })
-  method!: SettlementMethod;
 
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'WHEN the operator payout releases: the booking free-cancellation window ' +
-      'close (clawback-safe point), ISO UTC. Only for OPERATOR_PAYOUT; null otherwise.',
+      'WHEN this payout clears for paying: the booking free-cancellation window ' +
+      'close (clawback-safe point), ISO UTC.',
   })
   payoutReleaseAt!: string | null;
 
   @ApiProperty({
     description:
-      'True when this RECORDED paid_in_full payout is HELD by a pending ' +
-      'cancellation request (requested, not yet actioned). The release cron ' +
-      'skips it until the request is resolved, since a refund may still be owed ' +
-      'to the traveller (master 6.4). Render as "On hold" instead of "Ready to ' +
-      'pay out". Computed server-side.',
+      'True when this RECORDED payout is HELD by a pending cancellation request ' +
+      '(requested, not yet actioned) - a refund may still be owed to the ' +
+      'traveller (master 6.4), so it must not be paid until the request is ' +
+      'resolved. Render as "On hold". Computed server-side.',
   })
   payoutHeld!: boolean;
 }
 
-/** Per-scope roll-up: how much is owed out (pending) vs already released. */
+/** Per-scope roll-up: payout still due vs already paid out (admin-confirmed). */
 export class SettlementSummaryDto {
-  @ApiProperty({ description: 'Sum of paid_in_full net still RECORDED (EUR).' })
+  @ApiProperty({
+    description: 'Sum of payouts still due (RECORDED nets, EUR).',
+  })
   owedPending!: string;
-  @ApiProperty({ description: 'Count of settlements still owed a payout.' })
+  @ApiProperty({ description: 'Count of payouts still due.' })
   owedCount!: number;
-  @ApiProperty({ description: 'Sum of operatorPayout on PAID_OUT rows (EUR).' })
+  @ApiProperty({
+    description: 'Sum actually paid out (PAID_OUT operatorPayout, EUR).',
+  })
   released!: string;
-  @ApiProperty({ description: 'Count of released (PAID_OUT) settlements.' })
+  @ApiProperty({ description: 'Count of paid-out settlements.' })
   releasedCount!: number;
+}
+
+/** Result of a manual mark-paid / mark-unpaid row action. */
+export class SettlementActionResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: SettlementStatus }) status!: SettlementStatus;
+  @ApiPropertyOptional({ nullable: true, example: '80.00' })
+  operatorPayout!: string | null;
+  @ApiPropertyOptional({ nullable: true }) settledAt!: string | null;
 }
 
 export class ListSettlementsResponseDto {
@@ -113,15 +144,18 @@ export class ListSettlementsQueryDto {
   @IsString()
   operatorId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Search by booking reference (case-insensitive contains).',
+    example: 'IT-2026',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ enum: SettlementStatus })
   @IsOptional()
   @IsEnum(SettlementStatus)
   status?: SettlementStatus;
-
-  @ApiPropertyOptional({ enum: PaymentModel })
-  @IsOptional()
-  @IsEnum(PaymentModel)
-  paymentModel?: PaymentModel;
 
   @ApiPropertyOptional({
     example: '2026-07-01',

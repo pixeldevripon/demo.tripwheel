@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   BookingStatus,
+  PaymentKind,
   PaymentModel,
   PaymentStatus,
   Prisma,
@@ -709,15 +710,22 @@ export class AnalyticsService {
           >(
             Prisma.sql`
                         SELECT
+                            -- A refunded charge WAS collected (the original row
+                            -- flips SUCCEEDED -> REFUNDED when the refund
+                            -- settles), so gross counts both statuses; the
+                            -- refund itself is subtracted separately below.
                             COALESCE(SUM(p.amount * COALESCE(b."fxRateToEur", 1))
-                                FILTER (WHERE p.status = 'SUCCEEDED'
+                                FILTER (WHERE p.status IN ('SUCCEEDED', 'REFUNDED')
                                           AND p.kind::text IN ${INBOUND_KINDS}
                                           ${paidIn}), 0) AS gross,
                             -- Refunds are written TWICE (the original payment
                             -- flips to REFUNDED and a REFUND row is added), so
-                            -- only REFUND rows are counted here.
+                            -- only SETTLED REFUND rows are counted here -
+                            -- never PROCESSING/FAILED attempts.
                             COALESCE(SUM(p.amount * COALESCE(b."fxRateToEur", 1))
-                                FILTER (WHERE p.kind::text = 'REFUND' ${paidIn}), 0) AS refunded
+                                FILTER (WHERE p.kind::text = 'REFUND'
+                                          AND p.status IN ('SUCCEEDED', 'REFUNDED')
+                                          ${paidIn}), 0) AS refunded
                         FROM payments p
                         JOIN bookings b ON b.id = p."bookingId"
                         WHERE 1 = 1 ${scopeB}
@@ -727,10 +735,11 @@ export class AnalyticsService {
       // Payouts due = the SETTLEMENTS LEDGER's owed-pending roll-up, verbatim
       // (same predicate as SettlementsService.summary): RECORDED paid_in_full
       // nets still owed to operators. It is a BALANCE, not a flow - deliberately
-      // NOT windowed by the date range, and already-released (PAID_OUT) money is
-      // excluded - so this card and the Settlements page always show the SAME
-      // number. The ledger is the money-movement SSOT (SETTLEMENT-AND-PAYOUTS);
-      // analytics must never re-derive owed money from raw bookings.
+      // NOT windowed by the date range, and money an admin already marked paid
+      // (PAID_OUT - payout is MANUAL in v1) is excluded - so this card and the
+      // Settlements page always show the SAME number. The ledger is the
+      // money-movement SSOT (SETTLEMENT-AND-PAYOUTS); analytics must never
+      // re-derive owed money from raw bookings.
       this.prisma.settlement.aggregate({
         where: {
           status: SettlementStatus.RECORDED,
@@ -1289,41 +1298,75 @@ export class AnalyticsService {
     scopeB: Prisma.Sql,
     bookingWhere: Prisma.BookingWhereInput,
   ) {
-    const [bookings, payments, customers] = await Promise.all([
-      this.prisma.booking.findMany({
-        where: bookingWhere,
-        select: {
-          id: true,
-          displayRef: true,
-          status: true,
-          totalEur: true,
-          createdAt: true,
-          tour: { select: { name: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
-      this.prisma.payment.findMany({
-        where: { booking: bookingWhere },
-        select: {
-          id: true,
-          status: true,
-          kind: true,
-          amount: true,
-          createdAt: true,
-          booking: { select: { displayRef: true, fxRateToEur: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
-      this.prisma.$queryRaw<
-        {
-          name: string | null;
-          email: string | null;
-          bookings: bigint;
-          first_booking_at: Date;
-        }[]
-      >(Prisma.sql`
+    const [bookings, payments, cancellations, refunds, customers] =
+      await Promise.all([
+        this.prisma.booking.findMany({
+          where: bookingWhere,
+          select: {
+            id: true,
+            displayRef: true,
+            status: true,
+            totalEur: true,
+            createdAt: true,
+            tour: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        this.prisma.payment.findMany({
+          where: { booking: bookingWhere },
+          select: {
+            id: true,
+            status: true,
+            kind: true,
+            amount: true,
+            createdAt: true,
+            booking: { select: { displayRef: true, fxRateToEur: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        // Latest cancellations, by WHEN they were cancelled (not created).
+        this.prisma.booking.findMany({
+          where: {
+            ...bookingWhere,
+            status: BookingStatus.CANCELLED,
+            utcCancelledAt: { not: null },
+          },
+          select: {
+            id: true,
+            displayRef: true,
+            totalEur: true,
+            cancelledBy: true,
+            cancellationRefund: true,
+            utcCancelledAt: true,
+            tour: { select: { name: true } },
+          },
+          orderBy: { utcCancelledAt: 'desc' },
+          take: 5,
+        }),
+        // Latest refunds - REFUND payment rows, whatever their outcome
+        // (REFUNDED / PROCESSING / FAILED), so a stuck refund is visible here.
+        this.prisma.payment.findMany({
+          where: { booking: bookingWhere, kind: PaymentKind.REFUND },
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            createdAt: true,
+            booking: { select: { displayRef: true, fxRateToEur: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        }),
+        this.prisma.$queryRaw<
+          {
+            name: string | null;
+            email: string | null;
+            bookings: bigint;
+            first_booking_at: Date;
+          }[]
+        >(Prisma.sql`
                 SELECT
                     MAX(COALESCE(b."contactFullName", b."contactFirstName")) AS name,
                     MAX(b."contactEmail") AS email,
@@ -1335,7 +1378,7 @@ export class AnalyticsService {
                 ORDER BY MIN(b."createdAt") DESC
                 LIMIT 5
             `),
-    ]);
+      ]);
 
     return {
       bookings: bookings.map((b) => ({
@@ -1351,6 +1394,24 @@ export class AnalyticsService {
         displayRef: p.booking?.displayRef ?? '',
         status: p.status,
         kind: p.kind,
+        amountEur: this.num(
+          Number(p.amount) * Number(p.booking?.fxRateToEur ?? 1),
+        ),
+        createdAt: p.createdAt,
+      })),
+      cancellations: cancellations.map((b) => ({
+        id: b.id,
+        displayRef: b.displayRef,
+        tourName: b.tour?.name ?? 'Unknown tour',
+        cancelledBy: b.cancelledBy,
+        cancellationRefund: b.cancellationRefund,
+        totalEur: this.num(b.totalEur),
+        cancelledAt: b.utcCancelledAt as Date,
+      })),
+      refunds: refunds.map((p) => ({
+        id: p.id,
+        displayRef: p.booking?.displayRef ?? '',
+        status: p.status,
         amountEur: this.num(
           Number(p.amount) * Number(p.booking?.fxRateToEur ?? 1),
         ),

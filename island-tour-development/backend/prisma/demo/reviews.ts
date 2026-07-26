@@ -342,6 +342,7 @@ type DepthTour = {
   operatorId: string;
   defaultCurrency: Currency;
   paymentModel: PaymentModel;
+  commissionTier: Prisma.Decimal;
   timeZone: string;
   destinationId: string;
   ageBands: { id: string; bandType: AgeBandType; price: Prisma.Decimal }[];
@@ -369,6 +370,7 @@ async function selectDepthTours(): Promise<DepthTour[]> {
     operatorId: true,
     defaultCurrency: true,
     paymentModel: true,
+    commissionTier: true,
     timeZone: true,
     destinationId: true,
     ageBands: { select: { id: true, bandType: true, price: true } },
@@ -564,6 +566,14 @@ export async function topUpReviewDepth(): Promise<{
           // showing 6 trips, no spend and a blank "last booking".
           totalEur: money(money(120).times(eurFxRate(tour.defaultCurrency))),
           fxRateToEur: eurFxRate(tour.defaultCurrency),
+          // Rule #22: a REDEEMED booking with a null commission is corruption -
+          // every commission aggregate and the settlements ledger depend on it.
+          commissionRate: tour.commissionTier.dividedBy(100).toDecimalPlaces(4),
+          commissionAmount: money(
+            money(money(120).times(eurFxRate(tour.defaultCurrency))).times(
+              tour.commissionTier.dividedBy(100),
+            ),
+          ),
           // Booked a week before travel, redeemed when the tour ended - the
           // ordering every downstream aggregate assumes.
           utcConfirmedAt: new Date(localDate.getTime() - 7 * 86_400_000),

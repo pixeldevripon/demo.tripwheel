@@ -2,7 +2,7 @@
 
 A plain-English view of where the platform stands: what is finished, what is actively being worked on, and what is still ahead. Everything below reflects an audit of the actual working software, not a plan or a wish list. Items are grouped into main features with their sub-features, so you can read this in a few minutes rather than task by task.
 
-**Status date: 25 July 2026**
+**Status date: 26 July 2026**
 
 Legend: ✅ Done · 🟡 In progress · ⬜ Pending
 
@@ -12,12 +12,12 @@ Legend: ✅ Done · 🟡 In progress · ⬜ Pending
 
 | Area | Done | In progress | Pending | Total |
 |---|---|---|---|---|
-| Backend (the engine) | 280 | 18 | 79 | 377 |
-| Dashboard (admin and operator tools) | 235 | 13 | 123 | 371 |
-| Public website (what travellers see) | 265 | 34 | 154 | 453 |
-| **Total** | **780** | **65** | **356** | **1,201** |
+| Backend (the engine) | 288 | 18 | 75 | 381 |
+| Dashboard (admin and operator tools) | 242 | 14 | 117 | 373 |
+| Public website (what travellers see) | 266 | 33 | 153 | 452 |
+| **Total** | **796** | **65** | **345** | **1,206** |
 
-The platform's core engine and admin tools are largely built. Bookings, payments (Stripe **and Mollie**), refunds, availability, commission tiers, the settlements ledger with automatic payout release, the full review system (invitations, submission, moderation, translation), operator and staff management, and the email system all work end to end today.
+The platform's core engine and admin tools are largely built. Bookings, payments (Stripe **and Mollie**), refunds, availability, commission tiers, the settlements ledger with a manual mark-as-paid payout workflow, the full review system (invitations, submission, moderation, translation), operator and staff management, and the email system all work end to end today.
 
 Since the last status (21 July), the two biggest commercial gaps on the public website closed: the site is now *visible* to search engines (sitemap, robots file, rich-result markup all live) and the *measurement* layer (tag manager, consent handling, conversion tracking, ad attribution) is fully coded - it stays dark only until the advertising accounts are supplied and connected (see "Needs your decision"). The remaining public-site work is polish, locked-copy verification and secondary marketing events rather than structure.
 
@@ -122,8 +122,8 @@ The invisible half of the platform: the rules, data and money handling that ever
 - ⬜ Suspending tier billing while a tour is unbookable
 
 ### Money flow and payouts
-- ✅ Settlement ledger recording, per booking, exactly who owes whom - one entry per booking, written the moment it confirms
-- ✅ Scheduled operator payout released automatically once the cancellation window closes (checked hourly, clawback-safe)
+- ✅ Settlement ledger recording exactly what Island Tours owes each operator - one entry per paid-in-full booking (the only model where the platform holds the operator's money), written the moment it confirms; deposit bookings settle themselves and are deliberately kept out of the ledger (reworked 26 July for clarity)
+- ✅ Manual, clawback-safe payout: a payout only becomes payable once the booking's cancellation window closes, and it is marked "Paid out" only when an admin confirms the bank transfer was actually made - the ledger never claims money moved when it did not
 - ✅ Self-healing: settlements on cancelled bookings are reversed automatically; forfeited bookings deliberately keep theirs
 - ⬜ Commission collection rail for the payment model held back for version 2
 - ⬜ Automated operator payouts via a connected-accounts model (version 2)
@@ -179,7 +179,7 @@ The invisible half of the platform: the rules, data and money handling that ever
 - ✅ Automatic exchange-rate refresh, now with a real market-rate source (European Central Bank) built in
 - ✅ Seats from expired, unpaid holds are released automatically every minute
 - ✅ Reliable delivery layer: booking confirmations, operator notices, conversion reporting and refunds all run as retried background jobs, recorded in the database first so nothing is lost if a send fails
-- ✅ Scheduled payout release job (hourly) and the pre-tour reminder scheduling
+- ✅ Hourly settlement self-heal sweep (voids obligations on cancelled bookings) and the pre-tour reminder scheduling
 - 🟡 Nightly jobs run inside the application rather than on a managed queue - fine on one server, would duplicate if a second is added
 - 🟡 Failed background jobs are kept for inspection, but there is no admin screen showing them yet
 - ⬜ Marketing postback job (reporting cancellations back to the ad platforms)
@@ -243,13 +243,17 @@ The back-office where you and your operators run the business. Twenty-four modul
 
 ### Payments and refunds
 - ✅ Payments list with provider, method, status and refund columns
-- 🟡 Payments is currently read-only - no detail view and no actions
-- 🟡 Refunds are now issued automatically by the engine on approved cancellations and shown on bookings and settlements; a dedicated refunds oversight screen is still to build
-- ⬜ Manually issue or approve a refund from the dashboard
+- ✅ Row actions on every payment (26 July): jump to the booking, copy the booking or payment reference, open the charge directly in Stripe or Mollie, and retry a failed refund - each with the right permissions
+- ✅ Refund statuses read correctly everywhere (26 July): once a refund settles, both the refund entry and the original charge show "Refunded" - a refunded charge never shows a green "Succeeded" again
+- ✅ Refunds are issued automatically by the engine on approved cancellations and shown on bookings, payments and settlements
+- 🟡 A dedicated refunds oversight screen and a payment detail panel are still to build
+- ⬜ Manually issue a refund outside the cancellation flow (deliberately not offered yet)
 
 ### Settlements and payouts
-- ✅ Settlements screen: the per-booking ledger with euro net positions, filters, and summary cards (owed to operators / released), scoped so operators see only their own
-- ✅ Payouts release automatically once each booking's cancellation window closes - no manual "mark paid" step needed
+- ✅ Settlements screen reworked (26 July) to be self-describing on both sides: every row is a paid-in-full booking showing the booking total, the commission Island Tours keeps, and the payout owed the operator, with plain-words statuses (Payout due / Paid out / Reversed) and a what-happens-next line on every row
+- ✅ Manual "Mark as paid" action for admins (with a confirmation step and an undo): a payout shows "Paid out" only after you confirm the bank transfer was actually made; rows only become payable once the cancellation window closes and never while a cancellation request is pending
+- ✅ Searchable by booking reference, filterable by status and date, and - for admins - by operator
+- ✅ Operators see the same ledger scoped to themselves, worded from their side: "Due to you from Island Tours" and "Paid to you" - no guessing
 - ✅ The analytics "payouts due" figure and this screen always match (same ledger)
 - ⬜ Operator payout statements (a per-operator statement view or export)
 
@@ -302,6 +306,7 @@ The back-office where you and your operators run the business. Twenty-four modul
 
 ### Analytics
 - ✅ Live overview with real revenue, bookings, customers, trends and top performers
+- ✅ Refund figures included (26 July): a "Refunded to travellers" total on the admin overview, and the Recent Activity feed now also lists the latest cancellations (who cancelled, refund owed or not) and the latest refunds with their live status - a stuck refund is visible at a glance
 - ✅ Date-range selection carried in the address so a view can be shared
 - ✅ Role-correct figures - operators see their own numbers only
 - ⬜ Make every figure clickable through to the list that produced it
@@ -529,8 +534,8 @@ These items are genuinely waiting on you rather than on development. Each one is
 The dashboard is finished and tested but cannot go live. It needs a hosting project created and the domain pointed at it, and that domain must then be authorised on the engine. A temporary hosting address will not work - logins fail on any address that is not on your own domain, so there is no "launch now, domain later" option.
 *You need to: create the hosting project, point the DNS, and confirm the domain is authorised.*
 
-**2. How the released payout money physically moves**
-The settlements ledger now records exactly what is owed per booking and releases each payout automatically once the cancellation window closes. What is still your call is how the released money reaches the operator's bank: manual transfers/invoicing against the ledger for now, or automated connected-account payouts (Stripe Connect) in version 2. Deposit-based bookings are already self-settling and need no decision.
+**2. How the payout money physically moves**
+Decided and built (26 July): payouts are manual for now. The settlements screen shows exactly which payouts are due and ready; you make the bank transfer yourself and click "Mark as paid" on the row, which updates the operator's view instantly. The open question for version 2 remains whether to automate this via connected-account payouts (Stripe Connect). Deposit-based bookings are self-settling and need no decision.
 *You need to: confirm manual transfers against the ledger for version 1, or ask for the connected-accounts build.*
 
 **3. Is the fourth payment model in scope?**
@@ -586,8 +591,8 @@ A real market-rate source (European Central Bank) is built, and every actual pay
 **3. Two shared production keys are still unset.**
 Without them, published dashboard changes may not appear on the public site promptly, and internal page requests get rate-limited. Same item as "Needs your decision" #5 - it costs nothing but a deployment edit.
 
-**4. Payments in the dashboard are view-only.**
-Refunds now execute automatically on approved cancellations, but there is no payment detail screen, no manual refund button, and no refunds oversight view. Any exceptional case still means logging into Stripe or Mollie directly.
+**4. Payments in the dashboard have basic actions but no detail screen.**
+Refunds execute automatically on approved cancellations, every payment row now has actions (jump to booking, open in Stripe/Mollie, retry a failed refund), and refund statuses read correctly everywhere. Still missing: a payment detail panel and a refunds oversight view; a refund outside the cancellation flow still means the provider's own dashboard.
 
 **5. The public website's automated test coverage is thin.**
 The engine has over 1,600 automated checks; the customer-facing site has only its first few. A change to checkout, pricing or the booking widget can still break silently and would only be caught by someone manually clicking through.

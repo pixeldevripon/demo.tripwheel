@@ -115,6 +115,8 @@ function mockPrisma() {
       // so existing cancel tests are unaffected. Refund tests override per-case.
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn().mockResolvedValue({}),
+      // executeRefund flips the ORIGINAL charge row to REFUNDED on success.
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       // executeRefund's failed-attempt counter (idempotency-key advance).
       count: jest.fn().mockResolvedValue(0),
     },
@@ -1401,14 +1403,27 @@ describe('BookingsService', () => {
 
       // Stable idempotency key so a retry never double-refunds.
       expect(stripe.refundIntent).toHaveBeenCalledWith('pi_1', 'refund-b1');
+      // A settled refund is REFUNDED (never a green "Succeeded" in the list)...
       expect(m.payment.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             kind: 'REFUND',
-            status: 'SUCCEEDED',
+            status: 'REFUNDED',
             amount: D('31.99'),
             refundId: 're_test_123',
           }),
+        }),
+      );
+      // ...and the ORIGINAL charge row flips to REFUNDED with it.
+      expect(m.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            bookingId: 'b1',
+            kind: { not: 'REFUND' },
+            intentId: 'pi_1',
+            status: 'SUCCEEDED',
+          }),
+          data: { status: 'REFUNDED' },
         }),
       );
     });
@@ -2436,8 +2451,9 @@ describe('BookingsService', () => {
       m.booking.findUnique.mockResolvedValue(
         confirmable({
           currency: 'USD',
+          paymentModel: PaymentModel.PAID_IN_FULL,
           totalRetail: D('100'),
-          depositAmount: D('20'),
+          depositAmount: D('100'),
           fxRateToEur: D('0.92'), // ECB snapshot at reserve
           totalEur: D('92'),
           commissionRate: D('0.2'),
@@ -2466,10 +2482,11 @@ describe('BookingsService', () => {
         }),
       );
       // The settlement ledger row is written from the SAME reconciled figures:
-      // deposit model -> collected = depositAmount * pspRate.
+      // paid_in_full -> collected = the full total at the PSP's true rate.
       const c = m.settlement.upsert.mock.calls[0][0].create;
       expect(c.commissionOwed).toEqual(D('18.27'));
-      expect(c.amountCollected).toEqual(D('18.27')); // 20 * 0.9134 = 18.268 -> 18.27
+      expect(c.amountCollected).toEqual(D('91.34')); // 100 * 0.9134
+      expect(c.netPosition).toEqual(D('73.07')); // the payout owed the operator
     });
 
     it('an EUR-charged booking ignores a stray PSP rate (nothing was converted)', async () => {
@@ -2602,31 +2619,28 @@ describe('BookingsService', () => {
       err.mockRestore();
     });
 
-    // Settlement ledger (B3): exactly one row per booking at confirmation, in EUR.
-    // netPosition = amountCollected - commissionOwed (+ = IT owes operator).
+    // Operator-payout ledger (B3, founder 2026-07-26): a row is written ONLY for
+    // paid_in_full (the model where IT holds the operator's money). Self-settling
+    // deposit models and operator_full never get a row - a noise-free ledger.
     const settlementCreate = () => m.settlement.upsert.mock.calls[0][0].create;
 
-    it('records a ~0 settlement for a deposit model (deposit == commission)', async () => {
+    it('writes NO settlement row for a deposit model (self-settling: deposit == commission)', async () => {
       m.booking.updateMany.mockResolvedValue({ count: 1 });
       m.booking.findUnique.mockResolvedValue(
         confirmable({
           paymentModel: PaymentModel.OPERATOR_LINK,
           depositAmount: D('20'),
           totalRetail: D('100'),
-          commissionRate: D('0.2'), // -> commission 20
+          commissionRate: D('0.2'), // -> commission 20 == deposit: nothing to move
         }),
       );
 
       await svc.confirmFromPayment('b1');
 
-      const c = settlementCreate();
-      expect(c.paymentModel).toBe(PaymentModel.OPERATOR_LINK);
-      expect(c.amountCollected.toString()).toBe('20'); // the deposit
-      expect(c.commissionOwed.toString()).toBe('20');
-      expect(c.netPosition.toString()).toBe('0'); // self-settling
+      expect(m.settlement.upsert).not.toHaveBeenCalled();
     });
 
-    it('records a POSITIVE net for paid_in_full (IT owes the operator the remainder)', async () => {
+    it('records the payout owed for paid_in_full (IT owes the operator the remainder)', async () => {
       m.booking.updateMany.mockResolvedValue({ count: 1 });
       m.booking.findUnique.mockResolvedValue(
         confirmable({
@@ -2639,12 +2653,13 @@ describe('BookingsService', () => {
       await svc.confirmFromPayment('b1');
 
       const c = settlementCreate();
+      expect(c.paymentModel).toBe(PaymentModel.PAID_IN_FULL);
       expect(c.amountCollected.toString()).toBe('100'); // full total collected
       expect(c.commissionOwed.toString()).toBe('20');
-      expect(c.netPosition.toString()).toBe('80'); // + = IT owes operator
+      expect(c.netPosition.toString()).toBe('80'); // the payout owed the operator
     });
 
-    it('records a NEGATIVE net for operator_full (operator owes IT the commission)', async () => {
+    it('writes NO settlement row for operator_full (IT never held any money)', async () => {
       m.booking.updateMany.mockResolvedValue({ count: 1 });
       m.booking.findUnique.mockResolvedValue(
         confirmable({
@@ -2656,10 +2671,7 @@ describe('BookingsService', () => {
 
       await svc.confirmFromPayment('b1');
 
-      const c = settlementCreate();
-      expect(c.amountCollected.toString()).toBe('0'); // IT collected nothing
-      expect(c.commissionOwed.toString()).toBe('20');
-      expect(c.netPosition.toString()).toBe('-20'); // - = operator owes IT
+      expect(m.settlement.upsert).not.toHaveBeenCalled();
     });
   });
 

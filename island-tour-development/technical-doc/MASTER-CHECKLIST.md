@@ -258,6 +258,7 @@
 - [x] Age-restriction validation deliberately minimal — tour minimum age only, checked when `travelerAge` is supplied (**founder decision 2026-07-25: "keep it simple as is"** — do not add band max/coverage checks)
 - [~] Refund computation returns only a FULL/NONE **category**; execution now refunds the actual captured payment(s) via the PSP, but there is still no partial / pro-rata refund amount
 - [x] Execute the actual PSP refund and write a `REFUND` `Payment` row on cancellation — `executeRefund()` (Stripe `refundIntent` / Mollie `createRefund`), triggered by the `booking.refund-owed` outbox event → `refund-execute` queue job when the verdict is FULL; Stripe webhook handles `refund.updated` + `refund.failed` (production webhook must subscribe to both)
+- [x] Refund status unification (2026-07-26): a settled refund maps to `REFUNDED` (not SUCCEEDED) and the ORIGINAL charge row flips to `REFUNDED` at the same settle point (sync in `executeRefund`, async in `reconcileRefundRow`, reverting on late failure); `paid`/`payment_intent.succeeded` deliveries can no longer resurrect a refunded charge; `deriveRefundState`/`derivePaymentState`/analytics all count REFUNDED as money-moved; migration `20260726140000` backfilled old rows
 - [ ] Reconcile a payment that succeeds after the hold expired — `confirmFromPayment` only confirms an `ON_HOLD` booking, so a late settlement must be voided/refunded rather than silently stranded
 - [x] Capture attribution at reserve: `gclid`/`gbraid`/`wbraid`/`fbclid` + all `utm_*` accepted via `AttributionDto` on `ReserveBookingDto` and written onto the booking (frontend captures them into a 90-day first-party cookie, last-click-wins)
 - [x] Distinct `gclid`/`gbraid`/`wbraid`/`fbclid` fields shipped in the attribution block (no generic `clickId`)
@@ -303,11 +304,13 @@
 
 ### Settlement & payouts
 
-- [x] `Settlement` model + `SettlementStatus` enum (`RECORDED | PAID_OUT | PAID_IN_FULL | INVOICED | REVERSED`) with `bookingId` unique (`prisma/bookings.prisma`), served by `src/settlements/` (`GET /settlements`, `GET /settlements/summary`, operator-scoped)
-- [x] Exactly one settlement row per booking, written at confirmation via `settlement.upsert` keyed on `bookingId` (`update: {}` — never overwrites)
-- [x] Sign convention enforced in writes: positive `netPosition` = Island Tours owes the operator, negative = the operator owes Island Tours (spotlight 35% > 30% deposit cap intentionally records a negative net)
-- [x] `paid_in_full` scheduled payout released **after the cancellation window closes** (clawback-safe): hourly `releaseEligiblePayouts` cron flips `RECORDED → PAID_OUT`
-- [x] Deposit self-settling invariant held by LD24 (`deposit_pct == commission` synced on every tier write); stale settlements on cancelled bookings reversed by a self-heal cron (`reverseStaleCancelledSettlements`, forfeited bookings excluded — their settlement stands)
+- [x] `Settlement` model + `SettlementStatus` enum (`RECORDED | PAID_OUT | PAID_IN_FULL | INVOICED | REVERSED`) with `bookingId` unique (`prisma/bookings.prisma`), served by `src/settlements/` (`GET /settlements` incl. booking-ref search + operator filter, `GET /settlements/summary`, operator-scoped)
+- [x] Ledger records **paid_in_full bookings only** (founder 2026-07-26): the one model where Island Tours holds money it owes the operator; self-settling deposit models and `operator_full` write NO row (`writeSettlement` no-ops; migration `20260726120000` purged the old noise rows). Written at confirmation via `settlement.upsert` keyed on `bookingId` (`update: {}` — never overwrites)
+- [x] `netPosition` = the payout owed the operator (collected − commission); zeroed on REVERSED
+- [x] **Manual payout** (founder 2026-07-26): `PATCH /settlements/:id/mark-paid` (+ `/mark-unpaid` undo), `MANAGE_BOOKINGS`-gated — PAID_OUT only ever means an admin confirmed the bank transfer. Guarded stepwise 409s (already paid / reversed / booking cancelled / cancellation pending / clawback window still open); the old hourly auto-release cron flip is **removed** and migration `20260726120000` reverted its cron-flipped PAID_OUT rows to RECORDED
+- [x] Clawback safety kept as *eligibility*: `payoutEligible`/`payoutHeld`/`payoutReleaseAt` computed server-side (free-cancellation window close, same formula as the refund path); mark-paid is only allowed on an eligible row
+- [x] Deposit self-settling invariant held by LD24 (`deposit_pct == commission` synced on every tier write); stale settlements on cancelled bookings reversed by a self-heal cron (`reverseStaleCancelledSettlements`, hourly `settlement-reverse-sweep`, forfeited bookings excluded — their settlement stands)
+- [x] Demo seed writes consistent ledger rows (`prisma/demo/settlements.ts`, runs LAST): paid_in_full bookings only, RECORDED/PAID_OUT/REVERSED mix, self-heals commission-less depth bookings (rule #22) first
 - [ ] v2: reintroduce `operator_full` with its commission-collection rail (Stripe Connect application fee, or self-billed monthly invoice + SEPA/card-on-file mandate + listing suspension on non-payment)
 - [ ] v2: onboard operators as Stripe Connect Express accounts and migrate deposit + `paid_in_full` models to destination charges with `application_fee_amount = commission`, populating the ledger from Stripe events instead of manual entry
 
@@ -396,6 +399,7 @@
 - [x] `payoutDueEur` (PAID_IN_FULL liability) and `untrackedBalanceEur` (operator-rail balance) surfaced with explicit caveats
 - [x] Honesty rule enforced in code: zeros are real query results and unbacked cards were deleted rather than faked
 - [x] `payoutDueEur` now reads the settlements LEDGER verbatim (2026-07-25, founder: "analytics and settlements didn't match"): `settlement.aggregate` on RECORDED + PAID_IN_FULL + `netPosition > 0`, operator-scoped, un-windowed — the exact predicate of `SettlementsService.summary`, so the Overview card and the Settlements page always agree; `earnedEur`/`commissionEur` intentionally keep recognition-on-completion (REDEEMED)
+- [x] Recent activity extended with cancellations + refunds (2026-07-26): latest 5 CANCELLED bookings by `utcCancelledAt` (who cancelled + refund verdict) and latest 5 REFUND payment rows whatever their outcome (a stuck PROCESSING/FAILED refund is visible), both role-scoped by the same `bookingWhere`
 - [ ] Pre-booking funnel (views, add-to-cart) — requires a tracking event store that does not exist
 
 ### OCTO
@@ -432,7 +436,7 @@
 - [x] Transactional outbox (B6, 2026-07-25): `OutboxEvent` model written inside the causing transaction (`booking.confirmed` atomic with the `conversionFiredAt` guard; `booking.refund-owed` in the cancel tx) + `OutboxRelayService` (`@Interval` 5s, overlap-guarded, batch 50, enqueue-then-stamp) publishing to the `platform-jobs` BullMQ queue
 - [x] Confirmation email on a queued job with attempts + exponential backoff — **founder-amended hybrid**: confirm-time emails also send INLINE, and the queued jobs are the durable retry backstop; shared guard columns (`utcConfirmationEmailSentAt` etc.) make the two compose without double-sends
 - [x] CAPI conversion on a queued idempotent job (`tracking.capi-conversion`; Meta dedups by `event_id = publicRef`; null commission throws `UnrecoverableError`)
-- [x] `paid_in_full` payout release after the cancellation window — implemented as the hourly settlements cron (`releaseEligiblePayouts`), not a per-booking delayed job
+- [x] `paid_in_full` payout after the cancellation window — the window close is computed as server-side *eligibility* (`payoutEligible`); the payout itself is a MANUAL admin mark-paid action (founder 2026-07-26 — the old hourly auto-release cron is removed; only the hourly reverse self-heal sweep remains)
 - [~] Delayed `booking.pre-tour-reminder` job — enqueued with the computed delay and state re-checked in the consumer, but the consumer is a stub (template pending a founder decision)
 - [ ] Delayed `affiliate.postback` job (on-hold at booking, approved after the window)
 - [x] Deterministic `jobId` dedup (`{bookingId}:{jobName}`) layered on top of the DB guard columns
@@ -493,11 +497,11 @@ processor, customer-provisioning, booking-pricing util.
 
 ### Backend summary
 
-**Done: 280 · Ongoing: 18 · Pending: 79** (377 tracked backend tasks; recounted from the markers 2026-07-25).
+**Done: 288 · Ongoing: 18 · Pending: 75** (381 tracked backend tasks; recounted from the markers 2026-07-26).
 
 The transactional core is complete end to end: bookings, availability, tiers/eligibility (incl. the
-cancellation-rate gate), Stripe **and Mollie**, refund execution, the settlements ledger with its hourly
-payout release, the transactional outbox + `platform-jobs` retry queue, the review module (collection →
+cancellation-rate gate), Stripe **and Mollie**, refund execution, the settlements ledger (paid_in_full
+payouts, manual admin mark-paid), the transactional outbox + `platform-jobs` retry queue, the review module (collection →
 moderation → translation → analytics), FX with real ECB/composite providers + ChargeFx reconciliation,
 attribution capture and server-side PII hashing. The severe risks called out in the prior audit are all
 closed except one: **the FX binding still defaults to `static` — production must set `FX_PROVIDER=ecb`.**
@@ -1074,7 +1078,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 ### Frontend summary
 
-**Done 265 · Ongoing 34 · Pending 154** (453 tasks total; recounted from the markers 2026-07-25). The transactional spine — booking widget, checkout, Stripe/PayPal/iDEAL **and Mollie** payment, processing hop, thank-you page, booking lookup, traveler session and the cancellation-request flow — is built end-to-end, and the 7-locale i18n layer is fully wired. The prior audit's concentrated gaps are now closed: sitemap + robots + JSON-LD shipped, the GTM/Consent-Mode-v2 tracking layer and the `booking_complete` conversion fire are live code (gated on the founder entering the container/pixel IDs and configuring the GTM container per `GTM-CONTAINER-SETUP.md`), error/404 boundaries exist, the homepage/destination pages are genuinely CMS-fed, and review submission + display depth shipped. What remains is polish and locked-copy verification (widget/checkout microcopy, card carousel, locale formatters), Phase 3 filters (date/guests/time-of-day), the GA4 secondary event set (`view_item_list`, `search`, `add_to_wishlist`, …), ItemList JSON-LD, the accordion checkout restructure, and unit-test coverage of the public site.
+**Done 266 · Ongoing 33 · Pending 153** (452 tasks total; recounted from the markers 2026-07-26). The transactional spine — booking widget, checkout, Stripe/PayPal/iDEAL **and Mollie** payment, processing hop, thank-you page, booking lookup, traveler session and the cancellation-request flow — is built end-to-end, and the 7-locale i18n layer is fully wired. The prior audit's concentrated gaps are now closed: sitemap + robots + JSON-LD shipped, the GTM/Consent-Mode-v2 tracking layer and the `booking_complete` conversion fire are live code (gated on the founder entering the container/pixel IDs and configuring the GTM container per `GTM-CONTAINER-SETUP.md`), error/404 boundaries exist, the homepage/destination pages are genuinely CMS-fed, and review submission + display depth shipped. What remains is polish and locked-copy verification (widget/checkout microcopy, card carousel, locale formatters), Phase 3 filters (date/guests/time-of-day), the GA4 secondary event set (`view_item_list`, `search`, `add_to_wishlist`, …), ItemList JSON-LD, the accordion checkout restructure, and unit-test coverage of the public site.
 
 ---
 
@@ -1295,8 +1299,8 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `/payments` route with `loading.tsx`, rendering `PaymentsListView` over `components/common/payments-page-view.tsx`
 - [x] 3 components incl. refund columns and provider/method rendering
 - [x] `GET /payments` wired; converted to the unified `DataTable`
-- [~] Payments is a **read-only dead end** — no actions column, no row-actions, no detail view, no status transitions; the only money-touching module with no drill-in
-- [ ] Payment detail sheet + refund action — **BLOCKED on backend request A7**; do not add affordances the API cannot serve
+- [x] Row actions built (2026-07-26, `payment-row-actions.tsx`): View booking (deep-links `/bookings?q={ref}`), copy booking/payment refs, Open in Stripe/Mollie dashboard (admin), and **Retry refund** on a FAILED refund row (admin, confirm dialog — re-invokes the idempotent cancel retry hook)
+- [~] Payment detail sheet — still no detail view; the row actions + booking deep-link cover the drill-in for now (**backend request A7 remains for a full sheet**)
 - [ ] E2E coverage for payments — **zero specs exist**
 
 ## Cancellation requests
@@ -1313,15 +1317,17 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 ## Refunds
 
 - [ ] Dedicated refunds surface — **still not built** as a screen; refund status/`refundDue` now render inside bookings (detail sheet + columns) and settlements, and the backend executes refunds automatically on FULL-verdict cancellations, so the remaining need is a reconciliation/oversight view rather than an initiation flow
-- [ ] Manual refund initiation / approval action from the dashboard (backend `executeRefund` exists; no UI trigger)
-- [ ] Refund reconciliation view against the double-recorded refund model (original payment flips to `REFUNDED` **and** a separate `kind = REFUND` row is written — summing `status='REFUNDED'` double counts)
+- [~] Manual refund initiation / approval action from the dashboard — a **Retry refund** row action now exists on FAILED refund rows (payments table, 2026-07-26); initiating a refund on an arbitrary payment (outside the cancellation flow) is still deliberately absent
+- [x] Refund statuses unified (2026-07-26): a settled refund row is `REFUNDED` (never a green "Succeeded") and the ORIGINAL charge row flips to `REFUNDED` with it — both flipped live at the settle point (`executeRefund`/`reconcileRefundRow`) and backfilled by migration `20260726140000`; analytics gross counts `SUCCEEDED+REFUNDED` inbound so nothing double-counts
+- [ ] Refund reconciliation view (a dedicated oversight screen over the double-recorded refund model)
 
 ## Settlements & payouts
 
-- [x] Settlements module built — `app/(app)/settlements` + `components/settlements/` (columns, table, list view) + `hooks/settlements/use-settlements.ts`, wired to `GET /settlements` + `/settlements/summary` (via `lib/api/bookings-dashboard.ts`), in nav
-- [x] Ledger UI: per-booking EUR net positions with status/paymentModel/date filters and summary cards (owed to operators pending / released); operator-scoped server-side
-- [x] Payout release is automatic (hourly backend cron after the cancellation window) — deliberately **no manual "mark paid out" action**
-- [x] `payoutDueEur` caveat retired — the Statistics payouts-due card now reads the settlements ledger verbatim and says so ("Matches the Settlements page")
+- [x] Settlements module built — `app/(app)/settlements` + `components/settlements/` (columns, table, list view, row actions) + `hooks/settlements/use-settlements.ts`, wired to `GET /settlements` + `/settlements/summary` + the mark-paid/mark-unpaid actions (via `lib/api/bookings-dashboard.ts`), in nav
+- [x] Ledger UI reworked self-describing (founder 2026-07-26): paid_in_full payouts only; plain-words statuses (Payout due / Paid out / Reversed) with a what-happens-next line per row (On hold / Ready to pay / Clears for payout {date} / Paid {date}); booking-ref search + status/date filters + admin operator filter; role-aware wording (admin: "Payout due to operators", operator: "Due to you from Island Tours" / "Paid to you")
+- [x] **Manual "Mark as paid" row action** (admin, `MANAGE_BOOKINGS`, confirm dialog asserting the transfer was made) + "Revert to due" undo — replaces the removed automatic hourly release; enabled only on server-computed `payoutEligible` rows
+- [x] `payoutDueEur` caveat retired — the Statistics payouts-due card now reads the settlements ledger verbatim and says so ("Matches the Settlements page"); its note reflects the manual mark-paid workflow (2026-07-26)
+- [x] Refund analytics (2026-07-26): admin "Refunded to travellers" KPI card (settled refunds from the payment ledger, `refundedEur`), and Recent Activity gained "Recent Cancellations" (who cancelled + refund-owed badge) and "Recent Refunds" (status badge incl. stuck PROCESSING/FAILED) groups, role-scoped; admin grid hides the Customers card (Refunded takes its slot - two clean rows), operators keep it
 - [ ] Operator payout statements / export (per-operator statement view over the ledger)
 
 ## Reviews & moderation
@@ -1578,9 +1584,10 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 ### Dashboard summary
 
-**Done 235 · Ongoing 13 · Pending 123** (371 tasks total; recounted from the markers 2026-07-25). The dashboard is a mature, near-complete application: 24 modules
-are built and wired — Reviews (moderation queue + analytics + nav badge), Settlements (ledger +
-summary) and Customers (directory + review requests + bulk email) all landed 2026-07-22..25, along
+**Done 242 · Ongoing 14 · Pending 117** (373 tasks total; recounted from the markers 2026-07-26). The dashboard is a mature, near-complete application: 24 modules
+are built and wired — Reviews (moderation queue + analytics + nav badge), Settlements (self-describing
+payout ledger with the manual mark-paid workflow, reworked 2026-07-26) and Customers (directory +
+review requests + bulk email) all landed 2026-07-22..26, along
 with the bookings forfeit/derived-status work, the booking detail sheet, the operator payout-provider
 switcher, and the Integrations/Instagram/review-cadence settings. What remains splits three ways —
 (1) four surfaces still never built (a dedicated refunds screen, FX admin, a notifications feed,

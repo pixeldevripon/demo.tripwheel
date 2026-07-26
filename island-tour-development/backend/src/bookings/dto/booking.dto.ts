@@ -624,17 +624,19 @@ export class BookingListItemDto extends BookingResponseDto {
     nullable: true,
     enum: SettlementStatus,
     description:
-      'Settlement-ledger status for this booking (null until confirmed). See the ' +
-      'Settlements page for the full ledger.',
+      'Operator-payout status for this booking. Only paid_in_full bookings have ' +
+      'one (RECORDED = payout due / PAID_OUT / REVERSED); null for the ' +
+      'self-settling models and until confirmation. See the Settlements page.',
   })
   settlementStatus!: SettlementStatus | null;
-  @ApiPropertyOptional({
-    nullable: true,
+  @ApiProperty({
     enum: SettlementMethod,
     description:
-      'HOW this booking settles: SELF_SETTLING / OPERATOR_PAYOUT / COMMISSION_INVOICE.',
+      'HOW this booking settles, derived from its payment model: SELF_SETTLING ' +
+      '(deposit = commission, nothing to move) / OPERATOR_PAYOUT (IT pays the ' +
+      'operator the net) / COMMISSION_INVOICE (operator_full, v2).',
   })
-  settlementMethod!: SettlementMethod | null;
+  settlementMethod!: SettlementMethod;
   @ApiProperty({
     description:
       "True when this booking's paid_in_full payout is HELD by a pending " +

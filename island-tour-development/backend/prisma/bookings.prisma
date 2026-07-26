@@ -175,10 +175,13 @@ model Booking {
 }
 
 // ── Settlement ledger (master SETTLEMENT-AND-PAYOUTS §2) ──────────────────────
-// One row per booking, written at confirmation, all amounts in EUR. The money-
-// movement record (distinct from the booking_complete conversion event). v1
-// records only (deposit models net ~0); the extension hooks below let v2 grow into
-// scheduled Connect payouts + operator_full invoicing WITHOUT a data-model rewrite.
+// The OPERATOR-PAYOUT ledger: one row per confirmed PAID_IN_FULL booking (the only
+// model where Island Tours holds money it owes the operator), written at
+// confirmation, all amounts in EUR. Self-settling deposit models never get a row
+// (founder decision 2026-07-26 - noise-free ledger). Payout is MANUAL in v1:
+// PAID_OUT is only ever set by an admin's "Mark as paid" after the bank transfer,
+// never by a cron. The extension hooks below let v2 grow into scheduled Connect
+// payouts + operator_full invoicing WITHOUT a data-model rewrite.
 model Settlement {
   id           String       @id @default(uuid())
   bookingId    String       @unique

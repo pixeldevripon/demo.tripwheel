@@ -450,6 +450,55 @@ export class RecentCustomerDto {
   firstBookingAt!: Date;
 }
 
+export class RecentCancellationDto {
+  @ApiProperty({ example: 'b1a2...' })
+  id!: string;
+
+  @ApiProperty({ example: 'IT-8FQ2-K3' })
+  displayRef!: string;
+
+  @ApiProperty({ example: 'Klein Curacao Sunrise Sail' })
+  tourName!: string;
+
+  @ApiProperty({
+    example: 'CUSTOMER',
+    description: 'Who cancelled: CUSTOMER / OPERATOR / ADMIN.',
+  })
+  cancelledBy!: string | null;
+
+  @ApiProperty({
+    example: 'FULL',
+    description: 'The refund verdict at cancellation (FULL / NONE).',
+  })
+  cancellationRefund!: string | null;
+
+  @ApiProperty({ example: 412.5, description: 'Booking total in EUR.' })
+  totalEur!: number;
+
+  @ApiProperty({ example: '2026-07-19T09:12:44.000Z' })
+  cancelledAt!: Date;
+}
+
+export class RecentRefundDto {
+  @ApiProperty({ example: 'p9a2...' })
+  id!: string;
+
+  @ApiProperty({ example: 'IT-8FQ2-K3' })
+  displayRef!: string;
+
+  @ApiProperty({
+    example: 'REFUNDED',
+    description: 'REFUNDED (settled) / PROCESSING (in flight) / FAILED.',
+  })
+  status!: string;
+
+  @ApiProperty({ example: 123.75, description: 'Refund amount in EUR.' })
+  amountEur!: number;
+
+  @ApiProperty({ example: '2026-07-19T09:12:46.000Z' })
+  createdAt!: Date;
+}
+
 export class RecentActivityDto {
   @ApiProperty({ type: [RecentBookingDto] })
   bookings!: RecentBookingDto[];
@@ -459,6 +508,12 @@ export class RecentActivityDto {
 
   @ApiProperty({ type: [RecentCustomerDto] })
   customers!: RecentCustomerDto[];
+
+  @ApiProperty({ type: [RecentCancellationDto] })
+  cancellations!: RecentCancellationDto[];
+
+  @ApiProperty({ type: [RecentRefundDto] })
+  refunds!: RecentRefundDto[];
 }
 
 export class FxDisplayDto {

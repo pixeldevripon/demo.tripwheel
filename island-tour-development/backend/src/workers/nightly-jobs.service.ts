@@ -40,27 +40,23 @@ export class NightlyJobsService {
   ) {}
 
   /**
-   * Paid_in_full payout release (master SETTLEMENT-AND-PAYOUTS §2, B4). Flips
-   * eligible settlements RECORDED -> PAID_OUT once each booking's free-cancellation
-   * (clawback) window has closed. Hourly is ample - a booking becomes eligible the
-   * moment its window passes, and this catches it within the hour; the flip is
-   * guarded + idempotent, so re-runs never double-release. Actual funds move manually
-   * against the released rows in v1 (Stripe Connect automates it in v2).
+   * Settlement self-heal sweep (master SETTLEMENT-AND-PAYOUTS §2). Voids any
+   * payout row whose booking was cancelled/expired but is still showing an
+   * obligation (RECORDED -> REVERSED, net -> 0). NOTE: this sweep never PAYS
+   * anything - marking a payout PAID_OUT is a manual admin action on the
+   * dashboard (founder decision 2026-07-26: v1 payouts are hand-made bank
+   * transfers, so only a human confirms one happened). Hourly, idempotent.
    */
   @Cron(CronExpression.EVERY_HOUR, {
-    name: 'settlement-payout-release',
+    name: 'settlement-reverse-sweep',
     timeZone: 'UTC',
   })
-  async settlementPayoutRelease(): Promise<void> {
+  async settlementReverseSweep(): Promise<void> {
     try {
-      // Void stale obligations first (cancelled bookings), THEN release the rest:
-      // reversing before releasing guarantees a cancelled booking can never slip
-      // through into a payout on the same sweep.
       await this.settlements.reverseStaleCancelledSettlements();
-      await this.settlements.releaseEligiblePayouts();
     } catch (err) {
       this.logger.error(
-        `Settlement payout release failed: ${err instanceof Error ? err.message : 'unknown'}`,
+        `Settlement reverse sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
       );
     }
   }

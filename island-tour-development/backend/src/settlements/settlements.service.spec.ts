@@ -13,6 +13,7 @@ function mockPrisma(): any {
   return {
     settlement: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       count: jest.fn(),
     },
@@ -50,15 +51,16 @@ describe('SettlementsService', () => {
     ...over,
   });
 
-  describe('releaseEligiblePayouts', () => {
-    it('releases a paid_in_full net past its clawback window (RECORDED -> PAID_OUT)', async () => {
-      prisma.settlement.findMany.mockResolvedValue([candidate()]);
+  // Manual payout confirmation (founder 2026-07-26): PAID_OUT is only ever set
+  // by an admin's "Mark as paid" - each blocker gets its own specific 409.
+  describe('markPaidOut', () => {
+    it('marks an eligible payout PAID_OUT (guarded flip, stamps payout + settledAt)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(candidate());
 
-      const released = await svc.releaseEligiblePayouts();
+      const res = await svc.markPaidOut('s1');
 
-      expect(released).toBe(1);
       const arg = prisma.settlement.updateMany.mock.calls[0][0];
-      // Guarded flip, idempotent on still-RECORDED.
+      // Guarded flip, race-safe on still-RECORDED.
       expect(arg.where).toEqual({
         id: 's1',
         status: SettlementStatus.RECORDED,
@@ -66,53 +68,77 @@ describe('SettlementsService', () => {
       expect(arg.data.status).toBe(SettlementStatus.PAID_OUT);
       expect(arg.data.operatorPayout.toString()).toBe('80');
       expect(arg.data.settledAt).toBeInstanceOf(Date);
+      expect(res.status).toBe(SettlementStatus.PAID_OUT);
+      expect(res.operatorPayout).toBe('80');
     });
 
-    it('does NOT release while the clawback window is still open (future tour)', async () => {
-      prisma.settlement.findMany.mockResolvedValue([
+    it('404s on an unknown settlement', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(null);
+      await expect(svc.markPaidOut('nope')).rejects.toThrow(
+        'Settlement not found',
+      );
+    });
+
+    it('409s when already paid out (never double-pays)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(
+        candidate({ status: SettlementStatus.PAID_OUT }),
+      );
+      await expect(svc.markPaidOut('s1')).rejects.toThrow(
+        'already marked as paid out',
+      );
+      expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s on a REVERSED row (cancelled booking owes nothing)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(
+        candidate({ status: SettlementStatus.REVERSED }),
+      );
+      await expect(svc.markPaidOut('s1')).rejects.toThrow('reversed');
+      expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s while the clawback window is still open (future tour)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(
         candidate({
           booking: {
             displayRef: 'IT-1',
             status: BookingStatus.CONFIRMED,
             tourStartDateTime: new Date('2999-01-01T09:00:00.000Z'),
             tourTimeZone: 'UTC',
+            utcCancellationRequestedAt: null,
+            utcCancelledAt: null,
             tour: { cancellationHours: 48 },
           },
         }),
-      ]);
-
-      const released = await svc.releaseEligiblePayouts();
-
-      expect(released).toBe(0);
+      );
+      await expect(svc.markPaidOut('s1')).rejects.toThrow(
+        'can still cancel for free',
+      );
       expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
     });
 
-    it('does NOT release a settlement whose booking is no longer standing', async () => {
-      // The DB `where` already excludes non-standing bookings, but the in-memory
-      // guard is the backstop: a cancelled booking must never pay out.
-      prisma.settlement.findMany.mockResolvedValue([
+    it('409s when the booking is no longer standing (cancelled)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(
         candidate({
           booking: {
             displayRef: 'IT-1',
             status: BookingStatus.CANCELLED,
             tourStartDateTime: new Date('2020-01-01T09:00:00.000Z'),
             tourTimeZone: 'UTC',
+            utcCancellationRequestedAt: null,
+            utcCancelledAt: null,
             tour: { cancellationHours: 48 },
           },
         }),
-      ]);
-
-      const released = await svc.releaseEligiblePayouts();
-
-      expect(released).toBe(0);
+      );
+      await expect(svc.markPaidOut('s1')).rejects.toThrow('no longer stands');
       expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
     });
 
-    it('HOLDS the payout while a cancellation request is pending (past window)', async () => {
-      // Window long closed AND booking still CONFIRMED, so it would normally
-      // release - but a pending request means a refund may still be owed
-      // (master 6.4: judged at the request instant), so it must not pay out.
-      prisma.settlement.findMany.mockResolvedValue([
+    it('409s while a cancellation request is pending (payout HELD, master 6.4)', async () => {
+      // Window long closed AND booking still CONFIRMED, so it would otherwise be
+      // payable - but a pending request means a refund may still be owed.
+      prisma.settlement.findUnique.mockResolvedValue(
         candidate({
           booking: {
             displayRef: 'IT-1',
@@ -124,11 +150,54 @@ describe('SettlementsService', () => {
             tour: { cancellationHours: 48 },
           },
         }),
-      ]);
+      );
+      await expect(svc.markPaidOut('s1')).rejects.toThrow(
+        'cancellation request is pending',
+      );
+      expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
+    });
 
-      const released = await svc.releaseEligiblePayouts();
+    it('409s when the guarded flip loses a race (row changed concurrently)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue(candidate());
+      prisma.settlement.updateMany.mockResolvedValue({ count: 0 });
+      await expect(svc.markPaidOut('s1')).rejects.toThrow(
+        'changed while you were looking at it',
+      );
+    });
+  });
 
-      expect(released).toBe(0);
+  describe('markUnpaid', () => {
+    it('reverts a paid-out row to RECORDED and clears the payout stamp', async () => {
+      prisma.settlement.findUnique.mockResolvedValue({
+        id: 's1',
+        status: SettlementStatus.PAID_OUT,
+        booking: { displayRef: 'IT-1' },
+      });
+
+      const res = await svc.markUnpaid('s1');
+
+      const arg = prisma.settlement.updateMany.mock.calls[0][0];
+      expect(arg.where).toEqual({
+        id: 's1',
+        status: SettlementStatus.PAID_OUT,
+      });
+      expect(arg.data).toEqual({
+        status: SettlementStatus.RECORDED,
+        operatorPayout: null,
+        settledAt: null,
+      });
+      expect(res.status).toBe(SettlementStatus.RECORDED);
+    });
+
+    it('409s on a row that is not paid out (RECORDED / REVERSED)', async () => {
+      prisma.settlement.findUnique.mockResolvedValue({
+        id: 's1',
+        status: SettlementStatus.RECORDED,
+        booking: { displayRef: 'IT-1' },
+      });
+      await expect(svc.markUnpaid('s1')).rejects.toThrow(
+        'Only a paid-out settlement',
+      );
       expect(prisma.settlement.updateMany).not.toHaveBeenCalled();
     });
   });
