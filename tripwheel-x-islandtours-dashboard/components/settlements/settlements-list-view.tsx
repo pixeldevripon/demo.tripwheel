@@ -1,30 +1,49 @@
 'use client';
 
 import { useTableState } from '@/components/data-table/use-table-state';
+import { useRole } from '@/contexts/role-context';
 import {
     useSettlementSummary,
     useSettlements,
 } from '@/hooks/settlements/use-settlements';
 import type {
-    BookingPaymentModel,
     SettlementStatus,
     SettlementsQueryParams,
 } from '@/types/booking';
 import { SettlementsTable } from './settlements-table';
 
+/**
+ * Payout ledger, role-aware (founder 2026-07-26: both sides must read it
+ * without guessing). ADMIN sees every operator + the manual mark-paid action;
+ * an operator sees only their own rows, worded from their side ("due to you" /
+ * "paid to you"). The summary cards use the exact same predicates as the
+ * analytics payout card, so the figures always match.
+ */
 export function SettlementsListView() {
-    const { page, limit, filters, setPage, setLimit, setFilter } =
-        useTableState();
+    const { role } = useRole();
+    const isAdmin = role === 'ADMIN';
+    const {
+        page,
+        limit,
+        search,
+        debouncedSearch,
+        filters,
+        setPage,
+        setLimit,
+        setSearch,
+        setFilter,
+    } = useTableState();
     const { data: summary } = useSettlementSummary();
 
     const params: SettlementsQueryParams = {
         page,
         limit,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(filters.status
             ? { status: filters.status as SettlementStatus }
             : {}),
-        ...(filters.paymentModel
-            ? { paymentModel: filters.paymentModel as BookingPaymentModel }
+        ...(isAdmin && filters.operatorId
+            ? { operatorId: filters.operatorId }
             : {}),
         ...(filters.from ? { from: filters.from } : {}),
         ...(filters.to ? { to: filters.to } : {}),
@@ -38,23 +57,28 @@ export function SettlementsListView() {
                 <div className='grid grid-cols-2 gap-3 sm:max-w-md'>
                     <div className='rounded-lg border border-line bg-surface-inset p-3'>
                         <p className='text-xs text-muted-foreground'>
-                            Owed to operators (pending)
+                            {isAdmin
+                                ? 'Payout due to operators'
+                                : 'Due to you from Island Tours'}
                         </p>
                         <p className='text-lg font-semibold tabular-nums'>
                             &euro;{summary.owedPending}
                         </p>
                         <p className='text-xs text-muted-foreground'>
                             {summary.owedCount} payout
-                            {summary.owedCount === 1 ? '' : 's'} awaiting release
+                            {summary.owedCount === 1 ? '' : 's'} not yet paid
                         </p>
                     </div>
                     <div className='rounded-lg border border-line bg-surface-inset p-3'>
-                        <p className='text-xs text-muted-foreground'>Released</p>
+                        <p className='text-xs text-muted-foreground'>
+                            {isAdmin ? 'Paid out' : 'Paid to you'}
+                        </p>
                         <p className='text-lg font-semibold tabular-nums'>
                             &euro;{summary.released}
                         </p>
                         <p className='text-xs text-muted-foreground'>
-                            {summary.releasedCount} paid out
+                            {summary.releasedCount} payout
+                            {summary.releasedCount === 1 ? '' : 's'} completed
                         </p>
                     </div>
                 </div>
@@ -65,6 +89,9 @@ export function SettlementsListView() {
                 page={page}
                 limit={limit}
                 isLoading={isLoading}
+                isAdmin={isAdmin}
+                searchValue={search}
+                onSearchChange={setSearch}
                 filters={filters}
                 onPageChange={setPage}
                 onLimitChange={setLimit}

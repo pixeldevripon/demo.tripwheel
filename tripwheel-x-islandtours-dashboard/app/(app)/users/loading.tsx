@@ -13,7 +13,7 @@ export default function UsersLoading() {
     return (
         <ListPageSkeleton
             title='Users'
-            description='Platform staff, designations and operator team seats'
+            description='Platform users, designations and operator team seats'
             columns={6}
             filters={2}
         />

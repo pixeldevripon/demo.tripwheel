@@ -248,10 +248,33 @@ export interface RecentCustomer {
     firstBookingAt: string;
 }
 
+export interface RecentCancellation {
+    id: string;
+    displayRef: string;
+    tourName: string;
+    /** Who cancelled: CUSTOMER / OPERATOR / ADMIN. */
+    cancelledBy: string | null;
+    /** The refund verdict at cancellation (FULL / NONE). */
+    cancellationRefund: string | null;
+    totalEur: number;
+    cancelledAt: string;
+}
+
+export interface RecentRefund {
+    id: string;
+    displayRef: string;
+    /** REFUNDED (settled) / PROCESSING (in flight) / FAILED. */
+    status: string;
+    amountEur: number;
+    createdAt: string;
+}
+
 export interface RecentActivity {
     bookings: RecentBooking[];
     payments: RecentPayment[];
     customers: RecentCustomer[];
+    cancellations: RecentCancellation[];
+    refunds: RecentRefund[];
 }
 
 /**

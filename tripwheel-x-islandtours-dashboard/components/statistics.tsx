@@ -988,7 +988,7 @@ function StatisticsContent({
     const UNTRACKED_NOTE_PLATFORM =
         "Balances collected on the operator's own payment rails. Island Tours does not track whether these payments were received.";
     const PAYOUT_NOTE =
-        'Reads the settlements ledger: paid-in-full nets recorded at confirmation and not yet released - always the same figure as the Settlements page. Payouts release automatically once the free-cancellation window closes; released amounts leave this number. A balance, not a flow: the date-range filter does not apply to it.';
+        'Reads the settlements ledger: paid-in-full bookings recorded at confirmation and not yet paid out - always the same figure as the Settlements page. Payouts are made manually; once an admin marks one paid on the Settlements page it leaves this number. A balance, not a flow: the date-range filter does not apply to it.';
 
     // ─── KPI cards ───────────────────────────────────────────────────────
     const sharedTailCards: KpiCard[] = [
@@ -1014,18 +1014,22 @@ function StatisticsContent({
             icon: Airplane01Icon,
             tile: 'info',
         },
-        {
-            key: 'customers',
-            // Distinct bookers, guests included - not just registered accounts.
-            label: 'Customers',
-            value: customers.total.toString(),
-            trend: customerGrowth,
-            support: `${formatRate(customers.repeatRate)} repeat`,
-            note: 'Distinct bookers acquired in this period, guests included, counted from their first booking.',
-            icon: UserGroupIcon,
-            tile: 'success',
-        },
     ];
+
+    // Operator-only (founder 2026-07-26): the admin grid hides the Customers
+    // card - the Refunded card takes its slot so the money story stays on two
+    // clean rows. Admin customer detail lives in the Customers module.
+    const customersCard: KpiCard = {
+        key: 'customers',
+        // Distinct bookers, guests included - not just registered accounts.
+        label: 'Customers',
+        value: customers.total.toString(),
+        trend: customerGrowth,
+        support: `${formatRate(customers.repeatRate)} repeat`,
+        note: 'Distinct bookers acquired in this period, guests included, counted from their first booking.',
+        icon: UserGroupIcon,
+        tile: 'success',
+    };
 
     const platformCards: KpiCard[] = [
         {
@@ -1065,6 +1069,18 @@ function StatisticsContent({
             tile: 'warning',
         },
         ...sharedTailCards,
+        // Refunded takes the hidden Customers card's slot (founder 2026-07-26)
+        // so the admin grid stays two clean rows with the money story together.
+        {
+            key: 'refunded',
+            label: 'Refunded to travellers',
+            eur: revenue.refundedEur ?? undefined,
+            value: revenue.refundedEur === null ? 'Not tracked' : undefined,
+            support: 'Settled refunds, platform ledger',
+            note: 'Money actually returned to travellers on cancelled bookings, read from the payment ledger (settled refunds only - a pending or failed refund attempt is not counted). Already subtracted nowhere else: cash collected shows gross takings.',
+            icon: Coins01Icon,
+            tile: 'danger',
+        },
         {
             key: 'cash',
             label: 'Cash collected via Stripe',
@@ -1124,6 +1140,7 @@ function StatisticsContent({
             icon: PercentIcon,
         },
         ...sharedTailCards,
+        customersCard,
     ];
 
     const statCards = isPlatform ? platformCards : operatorCards;
@@ -1229,16 +1246,22 @@ function StatisticsContent({
     const recentBookings = recent.bookings ?? [];
     const recentPayments = recent.payments ?? [];
     const recentCustomers = recent.customers ?? [];
+    const recentCancellations = recent.cancellations ?? [];
+    const recentRefunds = recent.refunds ?? [];
 
     const hasRecentActivity =
         recentBookings.length > 0 ||
         recentPayments.length > 0 ||
-        recentCustomers.length > 0;
+        recentCustomers.length > 0 ||
+        recentCancellations.length > 0 ||
+        recentRefunds.length > 0;
 
     const hasMoreActivity =
         recentBookings.length > 4 ||
         recentPayments.length > 4 ||
-        recentCustomers.length > 4;
+        recentCustomers.length > 4 ||
+        recentCancellations.length > 4 ||
+        recentRefunds.length > 4;
 
     return (
         <div className='w-full space-y-8'>
@@ -2231,6 +2254,102 @@ function StatisticsContent({
                                                         <StatusBadge
                                                             status={
                                                                 payment.status
+                                                            }
+                                                        />
+                                                    }
+                                                />
+                                            ))}
+                                        </ActivityGroup>
+                                    )}
+
+                                    {recentCancellations.length > 0 && (
+                                        <ActivityGroup title='Recent Cancellations'>
+                                            {(showAllActivity
+                                                ? recentCancellations
+                                                : recentCancellations.slice(
+                                                      0,
+                                                      4,
+                                                  )
+                                            ).map((cancellation, idx) => (
+                                                <ActivityRow
+                                                    key={cancellation.id || idx}
+                                                    icon={Alert02Icon}
+                                                    variant='danger'
+                                                    title={
+                                                        cancellation.tourName
+                                                    }
+                                                    date={
+                                                        cancellation.cancelledAt
+                                                    }
+                                                    meta={
+                                                        <>
+                                                            <span className='tabular-nums'>
+                                                                {money(
+                                                                    cancellation.totalEur,
+                                                                )}
+                                                            </span>
+                                                            <span>•</span>
+                                                            <span>
+                                                                {cancellation.cancelledBy
+                                                                    ? `by ${humanizeStatus(cancellation.cancelledBy).toLowerCase()}`
+                                                                    : 'cancelled'}
+                                                            </span>
+                                                            <span>•</span>
+                                                            <Ref
+                                                                value={
+                                                                    cancellation.displayRef
+                                                                }
+                                                            />
+                                                        </>
+                                                    }
+                                                    badge={
+                                                        <Badge
+                                                            variant='outline'
+                                                            className='h-5 border-muted-foreground/30 bg-muted/50 px-2 py-0.5 text-2xs text-muted-foreground'>
+                                                            {cancellation.cancellationRefund ===
+                                                            'FULL'
+                                                                ? 'Refund owed'
+                                                                : 'No refund'}
+                                                        </Badge>
+                                                    }
+                                                />
+                                            ))}
+                                        </ActivityGroup>
+                                    )}
+
+                                    {recentRefunds.length > 0 && (
+                                        <ActivityGroup title='Recent Refunds'>
+                                            {(showAllActivity
+                                                ? recentRefunds
+                                                : recentRefunds.slice(0, 4)
+                                            ).map((refund, idx) => (
+                                                <ActivityRow
+                                                    key={refund.id || idx}
+                                                    icon={Coins01Icon}
+                                                    variant='warning'
+                                                    title={money(
+                                                        refund.amountEur,
+                                                    )}
+                                                    titleClassName='tabular-nums'
+                                                    date={refund.createdAt}
+                                                    meta={
+                                                        <>
+                                                            <span>
+                                                                Refund to
+                                                                traveller
+                                                            </span>
+                                                            <span>•</span>
+                                                            <Ref
+                                                                value={
+                                                                    refund.displayRef
+                                                                }
+                                                            />
+                                                        </>
+                                                    }
+                                                    badge={
+                                                        <StatusBadge
+                                                            status={
+                                                                refund.status
                                                             }
                                                         />
                                                     }

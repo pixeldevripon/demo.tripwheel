@@ -23,3 +23,8 @@ const PUBLIC_SITE_URL =
 export function reviewUrl(token: string, locale = 'en'): string {
   return `${PUBLIC_SITE_URL}/${locale}/review/${token}`;
 }
+
+/** A published Page's live URL (`/{locale}/{slug}` - the permalink). */
+export function pageUrl(slug: string, locale = 'en'): string {
+  return `${PUBLIC_SITE_URL}/${locale}/${slug}`;
+}

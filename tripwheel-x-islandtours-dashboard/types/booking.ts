@@ -99,10 +99,10 @@ export interface BookingListItem {
      */
     canRequestCancellation: boolean;
     cancellationBlockedReason: CancellationBlockedReason | null;
-    /** Settlement-ledger status of this booking (null until confirmed). */
+    /** Payout-ledger status; only paid_in_full bookings have one (null otherwise). */
     settlementStatus: SettlementStatus | null;
-    /** HOW this booking settles. */
-    settlementMethod: SettlementMethod | null;
+    /** HOW this booking settles, derived from its payment model (always present). */
+    settlementMethod: SettlementMethod;
     /** Payout held by a pending cancellation request (render "On hold"). */
     settlementHeld: boolean;
     /**
@@ -212,7 +212,10 @@ export interface PaymentsQueryParams {
     to?: string;
 }
 
-// ── Settlements (money-movement ledger; backend `SettlementListItemDto`) ────────
+// ── Settlements (operator-payout ledger; backend `SettlementListItemDto`) ───────
+// Every row is a paid_in_full booking - the only model where Island Tours holds
+// money it owes the operator. Payout is MANUAL: PAID_OUT is only ever set by an
+// admin's "Mark as paid" after the actual transfer.
 
 export type SettlementStatus =
     | 'RECORDED'
@@ -228,10 +231,10 @@ export type SettlementMethod =
     | 'COMMISSION_INVOICE';
 
 export interface SettlementSummary {
-    /** EUR still owed out to operators (paid_in_full nets not yet released). */
+    /** EUR payout still due to operators (RECORDED nets). */
     owedPending: string;
     owedCount: number;
-    /** EUR already released. */
+    /** EUR actually paid out (admin-confirmed). */
     released: string;
     releasedCount: number;
 }
@@ -243,29 +246,36 @@ export interface SettlementListItem {
     operatorId: string;
     operatorName: string | null;
     tourName: string | null;
-    paymentModel: BookingPaymentModel;
     /** All amounts EUR. */
     amountCollected: string;
     commissionOwed: string;
-    /** + = Island Tours owes the operator; - = operator owes IT. */
+    /** The payout owed to the operator (collected - commission); 0 once REVERSED. */
     netPosition: string;
+    /** The amount actually paid out (set when marked paid). */
     operatorPayout: string | null;
     status: SettlementStatus;
     currency: string;
+    /** When the admin marked this payout as paid. */
     settledAt: string | null;
     createdAt: string;
-    /** paid_in_full net owed, past its clawback window, still RECORDED -> ready to pay. */
+    /** Ready to pay: RECORDED, booking stands, no pending request, window closed. */
     payoutEligible: boolean;
-    /** HOW it settles. */
-    method: SettlementMethod;
-    /** WHEN the operator payout releases (free-cancel window close); null unless OPERATOR_PAYOUT. */
+    /** WHEN the payout clears (free-cancel window close). */
     payoutReleaseAt: string | null;
     /**
-     * RECORDED paid_in_full payout HELD by a pending cancellation request (a
-     * refund may still be owed - master 6.4). The release cron skips it until
-     * the request is resolved. Render as "On hold", never "Ready to pay out".
+     * RECORDED payout HELD by a pending cancellation request (a refund may
+     * still be owed - master 6.4). Must not be paid until resolved - render
+     * as "On hold", never "Ready to pay".
      */
     payoutHeld: boolean;
+}
+
+/** Result of the mark-paid / mark-unpaid row action. */
+export interface SettlementActionResult {
+    id: string;
+    status: SettlementStatus;
+    operatorPayout: string | null;
+    settledAt: string | null;
 }
 
 export interface PaginatedSettlements {
@@ -280,7 +290,8 @@ export interface SettlementsQueryParams {
     limit?: number;
     operatorId?: string;
     status?: SettlementStatus;
-    paymentModel?: BookingPaymentModel;
+    /** Booking-reference search (case-insensitive contains). */
+    search?: string;
     /** Recorded-at range, YYYY-MM-DD (UTC days). */
     from?: string;
     to?: string;

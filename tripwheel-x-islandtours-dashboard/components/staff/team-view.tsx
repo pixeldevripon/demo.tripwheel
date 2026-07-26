@@ -24,7 +24,7 @@ export function TeamView() {
                 <h1 className='text-2xl font-semibold'>Users</h1>
                 <p className='mt-1 text-sm text-muted-foreground'>
                     {scope === 'platform'
-                        ? 'Invite staff users, group them under designations, and control exactly what each person can do.'
+                        ? 'Invite users, group them under designations, and control exactly what each person can do.'
                         : 'Invite your team, assign designations, and control exactly what each seat can do. Payouts and team management stay with the owner.'}
                 </p>
             </div>

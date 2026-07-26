@@ -44,7 +44,7 @@ const SEAT_ROLE_OPTIONS: {
 }[] = [
     {
         value: 'STAFF',
-        label: 'Staff',
+        label: 'User',
         description: 'Day-to-day team member.',
     },
     {
@@ -115,7 +115,7 @@ export function StaffInviteDialog({
                 <DialogHeader>
                     <DialogTitle>
                         {scope === 'platform'
-                            ? 'Invite staff member'
+                            ? 'Invite user'
                             : 'Invite team member'}
                     </DialogTitle>
                     <DialogDescription>
