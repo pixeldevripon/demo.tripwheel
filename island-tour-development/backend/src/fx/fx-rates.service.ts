@@ -208,6 +208,14 @@ export class FxRatesService {
    * Fetch the required pairs from the provider, validate they are positive, write a new
    * active row per pair, and deactivate the prior active row for that pair (immutable
    * history). Safe to call repeatedly (the scheduler and on-demand path both use it).
+   *
+   * IDEMPOTENT per snapshot: the row is UPSERTED on the unique
+   * (base, quote, providerAsOf, provider) key. ECB publishes ONE rate per day,
+   * so every restart and every 30-minute refresh inside the same day re-fetches
+   * the SAME snapshot - a plain create would P2002 and abort the whole refresh
+   * (the exact "FX startup refresh failed" production error). The upsert
+   * re-activates the existing snapshot row and extends its freshness window
+   * instead; a genuinely new provider snapshot still inserts a new history row.
    */
   async refreshRates(): Promise<void> {
     const rows = await this.provider.fetchRates(REQUIRED_PAIRS);
@@ -232,14 +240,30 @@ export class FxRatesService {
           },
           data: { isActive: false },
         }),
-        this.prisma.fxRate.create({
-          data: {
+        this.prisma.fxRate.upsert({
+          where: {
+            baseCurrency_quoteCurrency_providerAsOf_provider: {
+              baseCurrency: r.baseCurrency,
+              quoteCurrency: r.quoteCurrency,
+              providerAsOf: r.providerAsOf,
+              provider: this.provider.name,
+            },
+          },
+          create: {
             baseCurrency: r.baseCurrency,
             quoteCurrency: r.quoteCurrency,
             rate: r.rate,
             provider: this.provider.name,
             providerAsOf: r.providerAsOf,
             expiresAt,
+          },
+          // Same provider snapshot seen again (restart / same-day refresh):
+          // keep it the active row and extend its freshness window.
+          update: {
+            rate: r.rate,
+            expiresAt,
+            isActive: true,
+            fetchedAt: now,
           },
         }),
       ]);
