@@ -337,10 +337,10 @@
 
 ### Pages / CMS
 
-- [ ] `Page` model + module for arbitrary editorial pages (slug, status, per-locale translations, SEO fields, page-content blocks) — nothing exists in `src` or `prisma` today
-- [ ] Rich-text storage + sanitization contract for TipTap-authored page bodies
-- [ ] Register `PAGE` in the slug registry / routing resolver so CMS pages get first-class URLs
-- [ ] Resolve the two outstanding product decisions blocking the Pages phase before building
+- [x] `Page` model + module (2026-07-26): `pages.prisma` (`Page`/`PageTranslation`/`PageRedirect` + `PageStatus`), `src/pages/` full CRUD + publish lifecycle + `{fields}` translations under `MANAGE_EDITORIAL`, public `GET /pages/public/:slug` with English fallback + redirect resolution
+- [x] Rich-text storage + sanitization contract: bodies are sanitized HTML, sanitized on EVERY write via `common/utils/page-html.util.ts` (`sanitize-html` pinned 2.16.0; allowlist = the legal prose vocabulary; https/mailto only)
+- [x] Routing: NOT the slug registry (destination-namespaced by design) — pages are global `@unique` slugs resolved by the frontend fall-through in `[locale]/[destination]/page.tsx` (destination → published Page → redirect → 404), with bidirectional page↔destination slug guards + `RESERVED_PAGE_SLUGS`
+- [x] Both product decisions resolved by the user (2026-07-26): fall-through routing keeping the live URLs; adapted TipTap v3 port (scoped SCSS, tables built, dashboard shadcn toolbar). Details: `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
 
 ### Featured experiences
 
@@ -980,12 +980,11 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ## Legal & policy pages
 
-- [x] Six global legal pages via `LegalPageShell`: `terms`, `privacy-policy`, `cookie-policy`, `cancellation-policy`, `legal-notice`, `manage-cookies`
-- [x] Verbatim handover prose preserved (change only through Denley per the README header)
-- [x] Non-`en` locales render the English text plus a notice banner
-- [~] Legal copy is hardcoded JSX (privacy-policy 516 lines, terms 541) rather than CMS-managed — Phase 5 of the Pages system is a migration of this authored copy
-- [ ] Pages / permalink system with a rich-text editor backing the legal pages (blocked on open decisions; port the TipTap config noted in the docs)
-- [ ] Missing footer routes: about, help, contact
+- [x] Six global legal pages served at their original URLs via the Pages system (2026-07-26): `terms`, `privacy-policy`, `cookie-policy`, `cancellation-policy`, `legal-notice`, `reviews-policy` are `Page` rows rendered through `LegalPageShell` + `PageBody`; `manage-cookies` stays code (interactive Cookiebot button, noindex)
+- [x] Verbatim handover prose preserved — seeded byte-true from the rendered routes (`pnpm pages:seed`, fixtures in `backend/prisma/pages-content/`), verified structurally identical pre/post cutover
+- [x] Non-`en` locales render the English text plus a notice banner (now driven by the backend's `isEnglishFallback`, so a future real translation drops the notice with no code change)
+- [x] Pages / permalink system with a rich-text (TipTap) editor backing the legal pages — dashboard `/pages` list + editor, publish/unpublish, rename→301 permalinks, `pages` cache tag in both repos
+- [ ] Missing footer routes: about, help, contact (can now ship as Pages + footer links)
 
 ## Error / 404 handling
 
@@ -1432,10 +1431,10 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ## Pages / CMS
 
-- [ ] Pages module (legal, marketing, editorial pages) — **NEVER BUILT.** No route, no component, no API module. The nav "Pages" group contains only Homepage, with a comment that the rest arrives "from Phase 5"
-- [ ] Rich-text editor — **no TipTap or any rich-text dependency is installed** in `package.json`, confirming the gap; port the working config from the `wattup-frontend` project when this starts
-- [ ] Page CRUD + slug + publish state + per-locale translation wiring
-- [ ] Two user-owned decisions still block the backend Phase 5 of the homepage/pages plan
+- [x] Pages module built (2026-07-26): `/pages` list (DataTable) + `/pages/new` + `/pages/[id]/edit`, row actions (Edit / View live / Publish-Unpublish / Delete-with-unpublish-first), nav item in the Pages group, all gated `MANAGE_EDITORIAL`
+- [x] Rich-text editor — TipTap v3.29 adapted port (`components/pages/rich-text-editor.tsx`): shadcn/hugeicons toolbar, tables wired, SCSS scoped under `.it-page-editor`, content area = `.it-page-prose` mirror of the public legal typography (live WYSIWYG preview)
+- [x] Page CRUD + slug (auto-gen + `slugTouched`, rename→301 note) + publish state + English content wiring (`{fields}` translation payload); other locales are schema-ready, deferred by the English-only decision
+- [x] Both user decisions resolved 2026-07-26 (fall-through routing; adapted TipTap port) — see `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
 
 ## Featured experiences
 
@@ -1677,10 +1676,8 @@ Each item: **what is blocked → who owns it → what unblocks it.**
 - **Owner:** founder. The summary itself says it is **"a proposal awaiting founder sign-off (5 open items), not yet locked into the master."**
 - **Unblocks it:** sign-off, then folding the spec into master §5.11 / §6.4 / Appendix E.11.
 
-**5. Pages system (Phase 5) — two open decisions, NOT STARTED**
-- **Blocked:** the whole CMS Pages feature. Dashboard nav "Pages" group currently contains only Homepage.
-- **Owner:** user/founder.
-- **Unblocks it — decision (a) routing:** `/{locale}/{slug}` **collides with `/{locale}/{destination}`**. Options: fall-through resolution (`destination → Page → 404`) vs `/legal/{slug}` namespacing, which **changes 6 live SEO-indexed URLs**. Recommendation on file: **fall-through, keep the URLs**. **Decision (b) rich text:** **neither repo has any editor, markdown lib, or sanitizer** — recommendation is to port **TipTap v3 from `wattup-frontend`** with 4 caveats. No rich-text dependency exists in either `package.json`.
+**5. Pages system (Phase 5) — RESOLVED AND SHIPPED (2026-07-26)**
+- Both decisions were made by the user and the feature built end-to-end: **(a) fall-through routing** (destination → published Page → redirect → 404) keeping the six live legal URLs; **(b) adapted TipTap v3 port** (scoped SCSS, tables built, dashboard shadcn toolbar; sanitize-html on the backend write path). The six legal pages are now CMS-managed `Page` rows; the static JSX routes are deleted (`manage-cookies` stays code). Remaining: a human pass over the rendered dashboard editor UI.
 
 **6. Dashboard open decisions #2 and #4**
 - **#2 Weather widget** (see V.1 #26) — carry or remove; still in the header as of Phase 14. **Product call, owner: user.**
