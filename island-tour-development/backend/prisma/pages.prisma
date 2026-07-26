@@ -1,0 +1,100 @@
+// Pages — the WordPress-like permalink system for global long-form documents
+// (legal/policy pages now; marketing pages like /about later).
+//
+// Deliberately NOT in SlugRegistry: that table is destination-namespaced (every
+// row requires a destinationSlug) and these pages are global. The uniqueness
+// story is `slug @unique` here plus the RESERVED_GLOBAL_SLUGS guard checked on
+// BOTH Page and Destination create, because published pages resolve at the same
+// URL level as destinations (/{locale}/{slug}) via the frontend's fall-through:
+// destination first, else published Page, else 404.
+//
+// The body is SANITIZED HTML, not markdown: the legal handover copy contains
+// tables, which markdown cannot express without an escape hatch. Sanitization
+// happens on the write path (pages.service), so the public site can render the
+// stored string directly — server-side, SEO-visible, no client sanitizer.
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Page {
+  id String @id @default(uuid())
+
+  // The permalink segment: /{locale}/{slug}. Global (no destination namespace),
+  // always English, unique across all pages. Renames write a PageRedirect row
+  // in the same transaction so the old permalink 301s instead of 404ing.
+  slug String @unique
+
+  // Only PUBLISHED pages resolve publicly; DRAFT and ARCHIVED 404 (the slug
+  // stays protected either way — the row still owns it).
+  status PageStatus @default(DRAFT)
+
+  // Stamped on the FIRST publish and kept across unpublish/republish cycles,
+  // so "publishedAt" reads as "first went live", not "last toggled".
+  publishedAt DateTime?
+
+  ogImage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations PageTranslation[]
+  redirects    PageRedirect[]
+
+  @@index([status])
+  @@map("pages")
+}
+
+// Per-locale page content, mirroring the *Translation pattern every other
+// entity uses (locale column + compound unique + isMachineTranslated) so the
+// Translation Console can pick this up later by registration alone.
+//
+// English is the legal source text and the only locale authored today: the
+// public site serves the English row on every locale with an "available in
+// English only" notice, exactly as the hand-authored pages did. The rows for
+// other locales exist so a future per-language legal review lands as data,
+// not as a migration.
+model PageTranslation {
+  id     String @id @default(uuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  locale Locale
+
+  // The H1 and the <title> base.
+  title String
+
+  // Sanitized HTML (h2/h3/p/ul/ol/li/strong/em/a/table/...). Sanitized at
+  // write time in pages.service — never trust this column to be anything else.
+  body String
+
+  // Search-engine listing. Null falls back to the site-wide Settings defaults,
+  // same contract as every other page's meta.
+  metaTitle       String?
+  metaDescription String?
+
+  isMachineTranslated Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+
+  @@unique([pageId, locale])
+  @@index([pageId, locale])
+  @@map("page_translations")
+}
+
+// 301 map for renamed permalinks — the global-page sibling of SlugRedirect
+// (which is destination-namespaced and cannot hold these). A slug rename
+// writes a row here in the same transaction; resolution collapses chains by
+// always pointing at the PAGE (not the next slug), so a twice-renamed page
+// still redirects in one hop.
+model PageRedirect {
+  id       String @id @default(uuid())
+  fromSlug String @unique
+  toPageId String
+  toPage   Page   @relation(fields: [toPageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([fromSlug])
+  @@map("page_redirects")
+}

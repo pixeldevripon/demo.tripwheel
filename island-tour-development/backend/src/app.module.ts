@@ -12,6 +12,7 @@ import { MailModule } from '@/mail/mail.module';
 import { UserModule } from '@/users/user.module';
 import { SettingsModule } from './settings/settings.module';
 import { HomePageModule } from './home-page/home-page.module';
+import { PagesModule } from './pages/pages.module';
 import { FeaturedExperiencesModule } from './featured-experiences/featured-experiences.module';
 import { PlatformReviewsModule } from './platform-reviews/platform-reviews.module';
 import { InstagramModule } from './instagram/instagram.module';
@@ -59,6 +60,7 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     UserModule,
     SettingsModule,
     HomePageModule,
+    PagesModule,
     FeaturedExperiencesModule,
     PlatformReviewsModule,
     InstagramModule,

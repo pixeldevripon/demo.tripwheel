@@ -30,6 +30,7 @@
     "email:icons:upload": "ts-node -r tsconfig-paths/register scripts/upload-email-icons.ts",
     "media:backfill": "ts-node -r tsconfig-paths/register scripts/backfill-media-metadata.ts",
     "home:media:seed": "ts-node -r tsconfig-paths/register scripts/seed-home-page-media.ts",
+    "pages:seed": "ts-node -r tsconfig-paths/register scripts/seed-pages.ts",
     "prisma:seed:demo": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts",
     "prisma:seed:demo:clean": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts --clean",
     "prisma:format": "prisma format",
@@ -61,6 +62,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.17.2",
     "rxjs": "^7.8.1",
+    "sanitize-html": "^2.16.0",
     "stripe": "^22.2.2"
   },
   "devDependencies": {
@@ -74,6 +76,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
+    "@types/sanitize-html": "^2.16.1",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
