@@ -1,6 +1,8 @@
 import { CategoryPage } from '@/components/frontend/category/category-page';
 import { CollectionPage } from '@/components/frontend/collection/collection-page';
 import { HubPage } from '@/components/frontend/hub/hub-page';
+import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
+import { PageBody } from '@/components/frontend/legal/page-body';
 import { TourPage } from '@/components/frontend/tour/tour-page';
 import {
     filterIndexableImages,
@@ -14,6 +16,7 @@ import {
     getDestinationHubs,
     getDestinationTours,
     getHubRender,
+    getPublishedPage,
     getTourBySlug,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
@@ -27,7 +30,7 @@ import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
 import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 
 /**
@@ -173,9 +176,36 @@ export async function generateMetadata({
     if (!isLocale(locale)) return {};
 
     const resolution = await resolveSlug(destination, slug);
-    if (!resolution) return {};
-
     const alternates = buildAlternates(locale, `/${destination}/${slug}`);
+
+    if (!resolution) {
+        // Not a registry entity. When the first segment is not an active
+        // island either, this may be a NESTED Pages permalink
+        // (`legal/terms`) - mirror the render fall-through below.
+        const island = await getDestinationBySlug(
+            destination,
+            locale as Locale
+        );
+        if (!island || !island.isActive) {
+            const page = await getPublishedPage(
+                `${destination}/${slug}`,
+                locale as Locale
+            );
+            if (page && !page.redirectToSlug) {
+                return {
+                    title: page.metaTitle || page.title,
+                    ...(page.metaDescription && {
+                        description: page.metaDescription,
+                    }),
+                    ...(page.ogImage && {
+                        openGraph: { images: [{ url: page.ogImage }] },
+                    }),
+                    alternates,
+                };
+            }
+        }
+        return {};
+    }
 
     if (resolution.entityType === 'CATEGORY' && resolution.entityId) {
         const [category, pageContent, destinationName] = await Promise.all([
@@ -340,6 +370,33 @@ async function EntityDispatch({
         getDictionary(locale),
         resolveDestinationName(destination, locale),
     ]);
+
+    // NESTED Pages fall-through: when the registry misses AND the first
+    // segment is not an active island, this is not entity territory at all -
+    // it may be a nested Pages permalink (`/legal/terms`). Pages can never
+    // start with a real destination segment (the backend rejects that), so
+    // this branch cannot shadow the flat-tour default below.
+    if (!resolution) {
+        const island = await getDestinationBySlug(destination, locale);
+        if (!island || !island.isActive) {
+            const page = await getPublishedPage(
+                `${destination}/${slug}`,
+                locale
+            );
+            if (!page) notFound();
+            if (page.redirectToSlug) {
+                permanentRedirect(`/${locale}/${page.redirectToSlug}`);
+            }
+            return (
+                <LegalPageShell
+                    locale={locale}
+                    title={page.title}
+                    showEnglishNotice={page.isEnglishFallback}>
+                    <PageBody html={page.body} />
+                </LegalPageShell>
+            );
+        }
+    }
 
     // Tours are the flat catch-all entity: a slug the registry can't resolve is
     // treated as a TOUR, and `TourPage` fetches it by slug (`getTourBySlug`) and

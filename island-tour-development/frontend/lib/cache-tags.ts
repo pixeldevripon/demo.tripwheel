@@ -100,6 +100,11 @@ export const COARSE_CACHE_TAGS = [
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.
     'homepage',
+    // The Pages system (legal/policy permalinks). Coarse on purpose: there are
+    // a handful of pages, and a slug RENAME must bust the old slug's cached
+    // miss as well as the new slug's entry - which a per-slug tag cannot do
+    // without the producer knowing both slugs.
+    'pages',
     // Platform-wide list of media URLs flagged `excludeFromIndexing`, read by
     // `getExcludedMediaUrls` to keep them out of og:image, structured data and
     // sitemaps. It used to lean on `cacheLife('hours')` alone ("propagates

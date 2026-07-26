@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CollectionStatus, HubStatus, TourStatus } from '@prisma/client';
+import {
+  CollectionStatus,
+  HubStatus,
+  PageStatus,
+  TourStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '@/prisma/prisma.service';
 import type { SitemapEntryDto } from './dto/sitemap.dto';
@@ -15,6 +20,7 @@ import type { SitemapEntryDto } from './dto/sitemap.dto';
  *                   (categories.service.getBySlugForDestination 404s at 0).
  *  - Hub          : `PUBLISHED` + `isActive` + ≥1 LIVE tour (hubs.service).
  *  - Collection   : `PUBLISHED` + `isActive` + active destination (collections.service).
+ *  - Page         : `PUBLISHED` (pages.service.getPublicBySlug 404s otherwise).
  *
  * Entity slugs are read directly (they are the canonical current slug, kept in
  * sync with slug_registry transactionally), so no join to the registry is needed.
@@ -26,7 +32,7 @@ export class SitemapService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getEntries(): Promise<SitemapEntryDto[]> {
-    const [destinations, tours, tourCategories, hubs, collections] =
+    const [destinations, tours, tourCategories, hubs, collections, pages] =
       await Promise.all([
         this.prisma.destination.findMany({
           where: { isActive: true },
@@ -93,6 +99,11 @@ export class SitemapService {
             destination: { select: { slug: true } },
           },
         }),
+        // Global pages (legal/policy) — top-level `/{slug}`, no destination.
+        this.prisma.page.findMany({
+          where: { status: PageStatus.PUBLISHED },
+          select: { slug: true, updatedAt: true },
+        }),
       ]);
 
     const entries: SitemapEntryDto[] = [];
@@ -151,6 +162,14 @@ export class SitemapService {
         path: `/${c.destination.slug}/${c.slug}`,
         lastModified: c.updatedAt.toISOString(),
         type: 'collection',
+      });
+    }
+
+    for (const p of pages) {
+      entries.push({
+        path: `/${p.slug}`,
+        lastModified: p.updatedAt.toISOString(),
+        type: 'page',
       });
     }
 

@@ -9,6 +9,7 @@ function createMockPrismaService() {
     tourCategory: { findMany: jest.fn() },
     hub: { findMany: jest.fn() },
     collection: { findMany: jest.fn() },
+    page: { findMany: jest.fn().mockResolvedValue([]) },
   };
 }
 

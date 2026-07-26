@@ -9,7 +9,8 @@ export type SitemapEntryType =
     | 'category'
     | 'hub'
     | 'collection'
-    | 'tour';
+    | 'tour'
+    | 'page';
 
 /** One indexable, locale-less URL from the backend enumeration. */
 export interface SitemapEntry {
@@ -20,7 +21,8 @@ export interface SitemapEntry {
 
 /**
  * Every indexable public URL (active destinations, LIVE tours, tour-gated
- * categories/hubs, published collections) from `GET /sitemap/entries`.
+ * categories/hubs, published collections, published Pages) from
+ * `GET /sitemap/entries`.
  *
  * Tagged with every coarse entity tag it aggregates, so ANY entity write that
  * changes what renders (publish/unpublish a tour, toggle a hub, rename a slug)
@@ -38,6 +40,7 @@ export async function getSitemapEntries(): Promise<SitemapEntry[]> {
         'hubs',
         'collections',
         'slug-registry',
+        'pages',
     );
 
     const res = await publicGet<SitemapEntry[]>('/sitemap/entries');

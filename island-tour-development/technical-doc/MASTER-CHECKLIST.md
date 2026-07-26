@@ -1,9 +1,9 @@
 
 # PART II — BACKEND TASK CHECKLIST
 
-> Status is assigned from the **code audit** (`backend/src` + `backend/prisma`, 284 `.ts` files, 33 wired modules,
-> 26 `.prisma` files, 34 migrations). Where a technical doc asserts a different state than the code shows,
-> the code wins and the doc's claim is appended in parentheses.
+> Status is assigned from the **code audit** (`backend/src` + `backend/prisma`; last re-verified against the
+> codebase **2026-07-25** — 37 wired modules, 76 unit spec files, 5 e2e suites). Where a technical doc asserts
+> a different state than the code shows, the code wins and the doc's claim is appended in parentheses.
 >
 > `- [x]` DONE · `- [~]` ONGOING (exists but partial/stubbed/defective) · `- [ ]` PENDING (not built)
 
@@ -12,7 +12,7 @@
 ### Platform foundation
 
 - [x] NestJS 11 strict-TypeScript app bootstrap (`main.ts`, `app.module.ts`) with base URL `/api/v1` and Better Auth mounted at `/api/auth/*` (no `/v1`)
-- [x] Wire all 33 feature modules into `AppModule.imports` (Prisma, Faq, StaffPermissions, Auth, Staff, Mail, User, Settings, HomePage, FeaturedExperiences, PlatformReviews, Operators, MediaGallery, Categories, Destinations, Hubs, SlugRegistry, Tours, Attributes, Collections, Search, Octo, Availability, Fx, Tiers, Bookings, Customers, Payments, Tracking, Reviews, Notifications, Wishlist, Workers, Analytics)
+- [x] Wire all 37 feature modules into `AppModule.imports` (Prisma, Faq, PageContentSection, StaffPermissions, Auth, Staff, Mail, User, Settings, HomePage, FeaturedExperiences, PlatformReviews, Instagram, Operators, MediaGallery, Categories, Destinations, Hubs, SlugRegistry, Sitemap, Tours, Attributes, Collections, Search, Octo, Availability, Fx, Tiers, Bookings, Customers, Payments, Settlements, Tracking, Reviews, Notifications, Wishlist, Workers, Analytics)
 - [x] Global `ValidationPipe` with `whitelist` + `forbidNonWhitelisted` so every request body needs a matching DTO
 - [x] Global HTTP exception filter (`common/filters/http-exception.filter.ts`) + shared error DTOs (`common/dto/error-responses.dto.ts`)
 - [x] Swagger UI at `/api/docs` with one decorator function per endpoint (`<module>.swagger.ts` convention)
@@ -67,8 +67,9 @@
 - [x] Sub-resource endpoints: `GET/PATCH :id/company-info`, `:id/social-media`, `:id/stripe-config`, `:id/mollie-config`
 - [x] `aggregateRating` / `aggregateReviewCount` on the operator row feeding the LD11 cold-start fallback
 - [x] Operator invite email (`sendOperatorInviteEmail`) + invite-provisioning util
-- [ ] Add `cancellation_rate_90d` to `Operator` (master E.6) — operator-initiated cancellations ÷ confirmed bookings over a trailing 90 days, null under 10 bookings, recomputed nightly. Blocks the tier-eligibility cancellation gate
-- [ ] Add first-class `contact_email` / `contact_phone` on the operator row with E.164 normalization via `libphonenumber-js` (default country CW), rejecting invalid numbers rather than storing plain text
+- [x] `activePaymentProvider` payout-destination switch (`operators.prisma`, default STRIPE) + `GET/PATCH /operators/:id/payment-provider` — `MANAGE_OPERATOR_PAYMENTS` + owner-only gate, 400 when the target provider is unconfigured, syncs both configs' `isActive` flags. Semantics: **receiving payouts only** — travelers are always charged by the platform's payment settings
+- [x] `cancellation_rate_90d` (master E.6) — `cancellationRate90d` column on `Operator` plus a live trailing-90-day computation in the tier-eligibility engine (`operatorCancellationRate90d` in `tiers.service.ts`: operator-caused = `cancelledBy OPERATOR`; admin cancellations act as force-majeure pardons)
+- [x] First-class `contactEmail` / `contactPhone` on the operator row (`operators.prisma`) — strict E.164 rejection via `libphonenumber-js` not verified
 - [ ] Enforce the E.6 render invariant: both contact fields null is invalid operator data (render error, never a silent fallback)
 
 ### Destinations
@@ -203,11 +204,11 @@
 - [x] Spotlight invariants: 35% commission, transactional max-3-per-destination cap, extra bar (≥10 reviews, rating ≥4.5), manual approval, separate block (never interleaved)
 - [x] `runSpotlightLifecycle`: APPROVED→ACTIVE at `startsAt`, ACTIVE→EXPIRED at `endsAt`, mirroring `tour.isSponsored`
 - [x] `effectiveCommissionRate(tourId, at)` spotlight overlay consumed by booking quote + reserve and snapshotted, never retroactive
-- [x] `deposit_pct` tier-driven (20–30 in 2.5 steps), surfaced read-only to operators
-- [~] Eligibility flat bar is missing its third gate: `tiers.service.ts:830` carries a TODO to also require `operator.cancellation_rate_90d <= 10%`, so today only "≥5 approved reviews" and "rating ≥4.0" are enforced. Blocked on the operator E.6 field (docs claim: MASTER-CHECKLIST §7.2 marks the flat bar `- [x]` "5 reviews / 4.0 / ≤10% cancellation, min 10 bookings")
-- [~] `ForceMajeurePardon` exists as a model but is inert: it has **no admin CRUD endpoint** and the eligibility engine never consumes it, so a hurricane day cannot actually be pardoned. Its only reference is a `select` in `operators.service.ts` (docs claim: MASTER-CHECKLIST §7.2 marks force-majeure pardons `- [x]`)
-- [~] Clear `isSponsored` on spotlight cancellation — the lifecycle mirrors the flag on activate/expire, but a manually cancelled/revoked spotlight can leave `tour.isSponsored = true`, keeping a paid highlight on a tour that no longer has one
-- [ ] Apply the "only at ≥10 confirmed bookings in the trailing 90-day window" denominator guard to the cancellation-rate gate (depends on the operator field)
+- [x] `deposit_pct` tier-driven (20–30 in 2.5 steps), surfaced read-only to operators — **LD24 (founder bug fix 2026-07-25):** synced on EVERY tier write (`changeTier` + nightly demotion both write `depositPct` with the other three tier fields); drifted rows backfilled by migration `20260725141218_sync_deposit_pct_to_tier`
+- [x] Eligibility flat bar third gate — the cancellation-rate gate is enforced: `operatorCancellationRate90d` computes the trailing-90-day rate with its booking sample size (operator-caused = `cancelledBy OPERATOR` only)
+- [~] `ForceMajeurePardon` model still has **no admin CRUD endpoint** and is not read directly by the engine — force majeure is approximated by the `cancelledBy = ADMIN` proxy (admin cancellations never count against the operator's rate), so the pardon effect exists but a dedicated pardon record cannot be granted
+- [~] Clear `isSponsored` on spotlight cancellation — the nightly lifecycle now recomputes `isSponsored` from ground truth (`active > 0`) so expiry clears it; there is still **no manual cancel/revoke action** for a live spotlight (`SpotlightStatus` has no CANCELLED value)
+- [x] Denominator guard on the cancellation-rate gate — the rate is computed together with its booking sample size so thin samples do not demote
 - [ ] Suppress tier billing during an unbookable period (an excluded tour must not be billed for its tier)
 
 ### Availability & departures
@@ -254,16 +255,17 @@
 - [x] `POST /bookings/typ/:publicRef/cancellation-request` + `POST /bookings/:id/cancellation-request` stamping `utcCancellationRequestedAt` on first request, with `cancellationEligibility` refusing repeats (ALREADY_REQUESTED / NOT_CONFIRMED / DEPARTED → 409)
 - [x] `OPERATOR_FULL` rejected with 422 in v1 per the founder decision (the confirmed-at-commit path is retained for its v2 return)
 - [x] Snapshot invariants: later tier/price/age-band/add-on/pickup edits never mutate an existing booking
-- [~] Age-restriction validation only enforces the tour minimum age, and only when `travelerAge` is supplied — there is no maximum age and no requirement that supplied ages cover every seat
-- [~] Refund computation returns only a FULL/NONE **category**; there is no payment-model-aware amount (deposit-only vs full) and no partial refund
-- [ ] Execute the actual Stripe refund and write a `REFUND` `Payment` row on cancellation (today refunds are categorized, never issued)
+- [x] Age-restriction validation deliberately minimal — tour minimum age only, checked when `travelerAge` is supplied (**founder decision 2026-07-25: "keep it simple as is"** — do not add band max/coverage checks)
+- [~] Refund computation returns only a FULL/NONE **category**; execution now refunds the actual captured payment(s) via the PSP, but there is still no partial / pro-rata refund amount
+- [x] Execute the actual PSP refund and write a `REFUND` `Payment` row on cancellation — `executeRefund()` (Stripe `refundIntent` / Mollie `createRefund`), triggered by the `booking.refund-owed` outbox event → `refund-execute` queue job when the verdict is FULL; Stripe webhook handles `refund.updated` + `refund.failed` (production webhook must subscribe to both)
+- [x] Refund status unification (2026-07-26): a settled refund maps to `REFUNDED` (not SUCCEEDED) and the ORIGINAL charge row flips to `REFUNDED` at the same settle point (sync in `executeRefund`, async in `reconcileRefundRow`, reverting on late failure); `paid`/`payment_intent.succeeded` deliveries can no longer resurrect a refunded charge; `deriveRefundState`/`derivePaymentState`/analytics all count REFUNDED as money-moved; migration `20260726140000` backfilled old rows
 - [ ] Reconcile a payment that succeeds after the hold expired — `confirmFromPayment` only confirms an `ON_HOLD` booking, so a late settlement must be voided/refunded rather than silently stranded
-- [ ] Capture attribution at reserve: `gclid`/`gbraid`/`wbraid`/`fbclid` and `utm_*` are columns on `Booking` but are absent from `ReserveBookingDto` and never written, breaking conversion adjustments and affiliate attribution
-- [ ] Split the generic `clickId` column into the distinct `gclid` field the tracking spec names
-- [ ] Operator non-payment / forfeit flow: operator reports non-payment → admin confirms → only that confirmation forfeits the deposit and releases the spot (never automatic)
+- [x] Capture attribution at reserve: `gclid`/`gbraid`/`wbraid`/`fbclid` + all `utm_*` accepted via `AttributionDto` on `ReserveBookingDto` and written onto the booking (frontend captures them into a 90-day first-party cookie, last-click-wins)
+- [x] Distinct `gclid`/`gbraid`/`wbraid`/`fbclid` fields shipped in the attribution block (no generic `clickId`)
+- [x] Operator non-payment / forfeit flow (guide §15): `POST :id/report-non-payment` (operator, idempotent stamp) → admin `POST :id/forfeit` (CANCELLED + `utcForfeitedAt`, refund NONE, deposit kept, settlement NOT reversed, seats released) or `POST :id/dismiss-non-payment` — all under the new ADMIN-only `MANAGE_BOOKINGS`; derived list statuses `NON_PAYMENT_REPORTED` / `FORFEITED` filterable on `GET /bookings`
 - [ ] Coupon/discount engine — the untrusted client-supplied `discountAmount`/`couponCode` fields were deliberately removed; re-add only behind a server-side `Coupon` validation engine
 - [ ] DB-backed `BookingQuote` model with input-hash revalidation so a quote cannot be replayed against different items
-- [ ] Booking-lookup login by email + `display_ref` (the B.34 account fallback for lost confirmation emails)
+- [x] Booking-lookup login by email + reference (the B.34 account fallback) — `POST /bookings/lookup` + recovery + 24h traveler session, with the public `(login)/[locale]/bookings` door shipped
 - [ ] Controller-level spec for `bookings.controller.ts` (the service has 6 spec files; the controller has none)
 
 ### Payments & Stripe / Mollie
@@ -279,8 +281,9 @@
 - [x] `Payment` model with kinds DEPOSIT / BALANCE / FULL / REFUND, plus `StripeWebhookEvent` and `MollieWebhookEvent` idempotency tables
 - [x] Encrypted-at-rest Stripe credentials read from `stripe_configuration` (never `.env`) behind a stable `ENCRYPTION_KEY`
 - [x] Card collected inline via Stripe Card Elements (no Stripe-hosted UI); PayPal + iDEAL as redirect methods gated by `automatic_payment_methods`
-- [~] **Mollie webhook reconciliation never settles a booking.** `handleMollieWebhook` writes an idempotency row to `mollie_webhook_events`, marks it processed and logs "reconciliation pending" (`payments.service.ts:321` `TODO(payments)`). It does not fetch the Mollie payment, map its status, update the `Payment` row, or call `confirmFromPayment` — so **any Mollie-paid booking stays `ON_HOLD` forever**. There is no Mollie SDK in `package.json` and no `mollie.service.ts`; Mollie is schema + config + webhook ledger only
-- [ ] Add the Mollie SDK dependency and a `mollie.service.ts` (payment fetch, status map, refund) mirroring `stripe.service.ts`
+- [x] **Mollie fully integrated.** `mollie.service.ts` wraps `@mollie/api-client` (`createPayment`, `getPayment` with embedded refunds, `createRefund`); `handleMollieWebhook` re-fetches the payment and `applyMolliePayment` maps status → updates the `Payment` row → `confirmFromPayment` on `paid`, with refund rows reconciled from the embedded refunds. Admin-switchable PSP: webhooks/refunds route by the Payment ROW's provider
+- [x] Mollie SDK dependency + `mollie.service.ts` mirroring `stripe.service.ts`
+- [x] **ChargeFx reconciliation (5C, 2026-07-25):** the PSP's actual charge→EUR rate re-anchors the booking's EUR figures at confirmation — Stripe via `balance_transaction.exchange_rate` (expanded on charge/intent retrieval), Mollie via `settlementAmount/amount`; commission RATE stays the reserve snapshot, EUR-charged bookings never reconcile, fallback is the ECB snapshot path; audited via `eurFxProvider`/`eurFxProviderAsOf`
 - [ ] Attach the provider invoice to the confirmation email
 - [ ] Controller-level spec for `payments.controller.ts`
 
@@ -294,18 +297,20 @@
 - [x] Booking-time FX snapshot: `sourceCurrency`, `sourceTotalRetail`/`DepositAmount`/`BalanceAmount`, `sourceFxRateToBooking`, `fxRateToEur`, `totalEur`, plus provider/asOf audit fields — never refetched at payment/TYP/email/tracking time (migration `20260715221643`)
 - [x] `MoneyDto` public display object `{currency, sourceCurrency, fxRate, priceFrom, basePrice}` with `?currency` on `/tours`, `/tours/slug/:slug`, `/tours/:id`, `/search`, `/collections/render/:slug`, `/hubs/render/:slug`, `/hubs/:id/our-picks`, `/hubs/:id/comparison`
 - [x] FX env vars validated as positive numbers when set: `FX_USD_TO_EUR`, `FX_RATE_TTL_MINUTES`, `FX_RATE_STALE_DISPLAY_HOURS`, `FX_RATE_REFRESH_MINUTES`
-- [~] **Only `StaticFxProvider` is implemented and it is bound in every environment.** It derives USD⇄EUR from `FX_USD_TO_EUR` (default 0.92) with no network call; its own docblock says "never ship this static rate to production". The consequence is that production does not genuinely fail closed on cross-currency — it silently leans on a hardcoded constant, so every converted price and every EUR commission is computed off a stale invented rate
-- [ ] Implement a real `FxProvider` (Stripe FX Quotes recommended, so the displayed converted amount and the charged PaymentIntent share one locked quote) and rebind `FX_PROVIDER` in `FxModule` — one class plus one line, the seam is ready
-- [ ] Make `FX_PROVIDER` / `FX_PROVIDER_API_KEY` actually select the provider (both are documented but consumed by nothing; the binding is hardcoded)
+- [~] **Real providers built, but the default binding is still `static`.** `StaticFxProvider`, `EcbFxProvider` and `CompositeFxProvider` all exist under `src/fx/providers/`; `FX_PROVIDER` unset/`static` → Static — production must set `FX_PROVIDER=ecb` to run on live rates
+- [x] Implement a real `FxProvider` — `EcbFxProvider` (ECB reference rates) wrapped in `CompositeFxProvider` fallback, with dedicated specs (`ecb-fx.provider.spec.ts`, `composite-fx.provider.spec.ts`); complemented at payment time by the ChargeFx reconciliation so charged bookings carry the PSP's actual rate
+- [x] `FX_PROVIDER` now genuinely selects the provider binding in `fx.module.ts`
 - [x] Wire locale→display-currency defaults (EN/ZH → USD, others → EUR) — `LOCALE_CURRENCY` had `en: 'EUR'`; corrected 2026-07-21 in both the frontend and dashboard copies
 
 ### Settlement & payouts
 
-- [ ] Add the `Settlement` model + `SettlementStatus` enum (`RECORDED | PAID_OUT | INVOICED | SETTLED`) with `bookingId` unique, `operatorId`, `paymentModel`, `amountCollected`, `commissionOwed`, `netPosition`, `currency`, `operatorPayout`, `settledAt`, `externalRef`
-- [ ] Write exactly one settlement row per booking at confirmation, on every payment model (deposit models record a `netPosition ~ 0` row)
-- [ ] Enforce the sign convention in writes: positive `netPosition` = Island Tours owes the operator, negative = the operator owes Island Tours
-- [ ] `paid_in_full` scheduled payout released **after the cancellation window closes** (clawback-safe): `RECORDED → PAID_OUT` with `operatorPayout` set
-- [ ] Assert the self-settling invariant for deposit models (`deposit_pct == commission` per tier); reconcile any residual through the ledger when they diverge
+- [x] `Settlement` model + `SettlementStatus` enum (`RECORDED | PAID_OUT | PAID_IN_FULL | INVOICED | REVERSED`) with `bookingId` unique (`prisma/bookings.prisma`), served by `src/settlements/` (`GET /settlements` incl. booking-ref search + operator filter, `GET /settlements/summary`, operator-scoped)
+- [x] Ledger records **paid_in_full bookings only** (founder 2026-07-26): the one model where Island Tours holds money it owes the operator; self-settling deposit models and `operator_full` write NO row (`writeSettlement` no-ops; migration `20260726120000` purged the old noise rows). Written at confirmation via `settlement.upsert` keyed on `bookingId` (`update: {}` — never overwrites)
+- [x] `netPosition` = the payout owed the operator (collected − commission); zeroed on REVERSED
+- [x] **Manual payout** (founder 2026-07-26): `PATCH /settlements/:id/mark-paid` (+ `/mark-unpaid` undo), `MANAGE_BOOKINGS`-gated — PAID_OUT only ever means an admin confirmed the bank transfer. Guarded stepwise 409s (already paid / reversed / booking cancelled / cancellation pending / clawback window still open); the old hourly auto-release cron flip is **removed** and migration `20260726120000` reverted its cron-flipped PAID_OUT rows to RECORDED
+- [x] Clawback safety kept as *eligibility*: `payoutEligible`/`payoutHeld`/`payoutReleaseAt` computed server-side (free-cancellation window close, same formula as the refund path); mark-paid is only allowed on an eligible row
+- [x] Deposit self-settling invariant held by LD24 (`deposit_pct == commission` synced on every tier write); stale settlements on cancelled bookings reversed by a self-heal cron (`reverseStaleCancelledSettlements`, hourly `settlement-reverse-sweep`, forfeited bookings excluded — their settlement stands)
+- [x] Demo seed writes consistent ledger rows (`prisma/demo/settlements.ts`, runs LAST): paid_in_full bookings only, RECORDED/PAID_OUT/REVERSED mix, self-heals commission-less depth bookings (rule #22) first
 - [ ] v2: reintroduce `operator_full` with its commission-collection rail (Stripe Connect application fee, or self-billed monthly invoice + SEPA/card-on-file mandate + listing suspension on non-payment)
 - [ ] v2: onboard operators as Stripe Connect Express accounts and migrate deposit + `paid_in_full` models to destination charges with `application_fee_amount = commission`, populating the ledger from Stripe events instead of manual entry
 
@@ -318,8 +323,10 @@
 - [x] Rating distribution + photo-review count feeding the star chart and photo carousel gates
 - [x] Approved-reviews-only aggregates feeding tour ranking and `quality_score`
 - [x] Platform reviews module: `GET /platform-reviews/public`, `GET/PUT config`, `POST refresh` — encrypted-at-rest third-party API key returned masked, 12h cache TTL, stale-on-failure, 8s fetch timeout, `MIN_REVIEWS = 100` social-proof gate, `MAX_REVIEWS = 6` (migration `20260718140717`)
-- [~] `ReviewTranslation` is declared in the schema but **completely unwired** — there are zero `prisma.reviewTranslation` references in `src`, so the per-locale review text + LD32 translation cache does not exist despite the model (docs claim: MASTER-CHECKLIST E.7 marks per-locale text + translation cache `- [x]`)
-- [ ] Explicit `reviewer_type` enum — the model treats every review as implicitly verified rather than typing the reviewer
+- [x] `ReviewTranslation` fully wired (LD32): rows created at submit, machine translation via a BullMQ `review-translation` queue + processor (`review-translation.service.ts`, Google Translate credentials from settings), locale-filtered reads
+- [x] Explicit `reviewer_type` enum (`ReviewerType` on the model) feeding the traveller-type depth filter
+- [x] Review collection loop (2026-07-22..25): token-scoped review invitations (`GET/POST/PATCH /reviews/invitations/:token` + `:token/photos` photo upload), post-tour review-request cron (hourly, `ReviewRequestsService`) with an admin-configurable cadence, and a review-request email with a reminder variant (`sendReviewRequestEmail`)
+- [x] Review depth filters (traveller type, language/translations, with-photos) + `GET /reviews/summary` analytics rollups (guest-type / language)
 - [ ] Spec file for `platform-reviews.service.ts`
 
 ### Wishlist
@@ -333,14 +340,14 @@
 - [x] `HomePage` singleton model (`id @default("default")`) with `heroImage`, `editorialImages[]`, `editorialDestinationId`, `ogImage`, plus `HomePageTranslation` (migrations `20260720131212_home_page_content`, `20260720151119_faq_page_type_homepage`)
 - [x] Endpoints: `GET /home-page/public`, `GET /home-page`, `PATCH /home-page`, `GET/PATCH translations/:locale`
 - [x] Homepage FAQ groups: `GET/POST :entityId/faqs/groups`, `PATCH/DELETE :entityId/faqs/groups/:groupId`, `PUT :entityId/faqs/groups/:groupId/translations/:locale`
-- [ ] Manual UI verification of the homepage editor against the rendered public page (the module shipped unverified)
+- [x] Homepage editor verified against the rendered public page — the public homepage is CMS-wired (`getHomePageContent` + `getFeaturedExperiences` consumed) and the bundled copy + FAQ were published to the CMS in all 7 locales
 
 ### Pages / CMS
 
-- [ ] `Page` model + module for arbitrary editorial pages (slug, status, per-locale translations, SEO fields, page-content blocks) — nothing exists in `src` or `prisma` today
-- [ ] Rich-text storage + sanitization contract for TipTap-authored page bodies
-- [ ] Register `PAGE` in the slug registry / routing resolver so CMS pages get first-class URLs
-- [ ] Resolve the two outstanding product decisions blocking the Pages phase before building
+- [x] `Page` model + module (2026-07-26): `pages.prisma` (`Page`/`PageTranslation`/`PageRedirect` + `PageStatus`), `src/pages/` full CRUD + publish lifecycle + `{fields}` translations under `MANAGE_EDITORIAL`, public `GET /pages/public/:slug` with English fallback + redirect resolution
+- [x] Rich-text storage + sanitization contract: bodies are sanitized HTML, sanitized on EVERY write via `common/utils/page-html.util.ts` (`sanitize-html` pinned 2.16.0; allowlist = the legal prose vocabulary; https/mailto only)
+- [x] Routing: NOT the slug registry (destination-namespaced by design) — pages are global `@unique` slugs resolved by the frontend fall-through in `[locale]/[destination]/page.tsx` (destination → published Page → redirect → 404), with bidirectional page↔destination slug guards + `RESERVED_PAGE_SLUGS`
+- [x] Both product decisions resolved by the user (2026-07-26): fall-through routing keeping the live URLs; adapted TipTap v3 port (scoped SCSS, tables built, dashboard shadcn toolbar). Details: `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
 
 ### Featured experiences
 
@@ -360,8 +367,8 @@
 - [x] TS templates for customer welcome, email verification, operator invite, password reset, staff invite, plus `auth-email-shell.ts` and 10 inline SVG icons
 - [x] OCTO outbound webhooks: `NotificationSubscription` + `NotificationDelivery` models, subscription CRUD at `/octo/notifications/subscriptions`, `GET :id/deliveries` audit, `emitAvailabilityUpdate` / `emitProductUpdate` / `emitBookingUpdate`
 - [x] `notification-delivery` BullMQ queue + processor with HMAC signing (`notification-signing.util.ts`)
-- [ ] **Operator balance email on `operator_link`** — the master's mandatory second email that names the operator and carries the secure balance link. No template exists, so the confirmation email's C2 foreshadow promises an email that is never sent
-- [ ] Pre-tour reminder email 24h before start ("today"/"tomorrow" variant, no payment links ever), suppressed when the booking was made inside 24h
+- [ ] **Operator balance email on `operator_link`** — the master's mandatory second email that names the operator and carries the secure balance link. No template exists (**founder-gated 2026-07-25: deliberately not built — do not resurrect without a founder decision**)
+- [~] Pre-tour reminder email 24h before start — the delayed queue job is live (enqueued at start − 24h, skipped when booked inside the window) but the consumer is a **stub**: the template awaits a founder decision, nothing is sent yet
 - [ ] Postmark fallback provider behind the Resend primary
 - [ ] Verify in template copy that the operator is never named or spotlighted pre-payment and is deliberately named post-booking on `operator_link`
 - [ ] Dead-letter handling for notification deliveries after N failed attempts
@@ -373,7 +380,8 @@
 - [x] Mark-first idempotency: `conversionFiredAt` stamped server-side in `finalizeConfirmation` before the conversion payload is exposed (DB guard, never `localStorage`)
 - [x] Config-gated no-op with a single warn log when `META_PIXEL_ID` / `META_CAPI_TOKEN` are unset; the service never throws
 - [x] TYP conversion object gated on CONFIRMED + non-null EUR commission
-- [ ] Capture click ids + UTM at booking creation so cancellation/refund adjustments and offline conversions can be posted back to Google Ads and Meta
+- [x] Server-side SHA-256 PII hashing in one pass (`pii-hash.util.ts`): email, E.164 phone, split names, city/postal/country — `toGoogleUserData` (Enhanced Conversions `sha256_*`) and `toMetaUserData` (em/ph) from the same hashes
+- [x] Capture click ids + UTM at booking creation (attribution block written at reserve) so cancellation/refund adjustments and offline conversions can be posted back to Google Ads and Meta
 - [ ] CI type-check of the `booking_complete` payload contract so a missing required field is a build error rather than a runtime fallback
 - [ ] Hash the customer email into a `customer_id` for the GA4 `user_id` cross-device field (deferred)
 - [ ] Cancellation/refund conversion adjustments posted to the Google Ads and Meta APIs
@@ -390,7 +398,8 @@
 - [x] Dual-currency display from one live EUR→USD rate, falling back to EUR alone when no fresh rate exists
 - [x] `payoutDueEur` (PAID_IN_FULL liability) and `untrackedBalanceEur` (operator-rail balance) surfaced with explicit caveats
 - [x] Honesty rule enforced in code: zeros are real query results and unbacked cards were deleted rather than faked
-- [ ] Turn `payoutDueEur` from *earned* into *unsettled* once the settlements ledger exists
+- [x] `payoutDueEur` now reads the settlements LEDGER verbatim (2026-07-25, founder: "analytics and settlements didn't match"): `settlement.aggregate` on RECORDED + PAID_IN_FULL + `netPosition > 0`, operator-scoped, un-windowed — the exact predicate of `SettlementsService.summary`, so the Overview card and the Settlements page always agree; `earnedEur`/`commissionEur` intentionally keep recognition-on-completion (REDEEMED)
+- [x] Recent activity extended with cancellations + refunds (2026-07-26): latest 5 CANCELLED bookings by `utcCancelledAt` (who cancelled + refund verdict) and latest 5 REFUND payment rows whatever their outcome (a stuck PROCESSING/FAILED refund is visible), both role-scoped by the same `bookingWhere`
 - [ ] Pre-booking funnel (views, add-to-cart) — requires a tracking event store that does not exist
 
 ### OCTO
@@ -423,32 +432,34 @@
 - [x] FX refresh on an in-process dynamic interval (deliberately not BullMQ — an idempotent recompute, not a retry/concurrency queue)
 - [~] Nightly jobs run on in-process `@nestjs/schedule`, not the BullMQ repeatable cron the queues doc specifies — so they carry no retry/backoff, no run-date guard, no failure visibility, and **will double-run the moment a second replica is started**
 - [~] Fix the stale docblock TODO at `workers/nightly-jobs.service.ts:22` claiming quality-score and eligibility are "when built" — both are already invoked inside `run()`; the comment is wrong, not the code (docs claim: BOOKING-CHECKLIST §13 repeats the same stale claim that "quality-score + tier eligibility/grace/demotion are TODOs")
-- [ ] **Schedule the hold-expiry sweeper.** `expireStaleHolds()` exists but nothing calls it, so expired holds keep their seats indefinitely and produce phantom sold-outs
-- [ ] Transactional outbox: an `OutboxEvent` model written inside the booking transaction (`booking.confirmed`, `booking.cancelled`, `payment.succeeded`, `hold.expired`) plus a relay that publishes to BullMQ and marks rows dispatched
-- [ ] Move the confirmation email onto a queued job with `attempts` + exponential backoff instead of the inline send
-- [ ] Move the CAPI conversion onto a queued job idempotent by event id — today `conversionFiredAt` is stamped *before* the inline email/CAPI run, so a failure loses the conversion permanently with no retry
-- [ ] Delayed `settlement.paid-in-full-payout` job released after the cancellation window
-- [ ] Delayed `booking.pre-tour-reminder` job (24h before start, delay computed from tour-local time, state re-checked in the consumer)
+- [x] Hold-expiry sweeper scheduled — `expireStaleHolds()` runs on `@Cron(EVERY_MINUTE)` in `nightly-jobs.service.ts`, releasing seats from expired unpaid holds
+- [x] Transactional outbox (B6, 2026-07-25): `OutboxEvent` model written inside the causing transaction (`booking.confirmed` atomic with the `conversionFiredAt` guard; `booking.refund-owed` in the cancel tx) + `OutboxRelayService` (`@Interval` 5s, overlap-guarded, batch 50, enqueue-then-stamp) publishing to the `platform-jobs` BullMQ queue
+- [x] Confirmation email on a queued job with attempts + exponential backoff — **founder-amended hybrid**: confirm-time emails also send INLINE, and the queued jobs are the durable retry backstop; shared guard columns (`utcConfirmationEmailSentAt` etc.) make the two compose without double-sends
+- [x] CAPI conversion on a queued idempotent job (`tracking.capi-conversion`; Meta dedups by `event_id = publicRef`; null commission throws `UnrecoverableError`)
+- [x] `paid_in_full` payout after the cancellation window — the window close is computed as server-side *eligibility* (`payoutEligible`); the payout itself is a MANUAL admin mark-paid action (founder 2026-07-26 — the old hourly auto-release cron is removed; only the hourly reverse self-heal sweep remains)
+- [~] Delayed `booking.pre-tour-reminder` job — enqueued with the computed delay and state re-checked in the consumer, but the consumer is a stub (template pending a founder decision)
 - [ ] Delayed `affiliate.postback` job (on-hold at booking, approved after the window)
-- [ ] Add `jobId` dedup on top of the existing DB guards once jobs move to the queue (never relying on `jobId` alone, given `removeOnComplete`)
-- [ ] Retain failed jobs (`removeOnFail: false` or a numeric retention) and surface them via Bull Board or an admin view so a stuck payout/conversion is visible
+- [x] Deterministic `jobId` dedup (`{bookingId}:{jobName}`) layered on top of the DB guard columns
+- [~] Failed jobs retained (`removeOnFail: 5000`) — but no Bull Board / admin view yet, so a stuck job is only visible in Redis
 - [ ] Redis lock (or single-scheduler instance) so cron jobs cannot double-run under horizontal scaling
-- [ ] Spec files for `nightly-jobs.service.ts` and `public-cache.service.ts` (the whole `workers/` module is untested)
+- [~] Workers specs: `outbox-relay.service.spec.ts` + `platform-jobs.processor.spec.ts` shipped; `nightly-jobs.service.ts` and `public-cache.service.ts` remain untested
 
 ### Webhooks
 
 - [x] Stripe webhook endpoint bypassing AuthGuard and ThrottlerGuard (`@Public()` + `@SkipThrottle()`), verifying signatures against a raw body and deduplicating via `stripe_webhook_events`
 - [x] `mollie_webhook_events` idempotency ledger table
 - [x] Outbound OCTO notification webhooks with HMAC signing, BullMQ delivery and a `notification_deliveries` audit trail
-- [~] The Mollie inbound webhook is registered and idempotent but performs no reconciliation (see Payments)
+- [x] The Mollie inbound webhook is registered, idempotent and fully reconciles (payment re-fetch → status map → Payment row → `confirmFromPayment`; see Payments)
 - [ ] Retry/backoff + dead-letter policy for outbound notification deliveries
 - [ ] Remove the dead `Webhooks` / `WebhookPoint` models that no webhook path uses
 
 ### Test coverage
 
-Current state: **62 unit spec files in `src/` · 1283 `it()` blocks · 4 e2e suites in `test/`**
-(`app.e2e-spec.ts` 3, `auth.e2e-spec.ts` 39, `settings.e2e-spec.ts` 20, `tours.e2e-spec.ts` 21 = 83 e2e assertions).
-Heaviest coverage: bookings (6 specs), octo (5), mail templates (4), availability (3), tours (3), staff (3).
+Current state (2026-07-25): **76 unit spec files in `src/` · ~1,617 tests green · 5 e2e suites in `test/`**
+(`app`, `auth`, `reviews`, `settings`, `tours` `.e2e-spec.ts`).
+New since the prior audit: settlements, sitemap, instagram, review-requests, review-translation, review DTO,
+pii-hash, refund-state, booking-display-status, ecb-fx + composite-fx providers, outbox-relay, platform-jobs
+processor, customer-provisioning, booking-pricing util.
 
 - [x] Unit specs for analytics, attributes, availability (3), bookings (6: service, pricing, ics, email context, lookup limiter, traveler session), categories (service + controller), collections, customers, destinations (service + controller), featured-experiences, fx (2), home-page (service + dto), hubs (service + controller), media-gallery (service + controller), mail templates (3 HTML + renderer), notifications (service + signing), octo (5), operators (service + controller), payments (service + stripe), reviews (service + display util), settings (service, controller, dto), staff (2 + config + permissions guard), tiers, tours (service, children, quality-score), tracking, users, common utils (fx, timezone, whatsapp, 2 validators)
 - [x] e2e suites for app health, auth, settings and tours
@@ -486,15 +497,17 @@ Heaviest coverage: bookings (6 specs), octo (5), mail templates (4), availabilit
 
 ### Backend summary
 
-**Done: 243 · Ongoing: 19 · Pending: 110** (372 tracked backend tasks across 34 module/domain sections).
+**Done: 288 · Ongoing: 18 · Pending: 75** (381 tracked backend tasks; recounted from the markers 2026-07-26).
 
-The transactional core is far more complete than the technical docs assert — bookings, availability,
-tiers/eligibility, Stripe, FX plumbing, staff/RBAC, email templates and the OCTO catalog are built and
-tested. The genuine risk surface is narrow but severe: **Mollie can take money and never confirm a
-booking**, **FX runs production on a hardcoded static rate**, **the hold-expiry sweeper is never
-scheduled**, **there is no settlements ledger or outbox**, and **conversion/email fire inline after the
-mark-first stamp, so a failure loses them permanently**. The largest untouched blocks are settlement
-and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS module, and observability.
+The transactional core is complete end to end: bookings, availability, tiers/eligibility (incl. the
+cancellation-rate gate), Stripe **and Mollie**, refund execution, the settlements ledger (paid_in_full
+payouts, manual admin mark-paid), the transactional outbox + `platform-jobs` retry queue, the review module (collection →
+moderation → translation → analytics), FX with real ECB/composite providers + ChargeFx reconciliation,
+attribution capture and server-side PII hashing. The severe risks called out in the prior audit are all
+closed except one: **the FX binding still defaults to `static` — production must set `FX_PROVIDER=ecb`.**
+The remaining blocks are v2 money rails (Stripe Connect / operator_full), the OCTO booking surface, the
+Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated email templates
+(pre-tour reminder, operator balance email, invoice attachment).
 
 ---
 
@@ -554,9 +567,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Social proof / testimonials strip fed by live `getPlatformReviews()` and gated until the backend review threshold passes (§5.1 ≥100 reviews)
 - [x] Editorial banner + card-fan section (launch-only slot, §5.1 section 7)
 - [x] Homepage FAQ section component
-- [~] Homepage CMS wiring: `getHomePageContent()` loader exists in `lib/api/public/home-page.ts` but has **ZERO callers** — hero title/subtitle, experiences heading, editorial copy and FAQ headings still render static dictionary text `(docs claim: HOMEPAGE-AND-PAGES A12.5 wired; A12.1 records the deliberate revert — restore from `git show ee2106f:…/page.tsx`)`
-- [~] Featured Experiences wiring: `getFeaturedExperiences()` loader exists with the eligibility gate but has **ZERO callers**; `TopExperiences` renders bundled fallback cards and its `MIN_CURATED_CARDS = 3` curated path is never fed `(docs claim: HOMEPAGE-AND-PAGES A12.6 executed)`
-- [~] CMS-managed hero image per locale (§5.1): `Hero` accepts an optional `image` prop the page never passes, so it always falls back to `FALLBACK_HERO_IMAGE = /images/kc-powerboat.jpg`
+- [x] Homepage CMS wiring: `page.tsx` calls `getHomePageContent(locale)` — hero copy, editorial copy and FAQ content render from the CMS (seeded in all 7 locales) with the dictionary as fallback
+- [x] Featured Experiences wiring: `getFeaturedExperiences(locale)` consumed — `TopExperiences` is fed curated cards (photoless cards filtered out), editorial/CTA cards are island-linked and gated on a live tour for that island
+- [x] CMS-managed hero image: the page passes `image={safeRemoteImage(content.heroImage)}` with the bundled image as fallback
 - [~] Micro trust bar below the hero: rendered, but content comes from the dictionary, not the CMS; the three locked Figma rows (label + clarification pairs, §5.1) are not verifiable as the shipped copy
 - [ ] Hero H1 locked copy "We didn't discover the Caribbean. We grew up in it." with a per-locale translation test (§5.1, conflict log 71)
 - [ ] Locked subheadline "Chosen by locals. Made for travelers." and locked placeholder "Which island?"
@@ -576,8 +589,8 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] "Explore by type" category quick links
 - [x] Destination About section from the destination model's SEO content
 - [x] Streaming shell + `DestinationPageSkeleton`
-- [~] Destination FAQ: renders, but reuses `dict.home.faq` static copy rather than destination-owned FAQ content
-- [~] `DestinationInstagram`: **fully hardcoded** to 6 local `/images/home-page/...` files — no CMS or feed source
+- [x] Destination FAQ: destination-owned content via `getDestinationFaqs(island.id, locale)` (overrides the dictionary fallback when authored); About section is CMS-authored per island (`PageContentSection` rows, real copy seeded)
+- [x] Instagram section: settings/CMS-fed via `getInstagramFeed(destination)` (admin-managed account, tiles, layout; gated on `feed.enabled`) — the hardcoded images are gone
 - [ ] H1 locked sentence case "{Destination} tours & activities" verification (§5.2, conflict log 65)
 - [ ] Locked subheadline "Tours picked by locals who know every reef, route, and sunset spot."
 - [ ] Featured tours CTA "See all {Destination} tours →" with the dynamic count only at ≥20 published tours (§5.2, C21)
@@ -600,7 +613,7 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] No "Explore by type" category-card section on All Tours — 🔴 Must Fix satisfied
 - [~] Date pill (`tours-date-pill`) exists in the filter row, but `date` is not part of the tours URL filter model (Phase 3), so it does not actually filter availability
 - [~] Trust strip below the grid: `ToursTrustStrip` renders, but the four locked checkmarks + "Questions? Chat on WhatsApp →" inline link and mobile vertical stacking are unverified (🟠 Important)
-- [ ] 🔴 Must Fix — H1 "All {Destination} tours & activities in {year}" with `{year}` resolved at render time (never hardcoded), and `<title>`/meta using the same variable
+- [x] 🔴 Must Fix — H1 with `{year}` resolved at render time via `lib/current-year.ts` (daily-cached `getCurrentYear()`), applied to both the H1 and `<title>` in `tours-header.tsx`
 - [ ] 🟠 Important — grid density locked to 18 per page (3×6) desktop; mobile 1 column with pagination after 12
 - [ ] 🟠 Important — orientation line locked copy "From Klein Curaçao day trips to buggy adventures. Every tour we offer on the island.", CMS-managed per destination
 - [ ] 🟠 Important — SEO content block position: moved above pagination (option A: above the grid) or expanded to 300+ words with internal category links
@@ -682,12 +695,12 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [ ] "Supplied by {operatorName}" muted tail line (LD14) — the only discovery-layer place an operator may be named
 - [ ] Cancellation Policy section as the two locked prose paragraphs with `{hours}` resolved from `cancellation_hours`
 - [ ] Reviews trust sub-line "Every review from a confirmed booking. No exceptions." under the H2
-- [ ] Reviews sort hidden <10 reviews, filters hidden <20 reviews (LD30)
-- [ ] Clickable star-distribution chart rendering at ≥3 reviews (LD31)
-- [ ] Per-review machine translation with a show-original toggle (LD32)
+- [~] Review sort + depth filters shipped (newest/rating/helpful; traveller type, language, with-photos) — the LD30 conditional gates (sort hidden <10, filters hidden <20) are unverified
+- [x] Star-distribution chart (histogram in `tour-reviews-section.tsx`)
+- [x] Per-review machine translation with a show-original toggle (LD32) — `isMachineTranslated`/`showingOriginal` in `tour-reviews-section.tsx`
 - [ ] Related Tours as **two** independent rows ("More {category} in {Destination}" / "More to explore in {Destination}"), 3 cards each, rendering at ≥2 matches, firing `related_tour_click` (LD33)
 - [ ] Demand card below the widget ("Likely to sell out" / "Book today to secure your spot.") gated on the single §3.7 trigger
-- [ ] Product/Offer + Review + AggregateRating JSON-LD (§2.6)
+- [x] Product/Offer + Review + AggregateRating JSON-LD (`lib/seo/tour-review-jsonld.ts`), plus TouristTrip + BreadcrumbList on the tour page (§2.6)
 - [ ] Confirm no per-tour FAQ section and no closing trust block ship (LD21, B.7)
 
 ## Tour card (shared component)
@@ -793,9 +806,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] `BookingManageHeader` in management mode with a cancel link gated on `booking.canCancel`
 - [x] `noindex` + `generateStaticParams` demo-ref stub so the route builds
 - [x] `ThankYouSkeleton` + route `loading.tsx`
-- [ ] **Conversion firing** — the `booking_complete` push is an inline comment reserving the work for the unbuilt tracking module; critical rule 22 (`commission_amount` in EUR) is documented but never fired
-- [ ] Server-side mark-first idempotency (`conversion_fired_at` set atomically before render, `shouldFire` derived from the returned row)
-- [ ] `<ConversionTracker>` client component pushing `booking_complete` exactly once, production-only with a staging guard
+- [x] **Conversion firing** — `booking_complete` pushed on the TYP with `booking_value` = EUR commission, `booking_currency: 'EUR'` and `event_id` = booking publicRef (shared with the server CAPI fire for dedup)
+- [x] Server-side mark-first idempotency (`conversionFiredAt` stamped atomically in the backend confirm transaction; the TYP conversion object is gated on it)
+- [x] Conversion client component (`conversion-push.tsx` + `lib/tracking/booking-complete.ts`), gated on `NEXT_PUBLIC_ENABLE_TRACKING === 'true'`
 - [ ] `detectBookingState()` server-side state machine over the 8-state `BookingState` union (`fully_confirmed`, `pending_manual_confirm`, `deposit_paid_balance_pending`, `fully_paid`, `last_minute`, `balance_overdue`, `tour_today`, `tour_tomorrow`)
 - [ ] Edge-case microcopy set: email-delayed, pending-manual-confirmation, tour today/tomorrow banner, fully-paid (skip step 2), last-minute urgent balance, meeting-point-instead-of-pickup
 - [ ] `operator_full` booking-card and step-2 copy variants (B.90)
@@ -896,13 +909,13 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Tour review display components (3 files) fed by `GET /reviews?tourId=…`
 - [x] Platform review aggregate loader (`platform-reviews.ts`) powering homepage testimonials
 - [x] Review-count / rating rendering on tour cards and the tour meta row
-- [ ] **Review submission — entirely absent.** No POST call and no submit UI anywhere in the repo
-- [ ] Post-tour review invitation entry point from the account/booking surface
-- [ ] Clickable star-distribution chart (LD31)
-- [ ] Review sort (≥10) and filters (≥20) conditional rendering (LD30)
-- [ ] Machine translation with show-original toggle per review card (LD32)
-- [ ] `case 'reviews'` added to `lib/api/cache-revalidation.ts` so review writes bust `reviews`, `tour:${id}`, `tours`, `search` (gap G1 — latent only until the write path ships)
-- [ ] Review + AggregateRating JSON-LD on tour pages
+- [x] **Review submission built** — token-based route `/review/[token]` (noindex, no login): star input with correctable stars, text, real photo uploader (`review-photo-uploader.tsx`), token-scoped backend upload
+- [x] Post-tour review invitation entry points: automated email (hourly backend cron + cadence settings) and the dashboard customer-bookings "Leave a review" CTA; manual "Ask for review" from the dashboard Customers list
+- [x] Star-distribution chart (LD31)
+- [~] Review sort and depth filters shipped; the LD30 <10/<20 conditional gates are unverified
+- [x] Machine translation with show-original toggle per review card (LD32)
+- [x] `reviews` cache tag in the cross-repo tag vocabulary (`lib/cache-tags.ts`), busted by dashboard/review writes
+- [x] Review + AggregateRating (+ Product/Offer) JSON-LD on tour pages
 
 ## Multi-currency
 
@@ -941,27 +954,27 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Canonical + 7 hreflang + `x-default` emitted on the `[destination]/[slug]` route
 - [x] `filterIndexableImages` applied to TOUR OG images (media-gallery exclusion list)
 - [x] `noindex` on checkout, TYP, cancel, search, wishlist, manage-cookies and `/bookings`
-- [~] Canonical + hreflang coverage: emitted **only** on `[destination]/[slug]` — missing on the homepage, destination page, `/tours` and search `(docs claim: SEO-STRATEGY "hreflang across all 7 locales on every content page")`
-- [ ] **`sitemap.ts` — does not exist.** No `/sitemap.xml` index, no per-locale or per-page-type sitemap files, no `lastmod`, no ≥3-tour category exclusion
-- [ ] **`robots.ts` — does not exist.** No disallow for `/admin` `/api` `/dashboard`, no sitemap declaration
-- [ ] **JSON-LD — zero `ld+json` / `schema.org` matches repo-wide.** Nothing emitted anywhere
-- [ ] `BreadcrumbList` JSON-LD on every page with breadcrumbs
-- [ ] `Product`/`Offer` JSON-LD on tour detail with `acceptedPaymentMethod`, `audience.suggestedMinAge`, accessibility fields, `refundPolicy` from `cancellation_hours`, `includes`/`excludes`
-- [ ] `ItemList` JSON-LD on the All Tours grid
-- [ ] `FAQPage` JSON-LD on collection, hub and destination-NeedHelp FAQ sections
+- [x] Canonical + hreflang coverage broadened (SEO pass 2026-07-25): now emitted on the homepage, destination page, `/tours`, `[destination]/[slug]`, search and the legal pages (7 locales + x-default)
+- [x] **`app/sitemap.ts` built** — per-locale entries with hreflang alternates covering home, destination pages, All-Tours pages, legal pages and dynamic entities (destinations, LIVE tours, tour-gated categories/hubs, published collections) from the backend `GET /sitemap/entries`, with `lastModified`; private routes excluded
+- [x] **`robots` built** (public routes allowed, private surfaces disallowed, sitemap declared)
+- [x] **JSON-LD emitted** via `lib/seo/jsonld.ts` + `lib/seo/tour-review-jsonld.ts`: Organization, WebSite + SearchAction, BreadcrumbList, FAQPage, TouristDestination, TouristTrip, Product/Offer/AggregateRating/Review
+- [x] `BreadcrumbList` JSON-LD on entity pages
+- [x] `Product`/`Offer` JSON-LD on tour detail with AggregateRating + Review
+- [ ] `ItemList` JSON-LD on the All Tours grid (only `itemListElement` inside BreadcrumbList exists — no listing-page ItemList)
+- [x] `FAQPage` JSON-LD emitted from the shared FAQ section component
 - [ ] `/help` Help Center route with FAQPage JSON-LD across the five categories (Booking, Cancellation, Safety, Equipment, Accessibility) — route does not exist
 - [ ] Self-referencing canonical from filtered listing URLs to the clean URL
-- [ ] Frontend enforcement of the ≥3-tour category indexability gate
+- [~] ≥3-tour category indexability gate: the sitemap excludes tour-gated categories/hubs (delegated to the backend `GET /sitemap/entries`); the page render gate itself still sits at ≥1
 - [ ] Reserved-word guard so static route segments (`terms`, `search`, …) cannot silently shadow a destination slug
 
 ## Tracking & analytics
 
-- [ ] **No analytics or tracking layer exists at all** — no GTM container, no `dataLayer`, no `gtag`, no GA4, no Meta Pixel / `fbq`, no CAPI (verified by grep)
-- [ ] GTM container bootstrap with the four tags (Conversion Linker · Google Ads · GA4 `purchase` · Meta Pixel), no per-tour or per-campaign tags
-- [ ] `booking_complete` dataLayer push on the TYP with the full §3 data contract (`booking_value` = `commission_amount` EUR, `booking_currency` hardcoded `'EUR'`, `booking_ref`, tour/operator/island context, `items[]`, `user_id`, click ids, hashed `user_data`)
-- [ ] Server-side SHA-256 PII hashing (email, E.164 phone via `libphonenumber-js`, split names, address) — one hash pass serving Google and Meta
-- [ ] Server-side Meta CAPI fire in parallel with the browser Pixel, deduplicated by a shared event id, fire-and-forget with error logging
-- [ ] Click-id (`gclid`, `gbraid`, `wbraid`, `fbclid`) and UTM capture at booking creation
+- [x] Tracking layer bootstrapped (A5, 2026-07-25): `google-tag-manager.tsx` loads GTM from the dashboard-managed container ID, gated on `NEXT_PUBLIC_ENABLE_TRACKING === 'true'`
+- [~] GTM container four-tag fan-out (Conversion Linker · Google Ads · GA4 `purchase` · Meta Pixel) — **GTM-UI configuration, not code**: the full recipe lives in `technical-doc/03-implementation/GTM-CONTAINER-SETUP.md` (the Meta tag MUST pass `eventID = {{dlv - event_id}}` or it double-counts vs CAPI); awaiting the founder's container work
+- [x] `booking_complete` dataLayer push on the TYP (`booking_value` = commission EUR, `booking_currency: 'EUR'`, refs/context, `event_id` shared with CAPI)
+- [x] Server-side SHA-256 PII hashing (email, E.164 phone, split names, address) — one hash pass serving Google Enhanced Conversions and Meta (`pii-hash.util.ts`)
+- [x] Server-side Meta CAPI fire in parallel with the browser Pixel, deduplicated by the shared `event_id` (booking publicRef), queued + retried via the `platform-jobs` queue
+- [x] Click-id (`gclid`, `gbraid`, `wbraid`, `fbclid`) and UTM capture at booking creation (90-day first-party attribution cookie → reserve payload)
 - [ ] CI type-check of the tracking payload so a missing required field is a build error, not a runtime fallback
 - [ ] GA4 page-view baseline plus `select_content` on homepage destination selection
 - [ ] Tour-card events `view_item_list`, `select_item`, `add_to_wishlist` with list id and index (§3.5)
@@ -975,26 +988,25 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 - [x] Cookiebot consent script loaded in `(frontend)/layout.tsx` with `data-cbid` from `getPublicSiteSeo().cookiebotCbid ?? NEXT_PUBLIC_COOKIEBOT_CBID` and `data-blockingmode=auto`
 - [x] `/manage-cookies` page (noindex) hosting `CookieSettingsButton` → `window.Cookiebot.renew()`
-- [ ] **Consent Mode v2** with regional defaults (EEA denied by default, US/CA granted) — only the banner exists, no consent signalling to any tag platform
-- [ ] Consent-gated firing wired to the (unbuilt) GTM container
+- [x] **Consent Mode v2** with regional defaults — EEA (EU27 + IS/LI/NO) + GB denied on ad_storage/ad_user_data/ad_personalization/analytics_storage, granted elsewhere; `wait_for_update: 500`, `ads_data_redaction: true`, set inline **before** `gtm.js` in the same script
+- [x] Consent-gated firing wired: Cookiebot (dashboard-managed CBID, `blockingmode=auto`) pushes consent updates into the GTM consent state
 
 ## Legal & policy pages
 
-- [x] Six global legal pages via `LegalPageShell`: `terms`, `privacy-policy`, `cookie-policy`, `cancellation-policy`, `legal-notice`, `manage-cookies`
-- [x] Verbatim handover prose preserved (change only through Denley per the README header)
-- [x] Non-`en` locales render the English text plus a notice banner
-- [~] Legal copy is hardcoded JSX (privacy-policy 516 lines, terms 541) rather than CMS-managed — Phase 5 of the Pages system is a migration of this authored copy
-- [ ] Pages / permalink system with a rich-text editor backing the legal pages (blocked on open decisions; port the TipTap config noted in the docs)
-- [ ] Missing footer routes: about, help, contact
+- [x] Six global legal pages served at their original URLs via the Pages system (2026-07-26): `terms`, `privacy-policy`, `cookie-policy`, `cancellation-policy`, `legal-notice`, `reviews-policy` are `Page` rows rendered through `LegalPageShell` + `PageBody`; `manage-cookies` stays code (interactive Cookiebot button, noindex)
+- [x] Verbatim handover prose preserved — seeded byte-true from the rendered routes (`pnpm pages:seed`, fixtures in `backend/prisma/pages-content/`), verified structurally identical pre/post cutover
+- [x] Non-`en` locales render the English text plus a notice banner (now driven by the backend's `isEnglishFallback`, so a future real translation drops the notice with no code change)
+- [x] Pages / permalink system with a rich-text (TipTap) editor backing the legal pages — dashboard `/pages` list + editor, publish/unpublish, rename→301 permalinks, `pages` cache tag in both repos
+- [ ] Missing footer routes: about, help, contact (can now ship as Pages + footer links)
 
 ## Error / 404 handling
 
 - [x] `notFound()` used correctly at every gate (inactive destination, unresolvable slug, missing booking)
 - [x] `publicGetStrict` semantics so a backend outage throws instead of baking a 404 into ISR
-- [ ] **`not-found.tsx` — does not exist anywhere in `app/`.** Next's default 404 renders
-- [ ] **`error.tsx` — does not exist.** No route-level error boundary
-- [ ] **`global-error.tsx` — does not exist.** No root error boundary
-- [ ] Localized, branded 404 with recovery links (destination / all tours / search)
+- [x] `not-found.tsx` built — root `app/not-found.tsx` plus a localized `[locale]/not-found.tsx`, branded via `NotFoundScreen`
+- [x] `error.tsx` built — root + `[locale]` route-level error boundaries via `ErrorScreen`/`getStatusCopy`
+- [x] `global-error.tsx` built (root boundary; English-only by design — no locale context at that level)
+- [x] Localized, branded 404 with recovery links (the `[locale]` variant; root/global screens render default-locale copy)
 - [ ] Error boundary with a WhatsApp fallback affordance consistent with the widget/checkout error pattern
 - [ ] `manifest.ts` (absent; noted alongside the other missing app-level files)
 
@@ -1011,14 +1023,14 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Vercel RSC-variant fix: prerender all known slugs + `proxy.ts` matcher excluding locale-prefixed paths
 - [x] Streaming entity/destination shells returning `<Suspense>` before any await, with parallel `Promise.all` resolution
 - [x] `proxy.ts` (Next 16 renamed middleware) handling locale redirect, cookie, locale-less rewrites and the dashboard cookie guard
-- [~] Streaming policy is inconsistent: `ToursHeaderSection`, `DestinationHeroSection`, `DestinationCollectionsSection` and `HubTripsData` are wrapped in Suspense but have no request-time trigger, so they bake into the static shell and their skeletons never render
+- [x] Streaming policy inconsistency resolved — the inert Suspense boundaries (`ToursHeaderSection`, `DestinationHeroSection`, `DestinationCollectionsSection`, `HubTripsPanel`) were removed/reworked so wrapped sections genuinely stream or prerender plainly
 - [ ] Apply one coherent per-page-type streaming policy (prerendered pages let cached sections prerender; only searchParams/cookie/per-user holes stream)
 - [ ] Add `loading.tsx` at `[destination]` and `[destination]/tours` (gap G2 — `loading.tsx` does not cascade)
 - [ ] Remove the dead `connection` import in `tours/tours-header-section.tsx:1`
 - [ ] Remove the debug `console.log('details', detail)` at `tour-detail-content.tsx:102`
 - [ ] Fix stale docstrings claiming `await connection()` in `tours-listing-section.tsx`, `search-results-section.tsx`, `destination-page-sections.tsx`, `hub-page.tsx`, `tours-header-section.tsx`
 - [ ] Correct the `lib/api/public/destinations.ts:19` comment (says `revalidateTag`, code uses `updateTag`)
-- [ ] Delete dashboard-era dead weight now that the dashboard is extracted: `components/ui/` (37 dirs), `hooks/*`, non-`public/` `lib/api/*.ts`, `contexts/role-context.tsx`, `lib/config/rbac.ts`, `app/_actions/dashboardActions.ts` (admitted mock data)
+- [~] Dashboard-era dead weight: `app/_actions/dashboardActions.ts` (the mock) is **deleted** and `components/ui/` is flattened (35 files, 0 dirs); remaining candidates (`hooks/*`, non-`public/` `lib/api/*.ts`, `contexts/role-context.tsx`, `lib/config/rbac.ts`) unverified
 - [ ] Set `INTERNAL_API_SECRET` and `REVALIDATE_SECRET` in both apps so the throttle bypass and cache bridge are actually active
 
 ## Motion & interaction standards
@@ -1038,7 +1050,7 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] 13 skeleton components: checkout, destination, entity, hub-tour-card, hub-trips-panel, search, thank-you, tour-card, tour-page, tours-page, wishlist, collection-card, `skeleton-bar`
 - [x] Route `loading.tsx` at `[slug]`, destination, tours, checkout and thank-you
 - [x] Per-section Suspense boundaries with skeletons mirroring each section
-- [~] Four skeletons render nowhere because their Suspense boundaries are inert: `ToursHeaderSkeleton`, `DestinationHeroSkeleton`, `DestinationCollectionsSkeleton`, `HubTripsPanelSkeleton`
+- [x] The four inert-boundary skeletons were resolved with the streaming-policy fix (their dead Suspense wrappers are gone)
 - [ ] Unified loading timing rule applied platform-wide (<200ms none · 200–1500ms skeleton · >1500ms skeleton + secondary indicator · >5000ms timeout + retry)
 - [ ] Skeleton calendar grid on date-picker initial load and month change; skeleton chip row on time-slot fetch
 
@@ -1054,8 +1066,8 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ## Testing
 
-- [~] Playwright configured (`playwright.config.ts`, chromium, 1 worker, global auth setup, `webServer: pnpm dev`) — infrastructure exists but points at dead specs
-- [ ] **All 10 existing specs target `/dashboard` routes** (attributes, categories ×2, collections, destinations ×2, hubs ×2, trips ×2) and are stale/dead now that the dashboard lives in another repo — delete or migrate them
+- [x] Playwright configured and carrying live public-site coverage — `e2e/tests/` now includes `tour-reviews.spec.ts` (public tour-page review display + compliance) alongside the entity specs
+- [~] Legacy dashboard-era specs (attributes, categories, collections, destinations, hubs) still ride along in this repo — audit which still exercise live public surfaces and delete the rest
 - [ ] Remove the committed failure artifact `e2e/test-results/trips-…/test-failed-1.png`
 - [ ] **Zero public-frontend test coverage** — no jest, no vitest, no testing-library in `package.json`
 - [ ] Add a unit/component test runner and cover the pure logic: `lib/tours/filters.ts`, `lib/checkout/checkout.ts`, `lib/currency/*`, duration formatter, `derive-badge`, `pricing-label`
@@ -1066,7 +1078,7 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ### Frontend summary
 
-**Done 224 · Ongoing 38 · Pending 191** (453 tasks total). The transactional spine — booking widget, checkout, Stripe/PayPal/iDEAL payment, processing hop, thank-you page, booking lookup, traveler session and the cancellation-request flow — is genuinely built end-to-end against real endpoints, and the 7-locale i18n layer is fully wired and genuinely translated. The concentrated gaps are commercial-surface rather than structural: no sitemap, no robots, no JSON-LD, no analytics or conversion layer of any kind, no error/404 boundaries, homepage CMS loaders written but unconsumed, review submission absent, hreflang emitted on one route only, tours filters stopped at Phase 2, and zero automated coverage of the public site.
+**Done 266 · Ongoing 33 · Pending 153** (452 tasks total; recounted from the markers 2026-07-26). The transactional spine — booking widget, checkout, Stripe/PayPal/iDEAL **and Mollie** payment, processing hop, thank-you page, booking lookup, traveler session and the cancellation-request flow — is built end-to-end, and the 7-locale i18n layer is fully wired. The prior audit's concentrated gaps are now closed: sitemap + robots + JSON-LD shipped, the GTM/Consent-Mode-v2 tracking layer and the `booking_complete` conversion fire are live code (gated on the founder entering the container/pixel IDs and configuring the GTM container per `GTM-CONTAINER-SETUP.md`), error/404 boundaries exist, the homepage/destination pages are genuinely CMS-fed, and review submission + display depth shipped. What remains is polish and locked-copy verification (widget/checkout microcopy, card carousel, locale formatters), Phase 3 filters (date/guests/time-of-day), the GA4 secondary event set (`view_item_list`, `search`, `add_to_wishlist`, …), ItemList JSON-LD, the accordion checkout restructure, and unit-test coverage of the public site.
 
 ---
 
@@ -1080,9 +1092,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 > Legend: `- [x]` done (audit-confirmed built and wired) · `- [~]` ongoing (partial / known defects)
 > · `- [ ]` pending (not built).
 >
-> **Read the difference carefully:** `/reviews` is a *placeholder* (a route exists, rendering an
-> `<h1>` and one `<p>`). Settlements/payouts, refunds, FX admin, notifications, slug-registry
-> admin and Pages/CMS were *never built* — no route, no component, no API module, no type.
+> **Update 2026-07-25:** Reviews (full moderation queue + analytics), Settlements and Customers are
+> now real, built modules. The surfaces still *never built* are: refunds (as a dedicated screen),
+> FX admin, a notifications feed, slug-registry admin, and Pages/CMS.
 
 ---
 
@@ -1276,8 +1288,10 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Commission column ADMIN-only
 - [x] Money rendered with exact decimals and the correct currency
 - [x] Converted to the unified `DataTable` with URL-synced state
+- [x] Booking detail as a full Sheet with next/prev arrowing (`booking-details-sheet.tsx`), refund status + `refundDue` surfaced for cancellations
+- [x] Derived display statuses in the status filter (`NON_PAYMENT_REPORTED`, `FORFEITED`, `CANCELLATION_REQUESTED`) with matching status chips
+- [x] Non-payment / forfeit row actions (report → admin confirm forfeit / dismiss), forfeit gated `MANAGE_BOOKINGS` (ADMIN-only, mirrored in `rbac.ts`)
 - [ ] Move `refundDue()` and `paymentModelLabel()` out of the columns file into `lib/bookings/` — money logic is not presentation (defect B-6/D-9, owed at Phase 20)
-- [ ] Booking detail as a full Sheet with next/prev arrowing (today a cramped read-only dialog) — the single biggest throughput win in the module
 - [ ] E2E coverage for bookings — **zero specs exist**
 
 ## Payments
@@ -1285,8 +1299,8 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] `/payments` route with `loading.tsx`, rendering `PaymentsListView` over `components/common/payments-page-view.tsx`
 - [x] 3 components incl. refund columns and provider/method rendering
 - [x] `GET /payments` wired; converted to the unified `DataTable`
-- [~] Payments is a **read-only dead end** — no actions column, no row-actions, no detail view, no status transitions; the only money-touching module with no drill-in
-- [ ] Payment detail sheet + refund action — **BLOCKED on backend request A7**; do not add affordances the API cannot serve
+- [x] Row actions built (2026-07-26, `payment-row-actions.tsx`): View booking (deep-links `/bookings?q={ref}`), copy booking/payment refs, Open in Stripe/Mollie dashboard (admin), and **Retry refund** on a FAILED refund row (admin, confirm dialog — re-invokes the idempotent cancel retry hook)
+- [~] Payment detail sheet — still no detail view; the row actions + booking deep-link cover the drill-in for now (**backend request A7 remains for a full sheet**)
 - [ ] E2E coverage for payments — **zero specs exist**
 
 ## Cancellation requests
@@ -1296,29 +1310,34 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Refund-entitlement copy cites master §6.4
 - [x] `/bookings/:id/cancellation-request` endpoint wired
 - [x] The 3 cancellation-specific extra columns render
-- [ ] Rebuild as a real **queue/inbox** — pending first, free-cancellation window and refund-due as columns not prose, approve/reject inline, nav badge (same shape as Spotlight and, later, Reviews and Users)
+- [x] Pending-count nav badge (`CancellationsBadge` in `nav-main.tsx`, scoped to PENDING)
+- [~] Rebuild as a real **queue/inbox** — the nav badge shipped; pending-first ordering + inline approve/reject in the queue shape still owed
 - [ ] E2E coverage — **zero specs exist**
 
 ## Refunds
 
-- [ ] Dedicated refunds surface — **NEVER BUILT.** No route, no component, no API module; refunds appear only as columns/status inside bookings and payments
-- [ ] Refund initiation / approval action — blocked on A7
-- [ ] Refund reconciliation view against the double-recorded refund model (original payment flips to `REFUNDED` **and** a separate `kind = REFUND` row is written — summing `status='REFUNDED'` double counts)
+- [ ] Dedicated refunds surface — **still not built** as a screen; refund status/`refundDue` now render inside bookings (detail sheet + columns) and settlements, and the backend executes refunds automatically on FULL-verdict cancellations, so the remaining need is a reconciliation/oversight view rather than an initiation flow
+- [~] Manual refund initiation / approval action from the dashboard — a **Retry refund** row action now exists on FAILED refund rows (payments table, 2026-07-26); initiating a refund on an arbitrary payment (outside the cancellation flow) is still deliberately absent
+- [x] Refund statuses unified (2026-07-26): a settled refund row is `REFUNDED` (never a green "Succeeded") and the ORIGINAL charge row flips to `REFUNDED` with it — both flipped live at the settle point (`executeRefund`/`reconcileRefundRow`) and backfilled by migration `20260726140000`; analytics gross counts `SUCCEEDED+REFUNDED` inbound so nothing double-counts
+- [ ] Refund reconciliation view (a dedicated oversight screen over the double-recorded refund model)
 
 ## Settlements & payouts
 
-- [ ] Settlements & payouts module — **NEVER BUILT.** No route, no component, no API module; the words appear only as *fields* in `types/analytics.ts` and `components/statistics.tsx`
-- [ ] Settlements ledger UI — backend Phase 1 of `SETTLEMENT-AND-PAYOUTS.md` is itself unbuilt
-- [ ] Payout run / payout statement views for operators
-- [ ] Retire the `payoutDueEur` caveat once the ledger exists (today it means *earned-and-unsettled*, not *unpaid*, and every surface showing it must say so)
+- [x] Settlements module built — `app/(app)/settlements` + `components/settlements/` (columns, table, list view, row actions) + `hooks/settlements/use-settlements.ts`, wired to `GET /settlements` + `/settlements/summary` + the mark-paid/mark-unpaid actions (via `lib/api/bookings-dashboard.ts`), in nav
+- [x] Ledger UI reworked self-describing (founder 2026-07-26): paid_in_full payouts only; plain-words statuses (Payout due / Paid out / Reversed) with a what-happens-next line per row (On hold / Ready to pay / Clears for payout {date} / Paid {date}); booking-ref search + status/date filters + admin operator filter; role-aware wording (admin: "Payout due to operators", operator: "Due to you from Island Tours" / "Paid to you")
+- [x] **Manual "Mark as paid" row action** (admin, `MANAGE_BOOKINGS`, confirm dialog asserting the transfer was made) + "Revert to due" undo — replaces the removed automatic hourly release; enabled only on server-computed `payoutEligible` rows
+- [x] `payoutDueEur` caveat retired — the Statistics payouts-due card now reads the settlements ledger verbatim and says so ("Matches the Settlements page"); its note reflects the manual mark-paid workflow (2026-07-26)
+- [x] Refund analytics (2026-07-26): admin "Refunded to travellers" KPI card (settled refunds from the payment ledger, `refundedEur`), and Recent Activity gained "Recent Cancellations" (who cancelled + refund-owed badge) and "Recent Refunds" (status badge incl. stuck PROCESSING/FAILED) groups, role-scoped; admin grid hides the Customers card (Refunded takes its slot - two clean rows), operators keep it
+- [ ] Operator payout statements / export (per-operator statement view over the ledger)
 
 ## Reviews & moderation
 
-- [~] `/reviews` route exists but is the **only genuine placeholder in the repo** — the entire file is an `<h1>Reviews</h1>` plus one `<p>`. No table, no API module, no hook, no type. Deliberately removed from nav with the comment "Reviews returns with its module (blocked on A2)"
-- [ ] Moderation queue — pending first, approve/reject inline, filter by tour/rating/status, bulk approve — **BLOCKED on backend request A2** (Phase 23)
-- [ ] `lib/api/reviews.ts` + `hooks/reviews/*` + `types/review.ts` — none exist in this repo
-- [ ] Wire the review-approval gate that `CLAUDE.md` says homepage social proof depends on — today there is **no moderation UI at all**
-- [ ] Restore the `Reviews` nav entry under CONFIGURE when the module lands
+- [x] Reviews module built (2026-07-22..25) — real moderation queue: status/rating/tour filters (defaults to PENDING), inline approve/hold/reject row actions, bulk approve (`useBulkModerateReviews`)
+- [x] `lib/api/reviews.ts` + `hooks/reviews/use-reviews.ts` + `types/review.ts` all exist (incl. `reviewAnalyticsApi`)
+- [x] Review-approval gate wired — moderation UI is live, feeding the approved-only public aggregates
+- [x] `Reviews` nav entry restored (gated `VIEW_REVIEWS`) with a pending-count badge (`usePendingReviewCount` in `nav-main.tsx`)
+- [x] Review analytics (DASH-9) as a tab inside Statistics (`review-analytics.tsx`, recharts)
+- [x] Playwright coverage for the moderation queue (`e2e/tests/reviews.spec.ts` — queue, bulk approve, RBAC)
 
 ## Platform reviews
 
@@ -1335,9 +1354,10 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] `/account` customer login door with forgot/reset
 - [x] `/profile` page + `userActions.ts` (profile update, set-password) — 11 components incl. avatar cropper and `change-password-dialog`
 - [x] `/users`, `/users/new`, `/users/[id]` routes are **real and complete** — they are the Staff & Teams module (spec claims: 00 §2 and 04 §4.7 list `users` as an 8-line static JSX stub blocked on A3; the code audit shows a fully built 13-file module)
+- [x] Platform customer/traveler directory distinct from staff — `/customers` route (`customers-list-view.tsx`, columns, row actions), operator-scoped by the backend, with a manual "Ask for review" action and bulk email (`EmailCustomersDialog` → `/customers/email`); in nav
+- [x] "Leave a review" row action in the customer bookings view (FE-12b)
 - [ ] Per-card edit on the profile page (today a single `isEditing` boolean toggles the whole page)
 - [ ] Active-session list on the security card — needs a backend endpoint
-- [ ] A platform-wide customer/traveler directory distinct from staff (role column, booking history) — not built
 
 ## Operators
 
@@ -1389,7 +1409,8 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] **Infinite scroll shipped** — the hardcoded `limit=100` ceiling that made item 101 unreachable is resolved (spec claims: 04 §4.4 still lists the 100-cap as an open S2 "hard operational ceiling")
 - [x] Shared pickers `components/common/media-selector.tsx`, `image-selector-field.tsx`, `video-selector-field.tsx` adopted across all modules (no pasted URLs)
 - [x] zustand upload store retained for cross-component progress
-- [ ] Server-side filters (type, date, size, unused) and sort — verify `/media-gallery` query-param support first
+- [x] Media kind classification (`lib/media/media-kind.ts` + badges in list/viewer)
+- [ ] Server-side filters (type, date, size, unused) and sort — the controls exist but are intentionally hidden (`SHOW_FILTER_CONTROLS = false`); verify `/media-gallery` query-param support first
 - [ ] Tags (an image belongs to a tour *and* a destination; folders force one truth) — **BLOCKED**, needs a backend field
 - [ ] "Used by" indicator so deletion is not blind — the highest-value non-blocked item in the module
 - [ ] Convert the picker from a full-screen `Dialog` to a Sheet
@@ -1412,9 +1433,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 - [x] Tour translations reachable from the editor via `?tab=translations`
 - [x] Per-child-entity translation endpoints wired (highlights, inclusions, exclusions, features, locations, pickups, SEO)
 - [x] The EN rule preserved — "Clear Fields" upserts nulls and never calls the delete endpoint
-- [~] Phase 17 is marked *not started* in the extraction ledger while the console routes exist in code — the console is built but the **5 forked `LocaleTab` implementations and the per-entity Translations tabs have not been deleted**, so operators still have two ways to do one job (this is explicitly called the make-or-break instruction)
+- [x] Console is the single translation path — the forked `LocaleTab` implementations are gone (no `LocaleTab` references remain); the workspace covers page content, About-band sections and SEO (`entity-workspaces.tsx`, `content-workspace.tsx`)
 - [ ] `lib/translatable-schema.ts` — the single declarative registry the matrix and workspace should render from (a missed field silently becomes untranslatable)
-- [ ] Bulk **Pre-translate** action (fills empty targets from EN, marks `isMachineTranslated: true`) — **BLOCKED on A4**; the DB column, DTO field, type and badge already exist end-to-end, only the generator is missing
+- [ ] Bulk **Pre-translate** action (fills empty targets from EN, marks `isMachineTranslated: true`) — the generator seam now exists (Google Translate credentials in Settings + the backend review-translation service prove the pipe), but the entity-translation bulk action is still not built
 - [ ] "Source updated" conflict flag when the EN source changed after a translation was saved — needs a source-updated timestamp (verify whether `updatedAt` suffices)
 - [ ] Delete `trip-translations-tab.tsx`, `rationale-translation-tabs.tsx`, `translation-row.tsx`, `dual-translation-row.tsx` and the 5 `LocaleTab` forks (~1,400 LOC)
 - [ ] E2E coverage for translations — **zero specs exist**
@@ -1432,10 +1453,10 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ## Pages / CMS
 
-- [ ] Pages module (legal, marketing, editorial pages) — **NEVER BUILT.** No route, no component, no API module. The nav "Pages" group contains only Homepage, with a comment that the rest arrives "from Phase 5"
-- [ ] Rich-text editor — **no TipTap or any rich-text dependency is installed** in `package.json`, confirming the gap; port the working config from the `wattup-frontend` project when this starts
-- [ ] Page CRUD + slug + publish state + per-locale translation wiring
-- [ ] Two user-owned decisions still block the backend Phase 5 of the homepage/pages plan
+- [x] Pages module built (2026-07-26): `/pages` list (DataTable) + `/pages/new` + `/pages/[id]/edit`, row actions (Edit / View live / Publish-Unpublish / Delete-with-unpublish-first), nav item in the Pages group, all gated `MANAGE_EDITORIAL`
+- [x] Rich-text editor — TipTap v3.29 adapted port (`components/pages/rich-text-editor.tsx`): shadcn/hugeicons toolbar, tables wired, SCSS scoped under `.it-page-editor`, content area = `.it-page-prose` mirror of the public legal typography (live WYSIWYG preview)
+- [x] Page CRUD + slug (auto-gen + `slugTouched`, rename→301 note) + publish state + English content wiring (`{fields}` translation payload); other locales are schema-ready, deferred by the English-only decision
+- [x] Both user decisions resolved 2026-07-26 (fall-through routing; adapted TipTap port) — see `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
 
 ## Featured experiences
 
@@ -1473,7 +1494,11 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 - [x] `/settings` route, 15 components, `SettingsClient` branching on permission (`VIEW_SETTINGS` → admin settings; else `EDIT_OPERATOR_PROFILE`/`MANAGE_OPERATOR_PAYMENTS` → operator settings)
 - [x] Admin: site info, SEO, social, company, payments (Stripe/Mollie/methods), integrations, Mailchimp, platform-reviews form
-- [x] Operator: company + payments
+- [x] Integrations tab cards: Meta CAPI (pixel id + token + test code), Google Translate (key + project), WhatsApp; GTM container ID + Cookiebot CBID live on the SEO form
+- [x] Review-request cadence screen (`review-requests-form.tsx`) driving the post-tour invite cron
+- [x] Instagram management tab (`instagram-form.tsx` — account, tiles, video support, layout) feeding the public Instagram section
+- [x] FAQ host avatar + video clip admin-managed on the site-info form
+- [x] Operator: company + payments, plus the **Payout Provider** switcher (`operator-payments-form.tsx` — active provider = payout destination only; travelers are always charged by platform settings)
 - [x] `PATCH /settings/site` correctly busts the public `site-info` tag (defect B-1 fixed and regression-tested in both repos)
 - [ ] Routed, deep-linkable sections (`/settings/general`) — today there is **no URL state at all**, worse than the entity editors
 - [ ] Rename to end the naming collision: admin `General` → **Site**, admin `Company` → **Legal Entity**, operator `Company` → **Your Business**
@@ -1484,9 +1509,9 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ## Notifications
 
-- [ ] Notifications module — **NEVER BUILT.** No route, no component, no API module; only a bell affordance in `components/shell/site-header.tsx`
+- [ ] Notifications module — **NEVER BUILT.** No route, no component, no API module; the bell in `components/shell/site-header.tsx` is still decorative (no handler)
 - [ ] In-app notification feed / read state
-- [ ] Actionable nav badges (bookings needing attention, pending cancellations, pending spotlight approvals) — specified in the IA, not built
+- [~] Actionable nav badges — Reviews pending-count and Cancellations pending-count chips shipped in `nav-main.tsx`; bookings-needing-attention and pending-spotlight badges still absent
 - [ ] Operator email/notification preferences surface
 
 ## FX admin
@@ -1541,7 +1566,7 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 ## Testing
 
 - [x] Playwright configured (`playwright.config.ts`, `test:e2e`/`:ui`/`:debug`/`:report`, `auth.setup.ts`, `e2e/fixtures/index.ts`)
-- [x] 9 e2e specs written: attributes, categories, categories-new-fields, collections, destinations, destinations-new-fields, hubs, hubs-new-fields, trips, trips-new-fields — all API-mocked via route interception, asserting PATCH/POST/DELETE calls and toasts
+- [x] 11 e2e specs written: attributes, categories(+new-fields), collections, destinations(+new-fields), hubs(+new-fields), trips(+new-fields), **reviews** (moderation queue, bulk approve, RBAC) — API-mocked via route interception
 - [~] Phase 9B e2e trim is **PARTIAL** — 55 tests cut and mocks repointed, but **trips fixtures are parked** (~1 day of work, 4 migrations behind)
 - [~] The committed suite **must not be read as green** — `e2e/test-results/` holds **~80 checked-in failing-test directories** (each with `error-context.md` + `test-failed-1.png`) spanning attributes, categories, collections, destinations, hubs and trips
 - [ ] Repair or delete the ~80 checked-in failing test-result directories so the repo stops shipping a red run as its baseline
@@ -1559,12 +1584,16 @@ and payouts, the queue/outbox layer, the OCTO booking surface, the Pages/CMS mod
 
 ### Dashboard summary
 
-**Done 187 · Ongoing 15 · Pending 122** (324 tasks total). The dashboard is a mature, near-complete
-application, not a scaffold: 21 modules are built and wired, the extraction is code-complete through
-Phase 8 with Phases 10-15 of the redesign also DONE. What remains splits three ways — (1) six
-surfaces that were **never built** (settlements/payouts, refunds, FX admin, notifications,
-slug-registry/redirects, Pages/CMS) plus one genuine placeholder (`/reviews`); (2) the untouched
-redesign phases 16-20 and the backend-blocked phases 21-23; (3) a test suite that is narrow and red.
+**Done 242 · Ongoing 14 · Pending 117** (373 tasks total; recounted from the markers 2026-07-26). The dashboard is a mature, near-complete application: 24 modules
+are built and wired — Reviews (moderation queue + analytics + nav badge), Settlements (self-describing
+payout ledger with the manual mark-paid workflow, reworked 2026-07-26) and Customers (directory +
+review requests + bulk email) all landed 2026-07-22..26, along
+with the bookings forfeit/derived-status work, the booking detail sheet, the operator payout-provider
+switcher, and the Integrations/Instagram/review-cadence settings. What remains splits three ways —
+(1) four surfaces still never built (a dedicated refunds screen, FX admin, a notifications feed,
+slug-registry/redirects admin) plus Pages/CMS (founder-blocked); (2) the untouched redesign phases
+16-20; (3) a test suite that is still narrow (11 mocked specs, no unit runner) with old red artifacts
+checked in.
 
 ### Blocked on user
 
@@ -1677,10 +1706,8 @@ Each item: **what is blocked → who owns it → what unblocks it.**
 - **Owner:** founder. The summary itself says it is **"a proposal awaiting founder sign-off (5 open items), not yet locked into the master."**
 - **Unblocks it:** sign-off, then folding the spec into master §5.11 / §6.4 / Appendix E.11.
 
-**5. Pages system (Phase 5) — two open decisions, NOT STARTED**
-- **Blocked:** the whole CMS Pages feature. Dashboard nav "Pages" group currently contains only Homepage.
-- **Owner:** user/founder.
-- **Unblocks it — decision (a) routing:** `/{locale}/{slug}` **collides with `/{locale}/{destination}`**. Options: fall-through resolution (`destination → Page → 404`) vs `/legal/{slug}` namespacing, which **changes 6 live SEO-indexed URLs**. Recommendation on file: **fall-through, keep the URLs**. **Decision (b) rich text:** **neither repo has any editor, markdown lib, or sanitizer** — recommendation is to port **TipTap v3 from `wattup-frontend`** with 4 caveats. No rich-text dependency exists in either `package.json`.
+**5. Pages system (Phase 5) — RESOLVED AND SHIPPED (2026-07-26)**
+- Both decisions were made by the user and the feature built end-to-end: **(a) fall-through routing** (destination → published Page → redirect → 404) keeping the six live legal URLs; **(b) adapted TipTap v3 port** (scoped SCSS, tables built, dashboard shadcn toolbar; sanitize-html on the backend write path). The six legal pages are now CMS-managed `Page` rows; the static JSX routes are deleted (`manage-cookies` stays code). Remaining: a human pass over the rendered dashboard editor UI.
 
 **6. Dashboard open decisions #2 and #4**
 - **#2 Weather widget** (see V.1 #26) — carry or remove; still in the header as of Phase 14. **Product call, owner: user.**

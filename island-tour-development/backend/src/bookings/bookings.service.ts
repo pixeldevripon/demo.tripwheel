@@ -1213,11 +1213,12 @@ export class BookingsService {
       );
     }
 
-    // Money-movement ledger (master SETTLEMENT-AND-PAYOUTS §2): one row per booking
-    // at confirmation, in EUR. Needs a non-null commission to record what IT is owed;
+    // Operator-payout ledger (master SETTLEMENT-AND-PAYOUTS §2): one row per
+    // confirmed paid_in_full booking, in EUR (writeSettlement no-ops on the
+    // self-settling models). Needs a non-null commission to compute the payout;
     // a null commission is the corruption case above (logged), so skip the row too.
     if (commissionAmount != null) {
-      await this.writeSettlement(updated, totalEur, commissionAmount, fxRate);
+      await this.writeSettlement(updated, totalEur, commissionAmount);
     }
 
     // Founder (2026-07-25): confirm-time EMAILS send INLINE so they land the
@@ -1371,8 +1372,8 @@ export class BookingsService {
 
   /**
    * Durable refund retry: re-invokes the idempotent executor (skips when a
-   * SUCCEEDED or in-flight PROCESSING refund already exists; a FAILED attempt
-   * retries with a fresh idempotency key). A throw retries with backoff.
+   * settled REFUNDED or in-flight PROCESSING refund already exists; a FAILED
+   * attempt retries with a fresh idempotency key). A throw retries with backoff.
    */
   async runRefundJob(bookingId: string): Promise<void> {
     const booking = await this.prisma.booking.findUnique({
@@ -1385,13 +1386,14 @@ export class BookingsService {
   }
 
   /**
-   * Write the one-per-booking settlement ledger row (master SETTLEMENT-AND-PAYOUTS
-   * §2). All amounts EUR. `netPosition = amountCollected - commissionOwed`, with the
-   * fixed sign: POSITIVE = Island Tours owes the operator (paid_in_full holds the
-   * remainder to pay out in B4); NEGATIVE = the operator owes IT (operator_full, v2).
-   * Deposit models net ~0 (deposit == commission -> record only). `amountCollected`
-   * is what IT actually took at checkout, converted to EUR:
-   *   paid_in_full -> the full total; operator_full -> 0; deposit models -> the deposit.
+   * Write the operator-payout ledger row (master SETTLEMENT-AND-PAYOUTS §2;
+   * founder decision 2026-07-26). ONLY `paid_in_full` bookings get a row - the
+   * one model where Island Tours collects the operator's money at checkout and
+   * owes them the net afterwards. Deposit models are self-settling (the deposit
+   * IS the commission - nothing to move) and operator_full takes no platform
+   * money at all, so recording them only adds ambiguous noise to the ledger.
+   * All amounts EUR: `amountCollected` = the full total IT took at checkout,
+   * `commissionOwed` = IT's cut, `netPosition` = the payout owed the operator.
    *
    * Idempotent (unique `bookingId`; never overwrites an existing row) and best-effort:
    * a ledger write must NEVER fail a confirmation whose money is already captured -
@@ -1401,17 +1403,10 @@ export class BookingsService {
     booking: BookingWithItems,
     totalEur: Prisma.Decimal,
     commissionEur: Prisma.Decimal,
-    fxRate: Prisma.Decimal,
   ): Promise<void> {
+    if (booking.paymentModel !== PaymentModel.PAID_IN_FULL) return;
     try {
-      const collected =
-        booking.paymentModel === PaymentModel.PAID_IN_FULL
-          ? totalEur
-          : booking.paymentModel === PaymentModel.OPERATOR_FULL
-            ? new Prisma.Decimal(0)
-            : booking.depositAmount
-                .mul(fxRate)
-                .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+      const collected = totalEur;
       const netPosition = collected
         .minus(commissionEur)
         .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -3936,8 +3931,9 @@ export class BookingsService {
    * payment-model-aware for free: the deposit for deposit models, the full total
    * for paid_in_full.
    *
-   * - IDEMPOTENT: skips if a SUCCEEDED REFUND row already exists, and passes a
-   *   stable PSP idempotency key so a retry never double-refunds.
+   * - IDEMPOTENT: skips if a settled (REFUNDED) or in-flight (PROCESSING)
+   *   REFUND row already exists, and passes a stable PSP idempotency key so a
+   *   retry never double-refunds.
    * - PROVIDER-ROUTED: reverses through whichever PSP took the charge (the
    *   Payment row's provider), regardless of the current settings switch.
    * - CONFIG-GATED: no captured on-platform charge (unpaid / operator_full /
@@ -3955,11 +3951,18 @@ export class BookingsService {
       // Never refund twice - a completed refund AND one still in flight
       // (PROCESSING: bank-debit methods settle asynchronously) both count.
       // A FAILED attempt does NOT block: that is exactly the retry case.
+      // (SUCCEEDED kept for rows written before refunds settled to REFUNDED.)
       const already = await this.prisma.payment.findFirst({
         where: {
           bookingId,
           kind: PaymentKind.REFUND,
-          status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.PROCESSING] },
+          status: {
+            in: [
+              PaymentStatus.REFUNDED,
+              PaymentStatus.SUCCEEDED,
+              PaymentStatus.PROCESSING,
+            ],
+          },
         },
         select: { id: true },
       });
@@ -4051,6 +4054,21 @@ export class BookingsService {
           provider: charge.provider,
         },
       });
+      // Money actually moved back (sync card refunds): the ORIGINAL charge row
+      // flips to REFUNDED too, so the payments list never shows a green
+      // "Succeeded" charge on a refunded booking. Async refunds (PROCESSING)
+      // flip it later in reconcileRefundRow, at the settle point.
+      if (rowStatus === PaymentStatus.REFUNDED) {
+        await this.prisma.payment.updateMany({
+          where: {
+            bookingId,
+            kind: { not: PaymentKind.REFUND },
+            intentId: charge.intentId,
+            status: PaymentStatus.SUCCEEDED,
+          },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+      }
       if (rowStatus === PaymentStatus.FAILED) {
         this.logger.error(
           `Refund for ${displayRef} FAILED at ${viaMollie ? 'Mollie' : 'Stripe'} (${refundId}) - manual follow-up needed`,
@@ -4156,7 +4174,13 @@ function derivePaymentState(
   let paid = new Prisma.Decimal(0);
   let refunded = new Prisma.Decimal(0);
   for (const p of payments) {
-    if (p.status !== PaymentStatus.SUCCEEDED) continue;
+    // REFUNDED counts on both legs (refunded original = was paid; settled
+    // REFUND row = money returned) so the net stays right after the flip.
+    if (
+      p.status !== PaymentStatus.SUCCEEDED &&
+      p.status !== PaymentStatus.REFUNDED
+    )
+      continue;
     if (p.kind === PaymentKind.REFUND) refunded = refunded.add(p.amount);
     else paid = paid.add(p.amount);
   }
@@ -4220,10 +4244,11 @@ function mapBookingListItem(
     // enforces.
     canRequestCancellation: cancellation.canRequest,
     cancellationBlockedReason: cancellation.reason,
+    // Status only exists for paid_in_full bookings (the payout ledger); the
+    // METHOD is derived from the booking's own payment model so deposit-model
+    // rows still read "Self-settling" instead of a bare dash.
     settlementStatus: b.settlement?.status ?? null,
-    settlementMethod: b.settlement
-      ? settlementMethodFor(b.settlement.paymentModel)
-      : null,
+    settlementMethod: settlementMethodFor(b.paymentModel),
     // Payout HELD by a pending cancellation request - same predicate as the
     // settlements page `payoutHeld`, surfaced here so the Bookings/Cancellation
     // tables show "On hold" wherever the settlement badge shows, not just on the

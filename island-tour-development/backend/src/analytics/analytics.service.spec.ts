@@ -220,7 +220,7 @@ describe('AnalyticsService', () => {
   });
 
   describe('revenue', () => {
-    it('counts REFUND rows only for refunds, never status=REFUNDED', async () => {
+    it('counts REFUND rows only for refunds, and keeps refunded charges in gross', async () => {
       const prisma = createMockPrisma();
       const service = await build(prisma);
 
@@ -231,9 +231,11 @@ describe('AnalyticsService', () => {
         .find((t) => t.includes('AS gross'));
 
       // A refund is written twice (original payment flips to REFUNDED and
-      // a REFUND row is added). Summing the status would double count.
+      // a REFUND row is added). Refunds are counted from REFUND rows only;
+      // gross keeps the refunded original (the money WAS collected) so
+      // gross - refunded nets out correctly and nothing double counts.
       expect(revenueQuery).toContain("p.kind::text = 'REFUND'");
-      expect(revenueQuery).toContain("p.status = 'SUCCEEDED'");
+      expect(revenueQuery).toContain("p.status IN ('SUCCEEDED', 'REFUNDED')");
     });
 
     it('normalizes money with the booking snapshotted FX rate', async () => {

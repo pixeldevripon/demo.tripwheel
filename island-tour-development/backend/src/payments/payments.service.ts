@@ -611,7 +611,13 @@ export class PaymentsService {
 
     if (payment.status === 'paid') {
       await this.prisma.payment.updateMany({
-        where: { intentId: payment.id, kind: { not: PaymentKind.REFUND } },
+        // Never resurrect a refunded charge: Mollie re-posts the payment id
+        // when a refund settles, and the payment still reads `paid`.
+        where: {
+          intentId: payment.id,
+          kind: { not: PaymentKind.REFUND },
+          status: { not: PaymentStatus.REFUNDED },
+        },
         data: {
           status: PaymentStatus.SUCCEEDED,
           ...(payment.method ? { methodType: payment.method } : {}),
@@ -766,7 +772,13 @@ export class PaymentsService {
         : null);
 
     await this.prisma.payment.updateMany({
-      where: { intentId: intent.id },
+      // REFUND rows share the charge's intentId (B5) and a refunded charge must
+      // never be resurrected to SUCCEEDED by a late/duplicate delivery.
+      where: {
+        intentId: intent.id,
+        kind: { not: PaymentKind.REFUND },
+        status: { not: PaymentStatus.REFUNDED },
+      },
       data: {
         status: PaymentStatus.SUCCEEDED,
         chargeId:
@@ -848,8 +860,9 @@ export class PaymentsService {
    * Cards refund synchronously, but bank-debit methods (iDEAL/SEPA/ACH) create
    * the refund `pending` (row = PROCESSING) and settle - or fail - later; this
    * is the settle point. Transition rules keep out-of-order deliveries safe:
-   *   - -> SUCCEEDED only from PROCESSING (never resurrect a FAILED refund)
-   *   - -> FAILED from PROCESSING or SUCCEEDED (Stripe can fail a bank refund
+   *   - -> REFUNDED (settled) only from PROCESSING (never resurrect a FAILED
+   *     refund)
+   *   - -> FAILED from PROCESSING or REFUNDED (Stripe can fail a bank refund
    *     days after reporting success)
    *   - a `pending` update carries no new information - ignored
    * A failure is LOUD: the traveller was already told their money is coming,
@@ -868,10 +881,13 @@ export class PaymentsService {
    * Provider-agnostic refund reconciliation onto the REFUND `Payment` row that
    * `executeRefund` wrote at create time (keyed by `refundId`). Transition
    * rules keep out-of-order deliveries safe:
-   *   - -> SUCCEEDED only from PROCESSING (never resurrect a FAILED refund)
-   *   - -> FAILED from PROCESSING or SUCCEEDED (a PSP can fail a bank refund
-   *     days after reporting success)
+   *   - -> REFUNDED (settled) only from PROCESSING (never resurrect a FAILED
+   *     refund)
+   *   - -> FAILED from PROCESSING or REFUNDED (a PSP can fail a bank refund
+   *     days after reporting success; SUCCEEDED kept for legacy rows)
    *   - a pending update carries no new information - ignored
+   * On settle, the ORIGINAL charge row flips to REFUNDED too (and back to
+   * SUCCEEDED on a late failure), so the payments list always tells one story.
    * A failure is LOUD: the traveller was already told their money is coming,
    * and `refundStatus` flips back to "Refund pending" for the ops queue
    * (re-running the cancel action retries with a fresh idempotency key).
@@ -882,22 +898,60 @@ export class PaymentsService {
     providerLabel: string,
   ): Promise<void> {
     const allowedFrom: PaymentStatus[] =
-      next === PaymentStatus.SUCCEEDED
+      next === PaymentStatus.REFUNDED
         ? [PaymentStatus.PROCESSING]
         : next === PaymentStatus.FAILED
-          ? [PaymentStatus.PROCESSING, PaymentStatus.SUCCEEDED]
+          ? [
+              PaymentStatus.PROCESSING,
+              PaymentStatus.REFUNDED,
+              PaymentStatus.SUCCEEDED,
+            ]
           : [];
     if (allowedFrom.length === 0) return;
 
-    const { count } = await this.prisma.payment.updateMany({
+    // Read the row first: the original-charge flip below needs its booking +
+    // intent, and updateMany returns only a count.
+    const row = await this.prisma.payment.findFirst({
       where: {
         refundId,
         kind: PaymentKind.REFUND,
         status: { in: allowedFrom },
       },
+      select: { id: true, bookingId: true, intentId: true },
+    });
+    if (!row) return; // not ours, or already reconciled
+
+    const { count } = await this.prisma.payment.updateMany({
+      where: { id: row.id, status: { in: allowedFrom } },
       data: { status: next },
     });
-    if (count === 0) return; // not ours, or already reconciled
+    if (count === 0) return; // lost a race with a concurrent delivery
+
+    // Keep the ORIGINAL charge row's story in sync with the refund outcome.
+    if (row.intentId) {
+      if (next === PaymentStatus.REFUNDED) {
+        await this.prisma.payment.updateMany({
+          where: {
+            bookingId: row.bookingId,
+            kind: { not: PaymentKind.REFUND },
+            intentId: row.intentId,
+            status: PaymentStatus.SUCCEEDED,
+          },
+          data: { status: PaymentStatus.REFUNDED },
+        });
+      } else {
+        // Late failure: the money never left after all - the charge stands.
+        await this.prisma.payment.updateMany({
+          where: {
+            bookingId: row.bookingId,
+            kind: { not: PaymentKind.REFUND },
+            intentId: row.intentId,
+            status: PaymentStatus.REFUNDED,
+          },
+          data: { status: PaymentStatus.SUCCEEDED },
+        });
+      }
+    }
 
     if (next === PaymentStatus.FAILED) {
       this.logger.error(

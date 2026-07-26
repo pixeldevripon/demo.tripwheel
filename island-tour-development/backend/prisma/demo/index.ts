@@ -17,6 +17,7 @@ import { DEMO_SUBCATEGORY_SLUGS, seedSubCategories } from './sub-categories';
 import { seedTours } from './tours';
 import { seedAvailability } from './availability';
 import { seedBookingsAndPayments } from './bookings-payments';
+import { seedSettlements } from './settlements';
 import { seedReviews } from './reviews';
 import { seedDemandShowcase } from './demand-showcase';
 import { COLLECTION_SLUGS, seedCollections } from './collections';
@@ -60,6 +61,10 @@ export async function runDemoSeed(): Promise<void> {
   // LAST: reserves un-reviewed bookings + restores the fixed demo review links.
   // Must follow seedReviews, which would otherwise review the pool away.
   await seedReviewDemoLinks();
+  // Operator-payout ledger rows (paid_in_full only). LAST because it covers
+  // EVERY booking-creating module above (bookings-payments + the review depth
+  // top-up) and self-heals their commission snapshots first.
+  await seedSettlements();
 
   console.log('\n════════════ DEMO SEED COMPLETE ════════════');
   console.log(
@@ -79,9 +84,14 @@ export async function cleanDemo(): Promise<void> {
     select: { slug: true, destination: { select: { slug: true } } },
   });
 
-  // 1) Reviews + bookings on demo tours (cascades translations, payments, items, add-ons).
+  // 1) Reviews + settlements + bookings on demo tours (booking delete cascades
+  //    translations, payments, items, add-ons — but Settlement has NO cascade,
+  //    so it must go explicitly, and first).
   await prisma.review.deleteMany({
     where: { tour: { reference: DEMO_TOUR_REF } },
+  });
+  await prisma.settlement.deleteMany({
+    where: { booking: { tour: { reference: DEMO_TOUR_REF } } },
   });
   await prisma.booking.deleteMany({
     where: { tour: { reference: DEMO_TOUR_REF } },

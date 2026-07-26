@@ -58,6 +58,11 @@ function createMockPrismaService() {
     pageContentSection: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    // The create-path guard against shadowing a Pages-system page (equal slug
+    // OR nested under it): no page exists unless a test says otherwise.
+    page: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     faq: {
       findMany: jest.fn(),
       findFirst: jest.fn(),

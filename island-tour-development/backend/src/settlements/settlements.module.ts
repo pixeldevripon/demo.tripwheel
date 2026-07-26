@@ -3,11 +3,12 @@ import { SettlementsController } from './settlements.controller';
 import { SettlementsService } from './settlements.service';
 
 /**
- * Settlements module - the money-movement ledger read surface + the scheduled
- * paid_in_full payout release (master SETTLEMENT-AND-PAYOUTS §2, B4). `PrismaService`
- * is `@Global()`. The row is WRITTEN at confirmation by `BookingsService`; this
- * module owns the release sweep (driven by the WorkersModule cron) and the admin
- * list. Exports the service so the cron can call `releaseEligiblePayouts`.
+ * Settlements module - the operator-payout ledger (master SETTLEMENT-AND-PAYOUTS
+ * §2, B4): paid_in_full rows only, manual admin mark-paid/mark-unpaid actions,
+ * and the list/summary reads. `PrismaService` is `@Global()`. The row is WRITTEN
+ * at confirmation by `BookingsService`; exports the service so the WorkersModule
+ * cron can call `reverseStaleCancelledSettlements` (the self-heal sweep - the
+ * cron never pays anything).
  */
 @Module({
   controllers: [SettlementsController],

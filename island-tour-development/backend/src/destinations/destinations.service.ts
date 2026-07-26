@@ -200,6 +200,22 @@ export class DestinationService {
       );
     }
 
+    // Pages (the WordPress-like legal/marketing pages) resolve at the same
+    // path level too, but AFTER destinations in the frontend's fall-through -
+    // so a destination taking a page's slug (or the first segment of a NESTED
+    // page path like "legal/terms") would silently shadow those pages. The
+    // mirror check (pages.service.assertSlugAvailable) protects the other
+    // direction.
+    const shadowedPage = await this.prisma.page.findFirst({
+      where: { OR: [{ slug }, { slug: { startsWith: `${slug}/` } }] },
+      select: { slug: true },
+    });
+    if (shadowedPage) {
+      throw new ConflictException(
+        `Destination slug "${slug}" would shadow the page "/${shadowedPage.slug}"`,
+      );
+    }
+
     // Timezone is required platform data (all tour/departure math anchors to it).
     // Prefer the admin's IANA value; otherwise derive a known launch zone from the
     // slug; never default silently to Curaçao for a non-Curaçao island.

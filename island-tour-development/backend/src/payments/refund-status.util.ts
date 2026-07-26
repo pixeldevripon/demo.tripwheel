@@ -9,9 +9,14 @@ import { PaymentStatus } from '@prisma/client';
  * actual answer, never an assumed success: a booking whose refund is still in
  * flight reads "Refund pending", and a failed refund flips it back to owed.
  *
+ * A settled refund maps to REFUNDED (not SUCCEEDED): the dashboard renders the
+ * row status verbatim, and "Refunded" is the only unambiguous reading for a
+ * refund that completed. The original charge row is flipped to REFUNDED at the
+ * same moment (executeRefund / reconcileRefundRow).
+ *
  * `requires_action` (rare; some APMs ask the customer for details) is still
  * money-not-moved, so it maps to PROCESSING. A null/absent status (older API
- * shapes) means the create call was accepted synchronously -> SUCCEEDED.
+ * shapes) means the create call was accepted synchronously -> REFUNDED.
  */
 export function mapStripeRefundStatus(
   status: string | null | undefined,
@@ -24,7 +29,7 @@ export function mapStripeRefundStatus(
     case 'requires_action':
       return PaymentStatus.PROCESSING;
     default:
-      return PaymentStatus.SUCCEEDED;
+      return PaymentStatus.REFUNDED;
   }
 }
 
@@ -40,7 +45,7 @@ export function mapMollieRefundStatus(
 ): PaymentStatus {
   switch (status) {
     case 'refunded':
-      return PaymentStatus.SUCCEEDED;
+      return PaymentStatus.REFUNDED;
     case 'failed':
     case 'canceled':
       return PaymentStatus.FAILED;

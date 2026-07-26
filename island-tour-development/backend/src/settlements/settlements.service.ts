@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   BookingStatus,
   Currency,
@@ -11,12 +16,12 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { localWallClockToUtc } from '@/common/utils/timezone.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
-import {
-  settlementMethodFor,
-  type ListSettlementsQueryDto,
-  type ListSettlementsResponseDto,
-  type SettlementListItemDto,
-  type SettlementSummaryDto,
+import type {
+  ListSettlementsQueryDto,
+  ListSettlementsResponseDto,
+  SettlementActionResponseDto,
+  SettlementListItemDto,
+  SettlementSummaryDto,
 } from './dto/settlement.dto';
 
 /** The booking fields the payout-window computation needs. */
@@ -31,15 +36,21 @@ type BookingWindow = {
 };
 
 /**
- * Settlement payouts + the admin ledger read (master SETTLEMENT-AND-PAYOUTS §2, B4).
+ * Operator-payout ledger (master SETTLEMENT-AND-PAYOUTS §2, B4; founder decision
+ * 2026-07-26 - "settlements = what IT owes operators, manual payout").
  *
- * v1 has no Stripe Connect, so the actual bank transfer is manual/batched. What is
- * automated here is the **release**: a scheduled sweep flips a `paid_in_full`
- * settlement RECORDED -> PAID_OUT once its booking's clawback (free-cancellation)
- * window has closed - the same deadline the refund path uses, so a payout is never
- * released while the traveler can still get a free refund. `status = PAID_OUT` means
- * "cleared to pay / released", with `operatorPayout` = the net owed; the funds move
- * against it manually in v1, automatically via Connect in v2.
+ * The ledger holds a row ONLY for `paid_in_full` bookings - the one model where
+ * Island Tours collects the operator's money at checkout and owes them the net
+ * (total - commission) afterwards. Deposit models are self-settling (the deposit
+ * IS the commission - nothing to move) and never appear here.
+ *
+ * Payout is MANUAL in v1: an admin transfers the money by hand and then clicks
+ * "Mark as paid" on the dashboard row (RECORDED -> PAID_OUT). No cron ever flips
+ * a row to PAID_OUT - `PAID_OUT` always means "a human confirmed the money was
+ * sent". What IS computed automatically is *eligibility*: a payout only clears
+ * once its booking's clawback (free-cancellation) window has closed - the same
+ * deadline the refund path uses, so money is never sent while the traveler can
+ * still get a free refund.
  */
 @Injectable()
 export class SettlementsService {
@@ -102,27 +113,22 @@ export class SettlementsService {
   }
 
   /**
-   * Scheduled release sweep (driven by the workers cron). Flips every eligible
-   * `paid_in_full` settlement RECORDED -> PAID_OUT, stamping `operatorPayout` (= the
-   * net owed) and `settledAt`. Idempotent + race-safe: the flip is a guarded
-   * `updateMany` on `status: RECORDED`, so a re-run or a concurrent sweep never
-   * double-releases. Clawback-safe: only released after the free-cancellation window.
+   * Admin marks a payout as PAID (dashboard row action) - the ONLY path to
+   * PAID_OUT. Called AFTER the admin has actually transferred the money, so the
+   * ledger never claims a payout that did not happen. Guarded stepwise with a
+   * specific 409 for each blocker (already paid / reversed / booking cancelled /
+   * cancellation pending / clawback window still open) so the dashboard can show
+   * the admin exactly WHY a row cannot be paid yet. Race-safe: the final flip is
+   * a guarded `updateMany` on `status: RECORDED`.
    */
-  async releaseEligiblePayouts(now: Date = new Date()): Promise<number> {
-    const candidates = await this.prisma.settlement.findMany({
-      where: {
-        status: SettlementStatus.RECORDED,
-        paymentModel: PaymentModel.PAID_IN_FULL,
-        netPosition: { gt: 0 },
-        booking: {
-          status: { in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED] },
-        },
-      },
+  async markPaidOut(id: string): Promise<SettlementActionResponseDto> {
+    const row = await this.prisma.settlement.findUnique({
+      where: { id },
       select: {
         id: true,
+        status: true,
         netPosition: true,
         paymentModel: true,
-        status: true,
         booking: {
           select: {
             displayRef: true,
@@ -136,28 +142,112 @@ export class SettlementsService {
         },
       },
     });
-
-    let released = 0;
-    for (const s of candidates) {
-      if (!this.isPayoutEligible(s, now)) continue; // window still open
-      const { count } = await this.prisma.settlement.updateMany({
-        where: { id: s.id, status: SettlementStatus.RECORDED },
-        data: {
-          status: SettlementStatus.PAID_OUT,
-          operatorPayout: s.netPosition,
-          settledAt: now,
-        },
-      });
-      if (count === 1) {
-        released++;
-        this.logger.log(
-          `Settlement ${s.id} (${s.booking.displayRef}) released for payout: EUR ${s.netPosition.toString()}`,
-        );
-      }
+    if (!row) throw new NotFoundException('Settlement not found');
+    if (row.status === SettlementStatus.PAID_OUT) {
+      throw new ConflictException('This payout is already marked as paid out.');
     }
-    if (released)
-      this.logger.log(`Released ${released} settlement(s) for payout`);
-    return released;
+    if (row.status !== SettlementStatus.RECORDED) {
+      throw new ConflictException(
+        'This settlement was reversed (booking cancelled) - nothing is owed.',
+      );
+    }
+    if (!row.netPosition.greaterThan(0)) {
+      throw new ConflictException(
+        'Nothing is owed to the operator on this settlement.',
+      );
+    }
+    if (
+      row.booking.status !== BookingStatus.CONFIRMED &&
+      row.booking.status !== BookingStatus.REDEEMED
+    ) {
+      throw new ConflictException(
+        'The booking no longer stands (cancelled/expired) - do not pay out; the sweep will reverse this row.',
+      );
+    }
+    if (
+      row.booking.utcCancellationRequestedAt != null &&
+      row.booking.utcCancelledAt == null
+    ) {
+      throw new ConflictException(
+        'A cancellation request is pending on this booking - resolve it before paying out.',
+      );
+    }
+    const deadline = this.freeCancelDeadlineUtc(row.booking);
+    const now = new Date();
+    if (deadline == null || now < deadline) {
+      throw new ConflictException(
+        deadline
+          ? `The traveller can still cancel for free until ${deadline.toISOString()} - the payout clears once that window closes.`
+          : 'This booking has no start time, so its free-cancellation window cannot be judged - resolve the booking first.',
+      );
+    }
+
+    const { count } = await this.prisma.settlement.updateMany({
+      where: { id, status: SettlementStatus.RECORDED },
+      data: {
+        status: SettlementStatus.PAID_OUT,
+        operatorPayout: row.netPosition,
+        settledAt: now,
+      },
+    });
+    if (count === 0) {
+      throw new ConflictException(
+        'This settlement changed while you were looking at it - refresh and retry.',
+      );
+    }
+    this.logger.log(
+      `Settlement ${id} (${row.booking.displayRef}) marked PAID OUT by admin: EUR ${row.netPosition.toString()}`,
+    );
+    return {
+      id,
+      status: SettlementStatus.PAID_OUT,
+      operatorPayout: row.netPosition.toString(),
+      settledAt: now.toISOString(),
+    };
+  }
+
+  /**
+   * Admin reverts a mis-clicked "Mark as paid" (PAID_OUT -> RECORDED). Only for
+   * rows a human marked paid - REVERSED rows stay reversed. Clears the payout
+   * stamp so the row goes back onto the "payout due" worklist.
+   */
+  async markUnpaid(id: string): Promise<SettlementActionResponseDto> {
+    const row = await this.prisma.settlement.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        booking: { select: { displayRef: true } },
+      },
+    });
+    if (!row) throw new NotFoundException('Settlement not found');
+    if (row.status !== SettlementStatus.PAID_OUT) {
+      throw new ConflictException(
+        'Only a paid-out settlement can be reverted to payout-due.',
+      );
+    }
+    const { count } = await this.prisma.settlement.updateMany({
+      where: { id, status: SettlementStatus.PAID_OUT },
+      data: {
+        status: SettlementStatus.RECORDED,
+        operatorPayout: null,
+        settledAt: null,
+      },
+    });
+    if (count === 0) {
+      throw new ConflictException(
+        'This settlement changed while you were looking at it - refresh and retry.',
+      );
+    }
+    this.logger.log(
+      `Settlement ${id} (${row.booking.displayRef}) reverted to PAYOUT DUE by admin`,
+    );
+    return {
+      id,
+      status: SettlementStatus.RECORDED,
+      operatorPayout: null,
+      settledAt: null,
+    };
   }
 
   /**
@@ -193,9 +283,11 @@ export class SettlementsService {
   }
 
   /**
-   * Admin ledger list (dashboard). ADMIN sees every operator; a TOUR_OPERATOR is
-   * scoped to their own rows. Filterable by operator/status/model + a createdAt day
-   * range; each row carries the computed `payoutEligible` flag.
+   * Payout ledger list (dashboard). ADMIN sees every operator (filterable by
+   * operator); a TOUR_OPERATOR is scoped to their own rows. Every row is a
+   * paid_in_full booking; each carries the computed `payoutEligible` /
+   * `payoutHeld` / `payoutReleaseAt` fields so both sides can read the row's
+   * state without guessing.
    */
   async list(
     query: ListSettlementsQueryDto,
@@ -217,7 +309,11 @@ export class SettlementsService {
       where.operatorId = query.operatorId;
     }
     if (query.status) where.status = query.status;
-    if (query.paymentModel) where.paymentModel = query.paymentModel;
+    if (query.search) {
+      where.booking = {
+        displayRef: { contains: query.search.trim(), mode: 'insensitive' },
+      };
+    }
     if (query.from || query.to) {
       where.createdAt = {};
       if (query.from)
@@ -299,7 +395,6 @@ export class SettlementsService {
         operatorId: r.operatorId,
         operatorName: r.booking.operator?.companyInfo?.companyName ?? null,
         tourName: r.booking.tour?.name ?? null,
-        paymentModel: r.paymentModel,
         amountCollected: r.amountCollected.toString(),
         commissionOwed: r.commissionOwed.toString(),
         netPosition: r.netPosition.toString(),
@@ -317,7 +412,6 @@ export class SettlementsService {
           },
           now,
         ),
-        method: settlementMethodFor(r.paymentModel),
         payoutReleaseAt: releaseAt?.toISOString() ?? null,
         payoutHeld,
       };
@@ -328,8 +422,9 @@ export class SettlementsService {
 
   /**
    * Roll-up for the settlements page header: how much is still owed out to
-   * operators (paid_in_full nets not yet released) vs how much has been released.
-   * Same operator-scoping as {@link list}.
+   * operators (payout due - RECORDED nets) vs how much has actually been paid
+   * (PAID_OUT, admin-confirmed). Same operator-scoping as {@link list}, and the
+   * SAME owed predicate as analytics `payoutDueEur` - the two must never diverge.
    */
   async summary(actor: {
     id: string;

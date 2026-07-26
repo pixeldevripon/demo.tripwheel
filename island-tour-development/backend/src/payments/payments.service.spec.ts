@@ -707,48 +707,91 @@ describe('PaymentsService', () => {
 
     // Async refund lifecycle (B5 hardening): executeRefund records bank-method
     // refunds as PROCESSING; these events are where they settle or fail.
-    it('reconciles an in-flight refund to SUCCEEDED on refund.updated', async () => {
+    it('reconciles an in-flight refund to REFUNDED on refund.updated (+ flips the original charge)', async () => {
       stripe.constructEvent.mockResolvedValue({
         id: 'evt_r1',
         type: 'refund.updated',
         data: { object: { id: 're_1', status: 'succeeded' } },
       });
       prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.payment.findFirst.mockResolvedValue({
+        id: 'pay_r1',
+        bookingId: 'b1',
+        intentId: 'pi_1',
+      });
       prisma.payment.updateMany.mockResolvedValue({ count: 1 });
 
       await svc.handleWebhook(rawBody, 'sig');
 
+      // Only an in-flight row settles; a FAILED refund never resurrects.
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            refundId: 're_1',
+            kind: PaymentKind.REFUND,
+            status: { in: [PaymentStatus.PROCESSING] },
+          },
+        }),
+      );
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: { id: 'pay_r1', status: { in: [PaymentStatus.PROCESSING] } },
+        data: { status: PaymentStatus.REFUNDED },
+      });
+      // The ORIGINAL charge row flips to REFUNDED at the same settle point.
       expect(prisma.payment.updateMany).toHaveBeenCalledWith({
         where: {
-          refundId: 're_1',
-          kind: PaymentKind.REFUND,
-          // Only an in-flight row settles; a FAILED refund never resurrects.
-          status: { in: [PaymentStatus.PROCESSING] },
+          bookingId: 'b1',
+          kind: { not: PaymentKind.REFUND },
+          intentId: 'pi_1',
+          status: PaymentStatus.SUCCEEDED,
         },
-        data: { status: PaymentStatus.SUCCEEDED },
+        data: { status: PaymentStatus.REFUNDED },
       });
     });
 
-    it('flips a refund to FAILED on refund.failed - even from SUCCEEDED (late bank failure)', async () => {
+    it('flips a refund to FAILED on refund.failed - even after settling (late bank failure)', async () => {
       stripe.constructEvent.mockResolvedValue({
         id: 'evt_r2',
         type: 'refund.failed',
         data: { object: { id: 're_1', status: 'failed' } },
       });
       prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.payment.findFirst.mockResolvedValue({
+        id: 'pay_r1',
+        bookingId: 'b1',
+        intentId: 'pi_1',
+      });
       prisma.payment.updateMany.mockResolvedValue({ count: 1 });
 
       await svc.handleWebhook(rawBody, 'sig');
 
+      const failFrom = [
+        PaymentStatus.PROCESSING,
+        PaymentStatus.REFUNDED,
+        PaymentStatus.SUCCEEDED,
+      ];
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            refundId: 're_1',
+            kind: PaymentKind.REFUND,
+            status: { in: failFrom },
+          },
+        }),
+      );
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+        where: { id: 'pay_r1', status: { in: failFrom } },
+        data: { status: PaymentStatus.FAILED },
+      });
+      // The money never left after all - the original charge stands again.
       expect(prisma.payment.updateMany).toHaveBeenCalledWith({
         where: {
-          refundId: 're_1',
-          kind: PaymentKind.REFUND,
-          status: {
-            in: [PaymentStatus.PROCESSING, PaymentStatus.SUCCEEDED],
-          },
+          bookingId: 'b1',
+          kind: { not: PaymentKind.REFUND },
+          intentId: 'pi_1',
+          status: PaymentStatus.REFUNDED,
         },
-        data: { status: PaymentStatus.FAILED },
+        data: { status: PaymentStatus.SUCCEEDED },
       });
     });
 
@@ -802,7 +845,12 @@ describe('PaymentsService', () => {
       expect(mollie.getPayment).toHaveBeenCalledWith('tr_abc');
       expect(prisma.payment.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { intentId: 'tr_abc', kind: { not: PaymentKind.REFUND } },
+          where: {
+            intentId: 'tr_abc',
+            kind: { not: PaymentKind.REFUND },
+            // A refunded charge is never resurrected by a re-posted `paid`.
+            status: { not: PaymentStatus.REFUNDED },
+          },
           data: expect.objectContaining({
             status: PaymentStatus.SUCCEEDED,
             methodType: 'creditcard',
@@ -890,7 +938,7 @@ describe('PaymentsService', () => {
       expect(bookings.confirmFromPayment).not.toHaveBeenCalled();
     });
 
-    it('reconciles embedded refunds (settled bank refund -> SUCCEEDED row)', async () => {
+    it('reconciles embedded refunds (settled bank refund -> REFUNDED row)', async () => {
       mollie.getPayment.mockResolvedValue(
         molliePayment({
           _embedded: {
@@ -898,17 +946,27 @@ describe('PaymentsService', () => {
           },
         }),
       );
+      prisma.payment.findFirst.mockResolvedValue({
+        id: 'pay_m1',
+        bookingId: 'b1',
+        intentId: 'tr_abc',
+      });
 
       await svc.handleMollieWebhook('tr_abc');
 
-      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+      expect(prisma.payment.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             refundId: 're_m1',
             kind: PaymentKind.REFUND,
             status: { in: [PaymentStatus.PROCESSING] },
           }),
-          data: { status: PaymentStatus.SUCCEEDED },
+        }),
+      );
+      expect(prisma.payment.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pay_m1', status: { in: [PaymentStatus.PROCESSING] } },
+          data: { status: PaymentStatus.REFUNDED },
         }),
       );
     });

@@ -6,7 +6,8 @@ export type SitemapEntryType =
   | 'category'
   | 'hub'
   | 'collection'
-  | 'tour';
+  | 'tour'
+  | 'page';
 
 /**
  * One indexable, locale-LESS URL for the public site's sitemap. The frontend
@@ -18,7 +19,7 @@ export class SitemapEntryDto {
   @ApiProperty({
     example: '/curacao/klein-curacao-boat-trip',
     description:
-      'Locale-less canonical path with a leading slash. Destination pages are `/{dest}`; everything else is `/{dest}/{slug}`.',
+      'Locale-less canonical path with a leading slash. Destination pages are `/{dest}`; global pages (legal/policy) are `/{slug}`; everything else is `/{dest}/{slug}`.',
   })
   path!: string;
 
@@ -30,7 +31,7 @@ export class SitemapEntryDto {
 
   @ApiProperty({
     example: 'tour',
-    enum: ['destination', 'category', 'hub', 'collection', 'tour'],
+    enum: ['destination', 'category', 'hub', 'collection', 'tour', 'page'],
   })
   type!: SitemapEntryType;
 }

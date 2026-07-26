@@ -806,45 +806,173 @@ cache bust - worth knowing that a direct DB write does NOT show up until the
 `homepage` tag is invalidated, which is what the dashboard does on save.
 Backend 1342/1342, dashboard and frontend `tsc` + build green.
 
-## Phase 5 - Pages system `[ ]`
+## Phase 5 - Pages system `[x]`
 
-`Page { slug @unique, pageType, status DRAFT|PUBLISHED|ARCHIVED, publishedAt,
-ogImage }` + `PageTranslation { title, body, metaTitle, metaDescription }`.
+**EXECUTED 2026-07-26.** All four open decisions were put to the user and
+approved: fall-through routing keeping the live URLs; an ADAPTED TipTap port
+(not the literal 135-file copy); English-only content for now (per-locale rows
+exist for later); 301-on-rename permalinks.
 
-**Not SlugRegistry**: that table is destination-namespaced (every row requires a
-`destinationSlug`) and legal pages are global. Forcing them in means a sentinel
-value that corrupts the table's meaning. Instead: `@unique` slug plus a shared
-`RESERVED_ROOT_SLUGS` constant validated on **both** Page create and Destination
-create - which also closes the pre-existing shadowing bug.
+### Backend (island-tours/backend)
 
-**Routing (open decision):** `/{locale}/{slug}` collides with
-`/{locale}/{destination}`. Letting admins create pages without shipping code means
-page resolution falls through the destination resolver: destination -> else Page
--> else 404. The alternative, namespacing under `/legal/{slug}`, is cheaper but
-changes six live SEO-indexed URLs the legal handover README specifies.
-Recommendation: fall-through, keep the URLs.
+- `prisma/pages.prisma` (migration `20260726062524_pages_system`): `PageStatus
+  DRAFT|PUBLISHED|ARCHIVED`; `Page { slug @unique, status, publishedAt (stamped
+  on FIRST publish, kept across cycles), ogImage }`; `PageTranslation`
+  (`@@unique([pageId, locale])`, title/body/metaTitle/metaDescription);
+  `PageRedirect { fromSlug @unique, toPageId }` - redirects point at the PAGE,
+  so chains collapse to one hop by construction. NOT in SlugRegistry, as
+  designed.
+- `src/pages/` (home-page clone shape): public `GET /pages/public/:slug` -
+  published page (English fallback flagged `isEnglishFallback`), or
+  `redirectToSlug` for a renamed permalink (dead if the target is unpublished),
+  or 404. Admin (`MANAGE_EDITORIAL`): list / create (DRAFT + English row,
+  atomic) / get / update (rename on a PUBLISHED page writes the 301 in-tx;
+  draft renames write none) / `PATCH :id/status` (publish requires an English
+  title+body) / delete (REFUSED for published - unpublish first) / `PUT
+  :id/translations/:locale` (`{ fields }` wrapper). 27 new specs.
+- **Sanitization is the write path** (`common/utils/page-html.util.ts`,
+  `sanitize-html` pinned **2.16.0** - 2.17+ pulls an ESM-only htmlparser2 that
+  breaks Jest). Allowlist = exactly the prose vocabulary (h2/h3/p/lists/marks/
+  a/blockquote/hr/tables); http(s)/mailto only; `target=_blank` forced to
+  `rel="noopener noreferrer"`. Stored bodies are PURE semantic HTML - the old
+  `overflow-x-auto` scroller divs dissolve at write time; the public renderer
+  re-wraps every table at render time.
+- **Slug guards, bidirectional:** `RESERVED_PAGE_SLUGS` (search/wishlist/
+  cancel/review/manage-cookies - the routes that STAY code) blocks page
+  creates; a page slug matching a destination 409s; destination create now
+  also 409s on an existing page slug. `RESERVED_GLOBAL_SLUGS` gained the
+  missing `reviews-policy` (+ `review`), closing the latent shadowing bug.
+- Sitemap: `GET /sitemap/entries` now emits `type: 'page'` (`/{slug}`).
 
-**Rich text (open decision):** neither repo has any editor, markdown lib, or
-sanitizer - long-form is a `rows={8}` textarea end to end. A full working TipTap
-v3 setup exists at `/Users/devripon/devripon/Final & Running Project/wattup-frontend`
-to port from. Caveats found on inspection:
+### Public frontend (island-tours/frontend)
 
-1. Its four `@tiptap/extension-table*` packages are installed but **never wired** -
-   no extension, no toolbar button, no CSS. Since the existing legal copy contains
-   tables (`LegalTableScroller`), table support is a build, not a copy. This is the
-   main argument for storing **HTML rather than markdown**.
-2. `simple-editor.scss` styles global `html`/`body`/`:root` and overrides shadcn
-   tokens to hardcoded light-mode values - importing it anywhere leaks app-wide and
-   breaks dark mode. Scope those selectors first. Biggest porting hazard.
-3. Its renderer sanitizes client-side in a `useEffect` (empty first paint, bad for
-   SEO on public legal pages) and runs `marked` over content that is already HTML.
-   Sanitize server-side on the write path instead, and drop `marked`.
-4. No react-hook-form integration exists; the `value`/`onChange` signature maps
-   onto `field.value`/`field.onChange` but the `Controller` wrapper must be written,
-   and `onChange` wants debouncing (it serializes the whole document per keystroke).
+- **`.it-page-prose`** in `frontend-tokens.css` is THE prose source of truth -
+  the descendant-variant block extracted verbatim from `LegalPageShell`, which
+  now just applies the class. Includes the `th p`/`td p`/`li p` neutralisers
+  (TipTap wraps cell/li content in `<p>`; without them the first editor save
+  would visibly change every table).
+- `lib/api/public/pages.ts` - `getPublishedPage()`, `publicGetStrict` (the
+  route 404-gates on it), `cacheTag('pages')` COARSE (a rename must bust the
+  OLD slug's entry too, which a per-slug tag cannot).
+- **Fall-through at EVERY depth** (nested WordPress-style permalinks, user
+  request 2026-07-26 - `terms`, `legal/terms`, `help/faq/payments`):
+  - 1 segment: `[locale]/[destination]/page.tsx` - destination -> else
+    published Page -> else redirect -> else 404 (cannot be its own route: two
+    dynamic siblings at one level is a Next conflict).
+  - 2 segments: `[destination]/[slug]/page.tsx` - when the slug registry
+    misses AND the first segment is not an active island, try the joined
+    Pages path before the flat-TOUR default. Cannot shadow tours by
+    construction: the backend REJECTS page paths whose first segment is a
+    destination.
+  - 3+ segments: new catch-all `[destination]/[slug]/[...path]/page.tsx` -
+    Pages only (static children like checkout still win). Prerenders deep
+    pages from the sitemap enumeration, placeholder param when none exist
+    (the Cache Components >=1-static-param rule).
+  All three emit metadata the same way; `generateStaticParams` on the
+  destination route filters to SINGLE-segment page paths (a slashed param
+  under one dynamic segment would be invalid). Backend: `normalizePagePath`
+  (per-segment generateSlug), slug guards check the FIRST segment, the
+  destination-create mirror check also catches pages NESTED under the new
+  destination's name (`startsWith('slug/')`), and the public
+  `GET /pages/public/:slug` resolves encoded-slash paths (`legal%2Fterms` -
+  the frontend loader already encodes).
+  `LegalPageShell` gained `showEnglishNotice` (defaults to the old
+  `locale !== 'en'`; the CMS passes `isEnglishFallback` so a future real
+  translation drops the notice with no code change).
+- `PageBody` wraps EVERY `<table>` in `.it-page-table-scroller` at render
+  time; `LegalTableScroller` is deleted (no consumers remain). **Table design
+  upgraded** (user request 2026-07-26): the scroller IS a rounded hairline
+  card (14px radius, `--it-border`), header row on `--it-surface`, 12x16px
+  cells, last row keeps the card edge as its closing line. Mirrored in the
+  editor (`.tableWrapper` plays the card) so the WYSIWYG promise holds -
+  editing keeps dashed column separators as an editor-only affordance.
+- `app/sitemap.ts` dropped its hardcoded legal paths - pages arrive as
+  `type: 'page'` entries. Cache-tag contract: `pages` added to
+  `COARSE_CACHE_TAGS` in BOTH repos (copied byte-identically).
+- **The six static legal folders are DELETED** (`terms`, `privacy-policy`,
+  `cookie-policy`, `cancellation-policy`, `legal-notice`, `reviews-policy`).
+  `manage-cookies` STAYS code - it embeds the interactive Cookiebot button and
+  is noindex.
 
-Migration: convert the six authored legal pages to `Page` rows via a seed script,
-swap the routes last, and delete the old JSX only after verification.
+### Dashboard (tripwheel-x-islandtours-dashboard)
+
+- **TipTap v3.29 adapted port** (`components/pages/rich-text-editor.tsx` +
+  scoped `rich-text-editor.css`): full WATTUP TOOL PARITY (user request
+  2026-07-26) - undo/redo, headings H1-H4, bullet/ordered/TASK lists,
+  blockquote, code block, bold/italic/strike/inline-code/underline,
+  multicolor highlight (swatches in `lib/page-highlight-colors.ts` - document
+  DATA, not theme, hence outside the component per the no-color-literal lint
+  rule), link popover, superscript/subscript, text align, IMAGES, tables,
+  divider. StarterKit + `@tiptap/extension-{list,highlight,superscript,
+  subscript,text-align,image,table}` (v3 table package exports all four nodes
+  - the four separate wattup packages are a v2-ism). The toolbar composes the
+  dashboard's OWN shadcn kit + hugeicons instead of the template's
+  `tiptap-ui-primitive` kit, whose SCSS overrode shadcn `:root` tokens
+  app-wide - nothing styles outside `.it-page-editor`.
+  - **Images go through the media library** (`MediaSelector kind="image"`),
+    NOT wattup's ad-hoc `/api/upload-image` drop zone - the standing
+    every-media-field-uses-the-library rule. `ResizableImage`
+    (`resizable-image.tsx`) extends the stock Image with a drag-corner
+    NodeView writing a persisted `width` attr; the public
+    `img { max-width: 100% }` caps it at the column.
+  - **The content area is ALWAYS white** (both dashboard themes): it previews
+    the public page, which is light, and the hardcoded dark-on-light prose
+    colors would be unreadable on a dark dashboard. Editor-only affordances:
+    clearly visible dashed cell grid (#b3b3b3 - the public #ededed hairline is
+    imperceptible while editing, the original light-mode complaint), orange
+    selected-cell overlay, selected-image outline + handle.
+  - The content area renders under `.it-page-prose` (value-inlined mirror of
+    the frontend class - sync BY COPYING), so the editor is the live preview.
+    The RHF wrapper is a local `Controller` in `page-form` - deliberately NOT
+    a `RichTextField` in the shared settings kit, which would pull TipTap
+    into every settings bundle.
+  - **Sanitizer lockstep:** the backend allowlist grew to the full editor
+    vocabulary (h1/h4, pre/code, mark with a color-validated
+    `background-color` style, sup/sub, task-list plumbing incl. checkbox
+    inputs forced `disabled`, `img` https-only with width/height - a
+    src-stripped img is dropped entirely, `text-align` style on blocks).
+    Both `.it-page-prose` copies gained the matching rules (blockquote, hr,
+    code, mark, img, task lists). Keep editor toolbar + sanitizer + prose CSS
+    in lockstep - that triple IS the feature.
+- Pages module on the collections list+detail pattern: `types/pages.ts`,
+  `lib/api/pages.ts`, `hooks/pages/use-pages.ts`, routes `/pages`,
+  `/pages/new`, `/pages/[id](/edit)`, components (list view + DataTable +
+  columns + row actions: Edit / View live / Publish-Unpublish / Delete-with-
+  unpublish-first, delete dialog, `page-form` with title, permalink
+  (auto-slug + `slugTouched`, rename->301 note, old-permalink list), body
+  editor, meta title/description, OG image via the media library,
+  `page-edit-view` header with status badge + Publish/Unpublish + View live).
+  All gated `MANAGE_EDITORIAL`; nav item "Pages" added to the existing Pages
+  group; `case 'pages'` in `cache-revalidation.ts`; `pageUrl()` in
+  `lib/public-site.ts`.
+
+### Seed - the content migration
+
+`pnpm pages:seed` (`scripts/seed-pages.ts`, `--dry-run`): publishes the six
+pages from fixtures in `prisma/pages-content/*.html` - the EXACT rendered HTML
+scraped once from the running routes before deletion (byte-true to what the
+site served, tables intact). Fill-only-empty: an admin's edits always beat the
+fixtures; re-running is a no-op. Bodies pass through the same write-path
+sanitizer as admin saves.
+
+### Verification (all against running services)
+
+- Parity: all six URLs structurally IDENTICAL pre/post cutover (whitespace +
+  neutral wrappers + entity encoding normalised); cookie-policy keeps its 4
+  table scrollers; cancellation-policy GAINED the one it was missing. Titles,
+  canonical + 7-locale hreflang, and the NL English-only notice all unchanged.
+- Rename: old slug serves an instant meta-refresh + RSC 308 to the new one.
+  NOT a raw HTTP 301: the route streams its shell (same pre-existing
+  constraint that makes unknown slugs a 200-with-noindex-404), so the redirect
+  is the framework's streamed equivalent.
+- Draft/unknown slugs 404 (streamed, `noindex`); `/sitemap.xml` lists the six
+  pages dynamically; publish/unpublish + saves bust the `pages` tag through
+  the existing bridge. Backend 1639/1639; frontend + dashboard tsc/lint/build
+  green.
+- **Still unverified: the rendered dashboard UI** (no session, Chrome
+  extension not connected - the standing gap). Needs a human pass: create a
+  page with a table, confirm the editor matches the public prose, confirm
+  dark mode is unaffected.
 
 ---
 
