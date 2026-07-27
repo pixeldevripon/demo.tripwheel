@@ -2,7 +2,7 @@
 
 A plain-English view of where the platform stands: what is finished, what is actively being worked on, and what is still ahead. Everything below reflects an audit of the actual working software, not a plan or a wish list. Items are grouped into main features with their sub-features, so you can read this in a few minutes rather than task by task.
 
-**Status date: 26 July 2026**
+**Status date: 27 July 2026**
 
 Legend: ✅ Done · 🟡 In progress · ⬜ Pending
 
@@ -13,11 +13,13 @@ Legend: ✅ Done · 🟡 In progress · ⬜ Pending
 | Area | Done | In progress | Pending | Total |
 |---|---|---|---|---|
 | Backend (the engine) | 288 | 18 | 75 | 381 |
-| Dashboard (admin and operator tools) | 242 | 14 | 117 | 373 |
+| Dashboard (admin and operator tools) | 245 | 14 | 116 | 375 |
 | Public website (what travellers see) | 266 | 33 | 153 | 452 |
-| **Total** | **796** | **65** | **345** | **1,206** |
+| **Total** | **799** | **65** | **344** | **1,208** |
 
 The platform's core engine and admin tools are largely built. Bookings, payments (Stripe **and Mollie**), refunds, availability, commission tiers, the settlements ledger with a manual mark-as-paid payout workflow, the full review system (invitations, submission, moderation, translation), operator and staff management, and the email system all work end to end today.
+
+New since 26 July: **automatic AI translation of all catalog content**. Whenever English copy is saved - a tour, an island page, a category, a hub, a collection, the homepage, their FAQs and editorial blocks - the system now translates it into the other six languages in the background, and every translation screen has a "Translate with AI" button for on-demand translation of the language being viewed. Hand-written translations are never overwritten, and place names are never translated. Review translation switched to the same AI engine. To switch it on, add a (free) Gemini API key under Settings > Integrations.
 
 Since the last status (21 July), the two biggest commercial gaps on the public website closed: the site is now *visible* to search engines (sitemap, robots file, rich-result markup all live) and the *measurement* layer (tag manager, consent handling, conversion tracking, ad attribution) is fully coded - it stays dark only until the advertising accounts are supplied and connected (see "Needs your decision"). The remaining public-site work is polish, locked-copy verification and secondary marketing events rather than structure.
 
@@ -296,8 +298,10 @@ The back-office where you and your operators run the business. Twenty-four modul
 - ✅ Central translation console with an overview matrix and a per-language workspace
 - ✅ The console is now the single way to translate - the older per-page translation tabs have been removed
 - ✅ Console coverage extended to page content, island About sections and SEO fields
-- ⬜ Bulk "pre-translate" action to fill empty languages from English (the translation engine now exists - reviews already use it - but the bulk action does not)
-- ⬜ Flag showing when the English source changed after a translation was saved
+- ✅ Automatic AI translation: saving English copy queues background translation of the whole item into the other six languages (tours with all their sub-items, islands, categories, hubs, collections, homepage, FAQs, editorial blocks)
+- ✅ "Translate with AI" button on every translation screen - translates the language being viewed on the spot, never overwriting hand-written translations; place names are never translated
+- ✅ AI provider configured in Settings > Integrations - choose between Gemini, Anthropic (Claude), OpenAI, Groq, OpenRouter, Mistral, DeepSeek or any custom OpenAI-compatible endpoint, with a per-provider model picker showing which models are free vs paid (Gemini free tier is the default; replaced the Google Translate card)
+- ⬜ Flag showing when the English source changed after a translation was saved (the AI refresher already re-translates machine rows automatically when the English changes; the flag would only cover hand-written rows)
 
 ### Homepage and pages
 - ✅ Homepage editor: hero, editorial, featured experiences, FAQs and SEO, with links into translations

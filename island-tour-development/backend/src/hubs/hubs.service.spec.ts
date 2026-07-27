@@ -11,6 +11,7 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   BadRequestException,
   ConflictException,
@@ -224,6 +225,10 @@ describe('HubService', () => {
         HubService,
         { provide: PrismaService, useValue: prisma },
         { provide: FaqGroupService, useValue: mockFaqGroups },
+        {
+          provide: ContentTranslationEnqueuer,
+          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
         {
           provide: FxRatesService,
           useValue: {

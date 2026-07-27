@@ -5,16 +5,24 @@ import { ReviewTranslationService } from './review-translation.service';
  * LD32. The cases that matter here are the ones that cost money or lose a
  * guest's own words - re-translating unchanged text, and overwriting an
  * original with machine output.
+ *
+ * The provider (Gemini) is mocked at the TRANSLATION_PROVIDER seam: HOW a
+ * translation happens is gemini.provider.spec.ts's problem; this file owns
+ * WHAT gets translated and what must never be.
  */
 
 function mockPrisma(): any {
   return {
     review: { findUnique: jest.fn(), findMany: jest.fn() },
     reviewTranslation: { upsert: jest.fn().mockResolvedValue({}) },
-    // DB config absent -> the service falls back to the env vars these tests set.
-    integrationsConfiguration: {
-      findUnique: jest.fn().mockResolvedValue(null),
-    },
+  };
+}
+
+function mockProvider(): any {
+  return {
+    isConfigured: jest.fn().mockResolvedValue(true),
+    translateText: jest.fn().mockResolvedValue('[translated]'),
+    translateFields: jest.fn(),
   };
 }
 
@@ -37,36 +45,20 @@ function review(over: Record<string, any> = {}) {
   };
 }
 
-/** Stub the provider so no test ever reaches the network. */
-function stubFetch(text = '[translated]') {
-  return jest.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ translations: [{ translatedText: text }] }),
-  });
-}
-
 describe('ReviewTranslationService', () => {
   let prisma: any;
+  let provider: any;
   let svc: ReviewTranslationService;
-  const realFetch = global.fetch;
 
   beforeEach(() => {
     prisma = mockPrisma();
-    svc = new ReviewTranslationService(prisma);
-    process.env.GOOGLE_TRANSLATE_API_KEY = 'test-key-aaaaaaaaaaaaaaaaaaaa';
-    process.env.GOOGLE_TRANSLATE_PROJECT_ID = 'island-tours-test';
-    global.fetch = stubFetch() as any;
-  });
-
-  afterEach(() => {
-    global.fetch = realFetch;
-    delete process.env.GOOGLE_TRANSLATE_API_KEY;
-    delete process.env.GOOGLE_TRANSLATE_PROJECT_ID;
+    provider = mockProvider();
+    svc = new ReviewTranslationService(prisma, provider);
   });
 
   describe('when unconfigured', () => {
     it('is inert rather than throwing', async () => {
-      delete process.env.GOOGLE_TRANSLATE_API_KEY;
+      provider.isConfigured.mockResolvedValue(false);
 
       const res = await svc.translateReview('r1');
 
@@ -79,7 +71,7 @@ describe('ReviewTranslationService', () => {
         reason: 'not_configured',
       });
       expect(prisma.review.findUnique).not.toHaveBeenCalled();
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(provider.translateText).not.toHaveBeenCalled();
     });
   });
 
@@ -95,7 +87,7 @@ describe('ReviewTranslationService', () => {
 
       // Paying to translate something that may never publish is waste.
       expect(res.reason).toBe('not_approved');
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(provider.translateText).not.toHaveBeenCalled();
     });
 
     it('skips a star-only review with no text', async () => {
@@ -116,7 +108,7 @@ describe('ReviewTranslationService', () => {
 
       // Not an error: a one-tap review with no words is the flow working.
       expect(res.reason).toBe('no_source_text');
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(provider.translateText).not.toHaveBeenCalled();
     });
   });
 
@@ -128,7 +120,7 @@ describe('ReviewTranslationService', () => {
 
       // 7 locales, minus the source -> 6.
       expect(res.written).toBe(6);
-      expect(global.fetch).toHaveBeenCalledTimes(6);
+      expect(provider.translateText).toHaveBeenCalledTimes(6);
       const written = prisma.reviewTranslation.upsert.mock.calls.map(
         (c: any) => c[0].create,
       );
@@ -174,7 +166,7 @@ describe('ReviewTranslationService', () => {
       // The whole point: a re-run is free. Without this the job is a recurring
       // per-character bill for identical output.
       expect(res).toEqual({ reviewId: 'r1', written: 0, skipped: 6 });
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(provider.translateText).not.toHaveBeenCalled();
     });
 
     it('re-translates when the source text has CHANGED', async () => {
@@ -238,45 +230,39 @@ describe('ReviewTranslationService', () => {
   });
 
   describe('the provider call', () => {
-    it('sends plain text and maps zh to the provider code zh-CN', async () => {
-      prisma.review.findUnique.mockResolvedValue(review());
+    it('passes the source locale so a non-English original translates FROM it', async () => {
+      prisma.review.findUnique.mockResolvedValue(
+        review({
+          translations: [
+            {
+              locale: Locale.de,
+              comment: 'Kristallklares Wasser, tolle Crew.',
+              isMachineTranslated: false,
+              sourceHash: null,
+            },
+          ],
+        }),
+      );
 
       await svc.translateReview('r1');
 
-      const bodies = (global.fetch as jest.Mock).mock.calls.map((c) =>
-        JSON.parse(c[1].body),
-      );
-      // `text/plain` stops a stray `<` or `&` in a guest's comment being
-      // treated as markup to preserve.
-      expect(bodies.every((b) => b.mimeType === 'text/plain')).toBe(true);
-      expect(bodies.map((b) => b.targetLanguageCode)).toContain('zh-CN');
-      expect(bodies.map((b) => b.targetLanguageCode)).not.toContain('zh');
+      // Guests write in any language - the human row IS the source.
+      const froms = provider.translateText.mock.calls.map((c: any) => c[1]);
+      expect(froms.every((f: any) => f === Locale.de)).toBe(true);
+      const tos = provider.translateText.mock.calls.map((c: any) => c[2]);
+      expect(tos).not.toContain(Locale.de);
+      expect(tos).toContain(Locale.en);
     });
 
-    it('writes nothing when the provider errors, leaving the row for next run', async () => {
+    it('skips the locale when the provider throws, leaving the row for next run', async () => {
       prisma.review.findUnique.mockResolvedValue(review());
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false,
-        status: 429,
-        text: async () => 'rate limited',
-      }) as any;
+      provider.translateText.mockRejectedValue(new Error('Gemini HTTP 429'));
 
       const res = await svc.translateReview('r1');
 
       // An outage must not fail the caller or write a half-translation.
       expect(res.written).toBe(0);
       expect(prisma.reviewTranslation.upsert).not.toHaveBeenCalled();
-    });
-
-    it('survives a thrown network error', async () => {
-      prisma.review.findUnique.mockResolvedValue(review());
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error('ECONNRESET')) as any;
-
-      await expect(svc.translateReview('r1')).resolves.toEqual(
-        expect.objectContaining({ written: 0 }),
-      );
     });
   });
 
@@ -301,7 +287,7 @@ describe('ReviewTranslationService', () => {
     });
 
     it('does not enqueue while unconfigured', async () => {
-      delete process.env.GOOGLE_TRANSLATE_API_KEY;
+      provider.isConfigured.mockResolvedValue(false);
       const queue = { add: jest.fn() } as any;
 
       await svc.enqueue(queue, 'r1');

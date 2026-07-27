@@ -1,5 +1,6 @@
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FaqPageType, Locale } from '@prisma/client';
@@ -69,6 +70,10 @@ describe('HomePageService', () => {
         HomePageService,
         { provide: PrismaService, useValue: prisma },
         { provide: FaqGroupService, useValue: faqGroups },
+        {
+          provide: ContentTranslationEnqueuer,
+          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -583,6 +588,7 @@ describe('HomePageService', () => {
       const call = prisma.homePageTranslation.upsert.mock.calls[0][0];
       expect(call.update).toEqual({
         isMachineTranslated: false,
+        sourceHash: null,
         metaTitle: 'Caribbean Tours | Island Tours',
         metaDescription: 'Book boat trips and island tours.',
       });
@@ -601,6 +607,7 @@ describe('HomePageService', () => {
       const call = prisma.homePageTranslation.upsert.mock.calls[0][0];
       expect(call.update).toEqual({
         isMachineTranslated: false,
+        sourceHash: null,
         heroTitle: 'Bonjour',
       });
     });
@@ -618,6 +625,7 @@ describe('HomePageService', () => {
       const call = prisma.homePageTranslation.upsert.mock.calls[0][0];
       expect(call.update).toEqual({
         isMachineTranslated: false,
+        sourceHash: null,
         heroSubtitle: null,
       });
     });

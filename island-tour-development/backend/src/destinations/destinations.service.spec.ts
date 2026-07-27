@@ -14,6 +14,7 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PageContentSectionService } from '@/common/page-content-sections/page-content-section.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   BadRequestException,
   ConflictException,
@@ -145,6 +146,10 @@ describe('DestinationService', () => {
       providers: [
         DestinationService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: ContentTranslationEnqueuer,
+          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
         {
           provide: FaqGroupService,
           useValue: {

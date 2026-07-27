@@ -6,6 +6,7 @@ import {
   UpsertFaqTranslationDto,
 } from '@/common/faq/dto/faq-group.dto';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { TourStatus } from '@prisma/client';
 import {
@@ -89,6 +90,7 @@ export class HomePageService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
   ) {}
 
   // ── Public read ─────────────────────────────────────────────────────────────
@@ -478,6 +480,9 @@ export class HomePageService {
       },
       update: {
         isMachineTranslated: isMachineTranslated ?? false,
+        // Human write path: reset the AI bookkeeping so the machine refresher
+        // never overwrites what was typed here.
+        sourceHash: null,
         ...(fields.heroTitle !== undefined && { heroTitle: fields.heroTitle }),
         ...(fields.heroSubtitle !== undefined && {
           heroSubtitle: fields.heroSubtitle,
@@ -510,6 +515,10 @@ export class HomePageService {
     });
 
     this.logger.log(`Admin ${adminId} upserted homepage copy [${locale}]`);
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) {
+      this.contentTranslation.enqueue('homepage', HOME_ID);
+    }
     return result;
   }
 

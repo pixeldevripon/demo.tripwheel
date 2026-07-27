@@ -197,9 +197,21 @@ model IntegrationsConfiguration {
   metaCapiToken    String? // encrypted
   metaCapiTestCode String? @default("") // test_event_code (non-secret)
 
-  // Google Cloud Translation (AI translation jobs).
+  // DEPRECATED (Gemini migration, 2026-07): Google Cloud Translation credentials.
+  // No runtime consumer remains - kept only because a column drop is a destructive
+  // migration for zero gain. Do not add new readers.
   googleTranslateApiKey    String? // encrypted
   googleTranslateProjectId String? @default("") // non-secret
+
+  // AI translation - powers content entities AND review comments. Provider-
+  // agnostic on purpose: the admin picks the provider in the dashboard and the
+  // key/model belong to whichever provider is active. DB values win;
+  // TRANSLATION_PROVIDER_NAME / TRANSLATION_API_KEY / TRANSLATION_MODEL env
+  // are the local-dev / first-boot fallback.
+  translationProvider String? @default("") // '' = env/code default (gemini); a PROVIDER_CATALOG key
+  translationApiKey   String? // encrypted
+  translationModel    String? @default("") // non-secret; blank = provider default
+  translationBaseUrl  String? @default("") // non-secret; only for provider 'custom' (any OpenAI-compatible endpoint)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

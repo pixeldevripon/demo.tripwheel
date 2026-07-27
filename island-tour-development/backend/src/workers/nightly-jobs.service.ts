@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AvailabilityService } from '@/availability/availability.service';
 import { BookingsService } from '@/bookings/bookings.service';
+import { ContentTranslationService } from '@/content-translation/content-translation.service';
 import { ReviewRequestsService } from '@/reviews/review-requests.service';
 import { SettlementsService } from '@/settlements/settlements.service';
 import { TiersService } from '@/tiers/tiers.service';
@@ -37,6 +38,7 @@ export class NightlyJobsService {
     private readonly reviewRequests: ReviewRequestsService,
     private readonly bookings: BookingsService,
     private readonly settlements: SettlementsService,
+    private readonly contentTranslation: ContentTranslationService,
   ) {}
 
   /**
@@ -153,6 +155,18 @@ export class NightlyJobsService {
     // up the new ordering on the next visit instead of waiting out the daily
     // cacheLife timer. Best-effort: never fails the job.
     await this.publicCache.revalidateTags(['tours', 'search']);
+    // AI-translation backfill sweep: recovers edits lost to the active-job
+    // dedup race and entities that predate the feature. Enqueue-only (the
+    // worker's rate limiter governs API spend); a fully translated entity
+    // costs zero provider calls via sourceHash. Never fails the nightly run.
+    let translation = { enqueued: 0 };
+    try {
+      translation = await this.contentTranslation.enqueuePending();
+    } catch (err) {
+      this.logger.error(
+        `Translation sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
     this.logger.log(
       `Nightly jobs: spotlight(activated=${spotlight.activated}, expired=${spotlight.expired}) ` +
         `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged}) ` +
@@ -160,7 +174,8 @@ export class NightlyJobsService {
         `bookable(evaluated=${bookable.evaluated}, bookable=${bookable.bookable}) ` +
         `quality(evaluated=${quality.evaluated}) ` +
         `eligibility(evaluated=${eligibility.evaluated}, provisional=${eligibility.provisional}, ` +
-        `graced=${eligibility.graced}, demoted=${eligibility.demoted})`,
+        `graced=${eligibility.graced}, demoted=${eligibility.demoted}) ` +
+        `translation(enqueued=${translation.enqueued})`,
     );
     return { spotlight, demand, materialized, bookable, quality, eligibility };
   }

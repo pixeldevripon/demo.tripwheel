@@ -65,6 +65,7 @@ model DestinationTranslation {
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean     @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime    @updatedAt
 
   @@unique([destinationId, locale])
@@ -81,6 +82,10 @@ model DestinationPageContent {
   aboutText       String?
   metaTitle       String?
   metaDescription String?
+
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   @@unique([destinationId, locale])
   @@index([destinationId, locale])
@@ -138,6 +143,7 @@ model HubTranslation {
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime @updatedAt
 
   @@unique([hubId, locale])
@@ -154,6 +160,10 @@ model HubPageContent {
   aboutText       String?
   metaTitle       String?
   metaDescription String?
+
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   @@unique([hubId, locale])
   @@index([hubId, locale])

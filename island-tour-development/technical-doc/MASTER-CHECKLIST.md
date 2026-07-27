@@ -323,7 +323,7 @@
 - [x] Rating distribution + photo-review count feeding the star chart and photo carousel gates
 - [x] Approved-reviews-only aggregates feeding tour ranking and `quality_score`
 - [x] Platform reviews module: `GET /platform-reviews/public`, `GET/PUT config`, `POST refresh` — encrypted-at-rest third-party API key returned masked, 12h cache TTL, stale-on-failure, 8s fetch timeout, `MIN_REVIEWS = 100` social-proof gate, `MAX_REVIEWS = 6` (migration `20260718140717`)
-- [x] `ReviewTranslation` fully wired (LD32): rows created at submit, machine translation via a BullMQ `review-translation` queue + processor (`review-translation.service.ts`, Google Translate credentials from settings), locale-filtered reads
+- [x] `ReviewTranslation` fully wired (LD32): rows created at submit, machine translation via a BullMQ `review-translation` queue + processor (`review-translation.service.ts`), locale-filtered reads — **provider swapped to the shared Gemini `TRANSLATION_PROVIDER` (2026-07-27)**; queue/sourceHash/endpoint unchanged, Google Translate client deleted (settings columns deprecated storage)
 - [x] Explicit `reviewer_type` enum (`ReviewerType` on the model) feeding the traveller-type depth filter
 - [x] Review collection loop (2026-07-22..25): token-scoped review invitations (`GET/POST/PATCH /reviews/invitations/:token` + `:token/photos` photo upload), post-tour review-request cron (hourly, `ReviewRequestsService`) with an admin-configurable cadence, and a review-request email with a reminder variant (`sendReviewRequestEmail`)
 - [x] Review depth filters (traveller type, language/translations, with-photos) + `GET /reviews/summary` analytics rollups (guest-type / language)
@@ -1435,7 +1435,9 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] The EN rule preserved — "Clear Fields" upserts nulls and never calls the delete endpoint
 - [x] Console is the single translation path — the forked `LocaleTab` implementations are gone (no `LocaleTab` references remain); the workspace covers page content, About-band sections and SEO (`entity-workspaces.tsx`, `content-workspace.tsx`)
 - [ ] `lib/translatable-schema.ts` — the single declarative registry the matrix and workspace should render from (a missed field silently becomes untranslatable)
-- [ ] Bulk **Pre-translate** action (fills empty targets from EN, marks `isMachineTranslated: true`) — the generator seam now exists (Google Translate credentials in Settings + the backend review-translation service prove the pipe), but the entity-translation bulk action is still not built
+- [x] AI translation of every console entity (2026-07-27): backend `src/content-translation/` — provider-agnostic `TRANSLATION_PROVIDER` token routed per call by `TranslationProviderRouter` over a provider catalog (gemini/anthropic/openai/groq/openrouter/mistral/deepseek/custom; 3 transports - Gemini native, Anthropic native, one OpenAI-compatible client; `custom` = any base URL; Gemini = default + fallback; `TRANSLATION_*` env fallbacks), entity registry (tour + 6 children, destination/hub/category/collection + page content + FAQ groups + sections + rationales, homepage), protect-human-edits policy (`isMachineTranslated` + `sourceHash` on all per-locale tables, migration `20260727103628`), background BullMQ queue (`content-translation`, en-save hooks in all 8 services, 60s debounce, 8 jobs/min limiter), nightly backfill sweep, and 6 per-entity `POST .../translations/:locale/generate` endpoints
+- [x] "Translate with AI" button on the translation editor (current locale, synchronous) — `workspace-shell.tsx` + `use-generate-translation.ts`; human saves now send `isMachineTranslated: false`; proper nouns (destination/hub names) never machine-translated; excluded v1: Pages module, hub our-picks/comparison/HubContentSection
+- [x] Inline per-field AI translation (2026-07-27): AI icon on every workspace field (`field-pair.tsx` + `use-inline-translate.ts`) → `POST /content-translation/translate-text` — fills the form field for review, persists nothing until Save all; human rows gap-fill only (cleared-and-saved fields refill, hand-written fields never overwritten, no machine re-stamp)
 - [ ] "Source updated" conflict flag when the EN source changed after a translation was saved — needs a source-updated timestamp (verify whether `updatedAt` suffices)
 - [ ] Delete `trip-translations-tab.tsx`, `rationale-translation-tabs.tsx`, `translation-row.tsx`, `dual-translation-row.tsx` and the 5 `LocaleTab` forks (~1,400 LOC)
 - [ ] E2E coverage for translations — **zero specs exist**
@@ -1494,7 +1496,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 - [x] `/settings` route, 15 components, `SettingsClient` branching on permission (`VIEW_SETTINGS` → admin settings; else `EDIT_OPERATOR_PROFILE`/`MANAGE_OPERATOR_PAYMENTS` → operator settings)
 - [x] Admin: site info, SEO, social, company, payments (Stripe/Mollie/methods), integrations, Mailchimp, platform-reviews form
-- [x] Integrations tab cards: Meta CAPI (pixel id + token + test code), Google Translate (key + project), WhatsApp; GTM container ID + Cookiebot CBID live on the SEO form
+- [x] Integrations tab cards: Meta CAPI (pixel id + token + test code), AI Translation (8-provider dropdown + per-provider model picker with Free/Paid badges + custom base URL; replaced the Google Translate card 2026-07-27), WhatsApp; GTM container ID + Cookiebot CBID live on the SEO form
 - [x] Review-request cadence screen (`review-requests-form.tsx`) driving the post-tour invite cron
 - [x] Instagram management tab (`instagram-form.tsx` — account, tiles, video support, layout) feeding the public Instagram section
 - [x] FAQ host avatar + video clip admin-managed on the site-info form
@@ -1584,7 +1586,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 
 ### Dashboard summary
 
-**Done 242 · Ongoing 14 · Pending 117** (373 tasks total; recounted from the markers 2026-07-26). The dashboard is a mature, near-complete application: 24 modules
+**Done 245 · Ongoing 14 · Pending 116** (375 tasks total; recounted from the markers 2026-07-27). The dashboard is a mature, near-complete application: 24 modules
 are built and wired — Reviews (moderation queue + analytics + nav badge), Settlements (self-describing
 payout ledger with the manual mark-paid workflow, reworked 2026-07-26) and Customers (directory +
 review requests + bulk email) all landed 2026-07-22..26, along

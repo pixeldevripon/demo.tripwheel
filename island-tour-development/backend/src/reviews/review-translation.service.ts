@@ -1,18 +1,22 @@
 import { createHash } from 'node:crypto';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Locale, ReviewModerationStatus } from '@prisma/client';
 import type { Queue } from 'bullmq';
 import { PrismaService } from '@/prisma/prisma.service';
-import { safeDecrypt } from '@/common/utils/crypto.util';
+import { TARGET_LOCALES } from '@/common/constants/translation.constants';
+import {
+  TRANSLATION_PROVIDER,
+  type TranslationProvider,
+} from '@/content-translation/providers/translation-provider.interface';
 
 /**
  * LD32 - machine translation of review text.
  *
- * ## Why the provider is not a choice
- * The master locks it: §4.7.18 "machine translation via Google Translate API +
- * show-original toggle", with DeepL / Azure Translator named as the only
- * equivalents. This is deliberately a thin REST client rather than the official
- * SDK - one endpoint, one shape, no extra dependency tree.
+ * ## Provider
+ * The master's §4.7.18 originally named Google Translate; the founder switched
+ * every AI translation surface to the shared provider (Gemini, 2026-07-27) so
+ * content and reviews ride one credential and one client. This service owns
+ * WHAT gets translated; the injected TRANSLATION_PROVIDER owns HOW.
  *
  * ## What it will not do
  * - **Never translates the original away.** The row a guest actually wrote
@@ -37,26 +41,6 @@ import { safeDecrypt } from '@/common/utils/crypto.util';
 /** BullMQ queue name for the LD32 translation worker. */
 export const REVIEW_TRANSLATION_QUEUE = 'review-translation';
 
-/** Locales a review is translated INTO. The source locale is skipped per review. */
-const TARGET_LOCALES: Locale[] = [
-  Locale.en,
-  Locale.nl,
-  Locale.de,
-  Locale.fr,
-  Locale.es,
-  Locale.pt,
-  Locale.zh,
-];
-
-/**
- * Google's code for Simplified Chinese is `zh-CN`; our enum is `zh`. Every other
- * locale we carry happens to match ISO-639-1 exactly.
- */
-const PROVIDER_CODE: Partial<Record<Locale, string>> = { [Locale.zh]: 'zh-CN' };
-
-/** v3 `translateText` accepts up to 1024 strings per call; stay well under it. */
-const MAX_CONTENTS_PER_CALL = 100;
-
 export interface TranslateResult {
   reviewId: string;
   written: number;
@@ -70,30 +54,11 @@ export class ReviewTranslationService {
   private readonly logger = new Logger(ReviewTranslationService.name);
   private warnedUnconfigured = false;
 
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * Resolve Google Translate credentials: dashboard DB first, env fallback (DB
-   * wins). API key is a secret (encrypted in `IntegrationsConfiguration`); the
-   * project id is non-secret. Env vars (`GOOGLE_TRANSLATE_API_KEY` /
-   * `GOOGLE_TRANSLATE_PROJECT_ID`) remain the local-dev / first-boot fallback.
-   */
-  private async resolveConfig(): Promise<{
-    apiKey?: string;
-    projectId?: string;
-  }> {
-    const row = await this.prisma.integrationsConfiguration.findUnique({
-      where: { id: 'default' },
-      select: { googleTranslateApiKey: true, googleTranslateProjectId: true },
-    });
-    const apiKey =
-      safeDecrypt(row?.googleTranslateApiKey)?.trim() ||
-      process.env.GOOGLE_TRANSLATE_API_KEY?.trim();
-    const projectId =
-      row?.googleTranslateProjectId?.trim() ||
-      process.env.GOOGLE_TRANSLATE_PROJECT_ID?.trim();
-    return { apiKey: apiKey || undefined, projectId: projectId || undefined };
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(TRANSLATION_PROVIDER)
+    private readonly provider: TranslationProvider,
+  ) {}
 
   /** SHA-1 of a source string - the cache key for "has this already been done". */
   static hash(text: string): string {
@@ -106,12 +71,11 @@ export class ReviewTranslationService {
    * Idempotent: a second call with an unchanged source writes nothing.
    */
   async translateReview(reviewId: string): Promise<TranslateResult> {
-    const cfg = await this.resolveConfig();
-    if (!cfg.apiKey || !cfg.projectId) {
+    if (!(await this.provider.isConfigured())) {
       if (!this.warnedUnconfigured) {
         this.warnedUnconfigured = true;
         this.logger.warn(
-          'Google Translate is not configured (no key/project id in dashboard or env) - ' +
+          'AI translation is not configured (no provider API key in dashboard or env) - ' +
             'review translation (LD32) is inert. Reviews display in their original language.',
         );
       }
@@ -171,12 +135,20 @@ export class ReviewTranslationService {
 
     let written = 0;
     for (const locale of pending) {
-      const [translated] = await this.translate(
-        [source.comment],
-        source.locale,
-        locale,
-        cfg,
-      );
+      // Catch-and-skip preserves the original contract: a provider outage or
+      // rejected output skips THIS locale (backfill retries later) instead of
+      // failing the whole job. The content pipeline relies on throws for its
+      // BullMQ retry; this one deliberately does not.
+      const translated = await this.provider
+        .translateText(source.comment, source.locale, locale)
+        .catch((err: unknown) => {
+          this.logger.error(
+            `Translate review ${reviewId} -> ${locale} failed: ${
+              err instanceof Error ? err.message : 'unknown'
+            }`,
+          );
+          return null;
+        });
       if (!translated) continue;
 
       await this.prisma.reviewTranslation.upsert({
@@ -224,66 +196,6 @@ export class ReviewTranslationService {
   }
 
   /**
-   * Cloud Translation v3 `translateText`.
-   *
-   * Batched by contract - the endpoint takes an array - so a caller with many
-   * strings for ONE language pair pays a single round trip. Returns [] on any
-   * failure rather than throwing: a translation outage must not fail the job
-   * that called it, and the missing row simply gets picked up next run.
-   */
-  private async translate(
-    contents: string[],
-    from: Locale,
-    to: Locale,
-    cfg: { apiKey?: string; projectId?: string },
-  ): Promise<string[]> {
-    if (contents.length === 0) return [];
-    if (!cfg.apiKey || !cfg.projectId) return [];
-    if (contents.length > MAX_CONTENTS_PER_CALL) {
-      contents = contents.slice(0, MAX_CONTENTS_PER_CALL);
-    }
-
-    const url =
-      `https://translation.googleapis.com/v3/projects/${cfg.projectId}:translateText` +
-      `?key=${encodeURIComponent(cfg.apiKey)}`;
-
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({
-          contents,
-          // Review text is plain text. Declaring it stops the provider treating
-          // stray `<` or `&` in a guest's comment as markup to preserve.
-          mimeType: 'text/plain',
-          sourceLanguageCode: PROVIDER_CODE[from] ?? from,
-          targetLanguageCode: PROVIDER_CODE[to] ?? to,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        this.logger.error(
-          `Translate ${from}->${to} failed (${res.status}): ${body.slice(0, 200)}`,
-        );
-        return [];
-      }
-
-      const json = (await res.json()) as {
-        translations?: { translatedText?: string }[];
-      };
-      return (json.translations ?? [])
-        .map((t) => t.translatedText ?? '')
-        .filter(Boolean);
-    } catch (err) {
-      this.logger.error(
-        `Translate ${from}->${to} threw: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-      return [];
-    }
-  }
-
-  /**
    * Fire-and-forget enqueue, used by the moderation path.
    *
    * Swallows its own failure by design: BullMQ needs Redis, and if Redis is
@@ -292,8 +204,7 @@ export class ReviewTranslationService {
    */
   async enqueue(queue: Queue | undefined, reviewId: string): Promise<void> {
     if (!queue) return;
-    const cfg = await this.resolveConfig();
-    if (!cfg.apiKey || !cfg.projectId) return;
+    if (!(await this.provider.isConfigured())) return;
     try {
       await queue.add(
         'translate',
@@ -324,8 +235,9 @@ export class ReviewTranslationService {
   async translatePending(
     limit = 50,
   ): Promise<{ processed: number; written: number }> {
-    const cfg = await this.resolveConfig();
-    if (!cfg.apiKey || !cfg.projectId) return { processed: 0, written: 0 };
+    if (!(await this.provider.isConfigured())) {
+      return { processed: 0, written: 0 };
+    }
 
     const candidates = await this.prisma.review.findMany({
       where: { moderationStatus: ReviewModerationStatus.APPROVED },

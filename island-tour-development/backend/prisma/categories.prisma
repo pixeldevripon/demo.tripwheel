@@ -47,6 +47,10 @@ model CategoryPageContent {
   metaTitle       String?
   metaDescription String?
 
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   @@unique([categoryId, locale])
   @@index([categoryId, locale])
   @@map("category_page_content")
@@ -65,6 +69,7 @@ model CategoryTranslation {
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime @updatedAt
 
   @@unique([categoryId, locale])

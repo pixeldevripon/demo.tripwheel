@@ -1,6 +1,7 @@
 import { Locale } from '@/common/constants/locales';
 import { faqSelect } from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FaqPageType } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -37,7 +38,10 @@ type FaqRow = {
 export class FaqGroupService {
   private readonly logger = new Logger(FaqGroupService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
+  ) {}
 
   private buildGroup(rows: FaqRow[]) {
     const groupId = rows[0].faqGroupId ?? rows[0].id;
@@ -126,6 +130,8 @@ export class FaqGroupService {
     this.logger.log(
       `Created FAQ group ${faqGroupId} for ${pageType} ${entityId}`,
     );
+    // A new English source was born - queue the AI translation fan-out.
+    this.contentTranslation.enqueueForPageType(pageType, entityId);
     return this.buildGroup([row]);
   }
 
@@ -140,10 +146,17 @@ export class FaqGroupService {
     const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
     const existing = rows.find((r) => r.locale === locale);
 
+    // This is the HUMAN write path (dashboard) - it always resets the machine
+    // bookkeeping, so the AI refresher never overwrites what was typed here.
     const row = existing
       ? await this.prisma.faq.update({
           where: { id: existing.id },
-          data: { question: dto.question, answer: dto.answer },
+          data: {
+            question: dto.question,
+            answer: dto.answer,
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
           select: faqSelect,
         })
       : await this.prisma.faq.create({
@@ -164,6 +177,10 @@ export class FaqGroupService {
     this.logger.log(
       `Upserted FAQ group ${groupId} translation [${locale}] for ${pageType} ${entityId}`,
     );
+    // An English edit re-sources the group's other locales.
+    if (locale === Locale.en) {
+      this.contentTranslation.enqueueForPageType(pageType, entityId);
+    }
     return row;
   }
 

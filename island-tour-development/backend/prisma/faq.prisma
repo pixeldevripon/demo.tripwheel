@@ -17,6 +17,13 @@ model Faq {
   displayOrder Int         @default(0)
   isActive     Boolean     @default(true)
 
+  // AI translation bookkeeping: rows written by the background translator carry
+  // isMachineTranslated=true + the sha1 of the English source they were built from.
+  // Human upserts (dashboard) always reset both, so machine refreshes never
+  // overwrite a hand-written answer.
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   // One row per locale within a group. faqGroupId is nullable, and Postgres treats
   // NULLs as distinct, so legacy ungrouped rows never collide.
   @@unique([pageType, entityId, faqGroupId, locale])

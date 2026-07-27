@@ -4,6 +4,7 @@
  */
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { ToursService } from '@/tours/tours.service';
 import {
   BadRequestException,
@@ -95,6 +96,10 @@ describe('CollectionsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: ToursService, useValue: tours },
         { provide: FaqGroupService, useValue: faqGroups },
+        {
+          provide: ContentTranslationEnqueuer,
+          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
       ],
     }).compile();
     service = module.get(CollectionsService);

@@ -527,7 +527,7 @@ export class ReviewsService {
     const res = await this.translation.translateReview(id);
     if (res.reason === 'not_configured') {
       throw new BadRequestException(
-        'Review translation is not configured (GOOGLE_TRANSLATE_API_KEY / GOOGLE_TRANSLATE_PROJECT_ID)',
+        'AI translation is not configured - set it up under Settings > Integrations > AI Translation (or TRANSLATION_API_KEY)',
       );
     }
     return res;

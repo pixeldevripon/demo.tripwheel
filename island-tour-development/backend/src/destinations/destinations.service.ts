@@ -13,6 +13,7 @@ import {
   markDestinationSlugsDeleted,
 } from '@/common/utils/slug-registry.util';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -56,6 +57,7 @@ export class DestinationService {
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
     private readonly contentSections: PageContentSectionService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
   ) {}
 
   private readonly destinationSelect = {
@@ -456,6 +458,9 @@ export class DestinationService {
       },
       update: {
         isMachineTranslated: isMachineTranslated ?? false,
+        // Human write path: reset the AI bookkeeping so the machine refresher
+        // never overwrites what was typed here.
+        sourceHash: null,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.h1Override !== undefined && {
@@ -471,6 +476,10 @@ export class DestinationService {
     this.logger.log(
       `Admin ${adminId} upserted translation for destination ${id} [${locale}]`,
     );
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) {
+      this.contentTranslation.enqueue('destination', id);
+    }
     return result;
   }
 
@@ -574,6 +583,9 @@ export class DestinationService {
         metaDescription: dto.metaDescription,
       },
       update: {
+        // Human write path - reset the AI bookkeeping (see upsertTranslations).
+        isMachineTranslated: false,
+        sourceHash: null,
         ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
         ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
         ...(dto.metaDescription !== undefined && {
@@ -591,6 +603,9 @@ export class DestinationService {
     this.logger.log(
       `Admin ${adminId} upserted page content for destination ${id} [${locale}]`,
     );
+    if (locale === Locale.en) {
+      this.contentTranslation.enqueue('destination', id);
+    }
     return result;
   }
 

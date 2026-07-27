@@ -33,6 +33,11 @@ model PageContentSection {
   displayOrder Int     @default(0)
   isActive     Boolean @default(true)
 
+  // AI translation bookkeeping (same contract as Faq): machine rows carry the flag
+  // + source hash; human upserts reset both.
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   // One row per locale within a group.
   @@unique([pageType, entityId, sectionGroupId, locale])
   @@index([pageType, entityId, locale, displayOrder])

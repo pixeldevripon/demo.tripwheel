@@ -11,6 +11,7 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   BadRequestException,
   ConflictException,
@@ -195,6 +196,10 @@ describe('CategoryService', () => {
         CategoryService,
         { provide: PrismaService, useValue: prisma },
         { provide: FaqGroupService, useValue: mockFaqGroups },
+        {
+          provide: ContentTranslationEnqueuer,
+          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
       ],
     }).compile();
 

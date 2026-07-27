@@ -371,7 +371,9 @@ export class SettingsService {
     };
   }
 
-  // ── Integrations Configuration (Meta CAPI + Google Translate secrets) ────────
+  // ── Integrations Configuration (Meta CAPI + AI translation secrets) ─────────
+  // The googleTranslate* columns are DEPRECATED storage (Gemini migration,
+  // 2026-07): stripped from every response so nothing can grow a new reader.
 
   async getIntegrationsConfiguration() {
     const config = await this.prisma.integrationsConfiguration.upsert({
@@ -379,10 +381,15 @@ export class SettingsService {
       update: {},
       create: { id: 'default' },
     });
+    const {
+      googleTranslateApiKey: _gt1,
+      googleTranslateProjectId: _gt2,
+      ...live
+    } = config;
     return {
-      ...config,
+      ...live,
       metaCapiToken: this.maskSecret(config.metaCapiToken),
-      googleTranslateApiKey: this.maskSecret(config.googleTranslateApiKey),
+      translationApiKey: this.maskSecret(config.translationApiKey),
     };
   }
 
@@ -394,8 +401,8 @@ export class SettingsService {
       // Encrypt secrets on write; a blank/omitted field leaves the stored value
       // untouched (never overwrite a saved secret with an empty string).
       ...(dto.metaCapiToken && { metaCapiToken: encrypt(dto.metaCapiToken) }),
-      ...(dto.googleTranslateApiKey && {
-        googleTranslateApiKey: encrypt(dto.googleTranslateApiKey),
+      ...(dto.translationApiKey && {
+        translationApiKey: encrypt(dto.translationApiKey),
       }),
     };
     const result = await this.prisma.integrationsConfiguration.upsert({
@@ -403,10 +410,15 @@ export class SettingsService {
       update: data,
       create: { id: 'default', ...data },
     });
+    const {
+      googleTranslateApiKey: _gt1,
+      googleTranslateProjectId: _gt2,
+      ...live
+    } = result;
     return {
-      ...result,
+      ...live,
       metaCapiToken: this.maskSecret(result.metaCapiToken),
-      googleTranslateApiKey: this.maskSecret(result.googleTranslateApiKey),
+      translationApiKey: this.maskSecret(result.translationApiKey),
     };
   }
 

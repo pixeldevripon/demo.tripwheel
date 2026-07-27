@@ -1,5 +1,6 @@
 import { Locale } from '@/common/constants/locales';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FaqPageType } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -52,7 +53,10 @@ type SectionRow = {
 export class PageContentSectionService {
   private readonly logger = new Logger(PageContentSectionService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
+  ) {}
 
   private buildGroup(rows: SectionRow[]) {
     const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
@@ -130,6 +134,8 @@ export class PageContentSectionService {
     this.logger.log(
       `Created content section ${sectionGroupId} for ${pageType} ${entityId}`,
     );
+    // A new English source was born - queue the AI translation fan-out.
+    this.contentTranslation.enqueueForPageType(pageType, entityId);
     return this.buildGroup([row]);
   }
 
@@ -144,10 +150,17 @@ export class PageContentSectionService {
     const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
     const existing = rows.find((r) => r.locale === locale);
 
+    // This is the HUMAN write path (dashboard) - it always resets the machine
+    // bookkeeping, so the AI refresher never overwrites what was typed here.
     const row = existing
       ? await this.prisma.pageContentSection.update({
           where: { id: existing.id },
-          data: { heading: dto.heading, body: dto.body },
+          data: {
+            heading: dto.heading,
+            body: dto.body,
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
           select: pageContentSectionSelect,
         })
       : await this.prisma.pageContentSection.create({
@@ -170,6 +183,10 @@ export class PageContentSectionService {
     this.logger.log(
       `Upserted content section ${groupId} translation [${locale}] for ${pageType} ${entityId}`,
     );
+    // An English edit re-sources the group's other locales.
+    if (locale === Locale.en) {
+      this.contentTranslation.enqueueForPageType(pageType, entityId);
+    }
     return row;
   }
 

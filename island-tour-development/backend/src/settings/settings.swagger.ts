@@ -291,7 +291,7 @@ export function ApiUpdateStripeConfigurationDocs() {
   );
 }
 
-// ── Integrations Configuration (Meta CAPI + Google Translate) ────────────────
+// ── Integrations Configuration (Meta CAPI + Gemini AI translation) ───────────
 
 export function ApiGetIntegrationsConfigurationDocs() {
   return applyDecorators(
@@ -301,7 +301,7 @@ export function ApiGetIntegrationsConfigurationDocs() {
     ApiResponse({
       status: 200,
       description:
-        'Integration config (Meta CAPI + Google Translate); secrets returned masked',
+        'Integration config (Meta CAPI + Gemini AI translation); secrets returned masked',
     }),
     ...adminErrors,
   );
