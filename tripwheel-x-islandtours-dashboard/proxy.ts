@@ -108,7 +108,7 @@ function clearSessionCookies(request: NextRequest, response: NextResponse) {
  * inverse of the monorepo, where the dashboard lived behind a `/dashboard`
  * prefix and everything else was the public site.
  */
-const UNGUARDED_PREFIXES = ['/portal', '/staff', '/onboarding', '/api'];
+const UNGUARDED_PREFIXES = ['/portal', '/staff', '/account', '/onboarding', '/api'];
 
 function isUnguarded(pathname: string): boolean {
     return UNGUARDED_PREFIXES.some(
