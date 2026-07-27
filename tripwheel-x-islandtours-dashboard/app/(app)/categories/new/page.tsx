@@ -5,7 +5,7 @@ import { CategoryForm } from '@/components/categories/category-form';
 
 export default function NewCategoryPage() {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -21,7 +21,7 @@ export default function NewCategoryPage() {
         </h1>
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         <CategoryForm />
       </div>
     </div>

@@ -1,16 +1,10 @@
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
-import { HugeiconsIcon } from '@hugeicons/react';
-import { StarIcon } from '@hugeicons/core-free-icons';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/common/status-badge';
-import {
-  CUSTOMER_REVIEW_STATE,
-  CUSTOMER_TIER,
-  customerTier,
-} from '@/components/common/status-maps';
+import { CUSTOMER_TIER, customerTier } from '@/components/common/status-maps';
 import type { CustomerListItem } from '@/types/customer';
 import { CustomerRowActions } from './customer-row-actions';
 
@@ -140,37 +134,6 @@ export function customerColumns(opts: {
           <span className="tabular-nums font-medium">
             {Number.isFinite(n) ? eur.format(n) : '—'}
           </span>
-        );
-      },
-    },
-    {
-      accessorKey: 'reviewsLeft',
-      header: 'Reviews',
-      cell: ({ row }) => {
-        const c = row.original;
-        const state =
-          c.awaitingReview > 0
-            ? CUSTOMER_REVIEW_STATE.awaiting
-            : c.reviewsLeft > 0
-              ? CUSTOMER_REVIEW_STATE.all_reviewed
-              : CUSTOMER_REVIEW_STATE.none;
-        return (
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 tabular-nums font-medium">
-              <HugeiconsIcon
-                icon={StarIcon}
-                className="size-3.5 text-muted-foreground"
-              />
-              {c.reviewsLeft}
-            </span>
-            <StatusBadge variant={state.variant} hint={state.hint}>
-              {/* The count belongs IN the badge when there is one: "Awaiting"
-                  alone leaves the reader hunting for how many. */}
-              {c.awaitingReview > 0
-                ? `${c.awaitingReview} awaiting`
-                : state.label}
-            </StatusBadge>
-          </div>
         );
       },
     },

@@ -4,9 +4,7 @@ import { Coins01Icon } from '@hugeicons/core-free-icons';
 
 import { DataTable } from '@/components/data-table/data-table';
 import {
-    DataTableActions,
     DataTableSearch,
-    DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { DatePickerField } from '@/components/date-picker-field';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
@@ -126,9 +124,6 @@ export function SettlementsTable({
                             />
                         </div>
                     </div>
-                    <DataTableActions>
-                        <DataTableViewOptions table={table} />
-                    </DataTableActions>
                 </>
             )}
         />

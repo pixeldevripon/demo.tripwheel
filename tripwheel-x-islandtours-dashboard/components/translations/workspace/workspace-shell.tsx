@@ -123,8 +123,13 @@ export function WorkspaceShell({
 
             {children}
 
-            {/* Sticky action footer: ONE save for the whole locale. */}
-            <div className='fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface-raised/95 backdrop-blur-sm'>
+            {/* Sticky action footer: ONE save for the whole locale.
+                In-flow `sticky`, NOT `fixed`: fixed spanned the viewport (ran
+                under the sidebar, centered on the screen instead of the pane)
+                and broke outright during the page-enter animation - the
+                transformed motion.div becomes the containing block for fixed
+                descendants. Negative margins bleed it to the pane edges. */}
+            <div className='sticky bottom-0 z-20 -mx-4 lg:-mx-8 border-t border-line bg-surface-raised/95 backdrop-blur-sm'>
                 <div className='mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-3'>
                     <p className='text-xs text-content-muted'>
                         {isDirty

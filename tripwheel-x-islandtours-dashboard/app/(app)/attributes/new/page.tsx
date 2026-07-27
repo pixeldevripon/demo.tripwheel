@@ -5,7 +5,7 @@ import { AttributeForm } from '@/components/attributes/attribute-form';
 
 export default function NewAttributePage() {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -21,7 +21,7 @@ export default function NewAttributePage() {
         </h1>
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         <AttributeForm />
       </div>
     </div>

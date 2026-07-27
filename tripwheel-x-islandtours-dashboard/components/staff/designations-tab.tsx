@@ -78,7 +78,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
             </div>
 
             {isLoading ? (
-                <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                <div className='grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
                     {Array.from({ length: 3 }).map((_, i) => (
                         <Skeleton key={i} className='h-36 rounded-xl' />
                     ))}
@@ -104,7 +104,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
                     </CardContent>
                 </Card>
             ) : (
-                <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                <div className='grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
                     {(designations ?? []).map((designation) => (
                         <Card key={designation.id} className='gap-3'>
                             <CardHeader className='flex flex-row items-start justify-between gap-2'>

@@ -95,7 +95,7 @@ export function ImageSelectorField(props: ImageSelectorFieldProps) {
               </Button>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2">
               {urls.map((url) => (
                 <div
                   key={url}

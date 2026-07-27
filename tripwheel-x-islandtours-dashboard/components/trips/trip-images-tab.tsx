@@ -232,7 +232,7 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
             <CardContent className='pt-6'>
             {/* Image grid */}
             {isLoading ? (
-                <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
+                <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
                     {Array.from({ length: 4 }).map((_, i) => (
                         <Skeleton
                             key={i}
@@ -241,7 +241,7 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                     ))}
                 </div>
             ) : ordered.length > 0 ? (
-                <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
+                <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
                     {ordered.map((img, index) => (
                         <ImageCard
                             key={img.id}

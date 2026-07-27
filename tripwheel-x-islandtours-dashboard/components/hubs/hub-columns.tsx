@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Location01Icon, Navigation03Icon, SquareLock02Icon } from '@hugeicons/core-free-icons';
+import { Location01Icon, Navigation03Icon } from '@hugeicons/core-free-icons';
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/status-badge';
 import { ACTIVE_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate } from '@/lib/utils';
 import type { HubLocalized } from '@/types/hub';
 import { HUB_STATUS_LABELS, type HubStatus } from '@/types/enums';
 import { HubRowActions } from './hub-row-actions';
@@ -122,30 +121,6 @@ export function buildHubColumns(options: HubColumnsOptions): ColumnDef<HubLocali
         </StatusBadge>
       );
       },
-      enableSorting: true,
-    },
-    {
-      accessorKey: 'isSeeded',
-      header: 'Seeded',
-      cell: ({ row }) => {
-        if (!row.original.isSeeded) return null;
-        return (
-          <div className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
-            <Badge variant="secondary">Protected</Badge>
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">
-          {formatDate(row.original.createdAt)}
-        </span>
-      ),
       enableSorting: true,
     },
     {

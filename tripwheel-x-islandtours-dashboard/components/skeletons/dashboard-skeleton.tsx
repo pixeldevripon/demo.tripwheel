@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 export function DashboardSkeleton() {
   return (
-    <div className="flex min-h-screen w-full bg-shell-content">
+    <div className="flex min-h-svh w-full bg-shell-content">
       {/* Sidebar Skeleton */}
       <div className="hidden md:flex w-72 flex-col bg-card border-r border-border/50">
         <div className="p-6">
@@ -41,8 +41,8 @@ export function DashboardSkeleton() {
         </header>
 
         {/* Content Area Skeleton */}
-        <main className="flex-1 p-4 md:p-8 overflow-auto">
-          <div className="max-w-7xl mx-auto space-y-8">
+        <main className="flex-1 p-4 lg:p-8 overflow-auto">
+          <div className="w-full space-y-8">
             {/* Page Header Area */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="space-y-2">

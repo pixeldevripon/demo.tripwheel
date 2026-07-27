@@ -3,7 +3,7 @@ import { OperatorsListView } from '@/components/operators/operators-list-view';
 export default function TourOperatorsPage() {
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">
             Tour Operators

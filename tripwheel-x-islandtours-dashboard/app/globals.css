@@ -430,10 +430,14 @@
     }
     html {
         @apply font-sans;
-        /* Collapsing content (accordions) changes page height; without a
-         * reserved gutter the viewport scrollbar pops in/out and the whole
-         * layout shifts sideways ("shakes"). */
-        scrollbar-gutter: stable;
+        /* The viewport scrollbar is hidden entirely (scrolling still works);
+         * with no bar there is nothing to pop in/out, so page-height changes
+         * (accordions) can never shift the layout sideways. */
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar {
+        display: none;
     }
     body {
         @apply bg-surface text-content font-sans antialiased;
@@ -441,10 +445,9 @@
     }
     /* Radix (react-remove-scroll) locks the body whenever a dropdown, select
      * or dialog opens, and pads it to make up for the scrollbar it just
-     * removed. `html` above already reserves that gutter permanently, so the
-     * compensation is a SECOND allowance for the same pixels and the page
-     * slides sideways every time a menu opens. Drop it and let the reserved
-     * gutter do the job alone. */
+     * removed. The viewport scrollbar is hidden and occupies no pixels, so
+     * that compensation is an allowance for space that was never taken and
+     * the page slides sideways every time a menu opens. Drop it. */
     body[data-scroll-locked] {
         padding-right: 0 !important;
         margin-right: 0 !important;

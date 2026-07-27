@@ -26,7 +26,7 @@ export function TripDetailShell({
   children,
 }: TripDetailShellProps) {
   return (
-    <div>
+    <div className={fullWidth ? undefined : 'mx-auto w-full max-w-6xl'}>
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -48,7 +48,7 @@ export function TripDetailShell({
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
 
-      <div className={fullWidth ? undefined : 'max-w-6xl'}>
+      <div>
         {children}
       </div>
     </div>

@@ -5,7 +5,7 @@ import { HubForm } from '@/components/hubs/hub-form';
 
 export default function NewHubPage() {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -17,7 +17,7 @@ export default function NewHubPage() {
         <HugeiconsIcon icon={Navigation03Icon} className="size-6 text-muted-foreground" />
         <h1 className="text-2xl font-semibold">New Hub</h1>
       </div>
-      <div className="max-w-6xl">
+      <div>
         <HubForm />
       </div>
     </div>

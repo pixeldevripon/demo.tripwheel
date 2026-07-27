@@ -4,8 +4,6 @@ import { useMemo, useState } from 'react';
 import { UserGroupIcon } from '@hugeicons/core-free-icons';
 import { DataTable } from '@/components/data-table/data-table';
 import {
-  DataTableActions,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { TableSearchInput } from '@/components/table-search-input';
 import { useTableState } from '@/components/data-table/use-table-state';
@@ -113,9 +111,6 @@ export function CustomersListView() {
                 ))}
               </SelectContent>
             </Select>
-            <DataTableActions>
-              <DataTableViewOptions table={table} />
-            </DataTableActions>
           </>
         )}
         bulkActions={

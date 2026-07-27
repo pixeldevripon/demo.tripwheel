@@ -165,7 +165,7 @@ export function CommandPalette({
                         ? 'Jump to a page or one of your bookings'
                         : 'Jump to a page, tour, booking or destination'
                 }
-                className='w-[92vw] max-w-2xl sm:max-w-2xl'>
+                className='w-[calc(100vw-2rem)] max-w-2xl sm:max-w-2xl'>
                 <Command>
                     <CommandInput
                         placeholder={

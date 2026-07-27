@@ -9,7 +9,6 @@ import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
   DataTableSearch,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { Button } from '@/components/ui/button';
 import {
@@ -140,7 +139,6 @@ export function TripsTable({
             />
           )}
           <DataTableActions>
-            <DataTableViewOptions table={table} />
             {newTripButton}
           </DataTableActions>
         </>

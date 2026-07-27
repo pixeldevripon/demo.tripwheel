@@ -11,7 +11,6 @@ import {
   OPERATOR_VERIFICATION,
 } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate } from '@/lib/utils';
 import type { OperatorListItem } from '@/types/operator';
 import { getOperatorDisplayName } from '@/types/operator';
 import { OperatorRowActions } from './operator-row-actions';
@@ -107,14 +106,6 @@ export function buildOperatorColumns(): ColumnDef<OperatorListItem>[] {
           </StatusBadge>
         );
       },
-      enableSorting: true,
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">{formatDate(row.original.createdAt)}</span>
-      ),
       enableSorting: true,
     },
     {

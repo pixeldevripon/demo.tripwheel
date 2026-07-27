@@ -83,7 +83,7 @@ export function ReviewAnalytics() {
 
     if (isLoading) {
         return (
-            <div className='grid gap-4 lg:grid-cols-2'>
+            <div className='grid gap-4 @4xl/main:grid-cols-2'>
                 <Skeleton className='h-[300px]' />
                 <Skeleton className='h-[300px]' />
             </div>
@@ -96,7 +96,7 @@ export function ReviewAnalytics() {
 
     return (
         <div className='space-y-4'>
-            <div className='grid gap-4 lg:grid-cols-2'>
+            <div className='grid gap-4 @4xl/main:grid-cols-2'>
                 <Card>
                     <CardHeader>
                         <CardTitle>Rating trend</CardTitle>
@@ -176,7 +176,7 @@ export function ReviewAnalytics() {
                 </Card>
             </div>
 
-            <div className='grid gap-4 lg:grid-cols-2'>
+            <div className='grid gap-4 @4xl/main:grid-cols-2'>
                 <Card>
                     <CardHeader>
                         <CardTitle>What guests mention</CardTitle>
@@ -222,7 +222,7 @@ export function ReviewAnalytics() {
                         <CardTitle>Queue and standing</CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-4'>
-                        <div className='grid grid-cols-4 gap-3'>
+                        <div className='grid grid-cols-2 gap-3 @6xl/main:grid-cols-4'>
                             {(
                                 [
                                     ['Pending', data.moderation.pending],

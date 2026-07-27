@@ -186,7 +186,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
     }
 
     return (
-        <div>
+        <div className='mx-auto w-full max-w-6xl'>
             {crumbs}
 
             {/* Identity + actions */}
@@ -319,13 +319,13 @@ export function StaffMemberProfile({ id }: { id: string }) {
                 )}
             </div>
 
-            <div className='max-w-6xl space-y-6'>
+            <div className='space-y-6'>
                 <Card>
                     <CardHeader>
                         <CardTitle>Account</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <dl className='m-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                        <dl className='m-0 grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
                             <Fact label='Email' value={member.user.email} />
                             <Fact
                                 label='Designation'

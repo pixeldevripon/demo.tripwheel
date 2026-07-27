@@ -3,7 +3,7 @@ import { AttributesListView } from '@/components/attributes/attributes-list-view
 export default function AttributesPage() {
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">
             Attributes
