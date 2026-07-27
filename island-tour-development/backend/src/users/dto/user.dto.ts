@@ -129,9 +129,13 @@ export class UserQueryDto {
 }
 
 export class UpdateUserProfileDto {
+  // MaxLength is defense-in-depth: the name lands in transactional email
+  // greetings (escaped there, but unbounded input has no business reaching
+  // a template at all).
   @ApiPropertyOptional({ description: 'Display name' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   name?: string;
 
   @ApiPropertyOptional({ description: 'Profile image URL' })
@@ -159,6 +163,7 @@ export class UpdateUserByAdminDto {
   @ApiPropertyOptional({ description: 'Display name' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   name?: string;
 
   // NOTE: no `email` field on purpose. Emails change ONLY through the

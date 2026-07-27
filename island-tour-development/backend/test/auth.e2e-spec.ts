@@ -41,6 +41,7 @@
  *       • Every test that creates a user tears it down via PrismaClient in afterEach
  */
 
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
@@ -50,6 +51,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from './../src/common/filters/http-exception.filter';
 import { auth } from './../src/auth/auth.instance';
+// The same singleton instance auth.instance.ts sends mail through - spying on
+// it captures the real emailed links for the change-email click-through test.
+import { mailService } from './../src/mail/mail.singleton';
 
 /**
  * Provisions a sign-in-able account through the Better Auth internal adapter
@@ -641,6 +645,192 @@ describe('Auth (e2e)', () => {
 
       await prisma.customer.deleteMany({ where: { userId: dbUser!.id } });
     });
+  });
+
+  // ── Change email - old-inbox confirmation gate ──────────────────────────────
+
+  describe('POST /api/auth/change-email (old-inbox confirmation gate)', () => {
+    let email: string;
+    let cookie: string;
+
+    beforeAll(async () => {
+      email = uniqueEmail('change-email');
+      // provisionUser creates the account emailVerified: true, which is what
+      // routes change-email through the sendChangeEmailConfirmation branch
+      // (confirmation link to the CURRENT inbox) instead of a direct update.
+      await provisionUser(email, 'Change Email User');
+      const res = await signIn(server, email, VALID_PASSWORD, 'portal');
+      if (res.status !== 200) {
+        throw new Error(`Setup sign-in failed: ${JSON.stringify(res.body)}`);
+      }
+      cookie = extractSessionCookie(res.headers['set-cookie'])!;
+    });
+
+    afterAll(async () => {
+      try {
+        await prisma.user.delete({ where: { email } });
+      } catch {
+        // Already cleaned up.
+      }
+    });
+
+    it('accepts the request but does NOT change the email until the emailed link is used', async () => {
+      const newEmail = uniqueEmail('change-email-target');
+
+      const res = await request(server)
+        .post('/api/auth/change-email')
+        .set('Cookie', cookie)
+        .send({ newEmail });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe(true);
+
+      // The gate: the address on the account is untouched - it only moves
+      // after the confirmation link (sent to the OLD inbox) and then the
+      // verification link (sent to the new inbox) are both opened.
+      const dbUser = await prisma.user.findUnique({
+        where: { email },
+        select: { email: true },
+      });
+      expect(dbUser?.email).toBe(email);
+    });
+
+    it('rejects changing to the same email', async () => {
+      const res = await request(server)
+        .post('/api/auth/change-email')
+        .set('Cookie', cookie)
+        .send({ newEmail: email });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('returns a silent fake success for a taken email (enumeration-safe) and changes nothing', async () => {
+      const takenEmail = uniqueEmail('change-email-taken');
+      await provisionUser(takenEmail, 'Already Taken');
+
+      const res = await request(server)
+        .post('/api/auth/change-email')
+        .set('Cookie', cookie)
+        .send({ newEmail: takenEmail });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe(true);
+
+      const dbUser = await prisma.user.findUnique({
+        where: { email },
+        select: { email: true },
+      });
+      expect(dbUser?.email).toBe(email);
+
+      await prisma.user.delete({ where: { email: takenEmail } });
+    });
+
+    it('completes the full two-link flow: old-inbox approval, then new-inbox verification, then the email changes', async () => {
+      // Dedicated user - this test actually moves the email, so the outer
+      // describe's fixture must not be touched.
+      const flowEmail = uniqueEmail('change-email-flow');
+      const newEmail = uniqueEmail('change-email-flow-new');
+      await provisionUser(flowEmail, 'Change Email Flow User');
+      const flowSignIn = await signIn(
+        server,
+        flowEmail,
+        VALID_PASSWORD,
+        'portal',
+      );
+      expect(flowSignIn.status).toBe(200);
+      const flowCookie = extractSessionCookie(
+        flowSignIn.headers['set-cookie'],
+      )!;
+
+      // Spy on the SAME MailService singleton auth.instance.ts uses - the
+      // captured URLs are the real emailed links, tokens included.
+      const confirmSpy = jest
+        .spyOn(mailService, 'sendChangeEmailConfirmationEmail')
+        .mockResolvedValue(undefined);
+      const verifySpy = jest
+        .spyOn(mailService, 'sendVerificationEmail')
+        .mockResolvedValue(undefined);
+
+      // Auth-hook mail sends are fire-and-forget (sendInBackground), so the
+      // HTTP response can land before the spy records the call.
+      const waitForCall = async (spy: { mock: { calls: unknown[] } }) => {
+        for (let i = 0; i < 50 && spy.mock.calls.length === 0; i++) {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        expect(spy.mock.calls.length).toBeGreaterThan(0);
+      };
+      // The emailed URL is absolute (BETTER_AUTH_URL origin); supertest wants
+      // the path + query against the in-process server.
+      const pathFromAuthUrl = (url: string) => {
+        const u = new URL(url);
+        return u.pathname + u.search;
+      };
+
+      // .env.test trusts http://localhost:3000 - stands in for the dashboard
+      // origin the real dialog passes via window.location.origin.
+      const callbackURL = 'http://localhost:3000/profile?email_change=1';
+
+      try {
+        const res = await request(server)
+          .post('/api/auth/change-email')
+          .set('Cookie', flowCookie)
+          .send({ newEmail, callbackURL });
+        expect(res.status).toBe(200);
+
+        // Step 1: confirmation went to the OLD inbox, naming the new address.
+        await waitForCall(confirmSpy);
+        const [confirmTo, confirmUrl, confirmNewEmail] =
+          confirmSpy.mock.calls[0];
+        expect(confirmTo).toBe(flowEmail);
+        expect(confirmNewEmail).toBe(newEmail);
+
+        // Step 2: open the old-inbox link WITHOUT the session cookie - the
+        // link must work from any mail client, not just the signed-in browser.
+        const confirmRes = await request(server).get(
+          pathFromAuthUrl(confirmUrl),
+        );
+        expect(confirmRes.status).toBe(302);
+        expect(confirmRes.headers.location).toBe(callbackURL);
+
+        // Email still unchanged - approval alone must not move it.
+        const midUser = await prisma.user.findUnique({
+          where: { email: flowEmail },
+          select: { email: true },
+        });
+        expect(midUser?.email).toBe(flowEmail);
+
+        // The verification email went to the NEW address, with the tailored
+        // change-email copy (variant arg), not the generic verify copy.
+        await waitForCall(verifySpy);
+        const [verifyTo, verifyUrl, , verifyVariant] = verifySpy.mock.calls[0];
+        expect(verifyTo).toBe(newEmail);
+        expect(verifyVariant).toBe('email-change');
+
+        // Step 3: open the new-inbox link - NOW the email changes.
+        const verifyRes = await request(server).get(pathFromAuthUrl(verifyUrl));
+        expect(verifyRes.status).toBe(302);
+        expect(verifyRes.headers.location).toBe(callbackURL);
+
+        const finalUser = await prisma.user.findUnique({
+          where: { email: newEmail },
+          select: { email: true, emailVerified: true },
+        });
+        expect(finalUser?.email).toBe(newEmail);
+        expect(finalUser?.emailVerified).toBe(true);
+        expect(
+          await prisma.user.findUnique({ where: { email: flowEmail } }),
+        ).toBeNull();
+      } finally {
+        confirmSpy.mockRestore();
+        verifySpy.mockRestore();
+        await prisma.user.deleteMany({
+          where: { email: { in: [flowEmail, newEmail] } },
+        });
+      }
+      // Explicit budget: the two mail-spy polls alone may legitimately wait
+      // several seconds (fire-and-forget sends), which the 5s default has no
+      // headroom for under CI contention.
+    }, 20_000);
   });
 
   // ── Session ──────────────────────────────────────────────────────────────────
