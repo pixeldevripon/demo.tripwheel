@@ -66,9 +66,9 @@ export function Navbar({
         return islands.find(i => i.slug === slug) ?? null;
     }, [pathname, islands]);
 
-    // Persist the last-viewed island so it stays selected across navigation -
-    // including back on the home page. Read once on mount, written whenever the
-    // URL resolves to an island.
+    // Persist the last-viewed island so it stays selected across navigation on
+    // inner pages (the home page opts out below). Read once on mount, written
+    // whenever the URL resolves to an island.
     const [rememberedSlug, setRememberedSlug] = useState<string | null>(null);
     useEffect(() => {
         setRememberedSlug(window.localStorage.getItem(DESTINATION_KEY));
@@ -80,8 +80,13 @@ export function Navbar({
         }
     }, [pathIsland]);
 
-    const currentIsland =
-        pathIsland ?? islands.find(i => i.slug === rememberedSlug) ?? null;
+    // The home page always offers a fresh choice: the selector shows
+    // "Select your Island" there, never the remembered island. The remembered
+    // slug still backs the selector on inner pages without an island in the
+    // URL (search, wishlist, ...).
+    const currentIsland = isHome
+        ? null
+        : (pathIsland ?? islands.find(i => i.slug === rememberedSlug) ?? null);
 
     // Destination-scoped categories - only those with a published tour, so the
     // links never 404. Resolved client-side (the island comes from the path) and
