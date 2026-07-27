@@ -26,12 +26,15 @@ export interface MakeCollectionColumnsOptions {
   canEdit: boolean;
   canDelete: boolean;
   onDeactivate: (collection: Collection) => void;
+  /** Include the Island column (the cross-island "All Islands" view). */
+  showIsland?: boolean;
 }
 
 export function makeCollectionColumns({
   canEdit,
   canDelete,
   onDeactivate,
+  showIsland = false,
 }: MakeCollectionColumnsOptions): ColumnDef<Collection>[] {
   return [
     {
@@ -40,8 +43,8 @@ export function makeCollectionColumns({
       cell: ({ row }) => {
         if (!canEdit) return <span className="text-sm font-medium">{row.original.name}</span>;
         return (
-          <Link 
-            href={`/collections/${row.original.id}/edit`} 
+          <Link
+            href={`/collections/${row.original.id}/edit`}
             className="text-sm font-medium hover:underline underline-offset-4"
           >
             {row.original.name}
@@ -50,6 +53,21 @@ export function makeCollectionColumns({
       },
       enableSorting: true,
     },
+    ...(showIsland
+      ? [
+          {
+            id: 'island',
+            header: 'Island',
+            accessorFn: (c: Collection) => c.destination?.name ?? '',
+            cell: ({ row }: { row: { original: Collection } }) => (
+              <span className="text-xs text-muted-foreground">
+                {row.original.destination?.name ?? '-'}
+              </span>
+            ),
+            enableSorting: true,
+          } satisfies ColumnDef<Collection>,
+        ]
+      : []),
     {
       accessorKey: 'collectionType',
       header: 'Type',

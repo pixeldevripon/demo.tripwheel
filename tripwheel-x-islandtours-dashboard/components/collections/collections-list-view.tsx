@@ -34,16 +34,10 @@ import { CollectionsTable } from './collections-table';
 export function CollectionsListView() {
   const { can } = useRole();
   const { data: destinations } = useActiveDestinations();
-  const [destSlug, setDestSlug] = useState<string>('');
+  // 'all' = the cross-island view (no destinationSlug sent to the backend).
+  const [destSlug, setDestSlug] = useState<string>('all');
 
-  // Default to the first destination once loaded. Setting state during render (guarded so it
-  // runs only while no destination is selected) is React's sanctioned alternative to a
-  // setState-in-effect, which the repo's eslint config flags as an error.
-  if (!destSlug && destinations && destinations.length > 0) {
-    setDestSlug(destinations[0].slug);
-  }
-
-  const { data: collections, isLoading } = useCollectionsByDestination(destSlug || undefined);
+  const { data: collections, isLoading } = useCollectionsByDestination(destSlug);
   const { mutate: remove, isPending: removing } = useDeleteCollection();
   const [target, setTarget] = useState<Collection | null>(null);
 
@@ -61,12 +55,14 @@ export function CollectionsListView() {
           canEdit={can('EDIT_COLLECTION')}
           canDelete={can('DELETE_COLLECTION')}
           onDeactivate={setTarget}
+          showIsland={destSlug === 'all'}
           filterSlot={
             <Select value={destSlug} onValueChange={setDestSlug}>
               <SelectTrigger className="w-48 shrink-0">
                 <SelectValue placeholder="Destination" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Islands</SelectItem>
                 {(destinations ?? []).map(d => (
                   <SelectItem key={d.id} value={d.slug}>{d.name}</SelectItem>
                 ))}

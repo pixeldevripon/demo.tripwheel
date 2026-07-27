@@ -31,10 +31,14 @@ export const collectionKeys = {
   resolvedTours: (id: string) => [...collectionKeys.detail(id), 'resolved'] as const,
 };
 
+/** Pass the `'all'` sentinel to list collections across every island. */
 export function useCollectionsByDestination(destinationSlug: string | undefined) {
   return useQuery({
     queryKey: collectionKeys.byDestination(destinationSlug ?? ''),
-    queryFn: () => collectionsApi.getAllAdmin(destinationSlug as string),
+    queryFn: () =>
+      collectionsApi.getAllAdmin(
+        destinationSlug === 'all' ? undefined : destinationSlug,
+      ),
     enabled: !!destinationSlug,
     placeholderData: keepPreviousData,
   });

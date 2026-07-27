@@ -34,7 +34,8 @@ function buildQuery(params: Record<string, string | undefined>): string {
 
 export const collectionsApi = {
   // Admin
-  getAllAdmin(destinationSlug: string): Promise<Collection[]> {
+  /** Omit `destinationSlug` to list collections across ALL islands. */
+  getAllAdmin(destinationSlug?: string): Promise<Collection[]> {
     return apiFetch<Collection[]>(`/collections/admin/all${buildQuery({ destinationSlug })}`);
   },
   getById(id: string): Promise<Collection> {
