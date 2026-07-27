@@ -19,9 +19,10 @@ import {
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { useDestinations } from '@/hooks/destinations/use-destinations';
 import { useAdminTrips, useMyTrips } from '@/hooks/trips/use-trips';
+import { useRole } from '@/contexts/role-context';
 import { Permission, ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import {
-    isCustomerRole,
+    isCustomerView,
     navGroupsForRole,
     resolvePermissions,
 } from '@/lib/rbac-utils';
@@ -78,13 +79,16 @@ export function CommandPalette({
         [permissions],
     );
 
-    // Same resolver the sidebar uses: a customer gets the customer nav, not a
-    // permission-filtered operator nav (Role.USER holds VIEW_TRIPS and the
-    // self-scoped booking/payment reads, which would otherwise leave Tours,
-    // Translations and Cancellations standing in here).
+    // Entry door decides customer vs staff/operator view (multi-hat accounts).
+    const { surface } = useRole();
+
+    // Same resolver the sidebar uses: the customer VIEW gets the customer
+    // nav, not a permission-filtered operator nav (Role.USER holds VIEW_TRIPS
+    // and the self-scoped booking/payment reads, which would otherwise leave
+    // Tours, Translations and Cancellations standing in here).
     const navGroups = React.useMemo(
-        () => navGroupsForRole(getNavigations(), userRole, permissions),
-        [userRole, permissions],
+        () => navGroupsForRole(getNavigations(), userRole, permissions, surface),
+        [userRole, permissions, surface],
     );
 
     // ⌘K / Ctrl+K
@@ -102,19 +106,23 @@ export function CommandPalette({
     // Entity search - only while open, with a real query.
     const searching = open && debouncedQuery.length >= 2;
     const isAdmin = userRole === 'ADMIN';
-    // A customer must never be offered catalogue entities: those results link
-    // into operator screens (/trips/:id/edit, /destinations/:id) that they
-    // cannot open. Permission alone is not enough of a gate here - Role.USER
-    // carries VIEW_TRIPS.
-    const isCustomer = isCustomerRole(userRole);
+    // The customer VIEW must never be offered catalogue entities: those
+    // results link into operator screens (/trips/:id/edit, /destinations/:id)
+    // that the view's route guard bounces. Permission alone is not enough of
+    // a gate here - Role.USER carries VIEW_TRIPS, and a multi-hat staff
+    // session in traveler mode carries far more.
+    const isCustomer = isCustomerView(userRole, surface);
 
     const myTrips = useMyTrips(
         { search: debouncedQuery, limit: 6 },
         searching && !isAdmin && !isCustomer && can(Permission.VIEW_TRIPS),
     );
+    // `!isCustomer` matters for admins too: an ADMIN whose session was
+    // re-stamped to the account surface is browsing as a traveler - catalogue
+    // results would link into screens the route guard bounces.
     const adminTrips = useAdminTrips(
         { search: debouncedQuery, limit: 6 },
-        searching && isAdmin,
+        searching && isAdmin && !isCustomer,
     );
     // Bookings stay searchable for customers: the backend scopes USER callers
     // to their OWN rows and the result links to their own bookings page.
@@ -129,7 +137,9 @@ export function CommandPalette({
         open && !isCustomer && can(Permission.VIEW_DESTINATIONS),
     );
 
-    const tours = (isAdmin ? adminTrips.data?.data : myTrips.data?.data) ?? [];
+    const tours = isCustomer
+        ? []
+        : ((isAdmin ? adminTrips.data?.data : myTrips.data?.data) ?? []);
     const bookingRows = bookings.data?.data ?? [];
     const destinationRows = destinations.data?.data ?? [];
 
@@ -201,8 +211,11 @@ export function CommandPalette({
                             </CommandGroup>
                         ))}
 
-                        {(can(Permission.CREATE_TRIP) ||
-                            can(Permission.MANAGE_OPERATORS)) && (
+                        {/* Never in the customer view - these actions open
+                            operator/admin screens the route guard bounces. */}
+                        {!isCustomer &&
+                            (can(Permission.CREATE_TRIP) ||
+                                can(Permission.MANAGE_OPERATORS)) && (
                             <>
                                 <CommandSeparator />
                                 <CommandGroup heading='Actions'>

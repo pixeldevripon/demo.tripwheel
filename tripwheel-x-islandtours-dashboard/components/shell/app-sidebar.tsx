@@ -17,6 +17,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { useRole } from '@/contexts/role-context';
 import { ROLE_PERMISSIONS } from '@/lib/config/rbac';
 import { navGroupsForRole, resolvePermissions } from '@/lib/rbac-utils';
 import { getNavigations } from '@/navigations/navigations';
@@ -47,6 +48,8 @@ export function AppSidebar({
     // Mobile: the sidebar is an overlay sheet - navigating via the logo must
     // dismiss it just like the NavMain links do. No-op on desktop.
     const { setOpenMobile } = useSidebar();
+    // Entry door decides customer vs staff/operator nav (multi-hat accounts).
+    const { surface } = useRole();
 
     const filteredNav = useMemo(() => {
         const permissions = resolvePermissions(
@@ -54,10 +57,11 @@ export function AppSidebar({
             userPermissions,
             ROLE_PERMISSIONS as Record<string, string[]>,
         );
-        // Customers get their own nav array - never a filtered operator nav.
-        // Shared with the command palette so the two cannot drift.
-        return navGroupsForRole(navData, userRole, permissions);
-    }, [userRole, userPermissions, navData]);
+        // The customer VIEW gets its own nav array - never a filtered
+        // operator nav. Shared with the command palette so the two cannot
+        // drift.
+        return navGroupsForRole(navData, userRole, permissions, surface);
+    }, [userRole, userPermissions, navData, surface]);
 
     return (
         <Sidebar collapsible='icon' {...props}>

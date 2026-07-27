@@ -12,6 +12,7 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Copy01Icon } from '@hugeicons/core-free-icons';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 import {
@@ -100,7 +101,21 @@ export function BookingDetailsSheet({
           </Section>
 
           <Section label="Guest">
-            <Row label="Name" value={b.contactFullName ?? '-'} />
+            <Row
+              label="Name"
+              value={
+                b.contactFullName || b.contactEmail ? (
+                  <Link
+                    href={`/customers?q=${encodeURIComponent(b.contactEmail ?? b.contactFullName ?? '')}`}
+                    className="hover:underline underline-offset-4"
+                  >
+                    {b.contactFullName ?? '-'}
+                  </Link>
+                ) : (
+                  '-'
+                )
+              }
+            />
             <Row
               label="Email"
               value={

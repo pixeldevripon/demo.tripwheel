@@ -9,7 +9,6 @@ import type { UserProfile } from '@/types/profile';
 export function profileValuesFromUser(user: UserProfile): ProfileFormValues {
     return {
         name: user.name ?? '',
-        email: user.email ?? '',
         phone: user.phone ?? '',
         location: user.location ?? '',
         timezone: user.timezone ?? '',

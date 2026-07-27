@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TourFilterPopover } from '@/components/common/tour-filter-popover';
 import { useRole } from '@/contexts/role-context';
 import { useCustomers } from '@/hooks/customers/use-customers';
 import type { CustomerListItem, CustomersQueryParams } from '@/types/customer';
@@ -64,6 +65,7 @@ export function CustomersListView() {
     limit,
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
     ...(filters.awaiting === 'awaiting' ? { awaitingReviewOnly: true } : {}),
+    ...(filters.tourId ? { tourId: filters.tourId } : {}),
   };
   const { data, isLoading } = useCustomers(params);
   const columns = useMemo(
@@ -119,6 +121,10 @@ export function CustomersListView() {
                 ))}
               </SelectContent>
             </Select>
+            <TourFilterPopover
+              value={filters.tourId}
+              onChange={(v) => setFilter('tourId', v)}
+            />
           </>
         )}
         bulkActions={

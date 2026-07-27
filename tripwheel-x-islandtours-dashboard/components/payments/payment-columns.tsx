@@ -1,6 +1,7 @@
 'use client';
 
 import { type ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { PAYMENT_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
@@ -33,9 +34,17 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
             <span className="font-mono text-sm font-medium block">
               {p.bookingDisplayRef}
             </span>
-            <span className="text-xs text-muted-foreground truncate max-w-40 block">
-              {p.contactFullName ?? ''}
-            </span>
+            {p.contactFullName && (
+              // Customers list pre-filtered to this guest (name is all the
+              // payment row carries; there is no per-customer page).
+              <Link
+                href={`/customers?q=${encodeURIComponent(p.contactFullName)}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-muted-foreground truncate max-w-40 block hover:underline underline-offset-4"
+              >
+                {p.contactFullName}
+              </Link>
+            )}
           </div>
         );
       },

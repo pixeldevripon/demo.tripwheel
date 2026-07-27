@@ -6,7 +6,8 @@ import {
     RANGE_PARAM,
     resolveRange,
 } from '@/lib/analytics/range-presets';
-import { getSessionRole } from '@/lib/server/dashboard-session';
+import { isCustomerView } from '@/lib/rbac-utils';
+import { getSessionView } from '@/lib/server/dashboard-session';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -18,20 +19,22 @@ export default async function DashboardPage({
     const cookie = (await headers()).get('cookie') ?? '';
     const params = await searchParams;
 
-    // Role only - ONE Better Auth call, not the 4-6 round trips `getUserProfile`
-    // makes. Its comment used to claim the layout had already resolved it, but
-    // layouts are preserved across sibling navigations, so on every click into
-    // the Overview the whole fan-out ran again and the router could not commit
-    // until it finished. Nothing on this page needs the rest of the profile:
-    // stats are scoped server-side from the session cookie.
-    const role = await getSessionRole(cookie);
-    if (!role) {
+    // Role + surface only - ONE Better Auth call, not the 4-6 round trips
+    // `getUserProfile` makes. Its comment used to claim the layout had already
+    // resolved it, but layouts are preserved across sibling navigations, so on
+    // every click into the Overview the whole fan-out ran again and the router
+    // could not commit until it finished. Nothing on this page needs the rest
+    // of the profile: stats are scoped server-side from the session cookie.
+    const view = await getSessionView(cookie);
+    if (!view?.role) {
         redirect('/portal');
     }
-    // Customers have no Overview - their landing page is My Bookings. The
-    // server root owns role routing (login just pushes '/'), so deep links
-    // and refreshes behave identically.
-    if (role === 'USER') {
+    // Customer VIEW has no Overview - its landing page is My Bookings. The
+    // server root owns view routing (login just pushes '/'), so deep links
+    // and refreshes behave identically. Decided by the login door the session
+    // entered through (multi-hat: a STAFF-role user via /account gets the
+    // traveler view), falling back to role for surface-less sessions.
+    if (isCustomerView(view.role, view.surface)) {
         redirect('/bookings');
     }
 

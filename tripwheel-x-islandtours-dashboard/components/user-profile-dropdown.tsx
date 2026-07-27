@@ -1,5 +1,6 @@
 'use client';
 
+import { useRole } from '@/contexts/role-context';
 import { signOut } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
@@ -30,6 +31,14 @@ interface ProfileDropdownProps {
     className?: string;
 }
 
+/** The login door a role canonically belongs to (surface-less fallback). */
+function roleDoor(role?: string): 'admin' | 'staff' | 'account' | 'portal' {
+    if (role === 'ADMIN') return 'admin';
+    if (role === 'STAFF') return 'staff';
+    if (role === 'USER') return 'account';
+    return 'portal';
+}
+
 export default function ProfileDropdown({
     loggedInUser,
     className,
@@ -37,6 +46,9 @@ export default function ProfileDropdown({
     const router = useRouter();
     const pathname = usePathname();
     const queryClient = useQueryClient();
+    // The door this session entered through - the truest "where do I log
+    // back in" signal for multi-hat accounts; null falls back to role.
+    const { surface } = useRole();
 
     // Global keyboard shortcuts (menu open/close + focus is handled by Radix)
     const handleKeyDown = useCallback(
@@ -64,19 +76,18 @@ export default function ProfileDropdown({
             fetchOptions: {
                 onSuccess: () => {
                     queryClient.clear();
-                    // Land each role on its own login surface. The
-                    // admin login is a separate app on another origin,
-                    // so it needs a full navigation, not router.push.
-                    if (loggedInUser?.role === 'ADMIN') {
+                    // Land the session back on the door it ENTERED through
+                    // (multi-hat accounts sign back in where they left off);
+                    // legacy surface-less sessions fall back to role. The
+                    // admin login is a separate app on another origin, so it
+                    // needs a full navigation, not router.push.
+                    const door = surface ?? roleDoor(loggedInUser?.role);
+                    if (door === 'admin') {
                         window.location.href =
                             process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL ||
                             '/portal';
-                    } else if (loggedInUser?.role === 'STAFF') {
-                        router.push('/staff');
-                    } else if (loggedInUser?.role === 'USER') {
-                        router.push('/account');
                     } else {
-                        router.push('/portal');
+                        router.push(`/${door}`);
                     }
                 },
             },

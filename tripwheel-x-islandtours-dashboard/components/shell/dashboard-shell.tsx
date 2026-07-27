@@ -17,6 +17,8 @@ interface DashboardShellProps {
     userName?: string;
     userEmail?: string;
     userRole?: string;
+    /** Which login door minted the session; null = shape the view by role. */
+    userSurface?: string | null;
     /** Effective permission set from the backend (staff/team grants included). */
     userPermissions?: string[];
     userImage?: string | null;
@@ -42,6 +44,7 @@ export default function DashboardShell({
     userName,
     userEmail,
     userRole,
+    userSurface,
     userPermissions,
     userImage,
 }: DashboardShellProps) {
@@ -66,10 +69,13 @@ export default function DashboardShell({
     const clearWillChange = useCallback(() => setAnimating(false), []);
 
     return (
-        <RoleProvider role={userRole} permissions={userPermissions}>
-            {/* Customers may only open bookings/payments/profile - typed URLs
-                to operator/admin pages redirect back to /bookings. */}
-            <CustomerRouteGuard role={userRole} />
+        <RoleProvider
+            role={userRole}
+            surface={userSurface}
+            permissions={userPermissions}>
+            {/* The customer VIEW may only open bookings/payments/profile -
+                typed URLs to operator/admin pages redirect back to /bookings. */}
+            <CustomerRouteGuard role={userRole} surface={userSurface} />
             {/* [--sidebar-width]! must stay important: SidebarProvider sets its own
                 16rem default via inline style, which a plain class cannot beat. */}
             <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:--spacing(72)]! [--header-height:--spacing(17.5)]'>

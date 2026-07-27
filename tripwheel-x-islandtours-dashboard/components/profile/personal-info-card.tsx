@@ -37,6 +37,7 @@ import {
     profileSchema,
     type ProfileFormValues,
 } from '@/lib/validations/profile';
+import { ChangeEmailDialog } from './change-email-dialog';
 import { profileValuesFromUser } from './profile-form-values';
 import type { UserProfile } from '@/types/profile';
 
@@ -54,6 +55,7 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
     const updateMutation = useUpdateProfile();
     const [isEditing, setIsEditing] = useState(false);
     const [open, setOpen] = useState(false);
+    const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
     const {
         register,
@@ -109,12 +111,6 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
             label: 'Full Name',
         },
         {
-            id: 'email',
-            label: 'Email Address',
-            type: 'email',
-            disabled: true,
-        },
-        {
             id: 'phone',
             label: 'Phone Number',
             type: 'tel',
@@ -168,6 +164,31 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
             </CardHeader>
             <CardContent>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                    {/* Email changes go through the verified Better Auth
+                        change-email flow (dialog), never the profile save -
+                        the backend has no raw email write. */}
+                    <div className='space-y-2'>
+                        <Label htmlFor='email'>Email Address</Label>
+                        <div className='flex gap-2'>
+                            <Input
+                                id='email'
+                                type='email'
+                                value={user.email}
+                                disabled
+                                readOnly
+                                className='flex-1'
+                            />
+                            <Button
+                                type='button'
+                                variant='outline'
+                                size='sm'
+                                className='h-9 self-center'
+                                onClick={() => setEmailDialogOpen(true)}>
+                                Change
+                            </Button>
+                        </div>
+                    </div>
+
                     {fields.map(field => (
                         <div key={field.id} className='space-y-2'>
                             <Label htmlFor={field.id}>{field.label}</Label>
@@ -175,12 +196,7 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                                 id={field.id}
                                 {...register(field.id)}
                                 type={'type' in field ? field.type : 'text'}
-                                disabled={
-                                    'disabled' in field && field.disabled
-                                        ? true
-                                        : !isEditing
-                                }
-                                readOnly={'disabled' in field && field.disabled}
+                                disabled={!isEditing}
                                 aria-invalid={!!errors[field.id]}
                             />
                             {errors[field.id] && (
@@ -278,6 +294,12 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                     </div>
                 </div>
             </CardContent>
+
+            <ChangeEmailDialog
+                open={emailDialogOpen}
+                onOpenChange={setEmailDialogOpen}
+                currentEmail={user.email}
+            />
         </Card>
     );
 }

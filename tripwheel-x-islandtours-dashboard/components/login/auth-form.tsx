@@ -1,3 +1,4 @@
+import { loginPrecheck, type LoginSurface } from '@/lib/api/auth';
 import { signIn } from '@/lib/auth-client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,6 +10,7 @@ import {
     primaryBtn,
     quietLink,
     staffBtn,
+    WrongDoorNote,
 } from './login-ui';
 
 interface AuthFormProps {
@@ -39,30 +41,65 @@ const SUBMIT_CLASS: Record<'portal' | 'staff' | 'account', string> = {
     account: primaryBtn,
 };
 
+/** Each dashboard door maps 1:1 onto its backend login surface. */
+const SURFACE: Record<'portal' | 'staff' | 'account', LoginSurface> = {
+    portal: 'portal',
+    staff: 'staff',
+    account: 'account',
+};
+
 export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPw, setShowPw] = useState(false);
     const [error, setError] = useState('');
+    const [wrongDoor, setWrongDoor] = useState<LoginSurface | null>(null);
     const [loading, setLoading] = useState(false);
 
     const isStaff = variant === 'staff';
     const idPrefix = ID_PREFIX[variant];
     const forgotHref = FORGOT_HREF[variant];
     const submitClass = SUBMIT_CLASS[variant];
+    const surface = SURFACE[variant];
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setWrongDoor(null);
         try {
-            const { error: authError } = await signIn.email({
-                email,
-                password,
-            });
+            // Friendly wrong-door check BEFORE the password leaves the form.
+            // Fails open - the sign-in call below independently enforces the
+            // surface server-side, so skipping this cannot bypass the door.
+            const precheck = await loginPrecheck(email, surface);
+            if (!precheck.ok) {
+                setWrongDoor(precheck.suggested ?? 'portal');
+                return;
+            }
+
+            const { error: authError } = await signIn.email(
+                { email, password },
+                { headers: { 'x-login-surface': surface } },
+            );
             if (authError) {
-                setError(authError.message || 'Invalid email or password.');
+                // Belt-and-braces: a wrong-door rejection can still come from
+                // the server (e.g. the pre-check failed open). The backend
+                // only reveals it after the password verified. If the retry
+                // can't CONFIRM which door is right (it fails open), show a
+                // generic note - never assert a specific door on no evidence.
+                if (authError.code === 'WRONG_LOGIN_SURFACE') {
+                    const retry = await loginPrecheck(email, surface);
+                    if (!retry.ok && retry.suggested) {
+                        setWrongDoor(retry.suggested);
+                    } else {
+                        setError(
+                            'This account cannot sign in here. Please use the login page for your account type.',
+                        );
+                    }
+                } else {
+                    setError(authError.message || 'Invalid email or password.');
+                }
             } else {
                 // When 2FA is enabled: setStep(2) instead of redirect
                 router.push('/');
@@ -132,6 +169,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
             </div>
 
             {error && <ErrorNote>{error}</ErrorNote>}
+            {wrongDoor && <WrongDoorNote correctSurface={wrongDoor} />}
 
             <button
                 type='submit'

@@ -170,20 +170,21 @@ export function makeSettlementColumns(
         },
     );
 
-    if (isAdmin) {
-        columns.push({
-            id: 'actions',
-            header: '',
-            cell: ({ row }) => (
-                // Rows open the detail sheet; keep action clicks out of that.
-                <div onClick={(e) => e.stopPropagation()}>
-                    <SettlementRowActions row={row.original} />
-                </div>
-            ),
-            enableSorting: false,
-            enableHiding: false,
-        });
-    }
+    // Both sides get row actions: the admin confirms a payout was SENT (and
+    // can revert a mis-click); the operator confirms it ARRIVED. The action
+    // component gates what each role actually sees.
+    columns.push({
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+            // Rows open the detail sheet; keep action clicks out of that.
+            <div onClick={(e) => e.stopPropagation()}>
+                <SettlementRowActions row={row.original} />
+            </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+    });
 
     return columns;
 }
