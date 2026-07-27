@@ -31,7 +31,7 @@ export function ProfileClient() {
     if (!user) return <div>Error loading profile. Please try again.</div>;
 
     return (
-        <div className='mx-auto w-full max-w-5xl space-y-6 pb-8'>
+        <div className='w-full max-w-5xl space-y-6 pb-8'>
             <ProfileHeader />
 
             <motion.div
@@ -47,3 +47,4 @@ export function ProfileClient() {
         </div>
     );
 }
+
