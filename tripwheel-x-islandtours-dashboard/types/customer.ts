@@ -38,6 +38,8 @@ export interface CustomersQueryParams {
   search?: string;
   operatorId?: string;
   awaitingReviewOnly?: boolean;
+  /** Only customers who have a booking for this tour. */
+  tourId?: string;
 }
 
 export interface EmailCustomersPayload {

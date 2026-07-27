@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TourFilterPopover } from '@/components/common/tour-filter-popover';
 import { useRole } from '@/contexts/role-context';
 import { useBulkModerateReviews } from '@/hooks/reviews/use-reviews';
 import type { AdminReview, ReviewModerationStatus } from '@/types/review';
@@ -145,6 +146,10 @@ export function ReviewsTable({
                 ))}
               </SelectContent>
             </Select>
+            <TourFilterPopover
+              value={filters.tourId}
+              onChange={(v) => onFilterChange('tourId', v)}
+            />
           </>
         )}
         bulkActions={

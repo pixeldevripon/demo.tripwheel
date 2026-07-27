@@ -9,6 +9,7 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Copy01Icon } from '@hugeicons/core-free-icons';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 import {
@@ -131,7 +132,21 @@ function PaymentDetailBody({
             label="Reference"
             value={<span className="font-mono">{p.bookingDisplayRef}</span>}
           />
-          <Row label="Guest" value={p.contactFullName ?? '-'} />
+          <Row
+            label="Guest"
+            value={
+              p.contactFullName ? (
+                <Link
+                  href={`/customers?q=${encodeURIComponent(p.contactFullName)}`}
+                  className="hover:underline underline-offset-4"
+                >
+                  {p.contactFullName}
+                </Link>
+              ) : (
+                '-'
+              )
+            }
+          />
           <Row label="Tour" value={p.tourName} />
           <Row label="Travel date" value={formatDate(p.bookingLocalDate)} />
           <Row label="Payment model" value={paymentModelLabel[p.paymentModel]} />

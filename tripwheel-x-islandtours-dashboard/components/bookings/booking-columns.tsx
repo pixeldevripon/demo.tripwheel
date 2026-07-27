@@ -100,15 +100,21 @@ export function makeBookingColumns({
         if (!b.contactFullName && !b.contactEmail) {
           return <span className="text-xs text-muted-foreground">-</span>;
         }
+        // Opens the Customers list pre-filtered to this guest (there is no
+        // per-customer page; ?q= drives its URL-synced search).
         return (
-          <div className="min-w-0">
-            <span className="text-sm truncate max-w-40 block">
+          <Link
+            href={`/customers?q=${encodeURIComponent(b.contactEmail ?? b.contactFullName ?? '')}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block min-w-0"
+          >
+            <span className={`text-sm truncate max-w-40 block ${entityLink}`}>
               {b.contactFullName ?? '-'}
             </span>
             <span className="text-xs text-muted-foreground truncate max-w-40 block">
               {b.contactEmail ?? ''}
             </span>
-          </div>
+          </Link>
         );
       },
       enableSorting: false,

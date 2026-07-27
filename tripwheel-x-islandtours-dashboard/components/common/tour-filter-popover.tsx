@@ -1,7 +1,11 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import {
+  ArrowDown01Icon,
+  Cancel01Icon,
+  Tick02Icon,
+} from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import {
@@ -17,38 +21,45 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { useOperatorSearch } from '@/hooks/operators/use-operators';
-import type { OperatorSearchItem } from '@/lib/api/operators';
+import { useRole } from '@/contexts/role-context';
+import { useAdminTrips, useMyTrips } from '@/hooks/trips/use-trips';
+import type { TripListItem } from '@/types/trip';
 
-interface OperatorFilterPopoverProps {
+interface TourFilterPopoverProps {
   value: string | undefined;
-  onChange: (operatorId: string | undefined) => void;
+  onChange: (tourId: string | undefined) => void;
 }
 
-function getDisplayName(op: OperatorSearchItem): string {
-  return op.companyInfo?.companyName ?? op.user.name;
-}
+/**
+ * "Filter by trip" popover - the OperatorFilterPopover idiom pointed at tours.
+ * Role-aware: an admin searches every tour, an operator only their own (the
+ * same split as the Trips list). Queries run only while the popover is open.
+ */
+export function TourFilterPopover({ value, onChange }: TourFilterPopoverProps) {
+  const { role } = useRole();
+  const isAdmin = role === 'ADMIN';
 
-export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopoverProps) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  // The label must survive the search results changing (or never loading -
-  // the query only runs while the popover is open), so the picked name is
-  // remembered here rather than re-derived from the current result page.
+  // Remembered so the trigger label survives the search results changing (the
+  // query only runs while the popover is open).
   const [selectedName, setSelectedName] = useState<string | null>(null);
 
-  const { data, isFetching } = useOperatorSearch(q, open);
-  const operators = data?.data ?? [];
+  const params = { limit: 20, ...(q ? { search: q } : {}) };
+  const adminQuery = useAdminTrips(params, open && isAdmin);
+  const operatorQuery = useMyTrips(params, open && !isAdmin);
+  const { data, isFetching } = isAdmin ? adminQuery : operatorQuery;
+  const tours = data?.data ?? [];
 
-  const selected = value ? operators.find((op) => op.id === value) : undefined;
+  const selected = value ? tours.find((t) => t.id === value) : undefined;
   const label = value
-    ? (selected ? getDisplayName(selected) : (selectedName ?? '1 operator'))
-    : 'All operators';
+    ? (selected?.name ?? selectedName ?? '1 trip')
+    : 'All trips';
 
-  function handleSelect(op: OperatorSearchItem) {
-    const next = op.id === value ? undefined : op.id;
+  function handleSelect(tour: TripListItem) {
+    const next = tour.id === value ? undefined : tour.id;
     onChange(next);
-    setSelectedName(next ? getDisplayName(op) : null);
+    setSelectedName(next ? tour.name : null);
     setOpen(false);
   }
 
@@ -90,38 +101,43 @@ export function OperatorFilterPopover({ value, onChange }: OperatorFilterPopover
           </span>
         </button>
       </PopoverTrigger>
-      {/* align=end + collision padding: these filters sit at the right edge of
+      {/* align=end + collision padding: this filter sits at the right edge of
           the toolbar, where a start-aligned 18rem panel runs off screen. */}
       <PopoverContent className="w-72 p-0" align="end" collisionPadding={12}>
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search operators..."
+            placeholder="Search trips..."
             value={q}
             onValueChange={setQ}
           />
           <CommandList>
-            {isFetching && operators.length === 0 ? (
-              <div className="py-6 text-center text-xs text-muted-foreground">Searching...</div>
+            {isFetching && tours.length === 0 ? (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                Searching...
+              </div>
             ) : (
               <>
-                <CommandEmpty>No operators found.</CommandEmpty>
+                <CommandEmpty>No trips found.</CommandEmpty>
                 <CommandGroup>
-                  {operators.map((op) => (
+                  {tours.map((tour) => (
                     <CommandItem
-                      key={op.id}
-                      value={op.id}
-                      onSelect={() => handleSelect(op)}
+                      key={tour.id}
+                      value={tour.id}
+                      onSelect={() => handleSelect(tour)}
                       // Match the Select dropdowns' highlight (accent, not muted).
                       className="flex items-start gap-2 data-selected:bg-accent data-selected:text-accent-foreground"
                     >
-                      <HugeiconsIcon icon={Tick02Icon}
+                      <HugeiconsIcon
+                        icon={Tick02Icon}
                         className={`size-3.5 mt-0.5 shrink-0 ${
-                          value === op.id ? 'opacity-100' : 'opacity-0'
+                          value === tour.id ? 'opacity-100' : 'opacity-0'
                         }`}
                       />
                       <div className="min-w-0">
-                        <p className="text-sm truncate">{getDisplayName(op)}</p>
-                        <p className="text-xs text-muted-foreground truncate">{op.user.email}</p>
+                        <p className="text-sm truncate">{tour.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {tour.destinationName ?? tour.slug}
+                        </p>
                       </div>
                     </CommandItem>
                   ))}

@@ -35,14 +35,16 @@ export function DatePickerField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
+        {/* Styled like the Select/Input triggers beside it in toolbars and
+            forms: h-10, raised surface, rounded, quiet border + focus ring. */}
         <button
           type="button"
           disabled={disabled}
           className={cn(
-            'flex h-9 w-full items-center gap-2 border border-input bg-transparent px-3 text-sm text-left',
-            'hover:bg-muted/50 transition-colors',
-            disabled && 'opacity-50 cursor-not-allowed',
-            !selectedDate && 'text-muted-foreground',
+            'flex h-10 w-full items-center gap-2 rounded-md border border-input bg-surface-raised px-3 py-2 text-left text-sm shadow-xs',
+            'transition-[color,border-color,box-shadow] duration-normal outline-none hover:not-disabled:border-line-strong focus-visible:border-focus-ring focus-visible:ring-[3px] focus-visible:ring-focus-ring/25',
+            disabled && 'cursor-not-allowed opacity-60',
+            !selectedDate && 'text-content-subtle',
           )}
         >
           <HugeiconsIcon icon={Calendar03Icon} className="size-3.5 shrink-0 text-muted-foreground" />
@@ -50,13 +52,21 @@ export function DatePickerField({
             {selectedDate ? format(selectedDate, 'dd MMM yyyy') : placeholder}
           </span>
           {clearable && selectedDate && (
-            <HugeiconsIcon icon={Cancel01Icon}
-              className="size-3.5 shrink-0 text-muted-foreground hover:text-foreground"
+            // A real interactive wrapper: the icon component does not forward
+            // events, and the trigger reacts on pointerdown - both must be
+            // intercepted or the click just toggles the calendar.
+            <span
+              role="button"
+              aria-label="Clear date"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange('');
               }}
-            />
+              className="inline-flex shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
+            </span>
           )}
         </button>
       </PopoverTrigger>
