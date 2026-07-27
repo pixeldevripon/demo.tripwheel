@@ -5,13 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Facebook01Icon,
-    InstagramIcon,
-    Linkedin01Icon,
     Loading03Icon,
-    NewTwitterRectangleFreeIcons,
     PencilEdit02Icon,
-    Share01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useState } from 'react';
@@ -76,25 +71,21 @@ export function SocialLinksCard({ user }: SocialLinksCardProps) {
         {
             id: 'instagramUrl',
             label: 'Instagram',
-            icon: InstagramIcon,
             placeholder: 'https://instagram.com/username',
         },
         {
             id: 'facebookUrl',
             label: 'Facebook',
-            icon: Facebook01Icon,
             placeholder: 'https://facebook.com/username',
         },
         {
             id: 'linkedinUrl',
             label: 'LinkedIn',
-            icon: Linkedin01Icon,
             placeholder: 'https://linkedin.com/in/username',
         },
         {
             id: 'twitterUrl',
             label: 'Twitter / X',
-            icon: NewTwitterRectangleFreeIcons,
             placeholder: 'https://twitter.com/username',
         },
     ] as const;
@@ -103,13 +94,7 @@ export function SocialLinksCard({ user }: SocialLinksCardProps) {
         <Card>
             <CardHeader className='pb-4'>
                 <div className='flex flex-wrap items-center justify-between gap-3'>
-                    <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                        <HugeiconsIcon
-                            icon={Share01Icon}
-                            className='size-5 text-primary'
-                        />
-                        Social Media Profiles
-                    </CardTitle>
+                    <CardTitle>Social Profiles</CardTitle>
                     {isEditing ? (
                         <div className='flex gap-2'>
                             <Button
@@ -151,20 +136,13 @@ export function SocialLinksCard({ user }: SocialLinksCardProps) {
                     {socialPlatforms.map(platform => (
                         <div key={platform.id} className='space-y-2'>
                             <Label htmlFor={platform.id}>{platform.label}</Label>
-                            <div className='relative'>
-                                <HugeiconsIcon
-                                    icon={platform.icon}
-                                    className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted'
-                                />
-                                <Input
-                                    id={platform.id}
-                                    {...register(platform.id)}
-                                    placeholder={platform.placeholder}
-                                    disabled={!isEditing}
-                                    aria-invalid={!!errors[platform.id]}
-                                    className='pl-8'
-                                />
-                            </div>
+                            <Input
+                                id={platform.id}
+                                {...register(platform.id)}
+                                placeholder={platform.placeholder}
+                                disabled={!isEditing}
+                                aria-invalid={!!errors[platform.id]}
+                            />
                             {errors[platform.id] && (
                                 <p className='text-xs font-medium text-danger-fg mt-1'>
                                     {errors[platform.id]?.message as string}

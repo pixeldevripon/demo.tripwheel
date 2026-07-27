@@ -2,18 +2,12 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-    CallIcon,
-    Clock01Icon,
-    Location01Icon,
     Loading03Icon,
-    Mail01Icon,
     PencilEdit02Icon,
     Tick02Icon,
     UnfoldMoreIcon,
-    User03Icon,
 } from '@hugeicons/core-free-icons';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -113,25 +107,21 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
         {
             id: 'name',
             label: 'Full Name',
-            icon: User03Icon,
         },
         {
             id: 'email',
             label: 'Email Address',
-            icon: Mail01Icon,
             type: 'email',
             disabled: true,
         },
         {
             id: 'phone',
             label: 'Phone Number',
-            icon: CallIcon,
             type: 'tel',
         },
         {
             id: 'location',
             label: 'Location',
-            icon: Location01Icon,
         },
     ] as const;
 
@@ -139,20 +129,7 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
         <Card>
             <CardHeader className='pb-4'>
                 <div className='flex flex-wrap items-center justify-between gap-3'>
-                    <div className='flex items-center gap-2'>
-                        <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                            <HugeiconsIcon
-                                icon={User03Icon}
-                                className='size-5 text-primary'
-                            />
-                            Personal Information
-                        </CardTitle>
-                        <Badge
-                            variant='secondary'
-                            className='font-normal bg-primary/5 text-primary border-primary/10'>
-                            {user?.role?.replace('_', ' ') || 'USER'}
-                        </Badge>
-                    </div>
+                    <CardTitle>Personal Information</CardTitle>
                     {isEditing ? (
                         <div className='flex gap-2'>
                             <Button
@@ -194,27 +171,18 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                     {fields.map(field => (
                         <div key={field.id} className='space-y-2'>
                             <Label htmlFor={field.id}>{field.label}</Label>
-                            <div className='relative'>
-                                <HugeiconsIcon
-                                    icon={field.icon}
-                                    className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted'
-                                />
-                                <Input
-                                    id={field.id}
-                                    {...register(field.id)}
-                                    type={'type' in field ? field.type : 'text'}
-                                    disabled={
-                                        'disabled' in field && field.disabled
-                                            ? true
-                                            : !isEditing
-                                    }
-                                    readOnly={
-                                        'disabled' in field && field.disabled
-                                    }
-                                    aria-invalid={!!errors[field.id]}
-                                    className='pl-8'
-                                />
-                            </div>
+                            <Input
+                                id={field.id}
+                                {...register(field.id)}
+                                type={'type' in field ? field.type : 'text'}
+                                disabled={
+                                    'disabled' in field && field.disabled
+                                        ? true
+                                        : !isEditing
+                                }
+                                readOnly={'disabled' in field && field.disabled}
+                                aria-invalid={!!errors[field.id]}
+                            />
                             {errors[field.id] && (
                                 <p className='text-xs font-medium text-danger-fg mt-1'>
                                     {errors[field.id]?.message as string}
@@ -235,43 +203,35 @@ export function PersonalInfoCard({ user }: PersonalInfoCardProps) {
                                     onOpenChange={val =>
                                         isEditing && setOpen(val)
                                     }>
-                                    <div className='relative'>
-                                        <HugeiconsIcon
-                                            icon={Clock01Icon}
-                                            className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-content-muted z-10'
-                                        />
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant='outline'
-                                                role='combobox'
-                                                aria-expanded={open}
-                                                disabled={!isEditing}
-                                                className={cn(
-                                                    'w-full justify-between pl-8 font-normal text-left overflow-hidden',
-                                                    errors.timezone &&
-                                                        'border-danger-border',
-                                                    !isEditing &&
-                                                        'cursor-default',
-                                                )}>
-                                                <span className='truncate'>
-                                                    {field.value
-                                                        ? timezoneOptions.find(
-                                                              tz =>
-                                                                  tz.value ===
-                                                                  field.value,
-                                                          )?.label ||
-                                                          field.value
-                                                        : 'Select timezone...'}
-                                                </span>
-                                                {isEditing && (
-                                                    <HugeiconsIcon
-                                                        icon={UnfoldMoreIcon}
-                                                        className='ml-2 size-4 shrink-0 opacity-50'
-                                                    />
-                                                )}
-                                            </Button>
-                                        </PopoverTrigger>
-                                    </div>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant='outline'
+                                            role='combobox'
+                                            aria-expanded={open}
+                                            disabled={!isEditing}
+                                            className={cn(
+                                                'w-full justify-between font-normal text-left overflow-hidden',
+                                                errors.timezone &&
+                                                    'border-danger-border',
+                                                !isEditing && 'cursor-default',
+                                            )}>
+                                            <span className='truncate'>
+                                                {field.value
+                                                    ? timezoneOptions.find(
+                                                          tz =>
+                                                              tz.value ===
+                                                              field.value,
+                                                      )?.label || field.value
+                                                    : 'Select timezone...'}
+                                            </span>
+                                            {isEditing && (
+                                                <HugeiconsIcon
+                                                    icon={UnfoldMoreIcon}
+                                                    className='ml-2 size-4 shrink-0 opacity-50'
+                                                />
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
                                     <PopoverContent className='w-[--radix-popover-trigger-width] p-0 overflow-hidden'>
                                         <Command>
                                             <CommandInput placeholder='Search timezone...' />
