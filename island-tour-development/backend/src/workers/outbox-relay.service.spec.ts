@@ -53,7 +53,8 @@ describe('OutboxRelayService', () => {
       PLATFORM_JOBS.CONFIRMATION_EMAIL,
       { bookingId: 'b1' },
       expect.objectContaining({
-        jobId: `b1:${PLATFORM_JOBS.CONFIRMATION_EMAIL}`,
+        // No `:` in the id - BullMQ rejects custom job ids containing it.
+        jobId: `b1__${PLATFORM_JOBS.CONFIRMATION_EMAIL}`,
         attempts: 5,
       }),
     );
@@ -105,7 +106,9 @@ describe('OutboxRelayService', () => {
     expect(queue.add).toHaveBeenCalledWith(
       PLATFORM_JOBS.REFUND_EXECUTE,
       { bookingId: 'b1' },
-      expect.objectContaining({ jobId: `b1:${PLATFORM_JOBS.REFUND_EXECUTE}` }),
+      expect.objectContaining({
+        jobId: `b1__${PLATFORM_JOBS.REFUND_EXECUTE}`,
+      }),
     );
   });
 
