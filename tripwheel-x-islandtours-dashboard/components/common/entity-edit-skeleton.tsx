@@ -39,7 +39,7 @@ function FormCard({ fields }: { fields: number }) {
 
 export function EntityEditSkeleton({ fields = 6 }: { fields?: number }) {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       {/* Breadcrumb */}
       <Skeleton className="mb-4 h-3 w-80" />
 
@@ -49,7 +49,7 @@ export function EntityEditSkeleton({ fields = 6 }: { fields?: number }) {
         <Skeleton className="h-4 w-32" />
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         {/* Tab bar - one pill row, same height as the real TabsList */}
         <div className="mb-6 pb-2">
           <Skeleton className="h-9 w-full max-w-md rounded-md" />
@@ -69,7 +69,7 @@ export function EntityEditSkeleton({ fields = 6 }: { fields?: number }) {
  */
 export function EntityFormSkeleton({ fields = 6 }: { fields?: number }) {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Skeleton className="mb-4 h-3 w-80" />
 
       <div className="mb-6 space-y-2">
@@ -77,7 +77,7 @@ export function EntityFormSkeleton({ fields = 6 }: { fields?: number }) {
         <Skeleton className="h-4 w-32" />
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         <FormCard fields={fields} />
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { AppSidebar } from '@/components/shell/app-sidebar';
 import { CustomerRouteGuard } from '@/components/shell/customer-route-guard';
+import { OverlayCenterSync } from '@/components/shell/overlay-center-sync';
 import { SiteHeader } from '@/components/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
@@ -79,7 +80,15 @@ export default function DashboardShell({
                     userName={userName}
                     userImage={userImage}
                 />
-                <SidebarInset className='bg-white dark:bg-sidebar shadow-none! md:peer-data-[variant=inset]:rounded-2xl overflow-hidden'>
+                {/* No overflow-hidden here: it made the pane a clip container,
+                    which silently cut off anything wider than the pane AND
+                    killed every `sticky` inside (sticky resolves against the
+                    nearest scrollport, and a hidden-overflow pane never
+                    scrolls - the document does). The rounded corners are
+                    painted by the header (rounded-t) and content pane
+                    (rounded-b) instead. */}
+                <SidebarInset className='bg-white dark:bg-sidebar shadow-none! min-w-0 md:peer-data-[variant=inset]:rounded-2xl'>
+                    <OverlayCenterSync />
                     <SiteHeader
                         userName={userName}
                         userEmail={userEmail}
@@ -87,7 +96,7 @@ export default function DashboardShell({
                         userPermissions={userPermissions}
                         userImage={userImage}
                     />
-                    <div className='flex flex-1 flex-col bg-shell-content p-4'>
+                    <div className='flex flex-1 flex-col bg-shell-content p-4 md:rounded-b-2xl'>
                         <div className='@container/main flex flex-1 flex-col gap-2'>
                             <div suppressHydrationWarning>
                                 <motion.div

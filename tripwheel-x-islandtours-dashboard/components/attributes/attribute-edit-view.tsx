@@ -12,7 +12,7 @@ export function AttributeEditView({ attributeKey }: { attributeKey: string }) {
   const { data: attribute, isLoading, isError } = useAttribute(attributeKey);
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -28,7 +28,7 @@ export function AttributeEditView({ attributeKey }: { attributeKey: string }) {
         </h1>
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         {isLoading && <Skeleton className="h-96 w-full rounded-none" />}
         {isError && <p className="text-sm text-destructive">Failed to load attribute.</p>}
         {attribute && <AttributeForm attribute={attribute} />}

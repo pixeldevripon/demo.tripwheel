@@ -203,7 +203,7 @@ function ExperiencesCurationCard() {
 
       <CardContent className='space-y-6 pt-6'>
         {isLoading ? (
-          <div className='grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'>
+          <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className='aspect-[3/4] w-full rounded-md' />
             ))}
@@ -230,7 +230,7 @@ function ExperiencesCurationCard() {
                 </Button>
               </div>
             ) : (
-              <div className='grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'>
+              <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
                 {ordered.map((exp, index) => (
                   <ExperienceCard
                     key={exp.id}

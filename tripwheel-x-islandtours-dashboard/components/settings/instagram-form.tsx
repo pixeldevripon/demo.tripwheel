@@ -410,7 +410,7 @@ function TilesCard() {
 
       <CardContent className="space-y-6 pt-6">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="aspect-[384/337] w-full rounded-md" />
             ))}
@@ -451,7 +451,7 @@ function TilesCard() {
                 page.
               </p>
             )}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
               {ordered.map((post, index) => (
                 <TileCard
                   key={post.id}

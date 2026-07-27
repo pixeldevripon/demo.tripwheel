@@ -193,7 +193,7 @@ const MediaListUi = ({
                             </div>
 
                             <div className='flex-grow min-w-0'>
-                                <h4 className='font-medium max-w-[500px] text-foreground truncate text-sm'>
+                                <h4 className='font-medium text-foreground truncate text-sm'>
                                     {item.fileName || item.originalName || item.publicId}
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>

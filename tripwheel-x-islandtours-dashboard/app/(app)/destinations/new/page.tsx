@@ -5,7 +5,7 @@ import { DestinationForm } from '@/components/destinations/destination-form';
 
 export default function NewDestinationPage() {
   return (
-    <div>
+    <div className="mx-auto w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
@@ -21,7 +21,7 @@ export default function NewDestinationPage() {
         </h1>
       </div>
 
-      <div className="max-w-6xl">
+      <div>
         <DestinationForm />
       </div>
     </div>

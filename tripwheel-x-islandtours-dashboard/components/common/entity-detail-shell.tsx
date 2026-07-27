@@ -35,7 +35,7 @@ export function EntityDetailShell({
     children,
 }: EntityDetailShellProps) {
     return (
-        <div>
+        <div className='mx-auto w-full max-w-6xl'>
             <Breadcrumb
                 items={[
                     { label: 'Dashboard', href: '/' },
@@ -63,7 +63,7 @@ export function EntityDetailShell({
                 <p className='text-sm text-content-muted mt-1'>{subtitle}</p>
             </div>
 
-            <div className='max-w-6xl'>{children}</div>
+            <div>{children}</div>
         </div>
     );
 }

@@ -97,7 +97,7 @@ export function PermissionMatrix({
                                 /{group.permissions.length}
                             </span>
                         </label>
-                        <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 p-4 sm:grid-cols-2 lg:grid-cols-3'>
+                        <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 p-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
                             {group.permissions.map((permission) => {
                                 const isLocked = locked.has(permission.key);
                                 return (

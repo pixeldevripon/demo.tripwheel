@@ -478,7 +478,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </CardHeader>
  <CardContent className="pt-8">
  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Slug</Label>
  <Input
@@ -560,7 +560,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </FieldDescription>
  </Field>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Duration From (minutes)</Label>
  <Input {...register('durationMinutesFrom')} type="number" min={1} placeholder="e.g. 180" />
@@ -577,7 +577,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Pickup Model</Label>
  <Controller
@@ -617,7 +617,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Payment Model</Label>
  <Controller
@@ -665,7 +665,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  variants, and each booking snapshots it at reserve - editing it never
  rewrites what an existing traveler was already told. */}
  {watchedPaymentModel ==='ON_ARRIVAL'&& (
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>
  On-arrival Payment
@@ -716,7 +716,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </div>
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Min Party Size</Label>
  <Input {...register('minPartySize')} type="number" min={1} />
@@ -728,7 +728,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
  </div>
 
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Booking Cutoff (minutes)</Label>
  <Input {...register('bookingCutoffMinutes')} type="number" min={0} />
@@ -742,7 +742,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </div>
 
  {/* Meeting point */}
- <div className="grid grid-cols-3 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
  <Field>
  <Label>Departure City</Label>
  <Input {...register('departureCity')} placeholder="e.g. Willemstad" />
@@ -758,7 +758,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </div>
 
  {/* Audience */}
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Minimum Age</Label>
  <Input {...register('minAgeYears')} type="number" min={0} placeholder="Optional" />
@@ -784,7 +784,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
  </div>
 
- <div className="grid grid-cols-2 gap-3">
+ <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
  <div className="flex items-center gap-2">
  <Checkbox
  id="weatherDependent"
@@ -876,7 +876,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  Collapsed by default; edits still save through the same form. */}
  <CollapsibleCard title='OCTO & Delivery'>
  <div className='space-y-6'>
- <div className="grid grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
  <Field>
  <Label>Availability Type</Label>
  <Controller
@@ -916,7 +916,7 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Field>
  </div>
 
- <div className="grid grid-cols-2 gap-3">
+ <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
  <div className="flex items-center gap-2">
  <Checkbox
  id="instantDelivery"

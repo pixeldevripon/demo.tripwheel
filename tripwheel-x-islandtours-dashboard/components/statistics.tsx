@@ -155,9 +155,10 @@ function RangeControl({
                 'flex items-center gap-2 transition-opacity',
                 isPending && 'opacity-60',
             )}>
-            {/* The active window, stated. Without this a reader cannot tell
-                what period any figure on the page covers. */}
-            <span className='hidden text-2xs text-muted-foreground sm:inline'>
+            {/* The active window, stated. Hidden on narrow panes where the
+                select's own value already names the period and the row is
+                fighting the tab strip for width. */}
+            <span className='hidden text-2xs text-muted-foreground @4xl/main:inline'>
                 {label}
             </span>
             <Select value={preset} onValueChange={onChange}>
@@ -503,7 +504,7 @@ function StatusDonut({
 function ChartEmpty({
     icon,
     message,
-    className = 'h-[300px]',
+    className = 'h-[clamp(240px,30vh,420px)]',
 }: {
     icon?: IconSvgElement;
     message: string;
@@ -1268,10 +1269,12 @@ function StatisticsContent({
             {/* Stats grid + charts */}
             {visibleSections['statistics'] && (
                 <>
-                    {/* Two per row from the smallest viewport up: a KPI card is
-                        a short figure, and one per row turns eight of them into
-                        a long scroll of mostly empty space. */}
-                    <div className='grid grid-cols-2 gap-3 *:min-w-0 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4'>
+                    {/* Only 2 or 4 columns - counts that divide the 8 cards
+                        evenly. 3 or 5 columns strand a partial last row: either
+                        empty cells (grid) or over-stretched cards (flex), both
+                        of which read as broken. Two clean rows of four on any
+                        desktop pane, two columns below @5xl. */}
+                    <div className='grid grid-cols-2 gap-3 *:min-w-0 sm:gap-4 @5xl/main:grid-cols-4'>
                         {statCards.map((stat) => (
                             /*
                              * Card anatomy, top to bottom: LABEL first (with
@@ -1349,11 +1352,13 @@ function StatisticsContent({
                         its own. */}
                     <Tabs defaultValue='revenue' className='space-y-6'>
                         <div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
-                            {/* Five columns, not four: the Reviews tab was rendering into a
-                                hidden second grid row, so it existed in the DOM and was
-                                invisible on screen. Column count must track the trigger
-                                count. */}
-                            <TabsList className='grid w-full max-w-3xl grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'>
+                            {/* No grid override: the fixed column grid squeezed
+                                five long labels into 768px at every desktop
+                                size (and once hid the Reviews tab in an unseen
+                                second row). The TabsList base is
+                                inline-flex + overflow-x-auto, which sizes each
+                                trigger to its label and scrolls when narrow. */}
+                            <TabsList>
                                 <TabsTrigger value='revenue'>
                                     Revenue &amp; Bookings
                                 </TabsTrigger>
@@ -1370,26 +1375,34 @@ function StatisticsContent({
                                     Reviews
                                 </TabsTrigger>
                             </TabsList>
+                            {/* On narrow panes the textual provenance (scope
+                                badge, FX rate, range label) hides and the
+                                cluster collapses to the info dot + the period
+                                select - otherwise it crowds the tab strip into
+                                scrolling. The tooltip carries the exact rate,
+                                so hiding the span loses no information. */}
                             <div className='flex shrink-0 flex-wrap items-center gap-2 text-2xs text-muted-foreground'>
                                 <Badge
                                     variant='outline'
-                                    className='px-1.5 py-0 text-2xs font-medium'>
+                                    className='hidden px-1.5 py-0 text-2xs font-medium @4xl/main:inline-flex'>
                                     {isPlatform
                                         ? 'Platform view'
                                         : 'Operator view'}
                                 </Badge>
                                 {fx ? (
-                                    <span className='tabular-nums'>
+                                    <span className='hidden tabular-nums @4xl/main:inline'>
                                         1 {fx.base} = {fx.rate.toFixed(4)}{' '}
                                         {fx.quote}
                                     </span>
                                 ) : (
-                                    <span>{currency} only, no FX rate</span>
+                                    <span className='hidden @4xl/main:inline'>
+                                        {currency} only, no FX rate
+                                    </span>
                                 )}
                                 <InfoNote
                                     text={
                                         fx
-                                            ? `All amounts are ${currency}. The converted figure uses this single rate${
+                                            ? `All amounts are ${currency}. The converted figure uses 1 ${fx.base} = ${fx.rate.toFixed(4)} ${fx.quote}${
                                                   fx.asOf
                                                       ? `, as of ${new Date(fx.asOf).toLocaleString()}`
                                                       : ''
@@ -1405,10 +1418,13 @@ function StatisticsContent({
                         </div>
 
                         <TabsContent value='revenue' className='space-y-4'>
-                            {/* Two charts per row throughout: at this container
-                                width that leaves each chart ~560px, which is
-                                where axis ticks and legends still fit. */}
-                            <div className='grid grid-cols-1 gap-4 *:min-w-0 lg:grid-cols-2'>
+                            {/* Wrapping flex sized by the pane: stacked below
+                                @6xl, side-by-side above (~34rem basis keeps
+                                axis ticks and legends legible). An odd chart
+                                out fills its row full-width - for a chart
+                                that reads as intentional, unlike an empty
+                                grid cell. */}
+                            <div className='flex flex-wrap gap-4 *:min-w-0 *:flex-[1_1_100%] @6xl/main:*:flex-[1_1_34rem]'>
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>
@@ -1427,7 +1443,7 @@ function StatisticsContent({
                                         {hasEarningsTrend ? (
                                             <ChartContainer
                                                 config={earningsChartConfig}
-                                                className='h-[260px] w-full'>
+                                                className='h-[clamp(220px,26vh,380px)] w-full'>
                                                 <ComposedChart data={trendData}>
                                                     <defs>
                                                         <linearGradient
@@ -1546,7 +1562,7 @@ function StatisticsContent({
                                         ) : (
                                             <ChartEmpty
                                                 message='No earnings recognized yet. Figures appear once a booked tour is completed.'
-                                                className='h-[260px]'
+                                                className='h-[clamp(220px,26vh,380px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1575,7 +1591,7 @@ function StatisticsContent({
                                         {hasBookingTrend ? (
                                             <ChartContainer
                                                 config={bookingsChartConfig}
-                                                className='h-[260px] w-full'>
+                                                className='h-[clamp(220px,26vh,380px)] w-full'>
                                                 <BarChart data={trendData}>
                                                     <CartesianGrid
                                                         vertical={false}
@@ -1608,7 +1624,7 @@ function StatisticsContent({
                                         ) : (
                                             <ChartEmpty
                                                 message='No bookings yet. Your first booking will appear here.'
-                                                className='h-[260px]'
+                                                className='h-[clamp(220px,26vh,380px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1626,7 +1642,7 @@ function StatisticsContent({
                         </TabsContent>
 
                         <TabsContent value='flow' className='space-y-4'>
-                            <div className='grid grid-cols-1 gap-4 *:min-w-0 lg:grid-cols-2'>
+                            <div className='flex flex-wrap gap-4 *:min-w-0 *:flex-[1_1_100%] @6xl/main:*:flex-[1_1_34rem]'>
                                 {/* Booking outcomes: stated, not charted. Three
                                     stages and four rates do not need a plotting
                                     library to be read accurately. */}
@@ -1737,7 +1753,7 @@ function StatisticsContent({
                                         ) : (
                                             <ChartEmpty
                                                 message='No bookings created yet.'
-                                                className='h-[300px]'
+                                                className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1761,7 +1777,7 @@ function StatisticsContent({
                                                     config={
                                                         paymentModelChartConfig
                                                     }
-                                                    className='max-h-[240px]'
+                                                    className='max-w-[240px]'
                                                 />
 
                                                 {/* The honesty pair: money the
@@ -1822,7 +1838,7 @@ function StatisticsContent({
                                         ) : (
                                             <ChartEmpty
                                                 message='No committed bookings yet.'
-                                                className='h-[300px]'
+                                                className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1831,7 +1847,7 @@ function StatisticsContent({
                         </TabsContent>
 
                         <TabsContent value='status' className='space-y-4'>
-                            <div className='grid grid-cols-1 gap-4 *:min-w-0 lg:grid-cols-2'>
+                            <div className='flex flex-wrap gap-4 *:min-w-0 *:flex-[1_1_100%] @6xl/main:*:flex-[1_1_34rem]'>
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>
@@ -1846,13 +1862,13 @@ function StatisticsContent({
                                             <StatusDonut
                                                 data={bookingStatusData}
                                                 config={bookingChartConfig}
-                                                className='max-h-[300px]'
+                                                className='max-h-[clamp(240px,30vh,420px)]'
                                             />
                                         ) : (
                                             <ChartEmpty
                                                 icon={Calendar03Icon}
                                                 message='No bookings to display'
-                                                className='h-[300px]'
+                                                className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1875,13 +1891,13 @@ function StatisticsContent({
                                             <StatusDonut
                                                 data={tripStatusData}
                                                 config={tripChartConfig}
-                                                className='max-h-[300px]'
+                                                className='max-h-[clamp(240px,30vh,420px)]'
                                             />
                                         ) : (
                                             <ChartEmpty
                                                 icon={Airplane01Icon}
                                                 message='No trips to display'
-                                                className='h-[300px]'
+                                                className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -1918,7 +1934,7 @@ function StatisticsContent({
                                         {hasPaymentStatusData ? (
                                             <ChartContainer
                                                 config={paymentStatusConfig}
-                                                className='h-[300px] w-full'>
+                                                className='h-[clamp(240px,30vh,420px)] w-full'>
                                                 <BarChart
                                                     data={paymentStatusRows}
                                                     layout='vertical'
@@ -1962,7 +1978,7 @@ function StatisticsContent({
                                             <ChartEmpty
                                                 icon={CreditCardIcon}
                                                 message='No payments to display'
-                                                className='h-[300px]'
+                                                className='h-[clamp(240px,30vh,420px)]'
                                             />
                                         )}
                                     </CardContent>
@@ -2052,7 +2068,7 @@ function StatisticsContent({
 
                         <TabsContent value='breakdowns' className='space-y-4'>
                             {hasAnyBreakdown ? (
-                                <div className='grid grid-cols-1 gap-4 *:min-w-0 lg:grid-cols-2'>
+                                <div className='flex flex-wrap gap-4 *:min-w-0 *:flex-[1_1_100%] @6xl/main:*:flex-[1_1_34rem]'>
                                     {topTourRows.length > 0 && (
                                         <Card>
                                             <BreakdownHeader

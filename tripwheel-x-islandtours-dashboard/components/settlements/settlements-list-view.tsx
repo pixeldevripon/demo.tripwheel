@@ -54,7 +54,7 @@ export function SettlementsListView() {
     return (
         <div className='space-y-4'>
             {summary && (
-                <div className='grid grid-cols-2 gap-3 sm:max-w-md'>
+                <div className='grid grid-cols-2 gap-3 sm:max-w-md @4xl/main:max-w-xl'>
                     <div className='rounded-lg border border-line bg-surface-inset p-3'>
                         <p className='text-xs text-muted-foreground'>
                             {isAdmin
