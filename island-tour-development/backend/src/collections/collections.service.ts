@@ -180,19 +180,34 @@ export class CollectionsService {
     return this.findCollectionOrThrow(id);
   }
 
-  /** All collections (active + inactive) for a destination - for the admin list. */
-  async getAllByDestinationAdmin(destinationSlug: string) {
-    const destination = await this.prisma.destination.findUnique({
-      where: { slug: destinationSlug },
-      select: { id: true },
-    });
-    if (!destination)
-      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+  /**
+   * All collections (active + inactive) for the admin list. With a
+   * `destinationSlug` the list is scoped to that island; without one it spans
+   * every island ("All Islands" filter), ordered island-first so the mixed
+   * table groups naturally. Each row carries `destination.name`/`slug` so the
+   * table can label rows in the cross-island view.
+   */
+  async getAllByDestinationAdmin(destinationSlug?: string) {
+    let destinationId: string | undefined;
+    if (destinationSlug) {
+      const destination = await this.prisma.destination.findUnique({
+        where: { slug: destinationSlug },
+        select: { id: true },
+      });
+      if (!destination)
+        throw new NotFoundException(
+          `Destination "${destinationSlug}" not found`,
+        );
+      destinationId = destination.id;
+    }
 
     return this.prisma.collection.findMany({
-      where: { destinationId: destination.id },
-      select: this.collectionSelect,
-      orderBy: { name: 'asc' },
+      where: destinationId ? { destinationId } : undefined,
+      select: {
+        ...this.collectionSelect,
+        destination: { select: { name: true, slug: true } },
+      },
+      orderBy: [{ destination: { name: 'asc' } }, { name: 'asc' }],
     });
   }
 

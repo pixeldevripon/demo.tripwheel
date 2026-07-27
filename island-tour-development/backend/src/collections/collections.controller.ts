@@ -46,6 +46,7 @@ import {
 } from './collections.swagger';
 import {
   ActiveCollectionsQueryDto,
+  AdminCollectionsQueryDto,
   CollectionBySlugQueryDto,
   CollectionRenderQueryDto,
   CreateCollectionDto,
@@ -113,9 +114,9 @@ export class CollectionsController {
   @RequirePermissions(Permission.VIEW_COLLECTIONS)
   @ApiOperation({
     summary:
-      'Admin: list all collections (active + inactive) for a destination slug',
+      'Admin: list all collections (active + inactive) for a destination slug, or across all islands when the slug is omitted',
   })
-  getAllAdmin(@Query() query: ActiveCollectionsQueryDto) {
+  getAllAdmin(@Query() query: AdminCollectionsQueryDto) {
     return this.collectionsService.getAllByDestinationAdmin(
       query.destinationSlug,
     );
