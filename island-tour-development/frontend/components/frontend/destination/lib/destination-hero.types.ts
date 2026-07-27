@@ -5,6 +5,7 @@ export type DestinationHeroDict = {
     subtitle: string;
     searchPlaceholder: string;
     selectDate: string;
+    clearDate: string;
     popularLabel: string;
 };
 

@@ -17,6 +17,7 @@ import { MountReveal } from '../mount-reveal';
 type HubHeroDict = {
     tagline: string;
     selectDate: string;
+    clearDate: string;
     checkAvailability: string;
 };
 
@@ -157,16 +158,39 @@ export function HubHero({
                             className='w-full'>
                         <div className='flex w-full items-center justify-between gap-2 rounded-it-full bg-it-white py-2.5 pl-5 pr-2.5 md:py-3 md:pl-9 md:pr-2.5'>
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                                <PopoverTrigger asChild>
-                                    <motion.button
-                                        type='button'
-                                        aria-label={dict.selectDate}
-                                        className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
-                                        {date
-                                            ? format(date, 'd MMM yyyy')
-                                            : dict.selectDate}
-                                    </motion.button>
-                                </PopoverTrigger>
+                                {/* Clear control as a SIBLING of the trigger -
+                                    a button's descendants are presentational
+                                    to the accessibility tree, so a nested
+                                    control would be unreachable. */}
+                                <div className='flex min-w-0 shrink items-center gap-1.5'>
+                                    <PopoverTrigger asChild>
+                                        <motion.button
+                                            type='button'
+                                            aria-label={dict.selectDate}
+                                            className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                                            {date
+                                                ? format(date, 'd MMM yyyy')
+                                                : dict.selectDate}
+                                        </motion.button>
+                                    </PopoverTrigger>
+                                    {date && (
+                                        <motion.button
+                                            type='button'
+                                            aria-label={dict.clearDate}
+                                            whileTap={{ scale: 0.9 }}
+                                            transition={springPop}
+                                            onClick={() => setDate(undefined)}
+                                            className='grid shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
+                                            <Image
+                                                src='/icons/filters/close-circle.svg'
+                                                alt=''
+                                                width={20}
+                                                height={20}
+                                                className='size-5 shrink-0'
+                                            />
+                                        </motion.button>
+                                    )}
+                                </div>
                                 <PopoverContent
                                     align='start'
                                     sideOffset={28}

@@ -39,6 +39,8 @@ export type ToursToolbarDict = {
     filters: string;
     /** Date pill placeholder when no date is picked - e.g. "Select date" */
     selectDate: string;
+    /** Accessible label for the date pill's clear control - e.g. "Clear date" */
+    clearDate: string;
     /**
      * Guest types: `label` + `hint` shown in the stepper rows, `word` used in the
      * chip summary (e.g. "2 adults & 3 children").
@@ -314,29 +316,55 @@ export function ToursFilterBar({
                 {/* Left group - control pills + vertical divider (pinned) */}
                 <div className='flex shrink-0 items-center gap-4'>
                     <div className='flex items-center gap-2'>
-                        {/* Date - calendar popover */}
+                        {/* Date - calendar popover (desktop; the mobile pill
+                            lives in the header per Figma). The clear control
+                            is a SIBLING of the trigger (a button's descendants
+                            are presentational to the accessibility tree, so a
+                            nested control would be unreachable). */}
                         <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                            <PopoverTrigger asChild>
-                                <motion.button
-                                    type='button'
-                                    transition={springPop}
-                                    className={`${PILL_BASE} max-md:hidden border text-it-heading ${
-                                        date
-                                            ? 'border-it-heading-subtle bg-it-surface'
-                                            : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
-                                    }`}>
-                                    <Image
-                                        src='/icons/filters/calendar.svg'
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className='size-6 shrink-0'
-                                    />
-                                    {date
-                                        ? format(date, 'd MMM')
-                                        : dict.selectDate}
-                                </motion.button>
-                            </PopoverTrigger>
+                            <div
+                                className={`flex h-9.5 md:h-12.5 shrink-0 items-center rounded-it-full text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors max-md:hidden border text-it-heading ${
+                                    date
+                                        ? 'border-it-heading-subtle bg-it-surface'
+                                        : 'border-it-heading/10 bg-it-white hover:bg-it-surface'
+                                }`}>
+                                <PopoverTrigger asChild>
+                                    <motion.button
+                                        type='button'
+                                        transition={springPop}
+                                        className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent py-2 pl-3 md:py-3 md:pl-6 text-inherit ${date ? 'pr-1.5' : 'pr-3 md:pr-6'}`}>
+                                        <Image
+                                            src='/icons/filters/calendar.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-6 shrink-0'
+                                        />
+                                        {date
+                                            ? format(date, 'd MMM')
+                                            : dict.selectDate}
+                                    </motion.button>
+                                </PopoverTrigger>
+                                {date && (
+                                    <motion.button
+                                        type='button'
+                                        aria-label={dict.clearDate}
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={springPop}
+                                        onClick={() =>
+                                            applyState({ date: null })
+                                        }
+                                        className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent pl-0.5 pr-2 md:pr-4'>
+                                        <Image
+                                            src='/icons/filters/close-circle.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-5 shrink-0 md:size-6'
+                                        />
+                                    </motion.button>
+                                )}
+                            </div>
                             <PopoverContent
                                 align='start'
                                 sideOffset={12}

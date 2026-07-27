@@ -38,7 +38,7 @@ export function DestinationHeroSearch({
 }: {
     locale: Locale;
     destinationSlug: string;
-    dict: { searchPlaceholder: string; selectDate: string };
+    dict: { searchPlaceholder: string; selectDate: string; clearDate: string };
     search: SearchDict;
 }) {
     const router = useRouter();
@@ -155,16 +155,41 @@ export function DestinationHeroSearch({
                     whole region between the divider and the action button opens
                     the calendar. */}
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                    <PopoverTrigger asChild>
-                        <motion.button
-                            type='button'
-                            aria-label={dict.selectDate}
-
-                            transition={springPop}
-                            className={`flex h-full shrink-0 md:flex-1 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 pl-4 md:pl-8 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
-                            {date ? format(date, 'd MMM yyyy') : dict.selectDate}
-                        </motion.button>
-                    </PopoverTrigger>
+                    {/* Clear control as a SIBLING of the trigger - a button's
+                        descendants are presentational to the accessibility
+                        tree, so a nested control would be unreachable. With no
+                        date the trigger absorbs the whole region (flex-1);
+                        with one it hugs the text so the clear sits beside it. */}
+                    <div className='flex h-full shrink-0 md:flex-1 items-center gap-1.5'>
+                        <PopoverTrigger asChild>
+                            <motion.button
+                                type='button'
+                                aria-label={dict.selectDate}
+                                transition={springPop}
+                                className={`flex h-full cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 pl-4 md:pl-8 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'md:flex-1 text-it-text-muted'}`}>
+                                {date
+                                    ? format(date, 'd MMM yyyy')
+                                    : dict.selectDate}
+                            </motion.button>
+                        </PopoverTrigger>
+                        {date && (
+                            <motion.button
+                                type='button'
+                                aria-label={dict.clearDate}
+                                whileTap={{ scale: 0.9 }}
+                                transition={springPop}
+                                onClick={() => setDate(undefined)}
+                                className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
+                                <Image
+                                    src='/icons/filters/close-circle.svg'
+                                    alt=''
+                                    width={20}
+                                    height={20}
+                                    className='size-5 shrink-0'
+                                />
+                            </motion.button>
+                        )}
+                    </div>
                     <PopoverContent
                         align='start'
                         sideOffset={28}

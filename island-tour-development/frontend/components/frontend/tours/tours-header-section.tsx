@@ -29,6 +29,7 @@ export async function ToursHeaderSection({
             destinationName={destinationName}
             total={total}
             selectDateLabel={dict.destination.allTours.toolbar.selectDate}
+            clearDateLabel={dict.destination.allTours.toolbar.clearDate}
         />
     );
 }

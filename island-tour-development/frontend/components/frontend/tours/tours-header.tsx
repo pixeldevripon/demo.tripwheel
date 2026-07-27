@@ -23,6 +23,7 @@ export async function ToursHeader({
     destinationName,
     total,
     selectDateLabel,
+    clearDateLabel,
     title: titleOverride,
     subtitle: subtitleOverride,
 }: {
@@ -31,6 +32,8 @@ export async function ToursHeader({
     total: number;
     /** "Select date" label - drives the mobile date pill beside the count line. */
     selectDateLabel: string;
+    /** Accessible label for the pill's clear-date control. */
+    clearDateLabel: string;
     /** Pre-resolved title - skips the `dict.title` template (category page). */
     title?: string;
     /** Pre-resolved subtitle - overrides `dict.subtitle` (category page). */
@@ -68,7 +71,11 @@ export async function ToursHeader({
                 <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     <span className='font-semibold text-it-heading'>{count}</span> {dict.availableLabel}
                 </p>
-                <ToursDatePill selectDateLabel={selectDateLabel} className='md:hidden' />
+                <ToursDatePill
+                    selectDateLabel={selectDateLabel}
+                    clearDateLabel={clearDateLabel}
+                    className='md:hidden'
+                />
             </div>
         </div>
     );

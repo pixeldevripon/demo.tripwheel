@@ -644,6 +644,7 @@ export async function HubPage({
                 dict={{
                     tagline: hubDict.tagline,
                     selectDate: hubDict.selectDate,
+                    clearDate: hubDict.clearDate,
                     checkAvailability: hubDict.checkAvailability,
                 }}
             />
