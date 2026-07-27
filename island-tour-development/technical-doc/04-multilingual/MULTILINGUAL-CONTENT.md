@@ -72,12 +72,51 @@ flat fails the global `ValidationPipe` (`forbidNonWhitelisted` → 400).
 - The "Delete translation" action on English does **not** call the delete endpoint (backend blocks
   it). It clears editable fields via an upsert with them set to `null` ("Clear fields").
 
-## Machine translation
+## Machine translation (BUILT 2026-07-27 - `src/content-translation/`)
 
-A background job (BullMQ) translates content to the other six locales after the English source is
-saved, setting `isMachineTranslated = true`. Proper nouns (destination and hub names) are never
-machine-translated. Reviews use the LD32 path (Google Translate API with a show-original toggle),
-cached per locale.
+AI translation is live for every Translation-Console entity. The surface is provider-agnostic:
+the admin picks the provider on `Settings > Integrations > AI Translation` (dropdown + API key +
+per-provider model dropdown with Free/Paid badges + base URL for `custom`), resolved PER CALL by
+`TranslationProviderRouter`. The provider catalog
+(`src/content-translation/providers/provider-catalog.ts`, mirrored in the dashboard card) covers
+**gemini, anthropic, openai, groq, openrouter, mistral, deepseek and custom** over three
+transports - Gemini native, Anthropic Messages native, and ONE OpenAI-compatible client that
+serves every chat-completions vendor, including `custom` with an admin-supplied base URL
+(Together, xAI, self-hosted Ollama/vLLM - any provider, any model, no code change). **Gemini**
+(default model `gemini-2.5-flash-lite`) is the default AND the fallback. Env fallbacks:
+`TRANSLATION_PROVIDER_NAME` / `TRANSLATION_API_KEY` / `TRANSLATION_MODEL` /
+`TRANSLATION_BASE_URL`. Unconfigured = the whole feature is inert.
+
+Two triggers:
+
+- **Background**: every English-source write (entity/child translation upserts, FAQ groups, page
+  content, sections, collection rationales) fire-and-forget enqueues a BullMQ job
+  (`content-translation` queue, jobId `type:id`, 60s debounce, worker limiter 8 jobs/min for the
+  free tier) that translates the whole entity into the six other locales. A nightly sweep
+  (`enqueuePending`, inside `NightlyJobsService.run()`) backfills what the debounce race or an
+  outage dropped.
+- **Manual**: the "Translate with AI" button on the translation editor page calls
+  `POST /{tours|destinations|hubs|categories|collections}/:id/translations/:locale/generate`
+  (homepage: `POST /home-page/translations/:locale/generate`) - synchronous, current locale only,
+  per-entity write permission + tour ownership enforced.
+- **Inline per-field**: every workspace field has a small AI icon that calls
+  `POST /content-translation/translate-text` (gated on `VIEW_TRIPS`, the console's nav gate). Pure
+  utility - the translated text fills the form field for review and nothing is persisted until
+  "Save all", exactly like "Copy from English".
+
+Overwrite policy (founder-locked): machine writes fill missing rows and refresh rows flagged
+`isMachineTranslated = true` whose `sourceHash` no longer matches the English source. **A field a
+human saved is never overwritten** - on human-flagged rows the AI gap-fills only the EMPTY fields
+(e.g. a field cleared-and-saved to be re-translated) and the row keeps its human flag; every
+human upsert path resets the flag + hash. Proper nouns
+(`DestinationTranslation.name`, `HubTranslation.name`) never enter a provider payload. Excluded
+v1: the Pages module (TipTap), hub our-picks, hub comparison, `HubContentSection` (no group key).
+Tours have no FAQs (house rule), so the tour fan-out has no FAQ units.
+
+Reviews (LD32) ride the **same Gemini provider** since 2026-07-27 - the queue, sourceHash cache
+and `POST /reviews/:id/translate` endpoint are unchanged; only the Google Cloud Translation client
+was replaced. The `googleTranslate*` settings columns are deprecated storage (no reader, no
+dashboard card, no env validation).
 
 ## SEO i18n
 

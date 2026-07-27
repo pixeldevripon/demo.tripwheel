@@ -1,5 +1,6 @@
 import { Locale as LocaleEnum } from '@/common/constants/locales';
 import { PrismaService } from '@/prisma/prisma.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { ToursService } from './tours.service';
 import {
   BadRequestException,
@@ -46,6 +47,7 @@ export class TourChildrenService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly toursService: ToursService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
   ) {}
 
   // ── Common helper ─────────────────────────────────────────────────────────────
@@ -659,6 +661,8 @@ export class TourChildrenService {
     });
 
     this.logger.log(`User ${requesterId} added highlight to tour ${tourId}`);
+    // New English source text - queue the AI translation fan-out.
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -751,6 +755,8 @@ export class TourChildrenService {
       update: {
         text: dto.text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: { locale: true, text: true, isMachineTranslated: true },
     });
@@ -758,6 +764,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted highlight translation [${locale}] for highlight ${highlightId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -860,6 +867,7 @@ export class TourChildrenService {
     });
 
     this.logger.log(`User ${requesterId} added inclusion to tour ${tourId}`);
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -953,6 +961,8 @@ export class TourChildrenService {
       update: {
         label: dto.label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: { locale: true, label: true, isMachineTranslated: true },
     });
@@ -960,6 +970,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted inclusion translation [${locale}] for inclusion ${inclusionId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1066,6 +1077,7 @@ export class TourChildrenService {
     });
 
     this.logger.log(`User ${requesterId} added exclusion to tour ${tourId}`);
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1161,6 +1173,8 @@ export class TourChildrenService {
       update: {
         label: dto.label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: { locale: true, label: true, isMachineTranslated: true },
     });
@@ -1168,6 +1182,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted exclusion translation [${locale}] for exclusion ${exclusionId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1254,6 +1269,7 @@ export class TourChildrenService {
       });
     });
     this.logger.log(`User ${requesterId} added feature to tour ${tourId}`);
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1339,12 +1355,15 @@ export class TourChildrenService {
       update: {
         text: dto.text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: { locale: true, text: true, isMachineTranslated: true },
     });
     this.logger.log(
       `User ${requesterId} upserted feature translation [${locale}] for feature ${featureId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1457,6 +1476,7 @@ export class TourChildrenService {
       });
     });
     this.logger.log(`User ${requesterId} added location to tour ${tourId}`);
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1561,6 +1581,8 @@ export class TourChildrenService {
         title: dto.title,
         shortDescription: dto.shortDescription ?? null,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: {
         locale: true,
@@ -1572,6 +1594,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted location translation [${locale}] for location ${locationId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1687,6 +1710,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} added pickup location to tour ${tourId}`,
     );
+    this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1786,6 +1810,8 @@ export class TourChildrenService {
         title: dto.title,
         directions: dto.directions ?? null,
         isMachineTranslated: dto.isMachineTranslated ?? false,
+        // Human write path - reset the AI bookkeeping.
+        sourceHash: null,
       },
       select: {
         locale: true,
@@ -1797,6 +1823,7 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted pickup translation [${locale}] for pickup ${pickupLocationId}`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 
@@ -1977,9 +2004,11 @@ export class TourChildrenService {
         ...(dto.metaDescription !== undefined && {
           metaDescription: dto.metaDescription,
         }),
-        ...(dto.isMachineTranslated !== undefined && {
-          isMachineTranslated: dto.isMachineTranslated,
-        }),
+        // `?? false`, matching create: this is the HUMAN write path, so an
+        // edit to a machine row must clear the flag (or the AI refresher would
+        // later overwrite the human's fix) and the stale source hash with it.
+        isMachineTranslated: dto.isMachineTranslated ?? false,
+        sourceHash: null,
       },
       select: this.tourTranslationSelect,
     });
@@ -1987,6 +2016,8 @@ export class TourChildrenService {
     this.logger.log(
       `User ${requesterId} upserted translation [${locale}] for tour ${tourId}`,
     );
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) this.contentTranslation.enqueue('tour', tourId);
     return result;
   }
 

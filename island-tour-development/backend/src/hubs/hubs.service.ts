@@ -1,6 +1,7 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -71,6 +72,7 @@ export class HubService {
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
     private readonly fx: FxRatesService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
   ) {}
 
   /**
@@ -990,6 +992,9 @@ export class HubService {
       },
       update: {
         isMachineTranslated: isMachineTranslated ?? false,
+        // Human write path: reset the AI bookkeeping so the machine refresher
+        // never overwrites what was typed here.
+        sourceHash: null,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.heroTagline !== undefined && {
@@ -1008,6 +1013,8 @@ export class HubService {
     this.logger.log(
       `Admin ${adminId} upserted translation for hub ${id} [${locale}]`,
     );
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) this.contentTranslation.enqueue('hub', id);
     return result;
   }
 
@@ -1075,6 +1082,9 @@ export class HubService {
         metaDescription: dto.metaDescription,
       },
       update: {
+        // Human write path - reset the AI bookkeeping (see upsertTranslations).
+        isMachineTranslated: false,
+        sourceHash: null,
         ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
         ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
         ...(dto.metaDescription !== undefined && {
@@ -1092,6 +1102,7 @@ export class HubService {
     this.logger.log(
       `Admin ${adminId} upserted page content for hub ${id} [${locale}]`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('hub', id);
     return result;
   }
 

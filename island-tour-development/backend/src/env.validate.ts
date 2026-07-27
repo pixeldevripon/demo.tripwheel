@@ -104,16 +104,37 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   RESEND_API_KEY: (v) =>
     v.startsWith('re_') ? null : 'must be a Resend API key (starts with re_)',
   MAIL_FROM: () => null,
-  // LD32 review translation (Google Cloud Translation v3). BOTH are optional:
-  // with either missing the feature is inert and reviews display in their
-  // original language, which is the pre-LD32 behaviour. Validated for shape
-  // only, so a typo is caught at boot rather than as a 403 six locales deep.
-  GOOGLE_TRANSLATE_API_KEY: (v) =>
-    v.length >= 20 ? null : 'must be a Google Cloud API key',
-  GOOGLE_TRANSLATE_PROJECT_ID: (v) =>
-    /^[a-z][a-z0-9-]{4,29}$/.test(v)
+  // AI translation (content entities + LD32 review comments). Provider-
+  // agnostic: the key/model belong to whichever provider is selected (default
+  // gemini). OPTIONAL: with no key the feature is inert - content and reviews
+  // display in the language they were written in. The dashboard (Settings >
+  // Integrations) values win over env; these are the local-dev / first-boot
+  // fallback. Validated for shape only, so a typo is caught at boot rather
+  // than as a 403 six locales deep.
+  TRANSLATION_API_KEY: (v) =>
+    v.length >= 20 ? null : 'must be a provider API key',
+  TRANSLATION_MODEL: (v) =>
+    v.trim().length > 0 ? null : 'must be a model name (e.g. gemini-3.6-flash)',
+  // Provider selector (default 'gemini'). The allowed set lives in the
+  // provider catalog (src/content-translation/providers/provider-catalog.ts);
+  // 'custom' + TRANSLATION_BASE_URL accepts ANY OpenAI-compatible endpoint.
+  TRANSLATION_PROVIDER_NAME: (v) =>
+    [
+      'gemini',
+      'anthropic',
+      'openai',
+      'groq',
+      'openrouter',
+      'mistral',
+      'deepseek',
+      'custom',
+    ].includes(v.toLowerCase())
       ? null
-      : 'must be a Google Cloud project id (lowercase, 6-30 chars)',
+      : 'must be one of: gemini, anthropic, openai, groq, openrouter, mistral, deepseek, custom',
+  TRANSLATION_BASE_URL: (v) =>
+    /^https?:\/\/\S+$/.test(v)
+      ? null
+      : 'must be an http(s) URL (OpenAI-compatible endpoint)',
   // Payments & tracking (Phase 6). Stripe keys live in the DB, not here.
   FX_USD_TO_EUR: (v) => {
     const n = Number(v);

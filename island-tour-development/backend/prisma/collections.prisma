@@ -50,6 +50,7 @@ model CollectionTranslation {
   h1Override          String?
   breadcrumbLabel     String?
   isMachineTranslated Boolean    @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime   @updatedAt
 
   @@unique([collectionId, locale])
@@ -65,6 +66,10 @@ model CollectionPageContent {
   aboutText       String?
   metaTitle       String?
   metaDescription String?
+
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   @@unique([collectionId, locale])
   @@index([collectionId, locale])
@@ -95,6 +100,10 @@ model CollectionTourRationale {
   locale           Locale
   rationale        String
   collectionTour   CollectionTour @relation(fields: [collectionTourId], references: [id], onDelete: Cascade)
+
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   @@unique([collectionTourId, locale])
   @@map("collection_tour_rationales")

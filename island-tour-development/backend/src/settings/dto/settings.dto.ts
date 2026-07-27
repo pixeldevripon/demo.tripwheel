@@ -17,6 +17,7 @@ import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -27,6 +28,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { PaymentProvider } from '@prisma/client';
+import { PROVIDER_KEYS } from '@/content-translation/providers/provider-catalog';
 
 // ── Shared DTOs ───────────────────────────────────────────────────────────────
 
@@ -905,16 +907,46 @@ export class UpdateIntegrationsConfigurationDto {
   metaCapiTestCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Google Cloud Translation API key (secret)',
+    description:
+      "AI translation provider (non-secret). Blank = the default ('gemini'). The allowed set mirrors the backend provider catalog (src/content-translation/providers/provider-catalog.ts).",
   })
   @IsOptional()
   @IsString()
-  googleTranslateApiKey?: string;
+  @IsIn(['', ...PROVIDER_KEYS], {
+    message: `translationProvider must be '' or one of: ${PROVIDER_KEYS.join(', ')}`,
+  })
+  translationProvider?: string;
 
-  @ApiPropertyOptional({ description: 'Google Cloud project id (non-secret)' })
+  @ApiPropertyOptional({
+    description:
+      'API key for the selected AI translation provider (secret) - powers translation of content and reviews',
+  })
   @IsOptional()
   @IsString()
-  googleTranslateProjectId?: string;
+  translationApiKey?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Model name for the selected provider (non-secret). Blank = the provider's default (gemini: gemini-3.6-flash).",
+  })
+  @IsOptional()
+  @IsString()
+  translationModel?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Base URL for provider 'custom' - any OpenAI-compatible endpoint, e.g. https://api.together.xyz/v1 (non-secret). Ignored for catalog providers.",
+  })
+  @IsOptional()
+  @Transform(stripPasteJunk)
+  @ValidateIf(
+    (o: UpdateIntegrationsConfigurationDto) => o.translationBaseUrl !== '',
+  )
+  @IsString()
+  @Matches(/^https?:\/\/\S+$/, {
+    message: 'translationBaseUrl must be an http(s) URL',
+  })
+  translationBaseUrl?: string;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import type {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -60,6 +61,7 @@ export class CollectionsService {
     private readonly prisma: PrismaService,
     private readonly toursService: ToursService,
     private readonly faqGroups: FaqGroupService,
+    private readonly contentTranslation: ContentTranslationEnqueuer,
   ) {}
 
   private readonly collectionSelect = {
@@ -572,6 +574,9 @@ export class CollectionsService {
       },
       update: {
         isMachineTranslated: isMachineTranslated ?? false,
+        // Human write path: reset the AI bookkeeping so the machine refresher
+        // never overwrites what was typed here.
+        sourceHash: null,
         ...(fields.name !== undefined && { name: fields.name }),
         ...(fields.overview !== undefined && { overview: fields.overview }),
         ...(fields.curationNote !== undefined && {
@@ -592,6 +597,8 @@ export class CollectionsService {
     this.logger.log(
       `Admin ${adminId} upserted translation for collection ${id} [${locale}]`,
     );
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) this.contentTranslation.enqueue('collection', id);
     return result;
   }
 
@@ -652,6 +659,9 @@ export class CollectionsService {
         metaDescription: dto.metaDescription,
       },
       update: {
+        // Human write path - reset the AI bookkeeping (see upsertTranslations).
+        isMachineTranslated: false,
+        sourceHash: null,
         ...(dto.aboutText !== undefined && { aboutText: dto.aboutText }),
         ...(dto.metaTitle !== undefined && { metaTitle: dto.metaTitle }),
         ...(dto.metaDescription !== undefined && {
@@ -668,6 +678,7 @@ export class CollectionsService {
     this.logger.log(
       `Admin ${adminId} upserted page content for collection ${id} [${locale}]`,
     );
+    if (locale === Locale.en) this.contentTranslation.enqueue('collection', id);
     return result;
   }
 
@@ -986,12 +997,20 @@ export class CollectionsService {
         collectionTourId_locale: { collectionTourId: member.id, locale },
       },
       create: { collectionTourId: member.id, locale, rationale: dto.rationale },
-      update: { rationale: dto.rationale },
+      // Human write path - reset the AI bookkeeping so the machine refresher
+      // never overwrites what was typed here.
+      update: {
+        rationale: dto.rationale,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
       select: { id: true, locale: true, rationale: true },
     });
     this.logger.log(
       `Admin ${adminId} upserted rationale for collection ${id} tour ${tourId} [${locale}]`,
     );
+    // An English edit re-sources the other locales.
+    if (locale === Locale.en) this.contentTranslation.enqueue('collection', id);
     return { ...result, tourId };
   }
 

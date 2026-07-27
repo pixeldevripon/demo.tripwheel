@@ -292,6 +292,7 @@ model TourHighlightTranslation {
   locale              Locale
   text                String
   isMachineTranslated Boolean @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
 
   highlight TourHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
 
@@ -321,6 +322,7 @@ model TourInclusionTranslation {
   locale              Locale
   label               String
   isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   inclusion TourInclusion @relation(fields: [inclusionId], references: [id], onDelete: Cascade)
 
@@ -352,6 +354,7 @@ model TourExclusionTranslation {
   locale              Locale
   label               String
   isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   exclusion TourExclusion @relation(fields: [exclusionId], references: [id], onDelete: Cascade)
 
@@ -380,6 +383,7 @@ model TourFeatureTranslation {
   locale              Locale
   text                String
   isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   feature TourFeature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
@@ -417,6 +421,7 @@ model TourLocationTranslation {
   title               String
   shortDescription    String?
   isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   location TourLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
@@ -459,6 +464,7 @@ model PickupLocationTranslation {
   title               String // localized point name
   directions          String? // localized pickup directions
   isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   pickupLocation PickupLocation @relation(fields: [pickupLocationId], references: [id], onDelete: Cascade)
 
@@ -492,6 +498,7 @@ model TourTranslation {
   metaTitle           String? // SEO (master E.3 SEO block, localized)
   metaDescription     String? // SEO (master E.3 SEO block, localized)
   isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime @updatedAt
 
   tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)

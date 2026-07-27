@@ -119,6 +119,7 @@ model HomePageTranslation {
   metaDescription String?
 
   isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
   updatedAt           DateTime @updatedAt
 
   @@unique([homeId, locale])
