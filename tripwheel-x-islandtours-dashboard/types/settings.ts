@@ -161,23 +161,45 @@ export interface UpdateMailchimpConfigurationPayload {
   serverPrefix?: string;
 }
 
-// ── Integrations (Meta CAPI + Google Translate) ─────────────────────────────
+// ── Integrations (Meta CAPI + AI translation) ───────────────────────────────
+
+/**
+ * Providers the backend's translation router knows (mirrors
+ * backend/src/content-translation/providers/provider-catalog.ts - keep in
+ * sync). Gemini is the default/fallback; `custom` is any OpenAI-compatible
+ * endpoint via translationBaseUrl.
+ */
+export type TranslationProvider =
+  | 'gemini'
+  | 'anthropic'
+  | 'openai'
+  | 'groq'
+  | 'openrouter'
+  | 'mistral'
+  | 'deepseek'
+  | 'custom';
 
 /** GET response - secrets are masked by the backend (bullet prefix + last 4) or null. */
 export interface IntegrationsConfiguration {
   id: string;
   metaCapiToken: string | null;
   metaCapiTestCode: string | null;
-  googleTranslateApiKey: string | null;
-  googleTranslateProjectId: string | null;
+  /** '' = the backend default (gemini). */
+  translationProvider: string | null;
+  translationApiKey: string | null;
+  translationModel: string | null;
+  /** Only used by provider 'custom' (any OpenAI-compatible endpoint). */
+  translationBaseUrl: string | null;
 }
 
 export interface UpdateIntegrationsConfigurationPayload {
   /** Omit to keep the stored secret; only send when a new value is entered. */
   metaCapiToken?: string;
   metaCapiTestCode?: string;
-  googleTranslateApiKey?: string;
-  googleTranslateProjectId?: string;
+  translationProvider?: string;
+  translationApiKey?: string;
+  translationModel?: string;
+  translationBaseUrl?: string;
 }
 
 // ── Platform reviews (Trustpilot / Google) ─────────────────────────────────

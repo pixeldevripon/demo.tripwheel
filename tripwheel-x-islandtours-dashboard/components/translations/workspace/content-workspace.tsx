@@ -27,6 +27,7 @@ import { CollapsibleCard } from '@/components/common/collapsible-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspaceSkeleton } from './workspace-skeleton';
 import { useFaqGroups, useUpsertFaqTranslation } from '@/hooks/faq/use-faq-groups';
+import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
 import { LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import {
     fieldFilled,
@@ -88,6 +89,9 @@ export interface ContentWorkspaceProps {
     onSave: (values: Record<string, string>) => Promise<unknown>;
     /** Upsert the page-content locale record. Omit when there is none. */
     onSavePageContent?: (values: Record<string, string>) => Promise<unknown>;
+    /** AI translation of the current locale (pass-through to the shell). */
+    onTranslateWithAI?: () => void;
+    isTranslating?: boolean;
 }
 
 function toFormValue(v: unknown): string {
@@ -130,6 +134,8 @@ export function ContentWorkspace({
     isSaving,
     onSave,
     onSavePageContent,
+    onTranslateWithAI,
+    isTranslating,
 }: ContentWorkspaceProps) {
     const { data: faqGroups, isLoading: faqLoading } = useFaqGroups(
         faqBasePath,
@@ -191,6 +197,17 @@ export function ContentWorkspace({
     const values = watch();
     const allKeys = Object.keys(defaults);
     const filled = allKeys.filter(k => fieldFilled(values[k])).length;
+
+    const translateField = useInlineTranslate(locale);
+
+    /** Per-field AI fill: translate the EN source, drop it into the input. */
+    function aiFillFor(name: string, src: string) {
+        if (locale === 'en' || !src.trim()) return undefined;
+        return async () => {
+            const translated = await translateField(src);
+            if (translated) setValue(name, translated, { shouldDirty: true });
+        };
+    }
 
     function copyFromEnglish() {
         let copied = 0;
@@ -338,36 +355,46 @@ export function ContentWorkspace({
             isSaving={isSaving || upsertFaq.isPending}
             isDirty={isDirty}
             onSave={handleSave}
-            onCopyFromEnglish={copyFromEnglish}>
+            onCopyFromEnglish={copyFromEnglish}
+            onTranslateWithAI={onTranslateWithAI}
+            isTranslating={isTranslating}>
             <div className='space-y-6'>
                 <CollapsibleCard title='Page copy' defaultOpen>
                     <div>
-                        {fields.map(f => (
-                            <FieldPair
-                                key={f.name}
-                                field={f}
-                                source={toFormValue(source?.[f.name])}
-                                register={register}
-                                targetLabel={LOCALE_LABELS[locale]}
-                                sourceHidden={sourceHidden}
-                            />
-                        ))}
+                        {fields.map(f => {
+                            const src = toFormValue(source?.[f.name]);
+                            return (
+                                <FieldPair
+                                    key={f.name}
+                                    field={f}
+                                    source={src}
+                                    register={register}
+                                    targetLabel={LOCALE_LABELS[locale]}
+                                    sourceHidden={sourceHidden}
+                                    onAiTranslate={aiFillFor(f.name, src)}
+                                />
+                            );
+                        })}
                     </div>
                 </CollapsibleCard>
 
                 {onSavePageContent ? (
                 <CollapsibleCard title='About & SEO (page content)' defaultOpen>
                     <div>
-                        {PAGE_CONTENT_FIELDS.map(f => (
-                            <FieldPair
-                                key={pcKey(f.name)}
-                                field={{ ...f, name: pcKey(f.name) }}
-                                source={toFormValue(pageSource?.[f.name])}
-                                register={register}
-                                targetLabel={LOCALE_LABELS[locale]}
-                                sourceHidden={sourceHidden}
-                            />
-                        ))}
+                        {PAGE_CONTENT_FIELDS.map(f => {
+                            const src = toFormValue(pageSource?.[f.name]);
+                            return (
+                                <FieldPair
+                                    key={pcKey(f.name)}
+                                    field={{ ...f, name: pcKey(f.name) }}
+                                    source={src}
+                                    register={register}
+                                    targetLabel={LOCALE_LABELS[locale]}
+                                    sourceHidden={sourceHidden}
+                                    onAiTranslate={aiFillFor(pcKey(f.name), src)}
+                                />
+                            );
+                        })}
                     </div>
                 </CollapsibleCard>
                 ) : null}
@@ -399,6 +426,10 @@ export function ContentWorkspace({
                                         register={register}
                                         targetLabel={LOCALE_LABELS[locale]}
                                         sourceHidden={sourceHidden}
+                                        onAiTranslate={aiFillFor(
+                                            xsKey(sec.key, row.itemId, row.fieldKey),
+                                            row.source,
+                                        )}
                                     />
                                 ))}
                             </div>
@@ -435,6 +466,10 @@ export function ContentWorkspace({
                                         register={register}
                                         targetLabel={LOCALE_LABELS[locale]}
                                         sourceHidden={sourceHidden}
+                                        onAiTranslate={aiFillFor(
+                                            faqKey(row.groupId, 'question'),
+                                            row.base.question,
+                                        )}
                                     />
                                     <FieldPair
                                         field={{
@@ -447,6 +482,10 @@ export function ContentWorkspace({
                                         register={register}
                                         targetLabel={LOCALE_LABELS[locale]}
                                         sourceHidden={sourceHidden}
+                                        onAiTranslate={aiFillFor(
+                                            faqKey(row.groupId, 'answer'),
+                                            row.base.answer,
+                                        )}
                                     />
                                 </div>
                             ))}

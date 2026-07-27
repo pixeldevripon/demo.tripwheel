@@ -12,7 +12,7 @@ export function AttributeEditView({ attributeKey }: { attributeKey: string }) {
   const { data: attribute, isLoading, isError } = useAttribute(attributeKey);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },

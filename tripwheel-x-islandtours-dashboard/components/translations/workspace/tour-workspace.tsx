@@ -35,6 +35,8 @@ import {
     useUpsertPickupLocationTranslation,
     useUpsertTripTranslation,
 } from '@/hooks/trips/use-trips';
+import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
+import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
 import { LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import {
     fieldFilled,
@@ -80,6 +82,17 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
     const pickups = usePickupLocations(id);
 
     const upsertCore = useUpsertTripTranslation();
+    const generate = useGenerateTranslation('tour', id, locale);
+    const translateField = useInlineTranslate(locale);
+
+    /** Per-field AI fill: translate the EN source, drop it into the input. */
+    function aiFillFor(name: string, src: string) {
+        if (locale === 'en' || !src.trim()) return undefined;
+        return async () => {
+            const translated = await translateField(src);
+            if (translated) setValue(name, translated, { shouldDirty: true });
+        };
+    }
     const upsertHighlight = useUpsertHighlightTranslation();
     const upsertInclusion = useUpsertInclusionTranslation();
     const upsertExclusion = useUpsertExclusionTranslation();
@@ -105,10 +118,20 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                     Record<string, unknown> & { locale: string }
                 >;
                 const t = translations.find(r => r.locale === locale);
+                const enT = translations.find(r => r.locale === 'en');
                 const base: Record<string, string> = {};
                 const existing: Record<string, string> = {};
                 for (const f of sub.fields) {
-                    base[f.name] = toFormValue(item[f.name]);
+                    // The EN source lives on the child's `en` TRANSLATION row
+                    // (child base rows carry no text); fall back to any
+                    // same-named base-row field, then to the pickup's `name`
+                    // for its title - so a pickup created moments ago already
+                    // shows its English source here.
+                    base[f.name] = toFormValue(
+                        enT?.[f.name] ??
+                            item[f.name] ??
+                            (f.name === 'title' ? item.name : undefined),
+                    );
                     existing[f.name] = toFormValue(t?.[f.name]);
                 }
                 return { id: String(item.id), base, existing };
@@ -128,21 +151,19 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
     const defaults = useMemo(() => {
         const d: Record<string, string> = {};
         for (const f of TOUR_FIELDS) d[f.name] = toFormValue(target?.[f.name as keyof typeof target]);
-        // Sub-entity items only exist as translation targets; their EN base
-        // text is edited in the editor tabs, so the EN workspace neither
-        // renders nor counts them.
-        if (locale !== 'en') {
-            for (const sub of TOUR_SUB_ENTITIES) {
-                for (const item of subData[sub.key] ?? []) {
-                    for (const f of sub.fields) {
-                        d[itemKey(sub.key, item.id, f.name)] =
-                            item.existing[f.name];
-                    }
+        // Sub-entities render on EVERY locale, EN included (founder 2026-07-27:
+        // one console, everything visible) - on the EN tab their values ARE
+        // the source, editable here exactly like in the editor tabs.
+        for (const sub of TOUR_SUB_ENTITIES) {
+            for (const item of subData[sub.key] ?? []) {
+                for (const f of sub.fields) {
+                    d[itemKey(sub.key, item.id, f.name)] =
+                        item.existing[f.name];
                 }
             }
         }
         return d;
-    }, [target, subData, locale]);
+    }, [target, subData]);
 
     const {
         register,
@@ -204,7 +225,9 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
 
         // 1) Core: one flat upsert; '' clears (backend merges field-by-field,
         //    and the form shows every field, so what you see is what you get).
-        const payload: Record<string, unknown> = {};
+        //    Explicit isMachineTranslated: false - a human save must clear the
+        //    machine flag, or the AI refresher would later overwrite this row.
+        const payload: Record<string, unknown> = { isMachineTranslated: false };
         for (const f of TOUR_FIELDS) {
             const raw = (v[f.name] ?? '').trim();
             if (LINES_FIELDS.has(f.name)) {
@@ -218,10 +241,11 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
 
         // 2) Sub-entities: per-item upserts ONLY for changed, non-empty values
         //    (the required-string payloads can't clear; use the editor tabs to
-        //    delete an item translation outright).
+        //    delete an item translation outright). EN included - the EN tab
+        //    edits the source rows the other locales derive from.
         const jobs: Array<{ label: string; run: () => Promise<unknown> }> = [];
 
-        if (locale !== 'en') {
+        {
             for (const item of subData.highlights ?? []) {
                 const text = (v[itemKey('highlights', item.id, 'text')] ?? '').trim();
                 if (text && text !== item.existing.text)
@@ -346,25 +370,32 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
             isSaving={isSaving}
             isDirty={isDirty}
             onSave={handleSave}
-            onCopyFromEnglish={copyFromEnglish}>
+            onCopyFromEnglish={copyFromEnglish}
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}>
             <div className='space-y-6'>
                 <CollapsibleCard title='Tour copy & SEO' defaultOpen>
                     <div>
-                        {TOUR_FIELDS.map(f => (
-                            <FieldPair
-                                key={f.name}
-                                field={f}
-                                source={toFormValue(source?.[f.name as keyof typeof source])}
-                                register={register}
-                                targetLabel={LOCALE_LABELS[locale]}
-                                sourceHidden={locale === 'en'}
-                            />
-                        ))}
+                        {TOUR_FIELDS.map(f => {
+                            const src = toFormValue(
+                                source?.[f.name as keyof typeof source],
+                            );
+                            return (
+                                <FieldPair
+                                    key={f.name}
+                                    field={f}
+                                    source={src}
+                                    register={register}
+                                    targetLabel={LOCALE_LABELS[locale]}
+                                    sourceHidden={locale === 'en'}
+                                    onAiTranslate={aiFillFor(f.name, src)}
+                                />
+                            );
+                        })}
                     </div>
                 </CollapsibleCard>
 
-                {locale !== 'en' &&
-                    TOUR_SUB_ENTITIES.map(sub => {
+                {TOUR_SUB_ENTITIES.map(sub => {
                         const items = subData[sub.key] ?? [];
                         if (items.length === 0) return null;
                         return (
@@ -394,6 +425,11 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                                                 source={item.base[f.name]}
                                                 register={register}
                                                 targetLabel={LOCALE_LABELS[locale]}
+                                                sourceHidden={locale === 'en'}
+                                                onAiTranslate={aiFillFor(
+                                                    itemKey(sub.key, item.id, f.name),
+                                                    item.base[f.name],
+                                                )}
                                             />
                                         )),
                                     )}

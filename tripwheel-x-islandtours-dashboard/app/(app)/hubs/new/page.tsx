@@ -5,7 +5,7 @@ import { HubForm } from '@/components/hubs/hub-form';
 
 export default function NewHubPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },

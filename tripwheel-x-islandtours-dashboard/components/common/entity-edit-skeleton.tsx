@@ -39,7 +39,7 @@ function FormCard({ fields }: { fields: number }) {
 
 export function EntityEditSkeleton({ fields = 6 }: { fields?: number }) {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       {/* Breadcrumb */}
       <Skeleton className="mb-4 h-3 w-80" />
 
@@ -69,7 +69,7 @@ export function EntityEditSkeleton({ fields = 6 }: { fields?: number }) {
  */
 export function EntityFormSkeleton({ fields = 6 }: { fields?: number }) {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       <Skeleton className="mb-4 h-3 w-80" />
 
       <div className="mb-6 space-y-2">

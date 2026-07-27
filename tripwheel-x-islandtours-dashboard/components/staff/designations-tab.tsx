@@ -9,15 +9,10 @@ import {
     Shield01Icon,
 } from '@hugeicons/core-free-icons';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { DataTable } from '@/components/data-table/data-table';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,7 +20,6 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/common/status-badge';
 import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
 import {
@@ -35,11 +29,139 @@ import {
 } from '@/hooks/staff/use-staff';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
 import { DesignationDialog } from './designation-dialog';
+import { DesignationSheet } from './designation-sheet';
+
+interface BuildDesignationColumnsOptions {
+    totalGrantable: number;
+    onEdit: (designation: StaffDesignation) => void;
+    onDelete: (designation: StaffDesignation) => void;
+}
+
+function buildDesignationColumns({
+    totalGrantable,
+    onEdit,
+    onDelete,
+}: BuildDesignationColumnsOptions): ColumnDef<StaffDesignation>[] {
+    return [
+        {
+            id: 'name',
+            header: 'Designation',
+            cell: ({ row }) => (
+                <span className='flex items-center gap-2'>
+                    <span className='max-w-50 truncate font-medium'>
+                        {row.original.name}
+                    </span>
+                    {row.original.isSystem && (
+                        <StatusBadge variant='info'>System</StatusBadge>
+                    )}
+                </span>
+            ),
+            enableSorting: false,
+        },
+        {
+            id: 'description',
+            header: 'Description',
+            cell: ({ row }) =>
+                row.original.description ? (
+                    <span className='block max-w-120 truncate text-sm text-muted-foreground'>
+                        {row.original.description}
+                    </span>
+                ) : (
+                    <span className='text-sm text-muted-foreground'>-</span>
+                ),
+            enableSorting: false,
+        },
+        {
+            id: 'permissions',
+            header: 'Permissions',
+            cell: ({ row }) => (
+                <span className='text-xs text-muted-foreground'>
+                    <span className='font-semibold text-content'>
+                        {row.original.permissions.length}
+                    </span>
+                    /{totalGrantable || '?'}
+                </span>
+            ),
+            enableSorting: false,
+        },
+        {
+            id: 'members',
+            header: 'Members',
+            cell: ({ row }) => (
+                <span className='text-xs text-muted-foreground'>
+                    <span className='font-semibold text-content'>
+                        {row.original.memberCount}
+                    </span>{' '}
+                    member{row.original.memberCount === 1 ? '' : 's'}
+                </span>
+            ),
+            enableSorting: false,
+        },
+        {
+            id: 'actions',
+            header: '',
+            cell: ({ row }) => {
+                const designation = row.original;
+                return (
+                    // Rows open the detail sheet; keep menu clicks out of that.
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant='ghost'
+                                    size='icon'
+                                    className='size-8'
+                                >
+                                    <HugeiconsIcon icon={MoreHorizontalIcon} />
+                                    <span className='sr-only'>
+                                        Designation actions
+                                    </span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align='end'>
+                                <DropdownMenuItem
+                                    onClick={() => onEdit(designation)}
+                                >
+                                    <HugeiconsIcon icon={PencilEdit02Icon} />
+                                    Edit
+                                </DropdownMenuItem>
+                                {!designation.isSystem && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            variant='destructive'
+                                            disabled={
+                                                designation.memberCount > 0
+                                            }
+                                            onClick={() =>
+                                                onDelete(designation)
+                                            }
+                                        >
+                                            <HugeiconsIcon
+                                                icon={Delete02Icon}
+                                            />
+                                            {designation.memberCount > 0
+                                                ? 'Delete (in use)'
+                                                : 'Delete'}
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+            enableSorting: false,
+            enableHiding: false,
+            size: 48,
+        },
+    ];
+}
 
 /**
- * Designation (permission template) management. Cards over a table: each
- * designation is a small, self-describing policy object - name, purpose,
- * member count, permission count - and there are rarely more than a handful.
+ * Designation (permission template) management, rendered on the shared
+ * DataTable like every other list screen. Client-side paging: the list is a
+ * handful of policy objects, and the endpoint returns an unpaged array.
  */
 export function DesignationsTab({ scope }: { scope: StaffScope }) {
     const { data: designations, isLoading } = useDesignations(scope);
@@ -50,6 +172,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<StaffDesignation | null>(null);
     const [removing, setRemoving] = useState<StaffDesignation | null>(null);
+    const [viewing, setViewing] = useState<StaffDesignation | null>(null);
 
     const totalGrantable =
         catalog?.groups.reduce((n, g) => n + g.permissions.length, 0) ?? 0;
@@ -59,10 +182,18 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
         setDialogOpen(true);
     }
 
-    function openEdit(designation: StaffDesignation) {
-        setEditing(designation);
-        setDialogOpen(true);
-    }
+    const columns = useMemo(
+        () =>
+            buildDesignationColumns({
+                totalGrantable,
+                onEdit: (designation) => {
+                    setEditing(designation);
+                    setDialogOpen(true);
+                },
+                onDelete: setRemoving,
+            }),
+        [totalGrantable],
+    );
 
     return (
         <div className='space-y-4'>
@@ -77,120 +208,33 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
                 </Button>
             </div>
 
-            {isLoading ? (
-                <div className='grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className='h-36 rounded-xl' />
-                    ))}
-                </div>
-            ) : (designations ?? []).length === 0 ? (
-                <Card>
-                    <CardContent className='flex flex-col items-center gap-3 py-12 text-center'>
-                        <HugeiconsIcon
-                            icon={Shield01Icon}
-                            className='size-8 text-muted-foreground'
-                        />
-                        <div>
-                            <p className='font-medium'>No designations yet.</p>
-                            <p className='text-sm text-muted-foreground'>
-                                Create a permission template to invite members
-                                faster.
-                            </p>
-                        </div>
+            <DataTable
+                columns={columns}
+                data={designations ?? []}
+                isLoading={isLoading}
+                skeletonRows={3}
+                onRowClick={setViewing}
+                empty={{
+                    icon: Shield01Icon,
+                    title: 'No designations yet.',
+                    description:
+                        'Create a permission template to invite members faster.',
+                    action: (
                         <Button size='sm' onClick={openCreate}>
                             <HugeiconsIcon icon={PlusSignIcon} />
                             New Designation
                         </Button>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className='grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
-                    {(designations ?? []).map((designation) => (
-                        <Card key={designation.id} className='gap-3'>
-                            <CardHeader className='flex flex-row items-start justify-between gap-2'>
-                                <div className='min-w-0 space-y-1'>
-                                    <CardTitle className='flex items-center gap-2 text-base'>
-                                        <span className='truncate'>
-                                            {designation.name}
-                                        </span>
-                                        {designation.isSystem && (
-                                            <StatusBadge variant='info'>
-                                                System
-                                            </StatusBadge>
-                                        )}
-                                    </CardTitle>
-                                    {designation.description && (
-                                        <CardDescription className='line-clamp-2'>
-                                            {designation.description}
-                                        </CardDescription>
-                                    )}
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant='ghost'
-                                            size='icon'
-                                            className='size-8 shrink-0'>
-                                            <HugeiconsIcon
-                                                icon={MoreHorizontalIcon}
-                                            />
-                                            <span className='sr-only'>
-                                                Designation actions
-                                            </span>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align='end'>
-                                        <DropdownMenuItem
-                                            onClick={() =>
-                                                openEdit(designation)
-                                            }>
-                                            <HugeiconsIcon
-                                                icon={PencilEdit02Icon}
-                                            />
-                                            Edit
-                                        </DropdownMenuItem>
-                                        {!designation.isSystem && (
-                                            <>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    variant='destructive'
-                                                    disabled={
-                                                        designation.memberCount >
-                                                        0
-                                                    }
-                                                    onClick={() =>
-                                                        setRemoving(designation)
-                                                    }>
-                                                    <HugeiconsIcon
-                                                        icon={Delete02Icon}
-                                                    />
-                                                    {designation.memberCount > 0
-                                                        ? 'Delete (in use)'
-                                                        : 'Delete'}
-                                                </DropdownMenuItem>
-                                            </>
-                                        )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </CardHeader>
-                            <CardContent className='flex items-center gap-4 text-xs text-muted-foreground'>
-                                <span>
-                                    <span className='font-semibold text-content'>
-                                        {designation.permissions.length}
-                                    </span>
-                                    /{totalGrantable || '?'} permissions
-                                </span>
-                                <span>
-                                    <span className='font-semibold text-content'>
-                                        {designation.memberCount}
-                                    </span>{' '}
-                                    member{designation.memberCount === 1 ? '' : 's'}
-                                </span>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                    ),
+                }}
+            />
+
+            <DesignationSheet
+                scope={scope}
+                designation={viewing}
+                onOpenChange={(open) => {
+                    if (!open) setViewing(null);
+                }}
+            />
 
             <DesignationDialog
                 scope={scope}
