@@ -7,9 +7,11 @@ import { z } from 'zod';
 import {
   useIntegrationsConfig,
   useMailchimpConfig,
+  useSeo,
   useSiteInfo,
   useUpdateIntegrationsConfig,
   useUpdateMailchimpConfig,
+  useUpdateSeo,
   useUpdateSiteInfo,
 } from '@/hooks/settings/use-settings';
 import { Field, FieldDescription } from '@/components/ui/field';
@@ -515,6 +517,61 @@ function AiTranslationCard() {
   );
 }
 
+// ── Cookiebot ────────────────────────────────────────────────────────────--
+//
+// Lives on the Integrations tab (it is a third-party service hookup, not a
+// meta-tag concern) but stores on the SEO settings row: the public site reads
+// `cookiebotCbid` from the public SEO projection, and moving the column would
+// mean a backend migration for a purely cosmetic relocation. The PATCH is
+// partial (backend upsert ignores absent fields), so saving only the cbid
+// never touches the rest of the SEO record - and vice versa.
+
+const cookiebotSchema = z.object({
+  cookiebotCbid: z.string().optional(),
+});
+type CookiebotFormValues = z.infer<typeof cookiebotSchema>;
+
+function CookiebotCard() {
+  const { data, isLoading } = useSeo();
+  const { mutate, isPending } = useUpdateSeo();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CookiebotFormValues>({
+    resolver: zodResolver(cookiebotSchema),
+    defaultValues: { cookiebotCbid: '' },
+  });
+
+  useEffect(() => {
+    if (data) {
+      reset({ cookiebotCbid: data.cookiebotCbid ?? '' });
+    }
+  }, [data, reset]);
+
+  if (isLoading) return <SettingsCardSkeleton />;
+
+  return (
+    <SettingsCard
+      title="Cookiebot"
+      description="Consent banner and the Manage Cookies dialog on the public site."
+      onSubmit={handleSubmit((v) => mutate({ cookiebotCbid: v.cookiebotCbid }))}
+      isSaving={isPending}
+      status={<ConnectionStatus connected={!!data?.cookiebotCbid} />}
+    >
+      <TextField
+        label="Cookiebot Domain Group ID"
+        description="The data-cbid UUID from Cookiebot admin > Settings > Your scripts. Clear the field to disable the banner."
+        registration={register('cookiebotCbid')}
+        error={errors.cookiebotCbid?.message}
+        placeholder="12345678-abcd-1234-abcd-123456789abc"
+      />
+    </SettingsCard>
+  );
+}
+
 // ── WhatsApp ─────────────────────────────────────────────────────────────--
 //
 // Instagram is NOT here: its switch lives with the handle, layout and tiles it
@@ -581,6 +638,7 @@ export function IntegrationsForm() {
     <div className="space-y-6">
       <MetaCapiCard />
       <AiTranslationCard />
+      <CookiebotCard />
       {/* <MailchimpCard /> */}
       <SocialWidgetsCard />
     </div>
