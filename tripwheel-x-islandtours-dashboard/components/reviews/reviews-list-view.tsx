@@ -48,6 +48,9 @@ export function ReviewsListView() {
   const params: ReviewsQueryParams = {
     page,
     limit,
+    // Newest first - without this the backend falls back to its queue default
+    // (oldest-first), burying fresh reviews on the last page.
+    sort: 'newest',
     // Omitted entirely on "all" - the backend treats an absent status as
     // "every status", and sending `undefined` explicitly would serialise.
     ...(status ? { status } : {}),
