@@ -67,7 +67,9 @@ export class OutboxRelayService {
           { bookingId: row.aggregateId },
           {
             ...PLATFORM_JOB_OPTS,
-            jobId: `${row.aggregateId}:${name}`,
+            // `__`, not `:` - BullMQ rejects custom job ids containing its
+            // Redis key separator.
+            jobId: `${row.aggregateId}__${name}`,
             ...opts,
           },
         );

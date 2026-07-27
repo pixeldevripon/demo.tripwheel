@@ -34,7 +34,8 @@ describe('ContentTranslationEnqueuer', () => {
       'translate',
       { entityType: 'tour', entityId: 't1' },
       expect.objectContaining({
-        jobId: 'tour:t1',
+        // No `:` in the id - BullMQ rejects custom job ids containing it.
+        jobId: 'tour__t1',
         delay: 60_000,
         // A retained completed job with this jobId would block every future
         // re-enqueue of the entity - retention must be `true`, not a count.

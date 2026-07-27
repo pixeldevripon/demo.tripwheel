@@ -74,6 +74,9 @@ flat fails the global `ValidationPipe` (`forbidNonWhitelisted` → 400).
 
 ## Machine translation (BUILT 2026-07-27 - `src/content-translation/`)
 
+> **Full pipeline walkthrough (triggers, BullMQ flow, overwrite policy, invariants):
+> `AI-TRANSLATION-FLOW.md`** (this section is the summary).
+
 AI translation is live for every Translation-Console entity. The surface is provider-agnostic:
 the admin picks the provider on `Settings > Integrations > AI Translation` (dropdown + API key +
 per-provider model dropdown with Free/Paid badges + base URL for `custom`), resolved PER CALL by
@@ -91,7 +94,7 @@ Two triggers:
 
 - **Background**: every English-source write (entity/child translation upserts, FAQ groups, page
   content, sections, collection rationales) fire-and-forget enqueues a BullMQ job
-  (`content-translation` queue, jobId `type:id`, 60s debounce, worker limiter 8 jobs/min for the
+  (`content-translation` queue, jobId `type__id` (no `:` - BullMQ rejects it), 60s debounce, worker limiter 8 jobs/min for the
   free tier) that translates the whole entity into the six other locales. A nightly sweep
   (`enqueuePending`, inside `NightlyJobsService.run()`) backfills what the debounce race or an
   outage dropped.

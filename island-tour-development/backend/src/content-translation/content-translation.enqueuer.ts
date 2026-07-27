@@ -23,7 +23,7 @@ import {
  * the correct outcome is untranslated content (the nightly sweep catches up),
  * not a failed save. Unconfigured provider = silent no-op (LD32 contract).
  *
- * `jobId = entityType:entityId` + a 60s delay make rapid edits collapse into
+ * `jobId = entityType__entityId` + a 60s delay make rapid edits collapse into
  * one job. `CONTENT_TRANSLATION_DISABLED=1` is the bulk-operation escape
  * hatch (e.g. a seed routed through services).
  */
@@ -64,8 +64,9 @@ export class ContentTranslationEnqueuer {
         { entityType, entityId },
         {
           // One job per entity: adds while a delayed/active job exists are
-          // no-ops, which is the debounce.
-          jobId: `${entityType}:${entityId}`,
+          // no-ops, which is the debounce. Delimiter is `__` - BullMQ rejects
+          // custom job ids containing `:` (its Redis key separator).
+          jobId: `${entityType}__${entityId}`,
           delay: ENQUEUE_DELAY_MS,
           attempts: 3,
           backoff: { type: 'exponential', delay: 10_000 },
