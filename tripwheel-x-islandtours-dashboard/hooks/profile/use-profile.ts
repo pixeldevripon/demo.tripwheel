@@ -24,8 +24,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
   const router = useRouter();
   return useMutation({
-    mutationFn: ({ data, role, operatorId }: { data: ProfileFormValues; role: string; operatorId?: string }) =>
-      profileApi.updateAll(data, role, operatorId),
+    mutationFn: (data: ProfileFormValues) => profileApi.updateProfile(data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: profileKeys.all });
       // The shell (sidebar identity card, header avatar) renders from

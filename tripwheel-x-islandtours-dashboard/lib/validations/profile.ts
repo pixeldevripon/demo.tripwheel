@@ -1,45 +1,43 @@
 import { z } from 'zod';
 
+/**
+ * The profile keeps ONE editable identity field. Email changes only through
+ * the verified Better Auth change-email flow (ChangeEmailDialog); phone,
+ * location, timezone and social links were removed from the profile page by
+ * design (2026-07-28 Webflow-style redesign).
+ */
 export const profileSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
-    // No `email` on purpose: it changes only through the verified Better Auth
-    // change-email flow (ChangeEmailDialog), never a profile save.
-    phone: z.string().optional().nullable(),
-    location: z.string().optional().nullable(),
-    timezone: z.string().min(1, 'Please select a timezone'),
-    
-    // Social links (optional)
-    instagramUrl: z.string().url('Invalid Instagram URL').optional().or(z.literal('')),
-    facebookUrl: z.string().url('Invalid Facebook URL').optional().or(z.literal('')),
-    linkedinUrl: z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
-    twitterUrl: z.string().url('Invalid Twitter URL').optional().or(z.literal('')),
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
+// No confirm-password field on purpose - same decision as the login screens
+// (password managers make it redundant; paste is allowed).
 export const changePasswordSchema = z.object({
     currentPassword: z.string().min(1, 'Current password is required'),
     newPassword: z.string()
         .min(12, 'Password must be at least 12 characters')
         .max(32, 'Password cannot exceed 32 characters'),
-    confirmPassword: z.string().min(1, 'Please confirm your new password'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
 });
 
 export const setPasswordSchema = z.object({
     newPassword: z.string()
         .min(12, 'Password must be at least 12 characters')
         .max(32, 'Password cannot exceed 32 characters'),
-    confirmPassword: z.string().min(1, 'Please confirm your new password'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
 });
 
-export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
-export type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
+/**
+ * The RHF field shape for the security section - ONE form type regardless of
+ * which schema validates it (`currentPassword` simply stays empty and
+ * unvalidated on the set-password branch). Keeping this separate from the
+ * union of schema infers avoids `Path<union>` collapsing to the intersection
+ * of keys, which would force casts at every register() call.
+ */
+export interface PasswordFormValues {
+    currentPassword?: string;
+    newPassword: string;
+}
 
 export const changeEmailSchema = z.object({
     newEmail: z.string().email('Invalid email address'),

@@ -1,50 +1,95 @@
 'use client';
 
-import { ProfileSkeleton } from '@/components/skeletons/profile-skeleton';
-import { useProfileQuery } from '@/hooks/profile/use-profile';
-import { Role } from '@/lib/config/rbac';
-import { motion } from 'framer-motion';
-import { PersonalInfoCard } from './personal-info-card';
-import { ProfileHeader } from './profile-header';
-import { ProfileIdentityCard } from './profile-identity-card';
-import { SecurityCard } from './security-card';
-import { SocialLinksCard } from './social-links-card';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SquareLock02Icon, UserIcon } from '@hugeicons/core-free-icons';
 
-const containerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.4, staggerChildren: 0.1 },
-    },
-};
+import { ProfileSkeleton } from '@/components/skeletons/profile-skeleton';
+import { useEmailChangeLanding } from '@/hooks/profile/use-email-change-landing';
+import { useProfileQuery } from '@/hooks/profile/use-profile';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { AccountSection } from './account-section';
+import { SecuritySection } from './security-section';
+
+type ProfileSection = 'account' | 'security';
+
+const NAV_ITEMS: {
+    key: ProfileSection;
+    label: string;
+    icon: typeof UserIcon;
+}[] = [
+    { key: 'account', label: 'Account', icon: UserIcon },
+    { key: 'security', label: 'Security', icon: SquareLock02Icon },
+];
 
 /**
- * Profile page. Each card owns its own edit state, form and save (Phase 20) -
- * there is no page-wide edit mode, so editing your phone number can never
- * accidentally submit a half-typed social link.
+ * Profile page, Webflow-settings style (2026-07-28 redesign): a slim
+ * nav-only left rail beside a flat content column whose sections are
+ * separated by hairlines - no cards, no shadows. Deliberately minimal: no
+ * identity header or back affordance up here (the shell's sidebar and header
+ * already carry both). Sections are client state, not routes: the page is
+ * small enough that splitting it into URLs would only slow navigation down.
  */
 export function ProfileClient() {
     const { data: user, isLoading } = useProfileQuery();
+    const [section, setSection] = useState<ProfileSection>('account');
+
+    // Toast the outcome when the user arrives from a change-email link
+    // (?email_change=1 / ?error=... appended by the backend redirect).
+    useEmailChangeLanding(user?.email);
 
     if (isLoading) return <ProfileSkeleton />;
     if (!user) return <div>Error loading profile. Please try again.</div>;
 
     return (
-        <div className='w-full max-w-5xl space-y-6 pb-8'>
-            <ProfileHeader />
+        <div className='w-full max-w-5xl pb-16'>
+            <div className='flex flex-col gap-8 lg:flex-row lg:gap-12'>
+                {/* ── Left rail: section nav only ───────────────────── */}
+                <aside className='shrink-0 lg:w-52'>
+                    {/* Horizontal pills on mobile, vertical list on desktop. */}
+                    <nav
+                        aria-label='Profile sections'
+                        className='flex gap-1 overflow-x-auto lg:flex-col'>
+                        {NAV_ITEMS.map(item => (
+                            <button
+                                key={item.key}
+                                type='button'
+                                onClick={() => setSection(item.key)}
+                                aria-current={
+                                    section === item.key ? 'page' : undefined
+                                }
+                                className={cn(
+                                    'flex shrink-0 cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
+                                    section === item.key
+                                        ? 'bg-muted font-medium text-foreground'
+                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                                )}>
+                                <HugeiconsIcon
+                                    icon={item.icon}
+                                    className='size-4'
+                                    strokeWidth={1.75}
+                                />
+                                {item.label}
+                            </button>
+                        ))}
+                    </nav>
+                </aside>
 
-            <motion.div
-                variants={containerVariants}
-                initial='hidden'
-                animate='visible'
-                className='space-y-6'>
-                <ProfileIdentityCard user={user} />
-                <PersonalInfoCard user={user} />
-                {user.role !== Role.USER && <SocialLinksCard user={user} />}
-                <SecurityCard />
-            </motion.div>
+                {/* ── Content column ────────────────────────────────── */}
+                <motion.div
+                    key={section}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className='min-w-0 flex-1'>
+                    {section === 'account' ? (
+                        <AccountSection user={user} />
+                    ) : (
+                        <SecuritySection />
+                    )}
+                </motion.div>
+            </div>
         </div>
     );
 }
-

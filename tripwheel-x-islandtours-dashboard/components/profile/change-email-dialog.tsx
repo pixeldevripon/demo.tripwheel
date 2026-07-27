@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { SuccessBlock } from '@/components/login/login-ui';
+import { PENDING_EMAIL_CHANGE_KEY } from '@/hooks/profile/use-email-change-landing';
 import { authClient } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 import {
@@ -75,15 +76,28 @@ export function ChangeEmailDialog({
             ) {
                 throw new Error('That is already your sign-in email.');
             }
+            // MUST be absolute: better-auth redirects the clicked email links
+            // to this URL, and a relative path would resolve against the
+            // BACKEND origin (404). ?email_change=1 lets the profile page
+            // recognize the landing and toast the outcome.
             const result = await authClient.changeEmail({
                 newEmail: values.newEmail.trim(),
-                callbackURL: '/profile',
+                callbackURL: `${window.location.origin}/profile?email_change=1`,
             });
             if (result.error) throw result.error;
             return values.newEmail.trim();
         },
         onSuccess: (newEmail: string) => {
             setSentTo(newEmail);
+            // Lets the landing handler tell "fully changed" apart from
+            // "old inbox approved, new inbox still pending". Best-effort:
+            // the links may be opened in a different browser.
+            try {
+                localStorage.setItem(PENDING_EMAIL_CHANGE_KEY, newEmail);
+            } catch {
+                // Storage unavailable (private mode) - landing copy degrades
+                // to the generic variant.
+            }
         },
         onError: (err: any) => {
             // Better Auth guards change-email with a fresh-session check; a
@@ -145,13 +159,15 @@ export function ChangeEmailDialog({
                                 title='Confirm the change from your current inbox'
                                 body={`We sent a confirmation link to ${currentEmail}. After you approve it, a verification email goes to ${sentTo} - your email changes once that link is opened. Until then you keep signing in with ${currentEmail}.`}
                             />
-                            <Button
-                                type='button'
-                                variant='outline'
-                                onClick={() => close(false)}
-                                className='mt-4 w-full'>
-                                Done
-                            </Button>
+                            <div className='mt-5 flex justify-center'>
+                                <Button
+                                    type='button'
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => close(false)}>
+                                    Done
+                                </Button>
+                            </div>
                         </CardContent>
                     ) : (
                         <form
@@ -185,30 +201,32 @@ export function ChangeEmailDialog({
                                 </FieldGroup>
                             </CardContent>
 
-                            <CardFooter className='flex flex-col sm:flex-row gap-3 pt-6 pb-8 px-8'>
+                            {/* Standard dialog footer: compact, right-aligned
+                                actions - never full-width stacked blocks. */}
+                            <CardFooter className='flex justify-end gap-2 pb-6'>
+                                <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={() => close(false)}
+                                    disabled={mutation.isPending}>
+                                    Cancel
+                                </Button>
                                 <Button
                                     type='submit'
-                                    disabled={mutation.isPending}
-                                    className='w-full sm:flex-1 order-1 sm:order-2'>
+                                    size='sm'
+                                    disabled={mutation.isPending}>
                                     {mutation.isPending ? (
                                         <>
                                             <HugeiconsIcon
                                                 icon={Loading03Icon}
-                                                className='mr-2 h-4 w-4 animate-spin'
+                                                className='size-4 animate-spin'
                                             />
                                             Sending...
                                         </>
                                     ) : (
-                                        'SEND CONFIRMATION'
+                                        'Send confirmation'
                                     )}
-                                </Button>
-                                <Button
-                                    type='button'
-                                    variant='outline'
-                                    onClick={() => close(false)}
-                                    disabled={mutation.isPending}
-                                    className='w-full sm:flex-1 h-12 order-2 sm:order-1 font-semibold text-xs opacity-70 hover:opacity-100 transition-opacity'>
-                                    Cancel
                                 </Button>
                             </CardFooter>
                         </form>
