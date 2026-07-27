@@ -95,9 +95,13 @@ async function createSignedInUser(
     });
   }
 
+  // Sign-in requires the x-login-surface header (per-door enforcement in
+  // auth.instance.ts). USER-role accounts belong at 'account'; everyone else
+  // this suite creates passes 'portal' (ADMIN is allowed at every door).
   const signInRes = await request(server)
     .post('/api/auth/sign-in/email')
     .set('Content-Type', 'application/json')
+    .set('x-login-surface', opts.role === Role.USER ? 'account' : 'portal')
     .send({ email: opts.email, password: VALID_PASSWORD });
   if (signInRes.status !== 200) {
     throw new Error(

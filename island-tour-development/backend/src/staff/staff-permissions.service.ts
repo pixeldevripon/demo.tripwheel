@@ -23,6 +23,12 @@ import { Permission, Role } from '@prisma/client';
  * - SUSPENDED members resolve to an empty set (their sessions are also revoked
  *   on suspension; this covers the race until the cache below expires).
  *
+ * One account, many hats: a STAFF/TOUR_OPERATOR account that also has customer
+ * rows (they booked tours) additionally gets Role.USER's self-scoped set
+ * unioned in, so the /account surfaces (my bookings, my payments) work for
+ * them. The customer hat is not staff-managed, so a suspended SEAT keeps it -
+ * account-level suspension still blocks sign-in entirely.
+ *
  * Results are cached in-process for CACHE_TTL_MS; every staff mutation calls
  * `invalidate(userId)` so changes apply immediately in the same process.
  */
@@ -76,35 +82,47 @@ export class StaffPermissionsService {
   }
 
   private async compute(userId: string, role: Role): Promise<Permission[]> {
-    const member = await this.prisma.staffMember.findUnique({
-      where: { userId },
-      select: {
-        operatorId: true,
-        seatRole: true,
-        status: true,
-        extraPermissions: true,
-        revokedPermissions: true,
-        designation: { select: { permissions: true } },
-      },
-    });
+    const [member, customerRow] = await Promise.all([
+      this.prisma.staffMember.findUnique({
+        where: { userId },
+        select: {
+          operatorId: true,
+          seatRole: true,
+          status: true,
+          extraPermissions: true,
+          revokedPermissions: true,
+          designation: { select: { permissions: true } },
+        },
+      }),
+      this.prisma.customer.findFirst({
+        where: { userId },
+        select: { id: true },
+      }),
+    ]);
 
-    if (!member) {
-      if (role === Role.TOUR_OPERATOR) {
-        // Not a seat: either the operator account itself (pre-backfill /
-        // legacy) or an operator-less user who fails resolveOperatorId anyway.
-        return ROLE_PERMISSIONS[Role.TOUR_OPERATOR];
+    const base = (() => {
+      if (!member) {
+        if (role === Role.TOUR_OPERATOR) {
+          // Not a seat: either the operator account itself (pre-backfill /
+          // legacy) or an operator-less user who fails resolveOperatorId anyway.
+          return ROLE_PERMISSIONS[Role.TOUR_OPERATOR];
+        }
+        // STAFF role without a staff record: floor only (see class JSDoc).
+        return [...STAFF_BASE_PERMISSIONS];
       }
-      // STAFF role without a staff record: floor only (see class JSDoc).
-      return [...STAFF_BASE_PERMISSIONS];
-    }
 
-    return computeEffectivePermissions({
-      operatorScoped: member.operatorId !== null,
-      seatRole: member.seatRole,
-      status: member.status,
-      designationPermissions: member.designation?.permissions ?? [],
-      extraPermissions: member.extraPermissions,
-      revokedPermissions: member.revokedPermissions,
-    });
+      return computeEffectivePermissions({
+        operatorScoped: member.operatorId !== null,
+        seatRole: member.seatRole,
+        status: member.status,
+        designationPermissions: member.designation?.permissions ?? [],
+        extraPermissions: member.extraPermissions,
+        revokedPermissions: member.revokedPermissions,
+      });
+    })();
+
+    // Customer hat: union in the traveler's self-scoped permissions.
+    if (!customerRow) return base;
+    return [...new Set([...base, ...ROLE_PERMISSIONS[Role.USER]])];
   }
 }

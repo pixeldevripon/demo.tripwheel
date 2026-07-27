@@ -2,11 +2,15 @@ import { auth } from '@/auth/auth.instance';
 import { decrypt, encrypt } from '@/common/utils/crypto.util';
 import {
   getPortalUrl,
-  provisionInvitedAccount,
+  provisionOrAttachAccount,
+  rollbackProvisionOrAttach,
 } from '@/common/utils/invite-provisioning.util';
+import { MailService } from '@/mail/mail.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -56,7 +60,11 @@ export class OperatorsService {
     companyInfo: { select: { companyName: true } },
   } satisfies Prisma.OperatorSelect;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+    private readonly staffPermissions: StaffPermissionsService,
+  ) {}
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
@@ -154,12 +162,38 @@ export class OperatorsService {
    * onboarding. There is no public sign-up - this is the only operator-creation path.
    */
   async create(dto: CreateOperatorDto) {
-    // Shared invite util: unique email + user row + throwaway credential so
-    // the invite's reset flow can set the real password.
-    const { email, user, authCtx } = await provisionInvitedAccount(
-      this.prisma,
-      { email: dto.email, name: dto.name, role: Role.TOUR_OPERATOR },
-    );
+    // Same-hat conflicts before touching anything: one operator link per
+    // account, and the OWNER seat below needs the unique staff row free.
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        operator: { select: { id: true } },
+        staffMember: { select: { operatorId: true } },
+      },
+    });
+    if (existing?.operator) {
+      throw new ConflictException(
+        `${normalizedEmail} already belongs to an operator account`,
+      );
+    }
+    if (existing?.staffMember) {
+      throw new ConflictException(
+        existing.staffMember.operatorId
+          ? `${normalizedEmail} is already on a team`
+          : `${normalizedEmail} is a platform staff member and cannot become an operator`,
+      );
+    }
+
+    // Shared invite util: user row + throwaway credential for a new email, or
+    // attach-and-elevate for an existing customer account (one email, many
+    // hats - the person keeps their password and their bookings).
+    const provisioned = await provisionOrAttachAccount(this.prisma, {
+      email: dto.email,
+      name: dto.name,
+      role: Role.TOUR_OPERATOR,
+    });
+    const { email, user, created, hadPassword } = provisioned;
 
     let operatorId: string | undefined;
     try {
@@ -195,29 +229,64 @@ export class OperatorsService {
         select: { id: true },
       });
 
-      // Server-initiated reset -> invite branch in auth.instance.ts sends the
-      // operator-invite email (set-password link) instead of a reset email.
-      // The link must land on the DASHBOARD app's reset screen (/portal/reset,
-      // which reads ?token=), not the public site.
-      await auth.api.requestPasswordReset({
-        body: {
-          email,
-          redirectTo: `${this.portalUrl}/reset`,
-        },
-      });
+      if (created || !hadPassword) {
+        // Server-initiated reset -> invite branch in auth.instance.ts sends the
+        // operator-invite email (set-password link) instead of a reset email.
+        // The link must land on the DASHBOARD app's reset screen (/portal/reset,
+        // which reads ?token=), not the public site.
+        await auth.api.requestPasswordReset({
+          body: {
+            email,
+            redirectTo: `${this.portalUrl}/reset`,
+          },
+        });
+      } else {
+        // Existing credentialed account: no set-password link - point them at
+        // the portal door. Fire-and-forget; mail must not roll back the hat.
+        this.mailService
+          .sendHatAddedEmail(email, {
+            variant: 'operator',
+            loginUrl: this.portalUrl,
+            name: dto.name,
+          })
+          .catch((err) =>
+            this.logger.error(
+              `Hat-added email failed for ${email}`,
+              err instanceof Error ? err.stack : String(err),
+            ),
+          );
+      }
+
+      // Role may have been elevated on attach - drop any cached permission
+      // set (documented StaffPermissionsService contract; harmless when the
+      // account had no cache entry).
+      this.staffPermissions.invalidate(user.id);
 
       this.logger.log(
-        `Operator account created and invited: ${email} (operator ${operator.id})`,
+        `Operator account ${created ? 'created and invited' : 'attached'}: ${email} (operator ${operator.id})`,
       );
       return operator;
     } catch (err) {
-      // Roll back everything we created so a failure leaves no orphans.
+      // Roll back exactly what we created so a failure leaves no orphans.
       if (operatorId) {
         await this.prisma.operator
           .delete({ where: { id: operatorId } })
           .catch(() => undefined);
       }
-      await authCtx.internalAdapter.deleteUser(user.id).catch(() => undefined);
+      // Shared rollback contract: created user deleted outright; attached
+      // account only loses the OWNER seat we added + the role elevation.
+      await rollbackProvisionOrAttach(this.prisma, provisioned);
+      this.staffPermissions.invalidate(user.id);
+      // Two concurrent creates for the same email can both pass the pre-check
+      // and race on the unique operator/staff rows - the loser gets a 409.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `${email} already belongs to an operator account`,
+        );
+      }
       throw err;
     }
   }

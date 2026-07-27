@@ -16,8 +16,10 @@ import {
 /**
  * Operator-payout ledger surface (dashboard). Reads are gated on VIEW_PAYMENTS
  * (the service scopes a TOUR_OPERATOR to their own rows). The payout itself is
- * MANUAL in v1: an admin transfers the money by hand and confirms it here via
- * the mark-paid action - MANAGE_BOOKINGS (admin-only), never a cron.
+ * MANUAL in v1: an admin transfers the money by hand and either side confirms
+ * it via mark-paid - the admin after sending, or the operator after receiving
+ * (scoped to their own rows in the service). The UNDO (mark-unpaid) stays
+ * MANAGE_BOOKINGS/admin-only: reverting a payout is a ledger correction.
  */
 @ApiTags('settlements')
 @Controller('settlements')
@@ -43,10 +45,10 @@ export class SettlementsController {
   }
 
   @Patch(':id/mark-paid')
-  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @RequirePermissions(Permission.VIEW_PAYMENTS)
   @ApiMarkSettlementPaidDocs()
-  markPaid(@Param('id') id: string) {
-    return this.settlements.markPaidOut(id);
+  markPaid(@AuthenticatedUser() user: TypedAuthUser, @Param('id') id: string) {
+    return this.settlements.markPaidOut(id, { id: user.id, role: user.role });
   }
 
   @Patch(':id/mark-unpaid')

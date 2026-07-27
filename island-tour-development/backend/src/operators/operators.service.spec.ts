@@ -17,8 +17,10 @@ jest.mock('@/auth/auth.instance', () => ({
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentProvider, Role } from '@prisma/client';
+import { MailService } from '@/mail/mail.service';
 import { OperatorsService } from './operators.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 
 const mockPrismaService = {
   operator: {
@@ -52,6 +54,16 @@ describe('OperatorsService', () => {
       providers: [
         OperatorsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        {
+          provide: MailService,
+          useValue: {
+            sendHatAddedEmail: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: StaffPermissionsService,
+          useValue: { invalidate: jest.fn(), invalidateAll: jest.fn() },
+        },
       ],
     }).compile();
 

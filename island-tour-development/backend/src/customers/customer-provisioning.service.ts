@@ -3,9 +3,10 @@ import { TargetRateLimiter } from '@/bookings/lookup-rate-limiter';
 import { ACTIVE_BOOKING_STATUSES } from '@/common/constants/booking-status';
 import {
   getAccountUrl,
-  provisionInvitedAccount,
+  provisionOrAttachAccount,
 } from '@/common/utils/invite-provisioning.util';
 import { PrismaService } from '@/prisma/prisma.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { BookingStatus, Role } from '@prisma/client';
 
@@ -30,10 +31,13 @@ export interface ProvisionableBooking {
  * - upsert `customers` rows (user x operator) and recompute their aggregates.
  *
  * Trust model: the account is inert until the emailed set-password link proves
- * mailbox ownership - the same basis as the public lookup/recover flow. Emails
- * that already belong to a NON-USER account (operator/staff/admin) are skipped
- * entirely: linking would inject bookings into their ops dashboards, and those
- * bookers keep the untouched publicRef flow.
+ * mailbox ownership - the same basis as the public lookup/recover flow.
+ *
+ * One account, many hats: emails that belong to a NON-USER account (operator/
+ * staff) get the customer identity ATTACHED - their bookings link to the one
+ * account and the customer rows open the /account door for them. Their role is
+ * never touched, and credentialed accounts get no set-password email. Only the
+ * hidden internal-management account is skipped entirely.
  *
  * Every public method is fire-and-forget-safe: it never throws and must never
  * block or fail a booking, webhook, or cancellation. Call as
@@ -46,6 +50,7 @@ export class CustomerProvisioningService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly limiter: TargetRateLimiter,
+    private readonly staffPermissions: StaffPermissionsService,
   ) {}
 
   async provisionForBooking(booking: ProvisionableBooking): Promise<void> {
@@ -55,36 +60,57 @@ export class CustomerProvisioningService {
 
       let user = await this.prisma.user.findFirst({
         where: { email: { equals: email, mode: 'insensitive' } },
-        select: { id: true, role: true, hasPassword: true },
+        select: {
+          id: true,
+          role: true,
+          hasPassword: true,
+          isSystemAccount: true,
+          customerOf: { select: { id: true }, take: 1 },
+        },
       });
 
-      if (user && user.role !== Role.USER) {
+      if (user?.isSystemAccount) {
         this.logger.log(
-          `Booking ${booking.id}: contact email belongs to a ${user.role} account - customer provisioning skipped`,
+          `Booking ${booking.id}: contact email belongs to an internal account - customer provisioning skipped`,
         );
         return;
       }
 
+      const firstCustomerHat = !user || user.customerOf.length === 0;
+
       if (!user) {
-        user = await this.createCustomerAccount(email, booking);
-        if (!user) return; // creation failed - logged inside
-      } else if (!user.hasPassword) {
+        const provisioned = await this.createCustomerAccount(email, booking);
+        if (!provisioned) return; // creation failed - logged inside
+        user = { ...provisioned, isSystemAccount: false, customerOf: [] };
+      } else if (!user.hasPassword && user.role === Role.USER) {
         // Booked again without ever setting a password: offer the link again,
-        // capped so repeat bookings cannot spam the inbox.
+        // capped so repeat bookings cannot spam the inbox. Non-USER accounts
+        // received their own invite from their own flow - never re-mail them
+        // a customer welcome.
         this.resendSetPasswordLink(email);
       }
 
       // Backfill-link this + every past booking with the same contact email.
       // The contact email is what identifies the customer, so we claim both
-      // unowned bookings AND ones mis-stamped with a non-USER account: an
-      // admin or operator logged into the browser at checkout used to be
-      // recorded as the traveller (fixed at source in BookingsService.reserve,
-      // but historical rows still carry it). Bookings already owned by a
-      // different CUSTOMER account are never touched.
+      // unowned bookings AND ones mis-stamped with a DIFFERENT account whose
+      // email is not the contact email: an admin or operator logged into the
+      // browser at checkout used to be recorded as the traveller (fixed at
+      // source in BookingsService.reserve, but historical rows still carry
+      // it). Bookings correctly owned by the account whose email IS the
+      // contact email - including staff/operator accounts, which are now
+      // legitimate booking owners - are never re-stamped away.
       const linked = await this.prisma.booking.updateMany({
         where: {
           contactEmail: { equals: email, mode: 'insensitive' },
-          OR: [{ userId: null }, { user: { role: { not: Role.USER } } }],
+          OR: [
+            { userId: null },
+            {
+              userId: { not: user.id },
+              user: {
+                email: { not: { equals: email }, mode: 'insensitive' },
+              },
+            },
+          ],
         },
         data: { userId: user.id },
       });
@@ -111,6 +137,11 @@ export class CustomerProvisioningService {
       } else {
         await this.recomputeAggregates(user.id, booking.operatorId);
       }
+
+      // A first customer row unions Role.USER's self-scoped permissions into
+      // the account's effective set (staff-permissions.service) - drop the
+      // 60s cache so a staff/operator booker can open /account immediately.
+      if (firstCustomerHat) this.staffPermissions.invalidate(user.id);
     } catch (err) {
       this.logger.error(
         `Customer provisioning failed for booking ${booking.id}`,
@@ -176,40 +207,46 @@ export class CustomerProvisioningService {
       booking.contactFirstName?.trim() ||
       email.split('@')[0];
     try {
-      const { user } = await provisionInvitedAccount(this.prisma, {
-        email,
-        name,
-        role: Role.USER,
-      });
+      const { user, created, hadPassword } = await provisionOrAttachAccount(
+        this.prisma,
+        {
+          email,
+          name,
+          role: Role.USER,
+        },
+      );
       this.logger.log(
-        `Customer account created for booking ${booking.id} (user ${user.id})`,
+        `Customer account ${created ? 'created' : 'linked'} for booking ${booking.id} (user ${user.id})`,
       );
       // Server-initiated (no request) -> auth.instance invite branch sends the
       // customer welcome email carrying the 1h set-password token. Seed the
       // per-email cap here too, so creation + resends together can never
       // exceed 1 send per 24h per address (server-initiated resets bypass
-      // Better Auth's route-level limiter - this cap is the backstop).
-      try {
-        this.limiter.consume('customer-welcome', email, [
-          { max: 1, windowMs: 24 * 60 * 60 * 1000 },
-        ]);
-        await auth.api.requestPasswordReset({
-          body: { email, redirectTo: `${getAccountUrl()}/reset` },
-        });
-      } catch (err) {
-        this.logger.warn(
-          `Customer welcome email skipped for booking ${booking.id}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
+      // Better Auth's route-level limiter - this cap is the backstop). Only a
+      // freshly created account gets the welcome; a raced attach means some
+      // other flow already invited this email.
+      if (created) {
+        try {
+          this.limiter.consume('customer-welcome', email, [
+            { max: 1, windowMs: 24 * 60 * 60 * 1000 },
+          ]);
+          await auth.api.requestPasswordReset({
+            body: { email, redirectTo: `${getAccountUrl()}/reset` },
+          });
+        } catch (err) {
+          this.logger.warn(
+            `Customer welcome email skipped for booking ${booking.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
       }
-      return { id: user.id, role: Role.USER, hasPassword: false };
+      return { id: user.id, role: Role.USER, hasPassword: hadPassword };
     } catch (err) {
       if (err instanceof ConflictException) {
-        return this.prisma.user.findFirst({
-          where: { email: { equals: email, mode: 'insensitive' } },
-          select: { id: true, role: true, hasPassword: true },
-        });
+        // Only the hidden internal-management account conflicts now - never
+        // provision it as a customer.
+        return null;
       }
       this.logger.error(
         `Customer account creation failed for booking ${booking.id}`,

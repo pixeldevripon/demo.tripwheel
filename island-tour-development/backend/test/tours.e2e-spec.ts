@@ -95,10 +95,15 @@ async function signIn(
   server: ReturnType<INestApplication['getHttpServer']>,
   email: string,
   password: string,
+  surface = 'portal',
 ) {
+  // Sign-in requires the x-login-surface header (per-door enforcement in
+  // auth.instance.ts). USER-role accounts belong at 'account'; everyone the
+  // suites create passes 'portal' (ADMIN is allowed at every door).
   return request(server)
     .post('/api/auth/sign-in/email')
     .set('Content-Type', 'application/json')
+    .set('x-login-surface', surface)
     .send({ email, password });
 }
 
@@ -155,7 +160,12 @@ async function createSignedInUser(
     });
   }
 
-  const signInRes = await signIn(server, opts.email, VALID_PASSWORD);
+  const signInRes = await signIn(
+    server,
+    opts.email,
+    VALID_PASSWORD,
+    opts.role === Role.USER ? 'account' : 'portal',
+  );
   if (signInRes.status !== 200) {
     throw new Error(
       `Test setup: sign-in failed for ${opts.email}: ${JSON.stringify(signInRes.body)}`,

@@ -131,6 +131,15 @@ export class ListCustomersQueryDto {
   @IsOptional()
   @Type(() => Boolean)
   awaitingReviewOnly?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Only customers who have a booking for this tour. Combines with the ' +
+      'other filters; operator scoping still applies afterwards.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tourId?: string;
 }
 
 export class EmailCustomersDto {

@@ -61,6 +61,10 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     // Octo-* + Accept-Language: OCTO capability negotiation and localization.
     // X-Traveler-Session: the /bookings pair-login token (traveler-session.util).
+    // X-Login-Surface: the per-door sign-in enforcement header (login doors
+    // send it with /sign-in/email; the session hook rejects it when missing) -
+    // it is a non-simple header, so leaving it off this list would make the
+    // browser preflight block EVERY cross-origin sign-in.
     allowedHeaders: [
       'Content-Type',
       'Authorization',
@@ -68,6 +72,7 @@ async function bootstrap() {
       'Octo-Env',
       'Accept-Language',
       'X-Traveler-Session',
+      'X-Login-Surface',
     ],
     // Let OTAs read the echoed capability set + negotiated content locale.
     exposedHeaders: ['Octo-Capabilities', 'Content-Language'],
@@ -106,7 +111,17 @@ async function bootstrap() {
 async function setupSwagger(app: INestApplication): Promise<void> {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Island Tours API')
-    .setDescription('Tour marketplace - operators, slots, bookings')
+    .setDescription(
+      'Tour marketplace - operators, slots, bookings.\n\n' +
+        '**Sign-in requires the `x-login-surface` header** ' +
+        '(`account` | `portal` | `staff` | `admin`): every login door names ' +
+        'itself on `POST /api/auth/sign-in/email`, and the server rejects a ' +
+        'missing/unknown value (403) or a door the account has no identity ' +
+        'for (403, `code: WRONG_LOGIN_SURFACE` - revealed only after the ' +
+        'password verified). `POST /api/v1/auth/login-precheck` offers an ' +
+        'advisory pre-check for wrong-door UX; it cannot bypass the ' +
+        'enforcement.',
+    )
     .setVersion('1.0')
     .addCookieAuth('better-auth.session_token')
     .build();
@@ -144,6 +159,30 @@ async function setupSwagger(app: INestApplication): Promise<void> {
         if (newPathItem[method]) {
           newPathItem[method].tags = ['Auth'];
         }
+      }
+
+      // Better Auth's generated schema knows nothing about our surface
+      // enforcement - document the mandatory header on the sign-in op so
+      // API consumers see it where they will actually hit it.
+      if (pathKey === '/sign-in/email' && newPathItem.post) {
+        newPathItem.post.parameters = [
+          ...(newPathItem.post.parameters ?? []),
+          {
+            name: 'x-login-surface',
+            in: 'header',
+            required: true,
+            schema: {
+              type: 'string',
+              enum: ['account', 'portal', 'staff', 'admin'],
+            },
+            description:
+              'Which login door is signing in. REQUIRED - missing/unknown ' +
+              'values are rejected (403), and a door the account has no ' +
+              'identity for fails with code WRONG_LOGIN_SURFACE (403, ' +
+              'revealed only after the password verified). See ' +
+              'POST /api/v1/auth/login-precheck for the advisory pre-check.',
+          },
+        ];
       }
 
       transformedAuthPaths[newPathKey] = newPathItem;

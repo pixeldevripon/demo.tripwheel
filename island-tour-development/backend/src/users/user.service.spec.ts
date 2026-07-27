@@ -58,6 +58,7 @@ function makeUserRecord(
     image: string | null;
     role: Role;
     status: UserStatus;
+    isSystemAccount: boolean;
     createdAt: Date;
     updatedAt: Date;
   }> = {},
@@ -138,9 +139,15 @@ describe('UserService', () => {
       const result = await service.getAllUsers(query);
 
       expect(result).toEqual({ total: 1, page: 1, limit: 20, data: users });
-      expect(prisma.user.count).toHaveBeenCalledWith({ where: {} });
+      expect(prisma.user.count).toHaveBeenCalledWith({
+        where: { isSystemAccount: false },
+      });
       expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: {}, skip: 0, take: 20 }),
+        expect.objectContaining({
+          where: { isSystemAccount: false },
+          skip: 0,
+          take: 20,
+        }),
       );
     });
 
@@ -156,10 +163,12 @@ describe('UserService', () => {
       await service.getAllUsers(query);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { role: Role.TOUR_OPERATOR },
+        where: { role: Role.TOUR_OPERATOR, isSystemAccount: false },
       });
       expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { role: Role.TOUR_OPERATOR } }),
+        expect.objectContaining({
+          where: { role: Role.TOUR_OPERATOR, isSystemAccount: false },
+        }),
       );
     });
 
@@ -175,7 +184,7 @@ describe('UserService', () => {
       await service.getAllUsers(query);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { status: UserStatus.SUSPENDED },
+        where: { status: UserStatus.SUSPENDED, isSystemAccount: false },
       });
     });
 
@@ -192,7 +201,11 @@ describe('UserService', () => {
       await service.getAllUsers(query);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { role: Role.USER, status: UserStatus.INACTIVE },
+        where: {
+          role: Role.USER,
+          status: UserStatus.INACTIVE,
+          isSystemAccount: false,
+        },
       });
     });
 
@@ -366,15 +379,11 @@ describe('UserService', () => {
       const updated = makeUserRecord({
         id: 'user-2',
         name: 'Bob',
-        email: 'bob@example.com',
       });
       prisma.user.findUnique.mockResolvedValue(existing);
       prisma.user.update.mockResolvedValue(updated);
 
-      const dto: UpdateUserByAdminDto = {
-        name: 'Bob',
-        email: 'bob@example.com',
-      };
+      const dto: UpdateUserByAdminDto = { name: 'Bob' };
       const result = await service.updateUserByAdmin('user-2', dto);
 
       expect(prisma.user.update).toHaveBeenCalledWith(
@@ -384,6 +393,32 @@ describe('UserService', () => {
         }),
       );
       expect(result).toEqual(updated);
+    });
+
+    it('refuses to edit an ADMIN account', async () => {
+      prisma.user.findUnique.mockResolvedValue(
+        makeUserRecord({ id: 'admin-2', role: Role.ADMIN }),
+      );
+
+      await expect(
+        service.updateUserByAdmin('admin-2', { name: 'Nope' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('404s on a hidden system account before any update runs', async () => {
+      prisma.user.findUnique.mockResolvedValue(
+        makeUserRecord({
+          id: 'sys-1',
+          role: Role.ADMIN,
+          isSystemAccount: true,
+        }),
+      );
+
+      await expect(
+        service.updateUserByAdmin('sys-1', { name: 'Nope' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when user does not exist', async () => {

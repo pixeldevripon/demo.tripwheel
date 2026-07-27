@@ -7,12 +7,22 @@ import {
 import {
   BookingStatus,
   Currency,
+  Locale,
   PaymentModel,
   Prisma,
   Role,
   SettlementStatus,
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
+import { MailService } from '@/mail/mail.service';
+import { emailSafeLogoUrl } from '@/mail/email-logo.util';
+import type { EmailTemplateContext } from '@/mail/templates/email-template.renderer';
+import {
+  buildNoticeText,
+  emailIconBase,
+  formatDateLong,
+} from '@/bookings/booking-email.context';
+import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import { localWallClockToUtc } from '@/common/utils/timezone.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
@@ -56,7 +66,10 @@ type BookingWindow = {
 export class SettlementsService {
   private readonly logger = new Logger(SettlementsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mail: MailService,
+  ) {}
 
   /**
    * Free-cancellation deadline in real UTC = tourStart - cancellationHours, in the
@@ -113,19 +126,24 @@ export class SettlementsService {
   }
 
   /**
-   * Admin marks a payout as PAID (dashboard row action) - the ONLY path to
-   * PAID_OUT. Called AFTER the admin has actually transferred the money, so the
-   * ledger never claims a payout that did not happen. Guarded stepwise with a
-   * specific 409 for each blocker (already paid / reversed / booking cancelled /
-   * cancellation pending / clawback window still open) so the dashboard can show
-   * the admin exactly WHY a row cannot be paid yet. Race-safe: the final flip is
-   * a guarded `updateMany` on `status: RECORDED`.
+   * Marks a payout as PAID (dashboard row action) - the ONLY path to
+   * PAID_OUT. Called AFTER the money actually moved: by the admin who sent the
+   * transfer, or by the operator confirming it arrived (the actor scope pins a
+   * non-admin to their own rows; the undo stays admin-only). Guarded stepwise
+   * with a specific 409 for each blocker (already paid / reversed / booking
+   * cancelled / cancellation pending / clawback window still open) so the
+   * dashboard can show exactly WHY a row cannot be paid yet. Race-safe: the
+   * final flip is a guarded `updateMany` on `status: RECORDED`.
    */
-  async markPaidOut(id: string): Promise<SettlementActionResponseDto> {
+  async markPaidOut(
+    id: string,
+    actor?: { id: string; role: Role },
+  ): Promise<SettlementActionResponseDto> {
     const row = await this.prisma.settlement.findUnique({
       where: { id },
       select: {
         id: true,
+        operatorId: true,
         status: true,
         netPosition: true,
         paymentModel: true,
@@ -143,6 +161,18 @@ export class SettlementsService {
       },
     });
     if (!row) throw new NotFoundException('Settlement not found');
+    // A non-admin actor may only confirm THEIR OWN payout. 404 (not 403) so
+    // the response never leaks that another operator's settlement id exists.
+    if (actor && actor.role !== Role.ADMIN) {
+      const ownOperatorId = await resolveOperatorId(
+        this.prisma,
+        actor.id,
+        actor.role,
+      );
+      if (row.operatorId !== ownOperatorId) {
+        throw new NotFoundException('Settlement not found');
+      }
+    }
     if (row.status === SettlementStatus.PAID_OUT) {
       throw new ConflictException('This payout is already marked as paid out.');
     }
@@ -195,9 +225,11 @@ export class SettlementsService {
         'This settlement changed while you were looking at it - refresh and retry.',
       );
     }
+    const markedByAdmin = !actor || actor.role === Role.ADMIN;
     this.logger.log(
-      `Settlement ${id} (${row.booking.displayRef}) marked PAID OUT by admin: EUR ${row.netPosition.toString()}`,
+      `Settlement ${id} (${row.booking.displayRef}) marked PAID OUT by ${markedByAdmin ? 'admin' : 'operator'}: EUR ${row.netPosition.toString()}`,
     );
+    await this.sendStatusChangeEmails(id, 'PAID_OUT', markedByAdmin);
     return {
       id,
       status: SettlementStatus.PAID_OUT,
@@ -242,12 +274,172 @@ export class SettlementsService {
     this.logger.log(
       `Settlement ${id} (${row.booking.displayRef}) reverted to PAYOUT DUE by admin`,
     );
+    await this.sendStatusChangeEmails(id, 'REVERTED', true);
     return {
       id,
       status: SettlementStatus.RECORDED,
       operatorPayout: null,
       settledAt: null,
     };
+  }
+
+  /**
+   * Best-effort status-change notices to BOTH sides of a payout, sent after a
+   * manual mark-paid / revert succeeded. Reuses the shared booking-notice
+   * shell (brand bar, headline, booking reference, tour line, paragraphs, one
+   * CTA, sign-off) so these sit in the same visual family as every other
+   * transactional email. Never throws: the ledger flip has already happened,
+   * so a dead mailbox must not fail the action.
+   */
+  private async sendStatusChangeEmails(
+    id: string,
+    change: 'PAID_OUT' | 'REVERTED',
+    markedByAdmin: boolean,
+  ): Promise<void> {
+    try {
+      const [row, site] = await Promise.all([
+        this.prisma.settlement.findUnique({
+          where: { id },
+          select: {
+            operatorId: true,
+            netPosition: true,
+            operatorPayout: true,
+            currency: true,
+            booking: {
+              select: {
+                displayRef: true,
+                localDate: true,
+                tourStartDateTime: true,
+                startTime: true,
+                tour: { select: { name: true } },
+              },
+            },
+          },
+        }),
+        this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+      ]);
+      if (!row) return;
+
+      const operator = await this.prisma.operator.findUnique({
+        where: { id: row.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true, companyName: true } },
+        },
+      });
+      const operatorEmail =
+        operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+      const companyName = operator?.companyInfo?.companyName ?? 'your company';
+      const adminEmail = process.env.ADMIN_EMAIL ?? null;
+
+      const amount = `${row.currency} ${(row.operatorPayout ?? row.netPosition).toString()}`;
+      const tourName = row.booking.tour?.name ?? 'Unknown tour';
+      const ref = row.booking.displayRef;
+      const byline = markedByAdmin ? 'Island Tours' : companyName;
+
+      const shared = {
+        emailIconBase: emailIconBase(),
+        siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
+        bookingRef: ref,
+        tourName,
+        startTime: row.booking.startTime ?? '',
+        dateLong: formatDateLong(
+          row.booking.tourStartDateTime ?? row.booking.localDate,
+          Locale.en,
+        ),
+        ctaUrl: `${dashboardAppBase()}/settlements`,
+        ctaLabel: 'View in Settlements',
+      };
+
+      const mails: Array<{
+        to: string;
+        subject: string;
+        ctx: EmailTemplateContext;
+      }> = [];
+
+      if (change === 'PAID_OUT') {
+        if (operatorEmail) {
+          mails.push({
+            to: operatorEmail,
+            subject: `Payout marked as paid - ${ref}`,
+            ctx: {
+              ...shared,
+              noticeTitle: 'Your payout was marked as paid.',
+              noticeParagraphs: [
+                `The payout of ${amount} for booking ${ref} (${tourName}) was marked as paid by ${byline}.`,
+                markedByAdmin
+                  ? 'The bank transfer is on its way to your account. If it does not arrive within a few business days, contact Island Tours.'
+                  : 'You confirmed the money arrived - the ledger now shows this payout as settled.',
+              ],
+            },
+          });
+        }
+        if (adminEmail) {
+          mails.push({
+            to: adminEmail,
+            subject: `Payout marked as paid - ${ref}: ${companyName}`,
+            ctx: {
+              ...shared,
+              noticeTitle: 'Payout marked as paid.',
+              noticeParagraphs: [
+                `${amount} to ${companyName} for booking ${ref} (${tourName}) was marked as paid by ${byline}.`,
+                'The settlements ledger now shows this row as paid out.',
+              ],
+            },
+          });
+        }
+      } else {
+        if (operatorEmail) {
+          mails.push({
+            to: operatorEmail,
+            subject: `Payout reverted to due - ${ref}`,
+            ctx: {
+              ...shared,
+              noticeTitle: 'A payout was reverted to due.',
+              noticeParagraphs: [
+                `The payout of ${amount} for booking ${ref} (${tourName}) was reverted to "payout due" by Island Tours - it had been marked as paid by mistake.`,
+                'It is back on the payout worklist; you will be notified again once it is actually paid.',
+              ],
+            },
+          });
+        }
+        if (adminEmail) {
+          mails.push({
+            to: adminEmail,
+            subject: `Payout reverted to due - ${ref}: ${companyName}`,
+            ctx: {
+              ...shared,
+              noticeTitle: 'Payout reverted to due.',
+              noticeParagraphs: [
+                `${amount} to ${companyName} for booking ${ref} (${tourName}) is back on the payout-due worklist.`,
+                'Mark it as paid again once the transfer has actually been made.',
+              ],
+            },
+          });
+        }
+      }
+
+      for (const mailItem of mails) {
+        try {
+          await this.mail.sendBookingNoticeEmail(
+            mailItem.to,
+            mailItem.subject,
+            mailItem.ctx,
+            buildNoticeText(mailItem.ctx),
+          );
+        } catch (err) {
+          this.logger.error(
+            `Settlement ${change} notice to ${mailItem.to} failed for ${ref}`,
+            err as Error,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `Settlement ${change} notices failed for settlement ${id}`,
+        err as Error,
+      );
+    }
   }
 
   /**

@@ -18,6 +18,10 @@ function createMockPrismaService() {
     staffMember: {
       findUnique: jest.fn(),
     },
+    // No customer rows by default - the multi-hat USER-perms union stays off.
+    customer: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 }
 
@@ -83,6 +87,23 @@ describe('StaffPermissionsService', () => {
       expect([...result].sort()).toEqual([...STAFF_BASE_PERMISSIONS].sort());
       // Must never fall back to the broad legacy static STAFF list.
       expect(result).not.toEqual(ROLE_PERMISSIONS[Role.STAFF]);
+    });
+
+    it('unions Role.USER permissions into a STAFF set when the account has customer rows (multi-hat)', async () => {
+      prisma.staffMember.findUnique.mockResolvedValue(null);
+      prisma.customer.findFirst.mockResolvedValue({ id: 'c1' });
+
+      const result = await service.getEffectivePermissions({
+        id: 'staff-1',
+        role: Role.STAFF,
+      });
+
+      for (const p of ROLE_PERMISSIONS[Role.USER]) {
+        expect(result).toContain(p);
+      }
+      for (const p of STAFF_BASE_PERMISSIONS) {
+        expect(result).toContain(p);
+      }
     });
 
     it('TOUR_OPERATOR role with no staff_members row resolves to the full role set', async () => {

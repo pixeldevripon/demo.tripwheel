@@ -7,29 +7,28 @@ import {
     isLocale,
 } from '@/lib/constants/locales';
 import { countryFromHeaders, currencyFromCountry } from '@/lib/currency/geo';
-import { getSessionCookie } from 'better-auth/cookies';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 /**
  * Path prefixes that are NOT part of the localized public site - they must
- * never receive a `/{locale}` prefix (admin panel, auth flows, API).
+ * never receive a `/{locale}` prefix.
  *
- * The login-surfaces group (app/(login)/*) is intentionally locale-free: the
- * traveler surface resolves locale via Accept-Language/cookie without a prefix
- * (spec 2.1), and the operator/admin/apply surfaces are single-locale.
+ * Only `/api` remains: the dashboard (and with it `/dashboard`, `/portal`,
+ * `/staff`, `/apply`) was extracted to its own app - those legacy paths are
+ * handled by LEGACY_DASHBOARD_PREFIXES below instead of being exempted.
  */
 // `/bookings` moved UNDER the locale segment (`/{locale}/bookings`) - the bare
 // path now goes through the standard locale redirect like any public page.
-// `/onboarding` dropped with the dashboard extraction - the operator onboarding
-// route now lives in the dashboard repo, so there is nothing here to exempt.
-const NON_LOCALIZED_PREFIXES = [
-    '/dashboard',
-    '/portal',
-    '/staff',
-    '/apply',
-    '/api',
-];
+const NON_LOCALIZED_PREFIXES = ['/api'];
+
+/**
+ * Routes that lived here before the dashboard extraction. They no longer
+ * exist on this origin; old bookmarks/emails land on the homepage rather
+ * than a 404 (operators/staff get the new door URL from their invite/reset
+ * emails, which point at the dashboard app).
+ */
+const LEGACY_DASHBOARD_PREFIXES = ['/dashboard', '/portal', '/staff', '/apply'];
 
 function isNonLocalized(pathname: string): boolean {
     return NON_LOCALIZED_PREFIXES.some(
@@ -61,115 +60,35 @@ function resolveLocale(request: NextRequest): string {
     return DEFAULT_LOCALE;
 }
 
-/**
- * Optimistic dashboard guard: redirect to /portal only when the session cookie
- * is absent. This is deliberately a cookie-presence check, NOT a backend call.
- *
- * Middleware runs on every dashboard navigation AND every <Link> prefetch. The
- * previous version fetched `/api/auth/get-session` here with no internal API
- * key, so each of those requests counted against BOTH the NestJS per-IP
- * throttle (no key = no bypass) and Better Auth's own per-IP limiter. On
- * `next start` the browser, this middleware, and SSR all reach the backend as
- * one IP (127.0.0.1 locally / one egress IP in prod), so that get-session storm
- * exhausted the shared bucket after a few pages - then a throttled 429 read as
- * "no session" and bounced a logged-in user to /portal, and the /portal login
- * POST hit the same exhausted bucket ("Too Many Requests").
- *
- * Authoritative validation still happens server-side: the dashboard layout's
- * `getUserProfile` verifies the session against the backend (forwarding the
- * internal key so it bypasses the throttle) and redirects if it is truly
- * invalid. A stale-but-well-formed cookie therefore passes here and is caught
- * one hop later.
- *
- * A genuinely MALFORMED cookie (present but not `<token>.<signature>` shaped -
- * truncated, empty-segment, or hand-tampered) is different: it would pass a
- * naive presence check, fail server validation on every request, and the
- * browser would keep resending the broken value - a redirect loop. So we detect
- * that shape and STRIP the session cookies on the redirect response, forcing a
- * clean re-login instead of a loop.
- */
-function guardDashboard(request: NextRequest) {
-    const sessionToken = getSessionCookie(request);
-
-    // No session cookie at all -> not logged in.
-    if (!sessionToken) {
-        return NextResponse.redirect(new URL('/portal', request.url));
-    }
-
-    // A valid Better Auth session cookie is exactly `<token>.<signature>` (two
-    // non-empty segments). Anything else (no dot, empty segment, or extra
-    // segments from tampering) is corrupt: redirect AND clear it so the browser
-    // stops resending a value that would fail server validation on every request.
-    const parts = sessionToken.split('.');
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        const response = NextResponse.redirect(new URL('/portal', request.url));
-        clearSessionCookies(request, response);
-        return response;
-    }
-
-    return NextResponse.next();
-}
-
-/**
- * Expire every Better Auth session cookie present on the request (token + data
- * cookie, in both plain and `__Secure-`-prefixed forms). Deleting by the exact
- * names seen on the request preserves whatever prefix production is using and is
- * a no-op for names that are absent.
- *
- * In production the real cookie is set with `Domain=.islandtours.esenc.cloud`
- * (crossSubDomainCookies), so the delete MUST echo that same `domain`/`path` -
- * a host-scoped delete would not match the domain-scoped cookie and the strip
- * would silently no-op exactly where it matters. Keep this default in sync with
- * `backend/src/auth/auth.instance.ts` crossSubDomainCookies.domain.
- */
-function clearSessionCookies(request: NextRequest, response: NextResponse) {
-    // --- Legacy Cross-Subdomain Logic ---
-    // If you stop using Next.js rewrites and move the frontend and backend to the
-    // same apex domain (e.g. app.domain.com and api.domain.com), uncomment this:
-    const isProd = process.env.NODE_ENV === 'production';
-    const domain = isProd
-        ? (process.env.COOKIE_DOMAIN ?? '.islandtours.esenc.cloud')
-        : undefined;
-
-    for (const { name } of request.cookies.getAll()) {
-        if (name.includes('session_token') || name.includes('session_data')) {
-            response.cookies.delete({
-                name,
-                path: '/',
-                ...(domain && { domain }),
-            });
-        }
-    }
-
-    /*    for (const { name } of request.cookies.getAll()) {
-        if (name.includes('session_token') || name.includes('session_data')) {
-            response.cookies.delete({ name, path: '/' });
-        }
-    } */
-}
-
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Dashboard auth guard (unchanged behaviour).
-    if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
-        return guardDashboard(request);
+    // 1. Legacy dashboard-era paths: the dashboard, portal, staff and apply
+    //    surfaces moved to their own app - send stragglers to the homepage.
+    //    (The old cookie-presence guard and its session-cookie stripping went
+    //    with them; this origin no longer reads the Better Auth cookie.)
+    if (
+        LEGACY_DASHBOARD_PREFIXES.some(
+            prefix =>
+                pathname === prefix || pathname.startsWith(`${prefix}/`),
+        )
+    ) {
+        return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // 2. Legacy auth redirects
+    // 2. Legacy auth redirects. `/login` is the traveler door on this origin
+    //    (email + booking reference); the password doors live on the
+    //    dashboard app, so their old paths just go home too.
     if (pathname === '/login') {
-        return NextResponse.redirect(new URL('/portal', request.url));
+        return NextResponse.redirect(
+            new URL(`/${resolveLocale(request)}/bookings`, request.url),
+        );
     }
-    if (pathname === '/forgot-password') {
-        return NextResponse.redirect(new URL('/portal/forgot', request.url));
-    }
-    if (pathname === '/reset-password') {
-        const url = new URL('/portal/reset', request.url);
-        url.search = request.nextUrl.search;
-        return NextResponse.redirect(url);
+    if (pathname === '/forgot-password' || pathname === '/reset-password') {
+        return NextResponse.redirect(new URL('/', request.url));
     }
 
-    // 3. Other non-localized sections (auth, api, onboarding) - pass through.
+    // 3. Other non-localized sections (api) - pass through.
     if (isNonLocalized(pathname)) {
         return NextResponse.next();
     }

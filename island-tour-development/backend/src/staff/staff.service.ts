@@ -2,8 +2,10 @@ import { auth } from '@/auth/auth.instance';
 import {
   getPortalUrl,
   getStaffUrl,
-  provisionInvitedAccount,
+  provisionOrAttachAccount,
+  rollbackProvisionOrAttach,
 } from '@/common/utils/invite-provisioning.util';
+import { MailService } from '@/mail/mail.service';
 import {
   computeEffectivePermissions,
   OPERATOR_SEAT_CEILING,
@@ -95,6 +97,7 @@ export class StaffService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly staffPermissions: StaffPermissionsService,
+    private readonly mailService: MailService,
   ) {}
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
@@ -259,7 +262,11 @@ export class StaffService {
 
   /**
    * Provisions the auth user + credential (shared invite util) + staff row +
-   * invite email. Rolls back everything it created on failure.
+   * invite email - or ATTACHES the staff identity to an existing account (one
+   * account per email, many hats). Rolls back exactly what it created on
+   * failure: a created user is deleted outright; an attach only removes the
+   * staff row and restores the prior role - the pre-existing account (with
+   * its bookings and sessions) must survive.
    */
   private async provisionMember(params: {
     email: string;
@@ -271,10 +278,38 @@ export class StaffService {
     extraPermissions: Permission[];
     invitedById: string;
   }) {
-    const { email, user, authCtx } = await provisionInvitedAccount(
-      this.prisma,
-      { email: params.email, name: params.name, role: params.role },
-    );
+    // Same-hat conflict: StaffMember.userId is unique - one staff-ish hat per
+    // account (a platform seat, a team seat, or an operator OWNER seat). An
+    // explicit 409 beats the raw P2002 the create below would throw.
+    const normalizedEmail = params.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        staffMember: { select: { id: true, operatorId: true } },
+        operator: { select: { id: true } },
+      },
+    });
+    if (existing?.staffMember) {
+      throw new ConflictException(
+        existing.staffMember.operatorId
+          ? `${normalizedEmail} is already on a team`
+          : `${normalizedEmail} is already a staff member`,
+      );
+    }
+    // A platform-staff hat on an operator account would collide the two
+    // permission models on one role column - blocked for now.
+    if (existing?.operator && params.operatorId === null) {
+      throw new ConflictException(
+        `${normalizedEmail} belongs to an operator account and cannot become platform staff`,
+      );
+    }
+
+    const provisioned = await provisionOrAttachAccount(this.prisma, {
+      email: params.email,
+      name: params.name,
+      role: params.role,
+    });
+    const { email, user, created, hadPassword } = provisioned;
 
     try {
       const member = await this.prisma.staffMember.create({
@@ -282,7 +317,11 @@ export class StaffService {
           userId: user.id,
           operatorId: params.operatorId,
           seatRole: params.seatRole,
-          status: StaffStatus.INVITED,
+          // An attached account already proved mailbox ownership + password;
+          // there is no invite link to redeem, so the seat starts ACTIVE.
+          status:
+            !created && hadPassword ? StaffStatus.ACTIVE : StaffStatus.INVITED,
+          ...(!created && hadPassword && { activatedAt: new Date() }),
           designationId: params.designationId ?? null,
           extraPermissions: params.extraPermissions,
           invitedById: params.invitedById,
@@ -290,22 +329,69 @@ export class StaffService {
         select: this.memberSelect,
       });
 
-      // Server-initiated reset -> the invite branch in auth.instance.ts sends
-      // the set-password invite email (not a reset email).
-      await auth.api.requestPasswordReset({
-        body: { email, redirectTo: this.resetRedirectFor(params.operatorId) },
-      });
+      if (created || !hadPassword) {
+        // Server-initiated reset -> the invite branch in auth.instance.ts
+        // sends the set-password invite email (not a reset email).
+        await auth.api.requestPasswordReset({
+          body: { email, redirectTo: this.resetRedirectFor(params.operatorId) },
+        });
+      } else {
+        // Existing credentialed account: no password link - tell them which
+        // door their new hat opens. Fire-and-forget; a mail hiccup must not
+        // roll back a successfully attached seat.
+        this.mailService
+          .sendHatAddedEmail(email, {
+            variant: params.operatorId ? 'team' : 'platform',
+            roleLabel: member.designation?.name ?? null,
+            companyName: params.operatorId
+              ? await this.operatorCompanyName(params.operatorId)
+              : null,
+            loginUrl: params.operatorId ? this.portalUrl : this.staffUrl,
+            name: member.user.name ?? undefined,
+          })
+          .catch((err) =>
+            this.logger.error(
+              `Hat-added email failed for ${email}`,
+              err instanceof Error ? err.stack : String(err),
+            ),
+          );
+      }
+
+      // Role may have been elevated on attach - drop the cached permissions.
+      this.staffPermissions.invalidate(user.id);
 
       this.logger.log(
-        `Staff invited: ${email} (${params.operatorId ? `operator ${params.operatorId}` : 'platform'}) by ${params.invitedById}`,
+        `Staff ${created ? 'invited' : 'attached'}: ${email} (${params.operatorId ? `operator ${params.operatorId}` : 'platform'}) by ${params.invitedById}`,
       );
       return this.toMemberResponse(member);
     } catch (err) {
-      // internalAdapter.deleteUser removes sessions/accounts; the staff row
-      // cascades with the user - a failure leaves no orphans.
-      await authCtx.internalAdapter.deleteUser(user.id).catch(() => undefined);
+      // Shared rollback contract: created user deleted outright; attached
+      // account only loses the seat we added + the role elevation.
+      await rollbackProvisionOrAttach(this.prisma, provisioned);
+      this.staffPermissions.invalidate(user.id);
+      // Two concurrent invites for the same email can both pass the pre-check
+      // and race on the unique staff row - map the loser to a 409, not a 500.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `${email} is already a staff member or on a team`,
+        );
+      }
       throw err;
     }
+  }
+
+  /** Company name for the hat-added email's team variant; null-safe. */
+  private async operatorCompanyName(
+    operatorId: string,
+  ): Promise<string | null> {
+    const operator = await this.prisma.operator.findUnique({
+      where: { id: operatorId },
+      select: { companyInfo: { select: { companyName: true } } },
+    });
+    return operator?.companyInfo?.companyName ?? null;
   }
 
   private async listMembers(operatorId: string | null, query: StaffQueryDto) {
@@ -549,6 +635,8 @@ export class StaffService {
     const admins = await this.prisma.user.findMany({
       where: {
         role: Role.ADMIN,
+        // The hidden internal-management admin never surfaces here.
+        isSystemAccount: false,
         ...(search && {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
@@ -606,7 +694,7 @@ export class StaffService {
    */
   async getPlatformStaff(id: string) {
     const admin = await this.prisma.user.findFirst({
-      where: { id, role: Role.ADMIN },
+      where: { id, role: Role.ADMIN, isSystemAccount: false },
       select: this.systemAdminSelect,
     });
     if (admin) return this.toSystemAdminResponse(admin);
