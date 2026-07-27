@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowRight01Icon, SecurityCheckIcon, SquareLock02Icon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { authClient } from '@/lib/auth-client';
@@ -18,40 +18,34 @@ export function SecurityCard() {
 
     return (
         <>
-            <Card className='border-none shadow-sm bg-card '>
-                <CardHeader className='pb-4'>
-                    <CardTitle className='text-lg font-semibold flex items-center gap-2'>
-                        <HugeiconsIcon icon={SecurityCheckIcon} className='w-5 h-5 text-primary' />
-                        Security
-                    </CardTitle>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Security</CardTitle>
                 </CardHeader>
-                <CardContent className='space-y-4'>
-                    <div
+                <CardContent>
+                    <button
+                        type='button'
                         onClick={() => setIsPasswordDialogOpen(true)}
-                        className='flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors group cursor-pointer border border-transparent hover:border-border'>
-                        <div className='flex items-center gap-3'>
-                            <div className='p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors'>
-                                <HugeiconsIcon icon={SquareLock02Icon} className='w-4 h-4 text-primary' />
-                            </div>
-                            <div>
-                                <p className='text-sm font-medium'>
-                                    {hasPassword ? 'Change Password' : 'Set Password'}
-                                </p>
-                                <p className='text-xs text-muted-foreground'>
-                                    {hasPassword ? (
-                                        passwordChangedAt ? (
-                                            <>Last changed: {formatDate(passwordChangedAt, { year: 'numeric', month: 'short', day: 'numeric' })}</>
-                                        ) : (
-                                            'Password set but date unknown'
-                                        )
-                                    ) : (
-                                        'No password set yet'
-                                    )}
-                                </p>
-                            </div>
+                        className='group flex w-full cursor-pointer items-center justify-between rounded-lg border border-line px-4 py-3 text-left transition-colors hover:bg-muted/50'>
+                        <div>
+                            <p className='text-sm font-medium'>
+                                {hasPassword
+                                    ? 'Change Password'
+                                    : 'Set Password'}
+                            </p>
+                            <p className='mt-0.5 text-xs text-muted-foreground'>
+                                {hasPassword
+                                    ? passwordChangedAt
+                                        ? `Last changed ${formatDate(passwordChangedAt, { year: 'numeric', month: 'short', day: 'numeric' })}`
+                                        : 'Password is set'
+                                    : 'No password set yet'}
+                            </p>
                         </div>
-                        <HugeiconsIcon icon={ArrowRight01Icon} className='w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform' />
-                    </div>
+                        <HugeiconsIcon
+                            icon={ArrowRight01Icon}
+                            className='size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5'
+                        />
+                    </button>
                 </CardContent>
             </Card>
 
@@ -62,4 +56,3 @@ export function SecurityCard() {
         </>
     );
 }
-

@@ -71,7 +71,7 @@ export default function DashboardShell({
             <CustomerRouteGuard role={userRole} />
             {/* [--sidebar-width]! must stay important: SidebarProvider sets its own
                 16rem default via inline style, which a plain class cannot beat. */}
-            <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:calc(var(--spacing)*72)]! [--header-height:calc(var(--spacing)*17.5)]'>
+            <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:--spacing(72)]! [--header-height:--spacing(17.5)]'>
                 <AppSidebar
                     variant='inset'
                     userRole={userRole}

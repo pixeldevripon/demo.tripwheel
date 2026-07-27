@@ -4,10 +4,9 @@ import { ProfileSkeleton } from '@/components/skeletons/profile-skeleton';
 import { useProfileQuery } from '@/hooks/profile/use-profile';
 import { Role } from '@/lib/config/rbac';
 import { motion } from 'framer-motion';
-import { AccountStatusCard } from './account-status-card';
 import { PersonalInfoCard } from './personal-info-card';
 import { ProfileHeader } from './profile-header';
-import { ProfilePhotoCard } from './profile-photo-card';
+import { ProfileIdentityCard } from './profile-identity-card';
 import { SecurityCard } from './security-card';
 import { SocialLinksCard } from './social-links-card';
 
@@ -32,23 +31,18 @@ export function ProfileClient() {
     if (!user) return <div>Error loading profile. Please try again.</div>;
 
     return (
-        <div className='max-w-7xl space-y-8 pb-8'>
+        <div className='max-w-5xl space-y-6 pb-8'>
             <ProfileHeader />
 
             <motion.div
                 variants={containerVariants}
                 initial='hidden'
                 animate='visible'
-                className='grid grid-cols-12 gap-8'>
-                <div className='col-span-12 lg:col-span-8 space-y-8'>
-                    <ProfilePhotoCard user={user} />
-                    <PersonalInfoCard user={user} />
-                    {user.role !== Role.USER && <SocialLinksCard user={user} />}
-                </div>
-                <div className='col-span-12 lg:col-span-4 space-y-8'>
-                    <AccountStatusCard user={user} />
-                    <SecurityCard />
-                </div>
+                className='space-y-6'>
+                <ProfileIdentityCard user={user} />
+                <PersonalInfoCard user={user} />
+                {user.role !== Role.USER && <SocialLinksCard user={user} />}
+                <SecurityCard />
             </motion.div>
         </div>
     );

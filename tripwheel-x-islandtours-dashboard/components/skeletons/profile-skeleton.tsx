@@ -2,57 +2,39 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProfileSkeleton() {
     return (
-        <div className='max-w-7xl space-y-8 pb-8'>
-            {/* Header Skeleton */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-2">
-                    <Skeleton className="h-10 w-64" />
-                    <Skeleton className="h-4 w-96" />
-                </div>
-                <Skeleton className="h-10 w-32" />
+        <div className='max-w-5xl space-y-6 pb-8'>
+            {/* Header */}
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-40" />
+                <Skeleton className="h-4 w-64" />
             </div>
 
-            <div className='grid grid-cols-12 gap-8'>
-                {/* Left Column */}
-                <div className='col-span-12 lg:col-span-8 space-y-8'>
-                    {/* Photo Card Skeleton */}
-                    <div className="p-6 rounded-xl border border-border bg-card space-y-6">
-                        <div className="flex items-center gap-6">
-                            <Skeleton className="h-28 w-28 rounded-full" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-10 w-40" />
-                                <Skeleton className="h-4 w-60" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Personal Info Skeleton */}
-                    <div className="p-6 rounded-xl border border-border bg-card space-y-6">
-                        <Skeleton className="h-8 w-48" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <div key={i} className="space-y-2">
-                                    <Skeleton className="h-4 w-24" />
-                                    <Skeleton className="h-10 w-full" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+            {/* Identity card */}
+            <div className="flex items-center gap-6 rounded-lg border border-line bg-card p-6">
+                <Skeleton className="size-20 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-72" />
                 </div>
+            </div>
 
-                {/* Right Column */}
-                <div className='col-span-12 lg:col-span-4 space-y-8'>
-                    <div className="p-6 rounded-xl border border-border bg-card space-y-4">
-                        <Skeleton className="h-8 w-40" />
-                        <Skeleton className="h-20 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                    <div className="p-6 rounded-xl border border-border bg-card space-y-4">
-                        <Skeleton className="h-8 w-40" />
-                        <Skeleton className="h-24 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
+            {/* Personal info */}
+            <div className="space-y-6 rounded-lg border border-line bg-card p-6">
+                <Skeleton className="h-7 w-48" />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                    ))}
                 </div>
+            </div>
+
+            {/* Security */}
+            <div className="space-y-4 rounded-lg border border-line bg-card p-6">
+                <Skeleton className="h-7 w-28" />
+                <Skeleton className="h-16 w-full" />
             </div>
         </div>
     );

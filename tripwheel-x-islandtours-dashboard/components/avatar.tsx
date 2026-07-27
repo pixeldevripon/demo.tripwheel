@@ -21,8 +21,10 @@ export default function UserAvatarImage({ user, isVerified, onClick }: UserAvata
       : user.image.url
     : null;
 
+  // Rendered inside the profile dropdown's trigger <button>, so this
+  // must not be a button itself (nested buttons are invalid HTML).
   return (
-    <button
+    <span
       onClick={onClick}
       className='flex items-center gap-3 p-2 bg-transparent duration-300 transition-colors cursor-pointer'
     >
@@ -55,6 +57,6 @@ export default function UserAvatarImage({ user, isVerified, onClick }: UserAvata
           />
         )}
       </div>
-    </button>
+    </span>
   );
 }
