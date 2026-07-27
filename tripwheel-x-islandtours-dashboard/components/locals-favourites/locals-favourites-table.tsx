@@ -8,9 +8,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DataTable } from '@/components/data-table/data-table';
 import {
-  DataTableActions,
   DataTableSearch,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import {
   Select,
@@ -219,9 +217,6 @@ export function LocalsFavouritesTable({
               value={filters.operatorId}
               onChange={(v) => onFilterChange('operatorId', v)}
             />
-            <DataTableActions>
-              <DataTableViewOptions table={table} />
-            </DataTableActions>
           </>
         )}
       />

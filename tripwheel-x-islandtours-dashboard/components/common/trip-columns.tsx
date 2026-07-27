@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkBadge01Icon, Folder01Icon, Location01Icon, Navigation03Icon, StarIcon, Ticket01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkBadge01Icon, Location01Icon, Navigation03Icon, StarIcon, Ticket01Icon } from '@hugeicons/core-free-icons';
 
 import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -11,7 +11,6 @@ import { StatusBadge } from '@/components/common/status-badge';
 import { TRIP_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatDate } from '@/lib/utils';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { deriveTourBadge } from '@/lib/tours/derive-badge';
 import { TourBadgeChip } from '@/components/common/tour-badge';
@@ -228,37 +227,6 @@ export function makeTripColumns({
       enableSorting: false,
     },
     {
-      id: 'category',
-      header: 'Category',
-      cell: ({ row }) => {
-        const primary = row.original.primaryCategoryName;
-        const primaryId = row.original.primaryCategoryId;
-        const all = row.original.categoryNames ?? [];
-        const extra = all.length > 1 ? all.length - 1 : 0;
-        const label = primary ?? all[0];
-        if (!label) return <span className="text-xs text-muted-foreground">-</span>;
-        return (
-          <div className="flex items-center gap-1.5">
-            <HugeiconsIcon icon={Folder01Icon} className="size-3.5 text-muted-foreground shrink-0" />
-            {primaryId ? (
-              <Link
-                href={`/categories/${primaryId}/edit`}
-                className={`text-sm truncate max-w-28 ${entityLink}`}
-              >
-                {label}
-              </Link>
-            ) : (
-              <span className="text-sm truncate max-w-28">{label}</span>
-            )}
-            {extra > 0 && (
-              <span className="text-xs text-muted-foreground shrink-0">+{extra}</span>
-            )}
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
-    {
       id: 'location',
       header: 'Destination / Hubs',
       cell: ({ row }) => {
@@ -330,16 +298,6 @@ export function makeTripColumns({
   }
 
   cols.push(
-    {
-      accessorKey: 'updatedAt',
-      header: 'Updated',
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">
-          {formatDate(row.original.updatedAt)}
-        </span>
-      ),
-      enableSorting: true,
-    },
     {
       id: 'actions',
       header: '',

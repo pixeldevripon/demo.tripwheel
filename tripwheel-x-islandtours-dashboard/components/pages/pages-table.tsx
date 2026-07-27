@@ -5,7 +5,6 @@ import { File02Icon } from '@hugeicons/core-free-icons';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { TableSearchInput } from '@/components/table-search-input';
 import type { PageListItem } from '@/types/pages';
@@ -45,7 +44,6 @@ export function PagesTable({
             className="min-w-36 flex-1"
           />
           <DataTableActions>
-            <DataTableViewOptions table={table} />
             {actionSlot}
           </DataTableActions>
         </>

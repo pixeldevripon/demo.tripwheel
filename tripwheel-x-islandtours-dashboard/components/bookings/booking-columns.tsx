@@ -1,8 +1,5 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
-import { UserGroupIcon } from '@hugeicons/core-free-icons';
-
 import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
@@ -10,8 +7,6 @@ import { StatusBadge } from '@/components/common/status-badge';
 import {
   BOOKING_DISPLAY_STATUS,
   REFUND_STATUS,
-  SETTLEMENT_METHOD_LABEL,
-  SETTLEMENT_STATUS,
 } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import { bookingMoney, paymentModelLabel, refundDue } from '@/lib/bookings/format';
@@ -117,18 +112,6 @@ export function makeBookingColumns({
       enableSorting: false,
     },
     {
-      id: 'party',
-      header: 'Party',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <HugeiconsIcon icon={UserGroupIcon} className="size-3.5 shrink-0" />
-          <span className="tabular-nums">{row.original.partySize}</span>
-        </div>
-      ),
-      enableSorting: false,
-      size: 72,
-    },
-    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
@@ -158,42 +141,6 @@ export function makeBookingColumns({
                 ? ` · deposit ${money(b.depositAmount, b.currency)}`
                 : ''}
             </span>
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
-    {
-      id: 'settlement',
-      header: 'Settlement',
-      cell: ({ row }) => {
-        const b = row.original;
-        return (
-          <div className="min-w-0">
-            {b.settlementStatus ? (
-              <StatusBadge
-                variant={SETTLEMENT_STATUS[b.settlementStatus].variant}
-                hint={SETTLEMENT_STATUS[b.settlementStatus].hint}
-              >
-                {SETTLEMENT_STATUS[b.settlementStatus].label}
-              </StatusBadge>
-            ) : (
-              <span className="text-xs text-muted-foreground">-</span>
-            )}
-            {/* A reversed settlement paid out nothing - the method (e.g. "Operator
-                payout") would misdescribe a voided obligation, so suppress it. */}
-            {b.settlementMethod && b.settlementStatus !== 'REVERSED' && (
-              <span className="text-xs text-muted-foreground block mt-0.5">
-                {SETTLEMENT_METHOD_LABEL[b.settlementMethod]}
-              </span>
-            )}
-            {/* Same hold cue the Settlements page shows, so it reads consistently
-                wherever the settlement badge appears. */}
-            {b.settlementHeld && (
-              <span className="text-xs text-warning-fg block mt-0.5">
-                On hold - cancellation requested
-              </span>
-            )}
           </div>
         );
       },

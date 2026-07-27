@@ -1,17 +1,8 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Search01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+import { Search01Icon } from '@hugeicons/core-free-icons';
 
-import type { Table } from '@tanstack/react-table';
-import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
 /**
@@ -39,39 +30,6 @@ export function DataTableSearch({
                 aria-label={placeholder}
             />
         </div>
-    );
-}
-
-export function DataTableViewOptions<TData>({
-    table,
-}: {
-    table: Table<TData>;
-}) {
-    const hideable = table.getAllColumns().filter((col) => col.getCanHide());
-    if (hideable.length === 0) return null;
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant='outline' size='sm'>
-                    <HugeiconsIcon icon={Settings02Icon} />
-                    Columns
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end' className='w-40'>
-                <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                {hideable.map((col) => (
-                    <DropdownMenuCheckboxItem
-                        key={col.id}
-                        className='capitalize'
-                        checked={col.getIsVisible()}
-                        onCheckedChange={(value) =>
-                            col.toggleVisibility(!!value)
-                        }>
-                        {col.id}
-                    </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
     );
 }
 

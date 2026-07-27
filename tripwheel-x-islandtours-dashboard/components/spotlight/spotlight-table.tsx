@@ -5,7 +5,6 @@ import { SparklesIcon } from '@hugeicons/core-free-icons';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { TableSearchInput } from '@/components/table-search-input';
 import {
@@ -51,7 +50,6 @@ export function SpotlightTable({
           />
           {filterSlot}
           <DataTableActions>
-            <DataTableViewOptions table={table} />
             {actionSlot}
           </DataTableActions>
         </>

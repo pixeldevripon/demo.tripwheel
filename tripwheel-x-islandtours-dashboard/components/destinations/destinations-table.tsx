@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   DataTableActions,
-  DataTableViewOptions,
 } from '@/components/data-table/data-table-toolbar';
 import { TableSearchInput } from '@/components/table-search-input';
 import { Button } from '@/components/ui/button';
@@ -111,7 +110,6 @@ export function DestinationsTable({
             </SelectContent>
           </Select>
           <DataTableActions>
-            <DataTableViewOptions table={table} />
             {addButton}
           </DataTableActions>
         </>

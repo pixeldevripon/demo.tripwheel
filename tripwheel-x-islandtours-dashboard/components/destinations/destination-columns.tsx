@@ -1,14 +1,13 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Location01Icon, SquareLock02Icon } from '@hugeicons/core-free-icons';
+import { Location01Icon } from '@hugeicons/core-free-icons';
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { ACTIVE_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatDate } from '@/lib/utils';
 import type { DestinationLocalized } from '@/types/destination';
 import { DestinationRowActions } from './destination-row-actions';
 
@@ -90,30 +89,6 @@ export const destinationColumns: ColumnDef<DestinationLocalized>[] = [
         </StatusBadge>
       );
     },
-    enableSorting: true,
-  },
-  {
-    accessorKey: 'isSeeded',
-    header: 'Seeded',
-    cell: ({ row }) => {
-      if (!row.original.isSeeded) return null;
-      return (
-        <div className="flex items-center gap-1.5">
-          <HugeiconsIcon icon={SquareLock02Icon} className="size-3 text-muted-foreground" />
-          <StatusBadge variant="neutral">Protected</StatusBadge>
-        </div>
-      );
-    },
-    enableSorting: false,
-  },
-  {
-    accessorKey: 'createdAt',
-    header: 'Created',
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-xs">
-        {formatDate(row.original.createdAt)}
-      </span>
-    ),
     enableSorting: true,
   },
   {

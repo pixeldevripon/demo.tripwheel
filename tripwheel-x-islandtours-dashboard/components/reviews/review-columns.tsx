@@ -67,7 +67,10 @@ export function makeReviewColumns(
       cell: ({ row }) => {
         const r = row.original;
         return (
-          <div className='min-w-0'>
+          // max-w is what makes `truncate` bite: in an auto-layout table a
+          // nowrap cell is as wide as its longest text, so an unbounded
+          // review comment forced the whole table into horizontal scroll.
+          <div className='min-w-0 max-w-md'>
             <div className='truncate font-medium'>
               {r.reviewerInitial ?? 'Anonymous'}
               {r.reviewerCountry ? (
