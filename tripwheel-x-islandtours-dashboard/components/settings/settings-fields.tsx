@@ -168,6 +168,7 @@ export function SecretField({
   description,
   placeholder,
   disabled,
+  autoComplete,
 }: {
   label: string;
   registration: UseFormRegisterReturn;
@@ -175,6 +176,11 @@ export function SecretField({
   description?: string;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Defaults to "off" (API keys, secrets). Real password fields must pass
+   * "current-password" / "new-password" so password managers behave.
+   */
+  autoComplete?: string;
 }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -186,7 +192,7 @@ export function SecretField({
           placeholder={placeholder}
           disabled={disabled}
           aria-invalid={!!error}
-          autoComplete="off"
+          autoComplete={autoComplete ?? 'off'}
           className="pr-8"
           {...registration}
         />

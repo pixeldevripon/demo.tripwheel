@@ -2,6 +2,7 @@
 
 import { useRole } from '@/contexts/role-context';
 import { signOut } from '@/lib/auth-client';
+import { doorForSession } from '@/lib/rbac-utils';
 import { cn } from '@/lib/utils';
 import {
     ArrowDown01Icon,
@@ -29,14 +30,6 @@ import {
 interface ProfileDropdownProps {
     loggedInUser: any;
     className?: string;
-}
-
-/** The login door a role canonically belongs to (surface-less fallback). */
-function roleDoor(role?: string): 'admin' | 'staff' | 'account' | 'portal' {
-    if (role === 'ADMIN') return 'admin';
-    if (role === 'STAFF') return 'staff';
-    if (role === 'USER') return 'account';
-    return 'portal';
 }
 
 export default function ProfileDropdown({
@@ -81,7 +74,7 @@ export default function ProfileDropdown({
                     // legacy surface-less sessions fall back to role. The
                     // admin login is a separate app on another origin, so it
                     // needs a full navigation, not router.push.
-                    const door = surface ?? roleDoor(loggedInUser?.role);
+                    const door = doorForSession(loggedInUser?.role, surface);
                     if (door === 'admin') {
                         window.location.href =
                             process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL ||

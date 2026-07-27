@@ -90,6 +90,32 @@ export function isCustomerView(
   return isCustomerRole(role);
 }
 
+export type SessionDoor = 'admin' | 'staff' | 'account' | 'portal';
+
+/**
+ * The login door a session belongs to: the surface it ENTERED through when
+ * stamped, else the role's canonical door (legacy surface-less sessions).
+ * Shared by sign-out routing and the emailed password-change link so the two
+ * can never send one account to different doors.
+ */
+export function doorForSession(
+  role?: string,
+  surface?: string | null
+): SessionDoor {
+  if (
+    surface === 'admin' ||
+    surface === 'staff' ||
+    surface === 'account' ||
+    surface === 'portal'
+  ) {
+    return surface;
+  }
+  if (role === 'ADMIN') return 'admin';
+  if (role === 'STAFF') return 'staff';
+  if (role === 'USER') return 'account';
+  return 'portal';
+}
+
 /**
  * The navigation a session may actually see - the ONE place that decision
  * lives.
