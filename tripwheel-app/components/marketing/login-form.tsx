@@ -6,17 +6,26 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { signIn } from '@/lib/auth-client';
-import { DASHBOARD_URL } from '@/lib/links';
+import { authClient, getSessionRole, signIn } from '@/lib/auth-client';
+import { API_URL, DASHBOARD_URL } from '@/lib/links';
+
+/**
+ * Generic rejection for every non-admin outcome on this door. This is the
+ * SYSTEM ADMIN login: it deliberately never hints at the other login
+ * surfaces (operator portal / staff / traveler) - real admins know where
+ * they are, and anyone else should not be told where to try next.
+ */
+const GENERIC_REJECTION = "These credentials can't be used to sign in here.";
 
 /**
  * Right column of the login screen (Webflow ref): logo, heading, email +
  * password with visibility toggle, accent Continue, sign-up line.
  *
- * Credentials only for now - social/SSO options land later. This IS the
- * dashboard login: it authenticates against the shared better-auth backend
- * (see lib/auth-client.ts) and a successful sign-in hard-navigates to the
- * dashboard, which picks the session up from the shared cookie.
+ * This is the SYSTEM ADMIN door: it authenticates against the shared
+ * better-auth backend with the `admin` login surface (the backend rejects
+ * any account without the admin hat), verifies the minted session really is
+ * an ADMIN, and hard-navigates to the dashboard, which picks the session up
+ * from the shared cookie.
  */
 export function LoginForm() {
     const [email, setEmail] = useState('');
@@ -30,16 +39,43 @@ export function LoginForm() {
         setLoading(true);
         setError('');
         try {
-            const { data, error: authError } = await signIn.email({
-                email,
-                password,
-            });
+            // Advisory pre-check (fail-open): saves a wasted password round
+            // trip for non-admin accounts. The sign-in below independently
+            // enforces the surface server-side. Deliberately no credentials -
+            // it is an unauthenticated lookup; the cookie jar stays home.
+            try {
+                const res = await fetch(`${API_URL}/api/v1/auth/login-precheck`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, surface: 'admin' }),
+                    // A hung pre-check must not stall the real sign-in.
+                    signal: AbortSignal.timeout(4000),
+                });
+                if (res.ok) {
+                    // Trust boundary: unvalidated network JSON, read with a
+                    // bare assertion - safe only because the design fails
+                    // open (a shape change skips the hint, never blocks).
+                    const verdict = (await res.json()) as { ok?: boolean };
+                    if (verdict.ok === false) {
+                        setError(GENERIC_REJECTION);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch {
+                // Pre-check unreachable - proceed; the server still enforces.
+            }
+
+            const { data, error: authError } = await signIn.email(
+                { email, password },
+                { headers: { 'x-login-surface': 'admin' } }
+            );
             if (authError) {
-                setError(
-                    authError.message ||
-                        authError.statusText ||
-                        'Invalid email or password.'
-                );
+                // EVERY credential failure gets the same copy - a distinct
+                // "invalid password" string would tell an attacker which
+                // emails are real admin accounts (this door's whole point is
+                // to never fingerprint account types).
+                setError(GENERIC_REJECTION);
                 setLoading(false);
             } else if (!data) {
                 // No response at all (network/CORS failure) - better-fetch can
@@ -49,16 +85,33 @@ export function LoginForm() {
                 );
                 setLoading(false);
             } else {
+                // Defense-in-depth: the surface enforcement should make a
+                // non-admin session impossible here, but verify against the
+                // authoritative session before handing over to the dashboard.
+                const role = await getSessionRole();
+                if (role !== 'ADMIN') {
+                    // Drop the just-minted session; retry once on a hiccup.
+                    // Even if both attempts fail, the dashboard re-derives
+                    // the role server-side on every request - a lingering
+                    // non-admin cookie grants nothing extra there.
+                    const out = await authClient
+                        .signOut()
+                        .catch(() => ({ error: { message: 'network' } }));
+                    if (out && 'error' in out && out.error) {
+                        await authClient.signOut().catch(() => undefined);
+                    }
+                    setError(GENERIC_REJECTION);
+                    setLoading(false);
+                    return;
+                }
                 // Full navigation (not router.push) - the dashboard is a
                 // separate deployment on another subdomain.
                 window.location.assign(DASHBOARD_URL);
             }
-        } catch (err: unknown) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'An unexpected error occurred. Please try again.'
-            );
+        } catch {
+            // Never render a raw exception message on this door - it could
+            // carry backend detail. One fixed string for the unexpected path.
+            setError('An unexpected error occurred. Please try again.');
             setLoading(false);
         }
     }
