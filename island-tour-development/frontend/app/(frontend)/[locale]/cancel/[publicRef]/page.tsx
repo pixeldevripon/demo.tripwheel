@@ -89,10 +89,12 @@ async function CancelBody({
                 <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {dict.thankYou.cancellationPendingNote}
                 </p>
+                {/* A request is already in - there is no booking to "keep";
+                    the way forward is the status on the thank-you page. */}
                 <Link
                     href={thankYouHref}
                     className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
-                    {cd.keep}
+                    {cd.seeStatus}
                 </Link>
             </div>
         );

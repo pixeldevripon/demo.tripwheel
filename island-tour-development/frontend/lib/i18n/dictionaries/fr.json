@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "Filtres",
                 "selectDate": "Choisir une date",
+                "clearDate": "Effacer la date",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultes",
@@ -252,6 +253,7 @@
             "subtitle": "Des circuits choisis par des locaux qui connaissent chaque récif, route et coucher de soleil",
             "searchPlaceholder": "Rechercher des circuits ou activités",
             "selectDate": "Sélectionner une date",
+            "clearDate": "Effacer la date",
             "popularLabel": "Populaire"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "Là où les habitants envoient leurs visiteurs",
             "selectDate": "Sélectionner une date",
+            "clearDate": "Effacer la date",
             "checkAvailability": "Vérifier la disponibilité",
             "comparison": {
                 "title": "Quelle excursion vous convient ?",
@@ -686,6 +689,7 @@
         "sending": "Envoi...",
         "sentTitle": "Demande d'annulation envoyée.",
         "sentBody": "Nous nous en occupons. Vous recevrez un e-mail confirmant votre annulation et votre remboursement.",
+        "seeStatus": "Voir le statut d'annulation",
         "notActive": "Cette réservation n'est plus active, il n'y a donc rien à annuler.",
         "error": "Cela n'a pas fonctionné. Réessayez ou écrivez-nous sur WhatsApp.",
         "verifyTitle": "Vérifiez d'abord votre identité",

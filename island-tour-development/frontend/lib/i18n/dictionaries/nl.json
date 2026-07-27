@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "Filters",
                 "selectDate": "Datum kiezen",
+                "clearDate": "Datum wissen",
                 "guestTypes": {
                     "adults": {
                         "label": "Volwassenen",
@@ -252,6 +253,7 @@
             "subtitle": "Tours geselecteerd door locals die elk rif, elke route en elke zonsondergangsplek kennen",
             "searchPlaceholder": "Zoek tours of activiteiten",
             "selectDate": "Selecteer datum",
+            "clearDate": "Datum wissen",
             "popularLabel": "Populair"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "Waar eilandbewoners hun bezoekers heen sturen",
             "selectDate": "Selecteer datum",
+            "clearDate": "Datum wissen",
             "checkAvailability": "Beschikbaarheid bekijken",
             "comparison": {
                 "title": "Welke trip past bij jou?",
@@ -686,6 +689,7 @@
         "sending": "Versturen...",
         "sentTitle": "Annuleringsverzoek verzonden.",
         "sentBody": "We gaan ermee aan de slag. Je ontvangt een e-mail ter bevestiging van je annulering en terugbetaling.",
+        "seeStatus": "Bekijk annuleringsstatus",
         "notActive": "Deze boeking is niet meer actief, dus er valt niets te annuleren.",
         "error": "Dat is niet gelukt. Probeer het opnieuw of stuur ons een bericht via WhatsApp.",
         "verifyTitle": "Eerst even verifiëren",

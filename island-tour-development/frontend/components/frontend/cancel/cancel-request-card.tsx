@@ -74,10 +74,13 @@ export function CancelRequestCard({
                         <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.sentBody}
                         </span>
+                        {/* After the request is in there is nothing left to
+                            "keep" - the way forward is watching the status on
+                            the thank-you page. */}
                         <Link
                             href={thankYouHref}
                             className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
-                            {dict.keep}
+                            {dict.seeStatus}
                         </Link>
                     </motion.div>
                 ) : (

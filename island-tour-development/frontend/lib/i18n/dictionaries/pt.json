@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "Filtros",
                 "selectDate": "Selecionar data",
+                "clearDate": "Limpar data",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultos",
@@ -252,6 +253,7 @@
             "subtitle": "Tours escolhidos por locais que conhecem cada recife, rota e pôr do sol",
             "searchPlaceholder": "Pesquisar tours ou atividades",
             "selectDate": "Selecionar data",
+            "clearDate": "Limpar data",
             "popularLabel": "Popular"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "Para onde os locais enviam os seus visitantes",
             "selectDate": "Selecionar data",
+            "clearDate": "Limpar data",
             "checkAvailability": "Ver disponibilidade",
             "comparison": {
                 "title": "Qual passeio é ideal para você?",
@@ -686,6 +689,7 @@
         "sending": "A enviar...",
         "sentTitle": "Pedido de cancelamento enviado.",
         "sentBody": "Estamos a tratar disso. Vai receber um e-mail a confirmar o cancelamento e o reembolso.",
+        "seeStatus": "Ver o status do cancelamento",
         "notActive": "Esta reserva já não está ativa, por isso não há nada para cancelar.",
         "error": "Não foi possível enviar. Tente novamente ou fale connosco no WhatsApp.",
         "verifyTitle": "Primeiro confirme que é você",

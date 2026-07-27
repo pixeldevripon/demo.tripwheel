@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "Filtros",
                 "selectDate": "Seleccionar fecha",
+                "clearDate": "Borrar fecha",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultos",
@@ -252,6 +253,7 @@
             "subtitle": "Tours elegidos por locales que conocen cada arrecife, ruta y rincón al atardecer",
             "searchPlaceholder": "Buscar tours o actividades",
             "selectDate": "Seleccionar fecha",
+            "clearDate": "Borrar fecha",
             "popularLabel": "Popular"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "A donde los locales envían a sus visitantes",
             "selectDate": "Seleccionar fecha",
+            "clearDate": "Borrar fecha",
             "checkAvailability": "Ver disponibilidad",
             "comparison": {
                 "title": "¿Qué excursión es la ideal para ti?",
@@ -686,6 +689,7 @@
         "sending": "Enviando...",
         "sentTitle": "Solicitud de cancelación enviada.",
         "sentBody": "Nos encargamos. Recibirás un correo confirmando tu cancelación y tu reembolso.",
+        "seeStatus": "Ver el estado de la cancelación",
         "notActive": "Esta reserva ya no está activa, así que no hay nada que cancelar.",
         "error": "No se pudo enviar. Inténtalo de nuevo o escríbenos por WhatsApp.",
         "verifyTitle": "Primero verifica que eres tú",

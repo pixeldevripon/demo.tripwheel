@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "筛选",
                 "selectDate": "选择日期",
+                "clearDate": "清除日期",
                 "guestTypes": {
                     "adults": {
                         "label": "成人",
@@ -252,6 +253,7 @@
             "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",
             "searchPlaceholder": "搜索旅游或活动",
             "selectDate": "选择日期",
+            "clearDate": "清除日期",
             "popularLabel": "热门"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "岛民推荐访客去的地方",
             "selectDate": "选择日期",
+            "clearDate": "清除日期",
             "checkAvailability": "查看可用性",
             "comparison": {
                 "title": "哪一趟行程适合你？",
@@ -686,6 +689,7 @@
         "sending": "发送中...",
         "sentTitle": "取消申请已发送。",
         "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
+        "seeStatus": "查看取消状态",
         "notActive": "此预订已不再有效，无需取消。",
         "error": "提交失败。请重试，或通过 WhatsApp 联系我们。",
         "verifyTitle": "请先验证身份",

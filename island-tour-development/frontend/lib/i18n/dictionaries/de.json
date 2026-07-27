@@ -166,6 +166,7 @@
             "toolbar": {
                 "filters": "Filter",
                 "selectDate": "Datum wählen",
+                "clearDate": "Datum löschen",
                 "guestTypes": {
                     "adults": {
                         "label": "Erwachsene",
@@ -252,6 +253,7 @@
             "subtitle": "Touren ausgewählt von Einheimischen, die jedes Riff, jede Route und jeden Sonnenuntergang kennen",
             "searchPlaceholder": "Touren oder Aktivitäten suchen",
             "selectDate": "Datum wählen",
+            "clearDate": "Datum löschen",
             "popularLabel": "Beliebt"
         },
         "exploreTypes": {
@@ -291,6 +293,7 @@
             },
             "tagline": "Wohin Einheimische ihre Besucher schicken",
             "selectDate": "Datum auswählen",
+            "clearDate": "Datum löschen",
             "checkAvailability": "Verfügbarkeit prüfen",
             "comparison": {
                 "title": "Welcher Ausflug passt zu dir?",
@@ -686,6 +689,7 @@
         "sending": "Wird gesendet...",
         "sentTitle": "Stornierungsanfrage gesendet.",
         "sentBody": "Wir kümmern uns darum. Du erhältst eine E-Mail zur Bestätigung deiner Stornierung und Rückerstattung.",
+        "seeStatus": "Stornierungsstatus ansehen",
         "notActive": "Diese Buchung ist nicht mehr aktiv, es gibt also nichts zu stornieren.",
         "error": "Das hat nicht geklappt. Versuche es erneut oder schreib uns auf WhatsApp.",
         "verifyTitle": "Bitte zuerst bestätigen",
