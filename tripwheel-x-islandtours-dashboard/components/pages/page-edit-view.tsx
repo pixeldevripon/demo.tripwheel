@@ -3,12 +3,12 @@
 import { Globe02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { PAGE_STATUS } from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePage, useUpdatePageStatus } from '@/hooks/pages/use-pages';
 import { pageUrl } from '@/lib/public-site';
-import { PAGE_STATUS_LABELS } from '@/types/pages';
 import { toast } from 'sonner';
 import { PageForm } from './page-form';
 
@@ -36,9 +36,11 @@ export function PageEditView({ pageId }: { pageId: string }) {
                     <h1 className='font-heading text-2xl font-normal uppercase tracking-[-0.012em] text-it-heading'>
                         {english?.title ?? page.slug}
                     </h1>
-                    <Badge variant={published ? 'default' : 'secondary'}>
-                        {PAGE_STATUS_LABELS[page.status]}
-                    </Badge>
+                    <StatusBadge
+                        variant={PAGE_STATUS[page.status].variant}
+                        hint={PAGE_STATUS[page.status].hint}>
+                        {PAGE_STATUS[page.status].label}
+                    </StatusBadge>
                 </div>
                 <div className='flex items-center gap-2'>
                     {published && (

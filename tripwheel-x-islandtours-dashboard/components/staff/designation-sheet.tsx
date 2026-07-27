@@ -16,9 +16,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/common/status-badge';
 import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { usePermissionCatalog, useStaffMembers } from '@/hooks/staff/use-staff';
+import {
+    SheetPager,
+    type SheetPagerProps,
+} from '@/components/common/detail-sheet';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
 
-interface DesignationSheetProps {
+interface DesignationSheetProps extends SheetPagerProps {
     scope: StaffScope;
     designation: StaffDesignation | null;
     onOpenChange: (open: boolean) => void;
@@ -34,16 +38,19 @@ export function DesignationSheet({
     scope,
     designation,
     onOpenChange,
+    ...pager
 }: DesignationSheetProps) {
     return (
         <Sheet open={designation !== null} onOpenChange={onOpenChange}>
-            <SheetContent className='flex w-full flex-col gap-0 overflow-y-auto sm:max-w-2xl'>
+            {/* Sticky header; only the body scrolls. */}
+            <SheetContent className='flex w-full flex-col gap-0 sm:max-w-2xl!'>
                 {/* Body is mounted only while open so its queries never fire
                     for a closed sheet. */}
                 {designation && (
                     <DesignationSheetBody
                         scope={scope}
                         designation={designation}
+                        {...pager}
                     />
                 )}
             </SheetContent>
@@ -54,10 +61,13 @@ export function DesignationSheet({
 function DesignationSheetBody({
     scope,
     designation,
+    onPrev,
+    onNext,
+    position,
 }: {
     scope: StaffScope;
     designation: StaffDesignation;
-}) {
+} & SheetPagerProps) {
     const { data: catalog } = usePermissionCatalog(scope);
     const { data: members, isLoading: membersLoading } = useStaffMembers(
         scope,
@@ -80,18 +90,28 @@ function DesignationSheetBody({
     return (
         <>
             <SheetHeader className='border-b'>
-                <SheetTitle className='flex items-center gap-2'>
-                    {designation.name}
-                    {designation.isSystem && (
-                        <StatusBadge variant='info'>System</StatusBadge>
-                    )}
-                </SheetTitle>
-                <SheetDescription>
-                    {designation.description ?? 'Reusable permission template.'}
-                </SheetDescription>
+                <div className='flex items-center justify-between gap-3 pr-8'>
+                    <div className='min-w-0'>
+                        <SheetTitle className='flex items-center gap-2'>
+                            {designation.name}
+                            {designation.isSystem && (
+                                <StatusBadge variant='info'>System</StatusBadge>
+                            )}
+                        </SheetTitle>
+                        <SheetDescription>
+                            {designation.description ??
+                                'Reusable permission template.'}
+                        </SheetDescription>
+                    </div>
+                    <SheetPager
+                        onPrev={onPrev}
+                        onNext={onNext}
+                        position={position}
+                    />
+                </div>
             </SheetHeader>
 
-            <div className='flex-1 space-y-6 p-4'>
+            <div className='min-h-0 flex-1 space-y-6 overflow-y-auto p-4'>
                 <section className='space-y-3'>
                     <div className='flex items-baseline justify-between'>
                         <h3 className='text-sm font-medium'>Permissions</h3>

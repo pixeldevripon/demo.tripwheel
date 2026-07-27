@@ -9,9 +9,31 @@ import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { SettlementListItem } from '@/types/booking';
 import { SettlementRowActions } from './settlement-row-actions';
 
-function money(amount: string, rawCurrency: string): string {
+export function money(amount: string, rawCurrency: string): string {
     const currency: Currency = isCurrency(rawCurrency) ? rawCurrency : 'EUR';
     return formatPriceFrom(amount, currency, 'en');
+}
+
+/**
+ * One plain-words line about what happens NEXT for a payout row - nobody
+ * should have to decode a badge. Shared by the status cell and the detail
+ * sheet.
+ */
+export function settlementNextStep(
+    s: SettlementListItem,
+    isAdmin: boolean,
+): string | null {
+    return s.payoutHeld
+        ? 'On hold - cancellation requested'
+        : s.status === 'PAID_OUT' && s.settledAt
+          ? `Paid ${formatDate(s.settledAt)}`
+          : s.status === 'RECORDED' && s.payoutEligible
+            ? isAdmin
+                ? 'Ready to pay'
+                : 'Awaiting transfer from Island Tours'
+            : s.status === 'RECORDED' && s.payoutReleaseAt
+              ? `Clears for payout ${formatDate(s.payoutReleaseAt)}`
+              : null;
 }
 
 /**
@@ -118,19 +140,7 @@ export function makeSettlementColumns(
             header: 'Status',
             cell: ({ row }) => {
                 const s = row.original;
-                // One plain-words line about what happens NEXT - nobody should
-                // have to decode a badge.
-                const next = s.payoutHeld
-                    ? 'On hold - cancellation requested'
-                    : s.status === 'PAID_OUT' && s.settledAt
-                      ? `Paid ${formatDate(s.settledAt)}`
-                      : s.status === 'RECORDED' && s.payoutEligible
-                        ? isAdmin
-                            ? 'Ready to pay'
-                            : 'Awaiting transfer from Island Tours'
-                        : s.status === 'RECORDED' && s.payoutReleaseAt
-                          ? `Clears for payout ${formatDate(s.payoutReleaseAt)}`
-                          : null;
+                const next = settlementNextStep(s, isAdmin);
                 return (
                     <div className='flex flex-col items-start gap-1'>
                         <StatusBadge
@@ -158,23 +168,18 @@ export function makeSettlementColumns(
             },
             enableSorting: true,
         },
-        {
-            accessorKey: 'createdAt',
-            header: 'Recorded',
-            cell: ({ row }) => (
-                <span className='text-muted-foreground text-xs'>
-                    {formatDate(row.original.createdAt, 'long')}
-                </span>
-            ),
-            enableSorting: true,
-        },
     );
 
     if (isAdmin) {
         columns.push({
             id: 'actions',
             header: '',
-            cell: ({ row }) => <SettlementRowActions row={row.original} />,
+            cell: ({ row }) => (
+                // Rows open the detail sheet; keep action clicks out of that.
+                <div onClick={(e) => e.stopPropagation()}>
+                    <SettlementRowActions row={row.original} />
+                </div>
+            ),
             enableSorting: false,
             enableHiding: false,
         });

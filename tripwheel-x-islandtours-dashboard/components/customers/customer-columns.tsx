@@ -8,38 +8,6 @@ import { CUSTOMER_TIER, customerTier } from '@/components/common/status-maps';
 import type { CustomerListItem } from '@/types/customer';
 import { CustomerRowActions } from './customer-row-actions';
 
-/** `2026-07-18T…` -> `18 Jul 2026`. Dashes for an absent date, never "Invalid". */
-function shortDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-}
-
-/**
- * "3 days ago" under the date.
- *
- * A date alone makes the reader do the arithmetic to answer the only question
- * they have here: is this person recent, or long gone?
- */
-function relativeDays(iso: string | null): string | null {
-  if (!iso) return null;
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return null;
-  const days = Math.round((Date.now() - then) / 86_400_000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 31) return `${days} days ago`;
-  const months = Math.round(days / 30);
-  if (months < 24) return `${months} mo ago`;
-  return `${Math.round(days / 365)} yr ago`;
-}
-
 /** `Anna Meijer` -> `AM`; falls back to the email so a nameless row still reads. */
 function initials(name: string | null, email: string): string {
   const source = (name ?? email.split('@')[0]).trim();
@@ -138,23 +106,14 @@ export function customerColumns(opts: {
       },
     },
     {
-      accessorKey: 'lastBookingAt',
-      header: 'Last booking',
-      cell: ({ row }) => {
-        const ago = relativeDays(row.original.lastBookingAt);
-        return (
-          <div className="min-w-0 whitespace-nowrap">
-            <div className="text-sm">{shortDate(row.original.lastBookingAt)}</div>
-            {ago ? (
-              <div className="text-xs text-muted-foreground">{ago}</div>
-            ) : null}
-          </div>
-        );
-      },
-    },
-    {
       id: 'actions',
-      cell: ({ row }) => <CustomerRowActions customer={row.original} />,
+      cell: ({ row }) => (
+        // Rows open the detail sheet; keep action clicks out of that (the
+        // "Ask for review" button and menu trigger already stopPropagation).
+        <div onClick={(e) => e.stopPropagation()}>
+          <CustomerRowActions customer={row.original} />
+        </div>
+      ),
       enableSorting: false,
       enableHiding: false,
     },

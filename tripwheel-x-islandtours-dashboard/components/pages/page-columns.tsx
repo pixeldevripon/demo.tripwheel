@@ -12,7 +12,8 @@ import {
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { PAGE_STATUS } from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,16 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { pageUrl } from '@/lib/public-site';
-import { PAGE_STATUS_LABELS, type PageListItem, type PageStatus } from '@/types/pages';
-
-const statusVariant: Record<
-  PageStatus,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  DRAFT: 'secondary',
-  PUBLISHED: 'default',
-  ARCHIVED: 'destructive',
-};
+import type { PageListItem } from '@/types/pages';
 
 export interface MakePageColumnsOptions {
   canManage: boolean;
@@ -77,11 +69,14 @@ export function makePageColumns({
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge variant={statusVariant[row.original.status]}>
-          {PAGE_STATUS_LABELS[row.original.status]}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const meta = PAGE_STATUS[row.original.status];
+        return (
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
+        );
+      },
       enableSorting: true,
     },
     {

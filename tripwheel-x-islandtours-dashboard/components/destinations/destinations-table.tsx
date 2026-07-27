@@ -89,7 +89,6 @@ export function DestinationsTable({
             value={(table.getState().globalFilter as string) ?? ''}
             onValueChange={table.setGlobalFilter}
             placeholder='Search destinations...'
-            className='max-w-sm flex-1'
           />
           <Select
             value={statusValue}

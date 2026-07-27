@@ -11,11 +11,7 @@
  */
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  Copy01Icon,
-} from '@hugeicons/core-free-icons';
+import { Copy01Icon } from '@hugeicons/core-free-icons';
 import { toast } from 'sonner';
 
 import {
@@ -27,65 +23,21 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
-import { BOOKING_DISPLAY_STATUS } from '@/components/common/status-maps';
+import {
+  BOOKING_DISPLAY_STATUS,
+  REFUND_STATUS,
+  SETTLEMENT_METHOD_LABEL,
+  SETTLEMENT_STATUS,
+} from '@/components/common/status-maps';
+import {
+  MoneyRow,
+  Row,
+  Section,
+  SheetPager,
+} from '@/components/common/detail-sheet';
 import { formatDate } from '@/lib/utils';
 import { bookingMoney as money, paymentModelLabel, refundDue } from '@/lib/bookings/format';
 import type { BookingListItem } from '@/types/booking';
-
-/** Micro-label section wrapper - mirrors the sidebar group-label style. */
-function Section({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="py-4 first:pt-2">
-      <p className="m-0 mb-2 text-2xs font-semibold uppercase tracking-caps text-content-muted">
-        {label}
-      </p>
-      <div className="space-y-0.5">{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-1">
-      <span className="text-xs text-content-muted shrink-0">{label}</span>
-      <span className="text-sm text-right min-w-0 break-words">{value}</span>
-    </div>
-  );
-}
-
-/** One line of the boxed money summary. */
-function MoneyRow({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-3 py-2">
-      <span
-        className={
-          strong ? 'text-sm font-medium' : 'text-xs text-content-muted'
-        }
-      >
-        {label}
-      </span>
-      <span
-        className={`tabular-nums ${strong ? 'text-sm font-semibold' : 'text-sm'}`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
 
 export function BookingDetailsSheet({
   booking: b,
@@ -133,33 +85,7 @@ export function BookingDetailsSheet({
                 Booked {formatDate(b.createdAt, 'long')}
               </SheetDescription>
             </div>
-            {(onPrev || onNext) && (
-              <div className="flex shrink-0 items-center gap-1">
-                {position && (
-                  <span className="mr-1 text-xs tabular-nums text-content-subtle">
-                    {position.index} of {position.count}
-                  </span>
-                )}
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Previous booking"
-                  onClick={onPrev}
-                  disabled={!onPrev}
-                >
-                  <HugeiconsIcon icon={ArrowLeft01Icon} />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Next booking"
-                  onClick={onNext}
-                  disabled={!onNext}
-                >
-                  <HugeiconsIcon icon={ArrowRight01Icon} />
-                </Button>
-              </div>
-            )}
+            <SheetPager onPrev={onPrev} onNext={onNext} position={position} />
           </div>
         </SheetHeader>
 
@@ -208,7 +134,39 @@ export function BookingDetailsSheet({
                   value={money(b.commissionAmount, b.currency)}
                 />
               )}
+              <MoneyRow label="Paid so far" value={money(b.paidAmount, b.currency)} />
             </div>
+          </Section>
+
+          <Section label="Settlement">
+            <Row
+              label="Status"
+              value={
+                b.settlementStatus ? (
+                  <StatusBadge
+                    variant={SETTLEMENT_STATUS[b.settlementStatus].variant}
+                    hint={SETTLEMENT_STATUS[b.settlementStatus].hint}
+                  >
+                    {SETTLEMENT_STATUS[b.settlementStatus].label}
+                  </StatusBadge>
+                ) : (
+                  <span className="text-content-muted">
+                    Not applicable yet
+                  </span>
+                )
+              }
+            />
+            <Row label="Method" value={SETTLEMENT_METHOD_LABEL[b.settlementMethod]} />
+            {b.settlementHeld && (
+              <Row
+                label="Payout"
+                value={
+                  <StatusBadge variant="warning">
+                    On hold - cancellation pending
+                  </StatusBadge>
+                }
+              />
+            )}
           </Section>
 
           <Section label="Timeline">
@@ -230,6 +188,18 @@ export function BookingDetailsSheet({
             )}
             {b.requestedInFreeWindow != null && (
               <Row
+                label="Free window"
+                value={
+                  <StatusBadge
+                    variant={b.requestedInFreeWindow ? 'success' : 'neutral'}
+                  >
+                    {b.requestedInFreeWindow ? 'In window' : 'Outside window'}
+                  </StatusBadge>
+                }
+              />
+            )}
+            {b.requestedInFreeWindow != null && (
+              <Row
                 label="Refund due"
                 value={
                   due ?? (
@@ -237,6 +207,19 @@ export function BookingDetailsSheet({
                       None (outside window)
                     </span>
                   )
+                }
+              />
+            )}
+            {b.refundStatus !== 'NONE' && (
+              <Row
+                label="Refund status"
+                value={
+                  <StatusBadge
+                    variant={REFUND_STATUS[b.refundStatus].variant}
+                    hint={REFUND_STATUS[b.refundStatus].hint}
+                  >
+                    {REFUND_STATUS[b.refundStatus].label}
+                  </StatusBadge>
                 }
               />
             )}

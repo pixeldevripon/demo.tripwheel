@@ -63,7 +63,11 @@ export function ReviewsTable({
   const { can } = useRole();
   const bulk = useBulkModerateReviews();
 
-  const [viewing, setViewing] = useState<AdminReview | null>(null);
+  // Index-based so the sheet's prev/next arrows can walk the current page.
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
+  const viewing = viewIndex != null ? (data[viewIndex] ?? null) : null;
+  const openReview = (review: AdminReview) =>
+    setViewIndex(data.findIndex((r) => r.id === review.id));
   const [moderating, setModerating] = useState<{
     review: AdminReview;
     status: ReviewModerationStatus;
@@ -73,7 +77,7 @@ export function ReviewsTable({
   const columns = makeReviewColumns((review) => (
     <ReviewRowActions
       review={review}
-      onView={() => setViewing(review)}
+      onView={() => openReview(review)}
       onModerate={(status) => setModerating({ review, status })}
       onDelete={() => setDeleting(review)}
     />
@@ -86,7 +90,7 @@ export function ReviewsTable({
         data={data}
         isLoading={isLoading}
         getRowId={(r) => r.id}
-        onRowClick={(r) => setViewing(r)}
+        onRowClick={openReview}
         pagination={{
           total,
           page,
@@ -106,7 +110,6 @@ export function ReviewsTable({
               value={searchValue}
               onValueChange={onSearchChange}
               placeholder='Search reviewer or review text...'
-              className='max-w-sm flex-1'
             />
             <Select
               value={filters.status ?? 'PENDING'}
@@ -115,7 +118,7 @@ export function ReviewsTable({
                 // hit the list view's PENDING default and silently re-filter.
                 onFilterChange('status', v)
               }>
-              <SelectTrigger className='w-40'>
+              <SelectTrigger className='w-36 shrink-0'>
                 <SelectValue placeholder='Status' />
               </SelectTrigger>
               <SelectContent>
@@ -131,7 +134,7 @@ export function ReviewsTable({
               onValueChange={(v) =>
                 onFilterChange('rating', v === 'all' ? undefined : v)
               }>
-              <SelectTrigger className='w-32'>
+              <SelectTrigger className='w-32 shrink-0'>
                 <SelectValue placeholder='Rating' />
               </SelectTrigger>
               <SelectContent>
@@ -187,7 +190,22 @@ export function ReviewsTable({
       <ReviewDetailSheet
         review={viewing}
         open={!!viewing}
-        onOpenChange={(o) => !o && setViewing(null)}
+        onOpenChange={(o) => !o && setViewIndex(null)}
+        onPrev={
+          viewIndex != null && viewIndex > 0
+            ? () => setViewIndex(viewIndex - 1)
+            : undefined
+        }
+        onNext={
+          viewIndex != null && viewIndex < data.length - 1
+            ? () => setViewIndex(viewIndex + 1)
+            : undefined
+        }
+        position={
+          viewIndex != null
+            ? { index: viewIndex + 1, count: data.length }
+            : undefined
+        }
       />
       <ReviewModerateDialog
         review={moderating?.review ?? null}

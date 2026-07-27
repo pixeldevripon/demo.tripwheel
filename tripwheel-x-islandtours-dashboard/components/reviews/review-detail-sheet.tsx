@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/status-badge';
 import { REVIEW_STATUS } from '@/components/common/status-maps';
+import { SheetPager, type SheetPagerProps } from '@/components/common/detail-sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -42,11 +43,14 @@ export function ReviewDetailSheet({
   review,
   open,
   onOpenChange,
+  onPrev,
+  onNext,
+  position,
 }: {
   review: AdminReview | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
+} & SheetPagerProps) {
   const { can } = useRole();
   const [response, setResponse] = useState('');
   const respond = useRespondToReview();
@@ -76,27 +80,33 @@ export function ReviewDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className='w-full overflow-y-auto sm:max-w-xl'>
-        <SheetHeader>
-          <SheetTitle className='flex items-center gap-2'>
-            <span className='flex items-center gap-1'>
-              <HugeiconsIcon
-                icon={StarIcon}
-                className='size-4 text-warning-solid'
-              />
-              {review.rating}
-            </span>
-            <StatusBadge variant={meta.variant} hint={meta.hint}>
-              {meta.label}
-            </StatusBadge>
-          </SheetTitle>
-          <SheetDescription>
-            {review.tourTitle ?? 'Unknown tour'}
-            {review.operatorName ? ` · ${review.operatorName}` : ''}
-          </SheetDescription>
+      {/* Sticky header; only the body scrolls. */}
+      <SheetContent className='flex w-full flex-col gap-0 sm:max-w-2xl!'>
+        <SheetHeader className='border-b'>
+          <div className='flex items-center justify-between gap-3 pr-8'>
+            <div className='min-w-0'>
+              <SheetTitle className='flex items-center gap-2'>
+                <span className='flex items-center gap-1'>
+                  <HugeiconsIcon
+                    icon={StarIcon}
+                    className='size-4 text-warning-solid'
+                  />
+                  {review.rating}
+                </span>
+                <StatusBadge variant={meta.variant} hint={meta.hint}>
+                  {meta.label}
+                </StatusBadge>
+              </SheetTitle>
+              <SheetDescription>
+                {review.tourTitle ?? 'Unknown tour'}
+                {review.operatorName ? ` · ${review.operatorName}` : ''}
+              </SheetDescription>
+            </div>
+            <SheetPager onPrev={onPrev} onNext={onNext} position={position} />
+          </div>
         </SheetHeader>
 
-        <div className='space-y-6 px-4 pb-8'>
+        <div className='min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 pb-8'>
           {/* Verification chain - the whole "confirmed booking" promise in one row. */}
           <section className='grid grid-cols-2 gap-3 rounded-lg bg-surface-inset p-3 text-sm'>
             <Meta label='Booking' value={review.bookingRef ?? '-'} />

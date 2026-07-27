@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkBadge01Icon, Location01Icon, Navigation03Icon, StarIcon, Ticket01Icon } from '@hugeicons/core-free-icons';
+import { CheckmarkBadge01Icon, Location01Icon, Navigation03Icon, StarIcon } from '@hugeicons/core-free-icons';
 
 import type { ReactNode } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -27,8 +27,12 @@ interface MakeColumnsOptions {
   currentUserEmail?: string;
   /** Render the row-selection checkbox column (for bulk actions). Default true. */
   showSelect?: boolean;
-  /** Render Rating (★ + review count) and Booked columns. Default false. */
+  /** Render the Rating (★ + review count) column. Default false. */
   showPerformance?: boolean;
+  /** Status column; Locals' favourites lists LIVE tours only, so it hides it. */
+  showStatus?: boolean;
+  /** Pricing column; curation surfaces move it to the detail sheet. */
+  showPricing?: boolean;
   /**
    * Trailing cell renderer. Defaults to the trip row-actions dropdown; the
    * Locals' favourites table passes its toggle here instead.
@@ -41,6 +45,8 @@ export function makeTripColumns({
   currentUserEmail,
   showSelect = true,
   showPerformance = false,
+  showStatus = true,
+  showPricing = true,
   actions,
 }: MakeColumnsOptions = {}): ColumnDef<TripListItem>[] {
   const cols: ColumnDef<TripListItem>[] = [];
@@ -97,6 +103,7 @@ export function makeTripColumns({
             <div className="min-w-0">
               <Link
                 href={`/trips/${trip.id}/edit`}
+                onClick={(e) => e.stopPropagation()}
                 className="font-medium hover:underline underline-offset-4 truncate max-w-50 block"
               >
                 {trip.name}
@@ -108,7 +115,10 @@ export function makeTripColumns({
       },
       enableSorting: true,
     },
-    {
+  );
+
+  if (showStatus) {
+    cols.push({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
@@ -120,7 +130,10 @@ export function makeTripColumns({
         );
       },
       enableSorting: true,
-    },
+    });
+  }
+
+  cols.push(
     {
       // Commercial placement: tier + rank (the dominant §7.2 sort key) and the
       // §3.6 card badge a shopper would see, derived client-side from the raw
@@ -176,6 +189,7 @@ export function makeTripColumns({
               <div className="flex items-center gap-1.5">
                 <Link
                   href={`/tour-operators/${info.id}`}
+                  onClick={(e) => e.stopPropagation()}
                   className={`text-sm font-medium truncate max-w-32 ${entityLink}`}
                 >
                   {displayName}
@@ -198,8 +212,8 @@ export function makeTripColumns({
     });
   }
 
-  cols.push(
-    {
+  if (showPricing) {
+    cols.push({
       accessorKey: 'basePrice',
       header: 'Pricing',
       cell: ({ row }) => {
@@ -225,7 +239,10 @@ export function makeTripColumns({
         );
       },
       enableSorting: false,
-    },
+    });
+  }
+
+  cols.push(
     {
       id: 'location',
       header: 'Destination / Hubs',
@@ -240,6 +257,7 @@ export function makeTripColumns({
             <div className="min-w-0">
               <Link
                 href={`/destinations/${trip.destinationId}/edit`}
+                onClick={(e) => e.stopPropagation()}
                 className={`text-sm truncate max-w-28 block ${entityLink}`}
               >
                 {dest}
@@ -258,51 +276,40 @@ export function makeTripColumns({
   );
 
   if (showPerformance) {
-    cols.push(
-      {
-        id: 'rating',
-        header: 'Rating',
-        cell: ({ row }) => {
-          const trip = row.original;
-          if (!trip.aggregateReviewCount) {
-            return <span className="text-xs text-muted-foreground">No reviews</span>;
-          }
-          return (
-            <div className="flex items-center gap-1.5">
-              <HugeiconsIcon icon={StarIcon} className="size-3.5 shrink-0 fill-rating text-rating" />
-              <span className="text-sm font-medium tabular-nums">
-                {trip.aggregateRating ?? '-'}
-              </span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                ({trip.aggregateReviewCount.toLocaleString()})
-              </span>
-            </div>
-          );
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'booked',
-        header: 'Booked',
-        cell: ({ row }) => (
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <HugeiconsIcon icon={Ticket01Icon} className="size-3.5 shrink-0" />
-            <span className="tabular-nums">
-              {row.original.bookingCount.toLocaleString()}
+    cols.push({
+      id: 'rating',
+      header: 'Rating',
+      cell: ({ row }) => {
+        const trip = row.original;
+        if (!trip.aggregateReviewCount) {
+          return <span className="text-xs text-muted-foreground">No reviews</span>;
+        }
+        return (
+          <div className="flex items-center gap-1.5">
+            <HugeiconsIcon icon={StarIcon} className="size-3.5 shrink-0 fill-rating text-rating" />
+            <span className="text-sm font-medium tabular-nums">
+              {trip.aggregateRating ?? '-'}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              ({trip.aggregateReviewCount.toLocaleString()})
             </span>
           </div>
-        ),
-        enableSorting: false,
+        );
       },
-    );
+      enableSorting: false,
+    });
   }
 
   cols.push(
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) =>
-        actions ? actions(row.original) : <TripRowActions trip={row.original} />,
+      cell: ({ row }) => (
+        // Rows may open a detail sheet; keep action clicks out of that.
+        <div onClick={(e) => e.stopPropagation()}>
+          {actions ? actions(row.original) : <TripRowActions trip={row.original} />}
+        </div>
+      ),
       enableSorting: false,
       enableHiding: false,
       size: 48,

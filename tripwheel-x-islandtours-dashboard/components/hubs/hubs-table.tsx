@@ -97,7 +97,6 @@ export function HubsTable({
             value={(table.getState().globalFilter as string) ?? ''}
             onValueChange={table.setGlobalFilter}
             placeholder='Search hubs...'
-            className='max-w-sm flex-1'
           />
           <Select
             value={statusValue}

@@ -6,7 +6,8 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Archive02Icon, Cancel01Icon, InformationCircleIcon, PlayIcon, RotateLeft01Icon, Tick02Icon, UndoIcon } from '@hugeicons/core-free-icons';
 
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import { COLLECTION_STATUS } from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EntityEditSkeleton } from '@/components/common/entity-edit-skeleton';
@@ -18,7 +19,6 @@ import {
   useUpdateCollectionStatus,
 } from '@/hooks/collections/use-collections';
 import type { CollectionStatus } from '@/types/enums';
-import { COLLECTION_STATUS_LABELS } from '@/types/enums';
 import { CollectionDetailShell } from './collection-detail-shell';
 import { CollectionForm } from './collection-form';
 import { CollectionToursManager } from './collection-tours-manager';
@@ -29,11 +29,6 @@ import { CollectionSeoTab } from '@/components/common/entity-seo-tab';
 
 // Priority order: identity first, then the ranked membership that IS the product,
 // then the localized content travelers see, supplementary content, and SEO polish.
-const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  PUBLISHED: 'default',
-  ARCHIVED: 'destructive',
-};
 
 function ReadinessItem({ label, passed }: { label: string; passed: boolean }) {
   return (
@@ -111,9 +106,12 @@ export function CollectionEditView({ id, initialTab }: CollectionEditViewProps) 
  <span className="text-xs font-semibold text-muted-foreground">
  Status
  </span>
- <Badge variant={statusVariant[collection.status]}>
- {COLLECTION_STATUS_LABELS[collection.status]}
- </Badge>
+ <StatusBadge
+ variant={COLLECTION_STATUS[collection.status].variant}
+ hint={COLLECTION_STATUS[collection.status].hint}
+ >
+ {COLLECTION_STATUS[collection.status].label}
+ </StatusBadge>
  </div>
 
  {can('EDIT_COLLECTION') && (

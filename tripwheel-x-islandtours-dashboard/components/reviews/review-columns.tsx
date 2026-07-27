@@ -10,8 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { AdminReview } from '@/types/review';
 
 /**
- * Seven columns, matching the shape `app/(app)/reviews/loading.tsx` already
- * presumed: select, rating, reviewer, tour, status, submitted, actions.
+ * Six columns: select, rating, reviewer, tour, status, actions. The submitted
+ * date (and everything else about a review) lives in the detail sheet a row
+ * click opens.
  */
 export function makeReviewColumns(
   renderActions: (review: AdminReview) => React.ReactNode,
@@ -128,16 +129,6 @@ export function makeReviewColumns(
           </span>
         );
       },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Submitted',
-      size: 130,
-      cell: ({ row }) => (
-        <span className='text-sm text-content-muted tabular-nums'>
-          {new Date(row.original.createdAt).toLocaleDateString()}
-        </span>
-      ),
     },
     {
       id: 'actions',

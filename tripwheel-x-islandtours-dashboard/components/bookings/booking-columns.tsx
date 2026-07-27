@@ -20,8 +20,6 @@ const money = bookingMoney;
 interface MakeColumnsOptions {
   /** Adds Requested / Free window / Refund due columns (DASH3 queue). */
   cancellationView?: boolean;
-  /** Show the commission columns (admin only - rule #22 snapshots). */
-  showCommission?: boolean;
   /** Trailing cell renderer (row-actions dropdown). */
   actions?: (booking: BookingListItem) => ReactNode;
   /** When set, the reference cell becomes a button that opens the details sheet. */
@@ -30,7 +28,6 @@ interface MakeColumnsOptions {
 
 export function makeBookingColumns({
   cancellationView = false,
-  showCommission = false,
   actions,
   onOpenDetails,
 }: MakeColumnsOptions = {}): ColumnDef<BookingListItem>[] {
@@ -57,7 +54,11 @@ export function makeBookingColumns({
         return onOpenDetails ? (
           <button
             type="button"
-            onClick={() => onOpenDetails(b)}
+            onClick={(e) => {
+              // The whole row opens the sheet too - don't fire it twice.
+              e.stopPropagation();
+              onOpenDetails(b);
+            }}
             className="min-w-0 cursor-pointer border-none bg-transparent p-0 text-left"
           >
             {inner}
@@ -77,6 +78,7 @@ export function makeBookingColumns({
           <div className="min-w-0">
             <Link
               href={`/trips/${b.tourId}/edit`}
+              onClick={(e) => e.stopPropagation()}
               className={`text-sm font-medium truncate max-w-48 block ${entityLink}`}
             >
               {b.tourName}
@@ -124,7 +126,13 @@ export function makeBookingColumns({
       },
       enableSorting: true,
     },
-    {
+  ];
+
+  // The queue is a decision list: Payment (total/model) and the free-window
+  // verdict are context, not the decision - both live in the details sheet a
+  // row click opens. The main bookings list keeps Payment.
+  if (!cancellationView) {
+    cols.push({
       id: 'payment',
       header: 'Payment',
       cell: ({ row }) => {
@@ -145,76 +153,11 @@ export function makeBookingColumns({
         );
       },
       enableSorting: false,
-    },
-  ];
-
-  if (showCommission) {
-    cols.push({
-      id: 'commission',
-      header: 'Commission',
-      cell: ({ row }) => {
-        const b = row.original;
-        if (b.commissionAmount == null) {
-          return <span className="text-xs text-muted-foreground">-</span>;
-        }
-        const pct =
-          b.commissionRate != null
-            ? `${(Number(b.commissionRate) * 100).toFixed(1)}%`
-            : null;
-        return (
-          <div className="min-w-0">
-            <span className="text-sm font-medium tabular-nums block">
-              {money(b.commissionAmount, b.currency)}
-            </span>
-            {pct && <span className="text-xs text-muted-foreground">{pct}</span>}
-          </div>
-        );
-      },
-      enableSorting: false,
     });
   }
 
   if (cancellationView) {
     cols.push(
-      {
-        id: 'requested',
-        header: 'Requested',
-        cell: ({ row }) => {
-          const at = row.original.utcCancellationRequestedAt;
-          if (!at) return <span className="text-xs text-muted-foreground">-</span>;
-          return (
-            <span className="text-xs text-muted-foreground">
-              {formatDate(at, 'long')}
-            </span>
-          );
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'window',
-        header: 'Free window',
-        cell: ({ row }) => {
-          const b = row.original;
-          if (b.requestedInFreeWindow == null) {
-            return <span className="text-xs text-muted-foreground">-</span>;
-          }
-          return (
-            <div className="min-w-0">
-              <StatusBadge
-                variant={b.requestedInFreeWindow ? 'success' : 'neutral'}
-              >
-                {b.requestedInFreeWindow ? 'In window' : 'Outside window'}
-              </StatusBadge>
-              {b.freeCancelDeadline && (
-                <span className="text-xs text-muted-foreground block mt-0.5">
-                  until {formatDate(b.freeCancelDeadline, 'long')}
-                </span>
-              )}
-            </div>
-          );
-        },
-        enableSorting: false,
-      },
       {
         id: 'refund',
         header: 'Refund',
@@ -224,27 +167,21 @@ export function makeBookingColumns({
           // The refund STATUS is the ledger truth (has the money actually moved),
           // never assumed from the cancel verdict. A cancelled booking can sit
           // "Refund pending" with the charge still held (Stripe off / no charge).
-          const showStatus = b.refundStatus && b.refundStatus !== 'NONE';
-          if (!due && !showStatus) {
-            return <span className="text-xs text-muted-foreground">-</span>;
+          // One badge, amount folded into the label: "Refunded (€560)".
+          if (b.refundStatus && b.refundStatus !== 'NONE') {
+            const meta = REFUND_STATUS[b.refundStatus];
+            return (
+              <StatusBadge variant={meta.variant} hint={meta.hint}>
+                {meta.label}
+                {due ? ` (${due})` : ''}
+              </StatusBadge>
+            );
           }
-          return (
-            <div className="min-w-0 space-y-1">
-              {due && (
-                <span className="text-sm font-medium tabular-nums text-success-fg block">
-                  {due}
-                </span>
-              )}
-              {showStatus && (
-                <StatusBadge
-                  variant={REFUND_STATUS[b.refundStatus].variant}
-                  hint={REFUND_STATUS[b.refundStatus].hint}
-                >
-                  {REFUND_STATUS[b.refundStatus].label}
-                </StatusBadge>
-              )}
-            </div>
-          );
+          // No ledger movement yet, but an in-window request owes this much.
+          if (due) {
+            return <StatusBadge variant="neutral">Due ({due})</StatusBadge>;
+          }
+          return <span className="text-xs text-muted-foreground">-</span>;
         },
         enableSorting: false,
       },
@@ -254,7 +191,11 @@ export function makeBookingColumns({
   cols.push({
     id: 'actions',
     header: '',
-    cell: ({ row }) => (actions ? actions(row.original) : null),
+    cell: ({ row }) =>
+      actions ? (
+        // Rows open the detail sheet; keep menu clicks out of that.
+        <div onClick={(e) => e.stopPropagation()}>{actions(row.original)}</div>
+      ) : null,
     enableSorting: false,
     enableHiding: false,
     size: 48,

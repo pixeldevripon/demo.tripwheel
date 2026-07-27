@@ -5,7 +5,12 @@ import { Delete02Icon, File02Icon, HelpCircleIcon, LeftToRightListNumberIcon, Mo
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/common/status-badge';
+import {
+  ACTIVE_STATUS,
+  COLLECTION_STATUS,
+  COLLECTION_TYPE,
+} from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -16,13 +21,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Collection } from '@/types/collection';
-import { COLLECTION_STATUS_LABELS, type CollectionStatus } from '@/types/enums';
-
-const statusVariant: Record<CollectionStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  PUBLISHED: 'default',
-  ARCHIVED: 'destructive',
-};
 
 export interface MakeCollectionColumnsOptions {
   canEdit: boolean;
@@ -55,7 +53,14 @@ export function makeCollectionColumns({
     {
       accessorKey: 'collectionType',
       header: 'Type',
-      cell: ({ row }) => <Badge variant="secondary">{row.original.collectionType}</Badge>,
+      cell: ({ row }) => {
+        const meta = COLLECTION_TYPE[row.original.collectionType];
+        return (
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
+        );
+      },
       enableSorting: true,
     },
     {
@@ -75,11 +80,11 @@ export function makeCollectionColumns({
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => {
-        const status = row.original.status;
+        const meta = COLLECTION_STATUS[row.original.status];
         return (
-          <Badge variant={statusVariant[status]}>
-            {COLLECTION_STATUS_LABELS[status]}
-          </Badge>
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
         );
       },
       enableSorting: true,
@@ -88,11 +93,11 @@ export function makeCollectionColumns({
       accessorKey: 'isActive',
       header: 'Active',
       cell: ({ row }) => {
-        const isActive = row.original.isActive;
+        const meta = ACTIVE_STATUS[row.original.isActive ? 'active' : 'inactive'];
         return (
-          <Badge variant={isActive ? 'default' : 'outline'}>
-            {isActive ? 'Active' : 'Inactive'}
-          </Badge>
+          <StatusBadge variant={meta.variant} hint={meta.hint}>
+            {meta.label}
+          </StatusBadge>
         );
       },
       enableSorting: true,

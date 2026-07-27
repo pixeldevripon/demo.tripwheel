@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useRole } from '@/contexts/role-context';
 import { useState } from 'react';
 import { BOOKING_DISPLAY_STATUS } from '@/components/common/status-maps';
 import type { BookingDisplayStatus, BookingListItem } from '@/types/booking';
@@ -74,8 +73,6 @@ export function BookingsTable({
   onFilterChange,
   filters = {},
 }: BookingsTableProps) {
-  const { role } = useRole();
-
   // Details sheet state lives here (not per-row) so prev/next arrows can walk
   // the rows of the current page.
   const [detailsIndex, setDetailsIndex] = useState<number | null>(null);
@@ -83,8 +80,6 @@ export function BookingsTable({
 
   const columns = makeBookingColumns({
     cancellationView,
-    // Commission is the platform's cut (rule #22 snapshot) - admin eyes only.
-    showCommission: role === 'ADMIN',
     // Clicking the reference cell opens the same details sheet as the row menu.
     onOpenDetails: (booking) =>
       setDetailsIndex(data.findIndex((b) => b.id === booking.id)),
@@ -122,6 +117,9 @@ export function BookingsTable({
       columns={columns}
       data={data}
       isLoading={isLoading}
+      onRowClick={(booking) =>
+        setDetailsIndex(data.findIndex((b) => b.id === booking.id))
+      }
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
         icon: Ticket01Icon,

@@ -16,7 +16,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { TourBadgeChip } from '@/components/common/tour-badge';
 import type { TourBadge } from '@/lib/tours/derive-badge';
@@ -45,8 +44,9 @@ export type SpotlightRequestWithInfo = SpotlightRequest & {
 };
 
 /* Icon + description are per-status METADATA and stay here; every status
- * COLOR comes from SPOTLIGHT_STATUS + StatusBadge (03 §5.1). */
-const statusExtras: Record<
+ * COLOR comes from SPOTLIGHT_STATUS + StatusBadge (03 §5.1). The description
+ * renders in the detail sheet a row click opens. */
+export const statusExtras: Record<
   SpotlightStatus,
   { Icon: IconSvgElement; description: string }
 > = {
@@ -57,7 +57,7 @@ const statusExtras: Record<
   EXPIRED: { Icon: TimeQuarter02Icon, description: 'Live window has ended' },
 };
 
-function getEligibilitySummary(info?: TourInfo) {
+export function getEligibilitySummary(info?: TourInfo) {
   const reviewCount = info?.reviewCount ?? 0;
   const rating = info?.rating ?? 0;
   const missingReviews = Math.max(SPOTLIGHT_MIN_REVIEWS - reviewCount, 0);
@@ -81,6 +81,11 @@ function getEligibilitySummary(info?: TourInfo) {
   };
 }
 
+/**
+ * Compact status cell: the badge, plus the eligibility verdict for rows still
+ * awaiting a decision (it gates the Approve action, so it must be visible at
+ * a glance). Descriptions, dates and rejection reasons live in the sheet.
+ */
 function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo }) {
   const meta = SPOTLIGHT_STATUS[request.status];
   const extras = statusExtras[request.status];
@@ -88,17 +93,17 @@ function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo })
   const Icon = extras.Icon;
 
   return (
-    <div className="min-w-44 space-y-1.5">
+    <div className="min-w-0 space-y-1.5">
       <StatusBadge
         variant={meta.variant}
         hint={meta.hint}
         icon={<HugeiconsIcon icon={Icon} className="size-3" />}>
         {meta.label}
       </StatusBadge>
-      <p className="text-xs leading-5 text-muted-foreground">{extras.description}</p>
       {request.status === 'REQUESTED' && (
         <StatusBadge
           variant={eligibility.isEligible ? 'success' : 'danger'}
+          hint={eligibility.text}
           icon={
             eligibility.isEligible ? (
               <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-3" />
@@ -107,13 +112,8 @@ function SpotlightStatusCell({ request }: { request: SpotlightRequestWithInfo })
             )
           }
         >
-          {eligibility.isEligible ? 'Eligible' : 'Not eligible'} · {eligibility.text}
+          {eligibility.isEligible ? 'Eligible' : 'Not eligible'}
         </StatusBadge>
-      )}
-      {request.status === 'REJECTED' && request.rejectionReason && (
-        <p className="max-w-56 text-xs leading-5 text-muted-foreground">
-          Reason: {request.rejectionReason}
-        </p>
       )}
     </div>
   );
@@ -143,6 +143,7 @@ export function makeSpotlightColumns({
           <div className="flex flex-col gap-1">
             <Link
               href={`/trips/${req.tourId}/edit`}
+              onClick={(e) => e.stopPropagation()}
               className="flex items-center gap-3 w-fit group"
             >
               {info?.image ? (
@@ -188,25 +189,7 @@ export function makeSpotlightColumns({
         return (
           <Link
             href={`/tour-operators/${req.operatorId}`}
-            className="text-sm text-muted-foreground hover:underline underline-offset-4"
-          >
-            {name}
-          </Link>
-        );
-      },
-      enableSorting: true,
-    },
-    {
-      id: 'destination',
-      header: 'Destination',
-      accessorFn: (row) => row.tourInfo?.destination ?? '',
-      cell: ({ row }) => {
-        const req = row.original;
-        const name = req.tourInfo?.destination;
-        if (!name) return <span className="text-sm text-muted-foreground">—</span>;
-        return (
-          <Link
-            href={`/destinations/${req.destinationId}`}
+            onClick={(e) => e.stopPropagation()}
             className="text-sm text-muted-foreground hover:underline underline-offset-4"
           >
             {name}
@@ -245,31 +228,6 @@ export function makeSpotlightColumns({
       enableSorting: true,
     },
     {
-      accessorKey: 'requestedAt',
-      header: 'Requested',
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {formatDate(row.original.requestedAt)}
-        </span>
-      ),
-      enableSorting: true,
-    },
-    {
-      id: 'preferred',
-      header: 'Preferred Start',
-      cell: ({ row }) => {
-        const req = row.original;
-        if (!req.requestedStartsAt) return <span className="text-muted-foreground text-xs">—</span>;
-        return (
-          <span className="text-sm text-muted-foreground font-medium">
-            {new Date(req.requestedStartsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            {req.requestedDurationDays ? ` · ${req.requestedDurationDays}d` : ''}
-          </span>
-        );
-      },
-      enableSorting: false,
-    },
-    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => <SpotlightStatusCell request={row.original} />,
@@ -285,6 +243,8 @@ export function makeSpotlightColumns({
         if (!canApprove || req.status !== 'REQUESTED') return null;
 
         return (
+          // Rows open the detail sheet; keep menu clicks out of that.
+          <div onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm">
@@ -311,6 +271,7 @@ export function makeSpotlightColumns({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         );
       },
       enableSorting: false,

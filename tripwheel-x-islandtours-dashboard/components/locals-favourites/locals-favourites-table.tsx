@@ -17,18 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
 import { makeTripColumns } from '@/components/common/trip-columns';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useSetLocalsFavourite } from '@/hooks/locals-favourites/use-locals-favourites';
 import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
-import type { TripListItem, TripStatus } from '@/types/trip';
+import type { TripListItem } from '@/types/trip';
+import { LocalsFavouriteDetailSheet } from './locals-favourite-detail-sheet';
 
 interface LocalsFavouritesTableProps {
   data: TripListItem[];
@@ -59,6 +55,9 @@ export function LocalsFavouritesTable({
 }: LocalsFavouritesTableProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TripListItem | null>(null);
+  // Index-based so the sheet's prev/next arrows can walk the current page.
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
+  const viewing = viewIndex != null ? (data[viewIndex] ?? null) : null;
 
   const { data: session } = useSession();
   const { data: destinations } = useActiveDestinations();
@@ -94,21 +93,22 @@ export function LocalsFavouritesTable({
     }
   }
 
+  // Status + Pricing columns are off: this list is pinned to LIVE tours (only
+  // they can appear on the public grid), and pricing lives in the sheet.
   const columns = makeTripColumns({
     showOperator: true,
     showSelect: false,
     showPerformance: true,
+    showStatus: false,
+    showPricing: false,
     currentUserEmail: session?.user?.email,
     actions: (tour) => {
       const on = tour.isLocalsFavourite;
       const busy = pendingId === tour.id;
-      // Only LIVE tours show on the public grid, so marking a non-live tour is
-      // blocked. Removing an existing flag stays allowed regardless of status.
-      const blocked = !on && tour.status !== 'LIVE';
-      const btn = (
+      return (
         <button
           type="button"
-          disabled={busy || blocked}
+          disabled={busy}
           onClick={() => handleToggle(tour)}
           aria-pressed={on}
           className={cn(
@@ -128,29 +128,45 @@ export function LocalsFavouritesTable({
           {on ? 'Favourite' : 'Mark'}
         </button>
       );
-      if (!blocked) return btn;
-      return (
-        <Tooltip>
-          {/* span wrapper so the tooltip fires on a disabled button */}
-          <TooltipTrigger asChild>
-            <span className="inline-flex">{btn}</span>
-          </TooltipTrigger>
-          <TooltipContent>Only live tours can be Locals&apos; favourites</TooltipContent>
-        </Tooltip>
-      );
     },
   });
 
   return (
     <>
+      <LocalsFavouriteDetailSheet
+        trip={viewing}
+        onToggle={handleToggle}
+        isToggling={viewing != null && pendingId === viewing.id}
+        onOpenChange={(open) => {
+          if (!open) setViewIndex(null);
+        }}
+        onPrev={
+          viewIndex != null && viewIndex > 0
+            ? () => setViewIndex(viewIndex - 1)
+            : undefined
+        }
+        onNext={
+          viewIndex != null && viewIndex < data.length - 1
+            ? () => setViewIndex(viewIndex + 1)
+            : undefined
+        }
+        position={
+          viewIndex != null
+            ? { index: viewIndex + 1, count: data.length }
+            : undefined
+        }
+      />
       <DataTable
         columns={columns}
         data={data}
         isLoading={isLoading}
+        onRowClick={(t: TripListItem) =>
+          setViewIndex(data.findIndex((r) => r.id === t.id))
+        }
         pagination={{ total, page, limit, onPageChange, onLimitChange }}
         empty={{
           icon: StarIcon,
-          title: 'No tours found.',
+          title: 'No live tours found.',
           description: 'Nothing matches the current filters.',
         }}
         toolbar={(table) => (
@@ -173,26 +189,6 @@ export function LocalsFavouritesTable({
                 <SelectItem value='all'>All tours</SelectItem>
                 <SelectItem value='true'>Locals&apos; favourites</SelectItem>
                 <SelectItem value='false'>Not favourited</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.status ?? 'all'}
-              onValueChange={(v) =>
-                onFilterChange(
-                  'status',
-                  v === 'all' ? undefined : (v as TripStatus),
-                )
-              }
-            >
-              <SelectTrigger className='w-32 shrink-0'>
-                <SelectValue placeholder='Status' />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='all'>All Status</SelectItem>
-                <SelectItem value='DRAFT'>Draft</SelectItem>
-                <SelectItem value='LIVE'>Live</SelectItem>
-                <SelectItem value='PAUSED'>Paused</SelectItem>
-                <SelectItem value='ARCHIVED'>Archived</SelectItem>
               </SelectContent>
             </Select>
             <Select
