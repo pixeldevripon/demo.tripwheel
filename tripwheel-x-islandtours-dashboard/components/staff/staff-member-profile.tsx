@@ -186,7 +186,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
     }
 
     return (
-        <div className='mx-auto w-full max-w-6xl'>
+        <div className='w-full max-w-6xl'>
             {crumbs}
 
             {/* Identity + actions */}
