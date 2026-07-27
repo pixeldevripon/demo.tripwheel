@@ -90,7 +90,7 @@ export default function ProfileDropdown({
                     type='button'
                     aria-label='Open account menu'
                     className={cn(
-                        'group flex cursor-pointer items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'group flex cursor-pointer items-center rounded-full outline-none',
                         className
                     )}>
                     <UserAvatarImage
