@@ -18,12 +18,25 @@ import { DEFAULT_LOCALE, isLocale, type Locale } from '@/lib/constants/locales';
 
 export type StatusCopy = {
     notFound: {
-        eyebrow: string;
         title: string;
         description: string;
+        /**
+         * Primary CTA into the destination's All Tours archive (MCK-10).
+         * `{destination}` is replaced with the island name; when no destination
+         * resolves (root 404) the placeholder is stripped to a generic label.
+         */
         primaryCta: string;
         secondaryCta: string;
-        islandsLabel: string;
+        /** Label above the hub/category quick-link chips. */
+        jumpLabel: string;
+        /** "Still lost?" lead-in, WhatsApp link label, and trailing clause. */
+        helpPrompt: string;
+        helpLinkLabel: string;
+        helpSuffix: string;
+        /** "Popular right now" tour strip. */
+        popularTitle: string;
+        popularSubtitle: string;
+        viewAllTours: string;
     };
     error: {
         eyebrow: string;
@@ -37,13 +50,18 @@ export type StatusCopy = {
 const STATUS_COPY: Record<Locale, StatusCopy> = {
     en: {
         notFound: {
-            eyebrow: 'Error 404',
-            title: 'This page has drifted off the map',
+            title: 'Page not found.',
             description:
-                'The link may be broken, or the page may have moved. Let us get you back to the islands.',
-            primaryCta: 'Back to home',
-            secondaryCta: 'Search tours',
-            islandsLabel: 'Popular islands',
+                "The link may be broken or the page may have moved. Let's get you back to the good part.",
+            primaryCta: 'Explore all {destination} tours',
+            secondaryCta: 'Back to the homepage',
+            jumpLabel: 'Or jump straight to',
+            helpPrompt: 'Still lost?',
+            helpLinkLabel: 'Message us on WhatsApp',
+            helpSuffix: "and we'll point you the right way.",
+            popularTitle: 'Popular right now',
+            popularSubtitle: 'The trips travelers book most this season.',
+            viewAllTours: 'View all {count} tours',
         },
         error: {
             eyebrow: 'Something went wrong',
@@ -56,13 +74,19 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     nl: {
         notFound: {
-            eyebrow: 'Fout 404',
-            title: 'Deze pagina is van de kaart verdwenen',
+            title: 'Pagina niet gevonden.',
             description:
-                'De link is mogelijk verbroken of de pagina is verplaatst. Wij brengen je terug naar de eilanden.',
-            primaryCta: 'Terug naar home',
-            secondaryCta: 'Tours zoeken',
-            islandsLabel: 'Populaire eilanden',
+                'De link is mogelijk verbroken of de pagina is verplaatst. We brengen je terug naar het goede deel.',
+            primaryCta: 'Ontdek alle tours op {destination}',
+            secondaryCta: 'Terug naar de homepage',
+            jumpLabel: 'Of ga direct naar',
+            helpPrompt: 'Nog steeds verdwaald?',
+            helpLinkLabel: 'Stuur ons een bericht op WhatsApp',
+            helpSuffix: 'en we wijzen je de weg.',
+            popularTitle: 'Nu populair',
+            popularSubtitle:
+                'De tours die reizigers dit seizoen het meest boeken.',
+            viewAllTours: 'Bekijk alle {count} tours',
         },
         error: {
             eyebrow: 'Er is iets misgegaan',
@@ -75,13 +99,19 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     de: {
         notFound: {
-            eyebrow: 'Fehler 404',
-            title: 'Diese Seite ist von der Karte verschwunden',
+            title: 'Seite nicht gefunden.',
             description:
-                'Der Link ist möglicherweise defekt oder die Seite wurde verschoben. Wir bringen Sie zurück zu den Inseln.',
-            primaryCta: 'Zur Startseite',
-            secondaryCta: 'Touren suchen',
-            islandsLabel: 'Beliebte Inseln',
+                'Der Link ist möglicherweise defekt oder die Seite wurde verschoben. Wir bringen Sie zurück zum schönen Teil.',
+            primaryCta: 'Alle Touren auf {destination} entdecken',
+            secondaryCta: 'Zurück zur Startseite',
+            jumpLabel: 'Oder direkt weiter zu',
+            helpPrompt: 'Immer noch verloren?',
+            helpLinkLabel: 'Schreiben Sie uns auf WhatsApp',
+            helpSuffix: 'und wir zeigen Ihnen den Weg.',
+            popularTitle: 'Gerade beliebt',
+            popularSubtitle:
+                'Die Touren, die Reisende diese Saison am häufigsten buchen.',
+            viewAllTours: 'Alle {count} Touren ansehen',
         },
         error: {
             eyebrow: 'Etwas ist schiefgelaufen',
@@ -94,13 +124,19 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     fr: {
         notFound: {
-            eyebrow: 'Erreur 404',
-            title: 'Cette page a disparu de la carte',
+            title: 'Page introuvable.',
             description:
-                'Le lien est peut-être rompu ou la page a été déplacée. Nous vous ramenons vers les îles.',
-            primaryCta: "Retour à l'accueil",
-            secondaryCta: 'Rechercher des excursions',
-            islandsLabel: 'Îles populaires',
+                'Le lien est peut-être rompu ou la page a été déplacée. On vous ramène vers le meilleur.',
+            primaryCta: 'Découvrir toutes les excursions à {destination}',
+            secondaryCta: "Retour à l'accueil",
+            jumpLabel: 'Ou accédez directement à',
+            helpPrompt: 'Toujours perdu ?',
+            helpLinkLabel: 'Écrivez-nous sur WhatsApp',
+            helpSuffix: 'et nous vous guiderons.',
+            popularTitle: 'Populaires en ce moment',
+            popularSubtitle:
+                'Les excursions les plus réservées cette saison.',
+            viewAllTours: 'Voir les {count} excursions',
         },
         error: {
             eyebrow: 'Une erreur est survenue',
@@ -113,13 +149,18 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     es: {
         notFound: {
-            eyebrow: 'Error 404',
-            title: 'Esta página se salió del mapa',
+            title: 'Página no encontrada.',
             description:
-                'Puede que el enlace esté roto o que la página se haya movido. Te llevamos de vuelta a las islas.',
-            primaryCta: 'Volver al inicio',
-            secondaryCta: 'Buscar tours',
-            islandsLabel: 'Islas populares',
+                'Puede que el enlace esté roto o que la página se haya movido. Te llevamos de vuelta a lo bueno.',
+            primaryCta: 'Explora todos los tours de {destination}',
+            secondaryCta: 'Volver a la página de inicio',
+            jumpLabel: 'O ve directamente a',
+            helpPrompt: '¿Sigues perdido?',
+            helpLinkLabel: 'Escríbenos por WhatsApp',
+            helpSuffix: 'y te indicamos el camino.',
+            popularTitle: 'Populares ahora mismo',
+            popularSubtitle: 'Los tours más reservados esta temporada.',
+            viewAllTours: 'Ver los {count} tours',
         },
         error: {
             eyebrow: 'Algo ha salido mal',
@@ -132,13 +173,18 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     pt: {
         notFound: {
-            eyebrow: 'Erro 404',
-            title: 'Esta página saiu do mapa',
+            title: 'Página não encontrada.',
             description:
-                'O link pode estar quebrado ou a página pode ter sido movida. Vamos levar você de volta às ilhas.',
-            primaryCta: 'Voltar ao início',
-            secondaryCta: 'Procurar passeios',
-            islandsLabel: 'Ilhas populares',
+                'O link pode estar quebrado ou a página pode ter sido movida. Vamos levar você de volta à parte boa.',
+            primaryCta: 'Explore todos os passeios de {destination}',
+            secondaryCta: 'Voltar à página inicial',
+            jumpLabel: 'Ou vá direto para',
+            helpPrompt: 'Ainda perdido?',
+            helpLinkLabel: 'Fale conosco no WhatsApp',
+            helpSuffix: 'e mostramos o caminho.',
+            popularTitle: 'Populares agora',
+            popularSubtitle: 'Os passeios mais reservados nesta temporada.',
+            viewAllTours: 'Ver os {count} passeios',
         },
         error: {
             eyebrow: 'Algo deu errado',
@@ -151,12 +197,18 @@ const STATUS_COPY: Record<Locale, StatusCopy> = {
     },
     zh: {
         notFound: {
-            eyebrow: '错误 404',
-            title: '这个页面已经偏离了航线',
-            description: '链接可能已失效，或页面已移动。让我们带你回到海岛。',
-            primaryCta: '返回首页',
-            secondaryCta: '搜索行程',
-            islandsLabel: '热门海岛',
+            title: '页面未找到。',
+            description:
+                '链接可能已失效，或页面已移动。让我们带你回到精彩的部分。',
+            primaryCta: '探索{destination}全部行程',
+            secondaryCta: '返回首页',
+            jumpLabel: '或直接前往',
+            helpPrompt: '还是找不到方向？',
+            helpLinkLabel: '通过 WhatsApp 联系我们',
+            helpSuffix: '，我们来为你指路。',
+            popularTitle: '当前热门',
+            popularSubtitle: '本季旅行者预订最多的行程。',
+            viewAllTours: '查看全部 {count} 个行程',
         },
         error: {
             eyebrow: '出了点问题',
