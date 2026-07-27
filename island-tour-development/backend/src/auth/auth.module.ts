@@ -3,6 +3,10 @@ import { ExecutionContext, Module, OnModuleDestroy } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from '@/auth/auth.controller';
+import { LoginPrecheckController } from '@/auth/login-precheck.controller';
+import { LoginPrecheckService } from '@/auth/login-precheck.service';
+import { SessionSurfaceController } from '@/auth/session-surface.controller';
+import { SessionSurfaceService } from '@/auth/session-surface.service';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { RolesGuard } from '@/auth/guards/roles.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
@@ -90,8 +94,14 @@ function isTrustedInternalOrigin(context: ExecutionContext): boolean {
             ],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [
+    AuthController,
+    LoginPrecheckController,
+    SessionSurfaceController,
+  ],
   providers: [
+    LoginPrecheckService,
+    SessionSurfaceService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

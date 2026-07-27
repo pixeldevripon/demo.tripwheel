@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Permission, Role, UserStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
-  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
@@ -162,10 +161,9 @@ export class UpdateUserByAdminDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Email address' })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+  // NOTE: no `email` field on purpose. Emails change ONLY through the
+  // verified Better Auth change-email flow (auth.instance.ts) - a raw admin
+  // write would bypass uniqueness/verification and revoke nothing.
 
   @ApiPropertyOptional({ description: 'Profile image URL' })
   @IsOptional()

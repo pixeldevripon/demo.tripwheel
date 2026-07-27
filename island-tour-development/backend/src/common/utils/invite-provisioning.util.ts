@@ -37,45 +37,134 @@ export function getAccountUrl(): string {
 }
 
 /**
- * Provisions an invited auth account: normalized unique email, user row with
- * the given role, and a credential account holding a throwaway password (never
- * transmitted anywhere) so the invite's set-password reset flow can replace it.
- *
- * This is the security-sensitive common prefix of every invite flow - ONE
- * implementation on purpose. The caller creates its own domain rows afterwards
- * and owns rollback: `authCtx.internalAdapter.deleteUser(user.id)` removes the
- * user plus sessions/accounts (and cascades staff rows), leaving no orphans.
+ * Role precedence for one-account-many-hats: attaching an identity may only
+ * ELEVATE the coarse role column, never downgrade it (a traveler who becomes
+ * staff is STAFF; a staff member who books a tour stays STAFF).
  */
-export async function provisionInvitedAccount(
-  prisma: PrismaService,
-  params: { email: string; name: string; role: Role },
-): Promise<{
+const ROLE_PRECEDENCE: Record<Role, number> = {
+  [Role.ADMIN]: 5,
+  [Role.STAFF]: 4,
+  [Role.TOUR_OPERATOR]: 3,
+  [Role.EDITOR]: 2,
+  [Role.GUIDE]: 1,
+  [Role.USER]: 0,
+};
+
+export function elevateRole(current: Role, requested: Role): Role {
+  return ROLE_PRECEDENCE[requested] > ROLE_PRECEDENCE[current]
+    ? requested
+    : current;
+}
+
+export interface ProvisionOrAttachResult {
   email: string;
   user: { id: string };
   authCtx: Awaited<typeof auth.$context>;
-}> {
+  /**
+   * True when this call created the auth user. Rollback contract: callers may
+   * `authCtx.internalAdapter.deleteUser(user.id)` ONLY when `created` is true;
+   * for an attach they must instead delete the identity rows they created and
+   * restore `priorRole` - deleting the user would destroy a real pre-existing
+   * account (bookings, sessions, everything).
+   */
+  created: boolean;
+  /**
+   * True when the account already had a self-set password. The caller then
+   * sends a "you've been added" notification instead of a set-password invite.
+   */
+  hadPassword: boolean;
+  /** Role before elevation; restore this on attach-rollback. */
+  priorRole: Role;
+}
+
+/**
+ * Provisions an invited auth account - or ATTACHES a new identity to an
+ * existing one (one account per email, many hats).
+ *
+ * New email: user row with the given role + a credential account holding a
+ * throwaway password (never transmitted anywhere) so the invite's set-password
+ * reset flow can replace it.
+ *
+ * Existing email: the role is elevated by precedence (never downgraded), the
+ * existing name/password/emailVerified are left untouched, and the caller
+ * creates its identity rows against the returned user id. Same-hat conflicts
+ * (already staff, already an operator) are the CALLER's job to pre-check -
+ * this util stays generic.
+ *
+ * This is the security-sensitive common prefix of every invite flow - ONE
+ * implementation on purpose.
+ */
+export async function provisionOrAttachAccount(
+  prisma: PrismaService,
+  params: { email: string; name: string; role: Role },
+): Promise<ProvisionOrAttachResult> {
   const email = params.email.toLowerCase().trim();
+  const authCtx = await auth.$context;
+
+  const attachTo = async (existing: {
+    id: string;
+    role: Role;
+    hasPassword: boolean;
+    isSystemAccount: boolean;
+  }): Promise<ProvisionOrAttachResult> => {
+    // The hidden internal-management account never gets hats attached; a
+    // generic conflict avoids confirming anything about it.
+    if (existing.isSystemAccount) {
+      throw new ConflictException(`A user with email ${email} already exists`);
+    }
+    const newRole = elevateRole(existing.role, params.role);
+    if (newRole !== existing.role) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { role: newRole },
+        select: { id: true },
+      });
+    }
+    return {
+      email,
+      user: { id: existing.id },
+      authCtx,
+      created: false,
+      hadPassword: existing.hasPassword,
+      priorRole: existing.role,
+    };
+  };
+
+  const existingSelect = {
+    id: true,
+    role: true,
+    hasPassword: true,
+    isSystemAccount: true,
+  } as const;
 
   const existing = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: existingSelect,
   });
-  if (existing) {
-    throw new ConflictException(`A user with email ${email} already exists`);
-  }
-
-  const authCtx = await auth.$context;
+  if (existing) return attachTo(existing);
 
   const throwawayPassword = randomBytes(24).toString('base64url');
   const hashedPassword = await authCtx.password.hash(throwawayPassword);
 
-  const user = await authCtx.internalAdapter.createUser({
-    email,
-    name: params.name,
-    role: params.role,
-    // Admin/owner-vouched; ownership is re-proven via the invite link.
-    emailVerified: true,
-  });
+  let user: { id: string };
+  try {
+    user = await authCtx.internalAdapter.createUser({
+      email,
+      name: params.name,
+      role: params.role,
+      // Admin/owner-vouched; ownership is re-proven via the invite link.
+      emailVerified: true,
+    });
+  } catch (err) {
+    // Lost a create race (booking webhook vs staff invite, etc.): the row now
+    // exists, so fall through to the attach path instead of failing.
+    const raced = await prisma.user.findUnique({
+      where: { email },
+      select: existingSelect,
+    });
+    if (raced) return attachTo(raced);
+    throw err;
+  }
 
   try {
     await authCtx.internalAdapter.linkAccount({
@@ -89,5 +178,48 @@ export async function provisionInvitedAccount(
     throw err;
   }
 
-  return { email, user: { id: user.id }, authCtx };
+  return {
+    email,
+    user: { id: user.id },
+    authCtx,
+    created: true,
+    hadPassword: false,
+    priorRole: params.role,
+  };
+}
+
+/**
+ * The rollback half of the provision-or-attach contract, shared by every
+ * caller (staff invites, operator create) so the dangerous branch - "never
+ * delete a pre-existing account" - is written exactly once:
+ *
+ * - created: the user is ours - delete it outright (sessions/accounts/staff
+ *   rows cascade, no orphans).
+ * - attached: only undo what the caller added - its staff rows for this user
+ *   (the caller pre-checked none existed) and the role elevation.
+ *
+ * Never throws; rollback best-effort must not mask the original error.
+ */
+export async function rollbackProvisionOrAttach(
+  prisma: PrismaService,
+  result: Pick<
+    ProvisionOrAttachResult,
+    'user' | 'authCtx' | 'created' | 'priorRole'
+  >,
+): Promise<void> {
+  if (result.created) {
+    await result.authCtx.internalAdapter
+      .deleteUser(result.user.id)
+      .catch(() => undefined);
+    return;
+  }
+  await prisma.staffMember
+    .deleteMany({ where: { userId: result.user.id } })
+    .catch(() => undefined);
+  await prisma.user
+    .update({
+      where: { id: result.user.id },
+      data: { role: result.priorRole },
+    })
+    .catch(() => undefined);
 }

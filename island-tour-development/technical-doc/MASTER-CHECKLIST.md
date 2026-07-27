@@ -47,6 +47,12 @@
 - [x] Immediate suspension enforcement (`AuthGuard` with `disableCookieCache`) so a suspended seat loses access on the next request
 - [x] Staff invite lifecycle with `sendStaffInviteEmail` set-password links
 - [x] `MANAGE_EDITORIAL` permission (migration `20260712133827`) gating the locals-favourite editorial endpoints
+- [x] Per-door login enforcement (2026-07-27): sign-in requires `x-login-surface` (`account|portal|staff|admin`); `session.create.before` rejects missing/unknown headers and wrong doors (`WRONG_LOGIN_SURFACE`, post-password only) and stamps `Session.surface`; hat model in `auth/login-surfaces.ts` (ADMIN passes every door)
+- [x] Advisory pre-login check `POST /auth/login-precheck` (`@Public`, throttled 5/min) — unknown emails always `ok:true`; wrong door returns `surfaces` + `suggested` for the login pages' wrong-door UX
+- [x] One account, many hats (2026-07-27): `provisionOrAttachAccount` attaches staff/operator identities to existing emails (role elevation by precedence, never downgrade; shared `rollbackProvisionOrAttach` never deletes a pre-existing account); customer provisioning attaches Customer rows to staff/operator emails (no welcome email for credentialed accounts); effective permissions union `Role.USER`'s set when the account has customer rows
+- [x] Self-service email change via Better Auth `user.changeEmail` (two-step: confirmation to the CURRENT inbox, verification to the new; taken emails = silent fake success); raw `email` removed from `UpdateUserByAdminDto` — no unverified email-write path remains
+- [x] Hidden internal-management admin (`User.isSystemAccount`, migration `20260727154443`): seeded from `SYSTEM_ADMIN_EMAIL/PASSWORD` (optional), filtered out of `GET /users`, `GET /users/:id`, and the staff list's synthesized system-admin rows; immune to all admin mutations; logs in only at the admin app door
+- [x] Surface-based view switching (2026-07-27): dashboard shapes customer-vs-staff view by `session.surface` (`isCustomerView` drives root redirect, route guard, nav trees, command palette, sign-out door) so a multi-hat account entering via `/account` gets the traveler view; `GET/PATCH /auth/session-surface` re-stamps the caller's OWN session to another surface it holds (validated against `getLoginSurfaces`; presentational only - guards never read it)
 - [ ] Bearer-token auth for the OCTO surface (decision D1) — OCTO catalog reads are `@Public()` today; needed before a third-party OTA integrates
 - [ ] Per-operator API keys + scoped permissions for operator/OTA access to availability and bookings (OCTO Phase 9)
 
@@ -473,7 +479,7 @@ processor, customer-provisioning, booking-pricing util.
 - [ ] Dedicated spec for the `search` module (only covered indirectly through tours specs)
 - [ ] Concurrency/overbooking suite (50/100/500 simultaneous reserves) — the make-or-break test for the atomic seat claim
 - [ ] Load test of the availability + reserve endpoints (p95 latency, error rate under burst)
-- [ ] Refresh `auth.e2e-spec.ts`, which is stale now that sign-up is disabled and users must be provisioned through the Better Auth internal adapter
+- [x] Refresh `auth.e2e-spec.ts` (2026-07-27): sign-up tests now pin the disabled-endpoint rejection semantics, all other describes provision via the Better Auth internal adapter, and new suites cover login-surface enforcement + the login-precheck endpoint — 40/40 green
 
 ### Deployment / infra
 

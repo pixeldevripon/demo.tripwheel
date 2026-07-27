@@ -1,6 +1,12 @@
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { mailService } from '@/mail/mail.singleton';
 import { authPrismaClient } from '@/auth/auth-prisma.client';
+import {
+  SURFACE_HEADER,
+  SURFACE_USER_SELECT,
+  isLoginSurface,
+  surfacesForUser,
+} from '@/auth/login-surfaces';
 import { Role, UserStatus } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { APIError } from 'better-auth/api';
@@ -152,6 +158,17 @@ export const auth = betterAuth({
       enabled: true,
       maxAge: 60 * 5, // 5-minute client-side cache to reduce DB round-trips
     },
+    additionalFields: {
+      // Which login door minted the session - stamped by the sign-in hook
+      // below, never accepted from the request body. Returned so the
+      // dashboard can shape its UI by entry door (customer vs staff view).
+      surface: {
+        type: 'string',
+        required: false,
+        returned: true,
+        input: false,
+      },
+    },
   },
 
   // ── Rate Limit ─────────────────────────────────────────────────────────────
@@ -168,6 +185,29 @@ export const auth = betterAuth({
   // ── User model mapping ─────────────────────────────────────────────────────
   user: {
     modelName: 'user',
+
+    // Self-service email change (dashboard profile). Two-step, two-mailbox:
+    // a confirmation link goes to the CURRENT address; approving it triggers
+    // the standard verification email to the NEW address (wired above via
+    // emailVerification.sendVerificationEmail); only then does the email
+    // update. A taken newEmail gets a silent fake success from Better Auth,
+    // so this leaks nothing. Admins have no raw email-write path - this flow
+    // is the only way an email changes.
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }) => {
+        sendInBackground(
+          'change-email-confirmation',
+          mailService.sendChangeEmailConfirmationEmail(
+            user.email,
+            url,
+            newEmail,
+            user.name ?? undefined,
+          ),
+        );
+      },
+    },
+
     additionalFields: {
       role: {
         type: 'string',
@@ -230,13 +270,13 @@ export const auth = betterAuth({
     },
     session: {
       create: {
-        before: async (session) => {
+        before: async (session, ctx) => {
           // A suspended/deleted account must not be able to sign in again -
           // AuthGuard blocks API access, but refusing the session here stops
           // the account at the door (staff suspension, banned users).
           const user = await authPrismaClient.user.findUnique({
             where: { id: session.userId },
-            select: { status: true },
+            select: SURFACE_USER_SELECT,
           });
           // Runs only AFTER the password already verified, so naming the
           // suspension leaks nothing to an attacker without the credential.
@@ -244,6 +284,40 @@ export const auth = betterAuth({
             throw new APIError('FORBIDDEN', {
               message: 'This account has been suspended.',
             });
+          }
+
+          // ── Login-surface enforcement ─────────────────────────
+          // Only for password sign-in: sessions are ALSO created by the
+          // verify-email / change-email flows, which carry no surface header
+          // and must not be blocked. `ctx` comes from AsyncLocalStorage
+          // (better-auth internals) and is typed nullable for EVERY create
+          // path; no current path actually yields null (verified against
+          // 1.6.9 - no autoSignIn flows, no server-side signInEmail calls),
+          // so the `!ctx` arm is deliberate belt-and-suspenders: if it ever
+          // fires, refuse rather than run silently unenforced.
+          if (!ctx || ctx.path === '/sign-in/email') {
+            const surface = ctx?.getHeader(SURFACE_HEADER);
+            // Missing/unknown header = reject. Defaulting would let a caller
+            // bypass the per-door validation by simply omitting the header.
+            if (!isLoginSurface(surface)) {
+              throw new APIError('FORBIDDEN', {
+                message: 'Sign-in surface not recognized.',
+              });
+            }
+            const allowed = user ? surfacesForUser(user) : [];
+            if (!allowed.includes(surface)) {
+              // Distinguishable machine code so login pages can render a
+              // "use the other door" hint. Safe: reaching this point already
+              // required the correct password.
+              throw new APIError('FORBIDDEN', {
+                message:
+                  'This account cannot sign in here. Please use the login page for your account type.',
+                code: 'WRONG_LOGIN_SURFACE',
+              });
+            }
+            // Stamp the door onto the session so the dashboard can shape its
+            // UI by how the user entered (null = route by role).
+            return { data: { ...session, surface } };
           }
         },
         after: async (session) => {

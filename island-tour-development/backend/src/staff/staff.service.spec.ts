@@ -28,6 +28,7 @@ import {
   StaffStatus,
   UserStatus,
 } from '@prisma/client';
+import { MailService } from '@/mail/mail.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { auth } from '@/auth/auth.instance';
 import type { TypedAuthUser } from '@/auth/auth.types';
@@ -49,6 +50,7 @@ function createMockPrismaService() {
       update: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+      deleteMany: jest.fn(),
     },
     staffDesignation: {
       findUnique: jest.fn(),
@@ -120,6 +122,7 @@ describe('StaffService', () => {
   let service: StaffService;
   let prisma: ReturnType<typeof createMockPrismaService>;
   let staffPermissions: ReturnType<typeof createMockStaffPermissionsService>;
+  let mailService: { sendHatAddedEmail: jest.Mock };
   let authCtx: {
     password: { hash: jest.Mock };
     internalAdapter: {
@@ -144,11 +147,16 @@ describe('StaffService', () => {
       undefined,
     );
 
+    mailService = {
+      sendHatAddedEmail: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StaffService,
         { provide: PrismaService, useValue: prisma },
         { provide: StaffPermissionsService, useValue: staffPermissions },
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
@@ -162,8 +170,11 @@ describe('StaffService', () => {
   // ── invitePlatformStaff ───────────────────────────────────────────────────
 
   describe('invitePlatformStaff', () => {
-    it('throws ConflictException (409) when a user with that email already exists', async () => {
-      prisma.user.findUnique.mockResolvedValue({ id: 'existing-user' });
+    it('throws ConflictException (409) when the email already holds a staff seat', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        staffMember: { id: 'sm-1', operatorId: null },
+        operator: null,
+      });
 
       await expect(
         service.invitePlatformStaff(
@@ -173,6 +184,96 @@ describe('StaffService', () => {
       ).rejects.toThrow(ConflictException);
 
       expect(prisma.staffMember.create).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException (409) when the email belongs to an operator account', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        staffMember: null,
+        operator: { id: 'op-1' },
+      });
+
+      await expect(
+        service.invitePlatformStaff(
+          { email: 'owner@islandtours.com', name: 'Owner' },
+          makeActor(),
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.staffMember.create).not.toHaveBeenCalled();
+    });
+
+    it('attaches the staff hat to an existing credentialed customer: ACTIVE seat, hat-added mail, role elevated', async () => {
+      // First findUnique: same-hat pre-check (no staff row, no operator).
+      // Second findUnique (inside provisionOrAttachAccount): the account row.
+      prisma.user.findUnique
+        .mockResolvedValueOnce({ staffMember: null, operator: null })
+        .mockResolvedValueOnce({
+          id: 'customer-1',
+          role: Role.USER,
+          hasPassword: true,
+          isSystemAccount: false,
+        });
+      prisma.user.update.mockResolvedValue({ id: 'customer-1' });
+      prisma.staffMember.create.mockResolvedValue(makeMemberRow());
+
+      await service.invitePlatformStaff(
+        { email: 'jane@islandtours.com', name: 'Jane' },
+        makeActor(),
+      );
+
+      // Role elevated USER -> STAFF on the existing account.
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'customer-1' },
+          data: { role: Role.STAFF },
+        }),
+      );
+      // Seat starts ACTIVE - the account already has a proven password.
+      expect(prisma.staffMember.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'customer-1',
+            status: StaffStatus.ACTIVE,
+          }),
+        }),
+      );
+      // No user was created, no set-password invite - notification only.
+      expect(authCtx.internalAdapter.createUser).not.toHaveBeenCalled();
+      expect(auth.api.requestPasswordReset).not.toHaveBeenCalled();
+      expect(mailService.sendHatAddedEmail).toHaveBeenCalledWith(
+        'jane@islandtours.com',
+        expect.objectContaining({ variant: 'platform' }),
+      );
+      expect(staffPermissions.invalidate).toHaveBeenCalledWith('customer-1');
+    });
+
+    it('attach rollback restores the prior role and never deletes the pre-existing user', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce({ staffMember: null, operator: null })
+        .mockResolvedValueOnce({
+          id: 'customer-1',
+          role: Role.USER,
+          hasPassword: true,
+          isSystemAccount: false,
+        });
+      prisma.user.update.mockResolvedValue({ id: 'customer-1' });
+      prisma.staffMember.create.mockRejectedValue(new Error('db unavailable'));
+      prisma.staffMember.deleteMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.invitePlatformStaff(
+          { email: 'jane@islandtours.com', name: 'Jane' },
+          makeActor(),
+        ),
+      ).rejects.toThrow('db unavailable');
+
+      expect(authCtx.internalAdapter.deleteUser).not.toHaveBeenCalled();
+      expect(prisma.user.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: { id: 'customer-1' },
+          data: { role: Role.USER },
+        }),
+      );
     });
 
     it('rejects extraPermissions outside PLATFORM_STAFF_CEILING with a 400', async () => {

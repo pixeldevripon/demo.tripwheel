@@ -20,6 +20,11 @@ model User {
   hasPassword       Boolean    @default(false)
   passwordChangedAt DateTime?
 
+  // Internal-management accounts (the "supreme" system admin): hidden from
+  // every listing endpoint and immune to admin mutation. Seed-only; never
+  // exposed as a Better Auth additionalField, so it can't leak into sessions.
+  isSystemAccount Boolean @default(false)
+
   // Relations
   sessions            Session[]
   operator            Operator?
@@ -48,6 +53,12 @@ model Session {
   expiresAt DateTime
   ipAddress String?
   userAgent String?
+
+  // Which login door minted this session ('account'|'portal'|'staff'|'admin').
+  // Null for sessions created outside /sign-in/email (email verification,
+  // change-email) - consumers must treat null as "route by role".
+  surface String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

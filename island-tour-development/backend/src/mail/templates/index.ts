@@ -6,6 +6,12 @@ export {
   type StaffInviteTemplateProps,
 } from './staff-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
+export { changeEmailConfirmationTemplate } from './change-email-confirmation.template';
+export {
+  hatAddedSubject,
+  hatAddedTemplate,
+  type HatAddedTemplateProps,
+} from './hat-added.template';
 
 // The booking confirmation is NOT a TS template function: it is the design-owned
 // `booking-confirmation-email.template.html` (master 6.5 + its locked wireframe),
