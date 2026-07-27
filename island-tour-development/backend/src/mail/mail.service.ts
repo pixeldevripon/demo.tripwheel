@@ -282,20 +282,31 @@ export class MailService {
   }
 
   // ── Email verification ────────────────────────────────────────────────────────
+
+  /**
+   * 'account' = ordinary verify-on-sign-in. 'email-change' = step 2 of the
+   * change-email flow (sent to the NEW address after the old inbox approved);
+   * same template, tailored copy + subject.
+   */
   async sendVerificationEmail(
     to: string,
     verifyUrl: string,
     name?: string,
+    variant: 'account' | 'email-change' = 'account',
   ): Promise<void> {
     const siteLogoUrl = await this.getSiteLogo();
     const { html, text } = emailVerificationTemplate({
       verifyUrl,
       siteLogoUrl,
       name,
+      variant,
     });
     await this.sendMail({
       to,
-      subject: 'Verify your Island Tours email address',
+      subject:
+        variant === 'email-change'
+          ? 'Confirm your new Island Tours email address'
+          : 'Verify your Island Tours email address',
       html,
       text,
     });

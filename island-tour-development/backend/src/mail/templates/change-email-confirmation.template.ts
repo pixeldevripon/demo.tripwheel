@@ -23,7 +23,7 @@ export function changeEmailConfirmationTemplate({
   return authEmailShell({
     siteLogoUrl,
     title: 'Confirm your email change.',
-    greeting: name ? `Hi ${name},` : undefined,
+    greeting: name ? `Hi ${escapeHtml(name)},` : undefined,
     paragraphs: [
       `We received a request to change your Island Tours sign-in email to <b style="color:#1F2937">${escapeHtml(newEmail)}</b>.`,
       'If this was you, confirm below. We will then send a verification link to the new address, and your email only changes after that link is opened.',

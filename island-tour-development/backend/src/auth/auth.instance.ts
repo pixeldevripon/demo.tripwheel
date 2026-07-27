@@ -30,6 +30,26 @@ const sendInBackground = (kind: string, p: Promise<void>): void => {
   p.catch((err) => console.error(`[auth] ${kind} email failed to send:`, err));
 };
 
+/**
+ * Decode a JWT payload WITHOUT verifying the signature. Display-only: the
+ * verification hook below uses it to pick email copy by `requestType`; the
+ * token itself is only ever trusted after better-auth's own jwtVerify when
+ * the link is opened.
+ */
+const decodeJwtPayloadUnsafe = (
+  token: string,
+): Record<string, unknown> | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    return JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
 export const auth = betterAuth({
   appName: 'Island Tours',
 
@@ -138,13 +158,22 @@ export const auth = betterAuth({
 
   // ── Email Verification ─────────────────────────────────────────────────────
   emailVerification: {
-    sendVerificationEmail: async ({ user, url }) => {
+    sendVerificationEmail: async ({ user, url, token }) => {
+      // The change-email flow reuses this hook for its second step: after the
+      // OLD inbox approves, better-auth calls this with the NEW address and a
+      // token whose payload carries requestType 'change-email-verification'.
+      // Detect it (display-only decode) so that email explains the change
+      // instead of reading like a random verification ask.
+      const isEmailChange =
+        decodeJwtPayloadUnsafe(token)?.requestType ===
+        'change-email-verification';
       sendInBackground(
         'verification',
         mailService.sendVerificationEmail(
           user.email,
           url,
           user.name ?? undefined,
+          isEmailChange ? 'email-change' : 'account',
         ),
       );
     },

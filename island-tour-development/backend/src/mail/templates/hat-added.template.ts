@@ -58,7 +58,7 @@ export function hatAddedTemplate({
   return authEmailShell({
     siteLogoUrl,
     title: 'A new role was added to your account.',
-    greeting: name ? `Hi ${name},` : undefined,
+    greeting: name ? `Hi ${escapeHtml(name)},` : undefined,
     paragraphs: [
       what,
       'You already have an Island Tours account with this email, so there is no new password to set - sign in with your existing email and password.',
