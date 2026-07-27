@@ -17,11 +17,19 @@ function mockPrisma(): any {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       count: jest.fn(),
     },
+    // Best-effort status-change emails re-read these; undefined results make
+    // the (swallowed) email path a no-op, which is what these tests want.
+    operator: { findUnique: jest.fn() },
+    siteInfo: { findFirst: jest.fn() },
     // Array form used by list(); run the queued promises.
     $transaction: jest.fn((arg: unknown) =>
       Promise.all(arg as Promise<unknown>[]),
     ),
   };
+}
+
+function mockMail(): any {
+  return { sendBookingNoticeEmail: jest.fn() };
 }
 
 describe('SettlementsService', () => {
@@ -30,7 +38,7 @@ describe('SettlementsService', () => {
 
   beforeEach(() => {
     prisma = mockPrisma();
-    svc = new SettlementsService(prisma);
+    svc = new SettlementsService(prisma, mockMail());
   });
 
   // A paid_in_full net owed to the operator; 2020 tour => clawback window long closed.

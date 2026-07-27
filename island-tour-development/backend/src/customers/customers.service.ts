@@ -77,17 +77,34 @@ export class CustomersService {
         })
       : null;
 
+    // Same pinned-pairs technique for the trip filter: "customers of tour X"
+    // means "user+operator pairs with any booking on that tour".
+    const tourPairs = query.tourId
+      ? await this.prisma.booking.groupBy({
+          by: ['userId', 'operatorId'],
+          where: { tourId: query.tourId, userId: { not: null } },
+        })
+      : null;
+
+    // An empty OR matches everything in Prisma, so an empty result set has
+    // to be expressed as an impossible id rather than an empty array.
+    const pairsToOr = (
+      pairs: { userId: string | null; operatorId: string }[],
+    ): Prisma.CustomerWhereInput[] =>
+      pairs.length
+        ? pairs.map((p) => ({
+            userId: p.userId as string,
+            operatorId: p.operatorId,
+          }))
+        : [{ id: '00000000-0000-0000-0000-000000000000' }];
+
+    // Each pair set is its own OR; ANDed so awaiting + tour can combine.
+    const pairConstraints: Prisma.CustomerWhereInput[] = [];
+    if (awaitingPairs) pairConstraints.push({ OR: pairsToOr(awaitingPairs) });
+    if (tourPairs) pairConstraints.push({ OR: pairsToOr(tourPairs) });
+
     const where: Prisma.CustomerWhereInput = {
-      ...(awaitingPairs && {
-        // An empty OR matches everything in Prisma, so an empty result set has
-        // to be expressed as an impossible id rather than an empty array.
-        OR: awaitingPairs.length
-          ? awaitingPairs.map((p) => ({
-              userId: p.userId as string,
-              operatorId: p.operatorId,
-            }))
-          : [{ id: '00000000-0000-0000-0000-000000000000' }],
-      }),
+      ...(pairConstraints.length && { AND: pairConstraints }),
       ...(query.operatorId && platformWide && { operatorId: query.operatorId }),
       ...(search && {
         user: {
