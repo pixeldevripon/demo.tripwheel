@@ -14,8 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useState } from 'react';
 import type { PaymentListItem } from '@/types/booking';
 import { makePaymentColumns } from './payment-columns';
+import { PaymentDetailSheet } from './payment-detail-sheet';
 
 interface PaymentsTableProps {
   data: PaymentListItem[];
@@ -62,12 +64,40 @@ export function PaymentsTable({
   filters = {},
 }: PaymentsTableProps) {
   const columns = makePaymentColumns();
+  // Index-based so the sheet's prev/next arrows can walk the current page.
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
+  const viewing = viewIndex != null ? (data[viewIndex] ?? null) : null;
 
   return (
+    <>
+    <PaymentDetailSheet
+      payment={viewing}
+      onOpenChange={(open) => {
+        if (!open) setViewIndex(null);
+      }}
+      onPrev={
+        viewIndex != null && viewIndex > 0
+          ? () => setViewIndex(viewIndex - 1)
+          : undefined
+      }
+      onNext={
+        viewIndex != null && viewIndex < data.length - 1
+          ? () => setViewIndex(viewIndex + 1)
+          : undefined
+      }
+      position={
+        viewIndex != null
+          ? { index: viewIndex + 1, count: data.length }
+          : undefined
+      }
+    />
     <DataTable
       columns={columns}
       data={data}
       isLoading={isLoading}
+      onRowClick={(p: PaymentListItem) =>
+        setViewIndex(data.findIndex((r) => r.id === p.id))
+      }
       pagination={{ total, page, limit, onPageChange, onLimitChange }}
       empty={{
         icon: CreditCardIcon,
@@ -139,5 +169,6 @@ export function PaymentsTable({
         </>
       )}
     />
+    </>
   );
 }

@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import type { PermissionKey } from '@/lib/config/rbac';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
 import { PermissionMatrix } from './permission-matrix';
 
-interface DesignationDialogProps {
+interface DesignationEditSheetProps {
     scope: StaffScope;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -32,16 +32,17 @@ interface DesignationDialogProps {
 }
 
 /**
- * Create / edit a designation (named permission template). System designations
- * keep their name locked (the backend rejects renames) but their permission
- * set stays editable - an edit re-computes every holder's access.
+ * Create / edit a designation (named permission template), in the standard
+ * list-surface sheet chrome (sticky header/footer, scrollable body). System
+ * designations keep their name locked (the backend rejects renames) but their
+ * permission set stays editable - an edit re-computes every holder's access.
  */
-export function DesignationDialog({
+export function DesignationEditSheet({
     scope,
     open,
     onOpenChange,
     designation,
-}: DesignationDialogProps) {
+}: DesignationEditSheetProps) {
     const { data: catalog } = usePermissionCatalog(scope);
     const { mutate: createDesignation, isPending: creating } =
         useCreateDesignation(scope);
@@ -92,22 +93,23 @@ export function DesignationDialog({
     }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className='flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl'>
-                <DialogHeader>
-                    <DialogTitle>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            {/* Sticky header + footer; only the form body scrolls. */}
+            <SheetContent className='flex w-full flex-col gap-0 sm:max-w-2xl!'>
+                <SheetHeader className='border-b'>
+                    <SheetTitle>
                         {isEdit
                             ? `Edit "${designation.name}"`
                             : 'New designation'}
-                    </DialogTitle>
-                    <DialogDescription>
+                    </SheetTitle>
+                    <SheetDescription>
                         A designation is a named permission template. Members
                         assigned to it inherit its permissions; editing it
                         updates every member instantly.
-                    </DialogDescription>
-                </DialogHeader>
+                    </SheetDescription>
+                </SheetHeader>
 
-                <div className='-mx-1 flex-1 space-y-4 overflow-y-auto px-1 py-1'>
+                <div className='min-h-0 flex-1 space-y-4 overflow-y-auto p-4'>
                     <div className='grid gap-4 sm:grid-cols-2'>
                         <Field>
                             <Label>
@@ -150,7 +152,7 @@ export function DesignationDialog({
                     </div>
                 </div>
 
-                <DialogFooter>
+                <SheetFooter className='flex-row justify-end gap-2 border-t'>
                     <Button
                         variant='outline'
                         disabled={isPending}
@@ -164,8 +166,8 @@ export function DesignationDialog({
                               ? 'Save changes'
                               : 'Create designation'}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
     );
 }

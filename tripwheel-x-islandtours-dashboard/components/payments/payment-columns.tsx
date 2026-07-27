@@ -9,14 +9,14 @@ import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { PaymentKind, PaymentListItem } from '@/types/booking';
 import { PaymentRowActions } from './payment-row-actions';
 
-const kindLabel: Record<PaymentKind, string> = {
+export const kindLabel: Record<PaymentKind, string> = {
   DEPOSIT: 'Deposit',
   BALANCE: 'Balance',
   FULL: 'Full',
   REFUND: 'Refund',
 };
 
-function money(amount: string, rawCurrency: string): string {
+export function money(amount: string, rawCurrency: string): string {
   const currency: Currency = isCurrency(rawCurrency) ? rawCurrency : 'EUR';
   return formatPriceFrom(amount, currency, 'en');
 }
@@ -110,19 +110,14 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
       enableSorting: false,
     },
     {
-      accessorKey: 'createdAt',
-      header: 'Created',
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-xs">
-          {formatDate(row.original.createdAt, 'long')}
-        </span>
-      ),
-      enableSorting: true,
-    },
-    {
       id: 'actions',
       header: '',
-      cell: ({ row }) => <PaymentRowActions payment={row.original} />,
+      cell: ({ row }) => (
+        // Rows open the detail sheet; keep menu clicks out of that.
+        <div onClick={(e) => e.stopPropagation()}>
+          <PaymentRowActions payment={row.original} />
+        </div>
+      ),
       enableSorting: false,
       enableHiding: false,
     },

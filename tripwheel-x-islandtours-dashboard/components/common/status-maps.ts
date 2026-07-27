@@ -13,6 +13,8 @@ import type {
     TripStatus,
 } from '@/types/trip';
 import type { ReviewModerationStatus } from '@/types/review';
+import type { CollectionStatus, CollectionType } from '@/types/enums';
+import type { PageStatus } from '@/types/pages';
 import { SPOTLIGHT_STATUS_LABELS, type SpotlightStatus } from '@/types/tier';
 import type { StatusVariant } from './status-badge';
 
@@ -314,6 +316,58 @@ export const OPERATOR_VERIFICATION: Record<
 };
 
 /** Boolean actives (destinations, hubs, categories, collections, operators). */
+/** Legal & policy pages (types/pages.ts PageStatus). */
+export const PAGE_STATUS: Record<PageStatus, StatusMeta> = {
+    DRAFT: {
+        label: 'Draft',
+        variant: 'neutral',
+        hint: 'Not published; the permalink 404s',
+    },
+    PUBLISHED: {
+        label: 'Published',
+        variant: 'success',
+        hint: 'Live at its permalink on the public site',
+    },
+    ARCHIVED: {
+        label: 'Archived',
+        variant: 'neutral',
+        hint: 'Retired; kept for records only',
+    },
+};
+
+/** Collections (types/enums.ts CollectionStatus). */
+export const COLLECTION_STATUS: Record<CollectionStatus, StatusMeta> = {
+    DRAFT: {
+        label: 'Draft',
+        variant: 'neutral',
+        hint: 'Not published; hidden from travelers',
+    },
+    PUBLISHED: {
+        label: 'Published',
+        variant: 'success',
+        hint: 'Live on the public site',
+    },
+    ARCHIVED: {
+        label: 'Archived',
+        variant: 'neutral',
+        hint: 'Retired; kept for records only',
+    },
+};
+
+/** How a collection picks its tours (types/enums.ts CollectionType). */
+export const COLLECTION_TYPE: Record<CollectionType, StatusMeta> = {
+    MANUAL: {
+        label: 'Manual',
+        variant: 'neutral',
+        hint: 'Tours curated by hand, in a fixed order',
+    },
+    DYNAMIC: {
+        label: 'Dynamic',
+        variant: 'info',
+        hint: 'Tours selected automatically by rules',
+    },
+};
+
 export const ACTIVE_STATUS: Record<'active' | 'inactive', StatusMeta> = {
     active: { label: 'Active', variant: 'success', hint: 'Visible and in use' },
     inactive: {

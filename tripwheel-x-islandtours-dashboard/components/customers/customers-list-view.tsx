@@ -17,8 +17,9 @@ import {
 } from '@/components/ui/select';
 import { useRole } from '@/contexts/role-context';
 import { useCustomers } from '@/hooks/customers/use-customers';
-import type { CustomersQueryParams } from '@/types/customer';
+import type { CustomerListItem, CustomersQueryParams } from '@/types/customer';
 import { customerColumns } from './customer-columns';
+import { CustomerDetailSheet } from './customer-detail-sheet';
 import { EmailCustomersDialog } from './email-customers-dialog';
 
 const AWAITING_OPTIONS: [string, string][] = [
@@ -50,6 +51,8 @@ export function CustomersListView() {
   } = useTableState();
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailIds, setEmailIds] = useState<string[]>([]);
+  // Index-based so the sheet's prev/next arrows can walk the current page.
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
 
   // MANAGE_USERS, matching the backend. An operator can nudge their own
   // customer for a review but cannot compose arbitrary mail to them.
@@ -68,6 +71,9 @@ export function CustomersListView() {
     [showOperator],
   );
 
+  const rows = data?.data ?? [];
+  const viewing = viewIndex != null ? (rows[viewIndex] ?? null) : null;
+
   return (
     <>
       <DataTable
@@ -75,6 +81,9 @@ export function CustomersListView() {
         data={data?.data ?? []}
         isLoading={isLoading}
         getRowId={(r) => r.id}
+        onRowClick={(c: CustomerListItem) =>
+          setViewIndex(rows.findIndex((r) => r.id === c.id))
+        }
         pagination={{
           total: data?.total ?? 0,
           page,
@@ -94,13 +103,12 @@ export function CustomersListView() {
               value={search}
               onValueChange={setSearch}
               placeholder="Search name or email..."
-              className="max-w-sm flex-1"
             />
             <Select
               value={filters.awaiting ?? 'all'}
               onValueChange={(v) => setFilter('awaiting', v)}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 shrink-0">
                 <SelectValue placeholder="Filter" />
               </SelectTrigger>
               <SelectContent>
@@ -127,6 +135,28 @@ export function CustomersListView() {
                   Email selected
                 </Button>
               )
+            : undefined
+        }
+      />
+
+      <CustomerDetailSheet
+        customer={viewing}
+        onOpenChange={(open) => {
+          if (!open) setViewIndex(null);
+        }}
+        onPrev={
+          viewIndex != null && viewIndex > 0
+            ? () => setViewIndex(viewIndex - 1)
+            : undefined
+        }
+        onNext={
+          viewIndex != null && viewIndex < rows.length - 1
+            ? () => setViewIndex(viewIndex + 1)
+            : undefined
+        }
+        position={
+          viewIndex != null
+            ? { index: viewIndex + 1, count: rows.length }
             : undefined
         }
       />

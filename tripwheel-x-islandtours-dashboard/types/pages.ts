@@ -7,6 +7,8 @@ import type { Locale } from '@/types/locale';
 
 export type PageStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
+export const PAGE_STATUS_VALUES: PageStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+
 export const PAGE_STATUS_LABELS: Record<PageStatus, string> = {
   DRAFT: 'Draft',
   PUBLISHED: 'Published',

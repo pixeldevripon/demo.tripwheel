@@ -48,11 +48,20 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
     });
 
     const [inviteOpen, setInviteOpen] = useState(false);
-    const [editing, setEditing] = useState<StaffMember | null>(null);
+    // Index-based so the sheet's prev/next arrows can walk the current page.
+    const [editIndex, setEditIndex] = useState<number | null>(null);
+    const rows = useMemo(() => data?.data ?? [], [data]);
+    const editing = editIndex != null ? (rows[editIndex] ?? null) : null;
+
+    const openMember = useMemo(
+        () => (member: StaffMember) =>
+            setEditIndex(rows.findIndex((m) => m.id === member.id)),
+        [rows],
+    );
 
     const columns = useMemo(
-        () => buildStaffColumns({ scope, onEdit: setEditing }),
-        [scope],
+        () => buildStaffColumns({ scope, onEdit: openMember }),
+        [scope, openMember],
     );
 
     const inviteButton = (
@@ -66,8 +75,9 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
         <>
             <DataTable
                 columns={columns}
-                data={data?.data ?? []}
+                data={rows}
                 isLoading={isLoading}
+                onRowClick={openMember}
                 pagination={{
                     total: data?.total ?? 0,
                     page,
@@ -139,8 +149,23 @@ export function StaffMembersTab({ scope }: { scope: StaffScope }) {
                 scope={scope}
                 member={editing}
                 onOpenChange={(open) => {
-                    if (!open) setEditing(null);
+                    if (!open) setEditIndex(null);
                 }}
+                onPrev={
+                    editIndex != null && editIndex > 0
+                        ? () => setEditIndex(editIndex - 1)
+                        : undefined
+                }
+                onNext={
+                    editIndex != null && editIndex < rows.length - 1
+                        ? () => setEditIndex(editIndex + 1)
+                        : undefined
+                }
+                position={
+                    editIndex != null
+                        ? { index: editIndex + 1, count: rows.length }
+                        : undefined
+                }
             />
         </>
     );

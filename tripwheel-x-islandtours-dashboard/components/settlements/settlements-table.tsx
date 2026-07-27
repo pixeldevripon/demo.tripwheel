@@ -15,8 +15,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useState } from 'react';
 import type { SettlementListItem } from '@/types/booking';
 import { makeSettlementColumns } from './settlement-columns';
+import { SettlementDetailSheet } from './settlement-detail-sheet';
 
 interface SettlementsTableProps {
     data: SettlementListItem[];
@@ -56,12 +58,41 @@ export function SettlementsTable({
     filters = {},
 }: SettlementsTableProps) {
     const columns = makeSettlementColumns(isAdmin);
+    // Index-based so the sheet's prev/next arrows can walk the current page.
+    const [viewIndex, setViewIndex] = useState<number | null>(null);
+    const viewing = viewIndex != null ? (data[viewIndex] ?? null) : null;
 
     return (
+        <>
+        <SettlementDetailSheet
+            settlement={viewing}
+            isAdmin={isAdmin}
+            onOpenChange={(open) => {
+                if (!open) setViewIndex(null);
+            }}
+            onPrev={
+                viewIndex != null && viewIndex > 0
+                    ? () => setViewIndex(viewIndex - 1)
+                    : undefined
+            }
+            onNext={
+                viewIndex != null && viewIndex < data.length - 1
+                    ? () => setViewIndex(viewIndex + 1)
+                    : undefined
+            }
+            position={
+                viewIndex != null
+                    ? { index: viewIndex + 1, count: data.length }
+                    : undefined
+            }
+        />
         <DataTable
             columns={columns}
             data={data}
             isLoading={isLoading}
+            onRowClick={(s: SettlementListItem) =>
+                setViewIndex(data.findIndex((r) => r.id === s.id))
+            }
             pagination={{ total, page, limit, onPageChange, onLimitChange }}
             empty={{
                 icon: Coins01Icon,
@@ -127,5 +158,6 @@ export function SettlementsTable({
                 </>
             )}
         />
+        </>
     );
 }

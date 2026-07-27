@@ -44,6 +44,7 @@ export function buildStaffColumns({
                         <div className='min-w-0'>
                             <Link
                                 href={`/users/${member.id}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className='block max-w-50 truncate font-medium hover:underline'>
                                 {member.user.name}
                             </Link>

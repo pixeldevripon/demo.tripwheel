@@ -11,11 +11,15 @@ import {
 } from '@/components/ui/sheet';
 import { StatusBadge } from '@/components/common/status-badge';
 import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
+import {
+    SheetPager,
+    type SheetPagerProps,
+} from '@/components/common/detail-sheet';
 import type { StaffMember, StaffScope } from '@/types/staff';
 import { StaffAccessFields } from './staff-access-fields';
 import { useAccessEditor } from './use-access-editor';
 
-interface StaffMemberSheetProps {
+interface StaffMemberSheetProps extends SheetPagerProps {
     scope: StaffScope;
     member: StaffMember | null;
     onOpenChange: (open: boolean) => void;
@@ -31,47 +35,85 @@ export function StaffMemberSheet({
     scope,
     member,
     onOpenChange,
+    onPrev,
+    onNext,
+    position,
 }: StaffMemberSheetProps) {
     const editor = useAccessEditor(scope, member);
     const statusMeta = member ? STAFF_MEMBER_STATUS[member.status] : null;
+    // The system admin and owner seats are read-only for ACCESS everywhere
+    // (every staff mutation on them 403s) - same rule as the member profile.
+    const accessReadOnly =
+        !!member && (member.isSystemAdmin || member.seatRole === 'OWNER');
 
     return (
         <Sheet open={member !== null} onOpenChange={onOpenChange}>
-            <SheetContent className='flex w-full flex-col gap-0 overflow-y-auto sm:max-w-2xl'>
+            {/* Sticky header + footer; only the form body scrolls. */}
+            <SheetContent className='flex w-full flex-col gap-0 sm:max-w-2xl!'>
                 <SheetHeader className='border-b'>
-                    <SheetTitle className='flex items-center gap-2'>
-                        {member?.user.name}
-                        {statusMeta && (
-                            <StatusBadge
-                                variant={statusMeta.variant}
-                                hint={statusMeta.hint}>
-                                {statusMeta.label}
-                            </StatusBadge>
-                        )}
-                    </SheetTitle>
-                    <SheetDescription>
-                        {member?.user.email} - changes apply on their next
-                        request.
-                    </SheetDescription>
+                    <div className='flex items-center justify-between gap-3 pr-8'>
+                        <div className='min-w-0'>
+                            <SheetTitle className='flex items-center gap-2'>
+                                {member?.user.name}
+                                {statusMeta && (
+                                    <StatusBadge
+                                        variant={statusMeta.variant}
+                                        hint={statusMeta.hint}>
+                                        {statusMeta.label}
+                                    </StatusBadge>
+                                )}
+                            </SheetTitle>
+                            <SheetDescription>
+                                {member?.user.email}
+                                {accessReadOnly
+                                    ? ' - full access, not editable.'
+                                    : ' - changes apply on their next request.'}
+                            </SheetDescription>
+                        </div>
+                        <SheetPager
+                            onPrev={onPrev}
+                            onNext={onNext}
+                            position={position}
+                        />
+                    </div>
                 </SheetHeader>
 
-                <div className='flex-1 p-4'>
-                    <StaffAccessFields scope={scope} editor={editor} />
+                <div className='min-h-0 flex-1 overflow-y-auto p-4'>
+                    {accessReadOnly && member ? (
+                        <div className='space-y-2'>
+                            <p className='m-0 text-sm font-medium'>
+                                {member.isSystemAdmin
+                                    ? 'System Administrator'
+                                    : 'Owner'}
+                            </p>
+                            <p className='m-0 text-sm text-muted-foreground'>
+                                {member.isSystemAdmin
+                                    ? 'Holds every platform permission. This account cannot be edited, suspended or removed.'
+                                    : 'Holds full access to their team. Owner access cannot be edited from here.'}
+                            </p>
+                        </div>
+                    ) : (
+                        <StaffAccessFields scope={scope} editor={editor} />
+                    )}
                 </div>
 
-                <SheetFooter className='flex-row justify-end gap-2 border-t'>
-                    <Button
-                        variant='outline'
-                        disabled={editor.isPending}
-                        onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        disabled={editor.isPending || !member}
-                        onClick={() => editor.save(() => onOpenChange(false))}>
-                        {editor.isPending ? 'Saving...' : 'Save access'}
-                    </Button>
-                </SheetFooter>
+                {!accessReadOnly && (
+                    <SheetFooter className='flex-row justify-end gap-2 border-t'>
+                        <Button
+                            variant='outline'
+                            disabled={editor.isPending}
+                            onClick={() => onOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={editor.isPending || !member}
+                            onClick={() =>
+                                editor.save(() => onOpenChange(false))
+                            }>
+                            {editor.isPending ? 'Saving...' : 'Save access'}
+                        </Button>
+                    </SheetFooter>
+                )}
             </SheetContent>
         </Sheet>
     );

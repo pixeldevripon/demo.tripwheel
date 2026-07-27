@@ -89,7 +89,6 @@ export function CategoriesTable({
             value={(table.getState().globalFilter as string) ?? ''}
             onValueChange={table.setGlobalFilter}
             placeholder='Search categories...'
-            className='max-w-sm flex-1'
           />
           <Select
             value={statusValue}

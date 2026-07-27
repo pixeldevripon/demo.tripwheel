@@ -28,7 +28,7 @@ import {
     usePermissionCatalog,
 } from '@/hooks/staff/use-staff';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
-import { DesignationDialog } from './designation-dialog';
+import { DesignationEditSheet } from './designation-edit-sheet';
 import { DesignationSheet } from './designation-sheet';
 
 interface BuildDesignationColumnsOptions {
@@ -172,7 +172,10 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<StaffDesignation | null>(null);
     const [removing, setRemoving] = useState<StaffDesignation | null>(null);
-    const [viewing, setViewing] = useState<StaffDesignation | null>(null);
+    // Index-based so the sheet's prev/next arrows can walk the list.
+    const [viewIndex, setViewIndex] = useState<number | null>(null);
+    const rows = designations ?? [];
+    const viewing = viewIndex != null ? (rows[viewIndex] ?? null) : null;
 
     const totalGrantable =
         catalog?.groups.reduce((n, g) => n + g.permissions.length, 0) ?? 0;
@@ -210,10 +213,12 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
 
             <DataTable
                 columns={columns}
-                data={designations ?? []}
+                data={rows}
                 isLoading={isLoading}
                 skeletonRows={3}
-                onRowClick={setViewing}
+                onRowClick={(d: StaffDesignation) =>
+                    setViewIndex(rows.findIndex((r) => r.id === d.id))
+                }
                 empty={{
                     icon: Shield01Icon,
                     title: 'No designations yet.',
@@ -232,11 +237,26 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
                 scope={scope}
                 designation={viewing}
                 onOpenChange={(open) => {
-                    if (!open) setViewing(null);
+                    if (!open) setViewIndex(null);
                 }}
+                onPrev={
+                    viewIndex != null && viewIndex > 0
+                        ? () => setViewIndex(viewIndex - 1)
+                        : undefined
+                }
+                onNext={
+                    viewIndex != null && viewIndex < rows.length - 1
+                        ? () => setViewIndex(viewIndex + 1)
+                        : undefined
+                }
+                position={
+                    viewIndex != null
+                        ? { index: viewIndex + 1, count: rows.length }
+                        : undefined
+                }
             />
 
-            <DesignationDialog
+            <DesignationEditSheet
                 scope={scope}
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}

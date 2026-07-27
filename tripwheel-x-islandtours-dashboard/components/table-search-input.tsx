@@ -15,7 +15,11 @@ interface TableSearchInputProps {
   placeholder?: string;
   /** Debounce delay in ms before propagating to onValueChange. */
   delay?: number;
-  /** Width classes for the wrapper (e.g. `max-w-sm` or `min-w-36`). */
+  /**
+   * Extra wrapper classes. Width is standardized (`min-w-36 flex-1`, matching
+   * DataTableSearch) so every table's search bar reads identically - do not
+   * override it per screen.
+   */
   className?: string;
 }
 
@@ -56,7 +60,7 @@ export function TableSearchInput({
   }, [local, delay, onValueChange]);
 
   return (
-    <div className={cn('relative flex-1', className)}>
+    <div className={cn('relative min-w-36 flex-1', className)}>
       <HugeiconsIcon icon={Search01Icon} className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
       <Input
         placeholder={placeholder}

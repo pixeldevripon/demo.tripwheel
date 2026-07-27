@@ -1,7 +1,7 @@
 'use client';
 
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
-import { CalendarCheckIn01Icon, CancelCircleIcon, CheckmarkCircle02Icon, Clock03Icon, SparklesIcon, TimeQuarter02Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { SparklesIcon } from '@hugeicons/core-free-icons';
 
 import { DatePickerField } from '@/components/date-picker-field';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
@@ -35,49 +34,14 @@ import { useAdminTrips } from '@/hooks/trips/use-trips';
 import type { SpotlightStatus } from '@/types/tier';
 import {
     SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION,
-    SPOTLIGHT_MIN_RATING,
-    SPOTLIGHT_MIN_REVIEWS,
     SPOTLIGHT_STATUS_LABELS,
     SPOTLIGHT_STATUS_VALUES,
 } from '@/types/tier';
-import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { deriveTourBadge } from '@/lib/tours/derive-badge';
 import { SpotlightTable } from './spotlight-table';
 import type { SpotlightRequestWithInfo, TourInfo } from './spotlight-columns';
-
-const statusKey: Array<{
-    status: SpotlightStatus;
-    Icon: IconSvgElement;
-    className: string;
-}> = [
-    {
-        status: 'REQUESTED',
-        Icon: Clock03Icon,
-        className: 'text-warning-fg',
-    },
-    {
-        status: 'APPROVED',
-        Icon: CalendarCheckIn01Icon,
-        className: 'text-info-fg',
-    },
-    {
-        status: 'ACTIVE',
-        Icon: CheckmarkCircle02Icon,
-        className: 'text-success-fg',
-    },
-    {
-        status: 'REJECTED',
-        Icon: CancelCircleIcon,
-        className: 'text-danger-fg',
-    },
-    {
-        status: 'EXPIRED',
-        Icon: TimeQuarter02Icon,
-        className: 'text-content-muted',
-    },
-];
 
 export function SpotlightQueueView() {
     const { can } = useRole();
@@ -92,7 +56,6 @@ export function SpotlightQueueView() {
         destinationId: destinationId !== 'all' ? destinationId : undefined,
         status: status !== 'all' ? (status as SpotlightStatus) : undefined,
     });
-    const { data: statusQueue } = useSpotlightQueue();
 
     const [approveTarget, setApproveTarget] = useState<SpotlightRequestWithInfo | null>(null);
     const [rejectTarget, setRejectTarget] = useState<SpotlightRequestWithInfo | null>(null);
@@ -127,92 +90,15 @@ export function SpotlightQueueView() {
         }));
     }, [queue, tourMap]);
 
-    const statusRows: SpotlightRequestWithInfo[] = useMemo(() => {
-        return (statusQueue?.data ?? []).map((req) => ({
-            ...req,
-            tourInfo: tourMap.get(req.tourId),
-        }));
-    }, [statusQueue, tourMap]);
-
-    const statusCounts = useMemo(() => {
-        const counts = new Map<SpotlightStatus, number>();
-        for (const s of SPOTLIGHT_STATUS_VALUES) counts.set(s, 0);
-        let eligibleRequested = 0;
-        let blockedRequested = 0;
-
-        for (const row of statusRows) {
-            counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
-            if (row.status === 'REQUESTED') {
-                const reviewCount = row.tourInfo?.reviewCount ?? 0;
-                const rating = row.tourInfo?.rating ?? 0;
-                if (
-                    reviewCount >= SPOTLIGHT_MIN_REVIEWS &&
-                    rating >= SPOTLIGHT_MIN_RATING
-                ) {
-                    eligibleRequested += 1;
-                } else {
-                    blockedRequested += 1;
-                }
-            }
-        }
-
-        return { counts, eligibleRequested, blockedRequested };
-    }, [statusRows]);
-
     return (
         <div className='space-y-4'>
-            {isLoading ? (
-                <div className='space-y-2 p-4'>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton
-                            key={i}
-                            className='h-12 w-full rounded-none'
-                        />
-                    ))}
-                </div>
-            ) : (
-                <>
-                    <div
-                        role='tablist'
-                        aria-label='Filter spotlight requests by status'
-                        className='flex flex-wrap items-center gap-1 border-b border-border/70'
-                    >
-                        {statusKey.map(({ status: key, Icon, className }) => (
-                            <button
-                                type='button'
-                                role='tab'
-                                key={key}
-                                onClick={() => setStatus(key)}
-                                aria-selected={status === key}
-                                className={cn(
-                                    'relative -mb-px inline-flex h-9 items-center gap-2 border-b-2 border-transparent px-2.5 text-xs font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                                    status === key
-                                        ? 'border-foreground text-foreground'
-                                        : 'hover:border-border'
-                                )}>
-                                <HugeiconsIcon
-                                    icon={Icon}
-                                    className={cn('size-3.5', className)}
-                                />
-                                <span>{SPOTLIGHT_STATUS_LABELS[key]}</span>
-                                <span
-                                    className={cn(
-                                        'rounded-sm bg-muted px-1.5 py-0.5 text-2xs font-semibold leading-none tabular-nums text-muted-foreground',
-                                        status === key && 'bg-foreground text-background'
-                                    )}
-                                >
-                                    {statusCounts.counts.get(key) ?? 0}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-
-                    <SpotlightTable
-                        data={rows}
-                        canApprove={canApprove}
-                        onApprove={setApproveTarget}
-                        onReject={setRejectTarget}
-                        filterSlot={
+            <SpotlightTable
+                data={rows}
+                isLoading={isLoading}
+                canApprove={canApprove}
+                onApprove={setApproveTarget}
+                onReject={setRejectTarget}
+                filterSlot={
                             <>
                                 <Select
                                     value={destinationId}
@@ -261,11 +147,9 @@ export function SpotlightQueueView() {
                                         {SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION}
                                     </Badge>
                                 )}
-                            </>
-                        }
-                    />
-                </>
-            )}
+                    </>
+                }
+            />
 
             <ApproveDialog
                 target={approveTarget}
