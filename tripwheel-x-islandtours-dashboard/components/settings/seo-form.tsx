@@ -30,7 +30,6 @@ const schema = z.object({
   googleTagManagerId: z.string().optional(),
   googleSearchConsole: z.string().optional(),
   facebookPixelId: z.string().optional(),
-  cookiebotCbid: z.string().optional(),
   robotsTxt: z.string().optional(),
   // Stored as a string flag ('true' | 'false') to match the backend column;
   // the checkbox below maps it to/from a boolean.
@@ -44,7 +43,6 @@ const EMPTY: FormValues = {
   ogTitle: '', ogDescription: '', ogImage: '',
   twitterTitle: '', twitterDescription: '', twitterImage: '',
   googleAnalyticsId: '', googleTagManagerId: '', googleSearchConsole: '', facebookPixelId: '',
-  cookiebotCbid: '',
   robotsTxt: '', autoGenerateSitemap: '',
 };
 
@@ -79,7 +77,6 @@ export function SeoForm() {
         googleTagManagerId: data.googleTagManagerId ?? '',
         googleSearchConsole: data.googleSearchConsole ?? '',
         facebookPixelId: data.facebookPixelId ?? '',
-        cookiebotCbid: data.cookiebotCbid ?? '',
         robotsTxt: data.robotsTxt ?? '',
         autoGenerateSitemap: data.autoGenerateSitemap ?? '',
       });
@@ -132,13 +129,6 @@ export function SeoForm() {
           placeholder="dBw5CvburAxi537Rp9qi5uG2..."
         />
         <TextField label="Facebook Pixel ID" registration={register('facebookPixelId')} error={errors.facebookPixelId?.message} />
-        <TextField
-          label="Cookiebot Domain Group ID"
-          description="The data-cbid UUID from Cookiebot admin > Settings > Your scripts. Enables the consent banner and the Manage Cookies dialog on the public site."
-          registration={register('cookiebotCbid')}
-          error={errors.cookiebotCbid?.message}
-          placeholder="12345678-abcd-1234-abcd-123456789abc"
-        />
       </div>
 
       <CheckboxField
