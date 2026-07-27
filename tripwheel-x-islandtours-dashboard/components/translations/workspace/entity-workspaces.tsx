@@ -58,6 +58,7 @@ import {
     usePageContentSections,
     useUpsertPageContentSectionTranslation,
 } from '@/hooks/page-content-sections/use-page-content-sections';
+import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
 import { HOME_ID } from '@/lib/api/home-page';
 import { type Locale } from '@/lib/constants/locales';
 import {
@@ -94,6 +95,7 @@ function toPageContent(values: Record<string, string>) {
 export function HomepageWorkspace({ locale }: { locale: Locale }) {
     const { data: translations, isLoading } = useHomePageTranslations();
     const upsert = useUpsertHomePageTranslation();
+    const generate = useGenerateTranslation('homepage', HOME_ID, locale);
 
     const source = useMemo(
         () => translations?.find(t => t.locale === 'en'),
@@ -120,9 +122,13 @@ export function HomepageWorkspace({ locale }: { locale: Locale }) {
             onSave={values =>
                 upsert.mutateAsync({
                     locale,
-                    payload: { fields: toFields(values) },
+                    // A human save always clears the machine flag - otherwise
+                    // the AI refresher would later overwrite this row.
+                    payload: { fields: toFields(values), isMachineTranslated: false },
                 })
             }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
         />
     );
 }
@@ -137,6 +143,7 @@ export function DestinationWorkspace({ id, locale }: { id: string; locale: Local
     const upsert = useUpsertDestinationTranslation();
     const upsertPage = useUpsertDestinationPageContent();
     const upsertSection = useUpsertPageContentSectionTranslation('/destinations', id);
+    const generate = useGenerateTranslation('destination', id, locale);
 
     // The About-band blocks. Two translatable fields per section, and the upsert
     // endpoint replaces the whole locale row, so a heading-only edit still has to
@@ -229,11 +236,17 @@ export function DestinationWorkspace({ id, locale }: { id: string; locale: Local
                 upsert.isPending || upsertPage.isPending || upsertSection.isPending
             }
             onSave={values =>
-                upsert.mutateAsync({ id, locale, payload: { fields: toFields(values) } })
+                upsert.mutateAsync({
+                    id,
+                    locale,
+                    payload: { fields: toFields(values), isMachineTranslated: false },
+                })
             }
             onSavePageContent={values =>
                 upsertPage.mutateAsync({ id, locale, payload: toPageContent(values) })
             }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
         />
     );
 }
@@ -246,6 +259,7 @@ export function CategoryWorkspace({ id, locale }: { id: string; locale: Locale }
     const { data: pageTarget } = useCategoryPageContent(id, locale);
     const upsert = useUpsertCategoryTranslation();
     const upsertPage = useUpsertCategoryPageContent();
+    const generate = useGenerateTranslation('category', id, locale);
 
     return (
         <ContentWorkspace
@@ -263,11 +277,17 @@ export function CategoryWorkspace({ id, locale }: { id: string; locale: Locale }
             isMachineTranslated={target?.isMachineTranslated}
             isSaving={upsert.isPending || upsertPage.isPending}
             onSave={values =>
-                upsert.mutateAsync({ id, locale, payload: { fields: toFields(values) } })
+                upsert.mutateAsync({
+                    id,
+                    locale,
+                    payload: { fields: toFields(values), isMachineTranslated: false },
+                })
             }
             onSavePageContent={values =>
                 upsertPage.mutateAsync({ id, locale, payload: toPageContent(values) })
             }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
         />
     );
 }
@@ -280,6 +300,7 @@ export function HubWorkspace({ id, locale }: { id: string; locale: Locale }) {
     const { data: pageTarget } = useHubPageContent(id, locale);
     const upsert = useUpsertHubTranslation();
     const upsertPage = useUpsertHubPageContent();
+    const generate = useGenerateTranslation('hub', id, locale);
 
 
     return (
@@ -298,11 +319,17 @@ export function HubWorkspace({ id, locale }: { id: string; locale: Locale }) {
             isMachineTranslated={target?.isMachineTranslated}
             isSaving={upsert.isPending || upsertPage.isPending}
             onSave={values =>
-                upsert.mutateAsync({ id, locale, payload: { fields: toFields(values) } })
+                upsert.mutateAsync({
+                    id,
+                    locale,
+                    payload: { fields: toFields(values), isMachineTranslated: false },
+                })
             }
             onSavePageContent={values =>
                 upsertPage.mutateAsync({ id, locale, payload: toPageContent(values) })
             }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
         />
     );
 }
@@ -317,6 +344,7 @@ export function CollectionWorkspace({ id, locale }: { id: string; locale: Locale
     const upsert = useUpsertCollectionTranslation();
     const upsertPage = useUpsertCollectionPageContent();
     const upsertRationale = useUpsertCollectionTourRationale();
+    const generate = useGenerateTranslation('collection', id, locale);
 
     const extraSections = useMemo<ExtraSection[]>(() => {
         if (!tours || tours.length === 0) return [];
@@ -377,11 +405,17 @@ export function CollectionWorkspace({ id, locale }: { id: string; locale: Locale
                 upsertRationale.isPending
             }
             onSave={values =>
-                upsert.mutateAsync({ id, locale, payload: { fields: toFields(values) } })
+                upsert.mutateAsync({
+                    id,
+                    locale,
+                    payload: { fields: toFields(values), isMachineTranslated: false },
+                })
             }
             onSavePageContent={values =>
                 upsertPage.mutateAsync({ id, locale, payload: toPageContent(values) })
             }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
         />
     );
 }

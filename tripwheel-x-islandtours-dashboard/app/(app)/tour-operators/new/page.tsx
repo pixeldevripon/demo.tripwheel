@@ -5,7 +5,7 @@ import { OperatorCreateForm } from '@/components/operators/operator-create-form'
 
 export default function NewTourOperatorPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },

@@ -18,6 +18,7 @@ import {
     usePickupLocations,
     useRemovePickupLocation,
     useUpdatePickupLocation,
+    useUpsertPickupLocationTranslation,
 } from '@/hooks/trips/use-trips';
 import { formatPriceFrom } from '@/lib/currency/current';
 import type {
@@ -53,6 +54,7 @@ type AddPickupFormValues = z.infer<typeof addPickupSchema>;
 
 const editPickupSchema = z.object({
     name: z.string().min(2, 'At least 2 characters').max(160),
+    directions: z.string().max(500).optional().or(z.literal('')),
     latitude: z.string().optional(),
     longitude: z.string().optional(),
     address: z.string().max(240).optional().or(z.literal('')),
@@ -86,6 +88,13 @@ function PickupDetailsEditor({
 }) {
     const { mutate: updatePickup, isPending: isUpdating } =
         useUpdatePickupLocation();
+    const { mutate: upsertPickupTranslation } =
+        useUpsertPickupLocationTranslation();
+
+    // Directions live on the pickup's ENGLISH translation row, not the base
+    // row - the create form writes them there, so the editor must read (and
+    // save) them from the same place or a just-created pickup looks empty.
+    const enTranslation = pickup.translations?.find(t => t.locale === 'en');
 
     const {
         register,
@@ -97,6 +106,7 @@ function PickupDetailsEditor({
         resolver: zodResolver(editPickupSchema),
         defaultValues: {
             name: pickup.name,
+            directions: enTranslation?.directions ?? '',
             latitude: pickup.latitude != null ? String(pickup.latitude) : '',
             longitude: pickup.longitude != null ? String(pickup.longitude) : '',
             address: pickup.address ?? '',
@@ -137,6 +147,29 @@ function PickupDetailsEditor({
                     ),
             },
         );
+        // Directions belong to the EN translation row - save them there when
+        // changed (title required by the endpoint; keep the existing one).
+        if ((values.directions ?? '') !== (enTranslation?.directions ?? '')) {
+            upsertPickupTranslation(
+                {
+                    tripId,
+                    pickupLocationId: pickup.id,
+                    locale: 'en',
+                    payload: {
+                        title: enTranslation?.title ?? values.name,
+                        directions: values.directions || undefined,
+                    },
+                } as never,
+                {
+                    onError: err =>
+                        toast.error(
+                            err instanceof Error
+                                ? err.message
+                                : 'Failed to save directions.',
+                        ),
+                },
+            );
+        }
     }
 
     return (
@@ -145,6 +178,17 @@ function PickupDetailsEditor({
                 <Label>Name</Label>
                 <Input {...register('name')} aria-invalid={!!errors.name} />
                 <FieldError>{errors.name?.message}</FieldError>
+            </Field>
+            <Field>
+                <Label>Directions (English)</Label>
+                <Input
+                    {...register('directions')}
+                    placeholder='Wait near the concierge desk.'
+                />
+                <FieldDescription>
+                    Shown to travellers with their pickup details; translated
+                    per language in the Translation Console.
+                </FieldDescription>
             </Field>
             <Field>
                 <Label>Address</Label>

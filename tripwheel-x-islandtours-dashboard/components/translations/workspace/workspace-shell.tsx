@@ -6,10 +6,13 @@
  * and the sticky action footer (Copy from English → review → one Save).
  */
 
+import { AiMagicIcon, Loading03Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Breadcrumb } from '@/components/breadcrumb';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/common/status-badge';
 import {
@@ -34,6 +37,9 @@ interface WorkspaceShellProps {
     isDirty: boolean;
     onSave: () => void;
     onCopyFromEnglish: () => void;
+    /** AI translation of the CURRENT locale; button hidden when absent or on en. */
+    onTranslateWithAI?: () => void;
+    isTranslating?: boolean;
     children: ReactNode;
 }
 
@@ -49,12 +55,22 @@ export function WorkspaceShell({
     isDirty,
     onSave,
     onCopyFromEnglish,
+    onTranslateWithAI,
+    isTranslating,
     children,
 }: WorkspaceShellProps) {
     const isEn = locale === 'en';
+    // The whole-locale button FORCE-translates (founder 2026-07-27): after
+    // confirmation it replaces every field for this locale, hand-written rows
+    // included, and reloads the form (unsaved edits go with it). The dialog
+    // is the consent step - always shown.
+    const [confirmTranslate, setConfirmTranslate] = useState(false);
 
     return (
-        <div className='pb-16'>
+        // No bottom padding here: the action bar is the last in-flow child and
+        // any padding after it renders as dead space UNDER the bar at the end
+        // of the scroll (the "floating footer" bug).
+        <div>
             <Breadcrumb
                 items={[
                     { label: 'Dashboard', href: '/' },
@@ -86,30 +102,67 @@ export function WorkspaceShell({
                 </div>
             </div>
 
-            {/* Locale switcher - jump between languages without the matrix. */}
-            <div className='mb-6 flex flex-wrap gap-1.5'>
-                {ALL_LOCALES.map(l => (
-                    <Link
-                        key={l}
-                        href={`/translations/${type}/${id}/${l}`}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-fast ${
-                            l === locale
-                                ? 'border-transparent bg-primary-subtle font-semibold text-primary-subtle-content'
-                                : 'border-line bg-surface-raised text-content-muted hover:text-content'
-                        }`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={localeFlag(l)}
-                            alt=''
-                            aria-hidden
-                            className='size-3.5 rounded-full'
+            {/* Locale switcher - jump between languages without the matrix -
+                with the AI trigger for the current locale on the right. */}
+            <div className='mb-6 flex flex-wrap items-center justify-between gap-3'>
+                <div className='flex flex-wrap gap-1.5'>
+                    {ALL_LOCALES.map(l => (
+                        <Link
+                            key={l}
+                            href={`/translations/${type}/${id}/${l}`}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-fast ${
+                                l === locale
+                                    ? 'border-transparent bg-primary-subtle font-semibold text-primary-subtle-content'
+                                    : 'border-line bg-surface-raised text-content-muted hover:text-content'
+                            }`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={localeFlag(l)}
+                                alt=''
+                                aria-hidden
+                                className='size-3.5 rounded-full'
+                            />
+                            {LOCALE_LABELS[l]}
+                            <span className='text-content-subtle'>
+                                {LOCALE_NATIVE_LABELS[l]}
+                            </span>
+                        </Link>
+                    ))}
+                </div>
+                {onTranslateWithAI && !isEn && (
+                    <>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            type='button'
+                            onClick={() => setConfirmTranslate(true)}
+                            disabled={isTranslating || isSaving}
+                            title={`Re-translate every ${LOCALE_LABELS[locale]} field from the English source.`}>
+                            <HugeiconsIcon
+                                icon={
+                                    isTranslating ? Loading03Icon : AiMagicIcon
+                                }
+                                className={`size-4 ${isTranslating ? 'animate-spin' : ''}`}
+                            />
+                            {isTranslating ? 'Translating…' : 'Translate with AI'}
+                        </Button>
+                        <ConfirmDialog
+                            open={confirmTranslate}
+                            onOpenChange={setConfirmTranslate}
+                            title={`Translate everything into ${LOCALE_LABELS[locale]}?`}
+                            description={
+                                isDirty
+                                    ? 'Every field for this language is re-translated from the English source - existing translations, INCLUDING hand-written ones, are replaced. Your unsaved edits on this form will also be replaced.'
+                                    : 'Every field for this language is re-translated from the English source - existing translations, INCLUDING hand-written ones, are replaced.'
+                            }
+                            confirmLabel='Translate everything'
+                            onConfirm={() => {
+                                setConfirmTranslate(false);
+                                onTranslateWithAI();
+                            }}
                         />
-                        {LOCALE_LABELS[l]}
-                        <span className='text-content-subtle'>
-                            {LOCALE_NATIVE_LABELS[l]}
-                        </span>
-                    </Link>
-                ))}
+                    </>
+                )}
             </div>
 
             {isEn && (
@@ -128,15 +181,20 @@ export function WorkspaceShell({
                 under the sidebar, centered on the screen instead of the pane)
                 and broke outright during the page-enter animation - the
                 transformed motion.div becomes the containing block for fixed
-                descendants. Negative margins bleed it to the pane edges. */}
-            <div className='sticky bottom-0 z-20 -mx-4 lg:-mx-8 border-t border-line bg-surface-raised/95 backdrop-blur-sm'>
-                <div className='mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-3'>
+                descendants. Negative margins bleed it to the pane edges
+                horizontally AND through the layout's lg padding at the bottom,
+                so the bar rests near the pane edge instead of floating above a
+                strip of empty background. The inner row uses the same padding
+                scale as the pane, so the text/buttons line up with the card
+                edges instead of a centered max-width column. */}
+            <div className='sticky bottom-0 z-20 mt-8 -mx-4 lg:-mx-8 lg:-mb-8 border-t border-line bg-surface-raised/95 backdrop-blur-sm'>
+                <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8'>
                     <p className='text-xs text-content-muted'>
                         {isDirty
                             ? 'Unsaved changes.'
                             : 'All changes saved.'}
                     </p>
-                    <div className='flex items-center gap-2'>
+                    <div className='flex flex-wrap items-center gap-2'>
                         {!isEn && (
                             <Button
                                 variant='outline'

@@ -5,7 +5,7 @@ import { CollectionForm } from '@/components/collections/collection-form';
 
 export default function NewCollectionPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full max-w-6xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },

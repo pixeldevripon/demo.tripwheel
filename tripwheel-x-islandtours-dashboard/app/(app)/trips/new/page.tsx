@@ -3,7 +3,7 @@ import { TripCreateForm } from '@/components/trips/create/trip-create-form';
 
 export default function NewTripPage() {
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="w-full max-w-2xl">
       <Breadcrumb
         items={[
           { label: 'Dashboard', href: '/' },
