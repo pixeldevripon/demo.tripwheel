@@ -17,23 +17,36 @@ async function safeJson(res: Response) {
 }
 
 /**
- * The session's role and nothing else - one call to Better Auth.
+ * The session's role + entry surface and nothing else - one call to Better
+ * Auth.
  *
- * For server components that only gate or redirect on `role`. Never cached
- * across requests: a transient failure returns null, and remembering that
- * would bounce a logged-in user until the entry expired. React `cache()` still
- * dedupes within one render pass, which is safe.
+ * For server components that only gate or redirect on view. `surface` is the
+ * login door that minted the session ('account'|'portal'|'staff'|'admin',
+ * stamped server-side at sign-in; null for legacy/verify-email sessions -
+ * consumers fall back to role then). Never cached across requests: a
+ * transient failure returns null, and remembering that would bounce a
+ * logged-in user until the entry expired. React `cache()` still dedupes
+ * within one render pass, which is safe.
  */
-export const getSessionRole = cache(
-    async (cookie: string): Promise<string | null> => {
+export const getSessionView = cache(
+    async (
+        cookie: string,
+    ): Promise<{ role: string | null; surface: string | null } | null> => {
         if (!cookie) return null;
 
         try {
             const session = await authClient.getSession({
                 fetchOptions: { headers: serverAuthHeaders(cookie) },
             });
-            const user = session.data?.user as { role?: string } | undefined;
-            return user?.role ?? null;
+            if (!session.data) return null;
+            const user = session.data.user as { role?: string } | undefined;
+            const sess = session.data.session as
+                | { surface?: string | null }
+                | undefined;
+            return {
+                role: user?.role ?? null,
+                surface: sess?.surface ?? null,
+            };
         } catch {
             return null;
         }
@@ -46,6 +59,8 @@ export interface DashboardSession {
     email?: string;
     image?: string | null;
     role?: string;
+    /** Which login door minted the session; null = route by role. */
+    surface?: string | null;
     /** Effective permission set; undefined on a transient fetch failure. */
     permissions?: string[];
     /** Whether a TOUR_OPERATOR has completed onboarding. */
@@ -69,7 +84,7 @@ export interface DashboardSession {
  * extras back - the difference is the point.
  *
  * Deliberately NOT cached across requests, for the same reason as
- * `getSessionRole`: caching a transient null logs a valid user out.
+ * `getSessionView`: caching a transient null logs a valid user out.
  */
 export const getDashboardSession = cache(
     async (cookie: string): Promise<DashboardSession | null> => {
@@ -102,6 +117,12 @@ export const getDashboardSession = cache(
                 email: userData.email,
                 image: userData.image,
                 role: (sessionRes.data.user as { role?: string }).role,
+                surface:
+                    (
+                        sessionRes.data.session as {
+                            surface?: string | null;
+                        }
+                    )?.surface ?? null,
                 permissions: Array.isArray(permissionsData?.permissions)
                     ? permissionsData.permissions
                     : undefined,

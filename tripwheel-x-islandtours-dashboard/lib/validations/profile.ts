@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 export const profileSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Invalid email address').optional(),
+    // No `email` on purpose: it changes only through the verified Better Auth
+    // change-email flow (ChangeEmailDialog), never a profile save.
     phone: z.string().optional().nullable(),
     location: z.string().optional().nullable(),
     timezone: z.string().min(1, 'Please select a timezone'),
@@ -39,3 +40,9 @@ export const setPasswordSchema = z.object({
 
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 export type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
+
+export const changeEmailSchema = z.object({
+    newEmail: z.string().email('Invalid email address'),
+});
+
+export type ChangeEmailFormValues = z.infer<typeof changeEmailSchema>;

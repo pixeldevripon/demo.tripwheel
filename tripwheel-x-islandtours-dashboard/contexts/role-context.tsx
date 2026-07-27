@@ -5,6 +5,11 @@ import { ROLE_PERMISSIONS, type PermissionKey, type RoleKey } from '@/lib/config
 
 interface RoleContextValue {
     role: string | undefined;
+    /**
+     * Which login door minted this session ('account'|'portal'|'staff'|
+     * 'admin'); null/undefined = legacy session, shape the view by role.
+     */
+    surface: string | null | undefined;
     /** The EFFECTIVE permission set gating this session's UI. */
     permissions: PermissionKey[];
     can: (permission: PermissionKey) => boolean;
@@ -13,6 +18,7 @@ interface RoleContextValue {
 
 const RoleContext = createContext<RoleContextValue>({
     role: undefined,
+    surface: undefined,
     permissions: [],
     can: () => false,
     canAny: () => false,
@@ -33,10 +39,12 @@ const STAFF_FALLBACK: PermissionKey[] = ['VIEW_PROFILE', 'EDIT_PROFILE'];
 
 export function RoleProvider({
     role,
+    surface,
     permissions,
     children,
 }: {
     role?: string;
+    surface?: string | null;
     permissions?: string[];
     children: React.ReactNode;
 }) {
@@ -59,7 +67,7 @@ export function RoleProvider({
 
     return (
         <RoleContext.Provider
-            value={{ role, permissions: effective, can, canAny }}>
+            value={{ role, surface, permissions: effective, can, canAny }}>
             {children}
         </RoleContext.Provider>
     );

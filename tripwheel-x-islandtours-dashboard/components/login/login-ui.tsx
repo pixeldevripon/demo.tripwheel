@@ -60,6 +60,66 @@ export function ErrorNote({ children }: { children: React.ReactNode }) {
     );
 }
 
+const WRONG_DOOR_COPY: Record<
+    'portal' | 'staff' | 'account' | 'admin',
+    { body: string; label: string }
+> = {
+    portal: {
+        body: 'This email is registered as a tour operator account. Please sign in through the Operator Portal.',
+        label: 'Go to operator sign-in',
+    },
+    staff: {
+        body: 'This email belongs to a staff account. Please use the staff sign-in.',
+        label: 'Go to staff sign-in',
+    },
+    account: {
+        body: 'This email belongs to a traveler account. Please log in to your traveler account.',
+        label: 'Go to traveler log-in',
+    },
+    // Unreachable today (ADMIN passes every door, so the backend never
+    // suggests 'admin') - kept so a future admin-adjacent role that CAN be
+    // wrong-doored renders sensibly instead of crashing on a missing key.
+    admin: {
+        body: 'This email belongs to an administrator account. Please sign in through the admin console.',
+        label: 'Go to admin console',
+    },
+};
+
+/**
+ * Wrong-door notice: the ErrorNote shell plus a link to the door the account
+ * actually belongs at. The admin console lives on another origin
+ * (NEXT_PUBLIC_ADMIN_LOGIN_URL), so that one renders a full-navigation <a>.
+ */
+export function WrongDoorNote({
+    correctSurface,
+}: {
+    correctSurface: 'portal' | 'staff' | 'account' | 'admin';
+}) {
+    // The index is TypeScript-narrowed, but `correctSurface` ultimately comes
+    // from an unvalidated API response - fall back rather than crash the
+    // login page if an unexpected value ever slips through.
+    const copy = WRONG_DOOR_COPY[correctSurface] ?? WRONG_DOOR_COPY.portal;
+    const adminUrl = process.env.NEXT_PUBLIC_ADMIN_LOGIN_URL || '/portal';
+    return (
+        <ErrorNote>
+            {copy.body}{' '}
+            {correctSurface === 'admin' ? (
+                <a
+                    href={adminUrl}
+                    className='font-semibold underline underline-offset-2'>
+                    {copy.label}
+                </a>
+            ) : (
+                <Link
+                    href={`/${correctSurface}`}
+                    className='font-semibold underline underline-offset-2'>
+                    {copy.label}
+                </Link>
+            )}
+        </ErrorNote>
+    );
+}
+
 export function SuccessBlock({
     title,
     body,

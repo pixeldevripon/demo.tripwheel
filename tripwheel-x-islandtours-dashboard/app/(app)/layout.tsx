@@ -63,6 +63,7 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
             userName={session.name}
             userEmail={session.email}
             userRole={session.role}
+            userSurface={session.surface}
             userPermissions={session.permissions}
             userImage={session.image}>
             {children}

@@ -29,7 +29,9 @@ export default async function globalSetup() {
 
   const response = await ctx.post('http://localhost:5050/api/auth/sign-in/email', {
     data: { email, password },
-    headers: { 'Content-Type': 'application/json' },
+    // Sign-in requires the login-surface header (per-door enforcement).
+    // ADMIN passes every door; 'admin' is its canonical surface.
+    headers: { 'Content-Type': 'application/json', 'x-login-surface': 'admin' },
   });
 
   if (!response.ok()) {
