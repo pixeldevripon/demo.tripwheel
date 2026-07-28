@@ -26,4 +26,8 @@ export const tripKeys = {
   translationByLocale: (tripId: string, locale: string) => [...tripKeys.translations(tripId), locale] as const,
   schedules: (tripId: string) => [...tripKeys.all, 'schedules', tripId] as const,
   exceptions: (tripId: string) => [...tripKeys.all, 'exceptions', tripId] as const,
+  // Month-keyed; invalidate with the tripId prefix so every cached month drops.
+  manageCalendarAll: (tripId: string) => [...tripKeys.all, 'manage-calendar', tripId] as const,
+  manageCalendar: (tripId: string, month: string) =>
+    [...tripKeys.manageCalendarAll(tripId), month] as const,
 };

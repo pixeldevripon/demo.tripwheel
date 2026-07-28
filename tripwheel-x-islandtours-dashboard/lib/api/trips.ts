@@ -12,6 +12,7 @@ import type {
   CreatePickupLocationPayload,
   CreateTourSchedulePayload,
   CreateTourExceptionPayload,
+  ManageCalendarDay,
   CreateTripPayload,
   MyTripsQueryParams,
   PaginatedTrips,
@@ -515,5 +516,12 @@ export const tripsApi = {
 
   removeException(exceptionId: string): Promise<void> {
     return apiFetch<void>(`/availability/exceptions/${exceptionId}`, { method: 'DELETE' });
+  },
+
+  // Management calendar (operator month grid - one-tap close/reopen layer)
+  getManageCalendar(tripId: string, month: string): Promise<ManageCalendarDay[]> {
+    return apiFetch<ManageCalendarDay[]>(
+      `/availability/manage-calendar${buildQuery({ tourId: tripId, month })}`
+    );
   },
 };

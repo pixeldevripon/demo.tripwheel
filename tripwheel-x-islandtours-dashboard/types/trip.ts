@@ -400,6 +400,42 @@ export interface TourException {
   note: string | null;
 }
 
+// ── Management calendar (operator month grid) ───────────────────────────────────
+
+export type DepartureStatus = 'OPEN' | 'CLOSED' | 'SOLD_OUT' | 'CANCELLED';
+
+// A materialized departure as the MANAGEMENT view returns it (exact remaining
+// always disclosed, live status folded with the booking cutoff).
+export interface TourDeparture {
+  id: string;
+  tourId: string;
+  date: string; // 'YYYY-MM-DD'
+  startTime: string; // 'HH:MM'
+  capacity: number;
+  bookedCount: number;
+  remaining: number | null;
+  status: DepartureStatus;
+  available: boolean;
+  soldOutAt: string | null;
+  manuallyEdited: boolean;
+}
+
+// open = every in-service slot sellable · partial = some slot closed/overridden ·
+// closed = whole day stop-sold · no_service = no departures (see `scheduled`).
+export type ManageCalendarDayStatus = 'open' | 'partial' | 'closed' | 'no_service';
+
+export interface ManageCalendarDay {
+  date: string; // 'YYYY-MM-DD'
+  status: ManageCalendarDayStatus;
+  scheduled: boolean; // weekly pattern covers this date
+  // Times the weekly pattern produces on this date, present even BEFORE the
+  // engine materializes them - beyond-horizon days must never look empty.
+  scheduledTimes: string[];
+  bookedTotal: number; // seats booked across the day - gate one-tap closes on it
+  departures: TourDeparture[];
+  exceptions: TourException[];
+}
+
 // ── Query params ────────────────────────────────────────────────────────────────
 export interface MyTripsQueryParams {
   search?: string;

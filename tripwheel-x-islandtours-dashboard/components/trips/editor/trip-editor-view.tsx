@@ -148,6 +148,7 @@ function SectionPanel({
                     tripId={trip.id}
                     maxPartySize={trip.maxPartySize}
                     declaredStartTimes={trip.startTimes ?? []}
+                    timeZone={trip.timeZone}
                 />
             );
         case 'copy':
