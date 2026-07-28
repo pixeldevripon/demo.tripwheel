@@ -43,6 +43,82 @@ These are ranked. Each is expanded in its section below.
    `lib/tracking/attribution.ts`, `components/frontend/attribution-capture.tsx`, `checkout-form.tsx`.
    Tests: 3 backend cases (write / re-reserve-preserves / organic-null). Affiliate id is NOT part of
    this (it rides the promo-code path, separate).
+10. [x] **Three production defects in checkout -> processing -> TYP.** EXECUTED 2026-07-29 (reported
+    from production; reviewed - code + security). Reproduced, not guessed:
+    - **The hand-off blanked between processing and the TYP.** Root cause is the Vercel RSC-variant
+      bug: for a NON-prerendered path the client router's flight request is answered with the full
+      HTML document. Proven by a controlled A/B on ONE route - the prerendered `DEMO_PUBLIC_REF`
+      returns `text/x-component`, a real ref returns `text/html` (183 KB) with
+      `x-matched-path: ...[publicRef].rsc`. The router cannot parse it, discards it and
+      hard-navigates anyway. The 2026-07-19 "prerender all slugs" fix CANNOT apply here: `publicRef`
+      is an unguessable runtime token, so the TYP is permanently on-demand. `cacheComponents: true`
+      also makes `dynamic`/`dynamicParams`/`revalidate` a build error, so there is no route-config
+      escape hatch. Fix is at the call site: `lib/checkout/leave-to.ts` does the document navigation
+      directly, dropping the wasted round trip and the stall. The fixed-clock fade-out that emptied
+      the screen before the new document arrived is gone. Re-check with the curl in that file after
+      a Next/Vercel upgrade and revert to the router once a non-prerendered path serves
+      `text/x-component`. **Never prefetch the TYP** - rendering it claims the mark-first
+      `booking_complete` push, so a prefetch would consume it (rule #22).
+    - **The TYP intermittently rendered the error boundary.** `publicGetStrict` throws on anything
+      but 2xx/404 and nothing catches it; `publicFetch` retries 429/503 but NOT a network error or a
+      5xx. That read lands moments after settle, the request in which the backend retrieves the
+      PaymentIntent and sends BOTH confirmation emails inline - the busiest moment in the flow.
+      `getTypByRef` now retries twice (250/600ms). A genuine 404 still returns `null` on the first
+      call, so a real not-found is never retried and the strict throw still stands once exhausted.
+      It deliberately does NOT retry 429/503 (security review): `publicFetch` already exhausts two
+      attempts on those, and stacking would make ONE page load fan out to 9 backend calls - all SSR
+      renders share one egress IP against the per-IP throttle, so that turns a brief 429 into a
+      self-sustaining one. `BackendUnavailableError` now carries `status` so the two layers can
+      divide the work; worst case is 3 calls on either path.
+    - **Laggy Stripe/Mollie card fields.** Three LIVE causes: the PSP iframes mounted into a
+      `Collapse` animating `height: 0 -> auto` under `overflow-hidden` (they mount on the very render
+      the animation starts), which also made the sibling `scrollIntoView` aim at an offset that
+      moved underneath it; the ~260-option country `<select>` was re-reconciled on every keystroke
+      in name/email/phone/notes; and the CORS config set no `maxAge`, so reserve -> contact PATCH ->
+      intent cost 6 round trips instead of 3. The cold document load into `/checkout` (the RSC bug
+      above) compounded all three.
+      **Ruled OUT with evidence - do not re-chase either:**
+      (a) Stripe options churn - `@stripe/react-stripe-js` 6.8.0 deep-compares via `isEqual`
+      (`dist/react-stripe.js:231-248`), so the recreated-but-equal options never call
+      `element.update()`.
+      (b) **Lenis smooth scroll.** Initially blamed (lerp .09 fighting the native `scrollIntoView`,
+      and wheel events over a PSP iframe never reaching it). WRONG: `<SmoothScroll />` has been
+      commented out in `app/(frontend)/layout.tsx:82` since 2026-07-18, so Lenis does not run at all.
+      `smooth-scroll.tsx` was still hardened (checkout excluded; the rAF loop is now cancelled on
+      cleanup instead of running forever on a destroyed instance; the setup effect is keyed on the
+      native-scroll BOOLEAN, not `pathname`, so re-enabling it will not tear Lenis down on every
+      navigation) - but none of that is live, and none of it fixed this bug.
+    `Code:` `lib/checkout/leave-to.ts` (new), `checkout-processing.tsx`, `checkout-form.tsx`
+    (`Collapse` `instant` + memoized country field/contact + COLLAPSE_MS-delayed scroll),
+    `checkout-payment.tsx`, `checkout-payment-mollie.tsx`, `smooth-scroll.tsx` (checkout excluded +
+    rAF loop cancelled), `lib/api/public/bookings.ts:getTypByRef`, `main.ts` (CORS `maxAge`).
+11. [x] **`bookings.island` fallback wrote a display NAME, not a slug.** EXECUTED 2026-07-29.
+    `reserve` stamped `island: ctx.tour.destination?.slug ?? 'Curaçao'` immutably, and the TYP
+    `notFound()`s when `island !== the [destination] URL segment` - so `'Curaçao' !== 'curacao'`
+    would have 404'd that booking's thank-you page forever, for the traveller AND the confirmation
+    email link. Fixed to `'curacao'` (matching the existing convention at
+    `bookings.service.ts:3150`) and a re-runnable backfill added (`pnpm booking:island:backfill`,
+    `--dry` to report only) that repairs each row from its OWN tour's destination and skips - never
+    guesses - what it cannot resolve.
+    **The reserve fallback itself is unreachable** (`Tour.destination` is a REQUIRED relation that
+    `loadContext` always selects), so production bookings are almost certainly clean - but the
+    backfill's dry run found **312 of 548 local rows holding `'Curaçao'`, many on Aruba and Sint
+    Maarten tours**. Traced to the OTHER trap, and it is live: `prisma/demo/reviews.ts` creates depth
+    bookings WITHOUT `island`, so they fell through to the column's `@default("Curaçao")`. The seed
+    now sets `island: tour.destination?.slug` (and selects the slug); the 312 rows were repaired and
+    a re-run reports 0. Run the backfill against production to confirm it is clean there.
+    **Column default DROPPED** 2026-07-29, migration `20260728222438_drop_booking_island_default`
+    (`ALTER TABLE "bookings" ALTER COLUMN "island" DROP DEFAULT`) - it was the trap that actually
+    bit. Removed rather than corrected to `'curacao'`: no guessed value is safe, since a `'curacao'`
+    default would still 404 an Aruba booking. All three insert sites supply the slug and there is no
+    raw SQL insert, so an omission is now a loud Postgres `23502` not-null violation instead of a
+    silent forever-404. Metadata-only, no table rewrite - safe against a live bookings table, but run
+    `pnpm booking:island:backfill --dry` on the target environment BEFORE deploying, since the
+    default was masking rows there too.
+    **Still open:** the TYP comparison means renaming a destination slug 404s every historical
+    booking on it.
+    `Code:` `bookings.service.ts:633`, `prisma/demo/reviews.ts`, `prisma/bookings.prisma`,
+    `scripts/backfill-booking-island.ts`, `migrations/20260728222438_drop_booking_island_default`
 
 ---
 
@@ -248,6 +324,89 @@ These are ranked. Each is expanded in its section below.
 - [x] **`POST /bookings/quote`** (`@Public()`, static route before `:id`). `Ref:` [Guide §16 / §20.4](./BOOKING-FLOW-DESIGN-GUIDE.md#204-add-quote-dtos-and-endpoint) · `Code:` `bookings.controller.ts:quote()` (stateless single-currency; see §6)
 - [x] **Access rules:** booking create + TYP public; list/detail auth-scoped; webhooks bypass auth+throttle with signature verify. `Ref:` [Guide §16](./BOOKING-FLOW-DESIGN-GUIDE.md#16-api-surface) · `Code:` `bookings.controller.ts`, `payments.controller.ts`
 - [x] **No raw Prisma rows returned; status/commission/tier not client-settable.** `Ref:` [Guide §17 security](./BOOKING-FLOW-DESIGN-GUIDE.md#17-edge-cases) · `Code:` DTO `select` shapes
+- [x] **E2E coverage for checkout -> processing -> TYP.** EXECUTED 2026-07-29. The flow that
+  produced three production defects had NONE. 14 specs, 42/42 across 3 repeats, no flakes:
+  `e2e/tests/checkout.spec.ts` (contact render/validation/email/`?payment=failed`; reserve + PSP
+  iframe ATTACHED - the assertion that catches an unusable mount container; Edit round trip keeps the
+  iframes mounted; and a full **pay-through** with Stripe test card 4242 landing on a confirmed TYP)
+  and `e2e/tests/booking-handoff.spec.ts` (processing with no ref redirects; polling shows progress
+  and always yields the manual escape hatch; `redirect_status=failed` returns to checkout; TYP 404
+  screen for an unknown ref AND for a destination mismatch - the `island` guard; TYP renders a real
+  booking at its locale-less URL; and the RSC content-type check).
+  **Nothing is mocked** - fixtures are DISCOVERED from the live backend (`e2e/helpers/booking.ts`),
+  never pinned to a seed slug, which has rotted specs here before.
+  **Traps worth knowing, all hit while writing these:**
+  (a) `notFound()` in a streamed Suspense boundary CANNOT set a 404 - the 200 shell is already
+  flushed, so these assert on the rendered 404 screen, not on status.
+  (b) Typing before hydration silently loses the input (React resets the controlled value), so
+  `openCheckout` waits on the `it-checkout-return:{tourId}` sessionStorage key the form writes on
+  mount - a far tighter signal than `networkidle`.
+  (c) `getByText` on streamed content hits React's hidden holding-pen copy; assert on body text.
+  (d) The specs hold REAL seats, so a hammered departure sells out mid-run - `reserveBooking` rolls
+  onto another available departure and THROWS the backend's message rather than returning a bare null.
+  (e) The pay-through test is gated on a `pk_test_` key so it can never charge a live account; PSP
+  state is PROBED via the intent endpoint, never guessed from config (guessing the
+  `payment_settings` column names produced a confident, wrong "no PSP configured").
+  (f) The RSC content-type test is Vercel-only and passes trivially against localhost - annotated as
+  informational there rather than left looking like coverage it does not provide.
+  (g) `POST /payments/typ/:publicRef/settle` is capped at **20/HOUR PER IP** (each call costs a live
+  Stripe API hit). A traveller settles once; a suite run from one IP spends several, so the
+  pay-through test SKIPS with that reason when it sees a 429 rather than surfacing an opaque 90s
+  `waitForURL` timeout that reads like a broken hand-off. If it skips, wait for the window to roll
+  over - it is not a regression.
+  **Also fixed:** `e2e/auth.setup.ts` was throwing 403 since the four-door login enforcement shipped
+  (no `x-login-surface` header), so `globalSetup` failed and the ENTIRE suite had been dead - which is
+  how the checkout gap went unnoticed. **Known-red, DELIBERATELY KEPT (founder 2026-07-29):** the 10
+  `/dashboard/*` specs (`attributes`, `categories`(+`-new-fields`), `collections`, `destinations`
+  (+`-new-fields`), `hubs`(+`-new-fields`), `trips/*`) drive a surface extracted to its own repo and
+  now redirected to the homepage by `proxy.ts` `LEGACY_DASHBOARD_PREFIXES`, so they land there and
+  fail. Retention was asked for explicitly - they are the port source if that coverage is ever moved
+  to the dashboard repo. Consequence to hold in mind: a bare `pnpm test:e2e` is red by design, so
+  run the public-site specs by path (`checkout`, `booking-handoff`, `tour-reviews`) when you need a
+  meaningful signal, and do not read a red suite as "the booking flow is broken".
+- [x] **`INTERNAL_API_SECRET` no longer bypasses the throttle platform-wide.** EXECUTED 2026-07-29
+  (security review). It was the sole global `skipIf`, so ANY request carrying `x-internal-api-key`
+  skipped every tier on every route - including the deliberately tight `@Throttle()` overrides on
+  settle, resend, cancellation-request, conversion, pair login, recover-reference and the traveller
+  OTP request/verify. One leak lifted all of them at once.
+  **The scoping rule: a route that declares its OWN `@Throttle()` is never bypassed.** No allow-list
+  to maintain and it cannot drift - tightening a route removes it from the bypass automatically,
+  because the `@Throttle()` IS the marker (matched by metadata-key prefix, so it holds for any
+  throttler name).
+  **The trap this opens, and the fix.** Our SSR renderers call the API server-to-server, so `req.ip`
+  is one egress address shared by every visitor - any per-IP limit on a route reached that way is a
+  single platform-wide bucket. `POST typ/:publicRef/conversion` is the one such route (3/10s, 5/min),
+  so left alone it would have capped conversion claims at 5/min for ALL travellers combined and
+  killed tracking silently. `TrustedOriginThrottlerGuard` therefore tracks by a forwarded visitor IP
+  (`x-real-client-ip`) when - and only when - the caller also presents the internal secret, so a
+  browser cannot spoof a fresh bucket. `claimConversionPush` forwards it; that header must NEVER be
+  added to the shared `serverHeaders()`, which runs inside `'use cache'` scopes where request headers
+  are unavailable. The guard also WARNS whenever a trusted origin is throttled, so any future SSR
+  caller that forgets the header shows up in logs instead of as mysterious intermittent 429s.
+  **Verified:** `next build` is the live check for the read path - prerendering fires hundreds of
+  public GETs carrying the secret from one IP, and it passes (both `.env`s have the secret set), so
+  the bypass still covers prerender fan-out. Unit tests cover the composed `skipIf` (trusted+ordinary
+  → skip, trusted+`@Throttle`'d → do NOT skip, anonymous → never skip), the tracker (forwarded IP
+  honoured only with the secret, chain takes the first hop, falls back to the egress IP, never
+  empty), and a guard test asserting our mirrored `THROTTLER:LIMIT` prefix still equals the
+  library's - so a `@nestjs/throttler` rename fails the suite instead of silently re-widening the
+  bypass. **Dashboard impact: none** - its server-side calls (`/users/me`, `/users/me/permissions`,
+  `/settings/social-media`, `/operators/*`, `/analytics/dashboard`, `set-password`,
+  `password-change/request`, `operators/onboarding`) carry no `@Throttle()`, and
+  `password-change/confirm` (which does) never sends the secret, so it is unchanged.
+  **Still open:** that same `password-change/confirm` is an SSR call on a tight limit with no
+  forwarded IP, so it shares one bucket across all dashboard users - pre-existing, not introduced
+  here, and rare enough to be theoretical, but it wants the same header treatment.
+  `Code:` `auth/internal-origin.util.ts`, `auth/trusted-origin-throttler.guard.ts`, `auth.module.ts`,
+  frontend `lib/api/public/bookings.ts:claimConversionPush`
+- [x] **`reserve` gained a per-DEPARTURE cap** (60/min, `TargetRateLimiter`). EXECUTED 2026-07-29.
+  It is `@Public()` and its only other bound was the per-IP throttle, which a multi-IP caller
+  sidesteps. Capacity already caps how many seats can be HELD at once; this bounds the rapid
+  create/expire/re-create churn that would keep a popular departure looking sold out. The idempotent
+  replay (same `dto.id`) returns before the limiter, so a retried Continue is free. `quote` is left
+  on the global tiers deliberately - it is a cheap stateless read and the booking widget re-quotes on
+  every selection change, so a per-target cap there risks rejecting a real shopper for no gain.
+  `Code:` `bookings.service.ts:reserve`
 
 ### 14b. Dashboard operations pages (added 2026-07-16, founder request)
 
