@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   AvailabilityExceptionType,
+  AvailabilityScheduleStatus,
   DepartureStatus,
   Prisma,
   Role,
@@ -26,6 +27,7 @@ import {
   dayDate,
   hhmmToTime,
   localNow,
+  mondayZeroWeekday,
   timeOfDay,
 } from '@/common/utils/timezone.util';
 import {
@@ -47,6 +49,9 @@ import type {
   ExceptionResponseDto,
   ListDeparturesQueryDto,
   ListExceptionsQueryDto,
+  ManageCalendarDayDto,
+  ManageCalendarDayStatus,
+  ManageCalendarQueryDto,
   MaterializeDto,
   ScheduleResponseDto,
   UpdateDepartureDto,
@@ -161,9 +166,22 @@ export class AvailabilityService {
    * schedules/exceptions and refresh `isBookable`. Reconcile is additive and
    * protects booked / manually-edited / API departures, so it is safe to call on
    * every schedule mutation.
+   *
+   * `targetDate` (exception mutations): the default pass only projects the
+   * ~90-day horizon, so an exception dated beyond it would be stored but
+   * produce no visible departure until the nightly long-horizon job - the
+   * operator's "Add departure" toast would lie. Reconciling the exception's
+   * own day as well closes that gap; it is idempotent and single-day cheap,
+   * so no horizon/timezone arithmetic is needed to decide whether to run it.
    */
-  private async syncTourAvailability(tourId: string): Promise<void> {
+  private async syncTourAvailability(
+    tourId: string,
+    targetDate?: string,
+  ): Promise<void> {
     await this.materializer.materializeTour(tourId);
+    if (targetDate) {
+      await this.materializer.materializeTour(tourId, targetDate, targetDate);
+    }
     await this.refreshIsBookable(tourId);
   }
 
@@ -299,7 +317,8 @@ export class AvailabilityService {
     // An exception (close date/slot, add slot, set capacity) changes sellable
     // inventory, so re-project departures + refresh the listing gate now instead
     // of waiting for the nightly job. Otherwise a closed date keeps selling.
-    await this.syncTourAvailability(dto.tourId);
+    // The date is passed so beyond-horizon exceptions materialize immediately.
+    await this.syncTourAvailability(dto.tourId, dto.date);
     this.notifications.emitAvailabilityUpdate({
       tourId: dto.tourId,
       localDate: dto.date,
@@ -360,7 +379,7 @@ export class AvailabilityService {
     });
     // Re-project departures + refresh the listing gate so the edited exception
     // takes effect on sellable inventory immediately.
-    await this.syncTourAvailability(existing.tourId);
+    await this.syncTourAvailability(existing.tourId, dateKey(existing.date));
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       localDate: dateKey(existing.date),
@@ -383,7 +402,7 @@ export class AvailabilityService {
     await this.prisma.availabilityException.delete({ where: { id } });
     // Removing an exception restores the underlying schedule's departures for
     // that date, so re-project + refresh the listing gate now.
-    await this.syncTourAvailability(existing.tourId);
+    await this.syncTourAvailability(existing.tourId, dateKey(existing.date));
     this.notifications.emitAvailabilityUpdate({
       tourId: existing.tourId,
       localDate: dateKey(existing.date),
@@ -411,6 +430,122 @@ export class AvailabilityService {
       orderBy: { date: 'asc' },
     });
     return rows.map(mapException);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Management calendar (operator)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Month grid for the operator's one-tap availability calendar: every day of
+   * the requested month with its derived state, full departures (booked counts
+   * always disclosed - this is the management view), the day's exceptions, and
+   * whether the weekly pattern covers the date. Read-only composition of data
+   * the module already owns - closing a day from the grid is the ordinary
+   * CLOSE_DATE exception write.
+   */
+  async manageCalendar(
+    userId: string,
+    role: Role,
+    query: ManageCalendarQueryDto,
+  ): Promise<ManageCalendarDayDto[]> {
+    await this.assertTourAccess(query.tourId, userId, role);
+    const clock = await this.tourClock(query.tourId);
+    const now = localNow(clock.timeZone);
+
+    const [yearStr, monthStr] = query.month.split('-');
+    const year = Number(yearStr);
+    const monthIndex = Number(monthStr) - 1; // 0-based
+    const daysInMonth = new Date(
+      Date.UTC(year, monthIndex + 1, 0),
+    ).getUTCDate();
+    const monthStart = dayDate(`${query.month}-01`);
+    const monthEnd = dayDate(
+      `${query.month}-${String(daysInMonth).padStart(2, '0')}`,
+    );
+
+    const [departures, exceptions, schedules] = await Promise.all([
+      this.prisma.departure.findMany({
+        where: {
+          tourId: query.tourId,
+          date: { gte: monthStart, lte: monthEnd },
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      }),
+      this.prisma.availabilityException.findMany({
+        where: {
+          tourId: query.tourId,
+          date: { gte: monthStart, lte: monthEnd },
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      }),
+      this.prisma.availabilitySchedule.findMany({
+        where: {
+          tourId: query.tourId,
+          status: AvailabilityScheduleStatus.ACTIVE,
+          validFrom: { lte: monthEnd },
+          OR: [{ validUntil: null }, { validUntil: { gte: monthStart } }],
+        },
+        select: {
+          weekday: true,
+          startTime: true,
+          validFrom: true,
+          validUntil: true,
+        },
+      }),
+    ]);
+
+    const departuresByDay = new Map<string, DepartureResponseDto[]>();
+    for (const row of departures) {
+      const key = dateKey(row.date);
+      const list = departuresByDay.get(key) ?? [];
+      // publicView=false: the operator always sees exact remaining seats.
+      list.push(mapDeparture(row, now, clock.bookingCutoffMinutes, false));
+      departuresByDay.set(key, list);
+    }
+    const exceptionsByDay = new Map<string, ExceptionResponseDto[]>();
+    for (const row of exceptions) {
+      const key = dateKey(row.date);
+      const list = exceptionsByDay.get(key) ?? [];
+      list.push(mapException(row));
+      exceptionsByDay.set(key, list);
+    }
+
+    const days: ManageCalendarDayDto[] = [];
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const key = `${query.month}-${String(dayNum).padStart(2, '0')}`;
+      const day = dayDate(key);
+      const weekday = mondayZeroWeekday(day); // Monday = 0 (master convention)
+
+      const dayDepartures = departuresByDay.get(key) ?? [];
+      const dayExceptions = exceptionsByDay.get(key) ?? [];
+      // The times the weekly pattern produces on this date - surfaced even
+      // before materialization so a beyond-horizon day never LOOKS empty
+      // when departures will in fact run (they'd pop in on the nightly job).
+      const scheduledTimes = [
+        ...new Set(
+          schedules
+            .filter(
+              (s) =>
+                s.weekday === weekday &&
+                s.validFrom.getTime() <= day.getTime() &&
+                (!s.validUntil || s.validUntil.getTime() >= day.getTime()),
+            )
+            .map((s) => timeOfDay(s.startTime)),
+        ),
+      ].sort();
+
+      days.push({
+        date: key,
+        status: manageDayStatus(dayDepartures, dayExceptions),
+        scheduled: scheduledTimes.length > 0,
+        scheduledTimes,
+        bookedTotal: dayDepartures.reduce((sum, d) => sum + d.bookedCount, 0),
+        departures: dayDepartures,
+        exceptions: dayExceptions,
+      });
+    }
+    return days;
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -893,4 +1028,32 @@ function aggregateDay(
     remaining: disclosed.length ? Math.max(...disclosed) : null,
     departureCount: slots.length,
   };
+}
+
+/**
+ * Day state for the operator month grid. SOLD_OUT is still "in service" - only
+ * CLOSED/CANCELLED departures count as stopped. A whole-day CLOSE_DATE wins
+ * outright (it may land before the materializer has synced the rows).
+ */
+function manageDayStatus(
+  departures: DepartureResponseDto[],
+  exceptions: ExceptionResponseDto[],
+): ManageCalendarDayStatus {
+  if (exceptions.some((e) => e.type === AvailabilityExceptionType.CLOSE_DATE)) {
+    return 'closed';
+  }
+  if (departures.length === 0) return 'no_service';
+  const stopped = departures.filter(
+    (d) =>
+      d.status === DepartureStatus.CLOSED ||
+      d.status === DepartureStatus.CANCELLED,
+  ).length;
+  if (stopped === departures.length) return 'closed';
+  const hasSlotException = exceptions.some(
+    (e) =>
+      e.type === AvailabilityExceptionType.CLOSE_SLOT ||
+      e.type === AvailabilityExceptionType.SET_CAPACITY,
+  );
+  if (stopped > 0 || hasSlotException) return 'partial';
+  return 'open';
 }

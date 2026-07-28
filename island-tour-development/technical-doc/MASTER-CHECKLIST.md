@@ -231,7 +231,8 @@
 - [x] `resyncTourAvailability` after schedule/exception edits
 - [x] `CLOSE_DATE` / `CLOSE_SLOT` correctly close BOOKED departures with capacity/booking counts protected
 - [x] `AVAILABILITY_UPDATE` notification emitted on inventory change
-- [~] A newly created schedule only materializes 90 days ahead and depends on the 3 AM cron to reach the full 12-month horizon — a sharp edge documented in the booking checklist that has no mitigation in code
+- [x] `GET /availability/manage-calendar` operator month grid (per-day status/booked totals/exceptions + `scheduled` pattern flag) powering the dashboard's one-tap Availability calendar on the trip Schedules tab — close/reopen day, close/reopen slot, add departure, day/slot capacity, all via the existing exception mutations; booked days require a confirming tap (2026-07-28)
+- [~] A newly created schedule only materializes 90 days ahead and depends on the 3 AM cron to reach the full 12-month horizon — a sharp edge documented in the booking checklist. Mitigated for EXCEPTIONS (2026-07-28): every exception mutation also reconciles the exception's own day (`syncTourAvailability(tourId, date)`), so a beyond-horizon add/close/capacity change is visible immediately; schedules themselves still rely on the cron
 - [ ] All-sold-out recovery path (surfacing/recovering a tour whose every departure is sold out)
 - [ ] `CHECK (booked_count <= capacity)` database constraint as a negative-inventory backstop
 - [ ] Concurrency/load test suite firing 50/100/500 simultaneous reservations at 1-seat and N-seat departures, asserting exactly `capacity` succeed and the counter never goes negative
