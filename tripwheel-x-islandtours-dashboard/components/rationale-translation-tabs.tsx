@@ -1,5 +1,6 @@
 'use client';
 
+import { AiTranslateFieldButton } from '@/components/common/ai-translate-field-button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/components/ui/field';
@@ -71,18 +72,32 @@ export function RationaleTranslationTabs({
                   </span>
                 )}
               </Label>
-              <Textarea
-                value={value}
-                onChange={(e) => onChange(loc, e.target.value)}
-                rows={rows}
-                placeholder={
-                  placeholder
-                    ? placeholder(loc)
-                    : isBase
-                      ? `${label} in English`
-                      : `${label} in ${LOCALE_LABELS[loc]} (optional)`
-                }
-              />
+              {/* The AI icon fills the field from the English base - same
+                  form-fill semantics as the console's inline button. */}
+              <div className="relative">
+                <Textarea
+                  value={value}
+                  onChange={(e) => onChange(loc, e.target.value)}
+                  rows={rows}
+                  className={isBase ? undefined : 'pr-8'}
+                  placeholder={
+                    placeholder
+                      ? placeholder(loc)
+                      : isBase
+                        ? `${label} in English`
+                        : `${label} in ${LOCALE_LABELS[loc]} (optional)`
+                  }
+                />
+                {!isBase && (
+                  <AiTranslateFieldButton
+                    sourceText={values[DEFAULT_LOCALE] ?? ''}
+                    locale={loc}
+                    onTranslated={(text) => onChange(loc, text)}
+                    label={label}
+                    multiline
+                  />
+                )}
+              </div>
               {maxWords != null && (
                 <span className={`text-xs ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {words}/{maxWords} words

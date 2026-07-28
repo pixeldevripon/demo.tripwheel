@@ -23,16 +23,17 @@ export interface GenerateTranslationResult {
   reason?: string;
 }
 
+const PATH_SEGMENT: Record<Exclude<TranslatableEntityType, 'homepage'>, string> = {
+  tour: 'tours',
+  destination: 'destinations',
+  hub: 'hubs',
+  category: 'categories',
+  collection: 'collections',
+};
+
 function pathFor(type: TranslatableEntityType, id: string, locale: Locale): string {
   if (type === 'homepage') return `/home-page/translations/${locale}/generate`;
-  const segment: Record<Exclude<TranslatableEntityType, 'homepage'>, string> = {
-    tour: 'tours',
-    destination: 'destinations',
-    hub: 'hubs',
-    category: 'categories',
-    collection: 'collections',
-  };
-  return `/${segment[type]}/${id}/translations/${locale}/generate`;
+  return `/${PATH_SEGMENT[type]}/${id}/translations/${locale}/generate`;
 }
 
 export const contentTranslationApi = {

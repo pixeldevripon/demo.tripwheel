@@ -16,6 +16,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AiTranslateFieldButton } from '@/components/common/ai-translate-field-button';
 import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHubContentSections, useReplaceHubContentSections } from '@/hooks/hubs/use-hubs';
@@ -305,18 +306,18 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  ) {
  return (
  <>
- {/* Per-locale translations - same tabbed UI as the Translations / Page Content tabs. */}
- <Tabs defaultValue={DEFAULT_LOCALE}>
- <div className="pb-2 mb-4">
- <TabsList>
- {ALL_LOCALES.map((loc) => (
- <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
- <span className="sm:hidden ">{loc}</span>
- <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
- </TabsTrigger>
- ))}
- </TabsList>
- </div>
+        {/* Per-locale translations - same tabbed UI as the Translations / Page Content tabs. */}
+        <Tabs defaultValue={DEFAULT_LOCALE}>
+          <div className="pb-2 mb-4">
+            <TabsList>
+              {ALL_LOCALES.map((loc) => (
+                <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
+                  <span className="sm:hidden">{loc}</span>
+                  <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
  {ALL_LOCALES.map((loc) => {
  const fields = block.translations[loc] ?? { heading:'', body: '' };
@@ -336,30 +337,59 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  </div>
  )}
 
- {meta.hasHeading && (
- <Field>
- <Label>Heading</Label>
- <Input
- value={fields.heading}
- onChange={(e) =>
- updateLocaleField(block.key, loc, { heading: e.target.value })
- }
- placeholder={`Heading in ${LOCALE_LABELS[loc]}`}
- />
- </Field>
- )}
+                {/* The AI icons fill a field from the English base block -
+                    form-fill only, nothing persists until Save. */}
+                {meta.hasHeading && (
+                  <Field>
+                    <Label>Heading</Label>
+                    <div className="relative">
+                      <Input
+                        value={fields.heading}
+                        onChange={(e) =>
+                          updateLocaleField(block.key, loc, { heading: e.target.value })
+                        }
+                        className={isBase ? undefined : 'pr-8'}
+                        placeholder={`Heading in ${LOCALE_LABELS[loc]}`}
+                      />
+                      {!isBase && (
+                        <AiTranslateFieldButton
+                          sourceText={block.translations[DEFAULT_LOCALE]?.heading ?? ''}
+                          locale={loc}
+                          onTranslated={(text) =>
+                            updateLocaleField(block.key, loc, { heading: text })
+                          }
+                          label="Heading"
+                        />
+                      )}
+                    </div>
+                  </Field>
+                )}
 
- <Field>
- <Label>
- {meta.hasHeading ?'Body' : 'Content'}
- </Label>
- <Textarea
- value={fields.body}
- onChange={(e) => updateLocaleField(block.key, loc, { body: e.target.value })}
- rows={3}
- placeholder={`Content in ${LOCALE_LABELS[loc]}`}
- />
- </Field>
+                <Field>
+                  <Label>
+                    {meta.hasHeading ? 'Body' : 'Content'}
+                  </Label>
+                  <div className="relative">
+                    <Textarea
+                      value={fields.body}
+                      onChange={(e) => updateLocaleField(block.key, loc, { body: e.target.value })}
+                      rows={3}
+                      className={isBase ? undefined : 'pr-8'}
+                      placeholder={`Content in ${LOCALE_LABELS[loc]}`}
+                    />
+                    {!isBase && (
+                      <AiTranslateFieldButton
+                        sourceText={block.translations[DEFAULT_LOCALE]?.body ?? ''}
+                        locale={loc}
+                        onTranslated={(text) =>
+                          updateLocaleField(block.key, loc, { body: text })
+                        }
+                        label={meta.hasHeading ? 'Body' : 'Content'}
+                        multiline
+                      />
+                    )}
+                  </div>
+                </Field>
 
  {!isBase && (fields.heading || fields.body) && (
  <Button

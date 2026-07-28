@@ -158,9 +158,9 @@ export function CommandPalette({
                 className='inline-flex h-9 items-center gap-2 rounded-md border border-input bg-surface px-3 text-sm text-muted-foreground transition-colors hover:bg-muted md:w-64 lg:w-96'>
                 <HugeiconsIcon icon={Search01Icon} className='size-3.5 shrink-0' />
                 <span className='hidden md:inline'>Search…</span>
-                <kbd className='ml-auto hidden rounded border border-line bg-surface-inset px-1 text-2xs font-medium text-content-subtle md:inline'>
+                {/* <kbd className='ml-auto hidden rounded border border-line bg-surface-inset px-1 text-2xs font-medium text-content-subtle md:inline'>
                     ⌘K
-                </kbd>
+                </kbd> */}
             </button>
 
             <CommandDialog
