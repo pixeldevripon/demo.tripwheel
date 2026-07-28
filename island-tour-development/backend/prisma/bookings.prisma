@@ -117,7 +117,15 @@ model Booking {
   wbraid             String? // Google app-to-web
   fbclid             String? // Meta click id
   affiliateId        String? // Trackdesk
-  island             String    @default("Curaçao") // denormalized destination slug for analytics (master E.8 NOT NULL)
+  // Denormalized destination SLUG (master E.8, NOT NULL). NO DEFAULT ON PURPOSE:
+  // it builds the thank-you deep link `/{island}/thank-you/{publicRef}` and the
+  // page 404s on any mismatch with the URL segment, so there is no value that is
+  // safe to guess. It used to default to "Curaçao" - a display NAME - and every
+  // insert that omitted the field silently produced a booking whose thank-you
+  // page was unreachable forever (312 such rows existed; see
+  // `scripts/backfill-booking-island.ts`). Without a default, an omission is now
+  // a loud NOT NULL violation at the database instead of a silent 404.
+  island             String // denormalized destination slug for analytics (master E.8 NOT NULL)
   customerLocale     String? // locale at time of booking
   customerId         String? // hashed email (CAPI/advanced matching), not PII
   conversionFiredAt  DateTime? // mark-first idempotency for the SERVER fire (CAPI + email) at webhook/settle confirm (finalizeConfirmation)

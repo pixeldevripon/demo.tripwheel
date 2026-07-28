@@ -481,6 +481,22 @@ export class BookingsService {
     });
     if (prior) return mapBookingPublic(prior);
 
+    // Per-DEPARTURE cap on NEW holds (the idempotent replay above never reaches
+    // it, so a retried Continue is free). Reserve is `@Public` and its only
+    // other bound is the per-IP throttle, which a multi-IP caller sidesteps and
+    // a trusted first-party origin is exempt from - so this is what actually
+    // bounds hold churn against one departure. Capacity already caps how many
+    // seats can be held at once; this stops the rapid create/expire/re-create
+    // loop that would keep a popular departure looking sold out.
+    // 60/min is far above any real pattern (a departure sees a handful of
+    // reserves per minute even at peak), so it cannot reject a real traveller.
+    this.targetLimiter.consume(
+      'reserve',
+      dto.departureId,
+      [{ max: 60, windowMs: 60_000 }],
+      'This departure is receiving too many booking attempts. Please wait a moment and try again.',
+    );
+
     const ctx = await this.loadContext(dto);
     this.validateRestrictions(ctx);
 
@@ -608,7 +624,13 @@ export class BookingsService {
           tourStartDateTime: localStart,
           tourEndDateTime,
           tourTimeZone: ctx.tour.timeZone,
-          island: ctx.tour.destination?.slug ?? 'Curaçao',
+          // Denormalized destination SLUG - it builds the TYP deep link
+          // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
+          // mismatch, so the fallback must be slug-shaped too. `destination`
+          // is a required relation that `loadContext` always selects, so this
+          // only guards the impossible case; it used to read 'Curaçao', a
+          // display NAME, which would have 404'd that booking's TYP forever.
+          island: ctx.tour.destination?.slug ?? 'curacao',
           utcExpiresAt: operatorFull
             ? null
             : new Date(

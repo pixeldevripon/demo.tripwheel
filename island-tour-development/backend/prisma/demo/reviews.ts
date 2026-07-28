@@ -345,6 +345,7 @@ type DepthTour = {
   commissionTier: Prisma.Decimal;
   timeZone: string;
   destinationId: string;
+  destination: { slug: string } | null;
   ageBands: { id: string; bandType: AgeBandType; price: Prisma.Decimal }[];
 };
 
@@ -373,6 +374,8 @@ async function selectDepthTours(): Promise<DepthTour[]> {
     commissionTier: true,
     timeZone: true,
     destinationId: true,
+    // Needed for the booking's `island` (the denormalized destination SLUG).
+    destination: { select: { slug: true } },
     ageBands: { select: { id: true, bandType: true, price: true } },
   } as const;
 
@@ -556,6 +559,12 @@ export async function topUpReviewDepth(): Promise<{
           tourStartDateTime: dateAt(localDate, '09:00'),
           tourEndDateTime: dateAt(localDate, '16:00'),
           tourTimeZone: tour.timeZone,
+          // Denormalized destination SLUG. Omitting it fell through to the
+          // column's `@default("Curaçao")` - a display NAME - and the TYP
+          // 404s whenever `island` does not equal the `[destination]` URL
+          // segment, so every depth booking on Aruba/Sint Maarten (and even
+          // Curaçao, on the cedilla) had an unreachable thank-you page.
+          island: tour.destination?.slug ?? 'curacao',
           totalRetail: money(120),
           depositAmount: money(24),
           balanceAmount: money(96),
