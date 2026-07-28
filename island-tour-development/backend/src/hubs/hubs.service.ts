@@ -1136,6 +1136,41 @@ export class HubService {
     await this.findHubOrThrow(id);
 
     const sections = await this.prisma.$transaction(async (tx) => {
+      // Replace-all wipes the AI bookkeeping with the rows, so machine rows
+      // round-tripped UNCHANGED through the editor must keep their flag +
+      // sourceHash - otherwise every tab save turns them "human" and stale
+      // translations stop refreshing on English edits. Identity here is the
+      // content itself: an identical (locale, type, heading, body) block is
+      // the same block.
+      const prior = await tx.hubContentSection.findMany({
+        where: { hubId: id },
+        select: {
+          locale: true,
+          sectionType: true,
+          heading: true,
+          body: true,
+          isMachineTranslated: true,
+          sourceHash: true,
+        },
+      });
+      const priorFlags = new Map<
+        string,
+        { isMachineTranslated: boolean; sourceHash: string | null }
+      >();
+      // NUL-separated content key. Identical-content rows collapse to one
+      // entry (last wins) - safe here because identical content means
+      // identical restore semantics; do NOT copy this flat-map pattern
+      // anywhere content is not itself the key (see setComparison).
+      for (const s of prior) {
+        priorFlags.set(
+          `${s.locale}|${s.sectionType}|${s.heading}\u0000${s.body}`,
+          {
+            isMachineTranslated: s.isMachineTranslated,
+            sourceHash: s.sourceHash,
+          },
+        );
+      }
+
       await tx.hubContentSection.deleteMany({ where: { hubId: id } });
 
       if (dto.sections.length > 0) {
@@ -1148,6 +1183,9 @@ export class HubService {
             body: s.body,
             image: s.image ?? null,
             displayOrder: s.displayOrder ?? 0,
+            ...(priorFlags.get(
+              `${s.locale}|${s.sectionType}|${s.heading}\u0000${s.body}`,
+            ) ?? {}),
           })),
         });
       }
@@ -1162,6 +1200,8 @@ export class HubService {
     this.logger.log(
       `Admin ${adminId} replaced ${sections.length} content section(s) for hub ${id}`,
     );
+    // English blocks may have changed - refresh the machine locales.
+    this.contentTranslation.enqueue('hub', id);
 
     return { count: sections.length, sections };
   }
@@ -1193,6 +1233,33 @@ export class HubService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // Replace-all recreates every translation row, wiping the AI
+      // bookkeeping. A blurb that round-trips UNCHANGED through the editor is
+      // the same translation - keep its machine flag + sourceHash (identity:
+      // the pick's tour), or every save would freeze machine rows as "human"
+      // and English edits would stop refreshing them.
+      const prior = await tx.hubOurPick.findMany({
+        where: { hubId: id },
+        select: {
+          tourId: true,
+          translations: {
+            select: {
+              locale: true,
+              description: true,
+              isMachineTranslated: true,
+              sourceHash: true,
+            },
+          },
+        },
+      });
+      const priorFlags = new Map(
+        prior.flatMap((p) =>
+          p.translations.map(
+            (t) => [`${p.tourId}|${t.locale}|${t.description}`, t] as const,
+          ),
+        ),
+      );
+
       // Cascade removes child translations of the old rows.
       await tx.hubOurPick.deleteMany({ where: { hubId: id } });
 
@@ -1210,11 +1277,22 @@ export class HubService {
 
         if (pick.translations && pick.translations.length > 0) {
           await tx.hubOurPickTranslation.createMany({
-            data: pick.translations.map((t) => ({
-              ourPickId: created.id,
-              locale: t.locale,
-              description: t.description,
-            })),
+            data: pick.translations.map((t) => {
+              const kept = priorFlags.get(
+                `${pick.tourId}|${t.locale}|${t.description}`,
+              );
+              return {
+                ourPickId: created.id,
+                locale: t.locale,
+                description: t.description,
+                ...(kept
+                  ? {
+                      isMachineTranslated: kept.isMachineTranslated,
+                      sourceHash: kept.sourceHash,
+                    }
+                  : {}),
+              };
+            }),
           });
         }
       }
@@ -1223,6 +1301,8 @@ export class HubService {
     this.logger.log(
       `Admin ${adminId} set ${dto.picks.length} Our-Pick(s) for hub ${id}`,
     );
+    // English blurbs may have changed - refresh the machine locales.
+    this.contentTranslation.enqueue('hub', id);
 
     return this.getOurPicks(id, Locale.en);
   }
@@ -1332,10 +1412,74 @@ export class HubService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // Same flag preservation as setOurPicks: an unchanged translation
+      // round-tripping the replace-all keeps its machine flag + sourceHash.
+      // Identity: the group's English name / the column's tour.
+      const priorGroups = await tx.hubComparisonGroup.findMany({
+        where: { hubId: id },
+        select: {
+          groupName: true,
+          translations: {
+            select: {
+              locale: true,
+              groupName: true,
+              isMachineTranslated: true,
+              sourceHash: true,
+            },
+          },
+          comparisonTours: {
+            select: {
+              tourId: true,
+              translations: {
+                select: {
+                  locale: true,
+                  standoutNote: true,
+                  isMachineTranslated: true,
+                  sourceHash: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      // Prior lookups are scoped PER GROUP (matched by English name), never
+      // hub-wide: tourId is only unique within a group and group names carry
+      // no uniqueness constraint, so a flat map would collide across groups
+      // and could stamp one group's hand-written translation with another
+      // group's machine flags.
+      const priorByGroupName = new Map(
+        priorGroups.map((g) => [g.groupName, g] as const),
+      );
+      const keep = (
+        t:
+          | { isMachineTranslated: boolean; sourceHash: string | null }
+          | undefined,
+      ) =>
+        t
+          ? {
+              isMachineTranslated: t.isMachineTranslated,
+              sourceHash: t.sourceHash,
+            }
+          : {};
+
       // Cascade removes comparison tours + all translations.
       await tx.hubComparisonGroup.deleteMany({ where: { hubId: id } });
 
       for (const group of dto.groups) {
+        const priorGroup = priorByGroupName.get(group.groupName);
+        const priorGroupFlags = new Map(
+          (priorGroup?.translations ?? []).map(
+            (t) => [`${t.locale}|${t.groupName}`, t] as const,
+          ),
+        );
+        const priorTourFlags = new Map(
+          (priorGroup?.comparisonTours ?? []).flatMap((ct) =>
+            ct.translations.map(
+              (t) => [`${ct.tourId}|${t.locale}|${t.standoutNote}`, t] as const,
+            ),
+          ),
+        );
+
         const createdGroup = await tx.hubComparisonGroup.create({
           data: {
             hubId: id,
@@ -1351,6 +1495,7 @@ export class HubService {
               groupId: createdGroup.id,
               locale: t.locale,
               groupName: t.groupName,
+              ...keep(priorGroupFlags.get(`${t.locale}|${t.groupName}`)),
             })),
           });
         }
@@ -1372,6 +1517,11 @@ export class HubService {
                 comparisonTourId: createdTour.id,
                 locale: t.locale,
                 standoutNote: t.standoutNote,
+                ...keep(
+                  priorTourFlags.get(
+                    `${tour.tourId}|${t.locale}|${t.standoutNote}`,
+                  ),
+                ),
               })),
             });
           }
@@ -1382,6 +1532,8 @@ export class HubService {
     this.logger.log(
       `Admin ${adminId} set ${dto.groups.length} comparison group(s) for hub ${id}`,
     );
+    // English names/notes may have changed - refresh the machine locales.
+    this.contentTranslation.enqueue('hub', id);
 
     return this.getComparison(id, Locale.en);
   }

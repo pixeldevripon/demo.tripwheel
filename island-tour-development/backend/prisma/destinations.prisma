@@ -209,6 +209,10 @@ model HubOurPickTranslation {
   description String
   ourPick     HubOurPick @relation(fields: [ourPickId], references: [id], onDelete: Cascade)
 
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   @@unique([ourPickId, locale])
   @@map("hub_our_pick_translations")
 }
@@ -234,6 +238,10 @@ model HubComparisonGroupTranslation {
   locale    Locale
   groupName String
   group     HubComparisonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
 
   @@unique([groupId, locale])
   @@map("hub_comparison_group_translations")
@@ -262,6 +270,10 @@ model HubComparisonTourTranslation {
   standoutNote     String
   comparisonTour   HubComparisonTour @relation(fields: [comparisonTourId], references: [id], onDelete: Cascade)
 
+  // AI translation bookkeeping (same contract as the *Translation tables).
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   @@unique([comparisonTourId, locale])
   @@map("hub_comparison_tour_translations")
 }
@@ -278,8 +290,18 @@ model HubContentSection {
   image        String?
   displayOrder Int            @default(0)
 
+  // AI translation bookkeeping. Locale rows have no FK group key; the logical
+  // identity of a block across locales is (sectionType, displayOrder) - the
+  // same convention the dashboard editor groups by.
+  isMachineTranslated Boolean @default(false)
+  sourceHash          String?
+
   hub Hub @relation(fields: [hubId], references: [id], onDelete: Cascade)
 
+  // The AI-translation unit key depends on this identity being unique - the
+  // dashboard's save already regenerates displayOrder per type, this makes
+  // the DB enforce what the design assumes.
+  @@unique([hubId, locale, sectionType, displayOrder])
   @@index([hubId, locale, sectionType, displayOrder])
   @@map("hub_content_sections")
 }

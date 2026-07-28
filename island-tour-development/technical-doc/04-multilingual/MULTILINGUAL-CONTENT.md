@@ -112,8 +112,13 @@ Overwrite policy (founder-locked): machine writes fill missing rows and refresh 
 human saved is never overwritten** - on human-flagged rows the AI gap-fills only the EMPTY fields
 (e.g. a field cleared-and-saved to be re-translated) and the row keeps its human flag; every
 human upsert path resets the flag + hash. Proper nouns
-(`DestinationTranslation.name`, `HubTranslation.name`) never enter a provider payload. Excluded
-v1: the Pages module (TipTap), hub our-picks, hub comparison, `HubContentSection` (no group key).
+(`DestinationTranslation.name`, `HubTranslation.name`) never enter a provider payload. The hub
+curation surfaces are covered since 2026-07-28: our-picks blurbs, comparison group names +
+standout notes, and `HubContentSection` blocks (matched across locales by
+`(sectionType, displayOrder)` - the dashboard editor's own grouping convention; headingless
+block types translate the body once and mirror it into `heading`). Their replace-all editors
+preserve machine flags on translations that round-trip unchanged, so English edits keep
+refreshing machine rows. Excluded v1: the Pages module (TipTap).
 Tours have no FAQs (house rule), so the tour fan-out has no FAQ units.
 
 Reviews (LD32) ride the **same Gemini provider** since 2026-07-27 - the queue, sourceHash cache

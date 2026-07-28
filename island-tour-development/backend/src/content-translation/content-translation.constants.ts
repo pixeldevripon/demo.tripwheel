@@ -4,9 +4,10 @@ import { FaqPageType } from '@prisma/client';
 export const CONTENT_TRANSLATION_QUEUE = 'content-translation';
 
 /**
- * The Translation-Console entity types this pipeline covers. Excluded on
- * purpose (v1): the Pages module (TipTap), hub our-picks, hub comparison and
- * HubContentSection (no group key, so per-row translation cannot work).
+ * The Translation-Console entity types this pipeline covers. The hub type
+ * includes its Curation/Page-Content surfaces (our-picks, comparison,
+ * HubContentSection - blocks matched across locales by (sectionType,
+ * displayOrder)). Excluded on purpose (v1): the Pages module (TipTap).
  */
 export const CONTENT_ENTITY_TYPES = [
   'tour',

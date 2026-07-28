@@ -159,12 +159,37 @@ describe('GeminiProvider', () => {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
+        // No parseable cooldown hint -> no in-process retry, throw at once.
         text: async () => 'quota exceeded',
       }) as any;
 
       await expect(
         provider.translateFields({ title: 'Title' }, Locale.en, Locale.pt),
       ).rejects.toThrow('Gemini HTTP 429');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits out a 429 that names its cooldown, then retries in-process', async () => {
+      // TPM meters (Groq/Gemini) say "try again in Xs" - a sub-second wait is
+      // cheaper than failing the synchronous button click.
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          text: async () => 'rate limit reached, please try again in 0.05s',
+        })
+        .mockResolvedValueOnce(geminiResponse({ title: 'Titre' })) as any;
+
+      const out = await provider.translateFields(
+        { title: 'Title' },
+        Locale.en,
+        Locale.fr,
+      );
+
+      expect(out).toEqual({ title: 'Titre' });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('throws when unconfigured instead of calling the network', async () => {

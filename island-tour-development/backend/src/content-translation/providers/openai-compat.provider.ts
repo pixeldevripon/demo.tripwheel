@@ -72,6 +72,15 @@ export class OpenAiCompatProvider extends JsonTranslationProvider {
         body: JSON.stringify({
           model: cfg.model,
           temperature: 0.2,
+          // Explicit completion budget: a 12k-char chunk translates well
+          // inside 8192 tokens, and an unbounded default lets a degenerating
+          // model burn a whole TPM window before failing json validation.
+          // OpenAI's newer models reject `max_tokens` in favour of the new
+          // name; everyone else (Groq/Mistral/DeepSeek/OpenRouter/custom)
+          // takes the classic one.
+          ...(cfg.provider === 'openai'
+            ? { max_completion_tokens: 8192 }
+            : { max_tokens: 8192 }),
           // Widely supported; where a custom endpoint ignores it, the base
           // class's fence-stripping + validation + corrective retry still hold.
           response_format: { type: 'json_object' },

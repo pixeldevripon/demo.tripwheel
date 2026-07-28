@@ -453,7 +453,25 @@ export class EntityRegistry {
     const prisma = this.prisma;
     const hub = await prisma.hub.findUnique({
       where: { id },
-      select: { id: true, translations: true, pageContents: true },
+      select: {
+        id: true,
+        translations: true,
+        pageContents: true,
+        ourPicks: {
+          select: { id: true, description: true, translations: true },
+        },
+        comparisonGroups: {
+          select: {
+            id: true,
+            groupName: true,
+            translations: true,
+            comparisonTours: {
+              select: { id: true, standoutNote: true, translations: true },
+            },
+          },
+        },
+        contentSections: true,
+      },
     });
     if (!hub) return null;
 
@@ -491,6 +509,115 @@ export class EntityRegistry {
           .then(() => undefined),
       ),
     ];
+
+    // Curation-tab surfaces (hub editor). The EN source for picks/comparison
+    // lives on the BASE row (the per-locale tables hold only translations);
+    // both are replaced wholesale by their editors, so unit keys use the
+    // current row ids - identity across saves is handled by the hub service's
+    // flag preservation, not here.
+    for (const pick of hub.ourPicks) {
+      units.push({
+        key: `ourpick:${pick.id}`,
+        source: pickSource(pick, ['description']),
+        existing: existingByLocale(pick.translations, ['description']),
+        write: async (locale, f, sourceHash, machine) => {
+          const description = str(f, 'description');
+          if (!description) return;
+          const data = { description, ...stamp(machine, sourceHash) };
+          await prisma.hubOurPickTranslation.upsert({
+            where: { ourPickId_locale: { ourPickId: pick.id, locale } },
+            create: { ourPickId: pick.id, locale, ...data },
+            update: data,
+          });
+        },
+      });
+    }
+
+    for (const group of hub.comparisonGroups) {
+      units.push({
+        key: `compgroup:${group.id}`,
+        source: pickSource(group, ['groupName']),
+        existing: existingByLocale(group.translations, ['groupName']),
+        write: async (locale, f, sourceHash, machine) => {
+          const groupName = str(f, 'groupName');
+          if (!groupName) return;
+          const data = { groupName, ...stamp(machine, sourceHash) };
+          await prisma.hubComparisonGroupTranslation.upsert({
+            where: { groupId_locale: { groupId: group.id, locale } },
+            create: { groupId: group.id, locale, ...data },
+            update: data,
+          });
+        },
+      });
+      for (const ct of group.comparisonTours) {
+        units.push({
+          key: `comptour:${ct.id}`,
+          source: pickSource(ct, ['standoutNote']),
+          existing: existingByLocale(ct.translations, ['standoutNote']),
+          write: async (locale, f, sourceHash, machine) => {
+            const standoutNote = str(f, 'standoutNote');
+            if (!standoutNote) return;
+            const data = { standoutNote, ...stamp(machine, sourceHash) };
+            await prisma.hubComparisonTourTranslation.upsert({
+              where: {
+                comparisonTourId_locale: { comparisonTourId: ct.id, locale },
+              },
+              create: { comparisonTourId: ct.id, locale, ...data },
+              update: data,
+            });
+          },
+        });
+      }
+    }
+
+    // Content sections carry their locale ON the row (no FK group key). The
+    // logical identity of a block across locales is (sectionType,
+    // displayOrder) - the exact convention the dashboard editor groups by, and
+    // what its save regenerates per type. Headingless block types store the
+    // body copied into `heading` (dashboard convention) - translate the body
+    // once and mirror it, instead of paying for the same text twice.
+    for (const section of hub.contentSections) {
+      if (section.locale !== Locale.en) continue;
+      const headingIsBody = section.heading === section.body;
+      const fields = headingIsBody ? ['body'] : SECTION_FIELDS;
+      const siblings = hub.contentSections.filter(
+        (s) =>
+          s.sectionType === section.sectionType &&
+          s.displayOrder === section.displayOrder,
+      );
+      units.push({
+        key: `hubsection:${section.sectionType}:${section.displayOrder}`,
+        source: pickSource(section, fields),
+        existing: existingByLocale(siblings, fields),
+        write: async (locale, f, sourceHash, machine) => {
+          const body = str(f, 'body');
+          const heading = headingIsBody ? body : str(f, 'heading');
+          const target = siblings.find((s) => s.locale === locale);
+          if (target) {
+            await prisma.hubContentSection.update({
+              where: { id: target.id },
+              data: { heading, body, ...stamp(machine, sourceHash) },
+            });
+            return;
+          }
+          // A new locale row needs the full block (heading is NOT NULL).
+          if (!body || !heading) return;
+          await prisma.hubContentSection.create({
+            data: {
+              hubId: id,
+              locale,
+              sectionType: section.sectionType,
+              heading,
+              body,
+              image: section.image,
+              displayOrder: section.displayOrder,
+              ...stamp(machine, sourceHash),
+            },
+          });
+        },
+      });
+    }
+
     units.push(...(await this.faqUnits(FaqPageType.hub, id)));
     units.push(...(await this.sectionUnits(FaqPageType.hub, id)));
     return units;

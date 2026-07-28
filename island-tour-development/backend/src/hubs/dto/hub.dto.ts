@@ -24,6 +24,7 @@ import {
   IsUrl,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -878,14 +879,18 @@ export class HubContentSectionInputDto {
   @IsEnum(HubSectionType)
   sectionType!: HubSectionType;
 
+  // Heading shares the body's cap: headingless block types (Discover Intro /
+  // Highlight) store the body copied into `heading` by convention.
   @ApiProperty({ example: 'The White Beach' })
   @IsString()
   @MinLength(1)
+  @MaxLength(5000)
   heading!: string;
 
   @ApiProperty({ example: 'A two-kilometre stretch of powder-soft sand...' })
   @IsString()
   @MinLength(1)
+  @MaxLength(5000)
   body!: string;
 
   @ApiPropertyOptional({
@@ -926,6 +931,7 @@ export class OurPickTranslationInputDto {
   @ApiProperty({ example: 'De beste boot - comfort wint.' })
   @IsString()
   @MinLength(1)
+  @MaxLength(2000)
   description!: string;
 }
 
@@ -944,6 +950,7 @@ export class HubOurPickInputDto {
   })
   @IsString()
   @MinLength(1)
+  @MaxLength(2000)
   description!: string;
 
   @ApiPropertyOptional({ example: 0, default: 0 })
@@ -986,6 +993,7 @@ export class ComparisonGroupNameTranslationInputDto {
   @ApiProperty({ example: 'Comforttrips' })
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   groupName!: string;
 }
 
@@ -997,6 +1005,7 @@ export class ComparisonStandoutTranslationInputDto {
   @ApiProperty({ example: 'Duikschool, massage met uitzicht' })
   @IsString()
   @MinLength(1)
+  @MaxLength(500)
   standoutNote!: string;
 }
 
@@ -1011,6 +1020,7 @@ export class ComparisonTourInputDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   standoutNote?: string;
 
   @ApiPropertyOptional({ example: 0, default: 0 })
@@ -1038,6 +1048,7 @@ export class ComparisonGroupInputDto {
   })
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   groupName!: string;
 
   @ApiPropertyOptional({ example: 0, default: 0 })

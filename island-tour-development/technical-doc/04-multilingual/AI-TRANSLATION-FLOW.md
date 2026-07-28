@@ -11,7 +11,7 @@ that shares the provider layer:
 |---|---|---|---|---|
 | **Background** | Any English-source save (create or update) | **BullMQ queue** (async, debounced) | All 6 non-EN | Protect human edits |
 | **Manual** | "Translate with AI" button in the Translation Console | Synchronous HTTP | Current locale only | **Force** (after confirm dialog) |
-| **Inline** | Per-field AI icon inside a form field | Synchronous HTTP | Current locale, one field | Persists nothing (form-fill) |
+| **Inline** | Per-field AI icon inside a form field (console + hub/collection editors) | Synchronous HTTP | Current locale, one field | Persists nothing (form-fill) |
 | **Nightly sweep** | `NightlyJobsService.run()` | BullMQ (same queue) | All 6 | Protect human edits |
 
 ---
@@ -165,21 +165,30 @@ on the save path.
 |---|---|
 | tour | Main translation (15 fields incl. arrays) + 6 child types (highlights, inclusions, exclusions, features, locations, pickups - source = each child's **en translation row**, not the base row). **No FAQ units - tours have no FAQs (house rule).** |
 | destination | Main (**`name` skipped** - proper noun) + page content + section groups + FAQ groups |
-| hub | Main (**`name` skipped**) + page content + FAQ groups |
+| hub | Main (**`name` skipped**) + page content + FAQ groups + Curation surfaces: our-pick blurbs, comparison group names + standout notes (source = the BASE row), content-section blocks (locale lives ON the row; blocks matched across locales by `(sectionType, displayOrder)`; headingless types translate the body once and mirror it into `heading`) |
 | category | Main (name translates) + page content + FAQ groups |
 | collection | Main + page content + FAQ groups + per-tour rationales |
 | homepage | 11 HomePageTranslation fields + FAQ groups (entityId `'default'`) |
 
-Excluded v1: Pages module (TipTap), hub our-picks, hub comparison, HubContentSection.
+Excluded v1: Pages module (TipTap).
 
 ## 7. Rate limits, failure handling, ops
 
 - **Free-tier tuning:** worker concurrency 1 + limiter 8 jobs/min; 60s debounce;
   `sourceHash` skip makes repeats free; nightly sweep bounded at 10 per type. Headroom is
   left for the review queue sharing the same key (~15 RPM Gemini free tier).
-- **429 / malformed output twice / timeout (30s):** throw → BullMQ retries (3 attempts,
-  exponential 10s). After 3 failures the job parks in failed (retained 1000) and the nightly
-  sweep re-enqueues the entity anyway.
+- **429 with a named cooldown** ("try again in 7.26s" - Groq/Gemini TPM meters): the provider
+  base waits it out in-process and retries (max 2 retries, hints ≤ 25s only) - a short wait
+  beats failing a synchronous button click. Chunks are capped at 12k chars and the
+  OpenAI-compat transport sends an explicit 8192-token completion budget, so one chunk can't
+  eat a whole TPM window or clip mid-JSON. This TPM budget is also why there is NO
+  "translate everything at once" button in the editors: a whole-entity 6-locale run needs
+  minutes of token budget on free tiers, which only the background queue can wait out - the
+  editors offer the per-field inline icon, and whole-entity coverage belongs to the
+  background job + nightly sweep (and the console's per-locale button).
+- **429 without a hint / malformed output twice / timeout (30s):** throw → BullMQ retries
+  (3 attempts, exponential 10s). After 3 failures the job parks in failed (retained 1000) and
+  the nightly sweep re-enqueues the entity anyway.
 - **Redis down:** saves succeed, enqueue warns and swallows; the sweep catches up.
 - **Kill switch:** `CONTENT_TRANSLATION_DISABLED=1` (use for bulk operations routed
   through services; prisma-direct seeds bypass the hooks anyway).
@@ -205,3 +214,8 @@ guests write in any language.
 7. Tours have no FAQ units; the `tour` page type is unmapped in `PAGE_TYPE_TO_ENTITY`.
 8. API keys ride headers, never URL query params.
 9. One `@RequirePermissions` key per route (the decorator is ALL-semantics).
+10. The hub curation editors (Our Picks, comparison, content sections) are
+    replace-all writes: their services snapshot prior translations and restore
+    `isMachineTranslated` + `sourceHash` on rows whose text round-trips
+    UNCHANGED. Removing that restore would mark every machine row human on the
+    next tab save, and English edits would silently stop refreshing them.

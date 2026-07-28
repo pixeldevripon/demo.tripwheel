@@ -1,215 +1,238 @@
-# 02D - Domain Move Runbook
+# 02D - Domain Move Runbook (v2, 2026-07-28)
 
-> **From** `islandtours.esenc.cloud` + `dashboard.islandtours.esenc.cloud` + `api.islandtours.esenc.cloud`
-> **To** `island.tours` (public) + `dashboard.tripwheel.io` (admin) + `api.tripwheel.io` (backend)
+> **From** `islandtours.tripwheel.app` (public) + `dashboard.tripwheel.app` (admin) + `api.tripwheel.app` (backend)
+> **To** `island.tours` (public) + `dashboard.tripwheel.app` (admin) + `api.tripwheel.app` (backend)
 >
-> This is the step-by-step for the decision `02C` already made. **`02C` is the reasoning; this is the
-> order of operations.** Read `02C` §4A first if you have not - especially the 2026-07-17 correction,
-> which found the checkout hiding behind a shared helper.
+> **v2 REWRITE.** The v1 runbook (2026-07-19) staged a bearer-token migration on the public site
+> (02C Option C). That migration is **no longer needed**: the public frontend has since dropped
+> Better Auth entirely in favour of the HMAC traveler session (first-party cookie + header
+> transport). See the **ADDENDUM at the top of `02C-CROSS-DOMAIN-AUTH-SPEC.md`** for the full
+> reasoning and the code-level verification (2026-07-28). v1 is preserved in git history.
 >
-> **Prerequisite: Phase 9 green and the dashboard cut over on the interim topology.** Do not attempt
-> the domain move and the repo split in one window. If auth breaks you must know which one did it.
+> **TLD note:** earlier docs said `tripwheel.io`; production is `tripwheel.app`. This runbook uses
+> `.app` throughout. If the real apex differs, substitute consistently - the *shape* (public site
+> on its own registrable domain, dashboard + API sharing another) is what matters.
 
 ---
 
 ## 0. The one-paragraph version
 
-Today all three hosts share `.islandtours.esenc.cloud`, so one cookie covers everything and nothing
-special is needed. After the move, `dashboard.tripwheel.io` and `api.tripwheel.io` still share
-`.tripwheel.io` (cookies keep working, untouched), but `island.tours` becomes a **different
-registrable domain** from the API - so its cookies are third-party and Safari/Firefox drop them.
-**One Better Auth instance cannot emit cookies for two registrable domains** (`cookies/index.mjs:22`,
-verified in source). The fix is not a cookie fix: the public site stops using cookies and uses a
-**bearer token** instead, which the backend already supports (`bearer()`, `auth.instance.ts:177`).
-The dashboard changes nothing.
-
-**Why this is cheap:** the public site never reads the session server-side - not by luck, but because
-its `'use cache'` static shell *cannot* be per-user, so auth was always client-only. The dashboard
-must read it server-side (`guardDashboard`, `getUserProfile`). That asymmetry is the whole design.
+There is no auth migration in this move. The public site has **zero Better Auth**: traveler
+identity is a backend-issued HMAC token stored in a **first-party HttpOnly cookie set by the
+public app's own origin** (`POST /api/traveler-session` → `it.travelerSession`) and sent to the
+API as the **`x-traveler-session` header**; the wishlist is a cookie-based no-login feature on the
+frontend origin. Neither transport crosses a site boundary, so third-party cookie blocking is
+irrelevant. The dashboard stays same-site with the API (`.tripwheel.app`) and keeps its HttpOnly
+Better Auth cookies untouched. The whole move is **~4 env values across three apps, zero code**,
+plus real-hostname verification.
 
 ---
 
 ## 1. The flow, before and after
 
-### Today (interim, working)
+### Today (shared apex, working)
 
 ```
-browser ──cookie Domain=.islandtours.esenc.cloud──┐
-  islandtours.esenc.cloud (public)   ─────────────┤
-  dashboard.islandtours.esenc.cloud  ─────────────┼──> api.islandtours.esenc.cloud
-                                                  │      one cookie, same-site, all three
-  dashboard's OWN Next server reads the cookie ───┘      (proxy.ts guard + layout getUserProfile)
+  islandtours.tripwheel.app (public) ──x-traveler-session header──┐
+     └─ its own origin sets it.travelerSession (first-party)      ├──> api.tripwheel.app
+  dashboard.tripwheel.app ──Better Auth cookie .tripwheel.app─────┘
+     └─ its own Next server reads that cookie (guard + layout)
 ```
 
 ### After the move
 
 ```
-  island.tours (public)
-     │  Authorization: Bearer <token from localStorage>     NO COOKIE. Cross-site is irrelevant.
-     └────────────────────────────────────────────────> api.tripwheel.io
-                                                              │
-  dashboard.tripwheel.io                                      │  same session row in Postgres
-     │  cookie Domain=.tripwheel.io  (same-site) ─────────────┘
-     └── its own Next server still reads that cookie   <- unchanged, still HttpOnly
+  island.tours (public) ──x-traveler-session header───────────────┐   CORS origin: island.tours
+     └─ its own origin sets it.travelerSession (first-party,      ├──> api.tripwheel.app
+        unaffected by the domain - the app sets its own cookie)   │
+  dashboard.tripwheel.app ──Better Auth cookie .tripwheel.app─────┘   same-site, unchanged
 ```
 
-**The token IS the session token** - the bearer plugin lifts it out of the `Set-Cookie` the backend
-was already producing and re-emits it as a `set-auth-token` header. Same DB row, same role, same
-guards. **Transport swap, not an auth redesign.** Business logic cannot break.
+**Nothing about auth changes shape.** The only cookie that stops flowing is the optional
+attribution ride-along (§4), which was never load-bearing.
 
 ---
 
-## 2. Order of operations
+## 2. Preflight - confirm the assumptions still hold
 
-**Ship in this order. Each step is safe to sit in indefinitely; only step 6 is a cutover.**
+Run these before touching DNS. Each one guards a claim this runbook depends on.
 
-### Step 1 - Code the public site's bearer support (no domains involved)
-
-Four files, all in the public repo. Do this first, on the CURRENT domains, where cookies still work
-and bearer is simply redundant-but-harmless.
-
-**1a. `lib/auth-client.ts`** - global capture + send:
-
-```ts
-export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
-  fetchOptions: {
-    onSuccess: (ctx) => {
-      const t = ctx.response.headers.get('set-auth-token');
-      if (t) localStorage.setItem('bearer_token', t);
-    },
-    auth: { type: 'Bearer', token: () => localStorage.getItem('bearer_token') || '' },
-  },
-});
-```
-
-Both hooks are **global**, so a session refresh that re-issues a token is captured with no
-per-call-site handling. `useSession()` keeps working - it routes through this client.
-
-**1b. Factor `publicAuthHeaders()`** once, then apply it at the three raw-`fetch` surfaces:
-
-| File | Line | Serves |
-|---|---|---|
-| **`lib/api/fetch.ts`** | **:29** | **`bookings.ts` (the ENTIRE checkout) + `availability.ts`** |
-| `lib/api/wishlist.ts` | :16 | wishlist |
-| `lib/api/categories.ts` | :86 | category personalisation |
-
-> **`fetch.ts` is the one that matters and the one `02C` originally missed.** Its callers inherit
-> the cookie without ever naming `credentials: 'include'`, so a grep for the literal does not find
-> them. Migrating this one file carries `/bookings/quote`, `POST /bookings`, `/bookings/:id`,
-> `checkout-form`, `checkout-processing`, `thank-you`, `cancel-request-card`, and availability
-> with it.
-
-**Both transports work at once.** Sending `Authorization` while cookies still flow is harmless -
-the backend resolves either to the same session. That is what makes this step independently
-shippable and independently revertible.
-
-**Validation:** on the current domains, sign in, clear cookies, confirm the app still works off the
-bearer token alone. If it does, the domain move is de-risked before you touch DNS.
-
-### Step 2 - Delete the dashboard's leftovers from the public repo (`02` §10 step 10)
-
-**Verified 2026-07-17: these are DUPLICATED, not moved.** Both repos currently serve them:
-
-- `app/(login)/portal`, `app/(login)/staff`
-- `components/frontend/login/{operator-login,operator-forgot,operator-reset,operator-two-factor,staff-login}.tsx`
-
-Under the target topology an operator who resets a password at `island.tours` is at the wrong
-origin. Delete the **public** copies; the dashboard repo already has them.
-
-**Keep `app/(login)/apply` and `app/(login)/bookings`** - traveler-facing, genuinely public.
-
-> **DO NOT delete `lib/api/fetch.ts`** while removing dashboard code. It looks dashboard-shaped
-> (most importers are dashboard clients) but `bookings.ts` and `availability.ts` need it. Deleting
-> it takes the checkout with it.
-
-### Step 3 - CSP on `island.tours` (do it BEFORE the move, not after)
-
-A bearer token in `localStorage` is **not HttpOnly**. Any XSS on `island.tours` exfiltrates it.
-**The CSP is the actual control, not a hardening nice-to-have** - it is the entire compensating
-mechanism for the security property being given up. Ship it first, verify it blocks inline script
-(§6 check 11), and only then move domains.
-
-Scope the risk honestly: the public session grants wishlist + booking lookup. It is USER-role; it
-cannot reach operator endpoints - roles are server-side. The dashboard, the higher-privilege
-surface, keeps HttpOnly cookies.
-
-### Step 4 - DNS + certs, no traffic yet
-
-Stand up `island.tours`, `dashboard.tripwheel.io`, `api.tripwheel.io`. Leave the old hosts serving.
-
-### Step 5 - Backend env (the whole backend change: two vars, zero code)
-
-```
-COOKIE_DOMAIN=.tripwheel.io
-CORS_ORIGINS=https://island.tours,https://dashboard.tripwheel.io
-```
-
-`CORS_ORIGINS` feeds **both** CORS (`main.ts:43`) **and** Better Auth `trustedOrigins`
-(`auth.instance.ts:17`). Miss a host and you get either a CORS failure or an origin rejection -
-which look nothing alike, and neither says "you forgot an env var".
-
-**This invalidates every existing session** (the cookie domain changes). Everyone signs in again,
-once. Schedule it, and tell operators.
-
-### Step 6 - Cut over, public first
-
-1. Deploy the public site to `island.tours` (bearer already live from step 1).
-2. Deploy the dashboard to `dashboard.tripwheel.io`. **Zero code change** - it is same-site with
-   `api.tripwheel.io`, so cookies, HttpOnly, and `guardDashboard` all behave exactly as today.
-3. Point the old hosts at the new ones with 301s.
-4. Update the dashboard's `REVALIDATE_TARGET_URL` -> `https://island.tours/api/revalidate`, and
-   `NEXT_PUBLIC_BACKEND_URL` -> `https://api.tripwheel.io`. **`NEXT_PUBLIC_*` are inlined at build
-   time - this needs a REDEPLOY, not a restart.**
-
-### Step 7 - Verify on real hostnames in a real Safari
-
-**Nothing here is reproducible on localhost.** `localhost:3000` -> `localhost:5050` is same-site,
-and `crossSubDomainCookies.enabled` is gated on `NODE_ENV === 'production'`. The dev environment
-cannot fail the way production will.
-
-Run `02C` §6, all 15. **Checks 2 and 3 are the acceptance criteria** (Safari with ITP, Firefox with
-TCP - session persists across reload). **Check 14 is the one that will bite**: no surviving
-`credentials: 'include'` on any public path. And add:
-
-| # | Check | Why |
-|---|---|---|
-| 16 | **Complete a real booking end-to-end in Safari** (quote -> POST -> thank-you -> cancel) | The `fetch.ts` surface `02C` missed. If step 1b was done wrong, Chrome passes and Safari cannot buy. |
-| 17 | Hub trips panel + availability sync in Safari | Same helper |
+| # | Check | Expected | Guards |
+|---|---|---|---|
+| P1 | `grep -rn "createAuthClient" frontend/lib frontend/components frontend/app` | **no hits** | "public site has no Better Auth" - if this ever reappears (e.g. full customer accounts), STOP and re-read 02C §4A: the bearer plan becomes relevant again |
+| P2 | `frontend/app/(login)/` contains **only** `[locale]/bookings` | yes | no operator doors stranded on the public origin |
+| P3 | `grep -rn "credentials: 'include'" frontend/lib` | only `lib/api/fetch.ts` | the attribution leg is the single residual (§4) |
+| P4 | Backend `main.ts` CORS `allowedHeaders` includes `X-Traveler-Session` + `X-Login-Surface` | yes (`main.ts:68-76`) | cross-origin preflights for traveler calls and sign-in |
+| P5 | Admin settings → `canonicalUrl` | `https://island.tours` | sitemap, JSON-LD, canonicals, robots (the SEO base URL is this setting, NOT an env var) |
+| P6 | `df -h` on the build host | ≥15 GB free | the build itself (see the disk trap in project memory) |
 
 ---
 
-## 3. Rollback
+## 3. Order of operations
+
+**Each step is safe to sit in indefinitely; only step 5 is a cutover.**
+
+### Step 1 - DNS + cert for `island.tours`, no traffic yet
+
+Stand up `island.tours` pointing at the (new) public-site deployment target. Leave
+`islandtours.tripwheel.app` serving. Nothing user-visible changes.
+
+### Step 2 - Backend env (the whole backend change: three vars, zero code)
+
+```bash
+# ADD the new origin; KEEP the old one until step 6 (both serve during transition)
+CORS_ORIGINS=https://island.tours,https://islandtours.tripwheel.app,https://dashboard.tripwheel.app
+
+# Email links (TYP, /bookings, cancel page, review requests) + the backend→frontend
+# cache-revalidation target. Embedded verbatim in emails - no trailing slash.
+ISLAND_TOURS_URL=https://island.tours
+
+# Dashboard/API leg only - the public site never sees this cookie.
+# ALREADY correct in production (confirmed 2026-07-28) - confirm, don't change.
+COOKIE_DOMAIN=.tripwheel.app
+```
+
+**`CORS_ORIGINS` has THREE consumers, and missing one origin produces three different-looking
+failures:**
+
+| Consumer | Where | Failure if the origin is missing |
+|---|---|---|
+| CORS middleware | `main.ts:43` | every browser API call from `island.tours` blocked |
+| Better Auth `trustedOrigins` | `auth.instance.ts:17` | origin rejection on any auth call (looks nothing like a CORS error) |
+| **`assertAllowedRedirect`** | **`payments.service.ts:1129`** | **checkout dies**: Stripe/Mollie payment-intent creation 400s with "Return URL origin is not allowed" - the return/cancel URLs are validated against this same list |
+
+The third one is the trap: it is server-side validation, so it fails even for browsers that
+tolerate lax CORS, and it fails at the *payment* step, not at page load.
+
+Restart the backend. **No sessions are invalidated** - `COOKIE_DOMAIN` was already the
+`.tripwheel.app` apex on this topology; if it was previously unset or different, dashboard users
+sign in once more.
+
+### Step 3 - Deploy the public site to `island.tours`
+
+**Zero code change.** Its env is domain-agnostic:
+
+- `NEXT_PUBLIC_BACKEND_URL=https://api.tripwheel.app` - unchanged
+- `REVALIDATE_SECRET` - unchanged (the bridge authenticates by secret, not origin)
+- `INTERNAL_API_SECRET` - unchanged (SSR trusted-origin bypass; server-to-server)
+
+> `NEXT_PUBLIC_*` values are inlined at **build** time. If any of them ever do change, that is a
+> REDEPLOY, not a restart.
+
+### Step 4 - Dashboard repo env
+
+```bash
+REVALIDATE_TARGET_URL=https://island.tours/api/revalidate
+```
+
+Miss this and every dashboard write **silently** stops busting the public site's cache - no error
+anyone sees, just pages that never update. The POSTs 401/timeout in the dashboard logs only.
+
+(`NEXT_PUBLIC_BACKEND_URL` in the dashboard stays `https://api.tripwheel.app` - unchanged.)
+
+### Step 5 - Cut over
+
+1. `island.tours` goes live (it already works - steps 2-4 made it a first-class origin).
+2. **301 redirect** `islandtours.tripwheel.app/*` → `https://island.tours/*` at the
+   infra/proxy level (SEO: preserves link equity; the sitemap/canonicals already say
+   `island.tours` per preflight P5).
+3. Update the GTM container / tracking config if any trigger filters on hostname.
+
+### Step 6 - Drain and tighten
+
+After the 301 has been live long enough that traffic on the old host is crawlers only
+(check access logs; typically 2-4 weeks):
+
+- Remove `https://islandtours.tripwheel.app` from `CORS_ORIGINS`.
+- Keep the 301 itself indefinitely (it is free and protects old email links predating
+  `ISLAND_TOURS_URL`).
+
+### Step 7 - Verify on real hostnames, in a real Safari
+
+**Nothing in this runbook is testable on localhost** - `localhost:3000` → `localhost:5050` is
+same-site, so the cross-site path literally does not execute in dev. Safari (ITP) and Firefox
+(Total Cookie Protection) are the acceptance browsers; Chrome passing proves nothing.
+
+| # | Check | Browser | Guards |
+|---|---|---|---|
+| V1 | **Complete a real booking end-to-end**: widget quote → reserve → contact → pay (card AND a redirect method: iDEAL/PayPal or Mollie hosted) → `/payment/processing` poll → TYP renders unmasked | Safari + Firefox | the whole revenue path; the redirect methods additionally exercise `assertAllowedRedirect` with the new origin |
+| V2 | `/bookings` traveler login (email + booking ref) → booking management view; reload → still authenticated | Safari | HMAC session cookie set + replayed on the new origin |
+| V3 | Cancel-request flow from the booking view | Safari | header-transport mutation path |
+| V4 | Wishlist add/remove/resolve; survives reload | Safari | `it.wishlist` first-party cookie |
+| V5 | Dashboard login at `dashboard.tripwheel.app`; guard redirects + `getUserProfile` role resolution | any | the untouched leg actually is untouched |
+| V6 | Dashboard edit (e.g. tour name) → public page on `island.tours` updates within its tag lifetime | any | `REVALIDATE_TARGET_URL` (step 4) |
+| V7 | Trigger a booking email; every link in it points at `island.tours` | n/a | `ISLAND_TOURS_URL` (step 2) |
+| V8 | A public traveler token **cannot** reach any operator/admin endpoint | any | privilege boundary |
+| V9 | `https://island.tours/sitemap.xml` + a page's canonical + JSON-LD all say `island.tours` | n/a | preflight P5 actually took effect |
+
+V1 and V2 in Safari are the acceptance criteria. They are the exact scenarios the old
+(cookie-based) architecture would have silently failed, and the reason this runbook exists.
+
+---
+
+## 4. Decision, not migration: the residual `credentials: 'include'`
+
+`frontend/lib/api/fetch.ts:41` still sends `credentials: 'include'` on client-side
+booking/availability calls. Per `bookings.controller.ts:63` this is **optional attribution only**
+(`userId` / `cancelledBy` when a Better Auth session happens to ride along - e.g. an operator
+logged into the dashboard on the shared apex making a test booking). After the move the cookie is
+`SameSite=Lax` on a different registrable domain, so it stops flowing from `island.tours` in
+**every** browser, deterministically. Bookings degrade to guest attribution. **Nothing breaks.**
+
+Choose one, knowingly:
+
+- **Accept the loss** (recommended) - the traveler HMAC session is the real identity on this
+  surface; staff test-bookings become guest-attributed, which is arguably more realistic.
+- **Delete the line** for cleanliness - one-line diff, removes a dead transport.
+
+Do NOT try to "fix" it with `SameSite=None` - that reintroduces the third-party cookie problem
+02C §3 Option D already rejected (Safari blocks it regardless).
+
+---
+
+## 5. Security posture (current architecture, verified 2026-07-28)
+
+This is *stronger* than the v1 plan it replaced (bearer token in `localStorage`):
+
+| Property | How |
+|---|---|
+| Traveler token unreadable by page JS at rest | `HttpOnly` + `Secure` (prod) + `SameSite=Lax` first-party cookie, 24h TTL (`app/api/traveler-session/route.ts`) |
+| Cookie-planting / forced-logout CSRF on the token route | `Sec-Fetch-Site` check with Origin-host fallback + strict `v1.<payload>.<sig>` shape validation |
+| API CSRF | token travels as a custom header → forces CORS preflight → cross-site attacker cannot attach it |
+| Forgery | HMAC-signed, email-bound; the backend is the sole verifier - a forged cookie renders a masked page, nothing else |
+| Blast radius | one traveler's bookings for 24h; not an account, cannot reach operator/admin endpoints |
+| High-privilege surface | dashboard keeps HttpOnly Better Auth cookies, same-site with the API |
+
+**Residual hardening (recommended, not blocking):** a strict CSP on `island.tours`. The token
+transits JS memory briefly (lookup/checkout response → POST into the cookie route), so XSS timed
+to that window could grab a 24h single-booking token. CSP is cheap defence-in-depth; it is no
+longer the load-bearing control it would have been under the v1 bearer plan.
+
+---
+
+## 6. Rollback
 
 | Step | Rollback |
 |---|---|
-| 1-3 | Revert. Cookies still work on the current domains; bearer is additive. |
-| 5 | Restore `COOKIE_DOMAIN`/`CORS_ORIGINS`. Sessions invalidate again. |
-| 6 | DNS back. Old hosts stay live until you are certain. |
+| 1 | Remove DNS. Nothing depended on it. |
+| 2 | Restore the previous env values, restart. (Keeping `island.tours` in `CORS_ORIGINS` while rolled back is harmless.) |
+| 3-4 | Redeploy previous env. The apps are domain-agnostic; there is no code to revert. |
+| 5 | Point DNS/301 back at `islandtours.tripwheel.app`. Old host stays live until step 6, so this is instant. |
 
-The only irreversible act is time: step 5 signs everyone out, twice if you roll back.
-
----
-
-## 4. The three costs, accepted knowingly
-
-| # | Cost | Control |
-|---|---|---|
-| 1 | Public token is **not HttpOnly** | **CSP (step 3).** Bounded to USER role; dashboard keeps HttpOnly. |
-| 2 | **Safari ITP caps script-writable storage at ~7 days** without first-party interaction - a dormant traveler is silently signed out | UX degradation, not a break. Acceptable for a wishlist. **Verify (§6 check 12); do not assume.** |
-| 3 | Operator reset/forgot on the public site | Step 2 deletes them. |
-
-**Bonus, not a cost:** bearer is CSRF-immune. An attacker cannot read `localStorage` cross-origin,
-so the public site loses its CSRF surface entirely.
+There is no session-invalidation cost anywhere in this runbook (unlike v1's step 5). The only
+one-way door is SEO: once crawlers have re-indexed `island.tours`, flapping back and forth burns
+crawl trust - do step 5 once, deliberately.
 
 ---
 
-## 5. What does NOT change
+## 7. What does NOT change
 
 | Concern | Why |
 |---|---|
-| **Dashboard auth** | Same-site with the API. Cookies, HttpOnly, `guardDashboard`, `getUserProfile` - all unchanged. **Zero dashboard code in this whole document.** |
-| **RBAC / roles / permissions** | Server-side. Bearer carries the same session token from the same row. |
-| **SSR data fetching** (`lib/api/public/*`) | `x-internal-api-key`, server-to-server, no cookies. Cross-domain is irrelevant. |
-| **`disableSignUp: true`**, auto-user-on-first-booking | Untouched. |
-| **Cache revalidation (`02B`)** | **Unrelated.** That is *process* separation; it applies on any domain topology. Solving one does not solve the other - they only look related. |
+| **Public-site auth** | HMAC traveler session: first-party cookie + header. Domain-agnostic by construction. |
+| **Dashboard auth** | Same-site with the API under `.tripwheel.app`. Cookies, HttpOnly, guard, layout - untouched. Zero dashboard code in this document. |
+| **RBAC / roles / permissions** | Server-side, unchanged. |
+| **SSR data fetching** (`lib/api/public/*`) | `x-internal-api-key`, server-to-server, no cookies. |
+| **Stripe/Mollie webhooks** | Point at `api.tripwheel.app` - unchanged. |
+| **Cache revalidation mechanics** (`02B`) | Process separation, not domain. Only the *target URL* changes (step 4). |
+| **Currency/locale/consent cookies** | First-party on the frontend origin, wherever it lives. |

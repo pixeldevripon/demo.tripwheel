@@ -96,6 +96,34 @@ function createMockPrismaService() {
     },
     tour: {
       count: jest.fn(),
+      findMany: jest.fn(),
+    },
+    hubContentSection: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    hubOurPick: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'pick-new' }),
+    },
+    hubOurPickTranslation: {
+      createMany: jest.fn(),
+    },
+    hubComparisonGroup: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'group-new' }),
+    },
+    hubComparisonGroupTranslation: {
+      createMany: jest.fn(),
+    },
+    hubComparisonTour: {
+      create: jest.fn().mockResolvedValue({ id: 'comptour-new' }),
+    },
+    hubComparisonTourTranslation: {
+      createMany: jest.fn(),
     },
   };
 
@@ -206,9 +234,11 @@ function makeAllowedCategory(
 describe('HubService', () => {
   let service: HubService;
   let prisma: ReturnType<typeof createMockPrismaService>;
+  let enqueuer: { enqueue: jest.Mock; enqueueForPageType: jest.Mock };
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
+    enqueuer = { enqueue: jest.fn(), enqueueForPageType: jest.fn() };
 
     // Grouped-FAQ logic is delegated to the shared FaqGroupService; the hub
     // wrappers only assert existence then call through, so a bare mock suffices.
@@ -225,10 +255,7 @@ describe('HubService', () => {
         HubService,
         { provide: PrismaService, useValue: prisma },
         { provide: FaqGroupService, useValue: mockFaqGroups },
-        {
-          provide: ContentTranslationEnqueuer,
-          useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
-        },
+        { provide: ContentTranslationEnqueuer, useValue: enqueuer },
         {
           provide: FxRatesService,
           useValue: {
@@ -1570,6 +1597,268 @@ describe('HubService', () => {
         service.removeAllowedCategory('hub-1', 'cat-999', 'admin-1'),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.hubAllowedCategory.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Curation replaces: AI-flag preservation + translation hooks ─────────────
+  //
+  // The three replace-all editors (content sections, Our Picks, comparison)
+  // recreate every translation row on save. A translation that round-trips
+  // UNCHANGED must keep its machine flag + sourceHash - losing them would
+  // freeze machine rows as "human" and stop English edits from refreshing
+  // them. A CHANGED text is a human edit: flags reset (default false/null).
+
+  describe('replaceContentSections', () => {
+    const machineRow = {
+      locale: Locale.de,
+      sectionType: 'DISCOVER',
+      heading: 'Alte Überschrift',
+      body: 'Alter Text',
+      isMachineTranslated: true,
+      sourceHash: 'hash-1',
+    };
+
+    it('keeps machine flags on rows that round-trip unchanged and resets them on edited rows', async () => {
+      prisma.hub.findUnique.mockResolvedValue(makeHub());
+      prisma._tx.hubContentSection.findMany
+        .mockResolvedValueOnce([machineRow]) // prior snapshot
+        .mockResolvedValueOnce([]); // read-back
+      const dto = {
+        sections: [
+          {
+            locale: Locale.de,
+            sectionType: 'DISCOVER',
+            heading: 'Alte Überschrift',
+            body: 'Alter Text',
+            displayOrder: 0,
+          }, // unchanged -> flags survive
+          {
+            locale: Locale.de,
+            sectionType: 'LOCAL_TIP',
+            heading: 'Neu',
+            body: 'Hand-edited',
+            displayOrder: 0,
+          }, // new/changed -> human defaults
+        ],
+      };
+
+      await service.replaceContentSections('hub-1', dto as never, 'admin-1');
+
+      const rows = prisma._tx.hubContentSection.createMany.mock.calls[0][0]
+        .data as Array<Record<string, unknown>>;
+      expect(rows[0]).toMatchObject({
+        heading: 'Alte Überschrift',
+        isMachineTranslated: true,
+        sourceHash: 'hash-1',
+      });
+      expect(rows[1].isMachineTranslated).toBeUndefined();
+      expect(rows[1].sourceHash).toBeUndefined();
+    });
+
+    it('enqueues a hub translation job after the replace', async () => {
+      prisma.hub.findUnique.mockResolvedValue(makeHub());
+      prisma._tx.hubContentSection.findMany.mockResolvedValue([]);
+
+      await service.replaceContentSections(
+        'hub-1',
+        { sections: [] },
+        'admin-1',
+      );
+
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+  });
+
+  describe('setOurPicks', () => {
+    it('keeps machine flags on blurbs that round-trip unchanged (identity: the pick tour)', async () => {
+      prisma.hub.findUnique.mockResolvedValue(makeHub());
+      prisma.hub.findUniqueOrThrow.mockResolvedValue({
+        destinationId: 'dest-1',
+      });
+      prisma.tour.findMany.mockResolvedValue([{ id: 'tour-1' }]);
+      prisma._tx.hubOurPick.findMany.mockResolvedValueOnce([
+        {
+          tourId: 'tour-1',
+          translations: [
+            {
+              locale: Locale.nl,
+              description: 'Machinetekst',
+              isMachineTranslated: true,
+              sourceHash: 'hash-nl',
+            },
+            {
+              locale: Locale.de,
+              description: 'Maschinentext',
+              isMachineTranslated: true,
+              sourceHash: 'hash-de',
+            },
+          ],
+        },
+      ]);
+      prisma.hubOurPick.findMany.mockResolvedValue([]); // read-back
+
+      await service.setOurPicks(
+        'hub-1',
+        {
+          picks: [
+            {
+              tourId: 'tour-1',
+              pickType: 'BEST_OVERALL',
+              description: 'Why this one',
+              translations: [
+                { locale: Locale.nl, description: 'Machinetekst' }, // unchanged
+                { locale: Locale.de, description: 'Handgeschrieben' }, // edited
+              ],
+            },
+          ],
+        } as never,
+        'admin-1',
+      );
+
+      const rows = prisma._tx.hubOurPickTranslation.createMany.mock.calls[0][0]
+        .data as Array<Record<string, unknown>>;
+      expect(rows[0]).toMatchObject({
+        locale: Locale.nl,
+        isMachineTranslated: true,
+        sourceHash: 'hash-nl',
+      });
+      expect(rows[1].isMachineTranslated).toBeUndefined();
+      expect(rows[1].sourceHash).toBeUndefined();
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+  });
+
+  describe('setComparison', () => {
+    it('keeps machine flags on unchanged group names and standout notes', async () => {
+      prisma.hub.findUnique.mockResolvedValue(makeHub());
+      prisma.hub.findUniqueOrThrow.mockResolvedValue({
+        destinationId: 'dest-1',
+      });
+      prisma.tour.findMany.mockResolvedValue([{ id: 'tour-1' }]);
+      prisma._tx.hubComparisonGroup.findMany.mockResolvedValueOnce([
+        {
+          groupName: 'Comfort trips',
+          translations: [
+            {
+              locale: Locale.fr,
+              groupName: 'Voyages confort',
+              isMachineTranslated: true,
+              sourceHash: 'hash-g',
+            },
+          ],
+          comparisonTours: [
+            {
+              tourId: 'tour-1',
+              translations: [
+                {
+                  locale: Locale.fr,
+                  standoutNote: 'Note machine',
+                  isMachineTranslated: true,
+                  sourceHash: 'hash-t',
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+      prisma.hubComparisonGroup.findMany.mockResolvedValue([]); // read-back
+
+      await service.setComparison(
+        'hub-1',
+        {
+          groups: [
+            {
+              groupName: 'Comfort trips',
+              translations: [
+                { locale: Locale.fr, groupName: 'Voyages confort' }, // unchanged
+              ],
+              tours: [
+                {
+                  tourId: 'tour-1',
+                  standoutNote: 'Base note',
+                  translations: [
+                    { locale: Locale.fr, standoutNote: 'Note humaine' }, // edited
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        'admin-1',
+      );
+
+      const groupRows = prisma._tx.hubComparisonGroupTranslation.createMany.mock
+        .calls[0][0].data as Array<Record<string, unknown>>;
+      expect(groupRows[0]).toMatchObject({
+        isMachineTranslated: true,
+        sourceHash: 'hash-g',
+      });
+      const tourRows = prisma._tx.hubComparisonTourTranslation.createMany.mock
+        .calls[0][0].data as Array<Record<string, unknown>>;
+      expect(tourRows[0].isMachineTranslated).toBeUndefined();
+      expect(tourRows[0].sourceHash).toBeUndefined();
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+
+    it('never leaks flags across groups when the same tour appears in two groups', async () => {
+      // Tour X is compared in BOTH groups with the same French text: group
+      // A's row is hand-written, group B's is machine. A hub-wide lookup
+      // would collide the two and could stamp the human row machine.
+      prisma.hub.findUnique.mockResolvedValue(makeHub());
+      prisma.hub.findUniqueOrThrow.mockResolvedValue({
+        destinationId: 'dest-1',
+      });
+      prisma.tour.findMany.mockResolvedValue([{ id: 'tour-x' }]);
+      const translation = (machine: boolean, hash: string | null) => ({
+        locale: Locale.fr,
+        standoutNote: 'Same French text',
+        isMachineTranslated: machine,
+        sourceHash: hash,
+      });
+      prisma._tx.hubComparisonGroup.findMany.mockResolvedValueOnce([
+        {
+          groupName: 'Group A',
+          translations: [],
+          comparisonTours: [
+            { tourId: 'tour-x', translations: [translation(false, null)] },
+          ],
+        },
+        {
+          groupName: 'Group B',
+          translations: [],
+          comparisonTours: [
+            { tourId: 'tour-x', translations: [translation(true, 'hash-b')] },
+          ],
+        },
+      ]);
+      prisma.hubComparisonGroup.findMany.mockResolvedValue([]); // read-back
+
+      const groupInput = (name: string) => ({
+        groupName: name,
+        tours: [
+          {
+            tourId: 'tour-x',
+            translations: [
+              { locale: Locale.fr, standoutNote: 'Same French text' },
+            ],
+          },
+        ],
+      });
+      await service.setComparison(
+        'hub-1',
+        { groups: [groupInput('Group A'), groupInput('Group B')] },
+        'admin-1',
+      );
+
+      const calls = prisma._tx.hubComparisonTourTranslation.createMany.mock
+        .calls as Array<[{ data: Array<Record<string, unknown>> }]>;
+      // Group A's row stays HUMAN (no machine stamp restored onto it)...
+      expect(calls[0][0].data[0].isMachineTranslated).toBe(false);
+      // ...and group B's row keeps ITS machine bookkeeping.
+      expect(calls[1][0].data[0]).toMatchObject({
+        isMachineTranslated: true,
+        sourceHash: 'hash-b',
+      });
     });
   });
 });
