@@ -11,6 +11,7 @@ import {
   hatAddedTemplate,
   type HatAddedTemplateProps,
   operatorInviteTemplate,
+  passwordChangeConfirmationTemplate,
   passwordResetTemplate,
   staffInviteTemplate,
   type StaffInviteTemplateProps,
@@ -234,6 +235,33 @@ export class MailService {
     await this.sendMail({
       to,
       subject: 'Confirm your Island Tours email change',
+      html,
+      text,
+    });
+  }
+
+  /**
+   * Confirm-link for a self-service password change. The current password was
+   * already verified, so this email is the SECOND factor: it proves the
+   * requester also holds the mailbox. Nothing has changed on the account when
+   * this is sent.
+   */
+  async sendPasswordChangeConfirmationEmail(
+    to: string,
+    confirmUrl: string,
+    expiresInLabel: string,
+    name?: string,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = passwordChangeConfirmationTemplate({
+      confirmUrl,
+      expiresInLabel,
+      name,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: 'Confirm your Island Tours password change',
       html,
       text,
     });

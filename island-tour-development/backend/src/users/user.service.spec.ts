@@ -9,7 +9,18 @@
 // `better-auth` package, which ts-jest does not transform (node_modules).
 // UserService only ever calls `auth.api.setPassword`.
 jest.mock('@/auth/auth.instance', () => ({
-  auth: { api: { setPassword: jest.fn() } },
+  auth: {
+    api: { setPassword: jest.fn(), verifyPassword: jest.fn() },
+    // `auth.$context` is a promise in Better Auth - the password-change flow
+    // awaits it for the hasher and the internal adapter.
+    $context: Promise.resolve({
+      password: { hash: jest.fn().mockResolvedValue('hashed:new') },
+      internalAdapter: {
+        updatePassword: jest.fn(),
+        deleteSessions: jest.fn(),
+      },
+    }),
+  },
 }));
 
 import { PrismaService } from '@/prisma/prisma.service';
@@ -17,6 +28,8 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role, UserStatus } from '@prisma/client';
@@ -28,6 +41,9 @@ import {
   UserQueryDto,
 } from './dto/user.dto';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
+import { MailService } from '@/mail/mail.service';
+import { TargetRateLimiter } from '@/bookings/lookup-rate-limiter';
+import { auth } from '@/auth/auth.instance';
 import { UserService } from './user.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -45,6 +61,11 @@ function createMockPrismaService() {
     // any staff_members row).
     session: { deleteMany: jest.fn() },
     staffMember: { updateMany: jest.fn() },
+    passwordChangeRequest: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
   };
 }
 
@@ -111,6 +132,10 @@ describe('UserService', () => {
     invalidate: jest.fn(),
     invalidateAll: jest.fn(),
   };
+  const mail = {
+    sendPasswordChangeConfirmationEmail: jest.fn().mockResolvedValue(undefined),
+  };
+  const targetLimiter = { consume: jest.fn() };
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
@@ -120,6 +145,8 @@ describe('UserService', () => {
         UserService,
         { provide: PrismaService, useValue: prisma },
         { provide: StaffPermissionsService, useValue: staffPermissions },
+        { provide: MailService, useValue: mail },
+        { provide: TargetRateLimiter, useValue: targetLimiter },
       ],
     }).compile();
 
@@ -636,6 +663,173 @@ describe('UserService', () => {
       expect(prisma.user.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'user-7' } }),
       );
+    });
+  });
+
+  // ── Password change: verify the password, then confirm from the mailbox ────
+  describe('password change', () => {
+    const actor = { id: 'user-1', email: 'op@example.test', name: 'Op' };
+    const dto = {
+      currentPassword: 'CurrentPassword123!',
+      newPassword: 'BrandNewPassword123!',
+    };
+
+    beforeEach(() => {
+      (auth.api.verifyPassword as unknown as jest.Mock).mockResolvedValue({
+        status: true,
+      });
+      prisma.passwordChangeRequest.upsert.mockResolvedValue({});
+    });
+
+    it('emails a confirm link and does NOT touch the password yet', async () => {
+      const res = await service.requestPasswordChange(
+        dto,
+        actor,
+        'ck=1',
+        '1.2.3.4',
+      );
+
+      expect(res).toEqual({ sent: true });
+      // The parked row stores a HASH, never the plaintext.
+      const row = prisma.passwordChangeRequest.upsert.mock.calls[0][0];
+      expect(row.create.newPasswordHash).toBe('hashed:new');
+      expect(JSON.stringify(row)).not.toContain(dto.newPassword);
+      // The raw token is only in the emailed URL, never in the row.
+      const [, confirmUrl] =
+        mail.sendPasswordChangeConfirmationEmail.mock.calls[0];
+      const token = new URL(confirmUrl).searchParams.get('token');
+      expect(token).toBeTruthy();
+      expect(row.create.tokenHash).not.toBe(token);
+      // Nothing on the credential account changed at request time.
+      const ctx = await auth.$context;
+      expect(ctx.internalAdapter.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('401s on a wrong current password, sends nothing, spends no budget', async () => {
+      (auth.api.verifyPassword as unknown as jest.Mock).mockRejectedValue({
+        body: { code: 'INVALID_PASSWORD' },
+      });
+
+      await expect(
+        service.requestPasswordChange(dto, actor, 'ck=1'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(mail.sendPasswordChangeConfirmationEmail).not.toHaveBeenCalled();
+      expect(prisma.passwordChangeRequest.upsert).not.toHaveBeenCalled();
+      // The guess IS counted (a stolen session must not get an unbounded
+      // password oracle), but on the attempt bucket only - never the
+      // success/email bucket, or wrong guesses would lock the real owner out
+      // of changing their own password.
+      const buckets = targetLimiter.consume.mock.calls.map(
+        (c: unknown[]) => c[0],
+      );
+      expect(buckets).toEqual(['password-change-attempt']);
+    });
+
+    it('discards the parked change when the confirmation email fails', async () => {
+      mail.sendPasswordChangeConfirmationEmail.mockRejectedValueOnce(
+        new Error('smtp down'),
+      );
+
+      await expect(
+        service.requestPasswordChange(dto, actor, 'ck=1'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+      // The token only existed in the undelivered email - leaving the row
+      // would strand an uncompletable pending change on the account.
+      expect(prisma.passwordChangeRequest.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+    });
+
+    it('refuses a new password identical to the current one', async () => {
+      await expect(
+        service.requestPasswordChange(
+          {
+            currentPassword: 'Same-Password-123',
+            newPassword: 'Same-Password-123',
+          },
+          actor,
+          'ck=1',
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(auth.api.verifyPassword).not.toHaveBeenCalled();
+    });
+
+    it('confirm applies the parked hash, revokes sessions and stamps the user', async () => {
+      prisma.passwordChangeRequest.findUnique.mockResolvedValue({
+        id: 'pcr-1',
+        userId: 'user-1',
+        newPasswordHash: 'hashed:new',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const res = await service.confirmPasswordChange({ token: 'raw-token' });
+
+      expect(res).toEqual({ changed: true });
+      const ctx = await auth.$context;
+      expect(ctx.internalAdapter.updatePassword).toHaveBeenCalledWith(
+        'user-1',
+        'hashed:new',
+      );
+      expect(ctx.internalAdapter.deleteSessions).toHaveBeenCalledWith('user-1');
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: { hasPassword: true, passwordChangedAt: expect.any(Date) },
+        }),
+      );
+      // The row is consumed, so the link cannot be replayed.
+      expect(prisma.passwordChangeRequest.deleteMany).toHaveBeenCalledWith({
+        where: { id: 'pcr-1' },
+      });
+    });
+
+    it('looks the token up by HASH, never by the raw value', async () => {
+      prisma.passwordChangeRequest.findUnique.mockResolvedValue(null);
+      await expect(
+        service.confirmPasswordChange({ token: 'raw-token' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      const where = prisma.passwordChangeRequest.findUnique.mock.calls[0][0]
+        .where as { tokenHash: string };
+      expect(where.tokenHash).not.toBe('raw-token');
+      expect(where.tokenHash).toHaveLength(64);
+    });
+
+    it('rejects an expired link and clears it', async () => {
+      prisma.passwordChangeRequest.findUnique.mockResolvedValue({
+        id: 'pcr-1',
+        userId: 'user-1',
+        newPasswordHash: 'hashed:new',
+        expiresAt: new Date(Date.now() - 1),
+      });
+
+      await expect(
+        service.confirmPasswordChange({ token: 'raw-token' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      const ctx = await auth.$context;
+      expect(ctx.internalAdapter.updatePassword).not.toHaveBeenCalled();
+      expect(prisma.passwordChangeRequest.deleteMany).toHaveBeenCalled();
+    });
+
+    it('a lost race on the single-use row applies nothing', async () => {
+      prisma.passwordChangeRequest.findUnique.mockResolvedValue({
+        id: 'pcr-1',
+        userId: 'user-1',
+        newPasswordHash: 'hashed:new',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      // The other click consumed the row first.
+      prisma.passwordChangeRequest.deleteMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.confirmPasswordChange({ token: 'raw-token' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      const ctx = await auth.$context;
+      expect(ctx.internalAdapter.updatePassword).not.toHaveBeenCalled();
     });
   });
 });

@@ -220,7 +220,17 @@ export class TargetRateLimiter implements OnModuleDestroy {
    * already at its cap. The key is normalized (trim/lowercase) so casing
    * cannot split a target across counters.
    */
-  consume(bucket: string, key: string, windows: TargetWindow[]): void {
+  consume(
+    bucket: string,
+    key: string,
+    windows: TargetWindow[],
+    /**
+     * Shown to the caller on a 429. The default names a booking because that
+     * is where this limiter started; every non-booking bucket must pass its
+     * own copy rather than tell a user about "this booking".
+     */
+    message = 'Too many requests for this booking. Please wait and try again.',
+  ): void {
     const now = Date.now();
     const mapKey = `${bucket}:${key.trim().toLowerCase()}`;
     const bucketWindowMs = Math.max(
@@ -244,10 +254,7 @@ export class TargetRateLimiter implements OnModuleDestroy {
           ? `${bucket}:${mapKey.split(':')[1]?.slice(0, 1)}***`
           : mapKey;
         this.logger.warn(`Target cap hit: ${logKey}`);
-        throw new HttpException(
-          'Too many requests for this booking. Please wait and try again.',
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
+        throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
       }
     }
     stamps.push(now);
