@@ -26,7 +26,10 @@ import { toast } from 'sonner';
 import { CollapsibleCard } from '@/components/common/collapsible-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspaceSkeleton } from './workspace-skeleton';
-import { useFaqGroups, useUpsertFaqTranslation } from '@/hooks/faq/use-faq-groups';
+import {
+    useFaqGroups,
+    useUpsertFaqTranslation,
+} from '@/hooks/faq/use-faq-groups';
 import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
 import { LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import {
@@ -37,6 +40,7 @@ import {
 } from '@/lib/translatable-schema';
 import type { FaqGroup } from '@/types/faq';
 import { FieldPair } from './field-pair';
+import { SectionAiTranslateButton } from './section-ai-translate-button';
 import { WorkspaceShell } from './workspace-shell';
 
 /** One extra per-item translatable row (rationales, picks, sections, …). */
@@ -209,6 +213,11 @@ export function ContentWorkspace({
         };
     }
 
+    /** The per-card "Translate section" fill target (form-fill, no persist). */
+    function fillField(name: string, text: string) {
+        setValue(name, text, { shouldDirty: true });
+    }
+
     function copyFromEnglish() {
         let copied = 0;
         const trySet = (key: string, src: string) => {
@@ -265,9 +274,23 @@ export function ContentWorkspace({
             }
         }
 
-        // 3) FAQ upserts for changed groups (payload requires BOTH fields).
-        const faqJobs: Array<{ label: string; run: () => Promise<unknown> }> = [];
-        const skippedHalf: string[] = [];
+        // 3) FAQ writes for changed groups. Question and answer clear
+        //    INDEPENDENTLY: an emptied field is sent as '' and the row is
+        //    kept, so the page falls back to English for that field alone
+        //    (translate the answer but not the question and both read
+        //    correctly). Emptying both is just two cleared fields - no delete,
+        //    nothing ambiguous. English is the source everything falls back
+        //    to, so a blank there is refused before it leaves the browser.
+        // `count` is the number of FIELDS the job writes. The toast used to
+        // count JOBS, so copying 28 page-section fields and saving reported
+        // "3 updates" - which reads exactly like a save that silently dropped
+        // most of the work.
+        const faqJobs: Array<{
+            label: string;
+            count: number;
+            run: () => Promise<unknown>;
+        }> = [];
+        const refusedEnClear: string[] = [];
         for (const row of faqRows) {
             const question = (v[faqKey(row.groupId, 'question')] ?? '').trim();
             const answer = (v[faqKey(row.groupId, 'answer')] ?? '').trim();
@@ -275,13 +298,17 @@ export function ContentWorkspace({
                 question !== row.existing.question ||
                 answer !== row.existing.answer;
             if (!changed) continue;
-            if (!question || !answer) {
-                if (question || answer)
-                    skippedHalf.push(row.base.question.slice(0, 40));
+            const label = `FAQ "${row.base.question.slice(0, 40)}"`;
+            if (locale === 'en' && (!question || !answer)) {
+                refusedEnClear.push(row.base.question.slice(0, 40));
                 continue;
             }
             faqJobs.push({
-                label: `FAQ "${row.base.question.slice(0, 40)}"`,
+                label,
+                count: [
+                    question !== row.existing.question,
+                    answer !== row.existing.answer,
+                ].filter(Boolean).length,
                 run: () =>
                     upsertFaq.mutateAsync({
                         groupId: row.groupId,
@@ -292,8 +319,11 @@ export function ContentWorkspace({
         }
 
         // 4) Extra sections: batch changed rows per section.
-        const sectionJobs: Array<{ label: string; run: () => Promise<unknown> }> =
-            [];
+        const sectionJobs: Array<{
+            label: string;
+            count: number;
+            run: () => Promise<unknown>;
+        }> = [];
         for (const sec of extraSections) {
             const changes = sec.rows
                 .map(row => {
@@ -310,6 +340,7 @@ export function ContentWorkspace({
             if (changes.length === 0) continue;
             sectionJobs.push({
                 label: sec.label,
+                count: changes.length,
                 run: () => sec.save(changes),
             });
         }
@@ -318,7 +349,7 @@ export function ContentWorkspace({
         const results = await Promise.allSettled(jobs.map(j => j.run()));
         results.forEach((r, i) => {
             if (r.status === 'rejected') failures.push(jobs[i].label);
-            else updates++;
+            else updates += jobs[i].count;
         });
 
         if (failures.length > 0) {
@@ -330,9 +361,9 @@ export function ContentWorkspace({
                 `${LOCALE_LABELS[locale]} translation saved (${updates} update${updates === 1 ? '' : 's'}).`,
             );
         }
-        if (skippedHalf.length > 0) {
+        if (refusedEnClear.length > 0) {
             toast.warning(
-                `${skippedHalf.length} FAQ${skippedHalf.length === 1 ? '' : 's'} skipped - both question and answer are required: ${skippedHalf.slice(0, 2).join(', ')}${skippedHalf.length > 2 ? '…' : ''}`,
+                `${refusedEnClear.length} FAQ${refusedEnClear.length === 1 ? '' : 's'} skipped - English is the source every locale falls back to and cannot be left blank. Delete the FAQ instead: ${refusedEnClear.slice(0, 2).join(', ')}${refusedEnClear.length > 2 ? '…' : ''}`,
             );
         }
     }
@@ -359,7 +390,19 @@ export function ContentWorkspace({
             onTranslateWithAI={onTranslateWithAI}
             isTranslating={isTranslating}>
             <div className='space-y-6'>
-                <CollapsibleCard title='Page copy' defaultOpen>
+                <CollapsibleCard
+                    title='Page copy'
+                    defaultOpen
+                    actions={
+                        <SectionAiTranslateButton
+                            locale={locale}
+                            fields={fields.map(f => ({
+                                name: f.name,
+                                source: toFormValue(source?.[f.name]),
+                            }))}
+                            onFill={fillField}
+                        />
+                    }>
                     <div>
                         {fields.map(f => {
                             const src = toFormValue(source?.[f.name]);
@@ -379,7 +422,19 @@ export function ContentWorkspace({
                 </CollapsibleCard>
 
                 {onSavePageContent ? (
-                <CollapsibleCard title='About & SEO (page content)' defaultOpen>
+                <CollapsibleCard
+                    title='About & SEO (page content)'
+                    defaultOpen
+                    actions={
+                        <SectionAiTranslateButton
+                            locale={locale}
+                            fields={PAGE_CONTENT_FIELDS.map(f => ({
+                                name: pcKey(f.name),
+                                source: toFormValue(pageSource?.[f.name]),
+                            }))}
+                            onFill={fillField}
+                        />
+                    }>
                     <div>
                         {PAGE_CONTENT_FIELDS.map(f => {
                             const src = toFormValue(pageSource?.[f.name]);
@@ -411,6 +466,20 @@ export function ContentWorkspace({
                                         {sec.rows.length === 1 ? '' : 's'}
                                     </span>
                                 </>
+                            }
+                            actions={
+                                <SectionAiTranslateButton
+                                    locale={locale}
+                                    fields={sec.rows.map(row => ({
+                                        name: xsKey(
+                                            sec.key,
+                                            row.itemId,
+                                            row.fieldKey,
+                                        ),
+                                        source: row.source,
+                                    }))}
+                                    onFill={fillField}
+                                />
                             }>
                             <div>
                                 {sec.rows.map(row => (
@@ -447,6 +516,22 @@ export function ContentWorkspace({
                                     {faqRows.length === 1 ? '' : 's'}
                                 </span>
                             </>
+                        }
+                        actions={
+                            <SectionAiTranslateButton
+                                locale={locale}
+                                fields={faqRows.flatMap(row => [
+                                    {
+                                        name: faqKey(row.groupId, 'question'),
+                                        source: row.base.question,
+                                    },
+                                    {
+                                        name: faqKey(row.groupId, 'answer'),
+                                        source: row.base.answer,
+                                    },
+                                ])}
+                                onFill={fillField}
+                            />
                         }>
                         <div>
                             {faqRows.map((row, i) => (

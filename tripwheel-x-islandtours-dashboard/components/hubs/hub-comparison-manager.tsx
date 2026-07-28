@@ -1,13 +1,21 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown01Icon, Delete02Icon, GridTableIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
+import {
+  ArrowDown01Icon,
+  ArrowDown02Icon,
+  ArrowUp02Icon,
+  Delete02Icon,
+  GridTableIcon,
+  PlusSignIcon,
+} from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Collapsible,
@@ -17,9 +25,14 @@ import {
 import { Field } from '@/components/ui/field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TourBadgeChip } from '@/components/common/tour-badge';
+import { CurationLoadError } from '@/components/common/curation-load-error';
+import {
+  countFilledLocales,
+  LocaleCompletenessChip,
+  TranslationConsoleNote,
+} from '@/components/common/locale-completeness';
 import { deriveTourBadge } from '@/lib/tours/derive-badge';
 import { tourPerfSummary } from '@/lib/tours/signals';
-import { RationaleTranslationTabs } from '@/components/rationale-translation-tabs';
 import {
   useHub,
   useHubComparisonForEdit,
@@ -35,7 +48,6 @@ interface DraftTour {
   tourId: string;
   /** Standout note per locale (English is the base). */
   standouts: Record<string, string>;
-  displayOrder: number;
 }
 
 interface DraftGroup {
@@ -43,7 +55,6 @@ interface DraftGroup {
   groupName: string;
   /** Group-name translations, round-tripped untouched so a save never wipes them. */
   nameTranslations: ComparisonGroupNameTranslationInput[];
-  displayOrder: number;
   tours: DraftTour[];
 }
 
@@ -59,7 +70,7 @@ interface HubComparisonManagerProps {
 
 export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
   const { data: hub } = useHub(hubId, 'en');
-  const { data, isLoading } = useHubComparisonForEdit(hubId);
+  const { data, isLoading, isError, error, refetch } = useHubComparisonForEdit(hubId);
   const { mutate: save, isPending } = useSetHubComparison();
   // Shared query key with HubTourSelect (one fetch) so each selected column can
   // show its aggregated performance strip below the picker.
@@ -89,7 +100,6 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
         key: nextKey('group'),
         groupName: g.groupName,
         nameTranslations: g.translations,
-        displayOrder: g.displayOrder,
         tours: g.tours.map((t) => {
           const standouts: Record<string, string> = {
             [DEFAULT_LOCALE]: t.standoutNote ?? '',
@@ -99,7 +109,6 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
             key: nextKey('tour'),
             tourId: t.tourId,
             standouts,
-            displayOrder: t.displayOrder,
           };
         }),
       }))
@@ -114,11 +123,38 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
     setGroups((prev) => prev.filter((g) => g.key !== key));
   }
 
+  /** Swap a group with its neighbour - list position drives displayOrder on save. */
+  function moveGroup(key: string, dir: -1 | 1) {
+    setGroups((prev) => {
+      const idx = prev.findIndex((g) => g.key === key);
+      const swapWith = idx + dir;
+      if (idx === -1 || swapWith < 0 || swapWith >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+      return next;
+    });
+  }
+
+  /** Swap a tour column with its neighbour within the group. */
+  function moveTour(groupKey: string, tourKey: string, dir: -1 | 1) {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.key !== groupKey) return g;
+        const idx = g.tours.findIndex((t) => t.key === tourKey);
+        const swapWith = idx + dir;
+        if (idx === -1 || swapWith < 0 || swapWith >= g.tours.length) return g;
+        const tours = [...g.tours];
+        [tours[idx], tours[swapWith]] = [tours[swapWith], tours[idx]];
+        return { ...g, tours };
+      })
+    );
+  }
+
   function addGroup() {
     const key = nextKey('group');
     setGroups((prev) => [
       ...prev,
-      { key, groupName: '', nameTranslations: [], displayOrder: prev.length, tours: [] },
+      { key, groupName: '', nameTranslations: [], tours: [] },
     ]);
     setOpenKeys((prev) => new Set(prev).add(key));
   }
@@ -131,7 +167,7 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
               ...g,
               tours: [
                 ...g.tours,
-                { key: nextKey('tour'), tourId: '', standouts: {}, displayOrder: g.tours.length },
+                { key: nextKey('tour'), tourId: '', standouts: {} },
               ],
             }
           : g
@@ -175,6 +211,12 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
   }
 
   function handleSave() {
+    // Replace-all backstop: never submit a payload built from unseeded state -
+    // it would wipe every existing group and column.
+    if (!seededFrom) {
+      toast.error('The comparison table has not loaded yet - reload before saving.');
+      return;
+    }
     if (groups.some((g) => !g.groupName.trim())) {
       toast.error('Every group needs a name.');
       return;
@@ -191,14 +233,18 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
       {
         id: hubId,
         payload: {
-          groups: groups.map((g) => ({
+          // Group-name translations and non-English standout notes are
+          // round-tripped from the read-back untouched - the editor is
+          // English-only, the Translation Console owns them. Dropping them
+          // here would DELETE them (replace-all).
+          groups: groups.map((g, groupIndex) => ({
             groupName: g.groupName.trim(),
-            displayOrder: g.displayOrder,
+            displayOrder: groupIndex,
             translations: g.nameTranslations,
-            tours: g.tours.map((t) => ({
+            tours: g.tours.map((t, tourIndex) => ({
               tourId: t.tourId,
               standoutNote: (t.standouts[DEFAULT_LOCALE] ?? '').trim() || undefined,
-              displayOrder: t.displayOrder,
+              displayOrder: tourIndex,
               translations: ALL_LOCALES.filter(
                 (l) => l !== DEFAULT_LOCALE && (t.standouts[l] ?? '').trim()
               ).map((l) => ({ locale: l, standoutNote: t.standouts[l].trim() })),
@@ -224,12 +270,22 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
     );
   }
 
+  if (isError) {
+    return (
+      <CurationLoadError
+        label="the comparison table"
+        error={error}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
         Comparison groups (e.g. &quot;Comfort trips&quot;) and the tour columns inside them. The
-        English standout note is the base; switch locale tabs to translate it (blank locales fall
-        back to English on the page). Saving replaces the full set.
+        English standout note is the base; blank locales fall back to English on the page. Saving
+        replaces the full set. <TranslationConsoleNote type="hub" id={hubId} />
       </div>
 
       <div className="flex items-center justify-end">
@@ -247,9 +303,11 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {groups.map((group) => {
+          {groups.map((group, groupIdx) => {
             const isOpen = openKeys.has(group.key);
             const title = group.groupName.trim() || 'Untitled group';
+            const groupNameLocales =
+              (group.groupName.trim() ? 1 : 0) + group.nameTranslations.length;
             return (
             <Collapsible
               key={group.key}
@@ -269,48 +327,60 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                     ({group.tours.length} tour{group.tours.length === 1 ? '' : 's'})
                   </span>
                 </CollapsibleTrigger>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => removeGroup(group.key)}
-                >
-                  <HugeiconsIcon icon={Delete02Icon} />
-                  Remove Group
-                </Button>
+                <LocaleCompletenessChip filled={groupNameLocales} />
+                <div className="flex shrink-0 items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={groupIdx === 0}
+                    onClick={() => moveGroup(group.key, -1)}
+                    aria-label="Move group up"
+                  >
+                    <HugeiconsIcon icon={ArrowUp02Icon} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={groupIdx === groups.length - 1}
+                    onClick={() => moveGroup(group.key, 1)}
+                    aria-label="Move group down"
+                  >
+                    <HugeiconsIcon icon={ArrowDown02Icon} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => removeGroup(group.key)}
+                  >
+                    <HugeiconsIcon icon={Delete02Icon} />
+                    Remove Group
+                  </Button>
+                </div>
               </div>
 
               <CollapsibleContent className="space-y-4 border-t px-3 py-4">
-                <div className="grid gap-4 sm:grid-cols-[1fr_8rem]">
-                  <Field>
-                    <Label>Group Name</Label>
-                    <Input
-                      value={group.groupName}
-                      onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
-                      placeholder="e.g. Comfort trips"
-                    />
-                  </Field>
-                  <Field>
-                    <Label>Display Order</Label>
-                    <Input
-                      type="number"
-                      value={group.displayOrder}
-                      onChange={(e) =>
-                        updateGroup(group.key, { displayOrder: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </Field>
-                </div>
+                <Field>
+                  <Label>Group Name (English)</Label>
+                  <Input
+                    value={group.groupName}
+                    onChange={(e) => updateGroup(group.key, { groupName: e.target.value })}
+                    placeholder="e.g. Comfort trips"
+                  />
+                </Field>
 
                 {/* Tour columns */}
                 <div className="space-y-3 border-l-2 border-muted pl-4">
-                  {group.tours.map((tour) => {
+                  {group.tours.map((tour, tourIdx) => {
                     const trip = adminTrips?.data.find((t) => t.id === tour.tourId);
+                    const noteLocales = countFilledLocales(tour.standouts);
                     return (
                       <Card key={tour.key} size="sm">
                         <CardContent className="pt-4 space-y-4">
-                          <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+                          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                             <Field>
                               <Label>Tour</Label>
                               <HubTourSelect
@@ -326,41 +396,59 @@ export function HubComparisonManager({ hubId }: HubComparisonManagerProps) {
                                 </div>
                               )}
                             </Field>
-                            <Field>
-                              <Label>Order</Label>
-                              <Input
-                                type="number"
-                                value={tour.displayOrder}
-                                onChange={(e) =>
-                                  updateTour(group.key, tour.key, {
-                                    displayOrder: Number(e.target.value) || 0,
-                                  })
-                                }
-                              />
-                            </Field>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 mb-1"
-                              onClick={() => removeTour(group.key, tour.key)}
-                            >
-                              <HugeiconsIcon icon={Delete02Icon} />
-                            </Button>
+                            <div className="mb-1 flex items-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={tourIdx === 0}
+                                onClick={() => moveTour(group.key, tour.key, -1)}
+                                aria-label="Move column up"
+                              >
+                                <HugeiconsIcon icon={ArrowUp02Icon} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={tourIdx === group.tours.length - 1}
+                                onClick={() => moveTour(group.key, tour.key, 1)}
+                                aria-label="Move column down"
+                              >
+                                <HugeiconsIcon icon={ArrowDown02Icon} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => removeTour(group.key, tour.key)}
+                                aria-label="Remove column"
+                              >
+                                <HugeiconsIcon icon={Delete02Icon} />
+                              </Button>
+                            </div>
                           </div>
 
-                          <RationaleTranslationTabs
-                            label="Standout Note"
-                            values={tour.standouts}
-                            onChange={(locale, value) =>
-                              updateStandout(group.key, tour.key, locale, value)
-                            }
-                            placeholder={(loc) =>
-                              loc === DEFAULT_LOCALE
-                                ? 'What stands out about this tour'
-                                : 'Translated standout note (optional)'
-                            }
-                          />
+                          <Field>
+                            <div className="flex items-center justify-between">
+                              <Label>Standout Note (English)</Label>
+                              <LocaleCompletenessChip filled={noteLocales} />
+                            </div>
+                            <Textarea
+                              value={tour.standouts[DEFAULT_LOCALE] ?? ''}
+                              onChange={(e) =>
+                                updateStandout(
+                                  group.key,
+                                  tour.key,
+                                  DEFAULT_LOCALE,
+                                  e.target.value
+                                )
+                              }
+                              rows={2}
+                              placeholder="What stands out about this tour"
+                            />
+                          </Field>
                         </CardContent>
                       </Card>
                     );

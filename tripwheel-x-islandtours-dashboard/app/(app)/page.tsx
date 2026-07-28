@@ -6,7 +6,6 @@ import {
     RANGE_PARAM,
     resolveRange,
 } from '@/lib/analytics/range-presets';
-import { isCustomerView } from '@/lib/rbac-utils';
 import { getSessionView } from '@/lib/server/dashboard-session';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -29,15 +28,6 @@ export default async function DashboardPage({
     if (!view?.role) {
         redirect('/portal');
     }
-    // Customer VIEW has no Overview - its landing page is My Bookings. The
-    // server root owns view routing (login just pushes '/'), so deep links
-    // and refreshes behave identically. Decided by the login door the session
-    // entered through (multi-hat: a STAFF-role user via /account gets the
-    // traveler view), falling back to role for surface-less sessions.
-    if (isCustomerView(view.role, view.surface)) {
-        redirect('/bookings');
-    }
-
     // Real stats, scoped by the forwarded session cookie (admin: platform-wide,
     // operator: own tours). Scoping is decided server-side from the session, so
     // the role is deliberately not passed in. Not awaited - the stats area

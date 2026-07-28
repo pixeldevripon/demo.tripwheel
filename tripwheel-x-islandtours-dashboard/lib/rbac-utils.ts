@@ -65,32 +65,7 @@ export function resolvePermissions(
   return roleMap[role ?? ''] ?? [];
 }
 
-/** Roles that get the customer surface instead of the operator/admin one. */
-export function isCustomerRole(role?: string): boolean {
-  return role === 'USER';
-}
-
-/**
- * Whether this session renders the CUSTOMER view - decided by which login
- * door minted the session (`session.surface`, stamped server-side and never
- * client-writable), falling back to role for surface-less sessions (created
- * before surfaces existed, or by verify-email flows).
- *
- * This is what lets one account wear many hats: a STAFF-role user who signed
- * in through /account gets the traveler view of their own bookings, while the
- * same account through /staff gets the staff dashboard. Purely presentational
- * - every API route authorizes independently server-side.
- */
-export function isCustomerView(
-  role?: string,
-  surface?: string | null
-): boolean {
-  if (surface === 'account') return true;
-  if (surface) return false; // portal/staff/admin door -> dashboard view
-  return isCustomerRole(role);
-}
-
-export type SessionDoor = 'admin' | 'staff' | 'account' | 'portal';
+export type SessionDoor = 'admin' | 'staff' | 'portal';
 
 /**
  * The login door a session belongs to: the surface it ENTERED through when
@@ -102,40 +77,23 @@ export function doorForSession(
   role?: string,
   surface?: string | null
 ): SessionDoor {
-  if (
-    surface === 'admin' ||
-    surface === 'staff' ||
-    surface === 'account' ||
-    surface === 'portal'
-  ) {
+  if (surface === 'admin' || surface === 'staff' || surface === 'portal') {
     return surface;
   }
   if (role === 'ADMIN') return 'admin';
   if (role === 'STAFF') return 'staff';
-  if (role === 'USER') return 'account';
   return 'portal';
 }
 
 /**
  * The navigation a session may actually see - the ONE place that decision
- * lives.
- *
- * A customer VIEW gets the SEPARATE customer tree, never the operator tree
- * filtered by permission. `Role.USER` holds `VIEW_TRIPS` (legacy) plus the
- * self-scoped `VIEW_BOOKINGS`/`VIEW_PAYMENTS` grants, so permission-filtering
- * the operator tree leaves Tours, Translations and Cancellations standing -
- * which is exactly how they leaked into the command palette while the sidebar
- * looked correct. Both surfaces resolve through here so they cannot disagree
- * again.
+ * lives, so the sidebar and the command palette cannot disagree.
  */
 export function navGroupsForRole(
-  nav: { dashboard: NavGroup[]; customer: NavGroup[] },
-  role: string | undefined,
-  userPermissions: string[],
-  surface?: string | null
+  nav: { dashboard: NavGroup[] },
+  userPermissions: string[]
 ): NavGroup[] {
-  const groups = isCustomerView(role, surface) ? nav.customer : nav.dashboard;
-  return filterNavGroups(groups, userPermissions);
+  return filterNavGroups(nav.dashboard, userPermissions);
 }
 
 export function filterNavigationByPermissions(

@@ -56,4 +56,20 @@ export const faqGroupsApi = {
       { method: 'PUT', body: JSON.stringify(payload) },
     );
   },
+
+  /**
+   * Clear ONE locale (question + answer are NOT NULL, so the cleared state is
+   * a deleted row). The public page then falls back to English.
+   */
+  deleteTranslation(
+    basePath: string,
+    id: string,
+    groupId: string,
+    locale: Locale,
+  ): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(
+      `${basePath}/${id}/faqs/groups/${groupId}/translations/${locale}`,
+      { method: 'DELETE' },
+    );
+  },
 };

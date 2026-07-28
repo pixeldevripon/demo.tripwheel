@@ -374,20 +374,14 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_CATEGORIES',
   ],
 
-  [Role.USER]: [
-    'VIEW_TRIPS',
-    'VIEW_BLOGS',
-    'VIEW_PROFILE',
-    'EDIT_PROFILE',
-    'VIEW_REVIEWS',
-    'VIEW_CONTENT',
-    'VIEW_ORDERS',
-    // Customer dashboard reads (mirrors backend roles.config.ts): the backend
-    // scopes both lists to the caller's OWN rows for USER - these light up the
-    // customerNav items, never the operator/admin nav (separate nav array).
-    'VIEW_BOOKINGS',
-    'VIEW_PAYMENTS',
-  ],
+  // Travellers cannot sign in to this app at all since the /account door was
+  // removed on 2026-07-28 - their account area is on the public site and is
+  // authorized by the traveler session, not by these grants. Kept as an
+  // explicit empty list rather than deleted: the Record is exhaustive over
+  // Role on purpose, so a new role cannot be added without a decision here.
+  // (The BACKEND still holds real USER grants for the public traveller reads;
+  // this map only describes what THIS dashboard renders.)
+  [Role.USER]: [],
 };
 
 export const hasPermission = (userRole: string, permission: string): boolean => {

@@ -53,6 +53,18 @@ export function useDeleteFaqGroup(basePath: string, id: string) {
   });
 }
 
+/** Clear ONE locale (row delete) - the public page falls back to English. */
+export function useDeleteFaqTranslation(basePath: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, locale }: { groupId: string; locale: Locale }) =>
+      faqGroupsApi.deleteTranslation(basePath, id, groupId, locale),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: faqGroupKeys.all(basePath, id) });
+    },
+  });
+}
+
 export function useUpsertFaqTranslation(basePath: string, id: string) {
   const queryClient = useQueryClient();
   return useMutation({

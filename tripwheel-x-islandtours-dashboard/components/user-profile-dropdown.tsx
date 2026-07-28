@@ -113,7 +113,7 @@ export default function ProfileDropdown({
                 <DropdownMenuGroup>
                     <DropdownMenuItem asChild>
                         <Link href='/profile'>
-                            View Profile
+                            Account Settings
                             <HugeiconsIcon
                                 icon={ArrowRight01Icon}
                                 className='ml-auto text-muted-foreground'
@@ -152,7 +152,10 @@ export default function ProfileDropdown({
                     variant='destructive'
                     onSelect={() => void handleSignOut()}>
                     Sign Out
-                    <HugeiconsIcon icon={ArrowRight01Icon} className='ml-auto' />
+                    <HugeiconsIcon
+                        icon={ArrowRight01Icon}
+                        className='ml-auto'
+                    />
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
@@ -175,7 +178,7 @@ function ThemeSegmentedControl() {
 
     return (
         <div className='flex items-center gap-0.5 rounded-full bg-muted p-0.5'>
-            {THEME_OPTIONS.map((option) => {
+            {THEME_OPTIONS.map(option => {
                 const active = mounted && theme === option.value;
                 return (
                     <button
@@ -197,3 +200,4 @@ function ThemeSegmentedControl() {
         </div>
     );
 }
+

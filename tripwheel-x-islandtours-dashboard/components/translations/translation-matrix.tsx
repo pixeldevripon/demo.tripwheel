@@ -49,6 +49,9 @@ import {
     type TranslatableEntityType,
 } from '@/lib/translatable-schema';
 
+/** Sentinel slug for the collections picker - no destination filter at all. */
+const ALL_DESTINATIONS = 'all';
+
 const PAGE_LIMIT = 20;
 
 import { Button } from '@/components/ui/button';
@@ -150,10 +153,25 @@ function CategoryRow({ id, name }: { id: string; name: string }) {
     );
 }
 
-function CollectionRow({ id, name }: { id: string; name: string }) {
+function CollectionRow({
+    id,
+    name,
+    subtitle,
+}: {
+    id: string;
+    name: string;
+    subtitle?: string | null;
+}) {
     const { data, isLoading } = useCollectionTranslations(id);
     return (
-        <MatrixRow type='collection' id={id} name={name} records={data as never} isLoading={isLoading} />
+        <MatrixRow
+            type='collection'
+            id={id}
+            name={name}
+            subtitle={subtitle}
+            records={data as never}
+            isLoading={isLoading}
+        />
     );
 }
 
@@ -232,19 +250,34 @@ function CategoriesBody({ page, onTotal }: { page: number; onTotal: (t: number) 
     );
 }
 
-function CollectionsBody({ destinationSlug }: { destinationSlug: string | undefined }) {
+/**
+ * Collections are destination-scoped, but the console defaults to ALL of them:
+ * an editor working through a language wants the whole backlog, not one island
+ * at a time. The island is shown per row in that mode and the picker narrows to
+ * a single destination.
+ */
+function CollectionsBody({ destinationSlug }: { destinationSlug: string }) {
     const q = useCollectionsByDestination(destinationSlug);
+    const showIsland = destinationSlug === ALL_DESTINATIONS;
     return (
         <>
             {(q.data ?? []).map(c => (
-                <CollectionRow key={c.id} id={c.id} name={c.name} />
+                <CollectionRow
+                    key={c.id}
+                    id={c.id}
+                    name={c.name}
+                    subtitle={showIsland ? (c.destination?.name ?? null) : null}
+                />
             ))}
-            {destinationSlug && q.isLoading && <SkeletonRows />}
-            {!destinationSlug && (
-                <EmptyRow label='Pick a destination to list its collections.' />
-            )}
-            {destinationSlug && !q.isLoading && (q.data ?? []).length === 0 && (
-                <EmptyRow label='No collections for this destination.' />
+            {q.isLoading && <SkeletonRows />}
+            {!q.isLoading && (q.data ?? []).length === 0 && (
+                <EmptyRow
+                    label={
+                        showIsland
+                            ? 'No collections found.'
+                            : 'No collections for this destination.'
+                    }
+                />
             )}
         </>
     );
@@ -289,7 +322,7 @@ export function TranslationMatrix() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
-    const [destinationSlug, setDestinationSlug] = useState<string | undefined>();
+    const [destinationSlug, setDestinationSlug] = useState<string>(ALL_DESTINATIONS);
 
     // Only the entity types this session may WRITE. An operator holds none of the
     // Curate permissions, so Destinations / Hubs / Categories / Collections /
@@ -356,12 +389,15 @@ export function TranslationMatrix() {
                     )}
                     {type === 'collection' && (
                         <Select
-                            value={destinationSlug ?? ''}
-                            onValueChange={v => setDestinationSlug(v)}>
+                            value={destinationSlug}
+                            onValueChange={setDestinationSlug}>
                             <SelectTrigger size='sm' className='w-52'>
-                                <SelectValue placeholder='Select a destination…' />
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value={ALL_DESTINATIONS}>
+                                    All destinations
+                                </SelectItem>
                                 {(destinations ?? []).map(d => (
                                     <SelectItem key={d.id} value={d.slug}>
                                         {d.name}

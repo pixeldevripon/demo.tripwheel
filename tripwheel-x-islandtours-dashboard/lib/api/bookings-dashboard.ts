@@ -7,7 +7,6 @@ import type {
     BookingListItem,
     BookingsQueryParams,
     CancelBookingPayload,
-    CustomerBookingSummary,
     PaginatedBookings,
     PaginatedPayments,
     PaginatedSettlements,
@@ -98,27 +97,6 @@ export const bookingsDashboardApi = {
         );
     },
 
-    /** Customer stat row - always the caller's OWN bookings (self-scoped). */
-    getMyBookingSummary(): Promise<CustomerBookingSummary> {
-        return apiFetch<CustomerBookingSummary>('/bookings/me/summary');
-    },
-
-    /**
-     * Customer cancellation REQUEST (never cancels on click - the admin
-     * processes it). Ownership enforced server-side via booking.userId.
-     */
-    requestCancellation(
-        id: string,
-        reason?: string,
-    ): Promise<{ requested: boolean }> {
-        return apiFetch<{ requested: boolean }>(
-            `/bookings/${id}/cancellation-request`,
-            {
-                method: 'POST',
-                body: JSON.stringify(reason?.trim() ? { reason } : {}),
-            },
-        );
-    },
 };
 
 export const paymentsDashboardApi = {

@@ -1,7 +1,6 @@
 'use client';
 
 import { AppSidebar } from '@/components/shell/app-sidebar';
-import { CustomerRouteGuard } from '@/components/shell/customer-route-guard';
 import { OverlayCenterSync } from '@/components/shell/overlay-center-sync';
 import { SiteHeader } from '@/components/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
@@ -73,9 +72,6 @@ export default function DashboardShell({
             role={userRole}
             surface={userSurface}
             permissions={userPermissions}>
-            {/* The customer VIEW may only open bookings/payments/profile -
-                typed URLs to operator/admin pages redirect back to /bookings. */}
-            <CustomerRouteGuard role={userRole} surface={userSurface} />
             {/* [--sidebar-width]! must stay important: SidebarProvider sets its own
                 16rem default via inline style, which a plain class cannot beat. */}
             <SidebarProvider className='bg-shell-gutter shadow-none font-sans [--sidebar-width:--spacing(72)]! [--header-height:--spacing(17.5)]'>

@@ -143,13 +143,6 @@ export type BookingPaymentStatus =
     | 'UNPAID'
     | 'REFUNDED';
 
-/** GET /bookings/me/summary - the customer dashboard stat row. */
-export interface CustomerBookingSummary {
-    bookingsCount: number;
-    upcomingCount: number;
-    totalSpend: Array<{ currency: string; amount: string }>;
-}
-
 export interface PaginatedBookings {
     total: number;
     page: number;

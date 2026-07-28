@@ -15,12 +15,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AiTranslateFieldButton } from '@/components/common/ai-translate-field-button';
+import { CurationLoadError } from '@/components/common/curation-load-error';
 import { ImageSelectorField } from '@/components/common/image-selector-field';
+import { LocaleCompletenessChip, TranslationConsoleNote } from '@/components/common/locale-completeness';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useHubContentSections, useReplaceHubContentSections } from '@/hooks/hubs/use-hubs';
-import { ALL_LOCALES, DEFAULT_LOCALE, LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
+import { ALL_LOCALES, DEFAULT_LOCALE, type Locale } from '@/lib/constants/locales';
 import { HUB_SECTION_TYPE_VALUES, type HubSectionType } from '@/types/enums';
 import type { HubContentSection } from '@/types/hub';
 
@@ -148,7 +148,7 @@ interface HubContentSectionsManagerProps {
 }
 
 export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerProps) {
-  const { data, isLoading } = useHubContentSections(hubId);
+  const { data, isLoading, isError, error, refetch } = useHubContentSections(hubId);
   const { mutate: replace, isPending } = useReplaceHubContentSections();
 
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
@@ -196,17 +196,6 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
     setBlocks((prev) => prev.map((b) => (b.key === key ? { ...b, image } : b)));
   }
 
-  function clearLocale(key: string, locale: Locale) {
-    setBlocks((prev) =>
-      prev.map((b) => {
-        if (b.key !== key) return b;
-        const next = { ...b.translations };
-        delete next[locale];
-        return { ...b, translations: next };
-      })
-    );
-  }
-
   function addBlock(sectionType: HubSectionType) {
     const block = emptyBlock(sectionType);
     setBlocks((prev) => [...prev, block]);
@@ -236,6 +225,12 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
   }
 
   function handleSave() {
+    // Replace-all backstop: never submit a payload built from unseeded state -
+    // it would wipe every existing block in every locale.
+    if (!seededFrom) {
+      toast.error('Content sections have not loaded yet - reload before saving.');
+      return;
+    }
     const sections: HubContentSection[] = [];
     const orderByType: Partial<Record<HubSectionType, number>> = {};
 
@@ -251,24 +246,12 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
         );
         return;
       }
-      // A non-English locale must be complete or empty (no half-filled headings).
-      if (meta.hasHeading) {
-        for (const locale of ALL_LOCALES) {
-          if (locale === DEFAULT_LOCALE) continue;
-          const t = block.translations[locale];
-          if (!t) continue;
-          if (!!t.heading.trim() !== !!t.body.trim()) {
-            toast.error(
-              `${LOCALE_LABELS[locale]} translation of a ${meta.label} block is incomplete - fill both heading and body, or clear it.`
-            );
-            return;
-          }
-        }
-      }
-
       const displayOrder = orderByType[block.sectionType] ?? 0;
       orderByType[block.sectionType] = displayOrder + 1;
 
+      // Non-English rows are round-tripped from the read-back untouched - the
+      // editor is English-only, the Translation Console owns them. Dropping
+      // them here would DELETE them (replace-all).
       for (const locale of ALL_LOCALES) {
         const t = block.translations[locale];
         const body = t?.body.trim();
@@ -299,129 +282,53 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  );
  }
 
- /** The per-locale tabbed editor + optional image - shared by regular and singleton blocks. */
- function renderBlockFields(
- block: ContentBlock,
- meta: (typeof SECTION_TYPE_META)[HubSectionType]
- ) {
- return (
- <>
-        {/* Per-locale translations - same tabbed UI as the Translations / Page Content tabs. */}
-        <Tabs defaultValue={DEFAULT_LOCALE}>
-          <div className="pb-2 mb-4">
-            <TabsList>
-              {ALL_LOCALES.map((loc) => (
-                <TabsTrigger key={loc} value={loc} className="px-2.5 sm:px-4">
-                  <span className="sm:hidden">{loc}</span>
-                  <span className="hidden sm:inline">{LOCALE_LABELS[loc]}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+  /** The English block editor + optional image - shared by regular and singleton
+   *  blocks. Non-English rows are held in state untouched and round-tripped on
+   *  save; the Translation Console owns them. */
+  function renderBlockFields(
+    block: ContentBlock,
+    meta: (typeof SECTION_TYPE_META)[HubSectionType]
+  ) {
+    const en = block.translations[DEFAULT_LOCALE] ?? { heading: '', body: '' };
+    return (
+      <>
+        {meta.hasHeading && (
+          <Field>
+            <Label>Heading (English)</Label>
+            <Input
+              value={en.heading}
+              onChange={(e) =>
+                updateLocaleField(block.key, DEFAULT_LOCALE, { heading: e.target.value })
+              }
+              placeholder="Heading"
+            />
+          </Field>
+        )}
 
- {ALL_LOCALES.map((loc) => {
- const fields = block.translations[loc] ?? { heading:'', body: '' };
-            const isBase = loc === DEFAULT_LOCALE;
-            return (
-              <TabsContent key={loc} value={loc} className="space-y-4">
-                {isBase ? (
-                  <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                    English is the base locale and is required to publish.
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
-                    Translation for {LOCALE_LABELS[loc]}.{' '}
-                    {meta.hasHeading
-                      ? 'Fill both fields, or leave both empty to skip this locale.'
-                      : 'Leave empty to skip this locale.'}
- </div>
- )}
+        <Field>
+          <Label>{meta.hasHeading ? 'Body (English)' : 'Content (English)'}</Label>
+          <Textarea
+            value={en.body}
+            onChange={(e) =>
+              updateLocaleField(block.key, DEFAULT_LOCALE, { body: e.target.value })
+            }
+            rows={3}
+            placeholder="Content"
+          />
+        </Field>
 
-                {/* The AI icons fill a field from the English base block -
-                    form-fill only, nothing persists until Save. */}
-                {meta.hasHeading && (
-                  <Field>
-                    <Label>Heading</Label>
-                    <div className="relative">
-                      <Input
-                        value={fields.heading}
-                        onChange={(e) =>
-                          updateLocaleField(block.key, loc, { heading: e.target.value })
-                        }
-                        className={isBase ? undefined : 'pr-8'}
-                        placeholder={`Heading in ${LOCALE_LABELS[loc]}`}
-                      />
-                      {!isBase && (
-                        <AiTranslateFieldButton
-                          sourceText={block.translations[DEFAULT_LOCALE]?.heading ?? ''}
-                          locale={loc}
-                          onTranslated={(text) =>
-                            updateLocaleField(block.key, loc, { heading: text })
-                          }
-                          label="Heading"
-                        />
-                      )}
-                    </div>
-                  </Field>
-                )}
-
-                <Field>
-                  <Label>
-                    {meta.hasHeading ? 'Body' : 'Content'}
-                  </Label>
-                  <div className="relative">
-                    <Textarea
-                      value={fields.body}
-                      onChange={(e) => updateLocaleField(block.key, loc, { body: e.target.value })}
-                      rows={3}
-                      className={isBase ? undefined : 'pr-8'}
-                      placeholder={`Content in ${LOCALE_LABELS[loc]}`}
-                    />
-                    {!isBase && (
-                      <AiTranslateFieldButton
-                        sourceText={block.translations[DEFAULT_LOCALE]?.body ?? ''}
-                        locale={loc}
-                        onTranslated={(text) =>
-                          updateLocaleField(block.key, loc, { body: text })
-                        }
-                        label={meta.hasHeading ? 'Body' : 'Content'}
-                        multiline
-                      />
-                    )}
-                  </div>
-                </Field>
-
- {!isBase && (fields.heading || fields.body) && (
- <Button
- type="button"
- variant="ghost"
- size="sm"
- className="text-destructive hover:text-destructive hover:bg-destructive/10"
- onClick={() => clearLocale(block.key, loc)}
- >
- <HugeiconsIcon icon={Delete02Icon} />
- Clear {LOCALE_LABELS[loc]} translation
- </Button>
- )}
- </TabsContent>
- );
- })}
- </Tabs>
-
- {meta.hasImage && (
- <Field>
- <Label>
- Image (optional, shared across locales)
- </Label>
- <ImageSelectorField
- value={block.image || null}
- onChange={(url) => updateImage(block.key, url ?? null)}
- />
- </Field>
- )}
- </>
- );
- }
+        {meta.hasImage && (
+          <Field>
+            <Label>Image (optional, shared across locales)</Label>
+            <ImageSelectorField
+              value={block.image || null}
+              onChange={(url) => updateImage(block.key, url ?? null)}
+            />
+          </Field>
+        )}
+      </>
+    );
+  }
 
  if (isLoading) {
  return (
@@ -433,14 +340,23 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
  );
  }
 
+ if (isError) {
+ return (
+ <CurationLoadError
+ label="the content sections"
+ error={error}
+ onRetry={() => void refetch()}
+ />
+ );
+ }
+
  return (
  <div className="space-y-6">
- <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
- Editorial blocks for the hub page, grouped by type. <strong>Discover</strong> and{' '}
- <strong>Local Tip</strong> (English) are required before the hub can be published. Each block
- carries its own translations - switch locale inside the block. Saving replaces the full set
- across all locales.
- </div>
+      <div className="text-xs text-muted-foreground bg-muted px-3 py-2">
+        Editorial blocks for the hub page, grouped by type. <strong>Discover</strong> and{' '}
+        <strong>Local Tip</strong> (English) are required before the hub can be published. Blocks
+        are ordered as listed. <TranslationConsoleNote type="hub" id={hubId} />
+      </div>
 
  {MANAGED_TYPES.map((type) => {
  const meta = SECTION_TYPE_META[type];
@@ -568,15 +484,11 @@ export function HubContentSectionsManager({ hubId }: HubContentSectionsManagerPr
   );
 }
 
-/** Compact "3 / 7 locales" translation-completeness badge for a collapsed block. */
+/** Translation completeness of one block (read-only - the Console owns translations). */
 function LocaleStatus({ block }: { block: ContentBlock }) {
   const filled = ALL_LOCALES.filter((loc) => {
     const t = block.translations[loc];
     return !!t?.heading.trim() && !!t?.body.trim();
   }).length;
-  return (
-    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-      {filled}/{ALL_LOCALES.length} locales
-    </span>
-  );
+  return <LocaleCompletenessChip filled={filled} />;
 }

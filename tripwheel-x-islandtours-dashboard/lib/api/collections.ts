@@ -161,4 +161,16 @@ export const collectionsApi = {
       { method: 'PUT', body: JSON.stringify(payload) }
     );
   },
+
+  /** Clear ONE locale's rationale (NOT NULL column - the row is removed). */
+  deleteTourRationale(
+    id: string,
+    tourId: string,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(
+      `/collections/${id}/tours/${tourId}/rationale/${locale}`,
+      { method: 'DELETE' }
+    );
+  },
 };

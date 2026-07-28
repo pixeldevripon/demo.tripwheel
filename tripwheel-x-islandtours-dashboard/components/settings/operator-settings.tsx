@@ -35,11 +35,11 @@ export function OperatorSettings() {
           label: 'Your Business',
           content: <OperatorCompanyForm operatorId={operatorId} />,
         },
-        {
+    /*     {
           value: 'payments',
           label: 'Payments',
           content: <OperatorPaymentsForm operatorId={operatorId} />,
-        },
+        }, */
       ]}
     />
   );

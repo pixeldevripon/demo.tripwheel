@@ -21,9 +21,9 @@ async function safeJson(res: Response) {
  * Auth.
  *
  * For server components that only gate or redirect on view. `surface` is the
- * login door that minted the session ('account'|'portal'|'staff'|'admin',
- * stamped server-side at sign-in; null for legacy/verify-email sessions -
- * consumers fall back to role then). Never cached across requests: a
+ * login door that minted the session ('portal'|'staff'|'admin', stamped
+ * server-side at sign-in; null for legacy/verify-email sessions - consumers
+ * fall back to role then). Never cached across requests: a
  * transient failure returns null, and remembering that would bounce a
  * logged-in user until the entry expired. React `cache()` still dedupes
  * within one render pass, which is safe.

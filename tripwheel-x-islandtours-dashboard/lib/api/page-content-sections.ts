@@ -64,4 +64,17 @@ export const pageContentSectionsApi = {
       { method: 'PUT', body: JSON.stringify(payload) },
     );
   },
+
+  /** Clear ONE locale (heading/body are NOT NULL - the row is removed). */
+  deleteTranslation(
+    basePath: string,
+    id: string,
+    groupId: string,
+    locale: Locale,
+  ): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(
+      `${basePath}/${id}/content-sections/${groupId}/translations/${locale}`,
+      { method: 'DELETE' },
+    );
+  },
 };

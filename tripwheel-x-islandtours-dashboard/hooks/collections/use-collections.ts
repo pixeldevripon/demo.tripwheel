@@ -259,6 +259,18 @@ export function useReplaceCollectionTours() {
 }
 
 // Per-tour, per-locale rationale. Invalidates the editor read-back so translations refresh.
+/** Clear ONE locale's rationale (row delete) - falls back to English. */
+export function useDeleteCollectionTourRationale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tourId, locale }: { id: string; tourId: string; locale: Locale }) =>
+      collectionsApi.deleteTourRationale(id, tourId, locale),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: collectionKeys.toursForEdit(vars.id) });
+    },
+  });
+}
+
 export function useUpsertCollectionTourRationale() {
   const qc = useQueryClient();
   return useMutation({

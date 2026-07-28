@@ -321,6 +321,28 @@ export interface ComparisonGroupForEdit {
   tours: ComparisonTourForEdit[];
 }
 
+// ── Curation translation upserts (Translation Console per-item saves) ──────────
+// One locale of one item. `en` edits the base source (and re-queues AI
+// translation); other locales upsert the translation row as a HUMAN write.
+
+export interface UpsertOurPickTranslationPayload {
+  description: string;
+}
+
+export interface UpsertComparisonGroupTranslationPayload {
+  groupName: string;
+}
+
+export interface UpsertComparisonTourTranslationPayload {
+  standoutNote: string;
+}
+
+export interface UpsertHubSectionTranslationPayload {
+  /** Omit for headingless block types - the body is mirrored into the heading. */
+  heading?: string;
+  body: string;
+}
+
 // ── Public render payload (GET /hubs/render/:slug) ─────────────────────────────
 // Published-only aggregate for the public hub page (master 5.5). Editorial fields
 // fall back to English on the backend.
