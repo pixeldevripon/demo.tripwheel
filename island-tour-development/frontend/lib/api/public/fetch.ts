@@ -123,9 +123,17 @@ export async function publicPost<T>(
  * `name` for logs; callers are not expected to catch it (see below).
  */
 export class BackendUnavailableError extends Error {
-  constructor(path: string, detail: string) {
+  /**
+   * The HTTP status when there WAS a response, else undefined (network error /
+   * bad JSON). Callers that add their own retry use this to avoid re-retrying a
+   * class `publicFetch` has already exhausted internally - see `getTypByRef`.
+   */
+  readonly status?: number;
+
+  constructor(path: string, detail: string, status?: number) {
     super(`Public API unavailable for ${path}: ${detail}`);
     this.name = 'BackendUnavailableError';
+    this.status = status;
   }
 }
 
@@ -161,7 +169,9 @@ export async function publicGetStrict<T>(
     );
   }
   if (res.status === 404) return null;
-  if (!res.ok) throw new BackendUnavailableError(path, `HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new BackendUnavailableError(path, `HTTP ${res.status}`, res.status);
+  }
   try {
     return (await res.json()) as T;
   } catch {

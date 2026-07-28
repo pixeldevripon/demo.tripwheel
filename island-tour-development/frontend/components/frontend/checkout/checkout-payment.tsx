@@ -1,6 +1,7 @@
 'use client';
 
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
+import { leaveTo } from '@/lib/checkout/leave-to';
 import { localizeHref, type Currency, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -19,8 +20,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
     DarkButton,
     Field,
@@ -76,7 +76,9 @@ interface CheckoutPaymentProps {
  * no fields to collect by design. Methods not in `eligibleMethods` (account /
  * currency ineligible - e.g. iDEAL is EUR-only) render disabled with a hint.
  */
-export function CheckoutPayment(props: CheckoutPaymentProps) {
+export const CheckoutPayment = memo(function CheckoutPayment(
+    props: CheckoutPaymentProps
+) {
     const stripePromise = useMemo(
         () => loadStripe(props.publishableKey),
         [props.publishableKey]
@@ -90,7 +92,7 @@ export function CheckoutPayment(props: CheckoutPaymentProps) {
             <PaymentInner {...props} />
         </Elements>
     );
-}
+});
 
 function PaymentInner({
     dict,
@@ -105,7 +107,6 @@ function PaymentInner({
 }: CheckoutPaymentProps) {
     const stripe = useStripe();
     const elements = useElements();
-    const router = useRouter();
 
     // Card is always offered when eligible; if the intent didn't report methods
     // (older/edge response) fall back to card-only.
@@ -182,7 +183,10 @@ function PaymentInner({
             }
             const status = result.paymentIntent?.status;
             if (status === 'succeeded' || status === 'processing') {
-                router.push(processingHref);
+                // Document navigation - the processing route is never
+                // prerendered, so the client router would fetch HTML, fail to
+                // parse it and hard-navigate anyway (lib/checkout/leave-to.ts).
+                leaveTo(processingHref);
                 return;
             }
             setProcessing(false);

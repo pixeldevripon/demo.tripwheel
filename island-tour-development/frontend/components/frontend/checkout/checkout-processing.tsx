@@ -1,11 +1,10 @@
 'use client';
 
 import { getThankYouStatus, settleBooking } from '@/lib/api/bookings';
+import { leaveToReplacing } from '@/lib/checkout/leave-to';
 import { markJustBooked } from '@/lib/traveler-booking';
-import { crossFade } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 /**
@@ -32,9 +31,11 @@ export interface ProcessingDict {
  * synchronously (the backend re-verifies the PaymentIntent with Stripe), so the
  * redirect fires in ~1s instead of waiting for the async webhook. Polling
  * `GET /bookings/typ/:publicRef` is the backstop (redirect-return methods, or a
- * settle hiccup). Either way we `router.replace` to the TYP so Back doesn't
- * return to checkout. The "View my booking" link only appears if BOTH stall for
- * ~20s - it is never shown during normal loading.
+ * settle hiccup). Either way we REPLACE the history entry on the way to the TYP
+ * so Back doesn't return to checkout - via a document navigation, because the
+ * TYP can never be prerendered (see `lib/checkout/leave-to.ts`). The "View my
+ * booking" link only appears if BOTH stall for ~20s - it is never shown during
+ * normal loading.
  *
  * `typHref` is the locale-less TYP path (`/{destination}/thank-you/{publicRef}`),
  * served via the proxy rewrite.
@@ -55,14 +56,7 @@ export function CheckoutProcessing({
     checkoutHref: string;
     dict: ProcessingDict;
 }) {
-    const router = useRouter();
     const [stalled, setStalled] = useState(false);
-    // Set the instant we hand off to the TYP, so the poller block fades out
-    // while Next fetches that route instead of vanishing on a hard cut. The
-    // summary shimmer beneath is NOT part of this block - it stays on screen
-    // and the TYP re-renders the same band, which is what makes the handoff
-    // read as one continuous page rather than two.
-    const [leaving, setLeaving] = useState(false);
 
     useEffect(() => {
         let active = true;
@@ -87,11 +81,17 @@ export function CheckoutProcessing({
                     // Storage unavailable: nothing to clear.
                 }
             }
-            // Navigation is issued in the same tick, so the fade costs no
-            // latency - it just plays over the RSC fetch that was happening
-            // anyway. Never `await` an animation before replacing.
-            setLeaving(true);
-            router.replace(typHref);
+            // A DOCUMENT navigation, replacing this entry so Back cannot
+            // return to a checkout that is already paid for (see
+            // `lib/checkout/leave-to.ts` - the TYP can never be prerendered,
+            // so the client router would fetch ~180 KB of HTML, fail to parse
+            // it, and hard-navigate here anyway, just several hundred ms later).
+            //
+            // Deliberately NO fade-out first. The old page stays painted until
+            // the browser swaps documents, so fading the spinner on a fixed
+            // clock only produced the blank gap travellers were seeing; keeping
+            // the spinner up until the swap is what reads as continuous.
+            leaveToReplacing(typHref);
         };
 
         // FAILED payment → back to the checkout to retry, with a message - a
@@ -115,8 +115,11 @@ export function CheckoutProcessing({
                     // Storage unavailable: the bare checkout path still works.
                 }
             }
-            setLeaving(true);
-            router.replace(target);
+            // Same document navigation as the confirmed path: the checkout is
+            // per-tour and equally un-prerenderable, and replacing the entry
+            // keeps this dead processing hop out of the traveller's history
+            // while they retry.
+            leaveToReplacing(target);
         };
 
         // Stripe appends redirect_status to the return_url of its redirect
@@ -168,18 +171,20 @@ export function CheckoutProcessing({
             active = false;
             if (timer) clearTimeout(timer);
         };
-    }, [publicRef, tourId, typHref, checkoutHref, router]);
+    }, [publicRef, tourId, typHref, checkoutHref]);
 
     return (
         // No longer 60vh: the page is not empty any more - the booking-summary
         // shimmer sits below, and a viewport-tall spacer would push it off screen.
         <div className='flex min-h-[136px] items-center justify-center px-4'>
+            {/* Entrance only. There is deliberately no exit animation: the
+                hand-off is a document navigation, so this block stays painted
+                until the browser swaps pages - fading it out on a timer just
+                emptied the screen early, which is the "blank" travellers saw. */}
             <motion.div
                 initial={{ opacity: 0, y: 12 }}
-                animate={leaving ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
-                transition={
-                    leaving ? crossFade : { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
-                }
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                 className='flex max-w-md flex-col items-center gap-6 text-center'>
                 <span className='size-12 shrink-0 animate-spin rounded-full border-4 border-it-border border-t-it-primary' />
                 <div className='flex flex-col gap-2'>

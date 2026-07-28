@@ -11,6 +11,7 @@ import {
     formatCheckoutMoney,
     type BookingSelectionPayload,
 } from '@/lib/checkout/checkout';
+import { leaveTo } from '@/lib/checkout/leave-to';
 import {
     readBookingSelection,
     writeBookingSelection,
@@ -28,10 +29,11 @@ import { readAttribution } from '@/lib/tracking/attribution';
 import { storeTravelerSession } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import {
+    useCallback,
     useEffect,
     useId,
+    useMemo,
     useRef,
     useState,
     type ReactNode,
@@ -113,6 +115,13 @@ interface CheckoutFormProps {
     paymentFailed?: boolean;
 }
 
+/**
+ * Accordion collapse duration (ms). Shared by the `Collapse` transition and the
+ * scroll-into-view below, so the scroll can wait for the layout to settle
+ * instead of guessing - keep the two in step.
+ */
+const COLLAPSE_MS = 350;
+
 /** "Full name" → first / last for the backend ContactDto (both NOT NULL). */
 function splitName(fullName: string): { firstName: string; lastName: string } {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -154,8 +163,6 @@ export function CheckoutForm({
     slug,
     paymentFailed = false,
 }: CheckoutFormProps) {
-    const router = useRouter();
-
     // Remember THIS checkout URL (full selection query) per tour, so the
     // processing page can send a failed payment back to the exact same
     // checkout instead of a bare path. The failure flag itself is stripped -
@@ -210,10 +217,11 @@ export function CheckoutForm({
     const processingHref = (publicRef: string) =>
         `${processingBase}?ref=${encodeURIComponent(publicRef)}&tour=${encodeURIComponent(tourId)}`;
 
-    // Warm the processing route so the post-reserve transition is instant.
-    useEffect(() => {
-        router.prefetch(processingBase);
-    }, [router, processingBase]);
+    // NOT prefetched. The processing route is per-tour and never prerendered,
+    // so a router prefetch is answered with the HTML document rather than a
+    // flight payload and warms nothing (see `lib/checkout/leave-to.ts`); worse,
+    // `processingBase` carries no `?ref`, and that page redirects to the tours
+    // list without one - so this only ever warmed a redirect.
 
     const [contact, setContact] = useState({
         fullName: '',
@@ -253,16 +261,52 @@ export function CheckoutForm({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const countryGroups = [
-        { label: dict.countryPopular, options: POPULAR_COUNTRY_OPTIONS },
-        { label: dict.countryAll, options: ALL_COUNTRY_OPTIONS },
-    ];
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const specialId = useId();
 
-    const set = (key: keyof typeof contact, value: string) =>
-        setContact((prev) => ({ ...prev, [key]: value }));
+    const set = useCallback(
+        (key: keyof typeof contact, value: string) =>
+            setContact((prev) => ({ ...prev, [key]: value })),
+        []
+    );
+
+    const countryGroups = useMemo(
+        () => [
+            { label: dict.countryPopular, options: POPULAR_COUNTRY_OPTIONS },
+            { label: dict.countryAll, options: ALL_COUNTRY_OPTIONS },
+        ],
+        [dict.countryPopular, dict.countryAll]
+    );
+
+    // The country field renders ~260 <option> nodes across two <optgroup>s.
+    // Every piece of contact state lives on this one component, so without
+    // this the whole list was re-reconciled on EVERY keystroke in name, email,
+    // phone or the notes textarea - the typing lag on this step. Held as a
+    // memoized element so it only re-renders when the country itself changes.
+    const countryField = useMemo(
+        () => (
+            <SelectField
+                className='flex-1'
+                label={`${dict.country}*`}
+                value={contact.country}
+                onChange={(v) => set('country', v)}
+                groups={countryGroups}
+            />
+        ),
+        [dict.country, contact.country, countryGroups, set]
+    );
+
+    // Stable identity so the memoized payment panel below is not re-rendered by
+    // unrelated keystrokes during an "Edit contact" round trip.
+    const paymentContact = useMemo(
+        () => ({
+            fullName: contact.fullName,
+            email: contact.email.trim(),
+            country: contact.country,
+        }),
+        [contact.fullName, contact.email, contact.country]
+    );
 
     function validateContact(): boolean {
         const next: Record<string, string> = {};
@@ -348,7 +392,7 @@ export function CheckoutForm({
             const pi = await createPaymentIntent(booking.id);
             if (!pi.paymentRequired) {
                 // Nothing due now (OPERATOR_FULL is born CONFIRMED at reserve).
-                router.push(processingHref(booking.publicRef));
+                leaveTo(processingHref(booking.publicRef));
                 return;
             }
             if (pi.provider === 'MOLLIE') {
@@ -424,7 +468,16 @@ export function CheckoutForm({
         const target = contactDone
             ? paymentHeaderRef.current
             : cardRef.current;
-        target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Wait for the OTHER section to finish collapsing first. It shrinks
+        // over COLLAPSE_MS, so the document height keeps changing underneath a
+        // scroll started now - the smooth scroll aims at an offset that has
+        // moved by the time it arrives, and the traveller lands off-target with
+        // the page still settling. Scrolling once the layout is final is both
+        // accurate and calmer.
+        const timer = setTimeout(() => {
+            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, COLLAPSE_MS);
+        return () => clearTimeout(timer);
     }, [contactDone]);
 
     return (
@@ -510,13 +563,7 @@ export function CheckoutForm({
                             {/* Country + phone */}
                             <div className='flex flex-col gap-2'>
                                 <div className='flex flex-col gap-4 sm:flex-row sm:gap-2'>
-                                    <SelectField
-                                        className='flex-1'
-                                        label={`${dict.country}*`}
-                                        value={contact.country}
-                                        onChange={(v) => set('country', v)}
-                                        groups={countryGroups}
-                                    />
+                                    {countryField}
                                     <Field
                                         className='flex-1'
                                         label={`${dict.phone}*`}
@@ -700,8 +747,26 @@ export function CheckoutForm({
                             )}
                         </AnimatePresence>
                     </div>
-                    <Collapse open={contactDone}>
-                        <div className='pt-8'>
+                    {/* Snap OPEN, animate CLOSED. Opening is the direction that
+                        matters: the PSP iframes mount on that very render, and
+                        an animating zero-height `overflow-hidden` box is the
+                        wrong thing to mount them into (see the Collapse doc
+                        comment). Nothing mounts on close, so "Edit contact"
+                        keeps its 350ms collapse rather than snapping shut. */}
+                    <Collapse open={contactDone} instant={contactDone}>
+                        {/* Opacity-only reveal keeps the motion without
+                            clipping or resizing the iframes. Deliberately no
+                            `y`/scale: a transform on an ancestor of a
+                            cross-origin iframe is the other thing PSP
+                            integrations warn about. */}
+                        <motion.div
+                            initial={false}
+                            animate={{ opacity: contactDone ? 1 : 0 }}
+                            transition={{
+                                duration: 0.3,
+                                ease: [0.4, 0, 0.2, 1],
+                            }}
+                            className='pt-8'>
                             {/* Mounted from the first successful continue on -
                                 collapsing back to edit contact keeps the Stripe
                                 fields (and their entries) alive. */}
@@ -711,11 +776,7 @@ export function CheckoutForm({
                                     locale={locale}
                                     publishableKey={intent.publishableKey}
                                     clientSecret={intent.clientSecret}
-                                    contact={{
-                                        fullName: contact.fullName,
-                                        email: contact.email.trim(),
-                                        country: contact.country,
-                                    }}
+                                    contact={paymentContact}
                                     payToday={payToday}
                                     currency={currency}
                                     currencySymbol={currencySymbol}
@@ -741,7 +802,7 @@ export function CheckoutForm({
                                     )}
                                 />
                             )}
-                        </div>
+                        </motion.div>
                     </Collapse>
                 </>
             )}
@@ -815,13 +876,34 @@ function SectionBadge({
  * collapsed state closes fully tight; collapsed content stays mounted (form /
  * Stripe entries survive an edit round) but is inert - no tab stops, no
  * screen-reader exposure.
+ *
+ * `instant` snaps the height instead of animating it. Pass it for the OPENING
+ * of any section holding a PSP iframe: while `height` animates from 0 the box
+ * is also `overflow-hidden`, so the Stripe Card Elements and the four Mollie
+ * components - which mount on the very render the animation starts - would come
+ * up inside a zero-height, clipped container and settle their layout against a
+ * box that is still moving. Snapping costs one frame of animation and gives the
+ * iframes a settled box to mount into; the reveal keeps its motion via the
+ * opacity fade at that call site, which neither clips nor resizes.
  */
-function Collapse({ open, children }: { open: boolean; children: ReactNode }) {
+function Collapse({
+    open,
+    instant = false,
+    children,
+}: {
+    open: boolean;
+    instant?: boolean;
+    children: ReactNode;
+}) {
     return (
         <motion.div
             initial={false}
             animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            transition={
+                instant
+                    ? { duration: 0 }
+                    : { duration: COLLAPSE_MS / 1000, ease: [0.4, 0, 0.2, 1] }
+            }
             inert={open ? undefined : true}
             aria-hidden={!open}
             className='overflow-hidden'>

@@ -2,11 +2,11 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useEffect, useTransition } from 'react';
+import { useState } from 'react';
 import { springPop, swapFade } from '@/lib/motion';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { buildCheckoutQuery, toDateParam } from '@/lib/checkout/checkout';
+import { leaveTo } from '@/lib/checkout/leave-to';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Collapse } from './collapse';
 
@@ -43,13 +43,14 @@ export function BookingCta() {
         currency,
         ctaError,
     } = useBooking();
-    const router = useRouter();
-    // Continue -> checkout is a full route push that can take a beat (dynamic
-    // page). useTransition keeps this screen interactive and drives a spinner
-    // in the button instead of a frozen click.
-    const [navigating, startTransition] = useTransition();
+    // Continue -> checkout is a full document navigation that can take a beat
+    // (the route is dynamic). This drives a spinner in the button instead of a
+    // frozen click. Plain state, not `useTransition`: the navigation leaves the
+    // React tree entirely, so a transition would never report as pending - the
+    // button would just sit there looking dead until the new page painted. The
+    // latch is deliberately never cleared; the page is on its way out.
+    const [navigating, setNavigating] = useState(false);
 
-    // Warm the checkout route so the Continue push is near-instant.
     const checkoutBase =
         destinationSlug && tourSlug
             ? localizeHref(
@@ -57,9 +58,9 @@ export function BookingCta() {
                   `/${destinationSlug}/${tourSlug}/checkout`
               )
             : null;
-    useEffect(() => {
-        if (checkoutBase) router.prefetch(checkoutBase);
-    }, [router, checkoutBase]);
+    // NOT prefetched: the checkout route is not prerendered for this tour, so a
+    // router prefetch is answered with the HTML document and warms nothing (see
+    // `lib/checkout/leave-to.ts`). It only cost a wasted request.
 
     // A payment-free reserve (operator_full) is not offered in v1: the card
     // shows a disabled notice in place of the CTA and trust lines.
@@ -86,9 +87,14 @@ export function BookingCta() {
                 quoteId: quote?.quoteId ?? null,
                 currency: currency ?? null,
             });
-            startTransition(() => {
-                router.push(query ? `${checkoutBase}?${query}` : checkoutBase);
-            });
+            // Document navigation, for the same reason the hops OUT of checkout
+            // use it: the checkout route is per-tour and only one tour per
+            // destination is prerendered, so the client router's flight request
+            // is answered with the HTML document, discarded, and turned into a
+            // browser navigation anyway - just several hundred ms later, after
+            // a wasted ~180 KB fetch. See `lib/checkout/leave-to.ts`.
+            setNavigating(true);
+            leaveTo(query ? `${checkoutBase}?${query}` : checkoutBase);
             return;
         }
         handleCtaClick();

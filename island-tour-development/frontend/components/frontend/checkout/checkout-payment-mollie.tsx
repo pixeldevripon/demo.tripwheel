@@ -2,6 +2,7 @@
 
 import { createPaymentIntent } from '@/lib/api/bookings';
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
+import { leaveTo } from '@/lib/checkout/leave-to';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -13,7 +14,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { DarkButton, FieldShell, labelClass, Radio } from './checkout-fields';
 
@@ -53,8 +53,6 @@ export function CheckoutPaymentMollie({
     /** Relative processing path (with ?ref&tour) - Mollie's returnUrl is built from it. */
     processingHref: string;
 }) {
-    const router = useRouter();
-
     // 'loading' while mollie.js + the field iframes come up; 'unavailable'
     // (no profileId / blocked script) falls back to the hosted page.
     const [cardState, setCardState] = useState<
@@ -160,7 +158,10 @@ export function CheckoutPaymentMollie({
         if (pi.status === 'SUCCEEDED' || pi.status === 'PROCESSING') {
             // Frictionless 3DS (or an already-paid revisit) - no redirect
             // needed; the processing page settles and forwards to the TYP.
-            router.push(processingHref);
+            // Document navigation, matching the hosted/3DS branch above and the
+            // Stripe panel - the processing route is never prerendered
+            // (lib/checkout/leave-to.ts).
+            leaveTo(processingHref);
             return;
         }
         throw new Error(dict.paymentUnavailable);

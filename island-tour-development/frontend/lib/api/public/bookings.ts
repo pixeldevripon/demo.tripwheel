@@ -9,8 +9,17 @@
  * a traveller with a real booking must never be told it does not exist.
  */
 import 'server-only';
-import { publicGetStrict, publicPost } from './fetch';
+import { headers } from 'next/headers';
+import { BackendUnavailableError, publicGetStrict, publicPost } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
+
+/**
+ * Header a trusted first-party caller uses to forward the REAL visitor IP, so
+ * the backend can rate-limit SSR-originated calls per visitor instead of per
+ * renderer. Must match `INTERNAL_CLIENT_IP_HEADER` in the backend's
+ * `auth/internal-origin.util.ts`.
+ */
+const INTERNAL_CLIENT_IP_HEADER = 'x-real-client-ip';
 
 /**
  * Conversion payload (master booking_complete contract; value = EUR commission).
@@ -146,19 +155,71 @@ export interface TypResponse {
 }
 
 /**
+ * Fixed backoff (ms) for the TYP re-read below, one entry per retry attempt.
+ * No jitter and no clock reads - the same constraint the sibling fetch layer
+ * documents - even though this particular path is always uncached.
+ */
+const TYP_RETRY_BACKOFF_MS = [250, 600];
+
+const sleep = (ms: number) =>
+    new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
  * Fetch the real TYP payload by public ref, or null on a backend 404.
  * `sessionToken` (the HttpOnly traveler cookie, read server-side) unlocks the
  * unmasked payload; without it the backend returns masked mode. Uncached, so
  * the per-user header is safe here.
+ *
+ * RETRIED, unlike every other `publicGetStrict` caller. This read runs moments
+ * after the settle call that confirmed the booking - the same request in which
+ * the backend synchronously retrieves the PaymentIntent and sends BOTH
+ * confirmation emails inline - so it lands in the narrow window where the API
+ * is most likely to be briefly slow or unavailable. `publicFetch` already
+ * retries 429/503; it does NOT retry a network error or a 5xx, and those are
+ * exactly what surfaces here as `BackendUnavailableError` -> the generic error
+ * screen, shown to someone who has just been charged.
+ *
+ * The retry is safe because this is an idempotent GET, and correct because we
+ * KNOW the booking exists: a genuine 404 comes back as `null` from the first
+ * call and returns immediately without burning an attempt. Only "could not ask
+ * the backend" is retried, and the strict throw still stands once the attempts
+ * are exhausted - a traveller with a real booking is never told it is missing.
+ *
+ * It deliberately does NOT retry 429/503: `publicFetch` already exhausts its own
+ * two attempts on those, so retrying here would MULTIPLY (3 x 3 = 9 calls from a
+ * single page load). Every SSR render shares one egress IP against the backend's
+ * per-IP throttle, so during a burst that stacking is what turns a brief 429
+ * into a self-sustaining one. This layer covers only the classes `publicFetch`
+ * does not: a network error and a 5xx. Worst case stays 3 calls either way.
  */
-export function getTypByRef(
+export async function getTypByRef(
     publicRef: string,
     sessionToken?: string | null
 ): Promise<TypResponse | null> {
-    return publicGetStrict<TypResponse>(
-        `/bookings/typ/${encodeURIComponent(publicRef)}`,
-        sessionToken ? { [TRAVELER_SESSION_HEADER]: sessionToken } : undefined
-    );
+    const path = `/bookings/typ/${encodeURIComponent(publicRef)}`;
+    const headers = sessionToken
+        ? { [TRAVELER_SESSION_HEADER]: sessionToken }
+        : undefined;
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= TYP_RETRY_BACKOFF_MS.length; attempt++) {
+        try {
+            return await publicGetStrict<TypResponse>(path, headers);
+        } catch (err) {
+            lastError = err;
+            // Already retried downstream - do not stack another round on top.
+            if (
+                err instanceof BackendUnavailableError &&
+                (err.status === 429 || err.status === 503)
+            ) {
+                throw err;
+            }
+            if (attempt < TYP_RETRY_BACKOFF_MS.length) {
+                await sleep(TYP_RETRY_BACKOFF_MS[attempt]);
+            }
+        }
+    }
+    throw lastError;
 }
 
 /**
@@ -171,14 +232,53 @@ export function getTypByRef(
  * ever call returns a payload. Never throws (`publicPost` swallows to null): a
  * failed or lost claim simply yields no push, an accepted false negative that can
  * never blank the TYP or double-fire the pixel.
+ *
+ * It forwards the VISITOR's IP as well. This route declares its own tight
+ * `@Throttle()` (3/10s, 5/min, 20/hr), which excludes it from the internal
+ * secret's throttle bypass - correct, but it is also the one route we call
+ * server-to-server, so without the forwarded address every traveller on the
+ * platform would share a single bucket keyed on this renderer's egress IP and
+ * conversion tracking would quietly stop. The backend honours the header only
+ * alongside a valid internal secret (`TrustedOriginThrottlerGuard.getTracker`),
+ * so it cannot be spoofed from a browser.
+ *
+ * Reading `headers()` is safe here and ONLY here: this is a mutating,
+ * deliberately uncached call made after `connection()`. Never lift it into the
+ * shared `serverHeaders()` - that is used inside `'use cache'` scopes, where
+ * request headers are unavailable.
  */
 export async function claimConversionPush(
     publicRef: string,
     sessionToken?: string | null
 ): Promise<TypConversion | null> {
+    const extraHeaders: Record<string, string> = {};
+    if (sessionToken) extraHeaders[TRAVELER_SESSION_HEADER] = sessionToken;
+
+    const clientIp = await visitorIp();
+    if (clientIp) extraHeaders[INTERNAL_CLIENT_IP_HEADER] = clientIp;
+
     const res = await publicPost<{ conversion: TypConversion | null }>(
         `/bookings/typ/${encodeURIComponent(publicRef)}/conversion`,
-        sessionToken ? { [TRAVELER_SESSION_HEADER]: sessionToken } : undefined
+        Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined
     );
     return res?.conversion ?? null;
+}
+
+/**
+ * The visitor's own IP, for the forwarded-address header above. Null when it
+ * cannot be determined - the backend then falls back to tracking by our egress
+ * IP, which is the old behaviour rather than a failure.
+ */
+async function visitorIp(): Promise<string | null> {
+    try {
+        const h = await headers();
+        // "client, proxy1, proxy2" - the client is first. `x-real-ip` is the
+        // single-value form some proxies send instead.
+        const forwarded = h.get('x-forwarded-for');
+        const first = forwarded?.split(',')[0]?.trim();
+        return first || h.get('x-real-ip') || null;
+    } catch {
+        // No request scope (shouldn't happen on this path) - fall back.
+        return null;
+    }
 }
