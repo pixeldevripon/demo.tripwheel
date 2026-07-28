@@ -80,6 +80,30 @@ describe('InstagramConfigService', () => {
 
       expect(status.hasAccessToken).toBe(false);
       expect(status.isConfigured).toBe(false);
+      expect(status.maskedAccessToken).toBeNull();
+    });
+
+    it('masks the stored token to bullets + its last 4 characters', async () => {
+      findUnique.mockResolvedValue({
+        configAccessToken: encrypt('IGAAsecretpayloadWQZD'),
+      });
+
+      const status = await service.getCredentialStatus();
+
+      expect(status.maskedAccessToken).toBe('••••••••WQZD');
+      // The mask must never carry enough to reconstruct the credential.
+      expect(status.maskedAccessToken).not.toContain('secretpayload');
+    });
+
+    // A rotated ENCRYPTION_KEY leaves ciphertext that no longer decrypts: the
+    // token is "set" but unusable, and the null mask is what tells the admin.
+    it('reports a stored-but-undecryptable token as set with no mask', async () => {
+      findUnique.mockResolvedValue({ configAccessToken: 'not:valid:cipher' });
+
+      const status = await service.getCredentialStatus();
+
+      expect(status.hasAccessToken).toBe(true);
+      expect(status.maskedAccessToken).toBeNull();
     });
   });
 
@@ -107,6 +131,49 @@ describe('InstagramConfigService', () => {
     it('an omitted token is a no-op (leaves the stored value)', async () => {
       await service.saveCredentials({});
       expect(upsert).not.toHaveBeenCalled();
+    });
+
+    // The dashboard's token input is write-only and can re-submit an unchanged
+    // value; treating that as a reconnect tore down a working feed.
+    it('re-submitting the SAME token is a no-op, not a reconnect', async () => {
+      findUnique.mockResolvedValue({
+        configAccessToken: encrypt('already-stored-token'),
+      });
+
+      await service.saveCredentials({
+        accessToken: '  already-stored-token  ',
+      });
+
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it('a DIFFERENT token still re-seeds the connection', async () => {
+      findUnique.mockResolvedValue({
+        configAccessToken: encrypt('already-stored-token'),
+      });
+
+      await service.saveCredentials({ accessToken: 'a-brand-new-token' });
+
+      const update = upsert.mock.calls[0][0].update;
+      // The NEW value must actually land - a reconnect that nulled the
+      // connection without storing the new token would still pass the
+      // assertions below.
+      expect(decrypt(update.configAccessToken)).toBe('a-brand-new-token');
+      expect(update).toMatchObject({
+        igUserId: null,
+        accessToken: null,
+        tokenExpiresAt: null,
+      });
+    });
+
+    // Clearing must still go through even though '' can never "match" a stored
+    // token - it is the explicit disconnect.
+    it('clears the token even when one is stored', async () => {
+      findUnique.mockResolvedValue({ configAccessToken: encrypt('stored') });
+
+      await service.saveCredentials({ accessToken: '' });
+
+      expect(upsert.mock.calls[0][0].update.configAccessToken).toBeNull();
     });
   });
 });

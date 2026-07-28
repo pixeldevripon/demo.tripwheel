@@ -88,12 +88,35 @@ feed simply renders whatever tiles already exist.
 ### 3.3 Dashboard credential
 
 Settings → Instagram → **Instagram Access Token** card. A single Access Token
-field, **write-only** — never returned by any GET; it shows "•••• stored —
-leave blank to keep it". The token is stored in the DB (encrypted); saving one
-re-seeds the connection. It is written **only when the field is edited**, so
-saving other settings never touches the stored token.
+field, **write-only** — the value is never returned by any GET. What the field
+shows instead is `maskedAccessToken`: bullets + the last 4 characters
+(`Current: ••••••••WQZD. Leave blank to keep it.`), produced by the shared
+`maskSecret()` in [`common/utils/crypto.util.ts`](../../backend/src/common/utils/crypto.util.ts)
+— the one masking rule every platform secret renders through (Stripe, Mollie,
+Meta CAPI, the translation key, Trustpilot/Google), so an admin can tell WHICH
+token is stored without it being usable. A null mask alongside `hasAccessToken: true` means the stored
+ciphertext no longer decrypts (a rotated `ENCRYPTION_KEY`) and the field says so.
 
-- API: `GET /instagram/credentials` (non-secret status) · `PUT /instagram/credentials`
+The token is stored in the DB (encrypted). Saving a **different** token re-seeds
+the connection; **re-submitting the token already stored is a no-op**, not a
+reconnect (`InstagramConfigService.saveCredentials` compares against the decrypted
+current value first). That guard matters because the field is write-only and can
+re-send an unchanged value — a browser/password-manager fill, or a form whose
+dirty state outlived the save — and treating that as a reconnect silently tore
+down a working feed (`igUserId` + the refreshed token + expiry + last-sync state
+all nulled, panel back to "Last sync: Never / Token expires: Unknown").
+
+The dashboard side pairs with that: **Save Changes runs its writes in sequence**
+(token → account → kill switch), stops on the first failure, and **always**
+`reset()`s the form from server truth afterwards. Both halves are load-bearing —
+fired in parallel a single rejected PATCH left the other two applied with no way
+to tell which had landed, and without the unconditional reset the token field
+stayed dirty forever (TanStack structural sharing hands back the SAME data
+reference when a refetch is deep-equal, so the reset effect never re-ran) and
+re-sent the token on every later save.
+
+- API: `GET /instagram/credentials` (non-secret status + masked tail) ·
+  `PUT /instagram/credentials`
 - Code: dashboard `components/settings/instagram-form.tsx` → `CredentialsCard`
   (separate repo `tripwheel-x-islandtours-dashboard`), backend
   [`instagram.controller.ts`](../../backend/src/instagram/instagram.controller.ts)
@@ -309,8 +332,8 @@ Base: `http://localhost:5050/api/v1/instagram`
 | Method | Path | Access | Purpose |
 |---|---|---|---|
 | GET | `public/feed` | public | Rendered tiles + handle + layout |
-| GET | `credentials` | VIEW_SETTINGS | Non-secret token status |
-| PUT | `credentials` | MANAGE_SETTINGS | Save the access token (re-seeds connection) |
+| GET | `credentials` | VIEW_SETTINGS | Non-secret token status + masked tail (`••••••••WQZD`) |
+| PUT | `credentials` | MANAGE_SETTINGS | Save the access token (a DIFFERENT value re-seeds the connection; the same value is a no-op) |
 | GET | `connection` | VIEW_SETTINGS | Token configured? expiry? last sync? |
 | POST | `sync` | MANAGE_SETTINGS | Run a sync now |
 | GET/PUT | `account` | VIEW/MANAGE_SETTINGS | Layout + sync tuning (posts-per-sync, cadence); handle/link are auto |
@@ -356,7 +379,12 @@ Migrations: `20260728060000_instagram_oauth_columns`,
 `20260728130000_instagram_token_only` (drops the App ID/Secret/Redirect columns),
 `20260728140000_instagram_sync_tuning` (adds syncFetchLimit + syncIntervalMinutes),
 `20260728150000_instagram_gallery_default` (layout default → GALLERY, section
-default → on) (in [`backend/prisma/migrations/`](../../backend/prisma/migrations/))
+default → on),
+`20260728160000_site_info_enable_instagram_not_null` (`SiteInfo.enableInstagram`
+nullable → NOT NULL, backfilled to true: as a nullable column the read sites
+disagreed on what NULL meant — dashboard `?? true`, public projection `?? false`
+— and the form only PATCHes on a difference, so the split never healed)
+(in [`backend/prisma/migrations/`](../../backend/prisma/migrations/))
 
 ---
 

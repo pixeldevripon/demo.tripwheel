@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import { encrypt, safeDecrypt } from '@/common/utils/crypto.util';
+import {
+  encrypt,
+  maskSecret,
+  safeDecrypt,
+  secretEquals,
+} from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 
 const ACCOUNT_ID = 'default';
@@ -18,10 +23,18 @@ export interface InstagramConfig {
   isConfigured: boolean;
 }
 
-/** The non-secret credential view for the dashboard (token shown only as a boolean). */
+/** The non-secret credential view for the dashboard. */
 export interface InstagramCredentialStatus {
   hasAccessToken: boolean;
   isConfigured: boolean;
+  /**
+   * Bullets + the last 4 characters (e.g. `••••••••WQZD`), so an admin can tell
+   * WHICH token is stored without it being usable. Same masking the Stripe /
+   * Mollie / translation keys use. Null when nothing is stored, and also when
+   * the stored ciphertext no longer decrypts (a rotated ENCRYPTION_KEY) - which
+   * `hasAccessToken: true` alongside a null mask is the signal for.
+   */
+  maskedAccessToken: string | null;
 }
 
 /** What the dashboard PATCHes. Omit to leave unchanged; '' clears the stored token. */
@@ -57,25 +70,51 @@ export class InstagramConfigService {
       select: { configAccessToken: true },
     });
     const hasAccessToken = Boolean(row?.configAccessToken);
-    return { hasAccessToken, isConfigured: hasAccessToken };
+    return {
+      hasAccessToken,
+      isConfigured: hasAccessToken,
+      maskedAccessToken: maskSecret(row?.configAccessToken),
+    };
   }
 
   /**
    * Persist the dashboard access token (encrypted). Undefined leaves it
    * unchanged; an empty string clears it (the feed then has no token).
    *
-   * Saving a token is a RECONNECT: it invalidates the seeded working connection
-   * (igUserId + the refreshed token + last-sync state) so the next sync re-seeds
-   * from the new token and re-resolves the account/handle. It is one atomic
-   * upsert because both the credential and the connection live on this singleton
-   * row - a stale igUserId paired with a fresh token would otherwise read the
-   * wrong account's media.
+   * Saving a DIFFERENT token is a RECONNECT: it invalidates the seeded working
+   * connection (igUserId + the refreshed token + last-sync state) so the next
+   * sync re-seeds from the new token and re-resolves the account/handle. It is
+   * one atomic upsert because both the credential and the connection live on
+   * this singleton row - a stale igUserId paired with a fresh token would
+   * otherwise read the wrong account's media.
+   *
+   * Re-submitting the token ALREADY stored is not a reconnect, it is a no-op.
+   * The dashboard's token input is write-only and can re-send an unchanged value
+   * (a browser/password-manager autofill, or a form whose dirty state outlived
+   * the save); treating that as a reconnect silently tore down a working feed -
+   * the panel fell back to "Last sync: Never / Token expires: Unknown" and the
+   * next sync had to re-resolve the account through the Graph API.
    */
   async saveCredentials(dto: SaveInstagramCredentials): Promise<void> {
     if (dto.accessToken === undefined) return;
-    const configAccessToken = dto.accessToken.trim()
-      ? encrypt(dto.accessToken.trim())
-      : null;
+    const next = dto.accessToken.trim();
+
+    // Read-then-write, deliberately not in a transaction: two concurrent saves
+    // could both decide off the same read, and the worst case is one redundant
+    // reconnect on a singleton row only an admin can write. A transaction would
+    // not fix it either without SELECT FOR UPDATE.
+    const existing = await this.prisma.instagramAccount.findUnique({
+      where: { id: ACCOUNT_ID },
+      select: { configAccessToken: true },
+    });
+    const current = safeDecrypt(existing?.configAccessToken) ?? '';
+    // Only an exact re-submit of the CURRENT non-empty token short-circuits.
+    // Every real change - including '' (falsy, so it never gets here) - falls
+    // through to the full reconnect below, so a fresh token can never end up
+    // paired with the previous account's igUserId.
+    if (next && secretEquals(next, current)) return;
+
+    const configAccessToken = next ? encrypt(next) : null;
     await this.prisma.instagramAccount.upsert({
       where: { id: ACCOUNT_ID },
       update: {

@@ -59,3 +59,43 @@ export function safeDecrypt(
     return null;
   }
 }
+
+/**
+ * How a stored secret is shown back to an admin: bullets + the last 4 plaintext
+ * characters (`••••••••WQZD`). Enough to tell WHICH credential is stored,
+ * useless as a credential.
+ *
+ * THE one masking rule for every secret on the platform - the Stripe and Mollie
+ * keys, the Meta CAPI token, the translation API key, the Trustpilot/Google keys
+ * and the Instagram access token all render through this, so the format can
+ * never drift between settings cards. It lives here rather than on a service
+ * because it belongs to the secret, not to any one module (it used to be four
+ * private copies of the same three lines).
+ *
+ * Takes the CIPHERTEXT and goes through `safeDecrypt`: a value that no longer
+ * decrypts (a rotated `ENCRYPTION_KEY`) masks to `null` instead of throwing a
+ * 500 out of a settings GET. Pair it with the row's own "is it set" boolean when
+ * the caller needs to tell "never set" from "set but unreadable".
+ */
+export function maskSecret(
+  ciphertext: string | null | undefined,
+): string | null {
+  const plaintext = safeDecrypt(ciphertext)?.trim();
+  if (!plaintext) return null;
+  return '••••••••' + plaintext.slice(-4);
+}
+
+/**
+ * Constant-time equality for two secrets. Use it anywhere a caller-supplied
+ * value is compared against a stored one; `===` short-circuits on the first
+ * differing byte and leaks how much of a guess was right.
+ *
+ * The length check is not constant-time and cannot be (`timingSafeEqual` throws
+ * on a length mismatch), so this leaks length only.
+ */
+export function secretEquals(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}

@@ -1,4 +1,4 @@
-import { decrypt, encrypt } from '@/common/utils/crypto.util';
+import { encrypt, maskSecret } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PaymentProvider } from '@prisma/client';
@@ -24,12 +24,6 @@ export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
-
-  /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
-  private maskSecret(encrypted: string | null): string | null {
-    if (!encrypted) return null;
-    return '••••••••' + decrypt(encrypted).slice(-4);
-  }
 
   // ── Site Info ──────────────────────────────────────────────────────────────
 
@@ -77,7 +71,10 @@ export class SettingsService {
       favicon: info?.favicon || null,
       enableWhatsappChat,
       whatsappNumber: enableWhatsappChat ? info?.whatsappNumber || null : null,
-      enableInstagram: info?.enableInstagram ?? false,
+      // The column is NOT NULL and defaults ON, so the only fallback left is
+      // "no site_info row at all" - which means an untouched install, where the
+      // column default is the right answer.
+      enableInstagram: info?.enableInstagram ?? true,
       // Empty string is as good as unset here - the frontend falls back to its
       // bundled avatar on null, and '' would defeat that.
       faqHostImage: info?.faqHostImage || null,
@@ -247,12 +244,8 @@ export class SettingsService {
     });
     return {
       ...config,
-      secretKey: config.secretKey
-        ? '••••••••' + decrypt(config.secretKey).slice(-4)
-        : null,
-      webhookSecret: config.webhookSecret
-        ? '••••••••' + decrypt(config.webhookSecret).slice(-4)
-        : null,
+      secretKey: maskSecret(config.secretKey),
+      webhookSecret: maskSecret(config.webhookSecret),
     };
   }
 
@@ -270,12 +263,8 @@ export class SettingsService {
     });
     return {
       ...result,
-      secretKey: result.secretKey
-        ? '••••••••' + decrypt(result.secretKey).slice(-4)
-        : null,
-      webhookSecret: result.webhookSecret
-        ? '••••••••' + decrypt(result.webhookSecret).slice(-4)
-        : null,
+      secretKey: maskSecret(result.secretKey),
+      webhookSecret: maskSecret(result.webhookSecret),
     };
   }
 
@@ -347,9 +336,7 @@ export class SettingsService {
     });
     return {
       ...config,
-      apiKey: config.apiKey
-        ? '••••••••' + decrypt(config.apiKey).slice(-4)
-        : null,
+      apiKey: maskSecret(config.apiKey),
     };
   }
 
@@ -365,9 +352,7 @@ export class SettingsService {
     });
     return {
       ...result,
-      apiKey: result.apiKey
-        ? '••••••••' + decrypt(result.apiKey).slice(-4)
-        : null,
+      apiKey: maskSecret(result.apiKey),
     };
   }
 
@@ -388,8 +373,8 @@ export class SettingsService {
     } = config;
     return {
       ...live,
-      metaCapiToken: this.maskSecret(config.metaCapiToken),
-      translationApiKey: this.maskSecret(config.translationApiKey),
+      metaCapiToken: maskSecret(config.metaCapiToken),
+      translationApiKey: maskSecret(config.translationApiKey),
     };
   }
 
@@ -417,8 +402,8 @@ export class SettingsService {
     } = result;
     return {
       ...live,
-      metaCapiToken: this.maskSecret(result.metaCapiToken),
-      translationApiKey: this.maskSecret(result.translationApiKey),
+      metaCapiToken: maskSecret(result.metaCapiToken),
+      translationApiKey: maskSecret(result.translationApiKey),
     };
   }
 
@@ -474,7 +459,7 @@ export class SettingsService {
     });
     return {
       ...config,
-      apiKey: this.maskSecret(config.apiKey),
+      apiKey: maskSecret(config.apiKey),
     };
   }
 
@@ -490,7 +475,7 @@ export class SettingsService {
     });
     return {
       ...result,
-      apiKey: this.maskSecret(result.apiKey),
+      apiKey: maskSecret(result.apiKey),
     };
   }
 

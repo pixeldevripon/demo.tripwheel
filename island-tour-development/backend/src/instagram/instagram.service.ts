@@ -124,7 +124,11 @@ export class InstagramService {
     const profileUrl = resolveProfileUrl(account?.profileUrl, username);
     const layout = account?.layout ?? InstagramLayout.GALLERY;
 
-    if (!siteInfo?.enableInstagram) {
+    // `enableInstagram` is NOT NULL and defaults ON, so only a MISSING site_info
+    // row needs a fallback here - an untouched install, where the column default
+    // is the right answer. Same reading as getPublicSiteInfo; the two used to
+    // disagree.
+    if (siteInfo && !siteInfo.enableInstagram) {
       return { enabled: false, username, profileUrl, layout, posts: [] };
     }
 
