@@ -41,6 +41,8 @@ type BookingWindow = {
   tourTimeZone: string | null;
   // A pending cancellation request (requested, not yet actioned) holds the payout.
   utcCancellationRequestedAt: Date | null;
+  // A pending OPERATOR cancellation report (conflict #2) holds it the same way.
+  utcOperatorCancellationReportedAt: Date | null;
   utcCancelledAt: Date | null;
   tour: { cancellationHours: number } | null;
 };
@@ -88,8 +90,14 @@ export class SettlementsService {
       : local;
   }
 
-  /** Whether a settlement is a paid_in_full operator payout past its clawback window. */
-  private isPayoutEligible(
+  /**
+   * The single source of truth for "may this settlement be paid out right
+   * now". Returns null when eligible, otherwise the human-readable blocker -
+   * `markPaidOut` throws it verbatim as the 409 body, `list()` only checks
+   * for null (the `payoutEligible` badge). One rule set, two consumers: a
+   * new blocker added here changes the badge AND the mutation together.
+   */
+  private payoutBlocker(
     row: {
       status: SettlementStatus;
       paymentModel: PaymentModel;
@@ -97,16 +105,25 @@ export class SettlementsService {
       booking: BookingWindow;
     },
     now: Date,
-  ): boolean {
-    if (row.status !== SettlementStatus.RECORDED) return false;
-    if (row.paymentModel !== PaymentModel.PAID_IN_FULL) return false;
-    if (!row.netPosition.greaterThan(0)) return false; // nothing owed to the operator
+  ): string | null {
+    if (row.status === SettlementStatus.PAID_OUT) {
+      return 'This payout is already marked as paid out.';
+    }
+    if (row.status !== SettlementStatus.RECORDED) {
+      return 'This settlement was reversed (booking cancelled) - nothing is owed.';
+    }
+    if (row.paymentModel !== PaymentModel.PAID_IN_FULL) {
+      return 'Only paid-in-full bookings settle through this ledger.';
+    }
+    if (!row.netPosition.greaterThan(0)) {
+      return 'Nothing is owed to the operator on this settlement.';
+    }
     // Only a booking that still stands: a cancelled/expired booking must never pay out.
     if (
       row.booking.status !== BookingStatus.CONFIRMED &&
       row.booking.status !== BookingStatus.REDEEMED
     ) {
-      return false;
+      return 'The booking no longer stands (cancelled/expired) - do not pay out; the sweep will reverse this row.';
     }
     // Hold the payout while a cancellation request is pending (requested, not yet
     // actioned). Refund entitlement is judged at the REQUEST instant (master 6.4),
@@ -119,25 +136,51 @@ export class SettlementsService {
       row.booking.utcCancellationRequestedAt != null &&
       row.booking.utcCancelledAt == null
     ) {
-      return false;
+      return 'A cancellation request is pending on this booking - resolve it before paying out.';
+    }
+    // Same hold for a pending OPERATOR cancellation report (conflict #2): the
+    // admin is about to cancel + fully refund, so money must not go out.
+    if (
+      row.booking.utcOperatorCancellationReportedAt != null &&
+      row.booking.utcCancelledAt == null
+    ) {
+      return 'The operator reported a cancellation on this booking - execute or dismiss it before paying out.';
     }
     const deadline = this.freeCancelDeadlineUtc(row.booking);
-    return deadline != null && now >= deadline;
+    if (deadline == null) {
+      return 'This booking has no start time, so its free-cancellation window cannot be judged - resolve the booking first.';
+    }
+    if (now < deadline) {
+      return `The traveller can still cancel for free until ${deadline.toISOString()} - the payout clears once that window closes.`;
+    }
+    return null;
+  }
+
+  private isPayoutEligible(
+    row: {
+      status: SettlementStatus;
+      paymentModel: PaymentModel;
+      netPosition: Prisma.Decimal;
+      booking: BookingWindow;
+    },
+    now: Date,
+  ): boolean {
+    return this.payoutBlocker(row, now) === null;
   }
 
   /**
    * Marks a payout as PAID (dashboard row action) - the ONLY path to
-   * PAID_OUT. Called AFTER the money actually moved: by the admin who sent the
-   * transfer, or by the operator confirming it arrived (the actor scope pins a
-   * non-admin to their own rows; the undo stays admin-only). Guarded stepwise
-   * with a specific 409 for each blocker (already paid / reversed / booking
+   * PAID_OUT. Called AFTER the money actually moved, by the admin who sent
+   * the transfer (MANAGE_PAYMENTS is admin-only; the access-roles matrix
+   * keeps operators view-own on settlements). Guarded stepwise with a
+   * specific 409 for each blocker (already paid / reversed / booking
    * cancelled / cancellation pending / clawback window still open) so the
    * dashboard can show exactly WHY a row cannot be paid yet. Race-safe: the
    * final flip is a guarded `updateMany` on `status: RECORDED`.
    */
   async markPaidOut(
     id: string,
-    actor?: { id: string; role: Role },
+    actorId?: string,
   ): Promise<SettlementActionResponseDto> {
     const row = await this.prisma.settlement.findUnique({
       where: { id },
@@ -154,6 +197,7 @@ export class SettlementsService {
             tourStartDateTime: true,
             tourTimeZone: true,
             utcCancellationRequestedAt: true,
+            utcOperatorCancellationReportedAt: true,
             utcCancelledAt: true,
             tour: { select: { cancellationHours: true } },
           },
@@ -161,56 +205,9 @@ export class SettlementsService {
       },
     });
     if (!row) throw new NotFoundException('Settlement not found');
-    // A non-admin actor may only confirm THEIR OWN payout. 404 (not 403) so
-    // the response never leaks that another operator's settlement id exists.
-    if (actor && actor.role !== Role.ADMIN) {
-      const ownOperatorId = await resolveOperatorId(
-        this.prisma,
-        actor.id,
-        actor.role,
-      );
-      if (row.operatorId !== ownOperatorId) {
-        throw new NotFoundException('Settlement not found');
-      }
-    }
-    if (row.status === SettlementStatus.PAID_OUT) {
-      throw new ConflictException('This payout is already marked as paid out.');
-    }
-    if (row.status !== SettlementStatus.RECORDED) {
-      throw new ConflictException(
-        'This settlement was reversed (booking cancelled) - nothing is owed.',
-      );
-    }
-    if (!row.netPosition.greaterThan(0)) {
-      throw new ConflictException(
-        'Nothing is owed to the operator on this settlement.',
-      );
-    }
-    if (
-      row.booking.status !== BookingStatus.CONFIRMED &&
-      row.booking.status !== BookingStatus.REDEEMED
-    ) {
-      throw new ConflictException(
-        'The booking no longer stands (cancelled/expired) - do not pay out; the sweep will reverse this row.',
-      );
-    }
-    if (
-      row.booking.utcCancellationRequestedAt != null &&
-      row.booking.utcCancelledAt == null
-    ) {
-      throw new ConflictException(
-        'A cancellation request is pending on this booking - resolve it before paying out.',
-      );
-    }
-    const deadline = this.freeCancelDeadlineUtc(row.booking);
     const now = new Date();
-    if (deadline == null || now < deadline) {
-      throw new ConflictException(
-        deadline
-          ? `The traveller can still cancel for free until ${deadline.toISOString()} - the payout clears once that window closes.`
-          : 'This booking has no start time, so its free-cancellation window cannot be judged - resolve the booking first.',
-      );
-    }
+    const blocker = this.payoutBlocker(row, now);
+    if (blocker) throw new ConflictException(blocker);
 
     const { count } = await this.prisma.settlement.updateMany({
       where: { id, status: SettlementStatus.RECORDED },
@@ -225,11 +222,10 @@ export class SettlementsService {
         'This settlement changed while you were looking at it - refresh and retry.',
       );
     }
-    const markedByAdmin = !actor || actor.role === Role.ADMIN;
     this.logger.log(
-      `Settlement ${id} (${row.booking.displayRef}) marked PAID OUT by ${markedByAdmin ? 'admin' : 'operator'}: EUR ${row.netPosition.toString()}`,
+      `Settlement ${id} (${row.booking.displayRef}) marked PAID OUT by admin ${actorId ?? 'unknown'}: EUR ${row.netPosition.toString()}`,
     );
-    await this.sendStatusChangeEmails(id, 'PAID_OUT', markedByAdmin);
+    await this.sendStatusChangeEmails(id, 'PAID_OUT');
     return {
       id,
       status: SettlementStatus.PAID_OUT,
@@ -243,7 +239,10 @@ export class SettlementsService {
    * rows a human marked paid - REVERSED rows stay reversed. Clears the payout
    * stamp so the row goes back onto the "payout due" worklist.
    */
-  async markUnpaid(id: string): Promise<SettlementActionResponseDto> {
+  async markUnpaid(
+    id: string,
+    actorId: string,
+  ): Promise<SettlementActionResponseDto> {
     const row = await this.prisma.settlement.findUnique({
       where: { id },
       select: {
@@ -272,9 +271,9 @@ export class SettlementsService {
       );
     }
     this.logger.log(
-      `Settlement ${id} (${row.booking.displayRef}) reverted to PAYOUT DUE by admin`,
+      `Settlement ${id} (${row.booking.displayRef}) reverted to PAYOUT DUE by admin ${actorId}`,
     );
-    await this.sendStatusChangeEmails(id, 'REVERTED', true);
+    await this.sendStatusChangeEmails(id, 'REVERTED');
     return {
       id,
       status: SettlementStatus.RECORDED,
@@ -294,7 +293,6 @@ export class SettlementsService {
   private async sendStatusChangeEmails(
     id: string,
     change: 'PAID_OUT' | 'REVERTED',
-    markedByAdmin: boolean,
   ): Promise<void> {
     try {
       const [row, site] = await Promise.all([
@@ -335,7 +333,9 @@ export class SettlementsService {
       const amount = `${row.currency} ${(row.operatorPayout ?? row.netPosition).toString()}`;
       const tourName = row.booking.tour?.name ?? 'Unknown tour';
       const ref = row.booking.displayRef;
-      const byline = markedByAdmin ? 'Island Tours' : companyName;
+      // Both ledger flips are admin-only (MANAGE_PAYMENTS), so the byline is
+      // always the platform.
+      const byline = 'Island Tours';
 
       const shared = {
         emailIconBase: emailIconBase(),
@@ -367,9 +367,7 @@ export class SettlementsService {
               noticeTitle: 'Your payout was marked as paid.',
               noticeParagraphs: [
                 `The payout of ${amount} for booking ${ref} (${tourName}) was marked as paid by ${byline}.`,
-                markedByAdmin
-                  ? 'The bank transfer is on its way to your account. If it does not arrive within a few business days, contact Island Tours.'
-                  : 'You confirmed the money arrived - the ledger now shows this payout as settled.',
+                'The bank transfer is on its way to your account. If it does not arrive within a few business days, contact Island Tours.',
               ],
             },
           });
@@ -541,6 +539,7 @@ export class SettlementsService {
               tourStartDateTime: true,
               tourTimeZone: true,
               utcCancellationRequestedAt: true,
+              utcOperatorCancellationReportedAt: true,
               utcCancelledAt: true,
               tour: {
                 select: { name: true, cancellationHours: true },
@@ -561,6 +560,8 @@ export class SettlementsService {
         tourStartDateTime: r.booking.tourStartDateTime,
         tourTimeZone: r.booking.tourTimeZone,
         utcCancellationRequestedAt: r.booking.utcCancellationRequestedAt,
+        utcOperatorCancellationReportedAt:
+          r.booking.utcOperatorCancellationReportedAt,
         utcCancelledAt: r.booking.utcCancelledAt,
         tour: r.booking.tour
           ? { cancellationHours: r.booking.tour.cancellationHours }
@@ -571,14 +572,15 @@ export class SettlementsService {
         r.paymentModel === PaymentModel.PAID_IN_FULL
           ? this.freeCancelDeadlineUtc(window)
           : null;
-      // A RECORDED payout with a pending cancellation request is HELD - the
-      // release cron will skip it until the request is resolved (see
-      // isPayoutEligible). Surfaced so the ledger shows "on hold" not "pending".
+      // A RECORDED payout with a pending cancellation request OR a pending
+      // operator cancellation report is HELD (same predicates payoutBlocker
+      // uses). Surfaced so the ledger shows "on hold" not "pending".
       const payoutHeld =
         r.status === SettlementStatus.RECORDED &&
         r.paymentModel === PaymentModel.PAID_IN_FULL &&
         r.netPosition.greaterThan(0) &&
-        r.booking.utcCancellationRequestedAt != null &&
+        (r.booking.utcCancellationRequestedAt != null ||
+          r.booking.utcOperatorCancellationReportedAt != null) &&
         r.booking.utcCancelledAt == null;
       return {
         id: r.id,

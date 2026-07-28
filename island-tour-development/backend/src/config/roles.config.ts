@@ -74,9 +74,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.DELETE_BOOKING,
     // Admin-only booking ops (non-payment forfeit confirmation - guide s15).
     Permission.MANAGE_BOOKINGS,
+    // Conflict #7: money + traveler PII on booking rows. Without it a seat
+    // sees only the MANIFEST projection (who/when/where).
+    Permission.VIEW_BOOKING_FINANCIALS,
     Permission.VIEW_PAYMENTS,
     Permission.EDIT_PAYMENT,
     Permission.DELETE_PAYMENT,
+    // Payout ledger actions (settlements mark-paid/mark-unpaid). Admin-only:
+    // excluded from the platform-staff ceiling, never granted to operators
+    // (access-roles matrix: operator settlements are view-own).
+    Permission.MANAGE_PAYMENTS,
     Permission.VIEW_ENQUIRIES,
     Permission.DELETE_ENQUIRY,
     Permission.REPLY_ENQUIRY,
@@ -89,7 +96,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.APPROVE_REVIEW,
 
     // Commercial tiers & spotlight (admin-only; operators change tiers / request
-    // spotlight via EDIT_TRIP on their own tours)
+    // spotlight via EDIT_TRIP on their own tours - owner accounts only, the
+    // tiers service rejects non-owner seats)
     Permission.MANAGE_TIERS,
     Permission.APPROVE_SPOTLIGHT,
 
@@ -137,6 +145,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_BOOKINGS,
     Permission.EDIT_BOOKING,
     Permission.DELETE_BOOKING,
+    // Conflict #7: platform support keeps the full row (they triage refunds).
+    Permission.VIEW_BOOKING_FINANCIALS,
     Permission.VIEW_PAYMENTS,
     Permission.EDIT_PAYMENT,
     Permission.DELETE_PAYMENT,
@@ -152,6 +162,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.APPROVE_REVIEW,
 
     Permission.UPLOAD_MEDIA,
+    Permission.VIEW_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,
     Permission.EDIT_PROFILE,
@@ -168,6 +179,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_BOOKINGS,
     Permission.EDIT_BOOKING,
     Permission.DELETE_BOOKING,
+    // Conflict #7: platform support keeps the full row (they triage refunds).
+    Permission.VIEW_BOOKING_FINANCIALS,
     Permission.VIEW_PAYMENTS,
     Permission.EDIT_PAYMENT,
     Permission.DELETE_PAYMENT,
@@ -182,6 +195,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.DELETE_REVIEW,
     Permission.APPROVE_REVIEW,
     Permission.UPLOAD_MEDIA,
+    Permission.VIEW_MEDIA,
     Permission.MANAGE_MEDIA,
     Permission.VIEW_PROFILE,
     Permission.EDIT_PROFILE,
@@ -191,6 +205,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.GUIDE]: [
     Permission.VIEW_USERS,
     Permission.VIEW_PROFILE,
+    // Conflict #7: VIEW_BOOKINGS without VIEW_BOOKING_FINANCIALS = the
+    // manifest projection (who/when/where, no money, no traveler email).
     Permission.VIEW_BOOKINGS,
     Permission.VIEW_TRIPS,
     Permission.VIEW_REVIEWS,
@@ -223,10 +239,19 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     // Master roles doc: operators "view own bookings" - the bookings/payments
     // list services scope them to their own tours' rows (never platform-wide).
     Permission.VIEW_BOOKINGS,
+    // Conflict #7: owners/managers keep the full booking row; a guide-level
+    // designation omits this and gets the manifest projection instead.
+    Permission.VIEW_BOOKING_FINANCIALS,
+    // EDIT_BOOKING gates ONLY the two operator REPORT routes
+    // (report-non-payment, report-cancellation) - both ownership-pinned in the
+    // service and neither moves money (the admin executes forfeit/refund).
+    Permission.EDIT_BOOKING,
     Permission.VIEW_PAYMENTS,
     Permission.VIEW_PROFILE,
     Permission.EDIT_PROFILE,
-    Permission.MANAGE_TRIPS,
+    // Conflict #1 (access-roles matrix): NO MANAGE_TRIPS - publishing is
+    // always Island Tours'. Operators submit-for-review + pause/archive their
+    // own tours via EDIT_TRIP routes; publish/unpause/restore are platform.
     Permission.MANAGE_AVAILABILITY,
     Permission.VIEW_CATEGORIES,
   ],

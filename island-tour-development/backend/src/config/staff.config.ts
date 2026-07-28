@@ -36,6 +36,9 @@ export const STAFF_BASE_PERMISSIONS: readonly Permission[] = [
  * - MANAGE_OPERATOR_PAYMENTS: operator payout config is owner-only in the
  *   operators service regardless - listing it here keeps the grant catalog
  *   honest instead of offering a permission that always 403s.
+ * - MANAGE_BOOKINGS / MANAGE_PAYMENTS: forfeit confirmations and payout-ledger
+ *   flips move real money; the access-roles matrix keeps both with real ADMIN
+ *   accounts (support staff triage, never execute).
  */
 const PLATFORM_STAFF_EXCLUDED: readonly Permission[] = [
   Permission.MANAGE_SYSTEM,
@@ -46,6 +49,8 @@ const PLATFORM_STAFF_EXCLUDED: readonly Permission[] = [
   Permission.UPDATE_USER,
   Permission.DELETE_USER,
   Permission.MANAGE_OPERATOR_PAYMENTS,
+  Permission.MANAGE_BOOKINGS,
+  Permission.MANAGE_PAYMENTS,
 ];
 
 /**
@@ -138,6 +143,10 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogGroup[] = [
     group: 'Bookings & Payments',
     permissions: [
       { key: Permission.VIEW_BOOKINGS, label: 'View bookings' },
+      {
+        key: Permission.VIEW_BOOKING_FINANCIALS,
+        label: 'See booking amounts + traveler contact',
+      },
       { key: Permission.EDIT_BOOKING, label: 'Edit bookings' },
       { key: Permission.DELETE_BOOKING, label: 'Delete bookings' },
       { key: Permission.VIEW_PAYMENTS, label: 'View payments' },

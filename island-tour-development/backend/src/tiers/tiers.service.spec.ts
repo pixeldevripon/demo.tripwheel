@@ -8,7 +8,13 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { Prisma, Role, SpotlightStatus, TierKey } from '@prisma/client';
+import {
+  Prisma,
+  Role,
+  SpotlightStatus,
+  StaffStatus,
+  TierKey,
+} from '@prisma/client';
 import { TiersService } from './tiers.service';
 
 function mockPrisma() {
@@ -16,6 +22,7 @@ function mockPrisma() {
     tour: { findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
     booking: { count: jest.fn() },
     operator: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+    staffMember: { findUnique: jest.fn() },
     spotlightRequest: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -36,6 +43,24 @@ const ELIGIBLE_TOUR = {
   aggregateRating: 4.7,
   aggregateReviewCount: 12,
 };
+
+/**
+ * Wires the mocks for a REAL team-seat scenario: the caller (u2) has no
+ * Operator row (`operator.findUnique({where:{userId}})` -> null), resolves to
+ * op1 via an ACTIVE staff seat, and the owner lookup by operator id
+ * (`operator.findUnique({where:{id}})`) returns owner u1 - so the full
+ * resolveOperatorId seat branch runs, not a short-circuit.
+ */
+function wireSeatUser(prisma: ReturnType<typeof mockPrisma>) {
+  prisma.operator.findUnique.mockImplementation(
+    (args: { where: { userId?: string; id?: string } }) =>
+      Promise.resolve(args.where.userId ? null : { userId: 'u1' }),
+  );
+  prisma.staffMember.findUnique.mockResolvedValue({
+    operatorId: 'op1',
+    status: StaffStatus.ACTIVE,
+  });
+}
 
 function spotlightRow(over: Record<string, unknown> = {}) {
   return {
@@ -71,7 +96,7 @@ describe('TiersService', () => {
   describe('requestSpotlight', () => {
     it('creates a REQUESTED row when the eligibility bar passes', async () => {
       prisma.tour.findUnique.mockResolvedValue(ELIGIBLE_TOUR);
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       prisma.spotlightRequest.create.mockResolvedValue(spotlightRow());
 
       const res = await svc.requestSpotlight(
@@ -98,7 +123,7 @@ describe('TiersService', () => {
         ...ELIGIBLE_TOUR,
         aggregateReviewCount: 9,
       });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       await expect(
         svc.requestSpotlight('u1', Role.TOUR_OPERATOR, 't1', {}),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -110,7 +135,7 @@ describe('TiersService', () => {
         ...ELIGIBLE_TOUR,
         aggregateRating: 4.4,
       });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       await expect(
         svc.requestSpotlight('u1', Role.TOUR_OPERATOR, 't1', {}),
       ).rejects.toBeInstanceOf(BadRequestException);
@@ -121,10 +146,24 @@ describe('TiersService', () => {
         ...ELIGIBLE_TOUR,
         operatorId: 'op2',
       });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       await expect(
         svc.requestSpotlight('u1', Role.TOUR_OPERATOR, 't1', {}),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('forbids a team seat (non-owner) from requesting Spotlight', async () => {
+      prisma.tour.findUnique.mockResolvedValue(ELIGIBLE_TOUR);
+      wireSeatUser(prisma);
+      await expect(
+        svc.requestSpotlight('u2', Role.TOUR_OPERATOR, 't1', {}),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      // The seat DID resolve to op1 (staff branch ran) - the owner gate is
+      // what rejected it, not a failed resolution.
+      expect(prisma.staffMember.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u2' } }),
+      );
+      expect(prisma.spotlightRequest.create).not.toHaveBeenCalled();
     });
   });
 
@@ -215,11 +254,29 @@ describe('TiersService', () => {
 
   // ── tier change + 30-day lock ────────────────────────────────────────────────
   describe('changeTier', () => {
+    it('forbids a team seat (non-owner) from changing the tier', async () => {
+      // Seat u2 reaches the tour via their ACTIVE seat (resolveOperatorId
+      // returns op1 through the staffMember branch), but op1's owner account
+      // is u1 - commercial mutations are owner-only (access-roles matrix:
+      // tier selection sits with the account holding the agreement).
+      prisma.tour.findUnique.mockResolvedValue(ELIGIBLE_TOUR);
+      wireSeatUser(prisma);
+      await expect(
+        svc.changeTier('u2', Role.TOUR_OPERATOR, 't1', {
+          tierKey: TierKey.premium,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(prisma.staffMember.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u2' } }),
+      );
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
     it('denormalizes commission + rank and sets a 30-day lock', async () => {
       prisma.tour.findUnique
         .mockResolvedValueOnce(ELIGIBLE_TOUR) // assertTourAccess
         .mockResolvedValueOnce({ tierLockedUntil: null }); // lock check
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       prisma.tour.update.mockResolvedValue({
         id: 't1',
         tierKey: TierKey.premium,
@@ -250,7 +307,7 @@ describe('TiersService', () => {
         .mockResolvedValueOnce({
           tierLockedUntil: new Date(Date.now() + 5 * 86_400_000),
         });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       await expect(
         svc.changeTier('u1', Role.TOUR_OPERATOR, 't1', {
           tierKey: TierKey.boosted,
@@ -265,7 +322,7 @@ describe('TiersService', () => {
         .mockResolvedValueOnce({
           tierLockedUntil: new Date(Date.now() - 86_400_000),
         });
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       prisma.tour.update.mockResolvedValue({
         id: 't1',
         tierKey: TierKey.organic,
@@ -368,7 +425,7 @@ describe('TiersService', () => {
 
     beforeEach(() => {
       // assertTourAccess findUnique + changeTier findUnique share the mock.
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1', userId: 'u1' });
       prisma.booking.count.mockResolvedValue(0); // no bookings -> cancel check passes
       prisma.tour.update.mockResolvedValue({
         id: 't1',

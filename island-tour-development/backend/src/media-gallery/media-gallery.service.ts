@@ -1,5 +1,8 @@
 import { PrismaService } from '@/prisma/prisma.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
+import { resolveOperatorId } from '@/common/utils/operator.util';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Permission, Role } from '@prisma/client';
 import type { MediaGallery, Prisma } from '@prisma/client';
 import { CloudinaryService } from './cloudinary.service';
 import type { Multer } from 'multer';
@@ -9,6 +12,9 @@ import type {
   MediaGalleryQueryDto,
   UpdateMediaDto,
 } from './dto/upload-media.dto';
+
+/** The session identity every media call is scoped by. */
+export type MediaActor = { id: string; role: Role };
 
 /**
  * MediaGalleryService - all database and Cloudinary orchestration logic.
@@ -31,7 +37,58 @@ export class MediaGalleryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly staffPermissions: StaffPermissionsService,
   ) {}
+
+  // ─── Operator-context scoping (conflict #6 stage 2) ─────────────────────────
+
+  /**
+   * The operator whose shared library a row should belong to: an operator
+   * owner or team seat resolves to their operator id; platform accounts
+   * (admin/staff/editor) upload PLATFORM assets (null). Never auto-provisions
+   * an operator (that path is for tour ownership, not media).
+   */
+  private async operatorContextFor(actor: MediaActor): Promise<string | null> {
+    if (actor.role !== Role.TOUR_OPERATOR) return null;
+    return resolveOperatorId(this.prisma, actor.id, actor.role);
+  }
+
+  /** Public wrapper for the async-upload enqueue path (controller stamps the job payload). */
+  operatorContextForUser(actor: MediaActor): Promise<string | null> {
+    return this.operatorContextFor(actor);
+  }
+
+  /**
+   * Row-visibility scope. Platform roles holding MANAGE_MEDIA (admin/staff/
+   * editor content teams) see the WHOLE library; an operator context (owner
+   * or any seat) sees the operator's shared library; anyone else is pinned
+   * to rows they personally uploaded.
+   */
+  private async mediaScope(
+    actor: MediaActor,
+  ): Promise<Prisma.MediaGalleryWhereInput> {
+    // EFFECTIVE permissions, never the static role table: MANAGE_MEDIA sits
+    // inside the platform-staff ceiling, so a designation can grant or revoke
+    // it per seat. Reading ROLE_PERMISSIONS here would hand every Role.STAFF
+    // account the whole library regardless of what an admin actually granted.
+    const effective = await this.staffPermissions.getEffectivePermissions({
+      id: actor.id,
+      role: actor.role,
+    });
+    if (effective.includes(Permission.MANAGE_MEDIA)) {
+      return {};
+    }
+    if (actor.role === Role.TOUR_OPERATOR) {
+      const operatorId = await this.operatorContextFor(actor);
+      // Orphan fallback: rows the backfill could not attribute (operatorId
+      // null) stay reachable by the person who uploaded them, so media never
+      // silently vanishes from an operator's own library.
+      return {
+        OR: [{ operatorId }, { operatorId: null, userId: actor.id }],
+      };
+    }
+    return { userId: actor.id };
+  }
 
   // ─── Server-side upload ──────────────────────────────────────────────────────
 
@@ -42,8 +99,10 @@ export class MediaGalleryService {
    */
   async uploadFiles(
     files: Express.Multer.File[],
-    userId: string,
+    actor: MediaActor,
   ): Promise<MediaGallery[]> {
+    const userId = actor.id;
+    const operatorId = await this.operatorContextFor(actor);
     // 1. Upload all files to Cloudinary in parallel
     const cloudResults = await Promise.allSettled(
       files.map((file) => this.cloudinaryService.uploadFile(file, userId)),
@@ -98,6 +157,7 @@ export class MediaGalleryService {
               width: r.width,
               height: r.height,
               userId,
+              operatorId,
             },
           }),
         ),
@@ -116,7 +176,9 @@ export class MediaGalleryService {
 
   /**
    * Generate HMAC-signed parameters the client sends directly to Cloudinary.
-   * No file bytes reach the NestJS server.
+   * No file bytes reach the NestJS server. Folder-path signing only - no DB
+   * row and therefore no authorization decision happens here; the operator
+   * stamp is applied in confirmUpload, which takes the full actor.
    */
   getSignedUploadParams(userId: string) {
     return this.cloudinaryService.generateSignedUploadParams(userId);
@@ -128,8 +190,10 @@ export class MediaGalleryService {
    */
   async confirmUpload(
     dto: ConfirmUploadDto,
-    userId: string,
+    actor: MediaActor,
   ): Promise<MediaGallery> {
+    const userId = actor.id;
+    const operatorId = await this.operatorContextFor(actor);
     // Verify the asset actually exists on Cloudinary (prevents spoofed publicIds)
     let asset: Awaited<
       ReturnType<typeof this.cloudinaryService.verifyAssetExists>
@@ -156,6 +220,7 @@ export class MediaGalleryService {
         width: asset.width,
         height: asset.height,
         userId,
+        operatorId,
       },
     });
 
@@ -179,7 +244,7 @@ export class MediaGalleryService {
     return rows.map((r) => r.url);
   }
 
-  async getMyMedia(userId: string, query: MediaGalleryQueryDto) {
+  async getMyMedia(actor: MediaActor, query: MediaGalleryQueryDto) {
     const {
       page = 1,
       limit = 20,
@@ -219,7 +284,10 @@ export class MediaGalleryService {
           return {};
       }
     })();
-    const where: Prisma.MediaGalleryWhereInput = { userId, ...typeWhere };
+    const where: Prisma.MediaGalleryWhereInput = {
+      ...(await this.mediaScope(actor)),
+      ...typeWhere,
+    };
 
     // Rows uploaded before the metadata columns existed have null
     // originalName/bytes - keep them at the end regardless of direction.
@@ -251,9 +319,9 @@ export class MediaGalleryService {
     return { total, page, limit, data };
   }
 
-  async getMediaById(id: string, userId: string): Promise<MediaGallery> {
+  async getMediaById(id: string, actor: MediaActor): Promise<MediaGallery> {
     const media = await this.prisma.mediaGallery.findFirst({
-      where: { id, userId },
+      where: { id, ...(await this.mediaScope(actor)) },
     });
 
     if (!media) {
@@ -270,11 +338,11 @@ export class MediaGalleryService {
    */
   async updateMedia(
     id: string,
-    userId: string,
+    actor: MediaActor,
     dto: UpdateMediaDto,
   ): Promise<MediaGallery> {
     const existing = await this.prisma.mediaGallery.findFirst({
-      where: { id, userId },
+      where: { id, ...(await this.mediaScope(actor)) },
       select: { id: true },
     });
     if (!existing) {
@@ -296,8 +364,11 @@ export class MediaGalleryService {
     });
   }
 
-  async deleteMedia(id: string, userId: string): Promise<{ message: string }> {
-    const media = await this.getMediaById(id, userId);
+  async deleteMedia(
+    id: string,
+    actor: MediaActor,
+  ): Promise<{ message: string }> {
+    const media = await this.getMediaById(id, actor);
     if (!media) {
       throw new NotFoundException(`Media ${id} not found`);
     }
@@ -306,16 +377,16 @@ export class MediaGalleryService {
     await this.cloudinaryService.deleteFile(media.publicId);
 
     await this.prisma.mediaGallery.delete({ where: { id } });
-    this.logger.log(`Deleted media ${id} for user ${userId}`);
+    this.logger.log(`Deleted media ${id} for user ${actor.id}`);
     return { message: 'Media deleted successfully' };
   }
 
   async deleteMediaByPublicId(
     publicId: string,
-    userId: string,
+    actor: MediaActor,
   ): Promise<{ message: string }> {
     const media = await this.prisma.mediaGallery.findFirst({
-      where: { publicId, userId },
+      where: { publicId, ...(await this.mediaScope(actor)) },
     });
 
     if (!media) {
@@ -329,7 +400,7 @@ export class MediaGalleryService {
     await this.prisma.mediaGallery.delete({ where: { id: media.id } });
 
     this.logger.log(
-      `Deleted media with publicId ${publicId} for user ${userId}`,
+      `Deleted media with publicId ${publicId} for user ${actor.id}`,
     );
 
     return { message: 'Media deleted successfully' };
@@ -345,11 +416,12 @@ export class MediaGalleryService {
    */
   async bulkDeleteMedia(
     ids: string[],
-    userId: string,
+    actor: MediaActor,
   ): Promise<{ deleted: number; failed: number }> {
-    // 1. Fetch all matching records owned by this user (prevents IDOR)
+    // 1. Fetch all matching records inside the actor's scope (prevents IDOR)
+    const scope = await this.mediaScope(actor);
     const records = await this.prisma.mediaGallery.findMany({
-      where: { id: { in: ids }, userId },
+      where: { id: { in: ids }, ...scope },
     });
 
     let deleted = 0;
@@ -370,14 +442,14 @@ export class MediaGalleryService {
 
     // 3. Batch-delete from DB in one query
     const result = await this.prisma.mediaGallery.deleteMany({
-      where: { id: { in: records.map((r) => r.id) }, userId },
+      where: { id: { in: records.map((r) => r.id) }, ...scope },
     });
 
     deleted = result.count;
     failed = ids.length - deleted;
 
     this.logger.log(
-      `Bulk delete: ${deleted} deleted, ${failed} failed for user ${userId}`,
+      `Bulk delete: ${deleted} deleted, ${failed} failed for user ${actor.id}`,
     );
 
     return { deleted, failed };

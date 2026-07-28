@@ -143,6 +143,14 @@ model Booking {
   utcNonPaymentReportedAt DateTime?
   utcForfeitedAt          DateTime?
 
+  // Operator-forced cancellation (access-roles matrix conflict #2): operators
+  // REPORT a cancellation, only an admin executes it (the refund moves real
+  // money). The stamp puts the booking on the admin worklist and holds the
+  // settlement payout; admin either cancels (stamped cancelledBy=OPERATOR so
+  // the eligibility metric counts it) or dismisses the report.
+  utcOperatorCancellationReportedAt DateTime?
+  operatorCancellationReason        String?
+
   // B6 queued-job idempotency guards (EVENT-DRIVEN-AND-QUEUES.md §5.1): each
   // consumer checks-then-stamps its own column, so a redelivered job never
   // double-sends. CAPI needs no column - Meta dedups by event id (publicRef).

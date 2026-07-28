@@ -51,7 +51,14 @@ export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
 
   @Get()
-  @RequirePermissions(Permission.VIEW_PAYMENTS)
+  // Conflict #7: this surface is money by nature, so it requires
+  // VIEW_BOOKING_FINANCIALS ON TOP of its own permission. Without the pairing a
+  // "field guide" designation granted only 'View payments' would read back exactly
+  // the amounts the manifest projection hides on /bookings.
+  @RequirePermissions(
+    Permission.VIEW_PAYMENTS,
+    Permission.VIEW_BOOKING_FINANCIALS,
+  )
   @ApiListPaymentsDocs()
   list(
     @AuthenticatedUser() user: TypedAuthUser,

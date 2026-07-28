@@ -1,6 +1,8 @@
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
+import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
+import { Permission } from '@prisma/client';
 import {
   BadRequestException,
   Body,
@@ -116,9 +118,11 @@ const mediaFileFilter = (
  *  4. POST /confirm        - register a completed direct upload in the DB
  *
  * ## Access-control
- * All routes require an active Better Auth session (enforced by the global
- * AuthGuard in AuthModule). userId is always sourced from the validated session -
- * no IDOR risk from URL params.
+ * All routes require an active Better Auth session (global AuthGuard) PLUS a
+ * media permission: uploads and own-library mutations need UPLOAD_MEDIA, reads
+ * need VIEW_MEDIA (access-roles matrix - travelers hold neither, so customer
+ * accounts have no Cloudinary path). Rows are additionally scoped to the
+ * caller's userId in the service - no IDOR risk from URL params.
  *
  * ## Route-ordering rule (NestJS)
  * Static paths ('upload', 'upload/async', 'sign', 'confirm') are declared
@@ -141,6 +145,7 @@ export class MediaGalleryController {
    * with per-file rollback on DB failure.
    */
   @Post('upload')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiUploadMediaDocs()
   @UseInterceptors(
     FilesInterceptor('files', 10, {
@@ -155,7 +160,10 @@ export class MediaGalleryController {
     if (!files || files.length === 0) {
       throw new BadRequestException('At least one file is required');
     }
-    return this.mediaGalleryService.uploadFiles(files, user.id);
+    return this.mediaGalleryService.uploadFiles(files, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   // ─── Background async upload via BullMQ + Upstash Redis ─────────────────────
@@ -168,6 +176,7 @@ export class MediaGalleryController {
    * The file buffer is base64-encoded for JSON-serialisable job payloads.
    */
   @Post('upload/async')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiUploadMediaAsyncDocs()
   @UseInterceptors(
     FilesInterceptor('files', 10, {
@@ -185,12 +194,20 @@ export class MediaGalleryController {
 
     const jobIds: string[] = [];
 
+    // Operator-context scope (conflict #6 stage 2): resolved ONCE here so the
+    // worker stamps the row identically to the synchronous path.
+    const operatorId = await this.mediaGalleryService.operatorContextForUser({
+      id: user.id,
+      role: user.role,
+    });
+
     for (const file of files) {
       const payload: MediaUploadJobPayload = {
         buffer: file.buffer.toString('base64'),
         mimetype: file.mimetype,
         originalname: file.originalname,
         userId: user.id,
+        operatorId,
       };
 
       const job = await this.mediaUploadQueue.add('upload', payload, {
@@ -216,6 +233,7 @@ export class MediaGalleryController {
    * After upload completes, the client calls POST /confirm.
    */
   @Get('sign')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiGetSignedParamsDocs()
   getSignedParams(@AuthenticatedUser() user: TypedAuthUser) {
     return this.mediaGalleryService.getSignedUploadParams(user.id);
@@ -228,12 +246,16 @@ export class MediaGalleryController {
    * then saves the media record to the DB.
    */
   @Post('confirm')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiConfirmUploadDocs()
   confirmUpload(
     @Body() dto: ConfirmUploadDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.confirmUpload(dto, user.id);
+    return this.mediaGalleryService.confirmUpload(dto, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -244,12 +266,16 @@ export class MediaGalleryController {
    * Paginated list of the authenticated user's uploaded media.
    */
   @Get()
+  @RequirePermissions(Permission.VIEW_MEDIA)
   @ApiGetMyMediaDocs()
   getMyMedia(
     @AuthenticatedUser() user: TypedAuthUser,
     @Query() query: MediaGalleryQueryDto,
   ) {
-    return this.mediaGalleryService.getMyMedia(user.id, query);
+    return this.mediaGalleryService.getMyMedia(
+      { id: user.id, role: user.role },
+      query,
+    );
   }
 
   /**
@@ -273,12 +299,16 @@ export class MediaGalleryController {
    * Returns 404 if the record does not belong to the caller.
    */
   @Get(':id')
+  @RequirePermissions(Permission.VIEW_MEDIA)
   @ApiGetMediaByIdDocs()
   getMediaById(
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.getMediaById(id, user.id);
+    return this.mediaGalleryService.getMediaById(id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -291,13 +321,18 @@ export class MediaGalleryController {
    * belong to the caller.
    */
   @Patch(':id')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiUpdateMediaDocs()
   updateMedia(
     @Param('id') id: string,
     @Body() dto: UpdateMediaDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.updateMedia(id, user.id, dto);
+    return this.mediaGalleryService.updateMedia(
+      id,
+      { id: user.id, role: user.role },
+      dto,
+    );
   }
 
   /**
@@ -312,11 +347,15 @@ export class MediaGalleryController {
    * NestJS does not interpret 'bulk' as a media ID.
    */
   @Delete('bulk')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   bulkDeleteMedia(
     @Body() dto: BulkDeleteMediaDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.bulkDeleteMedia(dto.ids, user.id);
+    return this.mediaGalleryService.bulkDeleteMedia(dto.ids, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   /**
@@ -326,12 +365,16 @@ export class MediaGalleryController {
    * Returns 404 if the record doesn't exist or doesn't belong to the caller.
    */
   @Delete(':id')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiDeleteMediaDocs()
   deleteMedia(
     @Param('id') id: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.deleteMedia(id, user.id);
+    return this.mediaGalleryService.deleteMedia(id, {
+      id: user.id,
+      role: user.role,
+    });
   }
 
   /**
@@ -341,11 +384,15 @@ export class MediaGalleryController {
    * using the publicId.
    */
   @Delete('public/:publicId')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
   @ApiDeleteMediaDocs() // We can reuse the docs decorator or create a new one
   deleteMediaByPublicId(
     @Param('publicId') publicId: string,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.mediaGalleryService.deleteMediaByPublicId(publicId, user.id);
+    return this.mediaGalleryService.deleteMediaByPublicId(publicId, {
+      id: user.id,
+      role: user.role,
+    });
   }
 }

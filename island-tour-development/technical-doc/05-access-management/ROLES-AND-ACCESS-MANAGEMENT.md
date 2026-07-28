@@ -47,15 +47,16 @@ Use `@RequirePermissions()` on endpoints, not `@Roles()` on individual routes.
 | Categories | `CREATE_CATEGORY` | `EDIT_CATEGORY` | `DELETE_CATEGORY` |
 | Hubs | `MANAGE_HUBS` | `MANAGE_HUBS` | `MANAGE_HUBS` |
 | Collections | `CREATE_COLLECTION` | `EDIT_COLLECTION` | `DELETE_COLLECTION` |
-| Tours | `CREATE_TRIP` | `EDIT_TRIP` | `DELETE_TRIP` / `MANAGE_TRIPS` (admin) |
+| Tours | `CREATE_TRIP` | `EDIT_TRIP` | `DELETE_TRIP` / `MANAGE_TRIPS` (admin). **Publishing is always Island Tours' (conflict #1, 2026-07-28)**: operators hold NO `MANAGE_TRIPS`; they `submit-for-review` (`EDIT_TRIP`, same readiness bar as publish) and pause/archive their own tours (downward = safe); publish/unpause/restore/approve/reject are `MANAGE_TRIPS`. `approvalStatus` gates publish (`NOT_SUBMITTED/PENDING/APPROVED/REJECTED`; LIVE implies APPROVED - an admin publish stamps it); reject requires an actionable note the operator sees |
 | Attributes dictionary | `MANAGE_SYSTEM` | `MANAGE_SYSTEM` | `MANAGE_SYSTEM` |
 | Availability | `EDIT_TRIP` (own) | `EDIT_TRIP` | `MANAGE_TRIPS` (admin override) |
-| Bookings | — | — | `VIEW_BOOKINGS` / `MANAGE_BOOKINGS` |
+| Bookings | — | — | `VIEW_BOOKINGS` / `MANAGE_BOOKINGS`; **`VIEW_BOOKING_FINANCIALS` (conflict #7, 2026-07-28) shapes the PROJECTION, not the route**: without it a seat reads the MANIFEST (lead name, party size, date/time, pickup, phone) with amounts, payment/refund/settlement state and traveler email nulled - held by ADMIN/EDITOR/STAFF and `TOUR_OPERATOR` (owners/managers), inside the operator-seat ceiling so a field-staff designation can omit it; `GUIDE` deliberately lacks it. **A traveler always sees the money on their OWN booking** (row ownership, not the role grant - granting it to `USER` would leak through the customer-hat union onto any staff seat that has ever booked). The four money-by-nature sibling surfaces (`/customers`, `/payments`, `/settlements`, `/analytics/dashboard`) require it ON TOP of their own permission, or a field-guide designation would read the same amounts back through them; cancelling a CONFIRMED booking (refund execution) is admin-only - operators file `POST /bookings/:id/report-cancellation` (`EDIT_BOOKING`, own bookings) and the admin executes (`cancelledBy=OPERATOR`, full refund) or dismisses; a pending report holds the settlement payout |
 | Reviews | (traveler, booking-gated) | operator response | `MODERATE_REVIEWS` (admin) |
 | Operators | `CREATE_OPERATOR` | `EDIT_OPERATOR_PROFILE` | `MANAGE_OPERATORS` |
 | Settings | — | `MANAGE_SETTINGS` | `MANAGE_SETTINGS` |
-| Users | — | — | `MANAGE_USERS` |
-| Media | `UPLOAD_MEDIA` | — | `MANAGE_MEDIA` |
+| Users | — | — | `MANAGE_USERS` (list/read too - `VIEW_USERS` is the operator-scoped `/customers` surface, never the unscoped list) |
+| Media | `UPLOAD_MEDIA` | `UPLOAD_MEDIA` (scoped) | `MANAGE_MEDIA`; reads need `VIEW_MEDIA` (travelers hold no media permission). **Scoping is by OPERATOR context (conflict #6 stage 2, 2026-07-28)**: rows carry `operatorId` (stamped at upload, backfilled from the uploader's operator/seat link); owner + every team seat share ONE library; `MANAGE_MEDIA` platform roles see everything; platform uploads have `operatorId = null` |
+| Settlements | — | — | reads `VIEW_PAYMENTS` (operator = own rows); mark-paid/mark-unpaid `MANAGE_PAYMENTS` (admin-only, excluded from the platform-staff ceiling alongside `MANAGE_BOOKINGS`) |
 
 ## Commercial permissions (master §7)
 
@@ -64,7 +65,10 @@ The tier economy replaces the slot economy, so slot permissions are **removed**
 
 - **Operator self-service:** an operator picks their own commission tier in the dashboard, subject
   to eligibility validation and the 30-day tier lock (no special permission beyond owning the tour;
-  enforced in the service). See [../02-architecture/COMMERCIAL-MODEL.md](../02-architecture/COMMERCIAL-MODEL.md).
+  enforced in the service). Tier changes and Spotlight requests are **owner-account-only**: a team
+  seat that resolves to the operator via `resolveOperatorId` is still rejected - the tiers service
+  compares the caller's userId against the operator's owner `userId` (admins bypass).
+  See [../02-architecture/COMMERCIAL-MODEL.md](../02-architecture/COMMERCIAL-MODEL.md).
 - **Spotlight approval (admin):** Destination Spotlight is request → admin approve, max 3 per
   destination. Permission: `MANAGE_OPERATORS` / `MANAGE_SYSTEM` (admin-only).
 - **Force-majeure pardons (admin):** exclude operator cancellations within a date range +

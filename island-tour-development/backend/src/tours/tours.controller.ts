@@ -18,10 +18,12 @@ import { ApiTags } from '@nestjs/swagger';
 import { Currency, Permission, Role } from '@prisma/client';
 import {
   AdminToursQueryDto,
+  ApproveTourDto,
   CreateTourDto,
   MyToursQueryDto,
   SetLocalsFavouriteDto,
   TourBySlugQueryDto,
+  RejectTourDto,
   TourQueryDto,
   UpdateTourDto,
 } from './dto/tour.dto';
@@ -36,7 +38,10 @@ import {
   ApiGetTourByIdDocs,
   ApiGetTourBySlugDocs,
   ApiPauseTourDocs,
+  ApiApproveTourDocs,
   ApiPublishTourDocs,
+  ApiRejectTourDocs,
+  ApiSubmitTourForReviewDocs,
   ApiRecomputeDemandDocs,
   ApiRestoreTourDocs,
   ApiSetLocalsFavouriteDocs,
@@ -171,6 +176,43 @@ export class ToursController {
   }
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
+  // Conflict #1 (access-roles matrix): publishing is always Island Tours'.
+  // UPWARD transitions (publish / unpause / restore) stay MANAGE_TRIPS =
+  // platform-only. DOWNWARD transitions (pause / archive) are EDIT_TRIP -
+  // taking a tour offline is always safe, and the service pins operators to
+  // their own tours. Operators enter the pipeline via submit-for-review.
+
+  @Post(':id/submit-for-review')
+  @RequirePermissions(Permission.EDIT_TRIP)
+  @ApiSubmitTourForReviewDocs()
+  submitForReview(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.submitForReview(id, user.id, user.role);
+  }
+
+  @Post(':id/approve')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiApproveTourDocs()
+  approve(
+    @Param('id') id: string,
+    @Body() dto: ApproveTourDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.approveTour(id, user.id, dto.note);
+  }
+
+  @Post(':id/reject')
+  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @ApiRejectTourDocs()
+  reject(
+    @Param('id') id: string,
+    @Body() dto: RejectTourDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.toursService.rejectTour(id, user.id, dto.note);
+  }
 
   @Post(':id/publish')
   @RequirePermissions(Permission.MANAGE_TRIPS)
@@ -180,7 +222,7 @@ export class ToursController {
   }
 
   @Post(':id/pause')
-  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @RequirePermissions(Permission.EDIT_TRIP)
   @ApiPauseTourDocs()
   pause(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.toursService.pause(id, user.id, user.role);
@@ -194,7 +236,7 @@ export class ToursController {
   }
 
   @Post(':id/archive')
-  @RequirePermissions(Permission.MANAGE_TRIPS)
+  @RequirePermissions(Permission.EDIT_TRIP)
   @ApiArchiveTourDocs()
   archive(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.toursService.archive(id, user.id, user.role);

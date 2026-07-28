@@ -117,10 +117,13 @@ export class UserController {
    *
    * Paginated list of all platform users with optional search / role filters.
    *
-   * Security: requires `VIEW_USERS` - granted to ADMIN only.
+   * Security: requires `MANAGE_USERS` (real ADMIN accounts only - excluded
+   * from every staff ceiling). NOT `VIEW_USERS`: operators hold that for the
+   * operator-scoped /customers surface, and this list is unscoped - gating it
+   * on VIEW_USERS let any operator enumerate every platform user.
    */
   @Get()
-  @RequirePermissions(Permission.VIEW_USERS)
+  @RequirePermissions(Permission.MANAGE_USERS)
   @ApiGetAllUsersDocs()
   getAllUsers(@Query() query: UserQueryDto) {
     return this.userService.getAllUsers(query);
@@ -131,11 +134,12 @@ export class UserController {
    *
    * Fetches a single user by their database id.
    *
-   * Security: requires `VIEW_USERS` - granted to ADMIN only.
-   * Regular users wanting their own profile should call GET /users/me.
+   * Security: requires `MANAGE_USERS` (admin-only; same reasoning as the
+   * list route - VIEW_USERS is held by operators for the scoped /customers
+   * surface). Regular users wanting their own profile call GET /users/me.
    */
   @Get(':id')
-  @RequirePermissions(Permission.VIEW_USERS)
+  @RequirePermissions(Permission.MANAGE_USERS)
   @ApiGetUserByIdDocs()
   getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);

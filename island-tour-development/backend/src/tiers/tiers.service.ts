@@ -121,6 +121,7 @@ export class TiersService {
     dto: CreateSpotlightRequestDto,
   ): Promise<SpotlightRequestResponseDto> {
     const tour = await this.assertTourAccess(tourId, userId, role);
+    await this.assertOwnerAuthority(tour.operatorId, userId, role);
     await this.assertSpotlightEligible(tour);
 
     const row = await this.prisma.spotlightRequest.create({
@@ -424,7 +425,8 @@ export class TiersService {
     tourId: string,
     dto: ChangeTierDto,
   ): Promise<TierResponseDto> {
-    await this.assertTourAccess(tourId, userId, role);
+    const accessed = await this.assertTourAccess(tourId, userId, role);
+    await this.assertOwnerAuthority(accessed.operatorId, userId, role);
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
       select: {
@@ -790,6 +792,30 @@ export class TiersService {
   // ── internals ──────────────────────────────────────────────────────────────
 
   /** Asserts the actor may manage the tour; returns its operator + destination ids. */
+  /**
+   * Commercial mutations (tier pick, Spotlight request) are OWNER-only: they
+   * change the commission the operator pays, which the access-roles matrix
+   * reserves for the account holding the agreement. Team seats (who reach the
+   * tour via resolveOperatorId) may view commercial state but never change it.
+   * ADMIN bypasses (manual placement / force-majeure handling).
+   */
+  private async assertOwnerAuthority(
+    operatorId: string,
+    userId: string,
+    role: Role,
+  ): Promise<void> {
+    if (role === Role.ADMIN) return;
+    const operator = await this.prisma.operator.findUnique({
+      where: { id: operatorId },
+      select: { userId: true },
+    });
+    if (!operator || operator.userId !== userId) {
+      throw new ForbiddenException(
+        'Only the operator owner can change commercial settings (commission tier / Spotlight)',
+      );
+    }
+  }
+
   private async assertTourAccess(
     tourId: string,
     userId: string,

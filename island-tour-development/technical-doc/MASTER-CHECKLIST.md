@@ -1180,6 +1180,16 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `lib/rbac-utils.ts` `filterNavGroups` **removes** unpermitted nav items and whole groups (never greys them); group headers never render over an empty section
 - [x] Per-module gating wired across Add buttons, bulk Delete, row-action Delete and Danger Zones (the B-7 "collections ungated" finding was **retracted as false** — gated since 2026-06-08)
 - [x] Commission column visible to ADMIN, hidden from operators
+- [x] **Access-roles matrix alignment, passes 1-5 (2026-07-28)** - conflicts #1-#8 from the PDF audit, all reviewed by both subagents:
+  - [x] #3 commission stripped for every non-platform reader (bookings reads + the public `/bookings/quote`)
+  - [x] #4 `cancellationHours` admin-only once a tour leaves DRAFT (existing bookings' deadlines are read-time derived)
+  - [x] #5 settlements `mark-paid`/`mark-unpaid` behind the new admin-only `MANAGE_PAYMENTS` (ceiling-excluded); operators view-own
+  - [x] #8 tier change + Spotlight request owner-account-only (`assertOwnerAuthority`; team seats rejected)
+  - [x] #2 operators REPORT cancellations (`report-cancellation`), admin executes (FULL refund, `cancelledBy=OPERATOR`); pending report holds the payout
+  - [x] #1 tour approval workflow (`TourApprovalStatus`); operators lost `MANAGE_TRIPS` and submit-for-review instead; publish/unpause/restore stay platform
+  - [x] #6 media: route permissions (stage 1) + `operatorId` shared-library scoping (stage 2)
+  - [x] #7 `VIEW_BOOKING_FINANCIALS` shapes the booking PROJECTION (manifest for guide-level seats), not the route
+  - [ ] PDF ground rule 1 (three separate logins) vs the shipped 4-door system - **founder decision owed, no code**
 - [x] `is_locals_favourite` admin-only, `MANAGE_EDITORIAL` only, never operator-settable (critical rule #23)
 - [~] Two gating idioms still mixed — capability `can('X')` alongside raw `role === 'ADMIN'` equality, *inside the same files* (`destination-row-actions.tsx`, `bookings-table.tsx`); target is `can()` everywhere, owed at Phase 20
 - [ ] Contract guard for rbac drift between the two repos (02 Appendix B1) — no CI, no test runner, drift caught only at runtime

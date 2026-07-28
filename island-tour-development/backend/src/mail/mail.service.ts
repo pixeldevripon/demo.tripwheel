@@ -453,8 +453,20 @@ export class MailService {
       paymentModel: string;
       reason: string | null;
       dashboardUrl: string;
+      /** Who initiated: traveler request (default) or operator report (conflict #2). */
+      source?: 'traveler' | 'operator';
+      /** Operator company name - only for source 'operator'. */
+      reporterName?: string;
     },
   ): Promise<void> {
+    const fromOperator = details.source === 'operator';
+    const heading = fromOperator
+      ? 'Operator cancellation report'
+      : 'Cancellation request';
+    const intro = fromOperator
+      ? `${details.reporterName ?? 'The operator'} reports they must cancel this booking. Execute the cancellation (full refund) from the dashboard, or dismiss the report if the tour runs after all.`
+      : 'A traveller asked to cancel. Process the refund and confirm to them by email.';
+    const noteLabel = fromOperator ? 'Operator note' : 'Traveller note';
     // Every interpolated value is escaped: `reason` (and in principle the guest
     // fields) is traveller-supplied via the public cancellation-request form,
     // and this is the one email built by string concatenation rather than
@@ -463,34 +475,38 @@ export class MailService {
       `<tr><td style="padding:6px 12px 6px 0;color:#6B7280;font-size:14px;">${label}</td><td style="padding:6px 0;color:#1F2937;font-size:14px;font-weight:600;">${escapeHtml(value)}</td></tr>`;
     const html = `
 <div style="font-family:Arial,sans-serif;max-width:560px;">
-  <h2 style="font-size:18px;color:#1F2937;">Cancellation request: ${escapeHtml(details.displayRef)}</h2>
-  <p style="font-size:14px;color:#374151;">A traveller asked to cancel. Process the refund and confirm to them by email.</p>
+  <h2 style="font-size:18px;color:#1F2937;">${heading}: ${escapeHtml(details.displayRef)}</h2>
+  <p style="font-size:14px;color:#374151;">${escapeHtml(intro)}</p>
   <table cellpadding="0" cellspacing="0">
     ${row('Booking', details.displayRef)}
     ${row('Tour', details.tourName)}
+    ${fromOperator && details.reporterName ? row('Operator', details.reporterName) : ''}
     ${row('Date', details.dateLabel)}
     ${row('Guest', `${details.guestName} <${details.guestEmail}>`)}
     ${row('Total', details.totalAmount)}
     ${row('Payment model', details.paymentModel)}
-    ${details.reason ? row('Traveller note', details.reason) : ''}
+    ${details.reason ? row(noteLabel, details.reason) : ''}
   </table>
   <p style="font-size:14px;"><a href="${escapeHtml(details.dashboardUrl)}">Open in the dashboard</a></p>
 </div>`;
     const text = [
-      `Cancellation request: ${details.displayRef}`,
+      `${heading}: ${details.displayRef}`,
       `Tour: ${details.tourName}`,
+      fromOperator && details.reporterName
+        ? `Operator: ${details.reporterName}`
+        : '',
       `Date: ${details.dateLabel}`,
       `Guest: ${details.guestName} <${details.guestEmail}>`,
       `Total: ${details.totalAmount}`,
       `Payment model: ${details.paymentModel}`,
-      details.reason ? `Traveller note: ${details.reason}` : '',
+      details.reason ? `${noteLabel}: ${details.reason}` : '',
       `Dashboard: ${details.dashboardUrl}`,
     ]
       .filter(Boolean)
       .join('\n');
     await this.sendMail({
       to,
-      subject: `Cancellation request - ${details.displayRef}: ${details.tourName}`,
+      subject: `${heading} - ${details.displayRef}: ${details.tourName}`,
       html,
       text,
     });

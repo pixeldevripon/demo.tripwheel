@@ -16,10 +16,10 @@ import {
 /**
  * Operator-payout ledger surface (dashboard). Reads are gated on VIEW_PAYMENTS
  * (the service scopes a TOUR_OPERATOR to their own rows). The payout itself is
- * MANUAL in v1: an admin transfers the money by hand and either side confirms
- * it via mark-paid - the admin after sending, or the operator after receiving
- * (scoped to their own rows in the service). The UNDO (mark-unpaid) stays
- * MANAGE_BOOKINGS/admin-only: reverting a payout is a ledger correction.
+ * MANUAL in v1: an admin transfers the money by hand and confirms it via
+ * mark-paid. Both ledger flips (mark-paid / mark-unpaid) are MANAGE_PAYMENTS,
+ * which is admin-only (excluded from the platform-staff ceiling) - the
+ * access-roles matrix keeps operators strictly view-own on settlements.
  */
 @ApiTags('settlements')
 @Controller('settlements')
@@ -28,14 +28,20 @@ export class SettlementsController {
 
   // Static route declared before the plain list (NestJS matches top-to-bottom).
   @Get('summary')
-  @RequirePermissions(Permission.VIEW_PAYMENTS)
+  @RequirePermissions(
+    Permission.VIEW_PAYMENTS,
+    Permission.VIEW_BOOKING_FINANCIALS,
+  )
   @ApiSettlementSummaryDocs()
   summary(@AuthenticatedUser() user: TypedAuthUser) {
     return this.settlements.summary({ id: user.id, role: user.role });
   }
 
   @Get()
-  @RequirePermissions(Permission.VIEW_PAYMENTS)
+  @RequirePermissions(
+    Permission.VIEW_PAYMENTS,
+    Permission.VIEW_BOOKING_FINANCIALS,
+  )
   @ApiListSettlementsDocs()
   list(
     @AuthenticatedUser() user: TypedAuthUser,
@@ -45,16 +51,19 @@ export class SettlementsController {
   }
 
   @Patch(':id/mark-paid')
-  @RequirePermissions(Permission.VIEW_PAYMENTS)
+  @RequirePermissions(Permission.MANAGE_PAYMENTS)
   @ApiMarkSettlementPaidDocs()
   markPaid(@AuthenticatedUser() user: TypedAuthUser, @Param('id') id: string) {
-    return this.settlements.markPaidOut(id, { id: user.id, role: user.role });
+    return this.settlements.markPaidOut(id, user.id);
   }
 
   @Patch(':id/mark-unpaid')
-  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @RequirePermissions(Permission.MANAGE_PAYMENTS)
   @ApiMarkSettlementUnpaidDocs()
-  markUnpaid(@Param('id') id: string) {
-    return this.settlements.markUnpaid(id);
+  markUnpaid(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.settlements.markUnpaid(id, user.id);
   }
 }

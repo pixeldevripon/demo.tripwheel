@@ -113,6 +113,12 @@ model Tour {
   likelyToSellOut         Boolean  @default(false)
   likelyToSellOutOverride Boolean?
 
+  // ── Approval workflow (conflict #1). submittedAt = last submit-for-review;
+  // reviewNote = the admin's approve/reject note (cleared on re-submit).
+  approvalStatus TourApprovalStatus @default(NOT_SUBMITTED)
+  submittedAt    DateTime?
+  reviewNote     String?
+
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

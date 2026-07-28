@@ -25,6 +25,10 @@ model MediaGallery {
   uploadedAt          DateTime @default(now())
   userId              String
   uploadedBy          User     @relation(fields: [userId], references: [id])
+  /// Operator-context scope (conflict #6 stage 2): rows uploaded from an
+  /// operator account or team seat share ONE library keyed on the operator,
+  /// not the individual uploader. Null = platform asset (admin/staff upload).
+  operatorId          String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -32,5 +36,6 @@ model MediaGallery {
   @@index([publicId])
   @@index([url])
   @@index([userId])
+  @@index([operatorId])
   @@map("media_gallery")
 }

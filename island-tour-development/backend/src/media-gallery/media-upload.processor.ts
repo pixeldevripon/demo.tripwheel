@@ -11,6 +11,8 @@ export interface MediaUploadJobPayload {
   mimetype: string;
   originalname: string;
   userId: string;
+  /** Operator-context scope (conflict #6 stage 2); null = platform asset. */
+  operatorId: string | null;
 }
 
 /**
@@ -35,7 +37,15 @@ export class MediaUploadProcessor extends WorkerHost {
   }
 
   async process(job: Job<MediaUploadJobPayload>): Promise<void> {
-    const { buffer: base64Buffer, mimetype, originalname, userId } = job.data;
+    const {
+      buffer: base64Buffer,
+      mimetype,
+      originalname,
+      userId,
+      // Rows enqueued before this field existed deserialize as undefined -
+      // normalize to null (platform asset) rather than crash the worker.
+      operatorId = null,
+    } = job.data;
 
     this.logger.log(
       `Processing job ${job.id} - file: ${originalname}, user: ${userId}`,
@@ -79,6 +89,7 @@ export class MediaUploadProcessor extends WorkerHost {
           width: cloudResult.width,
           height: cloudResult.height,
           userId,
+          operatorId,
         },
       });
 

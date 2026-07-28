@@ -25,6 +25,7 @@ import {
   PricingModel,
   Role,
   SlugEntityType,
+  TourApprovalStatus,
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
@@ -109,6 +110,12 @@ function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
     minPartySize: 1,
     bookingCutoffMinutes: 120,
     cancellationHours: 24,
+    // Approval workflow (conflict #1): default fixtures are APPROVED so the
+    // pre-existing publish/readiness tests exercise the readiness bar, not
+    // the approval gate (which has its own describe).
+    approvalStatus: TourApprovalStatus.APPROVED,
+    submittedAt: null,
+    reviewNote: null,
     h1Override: null,
     breadcrumbLabel: null,
     aggregateRating: null,
@@ -957,6 +964,141 @@ describe('ToursService', () => {
 
   // ── publish ─────────────────────────────────────────────────────────────────
 
+  // ── Approval workflow (conflict #1: publishing is always Island Tours') ──
+  describe('approval workflow', () => {
+    const ready = (over: Record<string, unknown> = {}) =>
+      makeTour({
+        images: [
+          { id: 'i1', isHero: true },
+          { id: 'i2', isHero: false },
+          { id: 'i3' },
+          { id: 'i4' },
+          { id: 'i5' },
+        ],
+        highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
+        translations: [{ overview: 'A lovely cruise overview.' }],
+        approvalStatus: TourApprovalStatus.NOT_SUBMITTED,
+        ...over,
+      });
+
+    it('submitForReview flips NOT_SUBMITTED -> PENDING and clears the old note', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({
+          approvalStatus: TourApprovalStatus.REJECTED,
+          reviewNote: 'Blurry photos',
+        }),
+      );
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+
+      await service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            approvalStatus: TourApprovalStatus.PENDING,
+            submittedAt: expect.any(Date),
+            reviewNote: null,
+          },
+        }),
+      );
+    });
+
+    it('submitForReview runs the SAME readiness bar as publish', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      // 0 images / 0 highlights / no overview -> blocked with the full list.
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({
+          images: [],
+          highlights: [],
+          translations: [],
+          approvalStatus: TourApprovalStatus.NOT_SUBMITTED,
+        }),
+      );
+      await expect(
+        service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('submitForReview 409s while already PENDING or APPROVED', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+      await expect(
+        service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ConflictException);
+
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({ approvalStatus: TourApprovalStatus.APPROVED }),
+      );
+      await expect(
+        service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('approve requires PENDING; reject stores the actionable note', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.REJECTED }),
+      );
+      await service.rejectTour('tour-1', 'admin', 'Photos are blurry');
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            approvalStatus: TourApprovalStatus.REJECTED,
+            reviewNote: 'Photos are blurry',
+          },
+        }),
+      );
+
+      // Not PENDING -> 409 (both verbs).
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.NOT_SUBMITTED }),
+      );
+      await expect(service.approveTour('tour-1', 'admin')).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.rejectTour('tour-1', 'admin', 'x')).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('publish blocks a non-admin on an unapproved tour', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+      await expect(
+        service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('an ADMIN publish stamps the approval (publish IS the review)', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({ approvalStatus: TourApprovalStatus.NOT_SUBMITTED }),
+      );
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      await service.publish('tour-1', 'admin', Role.ADMIN);
+      expect(prisma.tour.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: TourStatus.LIVE,
+            approvalStatus: TourApprovalStatus.APPROVED,
+          }),
+        }),
+      );
+    });
+  });
+
   describe('publish', () => {
     const ready = () =>
       makeTour({
@@ -989,6 +1131,8 @@ describe('ToursService', () => {
             status: TourStatus.LIVE,
             publishedAt: expect.any(Date),
             isBookable: true,
+            // LIVE implies APPROVED (conflict #1) - publish stamps it.
+            approvalStatus: TourApprovalStatus.APPROVED,
           },
         }),
       );
@@ -1364,6 +1508,77 @@ describe('ToursService', () => {
       await expect(
         service.update('tour-1', { name: 'x' }, 'admin', Role.ADMIN),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    // ── cancellation_hours on a published tour (access-roles matrix) ──
+    // Booking deadlines derive from cancellationHours at read time, so a
+    // change on a non-DRAFT tour retroactively moves existing bookings'
+    // deadlines - operator-blocked, admin-only.
+
+    it('blocks an operator changing cancellationHours on a LIVE tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE, cancellationHours: 48 }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      await expect(
+        service.update(
+          'tour-1',
+          { cancellationHours: 24 },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.tour.update).not.toHaveBeenCalled();
+    });
+
+    it('allows the operator to send the UNCHANGED cancellationHours on a LIVE tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE, cancellationHours: 48 }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+      await expect(
+        service.update(
+          'tour-1',
+          { cancellationHours: 48, name: 'Renamed' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('lets an ADMIN change cancellationHours on a LIVE tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE, cancellationHours: 48 }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+      await expect(
+        service.update(
+          'tour-1',
+          { cancellationHours: 72 },
+          'admin',
+          Role.ADMIN,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('lets an operator change cancellationHours while still DRAFT', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.DRAFT, cancellationHours: 48 }),
+      );
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+      await expect(
+        service.update(
+          'tour-1',
+          { cancellationHours: 24 },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).resolves.toBeDefined();
     });
 
     // ── Pricing model switch → unit fields are force-nulled/applied together ──
