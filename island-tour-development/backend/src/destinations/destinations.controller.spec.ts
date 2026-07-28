@@ -316,7 +316,11 @@ describe('DestinationController', () => {
       const query: LocaleQueryDto = { locale: Locale.en };
       await controller.getPageContent('dest-1', query);
 
-      expect(service.getPageContent).toHaveBeenCalledWith('dest-1', Locale.en);
+      expect(service.getPageContent).toHaveBeenCalledWith(
+        'dest-1',
+        Locale.en,
+        undefined,
+      );
     });
   });
 

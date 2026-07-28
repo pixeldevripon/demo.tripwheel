@@ -82,9 +82,11 @@ export class CreateFaqGroupDto {
 }
 
 export class UpsertFaqTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: '¿Cuál es la mejor época para visitar?' })
   @IsString()
-  @MinLength(5)
   question!: string;
 
   @ApiProperty({
@@ -92,7 +94,6 @@ export class UpsertFaqTranslationDto {
       'Es un destino para todo el año, con el mar más tranquilo de enero a junio.',
   })
   @IsString()
-  @MinLength(10)
   answer!: string;
 }
 

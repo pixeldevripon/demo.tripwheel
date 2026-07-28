@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsObject,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { Locale } from '@prisma/client';
 
 /**
@@ -61,4 +67,37 @@ export class TranslateTextDto {
 export class TranslateTextResponseDto {
   @ApiProperty({ example: 'De grootste catamarans van het eiland.' })
   translatedText!: string;
+}
+
+/**
+ * Batched inline translation (the per-card "Translate section" button): the
+ * card's fields ride in ONE request and are translated in ONE provider call -
+ * one system prompt instead of N, one round trip instead of N. Like
+ * translate-text, NOTHING is persisted; the dashboard fills the form fields
+ * and the human reviews before saving. Key/size caps are enforced in the
+ * controller (a Record's values are opaque to class-validator).
+ */
+export class TranslateFieldsDto {
+  @ApiProperty({
+    description:
+      'English source fields keyed by an opaque client key (max 100 entries, 30k chars total)',
+    example: { f0: 'Best sunset cruise', f1: 'A relaxed catamaran trip.' },
+  })
+  @IsObject()
+  fields!: Record<string, string>;
+
+  @ApiProperty({ enum: Locale, example: Locale.nl })
+  @IsEnum(Locale)
+  targetLocale!: Locale;
+}
+
+export class TranslateFieldsResponseDto {
+  @ApiProperty({
+    description: 'Translated values under the same keys',
+    example: {
+      f0: 'Beste zonsondergangscruise',
+      f1: 'Een relaxte catamarantocht.',
+    },
+  })
+  fields!: Record<string, string>;
 }

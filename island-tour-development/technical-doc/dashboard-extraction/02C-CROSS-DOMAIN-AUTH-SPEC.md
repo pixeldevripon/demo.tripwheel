@@ -13,6 +13,72 @@
 
 ---
 
+## ADDENDUM 2026-07-28 - Option C is SUPERSEDED; the problem this doc solves no longer exists
+
+> **Read this before acting on anything below.** The analysis in §2-§4A was correct against the
+> 2026-07-17 codebase, but the public frontend has since been refactored (traveler HMAC session +
+> cookie-based wishlist, shipped with the 4-door login work) in a way that removes Better Auth from
+> the public site entirely. **Do NOT implement the §4A bearer-token migration - there is nothing
+> left to migrate.** All claims below re-verified in code on 2026-07-28.
+
+### What changed since 2026-07-17
+
+The crux of this doc was §2.1: the public site's *browser* still had to send the Better Auth
+session cookie cross-site. That leg has been rebuilt onto transports that never cross a site
+boundary:
+
+| Surface (public site) | 2026-07-17 (this doc's basis) | Today (verified 2026-07-28) |
+|---|---|---|
+| Auth client | `createAuthClient` + `useSession()` (`wishlist-provider.tsx:63`) | **Gone.** No `createAuthClient` anywhere in the public repo |
+| Wishlist | Better Auth session, `credentials: 'include'` | **Cookie-based, no login** - `it.wishlist` (6-month cookie on the frontend origin) resolved via public `GET /wishlist/resolve` (`lib/api/wishlist.ts:1-8`) |
+| Traveler identity | Better Auth USER session | **HMAC traveler session** - backend issues a signed, email-bound 24h token; `POST /api/traveler-session` (a route handler on the public app's OWN origin) stores it as the first-party HttpOnly `it.travelerSession` cookie; Server Components forward it as the `x-traveler-session` header (`lib/traveler-session.server.ts`) |
+| Navbar account state | `useSession()` | Client-readable `it.travelerBooking` display cookie; "no Better Auth session on the public site" (`account-menu.tsx:23`) |
+| Login doors on public repo | `portal`/`staff`/operator forgot+reset duplicated here (§4A.6, cost 3) | **Resolved** - `app/(login)` now contains only `/bookings`; operator doors live in the dashboard repo |
+
+A first-party cookie set by the public app's own origin, plus a custom header, are both immune to
+third-party cookie blocking. **The island.tours move no longer has a cross-site cookie problem on
+the public leg**, and the dashboard leg was always same-site (§2).
+
+### The actual cutover change set (replaces §4A.2)
+
+| Where | Change | Size |
+|---|---|---|
+| Backend | `CORS_ORIGINS` += `https://island.tours` (feeds CORS **and** `trustedOrigins` - the §1 warning still applies) | 1 env var |
+| Backend | `COOKIE_DOMAIN` = the dashboard/API apex (e.g. `.tripwheel.app`) | 1 env var |
+| Backend | `X-Traveler-Session` + `X-Login-Surface` in CORS `allowedHeaders` | **already done** (`main.ts:68-76`) |
+| Public frontend | none mandatory | 0 |
+| Dashboard | none - same-site with the API, unchanged | 0 |
+
+### The one residual cookie leg - a decision, not a migration
+
+`lib/api/fetch.ts:41` still sends `credentials: 'include'` on client-side booking/availability
+calls. Per `bookings.controller.ts:63` this is **optional attribution only** (`userId` /
+`cancelledBy` when a Better Auth session happens to ride along - e.g. a logged-in operator on the
+shared interim apex). After the split the cookie is `SameSite=Lax` on a different registrable
+domain, so it stops flowing from `island.tours` in **every** browser, deterministically. Bookings
+degrade to guest attribution; nothing breaks functionally. Accept the loss (recommended - the
+traveler HMAC session is the real identity on this surface) or delete the `credentials: 'include'`
+line for cleanliness.
+
+### What still stands from this doc
+
+- **§1** (interim topology: zero changes) - unchanged.
+- **§2's library analysis** (one Better Auth instance cannot emit cookies for two registrable
+  domains) - still true, now moot for the public leg, still the reason the dashboard must stay
+  same-site with the API.
+- **§6's verification discipline** - none of this is testable on localhost. Before cutover, run
+  checks 7-10 as written, and replace checks 2-5/12-14 with their modern equivalents: checkout
+  end-to-end, the `/payment/processing` poll, TYP, and the `/bookings` traveler login, in real
+  Safari (ITP) and Firefox (TCP) on real hostnames.
+- **§4A.7** (branding-split rationale) - unchanged.
+
+Sections §2.1, §3, §4, §4A below are retained as the historical record of why Option C was chosen,
+and as the playbook should the public site ever reintroduce Better Auth sessions (e.g. full
+customer accounts). They describe a codebase that no longer exists - do not treat their file:line
+citations or call-site audits as current.
+
+---
+
 ## 0. Evidence base
 
 Analysis is grounded in the **installed** Better Auth (`better-auth@^1.6.9`), read directly from
@@ -437,6 +503,9 @@ only in production**, and looks like an intermittent bug rather than a config er
 ---
 
 ## 7. Summary
+
+> **SUPERSEDED 2026-07-28 - see the ADDENDUM at the top.** Findings 5-8 describe the 2026-07-17
+> codebase; the public site has since dropped Better Auth entirely, so Option C is no longer needed.
 
 | # | Finding |
 |---|---|

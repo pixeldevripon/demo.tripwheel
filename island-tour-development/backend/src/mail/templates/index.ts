@@ -1,12 +1,15 @@
 export { passwordResetTemplate } from './password-reset.template';
 export { operatorInviteTemplate } from './operator-invite.template';
-export { customerWelcomeTemplate } from './customer-welcome.template';
 export {
   staffInviteTemplate,
   type StaffInviteTemplateProps,
 } from './staff-invite.template';
 export { emailVerificationTemplate } from './email-verification.template';
 export { changeEmailConfirmationTemplate } from './change-email-confirmation.template';
+export {
+  passwordChangeConfirmationTemplate,
+  type PasswordChangeConfirmationTemplateProps,
+} from './password-change-confirmation.template';
 export {
   hatAddedSubject,
   hatAddedTemplate,

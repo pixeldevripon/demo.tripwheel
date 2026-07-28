@@ -9,6 +9,7 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -109,6 +110,56 @@ export class CalendarDayResponseDto {
   departureCount!: number;
 }
 
+/** Operator month-grid day state (management view, not the public calendar). */
+export const MANAGE_CALENDAR_DAY_STATUSES = [
+  'open',
+  'partial',
+  'closed',
+  'no_service',
+] as const;
+export type ManageCalendarDayStatus =
+  (typeof MANAGE_CALENDAR_DAY_STATUSES)[number];
+
+export class ManageCalendarDayDto {
+  @ApiProperty({ example: '2026-08-09' }) date!: string;
+  @ApiProperty({
+    enum: MANAGE_CALENDAR_DAY_STATUSES,
+    description:
+      'open = every in-service slot sellable · partial = at least one slot ' +
+      'closed/overridden while others sell · closed = whole day stop-sold ' +
+      '(CLOSE_DATE, or every departure closed) · no_service = no departures ' +
+      'on this date (check `scheduled` for whether the weekly pattern covers it).',
+  })
+  status!: ManageCalendarDayStatus;
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether an ACTIVE weekly schedule covers this date - lets the grid ' +
+      'distinguish "no service planned" from "not materialized yet".',
+  })
+  scheduled!: boolean;
+  @ApiProperty({
+    type: [String],
+    example: ['15:00', '17:30'],
+    description:
+      'Start times the weekly pattern produces on this date, whether or not ' +
+      'departures exist yet - so a beyond-horizon day can show what WILL run ' +
+      'before the engine materializes it.',
+  })
+  scheduledTimes!: string[];
+  @ApiProperty({
+    example: 3,
+    description:
+      'Seats booked across ALL departures on the day - a one-tap close must ' +
+      'confirm when this is > 0 (closing cancels booked departures).',
+  })
+  bookedTotal!: number;
+  @ApiProperty({ type: [DepartureResponseDto] })
+  departures!: DepartureResponseDto[];
+  @ApiProperty({ type: [ExceptionResponseDto] })
+  exceptions!: ExceptionResponseDto[];
+}
+
 export class MaterializeResultDto {
   @ApiProperty({ example: 90 }) created!: number;
   @ApiProperty({ example: 12 }) updated!: number;
@@ -148,6 +199,16 @@ export class ListExceptionsQueryDto {
   @IsOptional()
   @IsLocalDate()
   to?: string;
+}
+
+export class ManageCalendarQueryDto {
+  @ApiProperty({ example: 'tour-uuid' })
+  @IsString()
+  tourId!: string;
+
+  @ApiProperty({ example: '2026-08', description: 'Calendar month (YYYY-MM).' })
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'month must be YYYY-MM' })
+  month!: string;
 }
 
 export class ListDeparturesQueryDto {
@@ -302,6 +363,7 @@ export class CreateExceptionDto {
   @ApiPropertyOptional({ example: 'Independence Day closure' })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 }
 
@@ -325,6 +387,7 @@ export class UpdateExceptionDto {
   @ApiPropertyOptional({ example: 'Updated note' })
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 }
 

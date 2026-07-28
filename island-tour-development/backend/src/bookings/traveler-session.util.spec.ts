@@ -6,11 +6,15 @@
  */
 import { createHmac } from 'crypto';
 import {
+  hashLoginCode,
   issueBookingSession,
+  issueTravelerHistorySession,
+  loginCodeMatches,
   issueTravelerSession,
   maskEmail,
   maskLastName,
   maskPhone,
+  sessionHistoryEmail,
   sessionOwnsBooking,
   TRAVELER_SESSION_TTL_MS,
   verifyTravelerSession,
@@ -29,6 +33,7 @@ describe('issueTravelerSession / verifyTravelerSession', () => {
     expect(verifyTravelerSession(token)).toEqual({
       email: 'guest@example.test',
       bookingId: null,
+      history: false,
     });
   });
 
@@ -37,7 +42,61 @@ describe('issueTravelerSession / verifyTravelerSession', () => {
     expect(verifyTravelerSession(token)).toEqual({
       email: null,
       bookingId: 'b-123',
+      history: false,
     });
+  });
+
+  it('round-trips: a history token carries the email claim WITH history', () => {
+    const token = issueTravelerHistorySession('  Guest@Example.TEST ');
+    expect(verifyTravelerSession(token)).toEqual({
+      email: 'guest@example.test',
+      bookingId: null,
+      history: true,
+    });
+  });
+
+  it('legacy pre-history payloads (no `h`) verify with history: false', () => {
+    // Hand-sign the exact payload shape every token had before the history
+    // flag existed - the 24h overlap window must keep accepting them.
+    const payload = Buffer.from(
+      JSON.stringify({ e: 'guest@example.test', exp: Date.now() + 60_000 }),
+    ).toString('base64url');
+    const sig = createHmac('sha256', process.env.TRAVELER_SESSION_SECRET!)
+      .update(payload)
+      .digest()
+      .toString('base64url');
+    expect(verifyTravelerSession(`v1.${payload}.${sig}`)).toEqual({
+      email: 'guest@example.test',
+      bookingId: null,
+      history: false,
+    });
+  });
+
+  it('a forged unsigned history flag on a pair token is rejected outright', () => {
+    // Take a real pair token, decode, add h:1, re-encode WITHOUT re-signing:
+    // the signature no longer matches, so verification fails entirely.
+    const token = issueTravelerSession('guest@example.test');
+    const [v, payload, sig] = token.split('.');
+    const claims = JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+    const forged = Buffer.from(JSON.stringify({ ...claims, h: 1 })).toString(
+      'base64url',
+    );
+    expect(verifyTravelerSession(`${v}.${forged}.${sig}`)).toBeNull();
+  });
+
+  it('a booking-scoped payload can never be history, even if signed with h', () => {
+    // Defense in depth: were a `{ b, h }` payload ever minted by mistake,
+    // verify still refuses the history claim (history requires an email).
+    const payload = Buffer.from(
+      JSON.stringify({ b: 'b-123', h: 1, exp: Date.now() + 60_000 }),
+    ).toString('base64url');
+    const sig = createHmac('sha256', process.env.TRAVELER_SESSION_SECRET!)
+      .update(payload)
+      .digest()
+      .toString('base64url');
+    expect(verifyTravelerSession(`v1.${payload}.${sig}`)?.history).toBe(false);
   });
 
   it('has the v1.<payload>.<sig> shape', () => {
@@ -114,7 +173,11 @@ describe('issueTravelerSession / verifyTravelerSession', () => {
 });
 
 describe('sessionOwnsBooking', () => {
-  const emailClaims = { email: 'guest@example.test', bookingId: null };
+  const emailClaims = {
+    email: 'guest@example.test',
+    bookingId: null,
+    history: false,
+  };
   const booking = { id: 'b-1', contactEmail: ' Guest@Example.TEST ' };
 
   it('email scope matches case-insensitively against the stored contact email', () => {
@@ -133,8 +196,15 @@ describe('sessionOwnsBooking', () => {
     ).toBe(false);
   });
 
+  it('a history token still owns bookings by email (strictly stronger)', () => {
+    const claims = verifyTravelerSession(
+      issueTravelerHistorySession('guest@example.test'),
+    );
+    expect(sessionOwnsBooking(claims, booking)).toBe(true);
+  });
+
   it('booking scope owns EXACTLY its booking id - never a sibling with the same email', () => {
-    const claims = { email: null, bookingId: 'b-1' };
+    const claims = { email: null, bookingId: 'b-1', history: false };
     expect(sessionOwnsBooking(claims, booking)).toBe(true);
     // The critical exploit shape: attacker PATCHes a throwaway booking with the
     // victim's email - the booking-scoped token must NOT unlock the victim's
@@ -149,6 +219,59 @@ describe('sessionOwnsBooking', () => {
 
   it('rejects null claims', () => {
     expect(sessionOwnsBooking(null, booking)).toBe(false);
+  });
+});
+
+describe('sessionHistoryEmail', () => {
+  it('returns the email only for OTP-proven history claims', () => {
+    const historyClaims = verifyTravelerSession(
+      issueTravelerHistorySession('Guest@Example.TEST'),
+    );
+    expect(sessionHistoryEmail(historyClaims)).toBe('guest@example.test');
+  });
+
+  it('rejects pair-login, checkout, and null claims alike', () => {
+    expect(
+      sessionHistoryEmail(
+        verifyTravelerSession(issueTravelerSession('guest@example.test')),
+      ),
+    ).toBeNull();
+    expect(
+      sessionHistoryEmail(verifyTravelerSession(issueBookingSession('b-1'))),
+    ).toBeNull();
+    expect(sessionHistoryEmail(null)).toBeNull();
+  });
+});
+
+describe('OTP login code hashing', () => {
+  it('is deterministic and normalizes the email exactly like the session issuer', () => {
+    const a = hashLoginCode('Guest@Example.TEST', '424242');
+    const b = hashLoginCode('  guest@example.test  ', '424242');
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('binds the hash to the email - the same code under another address differs', () => {
+    expect(hashLoginCode('a@b.co', '424242')).not.toBe(
+      hashLoginCode('c@d.co', '424242'),
+    );
+  });
+
+  it('matches only the exact code', () => {
+    const stored = hashLoginCode('guest@example.test', '424242');
+    expect(loginCodeMatches('guest@example.test', '424242', stored)).toBe(true);
+    expect(loginCodeMatches('guest@example.test', '424243', stored)).toBe(
+      false,
+    );
+    // Right code, wrong owner.
+    expect(loginCodeMatches('other@example.test', '424242', stored)).toBe(
+      false,
+    );
+  });
+
+  it('rejects a malformed stored hash without throwing', () => {
+    expect(loginCodeMatches('guest@example.test', '424242', '')).toBe(false);
+    expect(loginCodeMatches('guest@example.test', '424242', 'zz')).toBe(false);
   });
 });
 

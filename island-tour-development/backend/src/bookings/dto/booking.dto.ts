@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -26,7 +27,10 @@ import {
   CancelledBy,
   CancellationRefund,
   Currency,
+  PaymentKind,
   PaymentModel,
+  PaymentProvider,
+  PaymentStatus,
   SettlementStatus,
 } from '@prisma/client';
 import { SettlementMethod } from '@/settlements/dto/settlement.dto';
@@ -45,6 +49,7 @@ import { SettlementMethod } from '@/settlements/dto/settlement.dto';
 export const BOOKING_DISPLAY_STATUSES = [
   ...Object.values(BookingStatus),
   'CANCELLATION_REQUESTED',
+  'OPERATOR_CANCELLATION_REPORTED',
   'NON_PAYMENT_REPORTED',
   'FORFEITED',
 ] as const;
@@ -52,6 +57,7 @@ export const BOOKING_DISPLAY_STATUSES = [
 export type BookingDisplayStatus =
   | BookingStatus
   | 'CANCELLATION_REQUESTED'
+  | 'OPERATOR_CANCELLATION_REPORTED'
   | 'NON_PAYMENT_REPORTED'
   | 'FORFEITED';
 
@@ -61,6 +67,7 @@ export function deriveBookingDisplayStatus(booking: {
   utcCancelledAt: Date | null;
   utcNonPaymentReportedAt?: Date | null;
   utcForfeitedAt?: Date | null;
+  utcOperatorCancellationReportedAt?: Date | null;
 }): BookingDisplayStatus {
   // Forfeited (guide s15): terminated by an admin-confirmed non-payment report -
   // the deposit was kept, which "Cancelled" alone would misrepresent.
@@ -69,6 +76,17 @@ export function deriveBookingDisplayStatus(booking: {
     (booking.utcForfeitedAt ?? null) !== null
   ) {
     return 'FORFEITED';
+  }
+  // Operator reported they must cancel (conflict #2): the admin executes the
+  // refund. Takes precedence over a traveler request - either way the booking
+  // is coming down, but the operator report decides cancelledBy (OPERATOR)
+  // and therefore the eligibility metric.
+  if (
+    booking.status === BookingStatus.CONFIRMED &&
+    (booking.utcOperatorCancellationReportedAt ?? null) !== null &&
+    booking.utcCancelledAt === null
+  ) {
+    return 'OPERATOR_CANCELLATION_REPORTED';
   }
   if (
     booking.status === BookingStatus.CONFIRMED &&
@@ -100,7 +118,12 @@ export class BookingUnitItemResponseDto {
   })
   ageBandId!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
-  @ApiProperty({ example: '79.99' }) priceRetail!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '79.99',
+    description: 'Null on the MANIFEST projection (per-traveler price).',
+  })
+  priceRetail!: string | null;
 }
 
 /** Conversion payload for the browser Pixel (master booking_complete contract). */
@@ -523,9 +546,14 @@ export class BookingResponseDto {
   @ApiProperty({ example: '2026-07-04' }) localDate!: string;
   @ApiPropertyOptional({ nullable: true }) startTime!: string | null;
   @ApiProperty({ enum: ['USD', 'EUR'] }) currency!: string;
-  @ApiProperty({ example: '239.97' }) totalRetail!: string;
-  @ApiProperty({ example: '47.99' }) depositAmount!: string;
-  @ApiProperty({ example: '191.98' }) balanceAmount!: string;
+  // Nulled on the MANIFEST projection (conflict #7): a seat without
+  // VIEW_BOOKING_FINANCIALS receives who/when/where, never the money.
+  @ApiPropertyOptional({ nullable: true, example: '239.97' })
+  totalRetail!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '47.99' })
+  depositAmount!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '191.98' })
+  balanceAmount!: string | null;
   @ApiPropertyOptional({ example: '0.2000', nullable: true })
   commissionRate!: string | null;
   @ApiPropertyOptional({ example: '47.99', nullable: true })
@@ -568,6 +596,29 @@ export class BookingListItemDto extends BookingResponseDto {
   contactFullName!: string | null;
   @ApiPropertyOptional({ nullable: true, example: 'jane@example.com' })
   contactEmail!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '+599 9 123 4567',
+    description:
+      'Day-of-tour contact. Part of the MANIFEST projection - present even for a seat without VIEW_BOOKING_FINANCIALS.',
+  })
+  contactPhone!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'One guest is vegetarian.',
+    description: 'Special requests (manifest field).',
+  })
+  notes!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Marriott Beach Resort lobby',
+    description: 'Pickup point snapshot (manifest field).',
+  })
+  pickupAddress!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '07:45' })
+  pickupWindowStart!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '08:15' })
+  pickupWindowEnd!: string | null;
   @ApiProperty({ example: 4 }) partySize!: number;
   @ApiProperty() createdAt!: string;
   @ApiPropertyOptional({
@@ -587,6 +638,17 @@ export class BookingListItemDto extends BookingResponseDto {
       'When an admin confirmed the forfeit - the deposit was kept and the spot released.',
   })
   utcForfeitedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When the operator reported they must cancel this booking (conflict #2 flow); the admin executes or dismisses.',
+  })
+  utcOperatorCancellationReportedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "The operator's stated reason for the cancellation report.",
+  })
+  operatorCancellationReason!: string | null;
   @ApiPropertyOptional({
     nullable: true,
     description:
@@ -662,6 +724,198 @@ export class ListBookingsResponseDto {
   @ApiProperty({ type: [BookingListItemDto] }) data!: BookingListItemDto[];
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// Traveller account area (/{locale}/traveller) - OTP login + history reads
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Ask for a one-time login code for the traveller account area. */
+export class RequestTravellerCodeDto {
+  @ApiProperty({ example: 'traveller@example.com' })
+  @IsEmail()
+  email!: string;
+}
+
+/**
+ * Always `{ sent: true }` - whether or not the email has bookings - so the
+ * endpoint can never be used to probe which addresses booked with us.
+ */
+export class RequestTravellerCodeResponseDto {
+  @ApiProperty({ example: true }) sent!: boolean;
+}
+
+/** Redeem an emailed one-time code for a HISTORY-scoped traveler session. */
+export class VerifyTravellerCodeDto {
+  @ApiProperty({ example: 'traveller@example.com' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({
+    example: '482913',
+    description: '6-digit code from the email',
+  })
+  @IsString()
+  @Matches(/^\d{6}$/)
+  code!: string;
+}
+
+export class VerifyTravellerCodeResponseDto {
+  @ApiProperty({
+    description:
+      '24h traveler session (HMAC), HISTORY-scoped (`{ e, h: 1 }`): proves ' +
+      'live inbox ownership, so it unlocks the traveller account surface ' +
+      '(all bookings + payment history) on top of everything an email-scoped ' +
+      'token can do. Store HttpOnly, replay via X-Traveler-Session.',
+  })
+  sessionToken!: string;
+}
+
+/** Pagination for the traveller account lists. */
+export class TravellerListQueryDto {
+  @ApiPropertyOptional({ example: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20, minimum: 1, maximum: 50 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+}
+
+/**
+ * One row of the traveller account's bookings list. Self-scoped by the
+ * HISTORY session, so it carries the review affordance - and NOTHING the
+ * traveller should not see: no settlement/payout context, no ops timestamps,
+ * no contact fields (redundant PII on a self view), and commission is always
+ * null (inherited fields, shape-stable with every traveler payload).
+ */
+export class TravellerBookingItemDto extends BookingResponseDto {
+  @ApiProperty({ example: 'Klein Curacao Day Trip' }) tourName!: string;
+  @ApiProperty({ example: 4 }) partySize!: number;
+  @ApiProperty() createdAt!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'When the traveller requested cancellation (master 6.4).',
+  })
+  utcCancellationRequestedAt!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Free-cancellation deadline (tour start - cancellationHours, wall clock).',
+  })
+  freeCancelDeadline!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Whether the cancellation request landed inside the free window ' +
+      '(judged at the request instant - C23). Null when never requested.',
+  })
+  requestedInFreeWindow!: boolean | null;
+  @ApiProperty({
+    example: true,
+    description:
+      'Server verdict on whether a cancellation request may be submitted. ' +
+      'Clients render off this instead of re-deriving it - the start time is ' +
+      'a local wall clock and means nothing without the tour timezone.',
+  })
+  canRequestCancellation!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['ALREADY_REQUESTED', 'NOT_CONFIRMED', 'DEPARTED'],
+    description:
+      'Why a request cannot be submitted; null when it can. DEPARTED means ' +
+      'the trip has already started.',
+  })
+  cancellationBlockedReason!:
+    | 'ALREADY_REQUESTED'
+    | 'NOT_CONFIRMED'
+    | 'DEPARTED'
+    | null;
+  @ApiProperty({
+    enum: ['NONE', 'PENDING', 'PARTIAL', 'REFUNDED'],
+    description:
+      'TRUE refund state from the payment ledger. PENDING = a cancel owes a ' +
+      'refund that has NOT executed yet; render this, never assume.',
+  })
+  refundStatus!: 'NONE' | 'PENDING' | 'PARTIAL' | 'REFUNDED';
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['PAID', 'PARTIALLY_PAID', 'UNPAID', 'REFUNDED'],
+    description:
+      'Coarse ledger-derived payment badge (SUCCEEDED non-REFUND minus ' +
+      'SUCCEEDED REFUND vs the total). Null on the MANIFEST projection.',
+  })
+  paymentStatus!: 'PAID' | 'PARTIALLY_PAID' | 'UNPAID' | 'REFUNDED' | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '47.99',
+    description:
+      'Net amount collected so far, exact decimal string. Null on the MANIFEST projection.',
+  })
+  paidAmount!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'curacao',
+    description:
+      'Destination slug for the manage deep-link ' +
+      '(`/{destinationSlug}/thank-you/{publicRef}`).',
+  })
+  destinationSlug!: string | null;
+  @ApiProperty({
+    type: ThankYouReviewStateDto,
+    description:
+      'Review affordance. Present because this list is self-scoped by ' +
+      'definition - the token inside is a write credential.',
+  })
+  review!: ThankYouReviewStateDto;
+}
+
+export class TravellerBookingsResponseDto {
+  @ApiProperty({ example: 7 }) total!: number;
+  @ApiProperty({ example: 1 }) page!: number;
+  @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ type: [TravellerBookingItemDto] })
+  data!: TravellerBookingItemDto[];
+}
+
+/**
+ * One charge or refund on the traveller's payment history. Deliberately
+ * traveler-safe: no provider intent/charge ids, no settlement/payout context,
+ * no contact fields.
+ */
+export class TravellerPaymentItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: PaymentKind }) kind!: PaymentKind;
+  @ApiProperty({ enum: PaymentStatus }) status!: PaymentStatus;
+  @ApiProperty({ enum: PaymentProvider }) provider!: PaymentProvider;
+  @ApiPropertyOptional({ nullable: true, example: 'card' })
+  methodType!: string | null;
+  @ApiProperty({ example: '47.99', description: 'Exact decimal string' })
+  amount!: string;
+  @ApiProperty({ enum: ['USD', 'EUR'] }) currency!: string;
+  @ApiProperty() createdAt!: string;
+  @ApiProperty({ example: 'IT-2026-0A1B2C' }) bookingDisplayRef!: string;
+  @ApiProperty() bookingPublicRef!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'curacao' })
+  destinationSlug!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Klein Curacao Day Trip' })
+  tourName!: string | null;
+  @ApiProperty({ example: '2026-07-04' }) bookingLocalDate!: string;
+}
+
+export class TravellerPaymentsResponseDto {
+  @ApiProperty({ example: 9 }) total!: number;
+  @ApiProperty({ example: 1 }) page!: number;
+  @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ type: [TravellerPaymentItemDto] })
+  data!: TravellerPaymentItemDto[];
+}
+
 /** One priced row of a quote breakdown (participants, an add-on, or a priced pickup). */
 export class QuoteLineDto {
   @ApiProperty({
@@ -728,16 +982,18 @@ export class BookingQuoteResponseDto {
   @ApiProperty({ example: '41.99' }) depositAmount!: string;
   @ApiProperty({ example: '167.98' }) sourceBalanceAmount!: string;
   @ApiProperty({ example: '167.98' }) balanceAmount!: string;
-  @ApiProperty({
-    example: '0.2000',
-    description: 'Commission fraction (effective tier + any active Spotlight).',
-  })
-  commissionRate!: string;
   @ApiPropertyOptional({
     nullable: true,
-    example: '41.99',
+    example: null,
     description:
-      'EUR commission; null when it cannot be resolved (non-EUR, pre-FX).',
+      'Always null on the quote: the commission snapshot is platform-internal and this route is public. The real snapshot is stored on the booking at reserve.',
+  })
+  commissionRate!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: null,
+    description:
+      'Always null on the quote (platform-internal, public route). The stored booking keeps the EUR commission.',
   })
   commissionAmount!: string | null;
   @ApiProperty({
@@ -1126,6 +1382,17 @@ export class CancelBookingDto {
   requestedAt?: string;
 }
 
+export class ReportCancellationDto {
+  @ApiPropertyOptional({
+    example: 'Engine failure - boat is out of service this week.',
+    description: 'Why the operator must cancel (shown to the admin).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
 export class ExtendBookingDto {
   @ApiPropertyOptional({
     example: 30,
@@ -1180,10 +1447,11 @@ export class ListBookingsQueryDto {
   @ApiPropertyOptional({
     enum: BOOKING_DISPLAY_STATUSES,
     description:
-      'Raw statuses match the persisted enum as-is. The three DERIVED values ' +
-      'refine them: CANCELLATION_REQUESTED (confirmed + pending request), ' +
-      'NON_PAYMENT_REPORTED (confirmed + pending report), FORFEITED ' +
-      '(cancelled via an admin-confirmed non-payment forfeit).',
+      'Raw statuses match the persisted enum as-is. The DERIVED values ' +
+      'refine them: CANCELLATION_REQUESTED (confirmed + pending traveler ' +
+      'request), OPERATOR_CANCELLATION_REPORTED (confirmed + pending ' +
+      'operator report), NON_PAYMENT_REPORTED (confirmed + pending report), ' +
+      'FORFEITED (cancelled via an admin-confirmed non-payment forfeit).',
   })
   @IsOptional()
   @IsIn(BOOKING_DISPLAY_STATUSES)

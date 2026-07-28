@@ -6,6 +6,38 @@
 > Frontend/dashboard code lives in the SEPARATE dashboard repo
 > (`tripwheel-x-islandtours-dashboard`).
 
+> ## SUPERSEDED 2026-07-28: the customer-facing surface moved to the public site
+>
+> The traveller-facing half of this document is **historical**. The account area
+> now lives on the public frontend at **`/{locale}/traveller`** with its own
+> passwordless door (email -> one-time code -> HISTORY-scoped traveler session),
+> built 2026-07-28. See `../bookings/05-traveler-booking-session-story.md`
+> ("Scene 3b") for the current design.
+>
+> What that changes here (**removal EXECUTED 2026-07-28**):
+>
+> - **The `/account` door is DELETED**, together with `components/customer/*`,
+>   `customer-route-guard`, the `customerNav`, and the `Role.USER` branches of
+>   the shared bookings/payments views. `Role.USER` now maps to an empty
+>   permission list in the dashboard's `rbac.ts` - travellers cannot sign in to
+>   that app at all.
+> - **No welcome email is sent any more.** Provisioning used to mail a
+>   set-password link pointing at `/account/reset`; with the door gone that link
+>   was dead, and a *password* is the wrong credential for a passwordless
+>   traveller. `createCustomerAccount` now creates the record silently and
+>   `getAccountUrl()` is deleted. This settles MASTER-CHECKLIST conflict #6 in
+>   favour of the master's original principle.
+> - **OPEN DECISION:** nothing now tells a first-time booker their account area
+>   exists. The booking confirmation email is the natural place for a
+>   "manage your booking at island.tours/traveller" line, but that email follows
+>   the wireframe, so the copy change needs founder sign-off rather than being
+>   slipped in.
+> - **Everything else in this document still stands.** Provisioning, the
+>   `customers` table and its aggregates, the backfill of `userId` onto past
+>   bookings, and the operator-facing Customers CRM are all unchanged and still
+>   load-bearing. The new area scopes by `contactEmail` (not `userId`), so it
+>   covers guest bookings made before any account existed.
+
 ## Policy change (recorded, not silent)
 
 The login spec locked "no passwords / no signup for travelers" and a

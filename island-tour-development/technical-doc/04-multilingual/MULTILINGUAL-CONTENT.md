@@ -107,13 +107,24 @@ Two triggers:
   utility - the translated text fills the form field for review and nothing is persisted until
   "Save all", exactly like "Copy from English".
 
-Overwrite policy (founder-locked): machine writes fill missing rows and refresh rows flagged
-`isMachineTranslated = true` whose `sourceHash` no longer matches the English source. **A field a
-human saved is never overwritten** - on human-flagged rows the AI gap-fills only the EMPTY fields
-(e.g. a field cleared-and-saved to be re-translated) and the row keeps its human flag; every
-human upsert path resets the flag + hash. Proper nouns
-(`DestinationTranslation.name`, `HubTranslation.name`) never enter a provider payload. Excluded
-v1: the Pages module (TipTap), hub our-picks, hub comparison, `HubContentSection` (no group key).
+Overwrite policy (founder-locked, revised 2026-07-28): machine writes fill missing rows and
+refresh rows flagged `isMachineTranslated = true` whose `sourceHash` no longer matches the English
+source. **A row a human saved is never touched again** - not its written fields, not its empty
+ones. Clearing a field in the console and saving is a deliberate "show English here": it stays
+empty and the public page falls back to English. Every human upsert path resets the flag + hash,
+and the console's `force=true` button (behind a confirm dialog) is the only override. Proper nouns
+(`DestinationTranslation.name`, `HubTranslation.name`) never enter a provider payload. The hub
+curation surfaces are covered since 2026-07-28: our-picks blurbs, comparison group names +
+standout notes, and `HubContentSection` blocks (matched across locales by
+`(sectionType, displayOrder)` - the dashboard editor's own grouping convention; headingless
+block types translate the body once and mirror it into `heading`). Their replace-all editors
+preserve machine flags on translations that round-trip unchanged, so English edits keep
+refreshing machine rows. The hub editor itself is **English-only** (UX restructure,
+2026-07-28): it round-trips the non-English rows untouched, and humans edit hub curation
+translations in the Translation Console, which saves via per-item upserts
+(`PUT /hubs/:id/our-picks/:pickId/translations/:locale` and siblings for comparison
+groups/tours and content-section blocks; `en` edits the base row and re-enqueues).
+Excluded v1: the Pages module (TipTap).
 Tours have no FAQs (house rule), so the tour fan-out has no FAQ units.
 
 Reviews (LD32) ride the **same Gemini provider** since 2026-07-27 - the queue, sourceHash cache

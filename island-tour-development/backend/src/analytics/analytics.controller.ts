@@ -23,8 +23,15 @@ import { DashboardStatsQueryDto } from './dto/analytics.dto';
 export class AnalyticsController {
   constructor(private readonly analytics: AnalyticsService) {}
 
+  // Conflict #7: this surface is money by nature, so it requires
+  // VIEW_BOOKING_FINANCIALS ON TOP of its own permission. Without the pairing a
+  // "field guide" designation granted only 'View analytics' would read back exactly
+  // the amounts the manifest projection hides on /bookings.
   @Get('dashboard')
-  @RequirePermissions(Permission.VIEW_ANALYTICS)
+  @RequirePermissions(
+    Permission.VIEW_ANALYTICS,
+    Permission.VIEW_BOOKING_FINANCIALS,
+  )
   @ApiDashboardStatsDocs()
   dashboard(
     @AuthenticatedUser() user: TypedAuthUser,

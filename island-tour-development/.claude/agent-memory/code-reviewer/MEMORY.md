@@ -1,2 +1,4 @@
 - [Auth Module Review](auth_module_review.md) — first review session: auth module patterns, violations found, and good patterns
 - [Staff & Teams cross-repo review](staff_teams_cross_repo_review.md) — 2026-07-19: dashboard side clean/reference-quality; backend findings detailed in backend repo's own memory (IDOR gap, non-atomic write)
+- [Hub curation AI-translation cross-repo review](hub_curation_ai_translation_cross_repo_review.md) — 2026-07-28: backend Critical/Major findings in backend's own memory; dashboard DRY dup of the in-field AI button vs field-pair.tsx; comparison map-collision now FIXED, see next entry
+- [Hub curation Console-only migration review](hub_curation_console_only_migration_review.md) — 2026-07-28: hub editor went English-only, Console owns all hub translations; latent FAST_FACT scope leak + DRY/dead-field/a11y nits; several suspected bugs verified SAFE or pre-existing (see file)

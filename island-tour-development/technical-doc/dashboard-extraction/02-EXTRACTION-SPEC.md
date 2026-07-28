@@ -136,6 +136,12 @@ That last row is why this must be written down: **development will never reprodu
 > `02C-CROSS-DOMAIN-AUTH-SPEC.md`.** Its recommendation is **bearer tokens for the public site**,
 > because `bearer()` is already enabled at `auth.instance.ts:177` and the public site already never
 > reads the session server-side.
+>
+> **SUPERSEDED 2026-07-28: even the bearer migration is no longer needed.** The public site has
+> since dropped Better Auth entirely (traveler HMAC session via first-party `it.travelerSession`
+> cookie + `x-traveler-session` header; cookie-based no-login wishlist), so no session cookie
+> crosses the site boundary at all. The `island.tours` move is now 2 backend env vars. See the
+> **ADDENDUM at the top of `02C`** for the current change set.
 
 **Current action: none required.** All three hosts share `.islandtours.esenc.cloud`, so nothing is
 broken and nothing needs changing. The `island.tours` move is a separate future project - see `02C`.

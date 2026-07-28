@@ -23,10 +23,13 @@ import { Locale, Permission, Role } from '@prisma/client';
 import { ContentTranslationService } from './content-translation.service';
 import {
   ApiGenerateTranslationDocs,
+  ApiTranslateFieldsDocs,
   ApiTranslateTextDocs,
 } from './content-translation.swagger';
 import {
   GenerateTranslationResponseDto,
+  TranslateFieldsDto,
+  TranslateFieldsResponseDto,
   TranslateTextDto,
   TranslateTextResponseDto,
 } from './dto/content-translation.dto';
@@ -86,6 +89,101 @@ export class ContentTranslationController {
         dto.targetLocale,
       );
       return { translatedText };
+    } catch (err) {
+      throw new ServiceUnavailableException(
+        `AI translation failed - please try again shortly (${
+          err instanceof Error ? err.message : 'unknown error'
+        })`,
+      );
+    }
+  }
+
+  /**
+   * Batched inline translation (the per-card "Translate section" button).
+   * The card's fields ride in ONE request and hit the provider in ONE
+   * `translateFields` call - the same battle-tested path the background job
+   * uses (JSON mode, key-preserving validation, internal chunking, 429-hint
+   * waits). Persists NOTHING, exactly like translate-text above.
+   *
+   * The Record's values are opaque to class-validator, so the shape/size
+   * caps live here: they bound what one synchronous click can send to an
+   * external LLM.
+   */
+  @Post('content-translation/translate-fields')
+  @RequirePermissions(Permission.VIEW_TRIPS)
+  @ApiTranslateFieldsDocs()
+  async translateFields(
+    @Body() dto: TranslateFieldsDto,
+  ): Promise<TranslateFieldsResponseDto> {
+    if (dto.targetLocale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source language - pick a target locale',
+      );
+    }
+
+    const entries = Object.entries(dto.fields ?? {});
+    if (entries.length === 0) {
+      throw new BadRequestException('fields must contain at least one entry');
+    }
+    if (entries.length > 100) {
+      throw new BadRequestException(
+        'Too many fields - send at most 100 per request',
+      );
+    }
+    const fields: Record<string, string> = {};
+    let totalChars = 0;
+    for (const [key, value] of entries) {
+      // Loud rejection instead of the silent drop a bracket-assignment of
+      // these keys would cause (they hit Object.prototype accessors).
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        throw new BadRequestException(`Field key "${key}" is not allowed`);
+      }
+      if (key.length > 64) {
+        throw new BadRequestException(
+          'Field keys must be 64 characters or fewer',
+        );
+      }
+      if (typeof value !== 'string') {
+        throw new BadRequestException(`Field "${key}" must be a string`);
+      }
+      if (!value.trim()) continue; // nothing to translate - key is omitted
+      // Keys ride in the LLM payload too - count them, or a map of long keys
+      // with short values inflates the real cost past the documented cap.
+      totalChars += key.length + value.length;
+      fields[key] = value;
+    }
+    if (totalChars > 30_000) {
+      throw new BadRequestException(
+        'Fields exceed 30,000 characters - split the request',
+      );
+    }
+    if (Object.keys(fields).length === 0) {
+      return { fields: {} };
+    }
+
+    if (!(await this.provider.isConfigured())) {
+      throw new BadRequestException(
+        'AI translation is not configured - set it up under Settings > Integrations > AI Translation (or TRANSLATION_API_KEY)',
+      );
+    }
+    try {
+      const translated = await this.provider.translateFields(
+        fields,
+        Locale.en,
+        dto.targetLocale,
+      );
+      // Echo back ONLY the keys we sent (a hallucinated extra key never
+      // reaches the client) and normalise defensively - the provider
+      // contract also carries string[] for other callers. A missing or
+      // non-string value simply omits the key; the dashboard treats a
+      // missing key as not-filled.
+      const result: Record<string, string> = {};
+      for (const key of Object.keys(fields)) {
+        const value = translated[key];
+        if (Array.isArray(value)) result[key] = value.join('\n');
+        else if (typeof value === 'string') result[key] = value;
+      }
+      return { fields: result };
     } catch (err) {
       throw new ServiceUnavailableException(
         `AI translation failed - please try again shortly (${

@@ -9,7 +9,8 @@
         "language": "Langue",
         "categories": "Catégories",
         "search": "Rechercher",
-        "myBookings": "Mes réservations"
+        "myBookings": "Mes réservations",
+        "myAccount": "Mon compte"
     },
     "footer": {
         "tagline": "Créé par des insulaires.",
@@ -166,6 +167,7 @@
             "toolbar": {
                 "filters": "Filtres",
                 "selectDate": "Choisir une date",
+                "clearDate": "Effacer la date",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultes",
@@ -252,6 +254,7 @@
             "subtitle": "Des circuits choisis par des locaux qui connaissent chaque récif, route et coucher de soleil",
             "searchPlaceholder": "Rechercher des circuits ou activités",
             "selectDate": "Sélectionner une date",
+            "clearDate": "Effacer la date",
             "popularLabel": "Populaire"
         },
         "exploreTypes": {
@@ -291,6 +294,7 @@
             },
             "tagline": "Là où les habitants envoient leurs visiteurs",
             "selectDate": "Sélectionner une date",
+            "clearDate": "Effacer la date",
             "checkAvailability": "Vérifier la disponibilité",
             "comparison": {
                 "title": "Quelle excursion vous convient ?",
@@ -686,6 +690,7 @@
         "sending": "Envoi...",
         "sentTitle": "Demande d'annulation envoyée.",
         "sentBody": "Nous nous en occupons. Vous recevrez un e-mail confirmant votre annulation et votre remboursement.",
+        "seeStatus": "Voir le statut d'annulation",
         "notActive": "Cette réservation n'est plus active, il n'y a donc rien à annuler.",
         "error": "Cela n'a pas fonctionné. Réessayez ou écrivez-nous sur WhatsApp.",
         "verifyTitle": "Vérifiez d'abord votre identité",
@@ -785,6 +790,104 @@
         "privacy": "Politique de confidentialité",
         "help": "Aide",
         "tagline": "Créé par des insulaires."
+    },
+    "traveller": {
+        "title": "Votre compte",
+        "subtitle": "Toutes les excursions que vous avez réservées chez nous, et chaque paiement associé.",
+        "loginTitle": "Connectez-vous à votre compte",
+        "loginSubtitle": "Saisissez l'e-mail utilisé pour réserver et nous vous enverrons un code à usage unique.",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "vous@exemple.com",
+        "sendCode": "Envoyer un code",
+        "sending": "Envoi...",
+        "codeTitle": "Saisissez votre code",
+        "codeSentNote": "Si {email} a des réservations chez nous, un code à 6 chiffres est en route.",
+        "codeLabel": "Code à 6 chiffres",
+        "codeHint": "Le code est valable 10 minutes et utilisable une fois.",
+        "verify": "Se connecter",
+        "verifying": "Vérification...",
+        "resend": "Envoyer un nouveau code",
+        "resendWait": "Nouveau code dans {seconds}s",
+        "changeEmail": "Utiliser une autre adresse",
+        "codeError": "Ce code est invalide ou expiré. Demandez-en un nouveau.",
+        "throttledError": "Vous venez de demander un code. Consultez votre boîte de réception ou patientez une minute.",
+        "logout": "Se déconnecter",
+        "statsTrips": "Excursions réservées",
+        "statsUpcoming": "À venir",
+        "statsSpent": "Total payé",
+        "tabBookings": "Réservations",
+        "tabPayments": "Paiements",
+        "guests": "{count} voyageurs",
+        "showDetails": "Détails",
+        "hideDetails": "Masquer les détails",
+        "rowTotal": "Total de l'excursion",
+        "rowDeposit": "Acompte",
+        "rowPaid": "Payé à ce jour",
+        "rowBalance": "À régler à l'opérateur",
+        "rowBooked": "Réservé le",
+        "manageBooking": "Voir la réservation",
+        "reviewCta": "Laisser un avis",
+        "reviewed": "Vous avez déjà donné votre avis.",
+        "travelDate": "départ le {date}",
+        "bookingStatus": {
+            "CONFIRMED": "Confirmée",
+            "REDEEMED": "Terminée",
+            "ON_HOLD": "En attente",
+            "PENDING": "En cours",
+            "CANCELLATION_REQUESTED": "Annulation demandée",
+            "NON_PAYMENT_REPORTED": "Paiement en attente",
+            "OPERATOR_CANCELLATION_REPORTED": "Annulation en cours",
+            "CANCELLED": "Annulée",
+            "REJECTED": "Refusée",
+            "FORFEITED": "Annulée",
+            "EXPIRED": "Expirée"
+        },
+        "paymentState": {
+            "PAID": "Payé",
+            "PARTIALLY_PAID": "Acompte versé",
+            "UNPAID": "Non payé",
+            "REFUNDED": "Remboursé"
+        },
+        "paymentStatus": {
+            "REQUIRES_PAYMENT": "En attente de paiement",
+            "PROCESSING": "En traitement",
+            "SUCCEEDED": "Réussi",
+            "FAILED": "Échoué",
+            "REFUNDED": "Remboursé",
+            "PARTIALLY_REFUNDED": "Partiellement remboursé",
+            "CANCELLED": "Annulé"
+        },
+        "paymentKind": {
+            "DEPOSIT": "Acompte",
+            "BALANCE": "Solde",
+            "FULL": "Paiement intégral",
+            "REFUND": "Remboursement"
+        },
+        "paymentModelNote": {
+            "OPERATOR_LINK": "Vous nous avez versé un acompte. Le solde se règle directement avec l'opérateur.",
+            "ON_ARRIVAL": "Vous payez l'opérateur en totalité le jour de votre excursion.",
+            "PAID_IN_FULL": "Vous nous avez payé la totalité à l'avance.",
+            "OPERATOR_FULL": "Cette réservation se règle entièrement avec l'opérateur."
+        },
+        "cancelCta": "Demander l'annulation",
+        "cancelReasonLabel": "Un détail à nous signaler ? (facultatif)",
+        "cancelDisclaimer": "Cela envoie une demande à notre équipe. Rien n'est annulé et aucun montant ne bouge tant que nous ne l'avons pas traitée et confirmée par e-mail.",
+        "cancelConfirm": "Envoyer la demande",
+        "cancelSending": "Envoi de la demande...",
+        "cancelKeep": "Conserver ma réservation",
+        "cancelFailed": "Nous n'avons pas pu envoyer cette demande. Réessayez dans un instant.",
+        "cancelFreeUntil": "Annulation gratuite jusqu'au {date}. Demandez avant cette date et vous serez intégralement remboursé de ce que vous nous avez payé.",
+        "cancelWindowClosed": "Le délai d'annulation gratuite est passé, le remboursement n'est donc pas garanti. Vous pouvez tout de même demander - notre équipe examine chaque demande.",
+        "cancelRequestedChip": "Annulation demandée",
+        "cancelRequestedOn": "Demandée le {date}. Nous vous écrirons dès qu'elle sera traitée.",
+        "cancelRequestedInWindow": "Votre demande est arrivée dans le délai d'annulation gratuite.",
+        "cancelRequestedLate": "Votre demande est arrivée après le délai d'annulation gratuite, le remboursement n'est donc pas garanti. Notre équipe confirmera par e-mail.",
+        "cancelDeparted": "Cette excursion a déjà eu lieu et ne peut plus être annulée. Si quelque chose s'est mal passé le jour même, contactez-nous.",
+        "cancelNotConfirmed": "Seules les réservations confirmées peuvent demander une annulation.",
+        "emptyBookingsTitle": "Aucune réservation pour l'instant.",
+        "emptyBookingsBody": "Vos excursions apparaissent ici dès qu'elles sont confirmées.",
+        "emptyPaymentsTitle": "Aucun paiement pour l'instant.",
+        "emptyPaymentsBody": "Les paiements et remboursements de vos réservations apparaissent ici."
     },
     "reviewSubmit": {
         "invalidTitle": "Ce lien d'avis n'est plus valable.",

@@ -30,8 +30,12 @@ import {
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}
 
+  // Conflict #7: this surface is money by nature, so it requires
+  // VIEW_BOOKING_FINANCIALS ON TOP of its own permission. Without the pairing a
+  // "field guide" designation granted only 'View users' would read back exactly
+  // the amounts the manifest projection hides on /bookings.
   @Get()
-  @RequirePermissions(Permission.VIEW_USERS)
+  @RequirePermissions(Permission.VIEW_USERS, Permission.VIEW_BOOKING_FINANCIALS)
   @ApiListCustomersDocs()
   list(
     @Query() query: ListCustomersQueryDto,

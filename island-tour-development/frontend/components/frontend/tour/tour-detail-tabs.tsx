@@ -1,10 +1,9 @@
 'use client';
 
+import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { smoothScrollToId } from '@/lib/motion/smooth-scroll';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { smoothScrollToId } from '@/lib/motion/smooth-scroll';
-import { springPop } from '@/lib/motion';
-import { useDragScroll } from '@/hooks/use-drag-scroll';
 
 export type TourTab = {
     /** DOM id of the section this tab scrolls to. */
@@ -72,12 +71,10 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     };
 
     return (
-        <div
-            ref={barRef}
-            className='sticky top-18 z-30 bg-it-white md:top-20'>
+        <div ref={barRef} className='sticky top-18 z-30 bg-it-white md:top-20'>
             <div
                 ref={scrollRef}
-                className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className='flex overflow-x-auto overflow-y-hidden border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (
@@ -86,8 +83,6 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             type='button'
                             onClick={() => goTo(t.id)}
                             aria-current={isActive ? 'true' : undefined}
-                            whileTap={{ scale: 0.98 }}
-                            transition={springPop}
                             className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-5 py-4 text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 md:px-7.5 md:py-5 md:text-[20px] ${
                                 isActive
                                     ? 'font-medium text-it-heading'
@@ -98,7 +93,6 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             {isActive && (
                                 <motion.span
                                     layoutId='tour-tab-underline'
-                                    transition={springPop}
                                     className='absolute inset-x-0 bottom-0 h-0.5 bg-it-primary'
                                 />
                             )}
@@ -109,3 +103,4 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
         </div>
     );
 }
+

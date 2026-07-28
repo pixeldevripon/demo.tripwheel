@@ -445,9 +445,11 @@ export class UpdateTourHighlightDto {
 }
 
 export class UpsertHighlightTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Zie de zonsondergang vanaf het water' })
   @IsString()
-  @MinLength(5)
   @MaxLength(100)
   text!: string;
 
@@ -520,9 +522,11 @@ export class UpdateTourInclusionDto {
 }
 
 export class UpsertInclusionTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Open bar' })
   @IsString()
-  @MinLength(2)
   @MaxLength(120)
   label!: string;
 
@@ -636,9 +640,11 @@ export class UpdateTourExclusionDto {
 }
 
 export class UpsertExclusionTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Gratuities' })
   @IsString()
-  @MinLength(2)
   @MaxLength(120)
   label!: string;
 
@@ -699,11 +705,13 @@ export class UpdateTourFeatureDto {
 }
 
 export class UpsertFeatureTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({
     example: 'Please bring your voucher and arrive before departure.',
   })
   @IsString()
-  @MinLength(2)
   @MaxLength(2000)
   text!: string;
 
@@ -890,9 +898,11 @@ export class UpdateTourLocationDto {
 }
 
 export class UpsertLocationTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Main dock' })
   @IsString()
-  @MinLength(2)
   @MaxLength(160)
   title!: string;
 
@@ -1079,9 +1089,11 @@ export class UpdatePickupLocationDto {
 }
 
 export class UpsertPickupLocationTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Marriott Beach Resort - main lobby' })
   @IsString()
-  @MinLength(2)
   @MaxLength(160)
   title!: string;
 

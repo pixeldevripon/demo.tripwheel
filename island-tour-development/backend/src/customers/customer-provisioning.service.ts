@@ -1,10 +1,5 @@
-import { auth } from '@/auth/auth.instance';
-import { TargetRateLimiter } from '@/bookings/lookup-rate-limiter';
 import { ACTIVE_BOOKING_STATUSES } from '@/common/constants/booking-status';
-import {
-  getAccountUrl,
-  provisionOrAttachAccount,
-} from '@/common/utils/invite-provisioning.util';
+import { provisionOrAttachAccount } from '@/common/utils/invite-provisioning.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
@@ -20,24 +15,26 @@ export interface ProvisionableBooking {
 }
 
 /**
- * Turns a booking's contact into a customer account (master amendment
+ * Turns a booking's contact into a customer RECORD (master amendment
  * 2026-07-20, technical-doc/customers/CUSTOMER-ACCOUNTS.md):
  *
- * - findOrCreate a Role.USER auth account by contactEmail; a brand-new account
- *   gets the welcome email with the secure set-password link (Better Auth
- *   reset token via the auth.instance invite branch).
+ * - findOrCreate a Role.USER auth account by contactEmail,
  * - backfill-link every booking with the same contactEmail (userId was null),
- *   so past guest bookings appear in the dashboard too.
+ *   so past guest bookings belong to that customer too,
  * - upsert `customers` rows (user x operator) and recompute their aggregates.
  *
- * Trust model: the account is inert until the emailed set-password link proves
- * mailbox ownership - the same basis as the public lookup/recover flow.
+ * NO EMAIL IS SENT (changed 2026-07-28). This used to mail a set-password
+ * link, because travellers had a password-based `/account` door in the ops
+ * dashboard. That door is gone: travellers are passwordless again and manage
+ * their trips at `/{locale}/traveller` on the public site, signing in with a
+ * one-time emailed code. The account created here is a CRM record - it gives
+ * operators a customer to see and gives past bookings something to hang off -
+ * and nobody ever signs into it.
  *
  * One account, many hats: emails that belong to a NON-USER account (operator/
  * staff) get the customer identity ATTACHED - their bookings link to the one
- * account and the customer rows open the /account door for them. Their role is
- * never touched, and credentialed accounts get no set-password email. Only the
- * hidden internal-management account is skipped entirely.
+ * account. Their role is never touched. Only the hidden internal-management
+ * account is skipped entirely.
  *
  * Every public method is fire-and-forget-safe: it never throws and must never
  * block or fail a booking, webhook, or cancellation. Call as
@@ -49,7 +46,6 @@ export class CustomerProvisioningService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly limiter: TargetRateLimiter,
     private readonly staffPermissions: StaffPermissionsService,
   ) {}
 
@@ -82,12 +78,6 @@ export class CustomerProvisioningService {
         const provisioned = await this.createCustomerAccount(email, booking);
         if (!provisioned) return; // creation failed - logged inside
         user = { ...provisioned, isSystemAccount: false, customerOf: [] };
-      } else if (!user.hasPassword && user.role === Role.USER) {
-        // Booked again without ever setting a password: offer the link again,
-        // capped so repeat bookings cannot spam the inbox. Non-USER accounts
-        // received their own invite from their own flow - never re-mail them
-        // a customer welcome.
-        this.resendSetPasswordLink(email);
       }
 
       // Backfill-link this + every past booking with the same contact email.
@@ -218,29 +208,14 @@ export class CustomerProvisioningService {
       this.logger.log(
         `Customer account ${created ? 'created' : 'linked'} for booking ${booking.id} (user ${user.id})`,
       );
-      // Server-initiated (no request) -> auth.instance invite branch sends the
-      // customer welcome email carrying the 1h set-password token. Seed the
-      // per-email cap here too, so creation + resends together can never
-      // exceed 1 send per 24h per address (server-initiated resets bypass
-      // Better Auth's route-level limiter - this cap is the backstop). Only a
-      // freshly created account gets the welcome; a raced attach means some
-      // other flow already invited this email.
-      if (created) {
-        try {
-          this.limiter.consume('customer-welcome', email, [
-            { max: 1, windowMs: 24 * 60 * 60 * 1000 },
-          ]);
-          await auth.api.requestPasswordReset({
-            body: { email, redirectTo: `${getAccountUrl()}/reset` },
-          });
-        } catch (err) {
-          this.logger.warn(
-            `Customer welcome email skipped for booking ${booking.id}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        }
-      }
+      // NO welcome / set-password email (2026-07-28). Travellers are
+      // passwordless again: the account exists so operators have a customer
+      // record and past bookings can be linked, but travellers never sign in
+      // with a password. They manage their trips at `/{locale}/traveller` on
+      // the public site, where the door is an emailed one-time code. Mailing
+      // a set-password link would send them to a page that no longer exists
+      // and invite a credential they have no use for.
+      void created;
       return { id: user.id, role: Role.USER, hasPassword: hadPassword };
     } catch (err) {
       if (err instanceof ConflictException) {
@@ -254,27 +229,5 @@ export class CustomerProvisioningService {
       );
       return null;
     }
-  }
-
-  /** Re-send the set-password link, capped at 1 per email per 24h. */
-  private resendSetPasswordLink(email: string): void {
-    try {
-      this.limiter.consume('customer-welcome', email, [
-        { max: 1, windowMs: 24 * 60 * 60 * 1000 },
-      ]);
-    } catch {
-      return; // cap hit - stay silent, they already have a fresh link
-    }
-    void auth.api
-      .requestPasswordReset({
-        body: { email, redirectTo: `${getAccountUrl()}/reset` },
-      })
-      .then(() => this.logger.log(`Set-password link re-sent to customer`))
-      .catch((err) =>
-        this.logger.error(
-          'Customer set-password resend failed',
-          err instanceof Error ? err.stack : String(err),
-        ),
-      );
   }
 }

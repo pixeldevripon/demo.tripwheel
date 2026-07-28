@@ -5,6 +5,7 @@
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
 import { ToursService } from '@/tours/tours.service';
 import {
   BadRequestException,
@@ -99,6 +100,13 @@ describe('CollectionsService', () => {
         {
           provide: ContentTranslationEnqueuer,
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
+        {
+          provide: TranslationClearMarkService,
+          useValue: {
+            mark: jest.fn().mockResolvedValue(undefined),
+            markForPageType: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

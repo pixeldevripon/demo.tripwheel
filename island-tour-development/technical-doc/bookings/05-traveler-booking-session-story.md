@@ -19,10 +19,10 @@
 | `it.travelerBooking` | Client-readable cookie with `{email, ref, path}` - **display sugar only** (navbar identity, deep link). Authorizes nothing | Set by client JS after a lookup |
 | Backend verifier | The ONLY place tokens are checked: signature + expiry + "do these claims own THIS booking?" | `backend/src/bookings/traveler-session.util.ts` |
 
-### The two token scopes (the load-bearing distinction)
+### The three token scopes (the load-bearing distinction)
 
 A token proves only as much as the caller actually demonstrated, so the payload carries **exactly
-one** of two claims:
+one** identity claim, plus an optional strength marker:
 
 - **EMAIL scope `{ e }`** - issued ONLY by the pair login (`POST /bookings/lookup`), where the
   caller proved knowledge of email + booking reference (both delivered to that inbox). Unlocks
@@ -33,10 +33,20 @@ one** of two claims:
   else. (Minting an email-scoped token here was the critical review finding: anyone could
   reserve a throwaway booking, type a victim's email, and get a token valid against the victim's
   real bookings. Booking-scope closes it.)
+- **HISTORY scope `{ e, h: 1 }`** (added 2026-07-28) - issued ONLY by the traveller OTP login
+  (`POST /bookings/traveller/verify-code`), where the caller proved **live inbox ownership** by
+  returning a one-time code. Strictly stronger than EMAIL scope: it owns the same bookings AND
+  unlocks the account area (all bookings + payment history). See "Scene 3b" below for why the
+  pair login is not sufficient for that surface.
 
-`sessionOwnsBooking(claims, booking)` enforces this: booking-scope requires an exact `id` match;
-email-scope requires a `contactEmail` match (and a booking with no contact email can never be
-email-owned).
+`sessionOwnsBooking(claims, booking)` enforces ownership: booking-scope requires an exact `id`
+match; email-scope (with or without `h`) requires a `contactEmail` match (and a booking with no
+contact email can never be email-owned). `sessionHistoryEmail(claims)` is the separate, stricter
+gate the account endpoints use - it returns the email **only** when `h: 1` is present, so a
+pair-login or checkout token gets a 401 there while still working everywhere it always did.
+
+The `h` flag rides **inside the signed payload**, so it cannot be added to an existing token, and
+tokens minted before the flag existed verify as `history: false` (24h back-compat by construction).
 
 Two principles run through everything:
 
@@ -140,6 +150,46 @@ It is validated against `/^\/(?:[a-z0-9-]+\/thank-you|cancel)\/[A-Za-z0-9-]+$/` 
 paths only, an open redirect is impossible. It is read from `window.location.search` at submit
 time (not `useSearchParams`) so the login page stays prerenderable.
 
+## Scene 3b - The account area (the OTP login, added 2026-07-28)
+
+`/{locale}/traveller` shows **every** booking on the traveller's email plus the full payment
+history. The pair login is the wrong credential for that: it proves possession of ONE confirmation
+email, and travellers forward those to companions all the time. So this surface has its own,
+stronger door - the traveller proves they hold the inbox **right now**.
+
+```
+/{locale}/traveller (traveller-login-card.tsx)
+  POST /bookings/traveller/request-code { email }
+    - TargetRateLimiter 'traveller-otp'      1/min + 5/24h per email  (+ per-IP @Throttle)
+    - no bookings for that email?            -> { sent: true }, nothing created, nothing mailed
+    - bookings exist?                        -> invalidate any live code, store HMAC(secret,
+                                                `email:code`), mail the 6-digit code to the
+                                                STORED address. Response is identical either way.
+  POST /bookings/traveller/verify-code { email, code }
+    - newest unconsumed, unexpired row; >=5 attempts -> burn it
+    - attempts++ BEFORE the timing-safe compare      (no racing extra guesses)
+    - guarded consume (updateMany where consumedAt: null) -> only one caller can redeem
+    - -> { sessionToken }  HISTORY-scoped
+  await storeTravelerSession(token)          same HttpOnly cookie as every other scope
+  router.refresh()                           the next server render is signed in
+```
+
+The code is **never stored** - only a keyed HMAC - so a database dump alone cannot forge a login.
+Every verify failure (unknown email, wrong code, expired, already used, attempts exhausted)
+returns the same generic 401.
+
+Reads (`GET /bookings/traveller/{bookings,summary,payments}`) are `@Public()` and gated on
+`sessionHistoryEmail`, scoped by `contactEmail` - which is why they also cover guest bookings made
+before any account existed. The payloads withhold everything that is not the traveller's business:
+commission, settlement/payout context, ops lifecycle timestamps, and provider intent/charge ids.
+
+**The token stays server-side.** The account page reads the HttpOnly cookie in a Server Component
+and forwards it as a header; it is never passed to a client component, because serializing a
+history-scoped token into the page payload would hand any injected script 24h of full-account
+access and defeat the HttpOnly cookie. The one client-triggered write (the cancellation request)
+goes through `POST /api/traveller/cancellation-request`, a same-origin route handler that replays
+the cookie server-side.
+
 ## Scene 4 - Cancelling (the guarded mutation)
 
 The email's "Cancel booking" button opens `/cancel/{publicRef}` (locale-less, proxy rewrite).
@@ -195,7 +245,11 @@ inbox.
 | CSRF the session route to plant/clear a cookie | `POST`/`DELETE /api/traveler-session` reject cross-site requests (`Sec-Fetch-Site` / Origin check) |
 | Read the pickup address from the public calendar.ics | Closed: the ICS `LOCATION` no longer contains the street address |
 | `Origin: null` credentialed CORS from a sandboxed iframe | Closed: `origin === 'null'` removed from the allow-list |
-| Operator insider (legitimately sees email + reference) | The pair unlocks single-booking manage only; invoices/cross-booking history will require the email-code step-up (deferred with those features) |
+| Operator insider (legitimately sees email + reference) | The pair unlocks single-booking manage only. Cross-booking history needs the OTP login, which the insider cannot pass without the traveller's inbox |
+| Forward a confirmation email to read someone's whole history | Closed: the pair login it enables is EMAIL-scoped, and every account endpoint requires `h: 1` |
+| Forge the `h: 1` history flag onto a pair token | Impossible: `h` is inside the HMAC-signed payload, so any edit breaks the signature |
+| Brute-force a login code | 1,000,000 codes, 10-minute life, single use, 5 attempts per code, per-IP throttle, and 1 request/min per email |
+| Steal a history token via XSS | It never reaches the browser: the cookie is HttpOnly and the token is never serialized into a client prop; the one client write proxies through a same-origin route handler |
 
 ---
 
@@ -205,9 +259,10 @@ inbox.
 
 | File | Role |
 |---|---|
-| `traveler-session.util.ts` | Issue (email + booking scope) + verify tokens -> claims, `sessionOwnsBooking`, PII maskers. Secret: `TRAVELER_SESSION_SECRET` (fallback `BETTER_AUTH_SECRET`) |
+| `traveler-session.util.ts` | Issue (email / booking / history scope) + verify tokens -> claims, `sessionOwnsBooking`, `sessionHistoryEmail`, OTP code hashing (`hashLoginCode` / `loginCodeMatches`), PII maskers. Secret: `TRAVELER_SESSION_SECRET` |
 | `lookup-rate-limiter.ts` | `LookupRateLimiter` (per-credential login caps) + `TargetRateLimiter` (per-target mail caps); both sweep stale keys + cap map size; audit/lockout logs (in-memory; Redis when the API scales out) |
-| `bookings.service.ts` | `lookupBooking` (verify pair, issue EMAIL token), `update` (issue BOOKING token on contact-email set), `getThankYou` (verified flag + masking + conversion gate), `requestCancellation` (ownership gate), `getCalendar` (no address), `resendConfirmation`/`recoverReference` (target caps) |
+| `bookings.service.ts` | `lookupBooking` (verify pair, issue EMAIL token), `update` (issue BOOKING token on contact-email set), `requestTravellerLoginCode`/`verifyTravellerLoginCode` (OTP, issue HISTORY token), `listTravellerBookings`/`getTravellerSummary`/`listTravellerPayments` (history-gated account reads), `getThankYou` (verified flag + masking + conversion gate), `requestCancellation` (ownership gate), `getCalendar` (no address), `resendConfirmation`/`recoverReference` (target caps) |
+| `prisma/bookings.prisma` -> `TravelerLoginCode` | One-time login codes: HMAC only (never the code), 10-min expiry, `attempts`, `consumedAt`. Cleaned opportunistically on the next request-code |
 | `bookings.controller.ts` | Reads `X-Traveler-Session` + `@Ip`, stays thin |
 | `main.ts` | `X-Traveler-Session` in the CORS allow-list; `origin === 'null'` removed |
 
@@ -216,6 +271,10 @@ inbox.
 | File | Role |
 |---|---|
 | `app/api/traveler-session/route.ts` | POST = park token in HttpOnly cookie (shape-checked + same-origin only), DELETE = clear (same-origin only) |
+| `app/api/traveller/cancellation-request/route.ts` | Same-origin proxy for the account area's one write: replays the HttpOnly cookie server-side so the history token never reaches the browser |
+| `app/(frontend)/[locale]/traveller/page.tsx` | The account area. No session (or a 401 from a weaker token) renders the OTP login card at the same URL |
+| `lib/api/public/traveller.ts` | Uncached, header-forwarding account reads; 401 maps to "signed out", not an error |
+| `lib/api/traveller-login.ts` | Browser-only OTP calls (SSR would bypass the backend throttles) |
 | `lib/traveler-session.server.ts` | Server-side cookie read for TYP + cancel pages |
 | `lib/traveler-booking.ts` | `storeTravelerSession` (client -> route handler), display cookie helpers |
 | `traveler-login.tsx` / `checkout-form.tsx` | The two places a token is born and stored |
@@ -229,6 +288,18 @@ inbox.
 2. **Cancellation requires the verified session.**
 3. **Email-code step-up deferred** until invoices / cross-booking history exist - the session
    already covers everything v1 ships.
+
+## Design decisions on record (founder, 2026-07-28)
+
+4. **Decision 3 is now DUE and implemented.** Cross-booking history exists (`/{locale}/traveller`),
+   so it ships with the email-code step-up that decision anticipated - as a separate, stronger
+   door rather than a step-up on the existing one.
+5. **The `/bookings` pair login is unchanged** and stays the per-booking reference check. Its
+   token does not open the account area.
+6. **Travellers stay passwordless.** The account area uses a one-time code, not a password. This
+   settles MASTER-CHECKLIST conflict #6 in favour of the master's original principle: the
+   password-based `/account` door in the ops dashboard is being retired, and the traveller surface
+   remains on the public frontend (three-doors isolation holds).
 
 Deliberately NOT done: no Better Auth involvement for travelers (spec: thin endpoint over
 bookings), no server-side session store (stateless HMAC + per-use ownership check + 24h expiry),

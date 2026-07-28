@@ -7,6 +7,7 @@ import {
   slugRowBlocks,
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { mergeTranslation } from '@/common/utils/translation.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -39,6 +40,7 @@ import {
   PricingModel,
   Role,
   SlugEntityType,
+  TourApprovalStatus,
   TourStatus,
   WholeUnitType,
 } from '@prisma/client';
@@ -163,6 +165,9 @@ export class ToursService {
     likelyToSellOut: true,
     likelyToSellOutOverride: true,
     isActive: true,
+    approvalStatus: true,
+    submittedAt: true,
+    reviewNote: true,
     publishedAt: true,
     createdAt: true,
     updatedAt: true,
@@ -363,6 +368,22 @@ export class ToursService {
   ): Promise<string> {
     // Shared util: owner account, ACTIVE team seat, or admin auto-provision.
     return resolveOperatorId(this.prisma, userId, role);
+  }
+
+  /**
+   * The review workflow is operator/platform-internal. Every PUBLIC payload
+   * (browse grid, slug detail, non-privileged id reads) gets the fields
+   * neutralized - a LIVE tour is by definition approved, and the admin's
+   * review note must never reach travelers.
+   */
+  private neutralizeApprovalFields(t: {
+    approvalStatus?: unknown;
+    submittedAt?: unknown;
+    reviewNote?: unknown;
+  }): void {
+    t.approvalStatus = TourApprovalStatus.APPROVED;
+    t.submittedAt = null;
+    t.reviewNote = null;
   }
 
   async assertOwnership(
@@ -1014,14 +1035,18 @@ export class ToursService {
       data.map((t) => t.id),
     );
 
-    const mapped = data.map(({ translations, destination, ...t }) => ({
-      ...this.flattenTour(t),
-      title: translations[0]?.title ?? t.name,
-      overview: translations[0]?.overview ?? null,
-      destinationSlug: destination?.slug ?? null,
-      badge: this.deriveTourBadge(t),
-      attributes: attributesByTour.get(t.id) ?? [],
-    }));
+    const mapped = data.map(({ translations, destination, ...t }) => {
+      const card = {
+        ...this.flattenTour(t),
+        title: translations[0]?.title ?? t.name,
+        overview: translations[0]?.overview ?? null,
+        destinationSlug: destination?.slug ?? null,
+        badge: this.deriveTourBadge(t),
+        attributes: attributesByTour.get(t.id) ?? [],
+      };
+      this.neutralizeApprovalFields(card);
+      return card;
+    });
 
     // §3.8 diversity pass runs after ranking, on the default ("recommended") sort
     // only - explicit price/rating sorts keep the exact order the user requested.
@@ -1547,6 +1572,24 @@ export class ToursService {
 
     const result = this.flattenCounts(tour);
     await this.attachMoney([result], target);
+    // Strip the review fields for everyone who is NOT platform staff or the
+    // owning operator - "not anonymous" is a much bigger set than
+    // "authorized" (any customer account would otherwise read the admin's
+    // review note on a LIVE tour).
+    const isPlatform =
+      requesterRole === Role.ADMIN ||
+      requesterRole === Role.STAFF ||
+      requesterRole === Role.EDITOR;
+    const isOwner =
+      requesterRole === Role.TOUR_OPERATOR &&
+      requesterId != null &&
+      tour.operatorId ===
+        (await this.resolveOperatorId(requesterId, requesterRole).catch(
+          () => null,
+        ));
+    if (!isPlatform && !isOwner) {
+      this.neutralizeApprovalFields(result);
+    }
     return result;
   }
 
@@ -1757,30 +1800,22 @@ export class ToursService {
       ...rest
     } = tour;
 
-    const resolvedTranslation =
-      translations.find((t) => t.locale === locale) ??
-      translations.find((t) => t.locale === Locale.en) ??
-      null;
+    // PER-FIELD, not per-row: a field cleared in the Translation Console
+    // leaves the locale row in place with a NULL in it, and row-level fallback
+    // would render that as empty instead of showing English.
+    const resolvedTranslation = mergeTranslation(translations, locale) ?? null;
 
     const resolvedHighlights = highlights.map((h) => ({
       id: h.id,
       displayOrder: h.displayOrder,
-      text:
-        (
-          h.translations.find((t) => t.locale === locale) ??
-          h.translations.find((t) => t.locale === Locale.en)
-        )?.text ?? '',
+      text: mergeTranslation(h.translations, locale)?.text ?? '',
     }));
 
     const resolvedInclusions = inclusions.map((i) => ({
       id: i.id,
       icon: i.icon,
       displayOrder: i.displayOrder,
-      label:
-        (
-          i.translations.find((t) => t.locale === locale) ??
-          i.translations.find((t) => t.locale === Locale.en)
-        )?.label ?? '',
+      label: mergeTranslation(i.translations, locale)?.label ?? '',
     }));
 
     const resolvedExclusions = exclusions.map((e) => ({
@@ -1789,17 +1824,11 @@ export class ToursService {
       type: e.type,
       priceText: e.priceText,
       displayOrder: e.displayOrder,
-      label:
-        (
-          e.translations.find((t) => t.locale === locale) ??
-          e.translations.find((t) => t.locale === Locale.en)
-        )?.label ?? '',
+      label: mergeTranslation(e.translations, locale)?.label ?? '',
     }));
 
     const resolvedLocations = locations.map((l) => {
-      const tr =
-        l.translations.find((t) => t.locale === locale) ??
-        l.translations.find((t) => t.locale === Locale.en);
+      const tr = mergeTranslation(l.translations, locale);
       return {
         id: l.id,
         types: l.types,
@@ -1819,9 +1848,7 @@ export class ToursService {
     });
 
     const resolvedPickupLocations = pickupLocations.map((p) => {
-      const tr =
-        p.translations.find((t) => t.locale === locale) ??
-        p.translations.find((t) => t.locale === Locale.en);
+      const tr = mergeTranslation(p.translations, locale);
       return {
         id: p.id,
         name: p.name,
@@ -1844,11 +1871,7 @@ export class ToursService {
       id: f.id,
       type: f.type,
       displayOrder: f.displayOrder,
-      text:
-        (
-          f.translations.find((t) => t.locale === locale) ??
-          f.translations.find((t) => t.locale === Locale.en)
-        )?.text ?? '',
+      text: mergeTranslation(f.translations, locale)?.text ?? '',
     }));
 
     const detail = {
@@ -1865,6 +1888,7 @@ export class ToursService {
       features: resolvedFeatures,
       languages: languages.map((l) => l.language),
     };
+    this.neutralizeApprovalFields(detail);
     await this.attachMoney([detail], query.currency);
     return detail;
   }
@@ -2167,6 +2191,21 @@ export class ToursService {
 
     if (tour.status === TourStatus.ARCHIVED) {
       throw new BadRequestException('Cannot update an archived tour');
+    }
+
+    // Free-cancellation window is admin-only once the tour has left DRAFT:
+    // booking deadlines are computed from it at read time (E.8), so changing
+    // it on a live tour retroactively moves EXISTING bookings' cancellation
+    // deadlines (access-roles matrix, Tours notes).
+    if (
+      dto.cancellationHours !== undefined &&
+      dto.cancellationHours !== tour.cancellationHours &&
+      tour.status !== TourStatus.DRAFT &&
+      requesterRole !== Role.ADMIN
+    ) {
+      throw new ForbiddenException(
+        "The free-cancellation window cannot be changed on a published tour - it would move existing bookings' cancellation deadlines. Contact Island Tours to change it.",
+      );
     }
 
     const warnings: string[] = [];
@@ -2482,7 +2521,8 @@ export class ToursService {
 
   // ── Lifecycle transitions ─────────────────────────────────────────────────────
 
-  async publish(id: string, userId: string, userRole: Role) {
+  /** The tour + child counts the publish-precondition check needs. */
+  private async loadTourForReadiness(id: string) {
     const tour = await this.prisma.tour.findUnique({
       where: { id },
       select: {
@@ -2497,23 +2537,30 @@ export class ToursService {
       },
     });
     if (!tour) throw new NotFoundException(`Tour ${id} not found`);
-    await this.assertOwnership(tour, userId, userRole);
-    if (tour.status !== TourStatus.DRAFT) {
-      throw new BadRequestException('Tour must be in DRAFT status to publish');
-    }
+    return tour;
+  }
 
+  /**
+   * The listing-readiness bar, shared by publish() AND submitForReview() so a
+   * review is never wasted on an incomplete tour and the two gates can never
+   * drift apart.
+   */
+  private collectPublishBlockers(
+    tour: Awaited<ReturnType<typeof this.loadTourForReadiness>>,
+    verb: 'publish' | 'submit for review',
+  ): string[] {
     const errors: string[] = [];
     if (tour.images.length < 5)
-      errors.push('At least 5 images are required to publish');
+      errors.push(`At least 5 images are required to ${verb}`);
     if (!tour.images.some((img) => img.isHero))
-      errors.push('A hero image must be set before publishing');
+      errors.push(`A hero image must be set to ${verb}`);
 
     const enTranslation = tour.translations[0];
     if (!enTranslation?.overview?.trim())
-      errors.push('An English overview is required to publish');
+      errors.push(`An English overview is required to ${verb}`);
 
     if (tour.highlights.length < 3)
-      errors.push('At least 3 highlights are required to publish');
+      errors.push(`At least 3 highlights are required to ${verb}`);
 
     // Price required, per pricing model:
     // - UNIT (whole-unit / charter): a base price (the whole-unit price) + a unit type.
@@ -2521,18 +2568,129 @@ export class ToursService {
     if (tour.pricingModel === PricingModel.UNIT) {
       if (tour.basePrice == null)
         errors.push(
-          'Unit-priced tours require a base price (the whole-unit price) to publish',
+          `Unit-priced tours require a base price (the whole-unit price) to ${verb}`,
         );
       if (!tour.wholeUnitType)
         errors.push(
-          'Unit-priced tours require a unit type (group / boat / vehicle / aircraft / package) to publish',
+          `Unit-priced tours require a unit type (group / boat / vehicle / aircraft / package) to ${verb}`,
         );
     } else if (tour.basePrice == null && tour._count.ageBands === 0) {
       errors.push(
-        'A price is required to publish (set a base price or add an age band)',
+        `A price is required to ${verb} (set a base price or add an age band)`,
+      );
+    }
+    return errors;
+  }
+
+  /**
+   * Operator submits a DRAFT tour for platform review (conflict #1: publishing
+   * is always Island Tours'). Runs the SAME readiness bar as publish so the
+   * review queue never holds incomplete tours. Allowed from NOT_SUBMITTED or
+   * REJECTED (a fix-and-resubmit clears the old review note).
+   */
+  async submitForReview(id: string, userId: string, userRole: Role) {
+    const tour = await this.loadTourForReadiness(id);
+    await this.assertOwnership(tour, userId, userRole);
+    if (tour.status !== TourStatus.DRAFT) {
+      throw new BadRequestException(
+        'Only a DRAFT tour can be submitted for review',
+      );
+    }
+    if (tour.approvalStatus === TourApprovalStatus.PENDING) {
+      throw new ConflictException(
+        'This tour is already awaiting review - Island Tours will get back to you',
+      );
+    }
+    if (tour.approvalStatus === TourApprovalStatus.APPROVED) {
+      throw new ConflictException(
+        'This tour is already approved - Island Tours publishes it from here',
       );
     }
 
+    const errors = this.collectPublishBlockers(tour, 'submit for review');
+    if (errors.length > 0) throw new BadRequestException(errors);
+
+    const updated = await this.prisma.tour.update({
+      where: { id },
+      data: {
+        approvalStatus: TourApprovalStatus.PENDING,
+        submittedAt: new Date(),
+        reviewNote: null,
+      },
+      select: this.tourSelect,
+    });
+    this.logger.log(`User ${userId} submitted tour ${id} for review`);
+    return this.flattenTour(updated);
+  }
+
+  /** Admin approves a PENDING submission. Publishing stays a separate step. */
+  async approveTour(id: string, adminId: string, note?: string) {
+    const tour = await this.findTourOrThrow(id);
+    if (
+      tour.status !== TourStatus.DRAFT ||
+      tour.approvalStatus !== TourApprovalStatus.PENDING
+    ) {
+      throw new ConflictException(
+        'Only a DRAFT tour awaiting review can be approved',
+      );
+    }
+    const updated = await this.prisma.tour.update({
+      where: { id },
+      data: {
+        approvalStatus: TourApprovalStatus.APPROVED,
+        reviewNote: note?.trim() || null,
+      },
+      select: this.tourSelect,
+    });
+    this.logger.log(`Admin ${adminId} approved tour ${id}`);
+    return this.flattenTour(updated);
+  }
+
+  /** Admin rejects a PENDING submission with a required, actionable note. */
+  async rejectTour(id: string, adminId: string, note: string) {
+    const tour = await this.findTourOrThrow(id);
+    if (
+      tour.status !== TourStatus.DRAFT ||
+      tour.approvalStatus !== TourApprovalStatus.PENDING
+    ) {
+      throw new ConflictException(
+        'Only a DRAFT tour awaiting review can be rejected',
+      );
+    }
+    const updated = await this.prisma.tour.update({
+      where: { id },
+      data: {
+        approvalStatus: TourApprovalStatus.REJECTED,
+        reviewNote: note.trim(),
+      },
+      select: this.tourSelect,
+    });
+    this.logger.log(`Admin ${adminId} rejected tour ${id}`);
+    return this.flattenTour(updated);
+  }
+
+  async publish(id: string, userId: string, userRole: Role) {
+    const tour = await this.loadTourForReadiness(id);
+    await this.assertOwnership(tour, userId, userRole);
+    if (tour.status !== TourStatus.DRAFT) {
+      throw new BadRequestException('Tour must be in DRAFT status to publish');
+    }
+    // Conflict #1: publish requires an approved review. The route is
+    // MANAGE_TRIPS (platform-only; operators lost it - they submit for
+    // review instead). An ADMIN publishing an unreviewed tour IS the review
+    // (their publish stamps the approval). A platform-STAFF account granted
+    // MANAGE_TRIPS via a designation can review (approve/reject) but still
+    // cannot skip the gate here - only the real ADMIN role bypasses.
+    if (
+      userRole !== Role.ADMIN &&
+      tour.approvalStatus !== TourApprovalStatus.APPROVED
+    ) {
+      throw new ConflictException(
+        'Tour must be approved before publishing (submit it for review first)',
+      );
+    }
+
+    const errors = this.collectPublishBlockers(tour, 'publish');
     if (errors.length > 0) throw new BadRequestException(errors);
 
     // Compute bookability at publish time so the tour appears in listings
@@ -2546,6 +2704,8 @@ export class ToursService {
         status: TourStatus.LIVE,
         publishedAt: new Date(),
         isBookable: bookable,
+        // LIVE implies APPROVED: an admin publish is itself the approval.
+        approvalStatus: TourApprovalStatus.APPROVED,
       },
       select: this.tourSelect,
     });
@@ -2637,12 +2797,28 @@ export class ToursService {
     if (tour.status !== TourStatus.PAUSED) {
       throw new BadRequestException('Tour must be PAUSED to unpause');
     }
+    // Defense in depth: PAUSED is only reachable from LIVE (which implies
+    // APPROVED), but a future direct-write/repair path must not let unpause
+    // resurrect a tour that never cleared review. Same admin bypass as
+    // publish (an admin bringing it live IS the review).
+    if (
+      userRole !== Role.ADMIN &&
+      tour.approvalStatus !== TourApprovalStatus.APPROVED
+    ) {
+      throw new ConflictException(
+        'Tour must be approved before going live (submit it for review first)',
+      );
+    }
 
     // Re-derive bookability on resume (availability may have changed while paused).
     const bookable = await this.availability.computeIsBookable(id);
     const updated = await this.prisma.tour.update({
       where: { id },
-      data: { status: TourStatus.LIVE, isBookable: bookable },
+      data: {
+        status: TourStatus.LIVE,
+        isBookable: bookable,
+        approvalStatus: TourApprovalStatus.APPROVED,
+      },
       select: this.tourSelect,
     });
 
@@ -2691,7 +2867,17 @@ export class ToursService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.tour.update({
         where: { id },
-        data: { status: TourStatus.DRAFT, isActive: true },
+        // A restored tour re-enters the pipeline from scratch: whatever was
+        // approved before archiving may be edited before it goes live again,
+        // so the old approval must not carry over (and a stale APPROVED
+        // would dead-end submitForReview with a 409).
+        data: {
+          status: TourStatus.DRAFT,
+          isActive: true,
+          approvalStatus: TourApprovalStatus.NOT_SUBMITTED,
+          submittedAt: null,
+          reviewNote: null,
+        },
         select: this.tourSelect,
       });
 

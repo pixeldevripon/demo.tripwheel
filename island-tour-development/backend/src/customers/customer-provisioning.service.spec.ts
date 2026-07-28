@@ -10,7 +10,6 @@ jest.mock('@/auth/auth.instance', () => ({
 }));
 jest.mock('@/common/utils/invite-provisioning.util', () => ({
   provisionOrAttachAccount: jest.fn(),
-  getAccountUrl: () => 'http://localhost:3001/account',
 }));
 
 import { ConflictException } from '@nestjs/common';
@@ -41,7 +40,6 @@ const userRow = (over: Partial<Record<string, unknown>> = {}) => ({
 
 describe('CustomerProvisioningService', () => {
   let prisma: any;
-  let limiter: any;
   let staffPermissions: any;
   let svc: CustomerProvisioningService;
   const provisionMock = provisionOrAttachAccount as jest.Mock;
@@ -63,9 +61,8 @@ describe('CustomerProvisioningService', () => {
       },
       customer: { upsert: jest.fn().mockResolvedValue({}) },
     };
-    limiter = { consume: jest.fn() };
     staffPermissions = { invalidate: jest.fn() };
-    svc = new CustomerProvisioningService(prisma, limiter, staffPermissions);
+    svc = new CustomerProvisioningService(prisma, staffPermissions);
     provisionMock.mockResolvedValue({
       email: 'jane@example.com',
       user: { id: 'u1' },
@@ -76,7 +73,7 @@ describe('CustomerProvisioningService', () => {
     });
   });
 
-  it('creates a USER account, sends ONE welcome link, backfills and aggregates', async () => {
+  it('creates a USER account, mails NOTHING, backfills and aggregates', async () => {
     prisma.user.findFirst.mockResolvedValue(null);
 
     await svc.provisionForBooking(BOOKING);
@@ -86,13 +83,9 @@ describe('CustomerProvisioningService', () => {
       name: 'Jane Doe',
       role: Role.USER,
     });
-    expect(resetMock).toHaveBeenCalledTimes(1);
-    expect(resetMock).toHaveBeenCalledWith({
-      body: {
-        email: 'jane@example.com',
-        redirectTo: 'http://localhost:3001/account/reset',
-      },
-    });
+    // Travellers are passwordless (2026-07-28): the account is a CRM record,
+    // never a login, so no set-password link may go out.
+    expect(resetMock).not.toHaveBeenCalled();
     // Backfill claims THIS + every past booking with the same contact email:
     // unowned ones, and ones mis-stamped at checkout with a DIFFERENT account
     // whose email is not the contact email. A booking correctly owned by the
@@ -210,7 +203,6 @@ describe('CustomerProvisioningService', () => {
     await svc.provisionForBooking(BOOKING);
 
     expect(resetMock).not.toHaveBeenCalled();
-    expect(limiter.consume).not.toHaveBeenCalled();
     expect(prisma.booking.updateMany).toHaveBeenCalled();
   });
 
@@ -224,33 +216,17 @@ describe('CustomerProvisioningService', () => {
     expect(prisma.booking.updateMany).toHaveBeenCalled();
   });
 
-  it('re-sends the set-password link (capped) when the USER never set one', async () => {
+  it('mails nothing when a passwordless USER books again', async () => {
     prisma.user.findFirst.mockResolvedValue(userRow({ hasPassword: false }));
 
     await svc.provisionForBooking(BOOKING);
 
-    expect(limiter.consume).toHaveBeenCalledWith(
-      'customer-welcome',
-      'jane@example.com',
-      [{ max: 1, windowMs: 24 * 60 * 60 * 1000 }],
-    );
-    expect(resetMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('stays silent when the resend cap is hit', async () => {
-    prisma.user.findFirst.mockResolvedValue(userRow({ hasPassword: false }));
-    limiter.consume.mockImplementation(() => {
-      throw new Error('429');
-    });
-
-    await svc.provisionForBooking(BOOKING);
-
+    // Used to re-offer a set-password link. There is no password to set now.
     expect(resetMock).not.toHaveBeenCalled();
-    // Linking still happens - only the email is capped.
     expect(prisma.booking.updateMany).toHaveBeenCalled();
   });
 
-  it('skips the welcome email when the create race resolved to an attach', async () => {
+  it('mails nothing when the create race resolved to an attach', async () => {
     prisma.user.findFirst.mockResolvedValue(null);
     provisionMock.mockResolvedValue({
       email: 'jane@example.com',

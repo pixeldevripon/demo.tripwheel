@@ -14,6 +14,7 @@ import { ContentTranslationEnqueuer } from './content-translation.enqueuer';
 import { ContentTranslationProcessor } from './content-translation.processor';
 import { ContentTranslationService } from './content-translation.service';
 import { EntityRegistry } from './entity-registry';
+import { TranslationClearMarkService } from './translation-clear-mark.service';
 
 /**
  * ContentTranslationModule - AI translation of every Translation-Console
@@ -44,6 +45,7 @@ import { EntityRegistry } from './entity-registry';
     AnthropicProvider,
     OpenAiCompatProvider,
     { provide: TRANSLATION_PROVIDER, useClass: TranslationProviderRouter },
+    TranslationClearMarkService,
     EntityRegistry,
     // Stateless env-driven client; a second instance next to WorkersModule's
     // is deliberate - importing WorkersModule here would drag in every job.
@@ -56,6 +58,8 @@ import { EntityRegistry } from './entity-registry';
     TRANSLATION_PROVIDER,
     ContentTranslationService,
     ContentTranslationEnqueuer,
+    // Injected by every module that owns a Translation-Console clear endpoint.
+    TranslationClearMarkService,
   ],
 })
 export class ContentTranslationModule {}

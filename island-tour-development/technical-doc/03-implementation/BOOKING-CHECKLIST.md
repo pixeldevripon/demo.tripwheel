@@ -181,7 +181,8 @@ These are ranked. Each is expanded in its section below.
 
 ## 9. Operator non-payment / forfeit
 
-- [ ] **Operator reports non-payment -> admin confirms -> only then forfeit deposit + release spot** (no auto-forfeit, no balance tracking in v1). `Ref:` [Guide §15](./BOOKING-FLOW-DESIGN-GUIDE.md#15-operator-non-payment--forfeit) · not built
+- [x] **Operator reports non-payment -> admin confirms -> only then forfeit deposit + release spot** (no auto-forfeit, no balance tracking in v1). `Ref:` [Guide §15](./BOOKING-FLOW-DESIGN-GUIDE.md#15-operator-non-payment--forfeit) · `Code:` `bookings.service.ts:reportNonPayment/confirmForfeit/dismissNonPaymentReport` (routes `report-non-payment` EDIT_BOOKING · `forfeit`/`dismiss-non-payment` MANAGE_BOOKINGS)
+- [x] **Operator cancellation = report-only (access-roles conflict #2, 2026-07-28)**: cancelling a CONFIRMED booking is admin-only (`cancel` 403s non-admins with a "Report cancellation" pointer); operators file `POST /bookings/:id/report-cancellation` (stamps `utcOperatorCancellationReportedAt` + reason, emails ADMIN_EMAIL, idempotent), admin executes (`force` -> FULL refund, `cancelledBy=OPERATOR` so `cancellation_rate_90d` counts it) or `dismiss-cancellation-report`; pending report HOLDS the settlement payout and surfaces as display status `OPERATOR_CANCELLATION_REPORTED`. `Code:` `bookings.service.ts:reportCancellation/dismissCancellationReport`, `settlements.service.ts:payoutBlocker`
 
 ---
 
@@ -325,7 +326,7 @@ comprehensive filters, search, date-range) and permission-gated per master RBAC 
 - [x] One `cancellation_hours` window `[24,48,72,168]` default 48.
 - [x] Cancellation deadline computed, never stored.
 - [x] `operator_link` balance not tracked by Island Tours v1.
-- [ ] Deposit forfeiture never automatic (operator report -> admin confirm).
+- [x] Deposit forfeiture never automatic (operator report -> admin confirm).
 - [x] Webhooks `@Public()` + `@SkipThrottle()`, signature-verified, idempotent.
 - [x] Checkout charge lands in the Island Tours account (merchant of record); Connect routing is v2 (settlement rails).
 

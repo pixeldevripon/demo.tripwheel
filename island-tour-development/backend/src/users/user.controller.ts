@@ -6,6 +6,7 @@ import {
   Controller,
   Delete,
   Get,
+  Ip,
   Param,
   Patch,
   Post,
@@ -13,9 +14,13 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import { Public } from '@/auth/decorators/public.decorator';
 import { Permission } from '@prisma/client';
 import type { Request } from 'express';
 import {
+  ConfirmPasswordChangeDto,
+  RequestPasswordChangeDto,
   SetPasswordDto,
   UpdateUserByAdminDto,
   UpdateUserProfileDto,
@@ -25,9 +30,11 @@ import {
 } from './dto/user.dto';
 import { UserService } from './user.service';
 import {
+  ApiConfirmPasswordChangeDocs,
   ApiDeleteUserDocs,
   ApiGetAllUsersDocs,
   ApiGetCurrentUserDocs,
+  ApiRequestPasswordChangeDocs,
   ApiGetCurrentUserPermissionsDocs,
   ApiGetUserByIdDocs,
   ApiGetUserPermissionsDocs,
@@ -117,10 +124,13 @@ export class UserController {
    *
    * Paginated list of all platform users with optional search / role filters.
    *
-   * Security: requires `VIEW_USERS` - granted to ADMIN only.
+   * Security: requires `MANAGE_USERS` (real ADMIN accounts only - excluded
+   * from every staff ceiling). NOT `VIEW_USERS`: operators hold that for the
+   * operator-scoped /customers surface, and this list is unscoped - gating it
+   * on VIEW_USERS let any operator enumerate every platform user.
    */
   @Get()
-  @RequirePermissions(Permission.VIEW_USERS)
+  @RequirePermissions(Permission.MANAGE_USERS)
   @ApiGetAllUsersDocs()
   getAllUsers(@Query() query: UserQueryDto) {
     return this.userService.getAllUsers(query);
@@ -131,11 +141,12 @@ export class UserController {
    *
    * Fetches a single user by their database id.
    *
-   * Security: requires `VIEW_USERS` - granted to ADMIN only.
-   * Regular users wanting their own profile should call GET /users/me.
+   * Security: requires `MANAGE_USERS` (admin-only; same reasoning as the
+   * list route - VIEW_USERS is held by operators for the scoped /customers
+   * surface). Regular users wanting their own profile call GET /users/me.
    */
   @Get(':id')
-  @RequirePermissions(Permission.VIEW_USERS)
+  @RequirePermissions(Permission.MANAGE_USERS)
   @ApiGetUserByIdDocs()
   getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
@@ -182,6 +193,53 @@ export class UserController {
   setPassword(@Body() dto: SetPasswordDto, @Req() req: Request) {
     const cookie = (req.headers['cookie'] as string) ?? '';
     return this.userService.setPassword(dto.newPassword, cookie);
+  }
+
+  /**
+   * POST /users/me/password-change/request
+   *
+   * Step 1 of the two-step password change: verify the current password, then
+   * email a confirmation link. Nothing on the account changes here.
+   *
+   * Security: self-service, so no permission beyond AuthGuard - the body's
+   * currentPassword is the real gate, and the user id comes from the session
+   * (never the body), so there is no IDOR surface.
+   */
+  @Post('me/password-change/request')
+  @ApiRequestPasswordChangeDocs()
+  requestPasswordChange(
+    @Body() dto: RequestPasswordChangeDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Req() req: Request,
+    @Ip() ip: string,
+  ) {
+    const cookie = (req.headers['cookie'] as string) ?? '';
+    return this.userService.requestPasswordChange(
+      dto,
+      { id: user.id, email: user.email, name: user.name },
+      cookie,
+      ip,
+    );
+  }
+
+  /**
+   * POST /users/me/password-change/confirm
+   *
+   * Step 2: apply the parked password. @Public because the emailed link is
+   * routinely opened on a device with no dashboard session - the single-use
+   * token is the credential, exactly like the password-reset callback.
+   * Throttled hard: this is a token-guessing surface.
+   */
+  @Throttle({
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 10, ttl: 60_000 },
+    long: { limit: 40, ttl: 3_600_000 },
+  })
+  @Post('me/password-change/confirm')
+  @Public()
+  @ApiConfirmPasswordChangeDocs()
+  confirmPasswordChange(@Body() dto: ConfirmPasswordChangeDto) {
+    return this.userService.confirmPasswordChange(dto);
   }
 
   /**

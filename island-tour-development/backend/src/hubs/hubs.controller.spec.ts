@@ -284,7 +284,11 @@ describe('HubController', () => {
       const query: LocaleQueryDto = { locale: Locale.en };
       const result = await controller.getPageContent('hub-1', query);
 
-      expect(service.getPageContent).toHaveBeenCalledWith('hub-1', Locale.en);
+      expect(service.getPageContent).toHaveBeenCalledWith(
+        'hub-1',
+        Locale.en,
+        undefined,
+      );
       expect(result).toBe(expected);
     });
   });

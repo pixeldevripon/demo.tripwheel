@@ -9,7 +9,8 @@
         "language": "Language",
         "categories": "Categories",
         "search": "Search for",
-        "myBookings": "My bookings"
+        "myBookings": "My bookings",
+        "myAccount": "My account"
     },
     "footer": {
         "tagline": "Built by Islanders.",
@@ -166,6 +167,7 @@
             "toolbar": {
                 "filters": "Filters",
                 "selectDate": "Select date",
+                "clearDate": "Clear date",
                 "guestTypes": {
                     "adults": {
                         "label": "Adults",
@@ -252,6 +254,7 @@
             "subtitle": "Tours picked by locals who know every reef, route, and sunset spot",
             "searchPlaceholder": "Search tours or activities",
             "selectDate": "Select date",
+            "clearDate": "Clear date",
             "popularLabel": "Popular"
         },
         "exploreTypes": {
@@ -291,6 +294,7 @@
             },
             "tagline": "Where islanders send their visitors",
             "selectDate": "Select date",
+            "clearDate": "Clear date",
             "checkAvailability": "Check Availability",
             "comparison": {
                 "title": "Which trip is right for you?",
@@ -686,6 +690,7 @@
         "sending": "Sending...",
         "sentTitle": "Cancellation request sent.",
         "sentBody": "We're on it. You'll get an email from us confirming your cancellation and refund.",
+        "seeStatus": "See cancellation status",
         "notActive": "This booking is no longer active, so there is nothing to cancel.",
         "error": "That didn't go through. Please try again, or message us on WhatsApp.",
         "verifyTitle": "Verify it's you first",
@@ -785,6 +790,104 @@
         "privacy": "Privacy Policy",
         "help": "Help",
         "tagline": "Built by Islanders."
+    },
+    "traveller": {
+        "title": "Your account",
+        "subtitle": "Every trip you have booked with us, and every payment on it.",
+        "loginTitle": "Sign in to your account",
+        "loginSubtitle": "Enter the email you booked with and we will send you a one-time code.",
+        "emailLabel": "Email",
+        "emailPlaceholder": "you@example.com",
+        "sendCode": "Send me a code",
+        "sending": "Sending...",
+        "codeTitle": "Enter your code",
+        "codeSentNote": "If {email} has bookings with us, a 6-digit code is on its way.",
+        "codeLabel": "6-digit code",
+        "codeHint": "The code is valid for 10 minutes and can be used once.",
+        "verify": "Sign in",
+        "verifying": "Checking...",
+        "resend": "Send a new code",
+        "resendWait": "Send a new code in {seconds}s",
+        "changeEmail": "Use a different email",
+        "codeError": "That code is not valid or has expired. Ask for a new one.",
+        "throttledError": "You have asked for a code very recently. Check your inbox, or wait a minute and try again.",
+        "logout": "Sign out",
+        "statsTrips": "Trips booked",
+        "statsUpcoming": "Upcoming",
+        "statsSpent": "Total paid",
+        "tabBookings": "Bookings",
+        "tabPayments": "Payments",
+        "guests": "{count} travellers",
+        "showDetails": "Details",
+        "hideDetails": "Hide details",
+        "rowTotal": "Trip total",
+        "rowDeposit": "Deposit",
+        "rowPaid": "Paid so far",
+        "rowBalance": "Due to the operator",
+        "rowBooked": "Booked on",
+        "manageBooking": "View booking",
+        "reviewCta": "Leave a review",
+        "reviewed": "You have reviewed this trip.",
+        "travelDate": "travelling {date}",
+        "bookingStatus": {
+            "CONFIRMED": "Confirmed",
+            "REDEEMED": "Completed",
+            "ON_HOLD": "On hold",
+            "PENDING": "Pending",
+            "CANCELLATION_REQUESTED": "Cancellation requested",
+            "NON_PAYMENT_REPORTED": "Payment outstanding",
+            "OPERATOR_CANCELLATION_REPORTED": "Cancellation in progress",
+            "CANCELLED": "Cancelled",
+            "REJECTED": "Rejected",
+            "FORFEITED": "Cancelled",
+            "EXPIRED": "Expired"
+        },
+        "paymentState": {
+            "PAID": "Paid",
+            "PARTIALLY_PAID": "Deposit paid",
+            "UNPAID": "Unpaid",
+            "REFUNDED": "Refunded"
+        },
+        "paymentStatus": {
+            "REQUIRES_PAYMENT": "Awaiting payment",
+            "PROCESSING": "Processing",
+            "SUCCEEDED": "Succeeded",
+            "FAILED": "Failed",
+            "REFUNDED": "Refunded",
+            "PARTIALLY_REFUNDED": "Partially refunded",
+            "CANCELLED": "Cancelled"
+        },
+        "paymentKind": {
+            "DEPOSIT": "Deposit",
+            "BALANCE": "Balance",
+            "FULL": "Full payment",
+            "REFUND": "Refund"
+        },
+        "paymentModelNote": {
+            "OPERATOR_LINK": "You paid a deposit to us. The balance is settled directly with the operator.",
+            "ON_ARRIVAL": "You pay the operator in full on the day of your trip.",
+            "PAID_IN_FULL": "You paid the full amount to us up front.",
+            "OPERATOR_FULL": "This booking is settled entirely with the operator."
+        },
+        "cancelCta": "Request cancellation",
+        "cancelReasonLabel": "Anything we should know? (optional)",
+        "cancelDisclaimer": "This sends a request to our team. Nothing is cancelled and no money moves until we process it and email you the outcome.",
+        "cancelConfirm": "Send cancellation request",
+        "cancelSending": "Sending request...",
+        "cancelKeep": "Keep my booking",
+        "cancelFailed": "We could not send that request. Please try again in a moment.",
+        "cancelFreeUntil": "Free cancellation until {date}. Ask before then and you are due a full refund of what you paid us.",
+        "cancelWindowClosed": "The free-cancellation deadline has passed, so a refund is not guaranteed. You can still ask - our team reviews every request.",
+        "cancelRequestedChip": "Cancellation requested",
+        "cancelRequestedOn": "Requested on {date}. We will email you once it has been processed.",
+        "cancelRequestedInWindow": "Your request arrived inside the free-cancellation window.",
+        "cancelRequestedLate": "Your request arrived after the free-cancellation deadline, so a refund is not guaranteed. Our team will confirm the outcome by email.",
+        "cancelDeparted": "This trip has already departed, so it can no longer be cancelled. If something went wrong on the day, contact us and we will look into it.",
+        "cancelNotConfirmed": "Only confirmed bookings can request a cancellation.",
+        "emptyBookingsTitle": "No bookings yet.",
+        "emptyBookingsBody": "Your trips appear here the moment they are confirmed.",
+        "emptyPaymentsTitle": "No payments yet.",
+        "emptyPaymentsBody": "Charges and refunds on your bookings appear here."
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

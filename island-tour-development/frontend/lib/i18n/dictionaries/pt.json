@@ -9,7 +9,8 @@
         "language": "Idioma",
         "categories": "Categorias",
         "search": "Pesquisar",
-        "myBookings": "Minhas reservas"
+        "myBookings": "Minhas reservas",
+        "myAccount": "Minha conta"
     },
     "footer": {
         "tagline": "Feito por ilhéus.",
@@ -166,6 +167,7 @@
             "toolbar": {
                 "filters": "Filtros",
                 "selectDate": "Selecionar data",
+                "clearDate": "Limpar data",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultos",
@@ -252,6 +254,7 @@
             "subtitle": "Tours escolhidos por locais que conhecem cada recife, rota e pôr do sol",
             "searchPlaceholder": "Pesquisar tours ou atividades",
             "selectDate": "Selecionar data",
+            "clearDate": "Limpar data",
             "popularLabel": "Popular"
         },
         "exploreTypes": {
@@ -291,6 +294,7 @@
             },
             "tagline": "Para onde os locais enviam os seus visitantes",
             "selectDate": "Selecionar data",
+            "clearDate": "Limpar data",
             "checkAvailability": "Ver disponibilidade",
             "comparison": {
                 "title": "Qual passeio é ideal para você?",
@@ -686,6 +690,7 @@
         "sending": "A enviar...",
         "sentTitle": "Pedido de cancelamento enviado.",
         "sentBody": "Estamos a tratar disso. Vai receber um e-mail a confirmar o cancelamento e o reembolso.",
+        "seeStatus": "Ver o status do cancelamento",
         "notActive": "Esta reserva já não está ativa, por isso não há nada para cancelar.",
         "error": "Não foi possível enviar. Tente novamente ou fale connosco no WhatsApp.",
         "verifyTitle": "Primeiro confirme que é você",
@@ -785,6 +790,104 @@
         "privacy": "Política de privacidade",
         "help": "Ajuda",
         "tagline": "Feito por ilhéus."
+    },
+    "traveller": {
+        "title": "A sua conta",
+        "subtitle": "Todos os passeios que reservou connosco e todos os pagamentos associados.",
+        "loginTitle": "Inicie sessão na sua conta",
+        "loginSubtitle": "Introduza o e-mail com que reservou e enviamos-lhe um código de utilização única.",
+        "emailLabel": "E-mail",
+        "emailPlaceholder": "voce@exemplo.com",
+        "sendCode": "Enviar-me um código",
+        "sending": "A enviar...",
+        "codeTitle": "Introduza o seu código",
+        "codeSentNote": "Se {email} tiver reservas connosco, está a caminho um código de 6 dígitos.",
+        "codeLabel": "Código de 6 dígitos",
+        "codeHint": "O código é válido durante 10 minutos e pode ser usado uma vez.",
+        "verify": "Iniciar sessão",
+        "verifying": "A verificar...",
+        "resend": "Enviar novo código",
+        "resendWait": "Novo código em {seconds}s",
+        "changeEmail": "Usar outro e-mail",
+        "codeError": "Esse código não é válido ou expirou. Peça um novo.",
+        "throttledError": "Acabou de pedir um código. Verifique a caixa de entrada ou aguarde um minuto.",
+        "logout": "Terminar sessão",
+        "statsTrips": "Passeios reservados",
+        "statsUpcoming": "Próximos",
+        "statsSpent": "Total pago",
+        "tabBookings": "Reservas",
+        "tabPayments": "Pagamentos",
+        "guests": "{count} viajantes",
+        "showDetails": "Detalhes",
+        "hideDetails": "Ocultar detalhes",
+        "rowTotal": "Total do passeio",
+        "rowDeposit": "Sinal",
+        "rowPaid": "Pago até agora",
+        "rowBalance": "A pagar ao operador",
+        "rowBooked": "Reservado a",
+        "manageBooking": "Ver reserva",
+        "reviewCta": "Deixar uma avaliação",
+        "reviewed": "Já avaliou este passeio.",
+        "travelDate": "viagem a {date}",
+        "bookingStatus": {
+            "CONFIRMED": "Confirmada",
+            "REDEEMED": "Concluída",
+            "ON_HOLD": "Em espera",
+            "PENDING": "Pendente",
+            "CANCELLATION_REQUESTED": "Cancelamento pedido",
+            "NON_PAYMENT_REPORTED": "Pagamento em falta",
+            "OPERATOR_CANCELLATION_REPORTED": "Cancelamento em curso",
+            "CANCELLED": "Cancelada",
+            "REJECTED": "Recusada",
+            "FORFEITED": "Cancelada",
+            "EXPIRED": "Expirada"
+        },
+        "paymentState": {
+            "PAID": "Pago",
+            "PARTIALLY_PAID": "Sinal pago",
+            "UNPAID": "Por pagar",
+            "REFUNDED": "Reembolsado"
+        },
+        "paymentStatus": {
+            "REQUIRES_PAYMENT": "A aguardar pagamento",
+            "PROCESSING": "Em processamento",
+            "SUCCEEDED": "Concluído",
+            "FAILED": "Falhou",
+            "REFUNDED": "Reembolsado",
+            "PARTIALLY_REFUNDED": "Parcialmente reembolsado",
+            "CANCELLED": "Cancelado"
+        },
+        "paymentKind": {
+            "DEPOSIT": "Sinal",
+            "BALANCE": "Restante",
+            "FULL": "Pagamento total",
+            "REFUND": "Reembolso"
+        },
+        "paymentModelNote": {
+            "OPERATOR_LINK": "Pagou-nos um sinal. O restante é acertado diretamente com o operador.",
+            "ON_ARRIVAL": "Paga ao operador o valor total no dia do seu passeio.",
+            "PAID_IN_FULL": "Pagou-nos o valor total antecipadamente.",
+            "OPERATOR_FULL": "Esta reserva é acertada inteiramente com o operador."
+        },
+        "cancelCta": "Pedir cancelamento",
+        "cancelReasonLabel": "Algo que devamos saber? (opcional)",
+        "cancelDisclaimer": "Isto envia um pedido à nossa equipa. Nada é cancelado e nenhum valor se move até o processarmos e lhe enviarmos o resultado por e-mail.",
+        "cancelConfirm": "Enviar pedido de cancelamento",
+        "cancelSending": "A enviar pedido...",
+        "cancelKeep": "Manter a minha reserva",
+        "cancelFailed": "Não conseguimos enviar esse pedido. Tente novamente daqui a pouco.",
+        "cancelFreeUntil": "Cancelamento gratuito até {date}. Peça antes dessa data e receberá de volta tudo o que nos pagou.",
+        "cancelWindowClosed": "O prazo de cancelamento gratuito passou, pelo que o reembolso não é garantido. Ainda pode pedir - a nossa equipa analisa todos os pedidos.",
+        "cancelRequestedChip": "Cancelamento pedido",
+        "cancelRequestedOn": "Pedido a {date}. Enviamos-lhe um e-mail assim que estiver tratado.",
+        "cancelRequestedInWindow": "O seu pedido chegou dentro do prazo de cancelamento gratuito.",
+        "cancelRequestedLate": "O seu pedido chegou depois do prazo de cancelamento gratuito, pelo que o reembolso não é garantido. A nossa equipa confirma o resultado por e-mail.",
+        "cancelDeparted": "Este passeio já partiu, por isso não pode ser cancelado. Se algo correu mal nesse dia, contacte-nos.",
+        "cancelNotConfirmed": "Apenas reservas confirmadas podem pedir cancelamento.",
+        "emptyBookingsTitle": "Ainda sem reservas.",
+        "emptyBookingsBody": "Os seus passeios aparecem aqui assim que forem confirmados.",
+        "emptyPaymentsTitle": "Ainda sem pagamentos.",
+        "emptyPaymentsBody": "Os pagamentos e reembolsos das suas reservas aparecem aqui."
     },
     "reviewSubmit": {
         "invalidTitle": "Este link de avaliação já não é válido.",

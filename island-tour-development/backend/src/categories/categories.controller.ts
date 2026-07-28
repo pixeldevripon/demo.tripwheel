@@ -1,3 +1,4 @@
+import { PageContentQueryDto } from '@/common/dto/page-content-query.dto';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
@@ -14,7 +15,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import { CategoryService } from './categories.service';
 import {
@@ -232,8 +233,12 @@ export class CategoryController {
   @Get(':id/page-content')
   @Public()
   @ApiGetPageContentDocs()
-  getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.categoryService.getPageContent(id, query.locale!);
+  getPageContent(@Param('id') id: string, @Query() query: PageContentQueryDto) {
+    return this.categoryService.getPageContent(
+      id,
+      query.locale!,
+      query.fallback,
+    );
   }
 
   @Patch(':id/page-content/:locale')
@@ -299,6 +304,30 @@ export class CategoryController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.categoryService.deleteFaqGroup(id, groupId, user.id);
+  }
+
+  /**
+   * Clear ONE locale of a FAQ (Translation Console). Question/answer are NOT
+   * NULL, so removing the row IS the cleared state - the public page falls
+   * back to English. `en` is rejected; delete the FAQ group instead.
+   */
+  @Delete(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_CATEGORY)
+  @ApiOperation({
+    summary: 'Admin: clear one locale of a FAQ (falls back to English)',
+  })
+  deleteFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.categoryService.deleteFaqTranslation(
+      id,
+      groupId,
+      locale,
+      user.id,
+    );
   }
 
   @Put(':id/faqs/groups/:groupId/translations/:locale')

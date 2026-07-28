@@ -234,3 +234,53 @@ export class SetPasswordResponseDto {
   @ApiProperty({ example: true })
   status!: boolean;
 }
+
+export class RequestPasswordChangeDto {
+  @ApiProperty({
+    description:
+      'The password currently on the account. Verified before anything is sent.',
+    example: 'MyCurrentPassword123!',
+  })
+  @IsString()
+  @MinLength(1, { message: 'Enter your current password' })
+  currentPassword!: string;
+
+  @ApiProperty({
+    description:
+      'The password to switch to. Parked (hashed) until the emailed link is confirmed.',
+    example: 'MyNewSecurePassword123!',
+  })
+  @IsString()
+  @MinLength(12, { message: 'Password must be at least 12 characters' })
+  @MaxLength(32, { message: 'Password cannot exceed 32 characters' })
+  newPassword!: string;
+}
+
+export class RequestPasswordChangeResponseDto {
+  @ApiProperty({
+    example: true,
+    description:
+      'The confirmation email is on its way. The password has NOT changed yet.',
+  })
+  sent!: boolean;
+}
+
+export class ConfirmPasswordChangeDto {
+  @ApiProperty({
+    description: 'The single-use token from the confirmation email.',
+    example: '9f2c...',
+  })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  token!: string;
+}
+
+export class ConfirmPasswordChangeResponseDto {
+  @ApiProperty({
+    example: true,
+    description:
+      'The password is now live and every session (including this one) was revoked.',
+  })
+  changed!: boolean;
+}

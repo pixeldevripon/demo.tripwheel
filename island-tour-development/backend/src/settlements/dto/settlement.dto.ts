@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Currency, PaymentModel, SettlementStatus } from '@prisma/client';
 import { IsLocalDate } from '@/common/validators/is-local-date.validator';
 
@@ -150,6 +158,7 @@ export class ListSettlementsQueryDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ enum: SettlementStatus })

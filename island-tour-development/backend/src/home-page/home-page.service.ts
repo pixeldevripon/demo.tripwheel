@@ -6,6 +6,7 @@ import {
   UpsertFaqTranslationDto,
 } from '@/common/faq/dto/faq-group.dto';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { mergeTranslation } from '@/common/utils/translation.util';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { PrismaService } from '@/prisma/prisma.service';
 import { TourStatus } from '@prisma/client';
@@ -128,8 +129,11 @@ export class HomePageService {
             },
             orderBy: EDITORIAL_CARDS.orderBy,
           },
+          // Both locales: `mergeTranslation` fills any field the locale row
+          // leaves blank from English, so a cleared hero title shows the
+          // English one instead of nothing.
           translations: {
-            where: { locale },
+            where: { locale: { in: [locale, Locale.en] } },
             select: TRANSLATION_SELECT,
           },
         },
@@ -150,7 +154,7 @@ export class HomePageService {
     }
 
     const { editorialDestination, editorialCards, translations, ...base } = row;
-    const copy = translations[0];
+    const copy = mergeTranslation(translations, locale);
 
     // The island the whole banner points at - button AND cards.
     const island = await this.resolveEditorialIsland(
@@ -598,6 +602,31 @@ export class HomePageService {
       `Admin ${adminId} translated homepage FAQ ${groupId} [${locale}]`,
     );
     return translation;
+  }
+
+  /**
+   * Clear ONE locale's copy of a homepage FAQ (Translation Console).
+   * `question`/`answer` are NOT NULL, so deleting the row IS the cleared state
+   * and the public page falls back to English; the shared service records a
+   * clear mark so the AI cannot read the gap as "never translated".
+   */
+  async deleteFaqTranslation(
+    entityId: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    this.assertHomeId(entityId);
+    const result = await this.faqGroups.deleteTranslation(
+      FAQ_PAGE_TYPE.HOMEPAGE,
+      HOME_ID,
+      groupId,
+      locale,
+    );
+    this.logger.log(
+      `Admin ${adminId} cleared homepage FAQ ${groupId} translation [${locale}]`,
+    );
+    return result;
   }
 
   /**

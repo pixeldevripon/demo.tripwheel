@@ -9,7 +9,8 @@
         "language": "语言",
         "categories": "分类",
         "search": "搜索",
-        "myBookings": "我的预订"
+        "myBookings": "我的预订",
+        "myAccount": "我的账户"
     },
     "footer": {
         "tagline": "由岛民打造。",
@@ -166,6 +167,7 @@
             "toolbar": {
                 "filters": "筛选",
                 "selectDate": "选择日期",
+                "clearDate": "清除日期",
                 "guestTypes": {
                     "adults": {
                         "label": "成人",
@@ -252,6 +254,7 @@
             "subtitle": "由熟悉每一处珊瑚礁、路线和日落点的当地人精选的旅游",
             "searchPlaceholder": "搜索旅游或活动",
             "selectDate": "选择日期",
+            "clearDate": "清除日期",
             "popularLabel": "热门"
         },
         "exploreTypes": {
@@ -291,6 +294,7 @@
             },
             "tagline": "岛民推荐访客去的地方",
             "selectDate": "选择日期",
+            "clearDate": "清除日期",
             "checkAvailability": "查看可用性",
             "comparison": {
                 "title": "哪一趟行程适合你？",
@@ -686,6 +690,7 @@
         "sending": "发送中...",
         "sentTitle": "取消申请已发送。",
         "sentBody": "我们会尽快处理。取消和退款确认后会发邮件通知您。",
+        "seeStatus": "查看取消状态",
         "notActive": "此预订已不再有效，无需取消。",
         "error": "提交失败。请重试，或通过 WhatsApp 联系我们。",
         "verifyTitle": "请先验证身份",
@@ -785,6 +790,104 @@
         "privacy": "隐私政策",
         "help": "帮助",
         "tagline": "由岛民打造。"
+    },
+    "traveller": {
+        "title": "我的账户",
+        "subtitle": "您在我们这里预订的每一次行程，以及每一笔付款。",
+        "loginTitle": "登录您的账户",
+        "loginSubtitle": "输入您预订时使用的邮箱，我们会发送一次性验证码。",
+        "emailLabel": "邮箱",
+        "emailPlaceholder": "you@example.com",
+        "sendCode": "发送验证码",
+        "sending": "发送中...",
+        "codeTitle": "输入验证码",
+        "codeSentNote": "如果 {email} 在我们这里有预订，6 位验证码已在发送途中。",
+        "codeLabel": "6 位验证码",
+        "codeHint": "验证码 10 分钟内有效，仅可使用一次。",
+        "verify": "登录",
+        "verifying": "验证中...",
+        "resend": "重新发送验证码",
+        "resendWait": "{seconds} 秒后可重新发送",
+        "changeEmail": "使用其他邮箱",
+        "codeError": "验证码无效或已过期，请重新获取。",
+        "throttledError": "您刚刚已请求过验证码。请查看收件箱，或稍等一分钟。",
+        "logout": "退出登录",
+        "statsTrips": "已预订行程",
+        "statsUpcoming": "即将出行",
+        "statsSpent": "累计支付",
+        "tabBookings": "预订",
+        "tabPayments": "付款",
+        "guests": "{count} 位旅客",
+        "showDetails": "详情",
+        "hideDetails": "收起详情",
+        "rowTotal": "行程总额",
+        "rowDeposit": "定金",
+        "rowPaid": "已支付",
+        "rowBalance": "需支付给运营商",
+        "rowBooked": "预订于",
+        "manageBooking": "查看预订",
+        "reviewCta": "写评价",
+        "reviewed": "您已评价过此行程。",
+        "travelDate": "出行日期 {date}",
+        "bookingStatus": {
+            "CONFIRMED": "已确认",
+            "REDEEMED": "已完成",
+            "ON_HOLD": "保留中",
+            "PENDING": "处理中",
+            "CANCELLATION_REQUESTED": "已申请取消",
+            "NON_PAYMENT_REPORTED": "尾款未付",
+            "OPERATOR_CANCELLATION_REPORTED": "取消处理中",
+            "CANCELLED": "已取消",
+            "REJECTED": "已拒绝",
+            "FORFEITED": "已取消",
+            "EXPIRED": "已过期"
+        },
+        "paymentState": {
+            "PAID": "已付清",
+            "PARTIALLY_PAID": "已付定金",
+            "UNPAID": "未支付",
+            "REFUNDED": "已退款"
+        },
+        "paymentStatus": {
+            "REQUIRES_PAYMENT": "待支付",
+            "PROCESSING": "处理中",
+            "SUCCEEDED": "成功",
+            "FAILED": "失败",
+            "REFUNDED": "已退款",
+            "PARTIALLY_REFUNDED": "部分退款",
+            "CANCELLED": "已取消"
+        },
+        "paymentKind": {
+            "DEPOSIT": "定金",
+            "BALANCE": "尾款",
+            "FULL": "全额支付",
+            "REFUND": "退款"
+        },
+        "paymentModelNote": {
+            "OPERATOR_LINK": "您已向我们支付定金，尾款请直接与运营商结算。",
+            "ON_ARRIVAL": "您在出行当天向运营商支付全款。",
+            "PAID_IN_FULL": "您已提前向我们支付全款。",
+            "OPERATOR_FULL": "此预订全部与运营商结算。"
+        },
+        "cancelCta": "申请取消",
+        "cancelReasonLabel": "有什么需要告诉我们的吗？（选填）",
+        "cancelDisclaimer": "这会向我们的团队发送申请。在我们处理并邮件告知结果之前，不会取消任何内容，也不会有任何款项变动。",
+        "cancelConfirm": "发送取消申请",
+        "cancelSending": "正在发送申请...",
+        "cancelKeep": "保留我的预订",
+        "cancelFailed": "申请发送失败，请稍后再试。",
+        "cancelFreeUntil": "{date} 前可免费取消。在此之前申请，您支付给我们的款项将全额退还。",
+        "cancelWindowClosed": "免费取消期限已过，无法保证退款。您仍可提出申请，我们的团队会逐一审核。",
+        "cancelRequestedChip": "已申请取消",
+        "cancelRequestedOn": "于 {date} 提交申请。处理完成后我们会邮件通知您。",
+        "cancelRequestedInWindow": "您的申请在免费取消期限内提交。",
+        "cancelRequestedLate": "您的申请在免费取消期限之后提交，无法保证退款。我们的团队会邮件确认结果。",
+        "cancelDeparted": "此行程已出发，无法再取消。如果当天出现问题，请联系我们，我们会跟进处理。",
+        "cancelNotConfirmed": "只有已确认的预订才能申请取消。",
+        "emptyBookingsTitle": "暂无预订。",
+        "emptyBookingsBody": "预订确认后，您的行程会显示在这里。",
+        "emptyPaymentsTitle": "暂无付款记录。",
+        "emptyPaymentsBody": "您预订的付款与退款记录会显示在这里。"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",

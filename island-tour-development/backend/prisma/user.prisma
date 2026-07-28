@@ -41,9 +41,39 @@ model User {
   categoriesCreated   Category[]     @relation("CategoryCreator")
   collectionsCreated  Collection[]   @relation("CollectionCreator")
 
+  passwordChangeRequest PasswordChangeRequest?
+
   @@index([id, email])
   @@index([role])
   @@map("user")
+}
+
+/// A password change that has been AUTHORISED (the current password was
+/// verified) but not yet CONFIRMED from the account's mailbox. The password on
+/// the credential account is untouched until the emailed link is used, so
+/// knowing someone's password is not enough to take their account over - you
+/// also need their inbox.
+///
+/// One row per user: requesting again replaces the pending change, which also
+/// makes the previous link dead.
+model PasswordChangeRequest {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  /// The already-hashed NEW password (Better Auth's own hasher). Plaintext is
+  /// never stored, so this row leaks nothing a stolen DB does not already have.
+  newPasswordHash String
+  /// SHA-256 of the emailed token - the raw token exists only in the email.
+  tokenHash       String   @unique
+  expiresAt       DateTime
+  /// Who asked, for the audit trail on a disputed change.
+  requestedIp     String?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("password_change_requests")
 }
 
 model Session {

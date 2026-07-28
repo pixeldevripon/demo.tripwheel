@@ -25,6 +25,7 @@ import {
   ListDeparturesQueryDto,
   ListExceptionsQueryDto,
   ListSchedulesQueryDto,
+  ManageCalendarQueryDto,
   MaterializeDto,
   UpdateDepartureDto,
   UpdateExceptionDto,
@@ -40,6 +41,7 @@ import {
   ApiListDeparturesDocs,
   ApiListExceptionsDocs,
   ApiListSchedulesDocs,
+  ApiManageCalendarDocs,
   ApiMaterializeDocs,
   ApiUpdateDepartureDocs,
   ApiUpdateExceptionDocs,
@@ -163,6 +165,18 @@ export class AvailabilityController {
     @Param('id') id: string,
   ) {
     return this.availability.deleteException(user.id, user.role, id);
+  }
+
+  // ── Management calendar ─────────────────────────────────────────────────────
+
+  @Get('manage-calendar')
+  @RequirePermissions(Permission.MANAGE_AVAILABILITY)
+  @ApiManageCalendarDocs()
+  manageCalendar(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: ManageCalendarQueryDto,
+  ) {
+    return this.availability.manageCalendar(user.id, user.role, query);
   }
 
   // ── Materialization ─────────────────────────────────────────────────────────

@@ -11,6 +11,8 @@ import { Role, UserStatus } from '@prisma/client';
 import {
   DeleteUserResponseDto,
   PaginatedUsersResponseDto,
+  ConfirmPasswordChangeResponseDto,
+  RequestPasswordChangeResponseDto,
   SetPasswordResponseDto,
   UserPermissionsResponseDto,
   UserResponseDto,
@@ -225,6 +227,58 @@ export function ApiSetPasswordDocs() {
       type: SetPasswordResponseDto,
     }),
     ...commonErrors,
+  );
+}
+
+export function ApiRequestPasswordChangeDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Request a password change (step 1 of 2 - verify + email)',
+      description:
+        'Verifies the CURRENT password and, only if it is correct, emails a ' +
+        'single-use confirmation link to the account address. The password is ' +
+        'NOT changed here - it is parked (already hashed) until the link is ' +
+        'confirmed, so knowing the password alone cannot take an account over. ' +
+        'A wrong current password returns 401 and sends nothing. Re-requesting ' +
+        'replaces the pending change and invalidates the previous link. ' +
+        'Rate-limited to 5 successful requests per hour per account.',
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'Confirmation email sent; password unchanged so far',
+      type: RequestPasswordChangeResponseDto,
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'The current password is incorrect',
+      type: UnauthorizedErrorDto,
+    }),
+    ...commonErrors,
+  );
+}
+
+export function ApiConfirmPasswordChangeDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Confirm a password change (step 2 of 2 - apply)',
+      description:
+        'Applies the parked password. Authorised by the emailed token alone, ' +
+        'because the link is usually opened on a different device with no ' +
+        'session; the token is single-use and expires in 1 hour. Every session ' +
+        'is revoked on success, including the one that requested the change. ' +
+        'Unknown, used and expired tokens all return the same 400 so the ' +
+        'endpoint cannot confirm a guessed token.',
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'Password updated and all sessions revoked',
+      type: ConfirmPasswordChangeResponseDto,
+    }),
+    ApiResponse({
+      status: 400,
+      description: 'Token unknown, already used, or expired',
+      type: BadRequestErrorDto,
+    }),
   );
 }
 

@@ -180,6 +180,7 @@ export async function CategoryPage({
                             destinationName={destinationName}
                             total={total}
                             selectDateLabel={t.toolbar.selectDate}
+                            clearDateLabel={t.toolbar.clearDate}
                             title={heading}
                             subtitle={subtitle}
                         />

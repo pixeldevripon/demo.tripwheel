@@ -1,40 +1,91 @@
 'use client';
 
-import { Map } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { MotionLink } from '@/components/frontend/motion-link';
+import { Reveal } from '@/components/frontend/reveal';
 import {
-    StatusScreen,
     statusPrimaryClass,
     statusSecondaryClass,
 } from '@/components/frontend/status/status-screen';
+import {
+    TourCard,
+    type TourCardDict,
+} from '@/components/frontend/tour-card';
 import { isLocale, localizeHref } from '@/lib/constants/locales';
 import { getStatusCopy, localeFromPathname } from '@/lib/i18n/status-copy';
 import { springPop } from '@/lib/motion';
-
-/** Just enough of a destination to offer it as a way out. */
-export type NotFoundIsland = { name: string; slug: string };
+import { searchHitToListing, type DurationDict } from '@/lib/tours/listing';
+import type { SearchHit } from '@/types/search';
 
 /**
- * The 404 screen, shared by the public `[locale]/not-found.tsx` and the root
- * `not-found.tsx`.
+ * A quick-link chip under the actions (MCK-10: the featured hub first, then
+ * the destination's categories). `path` is locale-free - the client localizes
+ * it the same way as every other link on this screen.
+ */
+export type NotFoundQuickLink = { name: string; path: string };
+
+/**
+ * The featured hub placement in the hero's right column (MCK-10: the Klein
+ * Curaçao hub photo with its caption pill). `src` is the hub's OWN hero image
+ * only - no stand-in art. When it is null the figure keeps its `bg-it-border`
+ * fallback background, exactly like every tour-card image container sitewide.
+ */
+export type NotFoundHub = {
+    src: string | null;
+    caption: string;
+    path: string;
+};
+
+/**
+ * "Popular right now" strip data, fetched server-side in the default locale
+ * (same rationale as the island chips: a 404 has no locale params, and the
+ * strip degrades to hidden when the backend is unreachable).
+ */
+export type NotFoundPopular = {
+    hits: SearchHit[];
+    /** Destination-wide LIVE total, for "View all {count} tours". */
+    total?: number;
+    /** Locale-free path of the destination's All Tours archive. */
+    browsePath?: string;
+    cardDict: TourCardDict;
+    durationDict: DurationDict;
+};
+
+/**
+ * The 404 screen (mockup MCK-10 adapted to the island.tours design system),
+ * shared by the public `[locale]/not-found.tsx` and the root `not-found.tsx`.
  *
  * Client, and deliberately so: `not-found.tsx` receives no `params`, so the
  * pathname is the only signal for which language the traveler was reading in -
  * correct on a direct hit and on a client navigation alike.
  *
- * `islands` turns the dead end into a real recovery surface: this is a
- * destination-first marketplace, so the fastest route back is the island the
- * traveler was browsing. Pass `[]` (or omit) outside the locale tree, where
- * there is no destination data to offer.
+ * Layout: a two-column hero - giant faded "404", headline, two ways out
+ * (explore tours / homepage), island quick-link chips and a WhatsApp help line
+ * on the left; a destination photo with a caption pill on the right - followed
+ * by a "Popular right now" tour strip on the surface background. Every extra
+ * (photo, chips, WhatsApp, popular row) is optional, so the root 404 renders
+ * the same hero with nothing to fetch and nothing broken.
  */
 export function NotFoundScreen({
-    islands = [],
+    quickLinks = [],
+    hub,
+    popular,
+    whatsappUrl,
+    destinationName,
+    explorePath,
     fill = 'section',
 }: {
-    islands?: NotFoundIsland[];
+    quickLinks?: NotFoundQuickLink[];
+    hub?: NotFoundHub;
+    popular?: NotFoundPopular;
+    whatsappUrl?: string | null;
+    /** Island name for the primary CTA ("Explore all Curaçao tours"). */
+    destinationName?: string;
+    /** Locale-free path the primary CTA leads to (the All Tours archive). */
+    explorePath?: string;
     fill?: 'section' | 'viewport';
 }) {
     const pathname = usePathname();
@@ -48,66 +99,202 @@ export function NotFoundScreen({
     const href = (path: string) =>
         inLocaleTree ? localizeHref(locale, path) : path;
 
+    // "Explore all {destination} tours" - or the generic form on the root 404,
+    // where no destination resolves.
+    const exploreLabel = destinationName
+        ? copy.primaryCta.replace('{destination}', destinationName)
+        : copy.primaryCta
+              .replace('{destination}', '')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+
+    const tours =
+        popular?.hits.map(hit =>
+            searchHitToListing(hit, locale, popular.durationDict)
+        ) ?? [];
+
     return (
-        <StatusScreen
-            tone='coral'
-            fill={fill}
-            // A map, matching the headline word for word ("drifted off the
-            // map"). No struck-through or crossed-out glyph: a 404 is a wrong
-            // turn, not a failure, and a negation mark gives it a severity the
-            // moment does not have. The dashed ring and the headline carry the
-            // "not found" meaning; the icon stays travel-coded and warm.
-            icon={<Map className='size-10 md:size-11' strokeWidth={1.5} />}
-            eyebrow={copy.eyebrow}
-            eyebrowTone='error'
-            title={copy.title}
-            description={copy.description}
-            actions={
-                <>
-                    <MotionLink
-                        href={href('/')}
-                        whileTap={{ scale: 0.98 }}
-                        transition={springPop}
-                        className={statusPrimaryClass}>
-                        {copy.primaryCta}
-                        <Image
-                            src='/icons/hero-arrow-right.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-5'
-                        />
-                    </MotionLink>
-                    <MotionLink
-                        href={href('/search')}
-                        whileTap={{ scale: 0.98 }}
-                        transition={springPop}
-                        className={statusSecondaryClass}>
-                        {copy.secondaryCta}
-                    </MotionLink>
-                </>
-            }
-            footer={
-                islands.length > 0 ? (
-                    <>
-                        <span className='text-[14px] leading-none tracking-[-0.012em] text-it-text-muted'>
-                            {copy.islandsLabel}
-                        </span>
-                        <div className='mt-5 flex flex-wrap items-center justify-center gap-2 md:gap-3'>
-                            {islands.map(island => (
+        <div className='flex flex-1 flex-col'>
+            {/* ── Hero ─────────────────────────────────────────────────────── */}
+            <section
+                className={`it-status-surface flex flex-1 items-center ${
+                    fill === 'viewport' ? 'min-h-svh' : ''
+                }`}>
+                <div className='it-container w-full py-14 md:py-20'>
+                    <div
+                        className={
+                            hub
+                                ? 'grid items-center gap-10 lg:grid-cols-[1.04fr_0.96fr] lg:gap-14'
+                                : ''
+                        }>
+                        <div>
+                            {/* The status code as a watermark - the mockup drops
+                                the eyebrow badge because the giant 404 IS the
+                                code. Faded brand tint, never a full-strength
+                                coral block. */}
+                            <span
+                                aria-hidden
+                                className='block font-medium text-[84px] leading-[0.92] tracking-[-0.03em] text-it-primary-subtle select-none md:text-[138px]'>
+                                404
+                            </span>
+
+                            <h1 className='m-0 mt-2 max-w-150 font-medium text-[32px] leading-[1.15] tracking-[-0.012em] text-it-heading md:text-[48px]'>
+                                {copy.title}
+                            </h1>
+
+                            <p className='m-0 mt-4 max-w-135 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[18px]'>
+                                {copy.description}
+                            </p>
+
+                            <div className='mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4'>
                                 <MotionLink
-                                    key={island.slug}
-                                    href={href(`/${island.slug}`)}
-                                    whileTap={{ scale: 0.97 }}
+                                    href={href(explorePath ?? '/search')}
+                                    whileTap={{ scale: 0.98 }}
                                     transition={springPop}
-                                    className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-2 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink-secondary no-underline transition-colors duration-300 hover:border-it-primary hover:text-it-primary'>
-                                    {island.name}
+                                    className={statusPrimaryClass}>
+                                    {exploreLabel}
+                                    <Image
+                                        src='/icons/hero-arrow-right.svg'
+                                        alt=''
+                                        width={24}
+                                        height={24}
+                                        className='size-5'
+                                    />
                                 </MotionLink>
+                                <MotionLink
+                                    href={href('/')}
+                                    whileTap={{ scale: 0.98 }}
+                                    transition={springPop}
+                                    className={statusSecondaryClass}>
+                                    {copy.secondaryCta}
+                                </MotionLink>
+                            </div>
+
+                            {quickLinks.length > 0 && (
+                                <div className='mt-9'>
+                                    <span className='block text-[11.5px] font-semibold uppercase leading-none tracking-[0.12em] text-it-text-muted'>
+                                        {copy.jumpLabel}
+                                    </span>
+                                    <div className='mt-3 flex flex-wrap items-center gap-2 md:gap-3'>
+                                        {quickLinks.map(link => (
+                                            <MotionLink
+                                                key={link.path}
+                                                href={href(link.path)}
+                                                whileTap={{ scale: 0.97 }}
+                                                transition={springPop}
+                                                className='inline-flex items-center rounded-it-full border border-it-border bg-it-white px-4 py-2 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink-secondary no-underline transition-colors duration-300 hover:border-it-primary hover:text-it-primary'>
+                                                {link.name}
+                                            </MotionLink>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {whatsappUrl && (
+                                <p className='m-0 mt-7 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                    {copy.helpPrompt}{' '}
+                                    <a
+                                        href={whatsappUrl}
+                                        target='_blank'
+                                        rel='noreferrer'
+                                        className='font-medium text-it-heading underline underline-offset-3 transition-colors duration-300 hover:text-it-primary'>
+                                        {copy.helpLinkLabel}
+                                    </a>{' '}
+                                    {copy.helpSuffix}
+                                </p>
+                            )}
+                        </div>
+
+                        {hub && (
+                            <Link
+                                href={href(hub.path)}
+                                aria-label={hub.caption}
+                                className='block rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                                {/* No stand-in art: without a hero image the
+                                    figure shows its bg-it-border fallback, the
+                                    same treatment as every photo container
+                                    sitewide. */}
+                                <figure className='relative m-0 aspect-[16/10] overflow-hidden rounded-[24px] bg-it-border shadow-it-lg lg:aspect-[4/3.3]'>
+                                    {hub.src && (
+                                        <Image
+                                            src={hub.src}
+                                            alt={hub.caption}
+                                            fill
+                                            sizes='(max-width: 1024px) 100vw, 640px'
+                                            className='object-cover'
+                                        />
+                                    )}
+                                    <figcaption className='absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-it-full bg-it-white/90 px-4 py-2 text-[13px] font-medium leading-none tracking-[-0.012em] text-it-heading shadow-it-sm backdrop-blur-sm'>
+                                        <span
+                                            aria-hidden
+                                            className='size-1.5 rounded-full bg-it-green'
+                                        />
+                                        {hub.caption}
+                                    </figcaption>
+                                </figure>
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── Popular right now ────────────────────────────────────────── */}
+            {tours.length > 0 && popular && (
+                <section className='it-section border-t border-it-border-subtle bg-it-surface'>
+                    <div className='it-container'>
+                        <Reveal>
+                            <div className='mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10'>
+                                <div>
+                                    <h2 className='m-0 font-medium text-[28px] leading-[1.2] tracking-[-0.012em] text-it-heading md:text-[40px]'>
+                                        {copy.popularTitle}
+                                    </h2>
+                                    <p className='m-0 mt-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
+                                        {copy.popularSubtitle}
+                                    </p>
+                                </div>
+                                <Link
+                                    href={href(popular.browsePath ?? '/search')}
+                                    className='inline-flex items-center gap-1 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors duration-300 hover:text-it-primary-hover md:text-[16px]'>
+                                    {popular.total
+                                        ? copy.viewAllTours.replace(
+                                              '{count}',
+                                              String(popular.total)
+                                          )
+                                        : copy.viewAllTours.replace(
+                                              /\s*\{count\}\s*/,
+                                              ' '
+                                          )}
+                                    <Image
+                                        src='/icons/cta-arrow-right.svg'
+                                        alt=''
+                                        width={20}
+                                        height={20}
+                                        className='size-5 shrink-0'
+                                    />
+                                </Link>
+                            </div>
+                        </Reveal>
+
+                        {/* Sitewide tour grid: mobile edge-bleed carousel, then
+                            the standard 3-col (sm) / 4-col (lg) grid. */}
+                        <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden lg:grid-cols-4'>
+                            {tours.map((tour, i) => (
+                                <Reveal
+                                    key={tour.id}
+                                    width='auto'
+                                    listItem
+                                    className='w-[82vw] min-[480px]:w-[64vw] shrink-0 snap-start sm:w-auto'>
+                                    <TourCard
+                                        tour={tour}
+                                        dict={popular.cardDict}
+                                        highlighted={i === 0}
+                                    />
+                                </Reveal>
                             ))}
                         </div>
-                    </>
-                ) : undefined
-            }
-        />
+                    </div>
+                </section>
+            )}
+        </div>
     );
 }

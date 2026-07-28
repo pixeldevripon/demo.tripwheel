@@ -239,6 +239,65 @@ export function ApiUpdateTourDocs() {
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
+export function ApiSubmitTourForReviewDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Operator submits a DRAFT tour for platform review (conflict #1)',
+      description:
+        'Runs the SAME readiness bar as publish (>=5 images, hero, EN overview, >=3 highlights, a price) so the review queue never holds incomplete tours. Allowed from NOT_SUBMITTED or REJECTED; sets approvalStatus=PENDING + submittedAt and clears the old review note. Publishing itself stays platform-only.',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourResponseDto }),
+    ApiResponse({
+      status: 400,
+      description: 'Not a DRAFT, or one or more readiness blocks not met',
+      type: BadRequestErrorDto,
+    }),
+    ApiResponse({
+      status: 409,
+      description: 'Already PENDING review or already APPROVED',
+      type: ConflictErrorDto,
+    }),
+    ...operatorErrors,
+  );
+}
+
+export function ApiApproveTourDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin approves a PENDING submission (publishing stays separate)',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourResponseDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Tour is not awaiting review',
+      type: ConflictErrorDto,
+    }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+  );
+}
+
+export function ApiRejectTourDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Admin rejects a PENDING submission with an actionable note',
+      description:
+        'The note is REQUIRED - the operator sees it in the dashboard and fixes-and-resubmits.',
+    }),
+    tourIdParam,
+    ApiResponse({ status: 200, type: TourResponseDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Tour is not awaiting review',
+      type: ConflictErrorDto,
+    }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+  );
+}
+
 export function ApiPublishTourDocs() {
   return applyDecorators(
     ApiOperation({

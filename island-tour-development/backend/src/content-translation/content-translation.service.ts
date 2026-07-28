@@ -18,18 +18,28 @@ import type { ContentEntityType } from './content-translation.constants';
  * decide what is pending (protect-human-edits + sourceHash cache) -> ONE
  * provider call per target locale -> write back -> bust the public cache.
  *
- * ## The overwrite policy (founder, 2026-07-27)
+ * ## The overwrite policy (founder, 2026-07-27; revised 2026-07-28)
  * Per unit x locale:
  * - no row                                  -> translate and write (machine)
  * - machine row built from THIS source      -> skip (free re-run)
  * - machine row built from an older source  -> refresh (machine)
- * - human row                               -> GAP-FILL ONLY: fields the human
- *   left (or cleared-and-saved) empty are translated and written; every
- *   non-empty field is never touched, and the row KEEPS its human flag so
- *   future refreshes still leave it alone
+ * - human row                               -> SKIP ENTIRELY, empty fields
+ *   included. A human-saved row is owned by the human: a field they cleared
+ *   and saved STAYS cleared (the public page falls back to English), and the
+ *   AI never writes into that row again unless `force` is used.
+ * - no row, but a clear mark               -> skip. Where a blank cannot be
+ *   stored (NOT NULL FAQ / section / hub-curation / tour-child rows) the
+ *   console clears by DELETING the row, so the gap needs the mark to be told
+ *   apart from "never translated". See prisma/translation-clears.prisma.
  * Machine writes always set isMachineTranslated=true + the source hash; the
  * HTTP upsert paths (human saves) always reset the flag - that split is the
  * whole contract.
+ *
+ * The old behaviour gap-filled empty fields on human rows, reading "empty" as
+ * "please translate this" (the clear-save-Translate workflow of the day). The
+ * per-field AI icon and the per-card "Translate section" button replaced that
+ * workflow, and gap-fill made an intentional clear impossible - it silently
+ * refilled on the next English edit or nightly sweep. Do not reintroduce it.
  *
  * ## Error contract
  * A provider failure THROWS: the queue processor relies on it for BullMQ
@@ -124,12 +134,13 @@ export class ContentTranslationService {
     let written = 0;
     let skipped = 0;
     for (const locale of targets) {
+      // Every pending write is a MACHINE write: human rows are skipped
+      // outright above, so there is no partial/gap-fill shape any more.
       const pending: Array<{
         unit: TranslationUnit;
         hash: string;
-        /** Source fields to translate for this locale (all, or the gaps). */
+        /** Source fields to translate for this locale. */
         fields: string[];
-        machine: boolean;
       }> = [];
       for (const unit of units) {
         const sourceFields = Object.keys(unit.source);
@@ -137,17 +148,20 @@ export class ContentTranslationService {
         const hash = ContentTranslationService.hash(unit.source);
         const existing = unit.existing[locale];
         if (existing && !existing.isMachineTranslated && !force) {
-          // Human row: gap-fill only. A field the human left (or cleared and
-          // saved) empty holds no human work - fill it; never touch the rest,
-          // and never re-stamp the row as machine. `force` (confirmed manual
+          // Human row: hands off, empty fields included. A field cleared and
+          // saved in the console is a deliberate "show English here" - the AI
+          // must not read it as a gap to fill. `force` (confirmed manual
           // click) falls through to a full machine rewrite instead.
-          const present = new Set(existing.presentFields);
-          const gaps = sourceFields.filter((f) => !present.has(f));
-          if (gaps.length === 0) {
-            skipped++;
-            continue;
-          }
-          pending.push({ unit, hash, fields: gaps, machine: false });
+          skipped++;
+          continue;
+        }
+        if (!existing && unit.cleared?.[locale] && !force) {
+          // No row, but the console recorded a deliberate clear here. The
+          // NOT NULL surfaces (FAQ, sections, hub curation, tour children)
+          // cannot store a blank, so clearing DELETES the row - without this
+          // mark the gap reads as "never translated" and we would helpfully
+          // put the content back. The page falls back to English by design.
+          skipped++;
           continue;
         }
         // Machine-made and built from THIS source -> nothing to do (holds in
@@ -156,7 +170,7 @@ export class ContentTranslationService {
           skipped++;
           continue;
         }
-        pending.push({ unit, hash, fields: sourceFields, machine: true });
+        pending.push({ unit, hash, fields: sourceFields });
       }
       if (pending.length === 0) continue;
 
@@ -175,13 +189,13 @@ export class ContentTranslationService {
         locale,
       );
 
-      for (const { unit, hash, fields, machine } of pending) {
+      for (const { unit, hash, fields } of pending) {
         const values: Record<string, TranslatableValue> = {};
         for (const field of fields) {
           const value = translated[`${unit.key}.${field}`];
           if (value !== undefined) values[field] = value;
         }
-        await unit.write(locale, values, hash, machine);
+        await unit.write(locale, values, hash, true);
         written++;
       }
     }

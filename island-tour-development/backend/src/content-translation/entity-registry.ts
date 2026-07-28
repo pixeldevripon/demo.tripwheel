@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { FaqPageType, Locale } from '@prisma/client';
+import { TARGET_LOCALES } from '@/common/constants/translation.constants';
 import { PrismaService } from '@/prisma/prisma.service';
+import { TranslationClearMarkService } from './translation-clear-mark.service';
+import { translationUnitKeys } from './translation-unit-keys';
 import type { TranslatableValue } from './providers/translation-provider.interface';
 import type { ContentEntityType } from './content-translation.constants';
 
@@ -29,13 +32,6 @@ import type { ContentEntityType } from './content-translation.constants';
 export interface ExistingRow {
   isMachineTranslated: boolean;
   sourceHash: string | null;
-  /**
-   * Translatable fields that are NON-EMPTY on this row. The overwrite policy
-   * is field-level on human rows: a field a human cleared-and-saved is empty,
-   * holds no human work, and may be AI-filled - only present fields are
-   * sacred.
-   */
-  presentFields: string[];
 }
 
 export interface TranslationUnit {
@@ -44,10 +40,19 @@ export interface TranslationUnit {
   source: Record<string, TranslatableValue>;
   existing: Partial<Record<Locale, ExistingRow>>;
   /**
-   * `machine: true` = a machine write (stamps isMachineTranslated + the
-   * sourceHash). `machine: false` = a gap-fill on a HUMAN row: only the given
-   * fields are written and the row KEEPS its human flag, so future refreshes
-   * still leave its hand-written fields alone.
+   * Locales a human deliberately blanked in the Translation Console, from
+   * `translation_clear_marks`. Only meaningful where `existing[locale]` is
+   * absent: for NOT NULL surfaces a clear DELETES the row, and without this
+   * the next run would read the gap as "never translated" and refill it.
+   * Populated by `collect()`, never by the individual collectors.
+   */
+  cleared?: Partial<Record<Locale, true>>;
+  /**
+   * `machine: true` stamps isMachineTranslated + the sourceHash - the only
+   * mode the service uses today, since human rows are skipped outright
+   * (founder policy 2026-07-28: a cleared field stays cleared). The flag stays
+   * in the signature so a write can be made non-stamping without touching
+   * every unit implementation.
    */
   write(
     locale: Locale,
@@ -97,7 +102,6 @@ function existingByLocale(
     map[row.locale] = {
       isMachineTranslated: row.isMachineTranslated,
       sourceHash: row.sourceHash,
-      presentFields: Object.keys(pickSource(row, contentKeys)),
     };
   }
   return map;
@@ -142,10 +146,23 @@ const SECTION_FIELDS = ['heading', 'body'];
 
 @Injectable()
 export class EntityRegistry {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clearMarks: TranslationClearMarkService,
+  ) {}
 
   /** Null = the entity does not exist (deleted while a job sat in the queue). */
   async collect(
+    entityType: ContentEntityType,
+    entityId: string,
+  ): Promise<TranslationUnit[] | null> {
+    const units = await this.collectUnits(entityType, entityId);
+    if (units === null) return null;
+    await this.applyClearMarks(entityType, entityId, units);
+    return units;
+  }
+
+  private collectUnits(
     entityType: ContentEntityType,
     entityId: string,
   ): Promise<TranslationUnit[] | null> {
@@ -163,6 +180,38 @@ export class EntityRegistry {
       case 'homepage':
         return this.collectHomepage(entityId);
     }
+  }
+
+  /**
+   * Stamp each unit with the locales a human deliberately blanked, and prune
+   * marks that have stopped meaning anything.
+   *
+   * A mark is only load-bearing while the row is ABSENT. Once a translation is
+   * typed back in, the row's own `isMachineTranslated: false` is the policy
+   * and the mark is stale - garbage-collect it here so a later wholesale
+   * editor save (hub curation is delete-then-insert across all locales) cannot
+   * resurrect a clear the admin has since undone.
+   */
+  private async applyClearMarks(
+    entityType: ContentEntityType,
+    entityId: string,
+    units: TranslationUnit[],
+  ): Promise<void> {
+    const marks = await this.clearMarks.loadFor(entityType, entityId);
+    if (marks.size === 0) return;
+
+    const stale: Array<{ unitKey: string; locale: Locale }> = [];
+    for (const unit of units) {
+      for (const locale of TARGET_LOCALES) {
+        if (locale === Locale.en) continue;
+        if (!marks.has(TranslationClearMarkService.mapKey(unit.key, locale))) {
+          continue;
+        }
+        if (unit.existing[locale]) stale.push({ unitKey: unit.key, locale });
+        else (unit.cleared ??= {})[locale] = true;
+      }
+    }
+    await this.clearMarks.forget(entityType, entityId, stale);
   }
 
   // ── Tour: main copy + 6 child surfaces (no FAQs - house rule) ──────────────
@@ -188,7 +237,7 @@ export class EntityRegistry {
 
     const enMain = tour.translations.find((t) => t.locale === Locale.en);
     units.push({
-      key: 'main',
+      key: translationUnitKeys.main(),
       source: pickSource(enMain, TOUR_FIELDS),
       existing: existingByLocale(tour.translations, TOUR_FIELDS),
       write: async (locale, f, sourceHash, machine) => {
@@ -221,7 +270,7 @@ export class EntityRegistry {
     for (const h of tour.highlights) {
       const en = h.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `highlight:${h.id}`,
+        key: translationUnitKeys.highlight(h.id),
         source: pickSource(en, ['text']),
         existing: existingByLocale(h.translations, ['text']),
         write: async (locale, f, sourceHash, machine) => {
@@ -240,7 +289,7 @@ export class EntityRegistry {
     for (const i of tour.inclusions) {
       const en = i.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `inclusion:${i.id}`,
+        key: translationUnitKeys.inclusion(i.id),
         source: pickSource(en, ['label']),
         existing: existingByLocale(i.translations, ['label']),
         write: async (locale, f, sourceHash, machine) => {
@@ -259,7 +308,7 @@ export class EntityRegistry {
     for (const e of tour.exclusions) {
       const en = e.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `exclusion:${e.id}`,
+        key: translationUnitKeys.exclusion(e.id),
         source: pickSource(en, ['label']),
         existing: existingByLocale(e.translations, ['label']),
         write: async (locale, f, sourceHash, machine) => {
@@ -278,7 +327,7 @@ export class EntityRegistry {
     for (const feat of tour.features) {
       const en = feat.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `feature:${feat.id}`,
+        key: translationUnitKeys.feature(feat.id),
         source: pickSource(en, ['text']),
         existing: existingByLocale(feat.translations, ['text']),
         write: async (locale, f, sourceHash, machine) => {
@@ -297,7 +346,7 @@ export class EntityRegistry {
     for (const loc of tour.locations) {
       const en = loc.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `location:${loc.id}`,
+        key: translationUnitKeys.location(loc.id),
         source: pickSource(en, ['title', 'shortDescription']),
         existing: existingByLocale(loc.translations, [
           'title',
@@ -323,7 +372,7 @@ export class EntityRegistry {
     for (const p of tour.pickupLocations) {
       const en = p.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `pickup:${p.id}`,
+        key: translationUnitKeys.pickup(p.id),
         source: pickSource(en, ['title', 'directions']),
         existing: existingByLocale(p.translations, ['title', 'directions']),
         write: async (locale, f, sourceHash, machine) => {
@@ -367,7 +416,7 @@ export class EntityRegistry {
 
     const units: TranslationUnit[] = [
       {
-        key: 'main',
+        key: translationUnitKeys.main(),
         source,
         existing: existingByLocale(category.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
@@ -417,7 +466,7 @@ export class EntityRegistry {
 
     const units: TranslationUnit[] = [
       {
-        key: 'main',
+        key: translationUnitKeys.main(),
         source: pickSource(en, fields),
         existing: existingByLocale(destination.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
@@ -453,7 +502,25 @@ export class EntityRegistry {
     const prisma = this.prisma;
     const hub = await prisma.hub.findUnique({
       where: { id },
-      select: { id: true, translations: true, pageContents: true },
+      select: {
+        id: true,
+        translations: true,
+        pageContents: true,
+        ourPicks: {
+          select: { id: true, description: true, translations: true },
+        },
+        comparisonGroups: {
+          select: {
+            id: true,
+            groupName: true,
+            translations: true,
+            comparisonTours: {
+              select: { id: true, standoutNote: true, translations: true },
+            },
+          },
+        },
+        contentSections: true,
+      },
     });
     if (!hub) return null;
 
@@ -463,7 +530,7 @@ export class EntityRegistry {
 
     const units: TranslationUnit[] = [
       {
-        key: 'main',
+        key: translationUnitKeys.main(),
         source: pickSource(en, fields),
         existing: existingByLocale(hub.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
@@ -491,6 +558,118 @@ export class EntityRegistry {
           .then(() => undefined),
       ),
     ];
+
+    // Curation-tab surfaces (hub editor). The EN source for picks/comparison
+    // lives on the BASE row (the per-locale tables hold only translations);
+    // both are replaced wholesale by their editors, so unit keys use the
+    // current row ids - identity across saves is handled by the hub service's
+    // flag preservation, not here.
+    for (const pick of hub.ourPicks) {
+      units.push({
+        key: translationUnitKeys.ourPick(pick.id),
+        source: pickSource(pick, ['description']),
+        existing: existingByLocale(pick.translations, ['description']),
+        write: async (locale, f, sourceHash, machine) => {
+          const description = str(f, 'description');
+          if (!description) return;
+          const data = { description, ...stamp(machine, sourceHash) };
+          await prisma.hubOurPickTranslation.upsert({
+            where: { ourPickId_locale: { ourPickId: pick.id, locale } },
+            create: { ourPickId: pick.id, locale, ...data },
+            update: data,
+          });
+        },
+      });
+    }
+
+    for (const group of hub.comparisonGroups) {
+      units.push({
+        key: translationUnitKeys.comparisonGroup(group.id),
+        source: pickSource(group, ['groupName']),
+        existing: existingByLocale(group.translations, ['groupName']),
+        write: async (locale, f, sourceHash, machine) => {
+          const groupName = str(f, 'groupName');
+          if (!groupName) return;
+          const data = { groupName, ...stamp(machine, sourceHash) };
+          await prisma.hubComparisonGroupTranslation.upsert({
+            where: { groupId_locale: { groupId: group.id, locale } },
+            create: { groupId: group.id, locale, ...data },
+            update: data,
+          });
+        },
+      });
+      for (const ct of group.comparisonTours) {
+        units.push({
+          key: translationUnitKeys.comparisonTour(ct.id),
+          source: pickSource(ct, ['standoutNote']),
+          existing: existingByLocale(ct.translations, ['standoutNote']),
+          write: async (locale, f, sourceHash, machine) => {
+            const standoutNote = str(f, 'standoutNote');
+            if (!standoutNote) return;
+            const data = { standoutNote, ...stamp(machine, sourceHash) };
+            await prisma.hubComparisonTourTranslation.upsert({
+              where: {
+                comparisonTourId_locale: { comparisonTourId: ct.id, locale },
+              },
+              create: { comparisonTourId: ct.id, locale, ...data },
+              update: data,
+            });
+          },
+        });
+      }
+    }
+
+    // Content sections carry their locale ON the row (no FK group key). The
+    // logical identity of a block across locales is (sectionType,
+    // displayOrder) - the exact convention the dashboard editor groups by, and
+    // what its save regenerates per type. Headingless block types store the
+    // body copied into `heading` (dashboard convention) - translate the body
+    // once and mirror it, instead of paying for the same text twice.
+    for (const section of hub.contentSections) {
+      if (section.locale !== Locale.en) continue;
+      const headingIsBody = section.heading === section.body;
+      const fields = headingIsBody ? ['body'] : SECTION_FIELDS;
+      const siblings = hub.contentSections.filter(
+        (s) =>
+          s.sectionType === section.sectionType &&
+          s.displayOrder === section.displayOrder,
+      );
+      units.push({
+        key: translationUnitKeys.hubSection(
+          section.sectionType,
+          section.displayOrder,
+        ),
+        source: pickSource(section, fields),
+        existing: existingByLocale(siblings, fields),
+        write: async (locale, f, sourceHash, machine) => {
+          const body = str(f, 'body');
+          const heading = headingIsBody ? body : str(f, 'heading');
+          const target = siblings.find((s) => s.locale === locale);
+          if (target) {
+            await prisma.hubContentSection.update({
+              where: { id: target.id },
+              data: { heading, body, ...stamp(machine, sourceHash) },
+            });
+            return;
+          }
+          // A new locale row needs the full block (heading is NOT NULL).
+          if (!body || !heading) return;
+          await prisma.hubContentSection.create({
+            data: {
+              hubId: id,
+              locale,
+              sectionType: section.sectionType,
+              heading,
+              body,
+              image: section.image,
+              displayOrder: section.displayOrder,
+              ...stamp(machine, sourceHash),
+            },
+          });
+        },
+      });
+    }
+
     units.push(...(await this.faqUnits(FaqPageType.hub, id)));
     units.push(...(await this.sectionUnits(FaqPageType.hub, id)));
     return units;
@@ -528,7 +707,7 @@ export class EntityRegistry {
 
     const units: TranslationUnit[] = [
       {
-        key: 'main',
+        key: translationUnitKeys.main(),
         source,
         existing: existingByLocale(collection.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
@@ -562,7 +741,7 @@ export class EntityRegistry {
     for (const ct of collection.collectionTours) {
       const enRationale = ct.translations.find((t) => t.locale === Locale.en);
       units.push({
-        key: `rationale:${ct.id}`,
+        key: translationUnitKeys.rationale(ct.id),
         source: pickSource(enRationale, ['rationale']),
         existing: existingByLocale(ct.translations, ['rationale']),
         write: async (locale, f, sourceHash, machine) => {
@@ -610,7 +789,7 @@ export class EntityRegistry {
 
     const units: TranslationUnit[] = [
       {
-        key: 'main',
+        key: translationUnitKeys.main(),
         source: pickSource(en, fields),
         existing: existingByLocale(home.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
@@ -665,7 +844,7 @@ export class EntityRegistry {
   ): TranslationUnit {
     const en = rows.find((r) => r.locale === Locale.en);
     return {
-      key: 'pc',
+      key: translationUnitKeys.pageContent(),
       source: pickSource(en, PAGE_CONTENT_FIELDS),
       existing: existingByLocale(rows, PAGE_CONTENT_FIELDS),
       write: (locale, f, sourceHash, machine) =>
@@ -701,7 +880,7 @@ export class EntityRegistry {
     return [...byGroup.entries()].map(([groupId, group]) => {
       const en = group.find((r) => r.locale === Locale.en);
       return {
-        key: `faq:${groupId}`,
+        key: translationUnitKeys.faq(groupId),
         source: pickSource(en, FAQ_FIELDS),
         existing: existingByLocale(group, FAQ_FIELDS),
         write: async (locale, f, sourceHash, machine) => {
@@ -760,7 +939,7 @@ export class EntityRegistry {
     return [...byGroup.entries()].map(([groupId, group]) => {
       const en = group.find((r) => r.locale === Locale.en);
       return {
-        key: `section:${groupId}`,
+        key: translationUnitKeys.section(groupId),
         source: pickSource(en, SECTION_FIELDS),
         existing: existingByLocale(group, SECTION_FIELDS),
         write: async (locale, f, sourceHash, machine) => {

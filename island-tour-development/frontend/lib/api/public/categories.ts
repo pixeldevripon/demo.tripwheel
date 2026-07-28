@@ -81,7 +81,9 @@ export async function getCategoryPageContent(
   cacheTag(`category:${categoryId}`);
 
   return publicGet<CategoryPageContent>(
-    `/categories/${categoryId}/page-content${buildQuery({ locale })}`,
+    // `fallback` fills blanks from English: a field cleared in the Translation
+    // Console must show English here, not an empty About band.
+    `/categories/${categoryId}/page-content${buildQuery({ locale, fallback: true })}`,
   );
 }
 

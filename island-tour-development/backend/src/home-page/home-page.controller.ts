@@ -19,7 +19,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import {
   HomePageLocaleQueryDto,
@@ -135,6 +135,31 @@ export class HomePageController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.homePage.deleteFaqGroup(entityId, groupId, user.id);
+  }
+
+  /**
+   * Clear ONE locale of a homepage FAQ (Translation Console). Question/answer
+   * are NOT NULL, so removing the row IS the cleared state - the public page
+   * falls back to English. `en` is rejected; delete the FAQ group instead.
+   */
+  @Delete(':entityId/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_EDITORIAL)
+  @ApiOperation({
+    summary:
+      'Admin: clear one locale of a homepage FAQ (falls back to English)',
+  })
+  deleteFaqTranslation(
+    @Param('entityId') entityId: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.homePage.deleteFaqTranslation(
+      entityId,
+      groupId,
+      locale,
+      user.id,
+    );
   }
 
   @Put(':entityId/faqs/groups/:groupId/translations/:locale')

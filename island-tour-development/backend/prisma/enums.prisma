@@ -122,6 +122,9 @@ enum Permission {
   EDIT_BOOKING
   DELETE_BOOKING
   MANAGE_BOOKINGS
+  // Conflict #7: money/PII on booking rows. Without it a seat sees the
+  // MANIFEST projection only (who/when/where - no amounts, no email).
+  VIEW_BOOKING_FINANCIALS
 
   // Payments
   VIEW_PAYMENTS
@@ -191,6 +194,16 @@ enum TourStatus {
   LIVE
   PAUSED
   ARCHIVED
+}
+
+// Content-review workflow (access-roles matrix conflict #1): operators submit,
+// the platform approves - publishing is always Island Tours'. LIVE implies
+// APPROVED (publish is gated on it; an ADMIN publishing stamps approval).
+enum TourApprovalStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // Pricing model — maps to OCTO `pricingPer` at the boundary.

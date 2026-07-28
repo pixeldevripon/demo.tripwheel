@@ -50,8 +50,12 @@ function TourBookingCardLayout() {
 
                 {/* Selectors — the only scroll region (thin hover scrollbar);
                     min-h-0 + flex-1 lets overflow trigger inside the flex column.
-                    The calendar popover opens at the top, so it clears the fold. */}
-                <div className='it-modal-scroll flex min-h-0 flex-1 flex-col gap-2 px-4 pt-4'>
+                    The calendar popover opens at the top, so it clears the fold.
+                    `it-modal-scroll-lg-only` drops the scroll container below lg,
+                    where the card is uncapped: an overflow:auto box that never
+                    overflows still swallows touch drags via overscroll-contain,
+                    which made this whole block a dead zone on mobile. */}
+                <div className='it-modal-scroll it-modal-scroll-lg-only flex min-h-0 flex-1 flex-col gap-2 px-4 pt-4'>
                     {/* Calendar + slots share one flex cell: the slots' top gap
                         lives INSIDE their collapse (pt-2), so it animates with
                         the height tween instead of the parent gap snapping in

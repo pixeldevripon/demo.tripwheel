@@ -396,9 +396,12 @@ function DefaultTourCard({
  * radius 24, with a numbered badge over the image carousel (hover-revealed
  * arrows + dots, like every tour card), then rating, title, a short
  * description, a combined "duration · From $price" row, and a free
- * cancellation note. No wishlist - the whole card links out.
+ * cancellation note. Carries the same top-right wishlist heart as the
+ * standard card (it stops propagation, so the card link never fires).
  */
 function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
+    const { isSaved, toggle } = useWishlist();
+    const wishlisted = isSaved(tour.id);
     const [isHovered, setIsHovered] = useState(false);
     const rank = String(tour.rank).padStart(2, '0');
     const isRated = tour.rating !== undefined;
@@ -432,9 +435,40 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                     alt={tour.title}
                     sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 384px'
                 />
-                <span className='absolute left-2.5 top-2.5 z-10 grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:left-4 @[220px]:top-4 @[220px]:size-10 @[220px]:text-[16px]'>
-                    {rank}
-                </span>
+                {/* Rank badge (top-left) + Wishlist button (top-right) */}
+                <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2 @[220px]:inset-x-4 @[220px]:top-4'>
+                    <span className='grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:size-10 @[220px]:text-[16px]'>
+                        {rank}
+                    </span>
+                    <motion.button
+                        type='button'
+                        aria-label={
+                            wishlisted
+                                ? 'Remove from wishlist'
+                                : 'Add to wishlist'
+                        }
+                        onClick={e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggle(tour.id);
+                        }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={springPop}
+                        className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-shadow duration-300 hover:shadow-it-md'>
+                        <Image
+                            src={
+                                wishlisted
+                                    ? '/icons/heart-filled.svg'
+                                    : '/icons/heart-outline.svg'
+                            }
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-5 @[220px]:size-6'
+                            aria-hidden='true'
+                        />
+                    </motion.button>
+                </div>
             </motion.div>
 
             {/* Info */}

@@ -93,8 +93,11 @@ export class PaymentsService {
    * Paginated payments for the dashboard Payments table. ADMIN sees every
    * payment; TOUR_OPERATOR only payments on bookings of their own tours (scoped
    * via `booking.operatorId`, mirroring `BookingsService.list`); USER
-   * (customers) only payments on their OWN bookings (`booking.userId`) - the
-   * customer dashboard's transactions view.
+   * (customers) only payments on their OWN bookings (`booking.userId`). That
+   * last branch is a scoping GUARD, not a live surface: travellers read their
+   * payments through the public `/bookings/traveller/payments` route now, and
+   * cannot sign in here at all. It stays so a stray USER session self-scopes
+   * rather than falling through to operator resolution.
    */
   async list(query: ListPaymentsQueryDto, actor: { id: string; role: Role }) {
     assertDateRangeOrder(query.from, query.to);

@@ -86,9 +86,11 @@ export class CreatePageContentSectionDto {
 }
 
 export class UpsertPageContentSectionTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
   @ApiProperty({ example: 'Wat je moet doen' })
   @IsString()
-  @MinLength(3)
   @MaxLength(120)
   heading!: string;
 
@@ -97,7 +99,6 @@ export class UpsertPageContentSectionTranslationDto {
       'Vaar bij zonsopgang naar Klein Curacao, drijf over het rif bij Playa Piskado en loop na zonsondergang langs de kades van Willemstad.',
   })
   @IsString()
-  @MinLength(10)
   body!: string;
 }
 

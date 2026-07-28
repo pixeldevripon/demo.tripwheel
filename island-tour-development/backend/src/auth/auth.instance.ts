@@ -9,7 +9,7 @@ import {
 } from '@/auth/login-surfaces';
 import { Role, UserStatus } from '@prisma/client';
 import { betterAuth } from 'better-auth';
-import { APIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { bearer, openAPI } from 'better-auth/plugins';
 import 'dotenv/config';
@@ -84,27 +84,10 @@ export const auth = betterAuth({
         sendInBackground(
           'invite',
           (async () => {
-            // Customers (Role.USER) are provisioned by bookings, never by the
-            // staff/operator invite flows - greet them with the customer
-            // welcome copy. `role` is a Better Auth additionalField; fall
-            // back to a lookup in case the hook payload omits it.
-            const role =
-              (user as { role?: Role }).role ??
-              (
-                await authPrismaClient.user.findUnique({
-                  where: { id: user.id },
-                  select: { role: true },
-                })
-              )?.role;
-            if (role === Role.USER) {
-              await mailService.sendCustomerWelcomeEmail(
-                user.email,
-                url,
-                user.name ?? undefined,
-              );
-              return;
-            }
-
+            // Only staff/operator invites reach this arm. Customers used to
+            // be greeted with a set-password welcome here; travellers are
+            // passwordless since 2026-07-28, so booking provisioning no
+            // longer requests a reset and a Role.USER can never arrive.
             const member = await authPrismaClient.staffMember.findUnique({
               where: { userId: user.id },
               select: {
@@ -177,6 +160,36 @@ export const auth = betterAuth({
         ),
       );
     },
+  },
+
+  // ── Request hooks ──────────────────────────────────────────────────────────
+  hooks: {
+    /**
+     * Better Auth mounts `/change-password`, which changes the password the
+     * moment it is called with the correct current one. That is exactly the
+     * step we deliberately removed: a password change must ALSO be confirmed
+     * from the account's mailbox (POST /api/v1/users/me/password-change/*).
+     *
+     * Leaving the built-in route reachable would make that confirmation
+     * optional - anyone with a session and the current password (a borrowed
+     * laptop, a shoulder-surfed password) could skip it with one fetch from
+     * the browser console. The dashboard no longer calls it; this makes it
+     * unreachable rather than merely unused.
+     *
+     * `/set-password` stays open: it only serves accounts with NO password,
+     * and Better Auth itself refuses it once one exists (PASSWORD_ALREADY_SET).
+     * `/reset-password` stays open too - the forgot-password flow is already
+     * mailbox-verified by its own emailed token.
+     */
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === '/change-password') {
+        throw new APIError('FORBIDDEN', {
+          message:
+            'Password changes must be confirmed by email. Use the change-password flow in your profile.',
+          code: 'PASSWORD_CHANGE_REQUIRES_CONFIRMATION',
+        });
+      }
+    }),
   },
 
   // ── Session ────────────────────────────────────────────────────────────────

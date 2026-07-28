@@ -277,7 +277,11 @@ describe('CategoryController', () => {
       const query: LocaleQueryDto = { locale: Locale.nl };
       await controller.getPageContent('cat-1', query);
 
-      expect(service.getPageContent).toHaveBeenCalledWith('cat-1', Locale.nl);
+      expect(service.getPageContent).toHaveBeenCalledWith(
+        'cat-1',
+        Locale.nl,
+        undefined,
+      );
     });
 
     // @Public() - no auth required (integration concern)

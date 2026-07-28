@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import {
   ConflictException,
   ForbiddenException,
@@ -27,12 +27,14 @@ import {
   Prisma,
   Role,
   SettlementStatus,
+  Permission,
   TourBookingType,
   TourStatus,
   WholeUnitType,
   type Booking,
   type BookingUnitItem,
 } from '@prisma/client';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
 import { MollieService } from '@/payments/mollie.service';
 import { StripeService } from '@/payments/stripe.service';
@@ -41,9 +43,13 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
 import {
+  hashLoginCode,
   issueBookingSession,
+  issueTravelerHistorySession,
   issueTravelerSession,
+  loginCodeMatches,
   maskEmail,
+  sessionHistoryEmail,
   sessionOwnsBooking,
   verifyTravelerSession,
 } from './traveler-session.util';
@@ -114,8 +120,14 @@ import type {
   QuoteLineDto,
   RecoverReferenceDto,
   RecoverReferenceResponseDto,
+  ReportCancellationDto,
+  RequestTravellerCodeDto,
+  RequestTravellerCodeResponseDto,
   ReserveBookingDto,
+  TravellerListQueryDto,
   UpdateBookingDto,
+  VerifyTravellerCodeDto,
+  VerifyTravellerCodeResponseDto,
 } from './dto/booking.dto';
 import { deriveBookingDisplayStatus } from './dto/booking.dto';
 import { deriveRefundState } from './refund-state.util';
@@ -123,6 +135,25 @@ import {
   mapMollieRefundStatus,
   mapStripeRefundStatus,
 } from '@/payments/refund-status.util';
+
+/**
+ * Everything a list row needs beyond the booking columns themselves, shared by
+ * the dashboard list and the traveller account list so the two can never
+ * disagree about payment state, settlement, or review eligibility. Each caller
+ * adds its own `tour` select on top (the traveller list also joins the
+ * destination, for the thank-you deep link).
+ */
+const BOOKING_LIST_INCLUDE = {
+  unitItems: true,
+  payments: { select: { kind: true, status: true, amount: true } },
+  settlement: { select: { status: true, paymentModel: true } },
+  // Review state is selected unconditionally (one join either way) but
+  // PROJECTED only on self-scoped reads - reviewToken is a write credential.
+  review: { select: { id: true } },
+  reviewInvitation: {
+    select: { token: true, revokedAt: true, completedAt: true },
+  },
+} as const;
 
 const DEFAULT_HOLD_MINUTES = 30;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
@@ -345,6 +376,7 @@ export class BookingsService {
     private readonly customerProvisioning: CustomerProvisioningService,
     private readonly stripe: StripeService,
     private readonly mollie: MollieService,
+    private readonly staffPermissions: StaffPermissionsService,
   ) {}
 
   /**
@@ -798,10 +830,12 @@ export class BookingsService {
       depositAmount: pricing.depositAmount.toString(),
       sourceBalanceAmount: pricing.sourceBalanceAmount.toString(),
       balanceAmount: pricing.balanceAmount.toString(),
-      commissionRate: pricing.commissionRate.toString(),
-      commissionAmount: pricing.commissionAmount
-        ? pricing.commissionAmount.toString()
-        : null,
+      // The commission snapshot is PLATFORM-internal and this route is
+      // @Public - an anonymous caller pricing a tour must never learn Island
+      // Tours' take. Nulled, not omitted, so the DTO shape never varies (the
+      // stored booking keeps the real snapshot; only this quote hides it).
+      commissionRate: null,
+      commissionAmount: null,
       paymentModel: ctx.tour.paymentModel,
       pax: pricing.pax,
       lines,
@@ -1878,32 +1912,11 @@ export class BookingsService {
   }
 
   /**
-   * Cancellation request from a logged-in CUSTOMER (dashboard /account
-   * surface). Same downstream flow as the public traveler request; the gate is
-   * the Better Auth session + booking ownership (`booking.userId`) instead of
-   * the HMAC traveler session. 404 (not 403) on foreign bookings - do not
-   * confirm existence to non-owners.
-   */
-  async requestCancellationAsCustomer(
-    id: string,
-    actor: { id: string },
-    reason?: string,
-  ): Promise<{ requested: boolean }> {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id },
-      select: { ...CANCELLATION_REQUEST_SELECT, userId: true },
-    });
-    if (!booking || booking.userId !== actor.id) {
-      throw new NotFoundException('Booking not found');
-    }
-    return this.submitCancellationRequest(booking, reason);
-  }
-
-  /**
    * The ownership-gate-free core of a cancellation request: per-booking cap,
    * status check, first-request stamp, admin email, traveller/operator
-   * notices. Callers MUST have proven ownership already (traveler HMAC session
-   * or customer account ownership).
+   * notices. The caller MUST have proven ownership already - today that means
+   * an owning traveler HMAC session (`requestCancellation`). Kept separate
+   * from that gate so a second entry point cannot skip these steps.
    */
   private async submitCancellationRequest(
     booking: CancellationRequestBooking,
@@ -2352,16 +2365,21 @@ export class BookingsService {
     if (!heldOnly) {
       if (!actor || actor.role === Role.USER) {
         throw new UnauthorizedException(
-          'Sign in with an operator or admin account to cancel a confirmed booking',
+          'Sign in with an admin account to cancel a confirmed booking',
         );
       }
-      if (
-        !isPlatformWideBookingRole(actor.role) &&
-        booking.operatorId !==
-          (await resolveOperatorId(this.prisma, actor.id, actor.role))
-      ) {
-        // 404, not 403: never confirm a foreign booking's existence.
-        throw new NotFoundException('Booking not found');
+      if (actor.role !== Role.ADMIN) {
+        // Conflict #2 (access-roles matrix): cancelling a confirmed booking
+        // executes a refund - real money moves. Operators (and platform
+        // staff below admin) REPORT the cancellation; only an admin executes
+        // it. MANAGE_BOOKINGS is admin-only (ceiling-excluded), and this
+        // route is @Public for the hold path, so the role is checked here in
+        // the service rather than by the permissions guard. Foreign bookings
+        // still 404 first (assertOwnsBooking) - no existence oracle.
+        await this.assertOwnsBooking(booking, actor);
+        throw new ForbiddenException(
+          'Cancelling a confirmed booking moves real money. Use "Report cancellation" instead - Island Tours executes the cancellation and refund.',
+        );
       }
     }
 
@@ -2389,11 +2407,13 @@ export class BookingsService {
     const requestedAt = dto.requestedAt
       ? new Date(dto.requestedAt)
       : (booking.utcCancellationRequestedAt ?? new Date());
-    const refund = await this.computeRefund(
-      booking,
-      dto.force ?? false,
-      requestedAt,
-    );
+    // An operator-reported cancellation ALWAYS refunds in full - the operator
+    // pulled the tour, so the traveler's window verdict is irrelevant.
+    // Enforced server-side; never rely on the dashboard remembering to send
+    // `force: true`.
+    const refund = booking.utcOperatorCancellationReportedAt
+      ? CancellationRefund.FULL
+      : await this.computeRefund(booking, dto.force ?? false, requestedAt);
     const seats = booking.unitItems.length;
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -2430,8 +2450,16 @@ export class BookingsService {
           utcCancelledAt: new Date(),
           utcCancellationRequestedAt: requestedAt,
           cancellationRefund: refund,
-          cancelledBy: actorToCancelledBy(actor?.role),
-          cancellationReason: dto.reason ?? null,
+          // An admin executing an operator's cancellation report stamps
+          // OPERATOR - the cancellation originated with the operator, so the
+          // eligibility metric (cancellation_rate_90d counts OPERATOR rows)
+          // must attribute it to them, not to the admin who pressed the
+          // button.
+          cancelledBy: booking.utcOperatorCancellationReportedAt
+            ? CancelledBy.OPERATOR
+            : actorToCancelledBy(actor?.role),
+          cancellationReason:
+            dto.reason ?? booking.operatorCancellationReason ?? null,
         },
         include: { unitItems: true },
       });
@@ -2484,18 +2512,27 @@ export class BookingsService {
    * automatic). Stamps `utcNonPaymentReportedAt` once; a repeat report is an
    * idempotent no-op. Admins may report on the operator's behalf.
    */
-  async reportNonPayment(id: string, actor: { id: string; role: Role }) {
-    const booking = await this.loadOr404(id);
-
-    // Ownership: the reporting operator must own the booking (admins bypass).
+  /**
+   * Ownership gate shared by every operator-facing booking action: platform
+   * roles pass, an operator must own the booking. Throws 404 (never 403) for
+   * a foreign booking - existence is never confirmed to non-owners.
+   */
+  private async assertOwnsBooking(
+    booking: { operatorId: string },
+    actor: { id: string; role: Role },
+  ): Promise<void> {
     if (
       !isPlatformWideBookingRole(actor.role) &&
       booking.operatorId !==
         (await resolveOperatorId(this.prisma, actor.id, actor.role))
     ) {
-      // 404, not 403: never confirm a foreign booking's existence.
       throw new NotFoundException('Booking not found');
     }
+  }
+
+  async reportNonPayment(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+    await this.assertOwnsBooking(booking, actor);
 
     if (booking.paymentModel !== PaymentModel.OPERATOR_LINK) {
       throw new ConflictException(
@@ -2610,6 +2647,136 @@ export class BookingsService {
     });
     this.logger.log(
       `Non-payment report dismissed for booking ${updated.displayRef}`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Operator cancellation report (access-roles matrix conflict #2)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Operator reports they must cancel a confirmed booking (boat broke, tour
+   * can't run). This is only a REPORT - the operator never executes the
+   * refund. It stamps `utcOperatorCancellationReportedAt` (idempotent),
+   * emails the admin worklist, and holds the settlement payout until the
+   * admin either cancels the booking (full refund, `cancelledBy: OPERATOR`)
+   * or dismisses the report. Admins may report on the operator's behalf.
+   */
+  async reportCancellation(
+    id: string,
+    dto: ReportCancellationDto,
+    actor: { id: string; role: Role },
+  ) {
+    const booking = await this.loadOr404(id);
+    await this.assertOwnsBooking(booking, actor);
+
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException(
+        `Cannot report a cancellation on a ${booking.status} booking`,
+      );
+    }
+    if (booking.utcOperatorCancellationReportedAt) {
+      return mapBookingForActor(booking, actor); // already reported - idempotent
+    }
+
+    // Per-OPERATOR cap (same limiter the traveler request flow uses): each
+    // FIRST report emails the admin, so bound how fast one operator can
+    // flood the worklist across their bookings.
+    this.targetLimiter.consume('op-cancel-report', booking.operatorId, [
+      { max: 10, windowMs: 60 * 60 * 1000 },
+    ]);
+
+    // The report MUST reach a human - it exists to put the refund on the
+    // admin worklist. Same posture as the traveler request flow.
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      this.logger.error(
+        'ADMIN_EMAIL is not configured - operator cancellation reports cannot reach anyone',
+      );
+      throw new ServiceUnavailableException(
+        'Cancellation reports are temporarily unavailable - contact Island Tours directly',
+      );
+    }
+
+    const reason = dto.reason?.trim() || null;
+    // Race-safe stamp: two concurrent first-reports must produce ONE email.
+    // The conditional updateMany makes the loser a no-op (count 0).
+    const { count } = await this.prisma.booking.updateMany({
+      where: { id: booking.id, utcOperatorCancellationReportedAt: null },
+      data: {
+        utcOperatorCancellationReportedAt: new Date(),
+        operatorCancellationReason: reason,
+      },
+    });
+    const updated = await this.loadOr404(booking.id);
+    if (count === 0) {
+      return mapBookingForActor(updated, actor); // lost the race - already reported
+    }
+
+    const [operator, tour] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: { companyInfo: { select: { companyName: true } } },
+      }),
+      this.prisma.tour.findUnique({
+        where: { id: booking.tourId },
+        select: { name: true },
+      }),
+    ]);
+    await this.mail.sendCancellationRequestEmail(adminEmail, {
+      displayRef: booking.displayRef,
+      tourName: tour?.name ?? 'Unknown tour',
+      dateLabel: `${dateKey(booking.localDate)}${booking.startTime ? ` ${booking.startTime}` : ''}`,
+      guestName:
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          'Unknown'),
+      guestEmail: booking.contactEmail ?? 'no email on file',
+      totalAmount: `${booking.currency} ${booking.totalRetail.toString()}`,
+      paymentModel: booking.paymentModel,
+      reason,
+      dashboardUrl: `${dashboardAppBase()}/bookings`,
+      source: 'operator',
+      reporterName: operator?.companyInfo?.companyName ?? 'The operator',
+    });
+
+    this.logger.warn(
+      `Operator cancellation reported for booking ${updated.displayRef} (awaiting admin execution)`,
+    );
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Admin dismisses an operator cancellation report (mistake, or the tour
+   * runs after all): clears the stamp so the booking reads CONFIRMED again
+   * and the settlement payout hold lifts.
+   */
+  async dismissCancellationReport(
+    id: string,
+    actor: { id: string; role: Role },
+  ) {
+    const booking = await this.loadOr404(id);
+    if (!booking.utcOperatorCancellationReportedAt) {
+      return mapBookingForActor(booking, actor); // nothing to dismiss
+    }
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new ConflictException(
+        'This booking is already cancelled - the report is settled, not dismissible',
+      );
+    }
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        utcOperatorCancellationReportedAt: null,
+        operatorCancellationReason: null,
+      },
+      include: { unitItems: true },
+    });
+    this.logger.log(
+      `Operator cancellation report dismissed for booking ${updated.displayRef}`,
     );
     return mapBookingForActor(updated, actor);
   }
@@ -2810,10 +2977,52 @@ export class BookingsService {
   // Reads (auth-scoped)
   // ════════════════════════════════════════════════════════════════════════
 
+  /**
+   * Conflict #7: does this actor see money + traveler contact on booking
+   * rows, or the manifest projection? Read from the EFFECTIVE permission set
+   * (a designation can withhold VIEW_BOOKING_FINANCIALS from a field-staff
+   * seat while still granting VIEW_BOOKINGS), never the static role table.
+   */
+  private async canSeeBookingFinancials(actor: {
+    id: string;
+    role: Role;
+  }): Promise<boolean> {
+    const effective = await this.staffPermissions.getEffectivePermissions({
+      id: actor.id,
+      role: actor.role,
+    });
+    return effective.includes(Permission.VIEW_BOOKING_FINANCIALS);
+  }
+
+  /**
+   * A traveler ALWAYS sees the money on their own purchase - the manifest
+   * rule is about seats looking at other people's bookings, never about
+   * someone reading their own receipt.
+   *
+   * Deliberately keyed on row ownership rather than on granting
+   * VIEW_BOOKING_FINANCIALS to Role.USER: the effective-permission engine
+   * unions the customer hat into a staff/operator seat that has ever booked
+   * a tour, so the role grant would hand every such seat the financials it
+   * was just denied.
+   */
+  private async seesFinancialsFor(
+    booking: { userId: string | null },
+    actor: { id: string; role: Role },
+  ): Promise<boolean> {
+    if (booking.userId && booking.userId === actor.id) return true;
+    return this.canSeeBookingFinancials(actor);
+  }
+
   async getById(id: string, actor: { id: string; role: Role }) {
     const booking = await this.loadOr404(id);
     await this.assertCanView(booking, actor);
-    return stripCommissionForCustomer(mapBooking(booking), actor.role);
+    const payload = stripCommissionForNonPlatform(
+      mapBooking(booking),
+      actor.role,
+    );
+    return (await this.seesFinancialsFor(booking, actor))
+      ? payload
+      : applyManifestProjection(payload);
   }
 
   /**
@@ -2959,6 +3168,321 @@ export class BookingsService {
       });
 
     return { sent: true };
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Traveller account area (/{locale}/traveller) - OTP login + history reads
+  // ════════════════════════════════════════════════════════════════════════
+  //
+  // WHY A SEPARATE LOGIN FROM `/bookings`. The pair lookup proves possession of
+  // ONE confirmation email - which routinely gets forwarded to travel
+  // companions - so it is the right credential for one booking and the wrong
+  // one for a person's entire booking + payment history. The account area
+  // therefore requires live inbox OWNERSHIP: a one-time code, redeemed for a
+  // HISTORY-scoped session (traveler-session.util.ts). A pair-login or
+  // checkout token is rejected by every read below.
+
+  /** One-time login codes live 10 minutes; a stale row is useless after that. */
+  private static readonly LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
+  /** Guesses allowed against a single code before it is burned. */
+  private static readonly LOGIN_CODE_MAX_ATTEMPTS = 5;
+
+  /**
+   * Email a one-time login code for the traveller account area.
+   *
+   * Enumeration-proof exactly like {@link recoverReference}: always resolves
+   * `{ sent: true }`, mails only when the address actually has bookings, and
+   * sends fire-and-forget so response timing does not leak whether mail went
+   * out. The code itself is never stored - only a keyed HMAC (rule: a DB dump
+   * alone must not be enough to log in as a traveller).
+   */
+  async requestTravellerLoginCode(
+    dto: RequestTravellerCodeDto,
+  ): Promise<RequestTravellerCodeResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    // Per-TARGET caps (the per-IP throttle alone cannot stop a distributed
+    // mail-bomb of one inbox), mirroring the recover-reference limits.
+    this.targetLimiter.consume('traveller-otp', email, [
+      { max: 1, windowMs: 60 * 1000 },
+      { max: 5, windowMs: 24 * 60 * 60 * 1000 },
+    ]);
+
+    // Opportunistic cleanup instead of a cron: rows are worthless once they
+    // have been expired for a day, and this is the only writer.
+    void this.prisma.travelerLoginCode
+      .deleteMany({
+        where: {
+          expiresAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      })
+      .catch((err: Error) => {
+        this.logger.error('Traveller login code cleanup failed', err);
+      });
+
+    const booking = await this.prisma.booking.findFirst({
+      where: { contactEmail: { equals: email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        displayRef: true,
+        contactEmail: true,
+        customerLocale: true,
+        localDate: true,
+        tourStartDateTime: true,
+        startTime: true,
+        tour: { select: { name: true } },
+      },
+    });
+    if (!booking) {
+      this.logger.log('Traveller login code requested for an unknown email');
+      return { sent: true };
+    }
+
+    // Only the newest code may ever be live: requesting a second one
+    // invalidates the first, so a code seen over someone's shoulder dies the
+    // moment the traveller asks for another.
+    await this.prisma.travelerLoginCode.updateMany({
+      where: { email, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+
+    const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
+    await this.prisma.travelerLoginCode.create({
+      data: {
+        email,
+        codeHash: hashLoginCode(email, code),
+        expiresAt: new Date(Date.now() + BookingsService.LOGIN_CODE_TTL_MS),
+      },
+    });
+
+    const site = await this.prisma.siteInfo.findFirst({
+      select: { logo: true },
+    });
+    const base = islandToursBase();
+    const locale = toLocale(booking.customerLocale);
+    const ctx: EmailTemplateContext = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
+      bookingRef: booking.displayRef,
+      tourName: booking.tour?.name ?? 'Your tour',
+      startTime: booking.startTime ?? '',
+      dateLong: formatDateLong(
+        booking.tourStartDateTime ?? booking.localDate,
+        locale,
+      ),
+      noticeTitle: 'Your login code.',
+      noticeParagraphs: [
+        `Your code is ${code}.`,
+        'It is valid for 10 minutes and can be used once.',
+        'If you did not ask to sign in, you can ignore this email - nobody can reach your bookings without this code.',
+      ],
+      ctaUrl: `${base}/traveller`,
+      ctaLabel: 'Open your bookings',
+    };
+
+    void this.mail
+      .sendBookingNoticeEmail(
+        booking.contactEmail ?? email,
+        'Your Island Tours login code',
+        ctx,
+        buildNoticeText(ctx),
+      )
+      .catch((err: Error) => {
+        this.logger.error('Traveller login code email failed', err);
+      });
+
+    return { sent: true };
+  }
+
+  /**
+   * Redeem a one-time code for a HISTORY-scoped traveler session.
+   *
+   * Every failure - unknown email, no live code, wrong code, expired,
+   * already used, out of attempts - throws the SAME generic 401, so the
+   * endpoint never tells an attacker which part they got right.
+   */
+  async verifyTravellerLoginCode(
+    dto: VerifyTravellerCodeDto,
+  ): Promise<VerifyTravellerCodeResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    const invalid = () => new UnauthorizedException('Invalid or expired code');
+
+    const row = await this.prisma.travelerLoginCode.findFirst({
+      where: { email, consumedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!row) throw invalid();
+
+    if (row.attempts >= BookingsService.LOGIN_CODE_MAX_ATTEMPTS) {
+      await this.prisma.travelerLoginCode.updateMany({
+        where: { id: row.id, consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      throw invalid();
+    }
+
+    // Count the attempt BEFORE comparing: parallel guesses must not race extra
+    // tries out of the same code.
+    await this.prisma.travelerLoginCode.update({
+      where: { id: row.id },
+      data: { attempts: { increment: 1 } },
+    });
+
+    if (!loginCodeMatches(email, dto.code, row.codeHash)) throw invalid();
+
+    // Redeem atomically: the read above is a snapshot, so two concurrent
+    // submissions of the same correct code would otherwise both pass the
+    // `consumedAt: null` check and mint two sessions. Only the caller whose
+    // guarded write matches gets the token.
+    const { count } = await this.prisma.travelerLoginCode.updateMany({
+      where: { id: row.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    if (count !== 1) throw invalid();
+
+    this.logger.log('Traveller account session issued via login code');
+    return { sessionToken: issueTravelerHistorySession(email) };
+  }
+
+  /**
+   * The gate every traveller account read shares: the session email, but ONLY
+   * for a HISTORY-scoped token. Pair-login and checkout tokens land here with
+   * a valid signature and still get 401 - they proved something weaker.
+   */
+  private requireTravellerEmail(sessionToken?: string): string {
+    const email = sessionHistoryEmail(verifyTravelerSession(sessionToken));
+    if (!email) {
+      throw new UnauthorizedException(
+        'Sign in with an email code to view your bookings',
+      );
+    }
+    return email;
+  }
+
+  /**
+   * Traveller account bookings list. Scoped by contactEmail (not userId): the
+   * account area is keyed on the inbox that received the confirmations, so it
+   * works for guest bookings made before any account existed.
+   */
+  async listTravellerBookings(
+    query: TravellerListQueryDto,
+    sessionToken?: string,
+  ) {
+    const email = this.requireTravellerEmail(sessionToken);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where: Prisma.BookingWhereInput = {
+      contactEmail: { equals: email, mode: 'insensitive' },
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.booking.count({ where }),
+      this.prisma.booking.findMany({
+        where,
+        include: {
+          ...BOOKING_LIST_INCLUDE,
+          tour: {
+            select: {
+              name: true,
+              cancellationHours: true,
+              destination: { select: { slug: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((row) => ({
+        ...mapTravellerBookingItem(row),
+        review: this.reviewStateForRow(row),
+      })),
+    };
+  }
+
+  /**
+   * Traveller account stat row - same shape and live-ledger math as the
+   * customer dashboard summary, scoped by contactEmail instead of userId.
+   */
+  async getTravellerSummary(sessionToken?: string) {
+    const email = this.requireTravellerEmail(sessionToken);
+    return this.summarizeBookings(
+      { contactEmail: { equals: email, mode: 'insensitive' } },
+      { booking: { contactEmail: { equals: email, mode: 'insensitive' } } },
+    );
+  }
+
+  /**
+   * Traveller payment history: every charge and refund on the caller's own
+   * bookings. Deliberately narrower than the dashboard payments list - no
+   * provider intent ids, no settlement/payout context, no contact fields.
+   */
+  async listTravellerPayments(
+    query: TravellerListQueryDto,
+    sessionToken?: string,
+  ) {
+    const email = this.requireTravellerEmail(sessionToken);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where: Prisma.PaymentWhereInput = {
+      booking: { contactEmail: { equals: email, mode: 'insensitive' } },
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          kind: true,
+          status: true,
+          provider: true,
+          methodType: true,
+          amount: true,
+          currency: true,
+          createdAt: true,
+          booking: {
+            select: {
+              displayRef: true,
+              publicRef: true,
+              localDate: true,
+              tour: {
+                select: { name: true, destination: { select: { slug: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      total,
+      page,
+      limit,
+      data: rows.map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        status: p.status,
+        provider: p.provider,
+        methodType: p.methodType,
+        amount: p.amount.toString(),
+        currency: p.currency,
+        createdAt: p.createdAt.toISOString(),
+        bookingDisplayRef: p.booking.displayRef,
+        bookingPublicRef: p.booking.publicRef,
+        destinationSlug: p.booking.tour?.destination?.slug ?? null,
+        tourName: p.booking.tour?.name ?? null,
+        bookingLocalDate: dateKey(p.booking.localDate),
+      })),
+    };
   }
 
   /**
@@ -3391,6 +3915,13 @@ export class BookingsService {
       !isPlatformWideBookingRole(actor.role) &&
       actor.role !== Role.TOUR_OPERATOR;
 
+    // Conflict #7: resolved ONCE per call - it shapes both the search clause
+    // below and the row projection at the end (one permission read per page,
+    // never per row). A self-scoped list is the caller's own receipts, which
+    // always carry the money.
+    const seesFinancials =
+      selfScoped || (await this.canSeeBookingFinancials(actor));
+
     if (query.tourId) where.tourId = query.tourId;
     // Status filter accepts DERIVED display statuses too (the chips the table
     // shows), translated to their defining predicates; raw enum values pass
@@ -3407,6 +3938,10 @@ export class BookingsService {
       where.status = BookingStatus.CONFIRMED;
       where.utcCancellationRequestedAt = { not: null };
       where.utcCancelledAt = null;
+    } else if (query.status === 'OPERATOR_CANCELLATION_REPORTED') {
+      where.status = BookingStatus.CONFIRMED;
+      where.utcOperatorCancellationReportedAt = { not: null };
+      where.utcCancelledAt = null;
     } else if (query.status) {
       where.status = query.status;
     }
@@ -3415,11 +3950,17 @@ export class BookingsService {
       where.utcCancellationRequestedAt = { not: null };
     if (query.search?.trim()) {
       const q = query.search.trim();
+      // Conflict #7: a manifest seat never sees contactEmail, so letting it
+      // SEARCH on email would turn the list into an existence oracle ("has
+      // this address ever booked?") - worse for a platform-wide seat, whose
+      // query is not operator-scoped. Reference + name only in that case.
       where.OR = [
         { displayRef: { contains: q, mode: 'insensitive' } },
         { publicRef: { contains: q, mode: 'insensitive' } },
         { contactFullName: { contains: q, mode: 'insensitive' } },
-        { contactEmail: { contains: q, mode: 'insensitive' } },
+        ...(seesFinancials
+          ? [{ contactEmail: { contains: q, mode: 'insensitive' as const } }]
+          : []),
         { tour: { name: { contains: q, mode: 'insensitive' } } },
       ];
     }
@@ -3435,16 +3976,8 @@ export class BookingsService {
       this.prisma.booking.findMany({
         where,
         include: {
-          unitItems: true,
+          ...BOOKING_LIST_INCLUDE,
           tour: { select: { name: true, cancellationHours: true } },
-          payments: { select: { kind: true, status: true, amount: true } },
-          settlement: { select: { status: true, paymentModel: true } },
-          // FE-12b review state. Selected unconditionally (one join either way)
-          // but only PROJECTED on the self-scoped branch below.
-          review: { select: { id: true } },
-          reviewInvitation: {
-            select: { token: true, revokedAt: true, completedAt: true },
-          },
         },
         // Cancellation-request queues surface oldest-unprocessed first;
         // everything else reads newest bookings first.
@@ -3460,10 +3993,11 @@ export class BookingsService {
       page,
       limit,
       data: rows.map((row) => {
-        const item = stripCommissionForCustomer(
+        const full = stripCommissionForNonPlatform(
           mapBookingListItem(row),
           actor.role,
         );
+        const item = seesFinancials ? full : applyManifestProjection(full);
         return selfScoped
           ? { ...item, review: this.reviewStateForRow(row) }
           : item;
@@ -3510,27 +4044,40 @@ export class BookingsService {
     };
   }
 
+  // getCustomerSummary() lived here until 2026-07-28 - it backed the deleted
+  // dashboard /account stat row. `getTravellerSummary` is its live successor
+  // and shares the same `summarizeBookings` math.
+
   /**
-   * Customer dashboard stat row: how many trips (CONFIRMED + REDEEMED), how
-   * many still ahead, and net spend per currency - computed LIVE from the
-   * payment ledger (SUCCEEDED non-REFUND minus SUCCEEDED REFUND rows), never
-   * from the `customers` aggregate snapshots.
+   * Shared stat-row math for both self-service surfaces - the dashboard
+   * customer summary (scoped by userId) and the traveller account area
+   * (scoped by contactEmail). One implementation on purpose: two copies would
+   * drift the moment either definition of "spend" changed.
    */
-  async getCustomerSummary(actor: { id: string }) {
-    const paymentScope = {
-      booking: { userId: actor.id },
-      status: PaymentStatus.SUCCEEDED,
+  private async summarizeBookings(
+    bookingScope: Prisma.BookingWhereInput,
+    paymentBookingScope: Prisma.PaymentWhereInput,
+  ) {
+    // Same two-status rule as derivePaymentState: when a refund settles, the
+    // REFUND row and the original charge both flip to REFUNDED, so counting
+    // only SUCCEEDED would drop the pair. Usually that nets out to the same
+    // number - but the legs can settle out of lockstep (reconcileRefundRow
+    // skips the charge flip when the row has no intentId), and then the
+    // one-status read silently overcounts spend the traveller got back.
+    const paymentScope: Prisma.PaymentWhereInput = {
+      ...paymentBookingScope,
+      status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED] },
     };
     const [bookingsCount, upcomingCount, paid, refunded] = await Promise.all([
       this.prisma.booking.count({
         where: {
-          userId: actor.id,
+          ...bookingScope,
           status: { in: [...ACTIVE_BOOKING_STATUSES] },
         },
       }),
       this.prisma.booking.count({
         where: {
-          userId: actor.id,
+          ...bookingScope,
           status: BookingStatus.CONFIRMED,
           tourStartDateTime: { gt: new Date() },
         },
@@ -4223,6 +4770,14 @@ function mapBookingListItem(
     tourName: b.tour.name,
     contactFullName: b.contactFullName,
     contactEmail: b.contactEmail,
+    // Day-of-tour operational facts. These ARE the manifest (conflict #7):
+    // a guide needs to call a late guest, know where to collect them and
+    // what they asked for - none of it is money or marketing PII.
+    contactPhone: b.contactPhone,
+    notes: b.notes,
+    pickupAddress: b.pickupAddress,
+    pickupWindowStart: b.pickupWindowStart,
+    pickupWindowEnd: b.pickupWindowEnd,
     partySize: b.unitItems.length,
     createdAt: b.createdAt.toISOString(),
     utcCancellationRequestedAt: b.utcCancellationRequestedAt
@@ -4234,6 +4789,12 @@ function mapBookingListItem(
       ? b.utcNonPaymentReportedAt.toISOString()
       : null,
     utcForfeitedAt: b.utcForfeitedAt ? b.utcForfeitedAt.toISOString() : null,
+    // Operator cancellation report (conflict #2) - drives the dashboard's
+    // report/execute/dismiss row actions.
+    utcOperatorCancellationReportedAt: b.utcOperatorCancellationReportedAt
+      ? b.utcOperatorCancellationReportedAt.toISOString()
+      : null,
+    operatorCancellationReason: b.operatorCancellationReason ?? null,
     freeCancelDeadline: deadline ? deadline.toISOString() : null,
     requestedInFreeWindow:
       b.utcCancellationRequestedAt && deadline
@@ -4267,15 +4828,119 @@ function mapBookingListItem(
 }
 
 /**
- * Customers (Role.USER) never see the platform's take on their own purchase:
- * the commission snapshot is operator/admin context (same withholding rule as
- * the public TYP payload). Fields are nulled, not omitted, so the response
- * shape stays DTO-stable for every role.
+ * Traveller account row (/{locale}/traveller). Starts from the dashboard row
+ * so the two can never disagree about payment state or the cancellation
+ * verdict, then removes everything that is not the traveller's business:
+ *
+ * - settlement status/method/held - operator PAYOUT context, not the guest's,
+ * - the ops lifecycle timestamps (non-payment report, forfeit, operator
+ *   cancellation report + reason) - internal workflow the guest sees only as
+ *   its outcome,
+ * - contactFullName/contactEmail - the caller IS that contact; echoing the
+ *   PII back adds nothing and widens what a stolen session leaks,
+ * - commission - nulled for every non-platform reader (rule #22 context).
+ *
+ * Adds `destinationSlug`, which the dashboard row does not carry, because
+ * every card deep-links to `/{destinationSlug}/thank-you/{publicRef}`.
  */
-function stripCommissionForCustomer<
+function mapTravellerBookingItem(
+  b: BookingWithItems & {
+    tour: {
+      name: string;
+      cancellationHours: number;
+      destination: { slug: string } | null;
+    };
+    payments: {
+      kind: PaymentKind;
+      status: PaymentStatus;
+      amount: Prisma.Decimal;
+    }[];
+    settlement: {
+      status: SettlementStatus;
+      paymentModel: PaymentModel;
+    } | null;
+  },
+) {
+  const {
+    settlementStatus: _settlementStatus,
+    settlementMethod: _settlementMethod,
+    settlementHeld: _settlementHeld,
+    contactFullName: _contactFullName,
+    contactEmail: _contactEmail,
+    utcNonPaymentReportedAt: _utcNonPaymentReportedAt,
+    utcForfeitedAt: _utcForfeitedAt,
+    utcOperatorCancellationReportedAt: _utcOperatorCancellationReportedAt,
+    operatorCancellationReason: _operatorCancellationReason,
+    ...traveller
+  } = mapBookingListItem(b);
+  return {
+    ...traveller,
+    commissionRate: null,
+    commissionAmount: null,
+    destinationSlug: b.tour.destination?.slug ?? null,
+  };
+}
+
+/**
+ * The MANIFEST projection (access-roles matrix conflict #7): what a
+ * guide-level seat may see on a booking row - who is coming, when, where,
+ * and how to reach them on the day. Everything that is money or marketing
+ * PII is nulled: amounts, payment/refund/settlement state, and the
+ * traveler's email. The phone stays - a guide needs to call a late guest.
+ *
+ * Nulled, never omitted, so the response shape (and therefore the DTO and
+ * every dashboard column) is identical for every caller; the UI hides the
+ * columns whose values are absent.
+ */
+const MANIFEST_NULLED_FIELDS = [
+  'totalRetail',
+  'depositAmount',
+  'balanceAmount',
+  'commissionRate',
+  'commissionAmount',
+  'paidAmount',
+  'contactEmail',
+  'settlementStatus',
+  'settlementMethod',
+  'refundStatus',
+  // The raw settled verdict (NONE/PARTIAL/FULL), distinct from the derived
+  // refundStatus above - both are refund state.
+  'cancellationRefund',
+] as const;
+
+function applyManifestProjection<T extends Record<string, unknown>>(
+  payload: T,
+): T {
+  const projected: Record<string, unknown> = { ...payload };
+  for (const field of MANIFEST_NULLED_FIELDS) {
+    if (field in projected) projected[field] = null;
+  }
+  // Per-traveler prices are money too - the row total is not the only leak.
+  // The line itself stays (the guide needs the party composition).
+  if (Array.isArray(projected.unitItems)) {
+    projected.unitItems = (
+      projected.unitItems as { priceRetail?: unknown }[]
+    ).map((item) => ({ ...item, priceRetail: null }));
+  }
+  // Payment state is a money signal too - collapse it rather than null it,
+  // so the field keeps its enum shape for the DTO.
+  if ('paymentStatus' in projected) projected.paymentStatus = null;
+  if ('settlementHeld' in projected) projected.settlementHeld = false;
+  return projected as T;
+}
+
+/**
+ * The commission snapshot is PLATFORM-internal context: customers never see
+ * the platform's take on their own purchase, and operators never see it in
+ * the portal either (access-roles matrix, Bookings notes - commission fields
+ * are never rendered to operators; their money view is payment state +
+ * settlements). Only platform-wide roles (ADMIN/STAFF/EDITOR) keep the
+ * fields. Nulled, not omitted, so the response shape stays DTO-stable.
+ */
+function stripCommissionForNonPlatform<
   T extends { commissionRate: string | null; commissionAmount: string | null },
 >(payload: T, role: Role): T {
-  if (role !== Role.USER) return payload;
+  if (isPlatformWideBookingRole(role)) return payload;
   return { ...payload, commissionRate: null, commissionAmount: null };
 }
 
@@ -4292,14 +4957,15 @@ function mapBookingPublic(b: BookingWithItems) {
 }
 
 /**
- * Commission is visible only to an authenticated ops actor (operator/admin
- * dashboards). Anonymous callers and customers get the traveler payload.
+ * Commission is visible only to an authenticated PLATFORM actor (admin/staff
+ * dashboards). Anonymous callers, customers and operators get the commission-
+ * nulled payload (same withholding rule as stripCommissionForNonPlatform).
  */
 function mapBookingForActor(
   b: BookingWithItems,
   actor?: { id: string; role: Role },
 ) {
-  return !actor || actor.role === Role.USER
+  return !actor || !isPlatformWideBookingRole(actor.role)
     ? mapBookingPublic(b)
     : mapBooking(b);
 }

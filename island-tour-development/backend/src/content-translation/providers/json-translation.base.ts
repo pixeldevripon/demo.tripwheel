@@ -21,10 +21,37 @@ import type {
  * rather than corrupted.
  */
 
-/** Keep request payloads comfortably inside a model's output window. */
-const MAX_CHARS_PER_CALL = 20_000;
+/**
+ * Keep request payloads comfortably inside a model's output window AND inside
+ * the tighter free-tier token-per-minute meters (Groq on_demand is 12k TPM -
+ * a 20k-char chunk plus its completion nearly consumed the whole window and
+ * clipped long completions mid-JSON).
+ */
+const MAX_CHARS_PER_CALL = 12_000;
 
 export const TRANSLATION_REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * Providers that meter tokens-per-minute (Groq, Gemini) name their cooldown
+ * in the 429 body ("try again in 7.26s" / "retry in 0.2s"). A wait that short
+ * is cheaper than failing a synchronous button click - retry after it. A 429
+ * with no parseable hint (or a long one) still throws immediately: the
+ * queue's exponential backoff owns those.
+ */
+const MAX_RATE_LIMIT_WAIT_MS = 25_000;
+const RATE_LIMIT_RETRIES = 2;
+
+function rateLimitWaitMs(error: unknown): number | null {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!/HTTP 429/.test(message)) return null;
+  const hint = /(?:try again|retry) in ([\d.]+)\s*(ms|s)/i.exec(message);
+  if (!hint) return null;
+  const ms = Math.ceil(
+    parseFloat(hint[1]) * (hint[2].toLowerCase() === 's' ? 1_000 : 1),
+  );
+  // +750ms slack: the provider's clock, not ours, decides when the window resets.
+  return ms <= MAX_RATE_LIMIT_WAIT_MS ? ms + 750 : null;
+}
 
 export abstract class JsonTranslationProvider implements TranslationProvider {
   /** Human name for error messages ("Gemini", "OpenAI-compatible provider"). */
@@ -90,17 +117,41 @@ export abstract class JsonTranslationProvider implements TranslationProvider {
     let current: Record<string, TranslatableValue> = {};
     let size = 0;
     for (const [key, value] of Object.entries(fields)) {
-      const valueSize = JSON.stringify(value).length;
-      if (size > 0 && size + valueSize > MAX_CHARS_PER_CALL) {
+      // Keys ride in the serialized payload too - count them, or a map of
+      // long keys with short values silently overshoots the call budget.
+      const entrySize = JSON.stringify(value).length + key.length + 4;
+      if (size > 0 && size + entrySize > MAX_CHARS_PER_CALL) {
         chunks.push(current);
         current = {};
         size = 0;
       }
       current[key] = value;
-      size += valueSize;
+      size += entrySize;
     }
     if (Object.keys(current).length > 0) chunks.push(current);
     return chunks;
+  }
+
+  /** requestChunk plus the bounded rate-limit retry (see rateLimitWaitMs). */
+  private async requestChunkPatiently(
+    payload: string,
+    from: Locale | null,
+    to: Locale,
+    correction?: string,
+  ): Promise<unknown> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.requestChunk(payload, from, to, correction);
+      } catch (error) {
+        const wait =
+          attempt < RATE_LIMIT_RETRIES ? rateLimitWaitMs(error) : null;
+        if (wait === null) throw error;
+        this.logger.warn(
+          `${this.label} rate-limited - waiting ${wait}ms, retry ${attempt + 1}/${RATE_LIMIT_RETRIES} (-> ${to})`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    }
   }
 
   private async translateChunk(
@@ -109,7 +160,7 @@ export abstract class JsonTranslationProvider implements TranslationProvider {
     to: Locale,
   ): Promise<Record<string, TranslatableValue>> {
     const payload = JSON.stringify(fields);
-    const first = await this.requestChunk(payload, from, to);
+    const first = await this.requestChunkPatiently(payload, from, to);
     const firstError = this.validate(fields, first);
     if (!firstError) return first as Record<string, TranslatableValue>;
 
@@ -117,7 +168,12 @@ export abstract class JsonTranslationProvider implements TranslationProvider {
     this.logger.warn(
       `${this.label} response invalid (${firstError}) - one corrective retry (-> ${to})`,
     );
-    const second = await this.requestChunk(payload, from, to, firstError);
+    const second = await this.requestChunkPatiently(
+      payload,
+      from,
+      to,
+      firstError,
+    );
     const secondError = this.validate(fields, second);
     if (secondError) {
       throw new Error(

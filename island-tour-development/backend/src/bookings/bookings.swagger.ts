@@ -27,8 +27,12 @@ import {
   ListBookingsResponseDto,
   RecoverReferenceResponseDto,
   RequestCancellationResponseDto,
+  RequestTravellerCodeResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
+  TravellerBookingsResponseDto,
+  TravellerPaymentsResponseDto,
+  VerifyTravellerCodeResponseDto,
 } from './dto/booking.dto';
 
 export const ApiQuoteDocs = () =>
@@ -145,6 +149,39 @@ export const ApiDismissNonPaymentDocs = () =>
     ApiConflictResponse({ type: ConflictErrorDto }),
   );
 
+export const ApiReportCancellationDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Operator reports they must cancel a confirmed booking (conflict #2)',
+      description:
+        'Stamps utcOperatorCancellationReportedAt once (idempotent) and emails ' +
+        'the admin worklist. Operators never execute refunds - an admin either ' +
+        'cancels the booking (full refund, cancelledBy OPERATOR so the ' +
+        'eligibility metric counts it) or dismisses the report. The settlement ' +
+        'payout is held while the report is pending. Operator must own the ' +
+        'booking (admins may report on their behalf).',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiDismissCancellationReportDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        'Admin dismisses an operator cancellation report (tour runs after all)',
+      description:
+        'Clears utcOperatorCancellationReportedAt + the stored reason so the ' +
+        'booking reads CONFIRMED again and the settlement payout hold lifts. ' +
+        'Rejected once the booking is already cancelled.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
 export const ApiExtendDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'Extend an on-hold reservation window' }),
@@ -197,6 +234,90 @@ export const ApiRecoverReferenceDocs = () =>
     }),
     ApiOkResponse({ type: RecoverReferenceResponseDto }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
+  );
+
+// ── Traveller account area (/{locale}/traveller) ────────────────────────────
+
+export const ApiRequestTravellerCodeDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Email a one-time login code for the traveller account area',
+      description:
+        'Step 1 of the account login. Always responds `{ sent: true }` whether or not the ' +
+        'email has bookings (enumeration-proof); when it does, a 6-digit code valid for 10 ' +
+        'minutes is mailed to the STORED contact address. Requesting a new code invalidates ' +
+        'the previous one. Throttled per IP and capped per target email (1/min, 5/day).',
+    }),
+    ApiOkResponse({ type: RequestTravellerCodeResponseDto }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
+  );
+
+export const ApiVerifyTravellerCodeDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Redeem a login code for a history-scoped traveler session',
+      description:
+        'Step 2 of the account login. Returns a 24h HISTORY-scoped session token (proves live ' +
+        'inbox ownership, so it unlocks the account surface as well as everything an ' +
+        'email-scoped token can do). Single-use code, max 5 attempts, and every failure - ' +
+        'unknown email, wrong/expired/used code, attempts exhausted - returns the same ' +
+        'generic 401.',
+    }),
+    ApiOkResponse({ type: VerifyTravellerCodeResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Invalid or expired code (uniform for every failure mode).',
+    }),
+    ApiBadRequestResponse({ type: BadRequestErrorDto }),
+  );
+
+export const ApiTravellerBookingsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: "Traveller account: the caller's own bookings",
+      description:
+        'Scoped by the contact email inside the X-Traveler-Session, so it covers guest ' +
+        'bookings made before any account existed. Carries the review affordance (self-scoped ' +
+        'by definition) but never settlement/payout context, ops timestamps, or commission.',
+    }),
+    ApiOkResponse({ type: TravellerBookingsResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description:
+        'Missing, expired, or non-history session. A `/bookings` pair-login or checkout ' +
+        'token is valid but NOT sufficient here - the account area requires the OTP login.',
+    }),
+  );
+
+export const ApiTravellerSummaryDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Traveller account: stat row (trips, upcoming, net spend)',
+      description:
+        'Same live-ledger math as the customer dashboard summary, scoped by the session ' +
+        'contact email. Spend is per currency (never summed across currencies).',
+    }),
+    ApiOkResponse({ type: CustomerBookingSummaryDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Missing, expired, or non-history session.',
+    }),
+  );
+
+export const ApiTravellerPaymentsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary:
+        "Traveller account: every charge and refund on the caller's bookings",
+      description:
+        'Traveler-safe projection of the payment ledger: no provider intent/charge ids, no ' +
+        'settlement or payout context, no contact fields.',
+    }),
+    ApiOkResponse({ type: TravellerPaymentsResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Missing, expired, or non-history session.',
+    }),
   );
 
 export const ApiThankYouDocs = () =>
@@ -297,36 +418,6 @@ export const ApiGetBookingDocs = () =>
     ApiOperation({ summary: 'Get a booking by uuid (auth-scoped)' }),
     ApiOkResponse({ type: BookingResponseDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
-  );
-
-export const ApiCustomerSummaryDocs = () =>
-  applyDecorators(
-    ApiOperation({
-      summary: "Customer booking summary (the caller's own bookings)",
-      description:
-        'Stat row for the customer dashboard: trip counts (CONFIRMED + REDEEMED), upcoming ' +
-        'trips, and net spend per currency computed live from the payment ledger ' +
-        '(SUCCEEDED payments minus refunds). Always scoped to the authenticated user.',
-    }),
-    ApiOkResponse({ type: CustomerBookingSummaryDto }),
-  );
-
-export const ApiCustomerCancellationRequestDocs = () =>
-  applyDecorators(
-    ApiOperation({
-      summary: 'Request cancellation of an owned booking (customer account)',
-      description:
-        'Dashboard variant of the public TYP cancellation request: the gate is the Better Auth ' +
-        'session + booking ownership (userId) instead of the traveler HMAC session. Never ' +
-        'cancels on click - it emails the Island Tours admin. Foreign booking ids return 404. ' +
-        'Confirmed bookings only. Throttled to 1 per 10s / 3 per min / 10 per hour per IP.',
-    }),
-    ApiOkResponse({ type: RequestCancellationResponseDto }),
-    ApiNotFoundResponse({ type: NotFoundErrorDto }),
-    ApiConflictResponse({
-      type: ConflictErrorDto,
-      description: 'Booking is not CONFIRMED, so there is nothing to cancel',
-    }),
   );
 
 export const ApiListBookingsDocs = () =>

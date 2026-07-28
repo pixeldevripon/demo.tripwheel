@@ -17,6 +17,7 @@ import {
   CalendarDayResponseDto,
   DepartureResponseDto,
   ExceptionResponseDto,
+  ManageCalendarDayDto,
   MaterializeResultDto,
   ScheduleResponseDto,
 } from './dto/availability.dto';
@@ -87,6 +88,23 @@ export const ApiListExceptionsDocs = () =>
   applyDecorators(
     ApiOperation({ summary: 'List a tour’s availability exceptions' }),
     ApiOkResponse({ type: ExceptionResponseDto, isArray: true }),
+    authErrors(),
+  );
+
+export const ApiManageCalendarDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Operator month grid (one-tap availability calendar)',
+      description:
+        'Every day of the requested month with a derived state ' +
+        '(open / partial / closed / no_service), the full departures (exact ' +
+        'booked counts - management view), the day’s exceptions, and whether ' +
+        'the weekly pattern covers the date. Closing a day from the grid is ' +
+        'the ordinary POST /availability/exceptions CLOSE_DATE write; ' +
+        'reopening deletes that exception.',
+    }),
+    ApiOkResponse({ type: ManageCalendarDayDto, isArray: true }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
     authErrors(),
   );
 

@@ -25,7 +25,6 @@ export function CancelRequestCard({
     displayRef,
     refundLabel,
     thankYouHref,
-    sessionToken,
 }: {
     dict: CancelDict;
     publicRef: string;
@@ -36,11 +35,6 @@ export function CancelRequestCard({
     refundLabel: string | null;
     /** "Keep my booking" returns the traveller to their TYP. */
     thankYouHref: string;
-    /**
-     * Traveler session proving booking ownership (read from the HttpOnly
-     * cookie by the server page; the backend 401s the request without it).
-     */
-    sessionToken: string;
 }) {
     const [state, setState] = useState<SubmitState>('idle');
     const [reason, setReason] = useState('');
@@ -49,7 +43,7 @@ export function CancelRequestCard({
         if (state === 'sending') return;
         setState('sending');
         try {
-            await requestBookingCancellation(publicRef, reason, sessionToken);
+            await requestBookingCancellation(publicRef, reason);
             setState('sent');
         } catch {
             // Covers the hard throttle (429) and transport errors alike - the
@@ -74,10 +68,13 @@ export function CancelRequestCard({
                         <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                             {dict.sentBody}
                         </span>
+                        {/* After the request is in there is nothing left to
+                            "keep" - the way forward is watching the status on
+                            the thank-you page. */}
                         <Link
                             href={thankYouHref}
                             className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
-                            {dict.keep}
+                            {dict.seeStatus}
                         </Link>
                     </motion.div>
                 ) : (

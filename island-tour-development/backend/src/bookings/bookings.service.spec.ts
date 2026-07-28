@@ -32,6 +32,7 @@ import {
   CancellationRefund,
   CancelledBy,
   PaymentModel,
+  Permission,
   PickupModel,
   Prisma,
   PricingModel,
@@ -40,7 +41,13 @@ import {
   WholeUnitType,
 } from '@prisma/client';
 import { BookingsService } from './bookings.service';
-import { issueTravelerSession } from './traveler-session.util';
+import {
+  hashLoginCode,
+  issueBookingSession,
+  issueTravelerHistorySession,
+  issueTravelerSession,
+  verifyTravelerSession,
+} from './traveler-session.util';
 
 // traveler-session.util signs with TRAVELER_SESSION_SECRET (falling back to
 // BETTER_AUTH_SECRET) - give the suite a deterministic one.
@@ -119,6 +126,16 @@ function mockPrisma() {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       // executeRefund's failed-attempt counter (idempotency-key advance).
       count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    // Traveller account OTP login codes. Default = no live code, so a verify
+    // without an explicit row is the "nothing outstanding" 401 path.
+    travelerLoginCode: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };
   p.$transaction = jest.fn((arg: unknown) =>
@@ -322,6 +339,7 @@ describe('BookingsService', () => {
   let customerProvisioning: any;
   let stripe: any;
   let mollie: any;
+  let staffPermissions: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -376,6 +394,13 @@ describe('BookingsService', () => {
         .fn()
         .mockResolvedValue({ id: 're_mollie_1', status: 'pending' }),
     };
+    // Conflict #7: full financial view by default; individual tests drop
+    // VIEW_BOOKING_FINANCIALS to assert the manifest projection.
+    staffPermissions = {
+      getEffectivePermissions: jest
+        .fn()
+        .mockResolvedValue([Permission.VIEW_BOOKING_FINANCIALS]),
+    };
     svc = new BookingsService(
       prisma,
       mail,
@@ -388,6 +413,7 @@ describe('BookingsService', () => {
       customerProvisioning,
       stripe,
       mollie,
+      staffPermissions,
     );
   });
 
@@ -773,7 +799,11 @@ describe('BookingsService', () => {
       expect(res.tourCurrency).toBe('EUR');
       expect(res.sourceTotalRetail).toBe(res.totalRetail);
       expect(res.sourceFxRateToBooking).toBe('1');
-      expect(res.commissionRate).toBe('0.2');
+      // The commission snapshot never rides the PUBLIC quote response - an
+      // anonymous caller must not learn the platform's take (it is still
+      // computed and stored on the booking at reserve).
+      expect(res.commissionRate).toBeNull();
+      expect(res.commissionAmount).toBeNull();
       expect(res.lines).toEqual([
         {
           kind: 'participant',
@@ -1845,6 +1875,69 @@ describe('BookingsService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
+    // Conflict #2 (access-roles matrix): cancelling a confirmed booking
+    // executes a refund, so even the OWNING operator is blocked - they report,
+    // the admin executes.
+    it('403s the OWNING operator on a confirmed booking (report, never execute)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.CONFIRMED, operatorId: 'op1' }),
+      );
+      m.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.cancel('b1', {}, { id: 'user-9', role: Role.TOUR_OPERATOR }),
+      ).rejects.toThrow('Report cancellation');
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('stamps cancelledBy OPERATOR + a FULL refund when the admin executes a reported cancellation', async () => {
+      // Tour date long PAST: the traveler window verdict would be NONE, but an
+      // operator-reported cancellation must refund FULL regardless (enforced
+      // server-side - never trust the client to send force:true).
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          localDate: new Date('2020-06-05T00:00:00.000Z'),
+          utcOperatorCancellationReportedAt: new Date(
+            '2020-06-01T00:00:00.000Z',
+          ),
+          operatorCancellationReason: 'Engine failure',
+        }),
+      );
+      m.tour.findUnique.mockResolvedValue({
+        cancellationHours: 48,
+        timeZone: 'America/Curacao',
+      });
+      m.departure.findUnique.mockResolvedValue({
+        capacity: 10,
+        bookedCount: 2,
+        status: 'OPEN',
+        soldOutAt: null,
+      });
+      m.booking.update.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CANCELLED,
+          cancellationRefund: 'FULL',
+          cancelledBy: CancelledBy.OPERATOR,
+        }),
+      );
+
+      await svc.cancel('b1', {}, { id: 'admin-1', role: Role.ADMIN });
+
+      // The cancellation ORIGINATED with the operator: the eligibility metric
+      // (cancellation_rate_90d counts OPERATOR rows) must attribute it to
+      // them, not to the admin pressing the button. The operator's stated
+      // reason rides along when the admin gives none.
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            cancelledBy: CancelledBy.OPERATOR,
+            cancellationReason: 'Engine failure',
+            cancellationRefund: 'FULL',
+          }),
+        }),
+      );
+    });
+
     // The idempotent CANCELLED early-return must sit BELOW the gate, or a raw
     // id alone hands an anonymous caller the whole booking payload.
     it('401s an anonymous re-cancel of a booking that was cancelled after confirming', async () => {
@@ -1944,6 +2037,106 @@ describe('BookingsService', () => {
         role: Role.TOUR_OPERATOR,
       });
       expect(res.id).toBe('b1');
+    });
+
+    it('withholds commission from the owning OPERATOR (platform-internal fields)', async () => {
+      // Access-roles matrix, Bookings notes: commission fields are never
+      // rendered in the operator portal - only platform-wide roles see them.
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ operatorId: 'op1' }),
+      );
+      m.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      const res = await svc.getById('b1', {
+        id: 'u1',
+        role: Role.TOUR_OPERATOR,
+      });
+      expect(res.commissionRate).toBeNull();
+      expect(res.commissionAmount).toBeNull();
+    });
+
+    it('keeps commission for an ADMIN read', async () => {
+      m.booking.findUnique.mockResolvedValue(fakeBooking());
+      const res = await svc.getById('b1', { id: 'a1', role: Role.ADMIN });
+      expect(res.commissionRate).not.toBeNull();
+      expect(res.commissionAmount).not.toBeNull();
+    });
+
+    // Conflict #7: VIEW_BOOKINGS without VIEW_BOOKING_FINANCIALS = manifest.
+    it('returns the MANIFEST projection to a seat without VIEW_BOOKING_FINANCIALS', async () => {
+      staffPermissions.getEffectivePermissions.mockResolvedValue([
+        Permission.VIEW_BOOKINGS,
+      ]);
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ operatorId: 'op1' }),
+      );
+      m.operator.findUnique.mockResolvedValue({ id: 'op1' });
+
+      const res: any = await svc.getById('b1', {
+        id: 'u1',
+        role: Role.TOUR_OPERATOR,
+      });
+
+      // Money is gone...
+      expect(res.totalRetail).toBeNull();
+      expect(res.depositAmount).toBeNull();
+      expect(res.balanceAmount).toBeNull();
+      expect(res.commissionAmount).toBeNull();
+      // ...including the PER-TRAVELER prices (the row total is not the only
+      // money on the payload).
+      expect(res.unitItems).toHaveLength(2);
+      for (const item of res.unitItems) expect(item.priceRetail).toBeNull();
+      // The raw settled refund verdict is refund state too.
+      expect(res.cancellationRefund).toBeNull();
+      // ...but the manifest facts a guide needs on the day remain.
+      expect(res.id).toBe('b1');
+      expect(res.displayRef).toBe('IT-2030-AAAA');
+      expect(res.localDate).toBe('2030-06-05');
+      expect(res.startTime).toBe('09:00');
+      expect(res.unitItems[0].ageBandId).toBe('adult');
+    });
+
+    it('keeps the amounts for a seat that HOLDS VIEW_BOOKING_FINANCIALS', async () => {
+      staffPermissions.getEffectivePermissions.mockResolvedValue([
+        Permission.VIEW_BOOKINGS,
+        Permission.VIEW_BOOKING_FINANCIALS,
+      ]);
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ operatorId: 'op1' }),
+      );
+      m.operator.findUnique.mockResolvedValue({ id: 'op1' });
+
+      const res: any = await svc.getById('b1', {
+        id: 'u1',
+        role: Role.TOUR_OPERATOR,
+      });
+      expect(res.totalRetail).toBe('159.98');
+    });
+
+    it('always shows a traveler the money on their OWN booking', async () => {
+      // The manifest rule is about seats reading other people's bookings.
+      // Role.USER holds no VIEW_BOOKING_FINANCIALS, and granting it would
+      // leak through the customer-hat union onto staff seats - so ownership
+      // of the row is what decides here.
+      staffPermissions.getEffectivePermissions.mockResolvedValue([
+        Permission.VIEW_BOOKINGS,
+      ]);
+      m.booking.findUnique.mockResolvedValue(fakeBooking({ userId: 'u9' }));
+
+      const res: any = await svc.getById('b1', {
+        id: 'u9',
+        role: Role.USER,
+      });
+      expect(res.totalRetail).toBe('159.98');
+      expect(res.depositAmount).toBe('31.99');
+      // Commission stays platform-internal even on your own receipt.
+      expect(res.commissionAmount).toBeNull();
+    });
+
+    it('withholds commission from the customer (Role.USER) read', async () => {
+      m.booking.findUnique.mockResolvedValue(fakeBooking({ userId: 'u9' }));
+      const res = await svc.getById('b1', { id: 'u9', role: Role.USER });
+      expect(res.commissionRate).toBeNull();
+      expect(res.commissionAmount).toBeNull();
     });
 
     it('forbids an operator who does not own the booking', async () => {
@@ -3142,158 +3335,569 @@ describe('BookingsService', () => {
     });
   });
 
-  describe('requestCancellationAsCustomer (dashboard /account)', () => {
+  // Conflict #2: operators REPORT cancellations; only an admin executes them.
+  describe('reportCancellation / dismissCancellationReport (conflict #2)', () => {
     const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    const op = { id: 'user-9', role: Role.TOUR_OPERATOR };
+    const admin = { id: 'admin-1', role: Role.ADMIN };
 
-    const owned = (over: Record<string, unknown> = {}) =>
+    const confirmed = (over: Record<string, unknown> = {}) =>
       fakeBooking({
         status: BookingStatus.CONFIRMED,
         contactEmail: 'guest@example.test',
-        utcCancellationRequestedAt: null,
-        userId: 'u1',
-        tour: { name: 'Klein Curacao Day Trip' },
+        contactFullName: 'Guest Person',
+        utcOperatorCancellationReportedAt: null,
+        operatorCancellationReason: null,
         ...over,
       });
 
     beforeEach(() => {
       process.env.ADMIN_EMAIL = 'admin@islandtours.test';
-      m.booking.update.mockResolvedValue({});
+      // Serves BOTH lookups: resolveOperatorId (by userId) and the company
+      // name read (by id).
+      m.operator.findUnique.mockResolvedValue({
+        id: 'op1',
+        companyInfo: { companyName: 'Blue Boats' },
+      });
+      m.tour.findUnique.mockResolvedValue({ name: 'Klein Curacao Day Trip' });
     });
 
     afterAll(() => {
       process.env.ADMIN_EMAIL = ORIGINAL_ADMIN_EMAIL;
     });
 
-    it('submits for the owning customer - same downstream flow as the TYP route', async () => {
-      m.booking.findUnique.mockResolvedValue(owned());
-      await expect(
-        svc.requestCancellationAsCustomer('b1', { id: 'u1' }, 'plans changed'),
-      ).resolves.toEqual({ requested: true });
+    it('stamps the report + reason and emails the admin as an OPERATOR report', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      m.booking.update.mockResolvedValue(
+        confirmed({
+          utcOperatorCancellationReportedAt: new Date(),
+          operatorCancellationReason: 'Engine failure',
+        }),
+      );
+
+      await svc.reportCancellation('b1', { reason: 'Engine failure' }, op);
+
+      // Race-safe conditional stamp: only the FIRST report matches (the
+      // where pins utcOperatorCancellationReportedAt: null).
+      expect(m.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'b1', utcOperatorCancellationReportedAt: null },
+          data: {
+            utcOperatorCancellationReportedAt: expect.any(Date),
+            operatorCancellationReason: 'Engine failure',
+          },
+        }),
+      );
       expect(mail.sendCancellationRequestEmail).toHaveBeenCalledTimes(1);
+      const [to, details] = mail.sendCancellationRequestEmail.mock.calls[0];
+      expect(to).toBe('admin@islandtours.test');
+      expect(details.source).toBe('operator');
+      expect(details.reporterName).toBe('Blue Boats');
+      expect(details.reason).toBe('Engine failure');
+      expect(details.displayRef).toBe('IT-2030-AAAA');
     });
 
-    it('404s (never 403s) a booking owned by someone else - no existence oracle', async () => {
-      m.booking.findUnique.mockResolvedValue(owned({ userId: 'other-user' }));
-      await expect(
-        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+    it('sends NO email when the conditional stamp loses a concurrent race', async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      m.booking.updateMany.mockResolvedValueOnce({ count: 0 });
+      const res = await svc.reportCancellation('b1', {}, op);
+      expect(res.id).toBe('b1');
       expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
     });
 
-    it('404s an unlinked (guest) booking even for a logged-in customer', async () => {
-      m.booking.findUnique.mockResolvedValue(owned({ userId: null }));
-      await expect(
-        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-      ).rejects.toBeInstanceOf(NotFoundException);
+    it('is idempotent: a repeat report neither re-stamps nor re-emails', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          utcOperatorCancellationReportedAt: new Date(
+            '2030-06-01T00:00:00.000Z',
+          ),
+        }),
+      );
+      const res = await svc.reportCancellation('b1', {}, op);
+      expect(res.id).toBe('b1');
+      expect(m.booking.updateMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            utcOperatorCancellationReportedAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
     });
 
-    it('409s a non-confirmed booking through the shared core', async () => {
+    it("404s an operator reporting on ANOTHER operator's booking", async () => {
+      m.booking.findUnique.mockResolvedValue(confirmed({ operatorId: 'op1' }));
+      m.operator.findUnique.mockResolvedValue({ id: 'op-other' });
+      await expect(svc.reportCancellation('b1', {}, op)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+    });
+
+    it('409s a report on a non-CONFIRMED booking', async () => {
       m.booking.findUnique.mockResolvedValue(
-        owned({ status: BookingStatus.CANCELLED }),
+        confirmed({ status: BookingStatus.ON_HOLD }),
+      );
+      await expect(svc.reportCancellation('b1', {}, op)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('503s when ADMIN_EMAIL is not configured (the report MUST reach a human)', async () => {
+      delete process.env.ADMIN_EMAIL;
+      m.booking.findUnique.mockResolvedValue(confirmed());
+      await expect(svc.reportCancellation('b1', {}, op)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('dismiss clears the stamp AND the stored reason', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          utcOperatorCancellationReportedAt: new Date(
+            '2030-06-01T00:00:00.000Z',
+          ),
+          operatorCancellationReason: 'Engine failure',
+        }),
+      );
+      m.booking.update.mockResolvedValue(confirmed());
+
+      await svc.dismissCancellationReport('b1', admin);
+
+      expect(m.booking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            utcOperatorCancellationReportedAt: null,
+            operatorCancellationReason: null,
+          },
+        }),
+      );
+    });
+
+    it('409s a dismiss once the booking is already cancelled', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          status: BookingStatus.CANCELLED,
+          utcOperatorCancellationReportedAt: new Date(
+            '2030-06-01T00:00:00.000Z',
+          ),
+        }),
       );
       await expect(
-        svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
+        svc.dismissCancellationReport('b1', admin),
       ).rejects.toBeInstanceOf(ConflictException);
     });
+  });
 
-    // You cannot ask to cancel a trip you have already taken. The start time
-    // is a LOCAL wall clock, so these cases turn on the timezone snapshot.
-    describe('departed trips', () => {
-      const PAST = new Date('2020-01-01T10:00:00');
-      const FUTURE = new Date('2999-01-01T10:00:00');
+  // ══════════════════════════════════════════════════════════════════════
+  // Traveller account area (/{locale}/traveller)
+  // ══════════════════════════════════════════════════════════════════════
+  // The whole point of this surface is that it needs a STRONGER credential
+  // than the `/bookings` pair lookup: one forwarded confirmation email must
+  // not open someone's entire booking + payment history.
+  describe('traveller account login (OTP)', () => {
+    const EMAIL = 'guest@example.test';
 
-      it('409s a first request once the trip has started', async () => {
-        m.booking.findUnique.mockResolvedValue(
-          owned({
-            tourStartDateTime: PAST,
-            tourTimeZone: 'America/Curacao',
-          }),
-        );
+    /** The row the service would have written for `code`. */
+    function liveCodeRow(code: string, over: Record<string, unknown> = {}) {
+      return {
+        id: 'code1',
+        email: EMAIL,
+        codeHash: hashLoginCode(EMAIL, code),
+        expiresAt: new Date(Date.now() + 60_000),
+        attempts: 0,
+        consumedAt: null,
+        createdAt: new Date(),
+        ...over,
+      };
+    }
+
+    function bookingForCodeEmail() {
+      return {
+        displayRef: 'IT-2030-AAAA',
+        // Stored casing differs from the caller's input on purpose.
+        contactEmail: 'Guest@Example.TEST',
+        customerLocale: null,
+        localDate: day('2030-06-05'),
+        tourStartDateTime: null,
+        startTime: '09:00',
+        tour: { name: 'Klein Curacao' },
+      };
+    }
+
+    describe('requestTravellerLoginCode', () => {
+      it('acks without creating or mailing anything for an unknown email', async () => {
+        m.booking.findFirst.mockResolvedValue(null);
+
         await expect(
-          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).rejects.toBeInstanceOf(ConflictException);
-        expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+          svc.requestTravellerLoginCode({ email: 'nobody@example.test' }),
+        ).resolves.toEqual({ sent: true });
+
+        expect(m.travelerLoginCode.create).not.toHaveBeenCalled();
+        expect(mail.sendBookingNoticeEmail).not.toHaveBeenCalled();
       });
 
-      it('allows a request for a trip still in the future', async () => {
-        m.booking.findUnique.mockResolvedValue(
-          owned({
-            tourStartDateTime: FUTURE,
-            tourTimeZone: 'America/Curacao',
-          }),
+      it('caps per target email (1/min, 5/day) before touching the database', async () => {
+        m.booking.findFirst.mockResolvedValue(bookingForCodeEmail());
+
+        await svc.requestTravellerLoginCode({ email: EMAIL });
+
+        expect(targetLimiter.consume).toHaveBeenCalledWith(
+          'traveller-otp',
+          EMAIL,
+          [
+            { max: 1, windowMs: 60 * 1000 },
+            { max: 5, windowMs: 24 * 60 * 60 * 1000 },
+          ],
         );
-        await expect(
-          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).resolves.toEqual({ requested: true });
       });
 
-      // Legacy rows: a wall clock with no zone is not an instant, so we fall
-      // back to the travel DAY and only block once it has ended everywhere.
-      it('allows a request when the start has no timezone and the day is not long past', async () => {
-        m.booking.findUnique.mockResolvedValue(
-          owned({
-            tourStartDateTime: PAST,
-            tourTimeZone: null,
-            localDate: new Date(Date.now() - 2 * 3_600_000),
-          }),
-        );
-        await expect(
-          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).resolves.toEqual({ requested: true });
+      it('stores only a keyed hash - never the code itself - and mails the stored address', async () => {
+        m.booking.findFirst.mockResolvedValue(bookingForCodeEmail());
+
+        await svc.requestTravellerLoginCode({ email: ' GUEST@example.test ' });
+
+        const row = m.travelerLoginCode.create.mock.calls[0][0].data;
+        expect(row.email).toBe(EMAIL); // normalized
+        expect(row.codeHash).toMatch(/^[0-9a-f]{64}$/);
+        expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+        // The mailed code must hash to exactly what was stored, and must not
+        // be recoverable from the row.
+        const [to, subject, ctx] = mail.sendBookingNoticeEmail.mock.calls[0];
+        const code = /\b(\d{6})\b/.exec(ctx.noticeParagraphs.join(' '))![1];
+        expect(hashLoginCode(EMAIL, code)).toBe(row.codeHash);
+        expect(row.codeHash).not.toContain(code);
+        // Recipient is the STORED address, never the caller's casing/input.
+        expect(to).toBe('Guest@Example.TEST');
+        expect(subject).toContain('login code');
+        expect(ctx.ctaUrl).toMatch(/\/traveller$/);
       });
 
-      it('409s a zoneless booking whose travel day ended everywhere', async () => {
-        m.booking.findUnique.mockResolvedValue(
-          owned({
-            tourStartDateTime: null,
-            tourTimeZone: null,
-            localDate: new Date(Date.now() - 5 * 24 * 3_600_000),
-          }),
-        );
+      it('invalidates any previous unconsumed code for that email', async () => {
+        m.booking.findFirst.mockResolvedValue(bookingForCodeEmail());
+
+        await svc.requestTravellerLoginCode({ email: EMAIL });
+
+        expect(m.travelerLoginCode.updateMany).toHaveBeenCalledWith({
+          where: { email: EMAIL, consumedAt: null },
+          data: { consumedAt: expect.any(Date) },
+        });
+      });
+    });
+
+    describe('verifyTravellerLoginCode', () => {
+      it('rejects with the SAME generic 401 when no live code exists', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(null);
         await expect(
-          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).rejects.toBeInstanceOf(ConflictException);
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '123456' }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
       });
 
-      // A departed trip that ALREADY has a request is refused like any other
-      // repeat: the stamp is set, so the request is safely on file and an
-      // admin is working it. Re-submitting achieves nothing except re-sending
-      // three emails, and the traveller is told exactly that.
-      it('409s a re-submit on a departed trip already requested', async () => {
-        m.booking.findUnique.mockResolvedValue(
-          owned({
-            tourStartDateTime: PAST,
-            tourTimeZone: 'America/Curacao',
-            utcCancellationRequestedAt: new Date('2020-01-01T00:00:00Z'),
-          }),
-        );
+      it('counts the attempt BEFORE comparing, so parallel guesses cannot race extra tries', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('111111'));
+
         await expect(
-          svc.requestCancellationAsCustomer('b1', { id: 'u1' }),
-        ).rejects.toBeInstanceOf(ConflictException);
-        expect(mail.sendCancellationRequestEmail).not.toHaveBeenCalled();
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '999999' }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+
+        expect(m.travelerLoginCode.update).toHaveBeenCalledWith({
+          where: { id: 'code1' },
+          data: { attempts: { increment: 1 } },
+        });
+      });
+
+      it('burns the code once the attempt budget is spent', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(
+          liveCodeRow('111111', { attempts: 5 }),
+        );
+
+        await expect(
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '111111' }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+
+        // Consumed, not merely refused - a spent code is dead even if the
+        // right digits arrive next.
+        expect(m.travelerLoginCode.updateMany).toHaveBeenCalledWith({
+          where: { id: 'code1', consumedAt: null },
+          data: { consumedAt: expect.any(Date) },
+        });
+      });
+
+      it('mints a HISTORY session on the right code and consumes it', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('424242'));
+        m.travelerLoginCode.updateMany.mockResolvedValue({ count: 1 });
+
+        const { sessionToken } = await svc.verifyTravellerLoginCode({
+          email: ' Guest@Example.TEST ',
+          code: '424242',
+        });
+
+        expect(verifyTravelerSession(sessionToken)).toEqual({
+          email: EMAIL,
+          bookingId: null,
+          history: true,
+        });
+        // Redemption is a GUARDED write, not a blind update.
+        expect(m.travelerLoginCode.updateMany).toHaveBeenLastCalledWith({
+          where: { id: 'code1', consumedAt: null },
+          data: { consumedAt: expect.any(Date) },
+        });
+      });
+
+      // Two tabs submitting the same correct code at once: the read is a
+      // snapshot, so only the guarded write can decide who actually redeemed.
+      it('issues NO session to the loser of a concurrent redemption race', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('424242'));
+        m.travelerLoginCode.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '424242' }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
       });
     });
   });
 
-  describe('getCustomerSummary', () => {
-    it('nets refunds off per-currency spend and drops zeroed currencies', async () => {
-      m.booking.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
-      m.payment.groupBy
-        .mockResolvedValueOnce([
-          { currency: 'USD', _sum: { amount: D('300.00') } },
-          { currency: 'EUR', _sum: { amount: D('80.00') } },
-        ])
-        .mockResolvedValueOnce([
-          { currency: 'USD', _sum: { amount: D('50.00') } },
-          { currency: 'EUR', _sum: { amount: D('80.00') } },
-        ]);
+  describe('traveller account reads', () => {
+    const EMAIL = 'guest@example.test';
+    const historyToken = () => issueTravelerHistorySession(EMAIL);
 
-      const res = await svc.getCustomerSummary({ id: 'u1' });
+    function travellerRow(over: Record<string, unknown> = {}) {
+      return fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: EMAIL,
+        contactFullName: 'Jane Doe',
+        tourStartDateTime: new Date('2030-06-05T13:00:00.000Z'),
+        tourEndDateTime: null,
+        utcCancellationRequestedAt: null,
+        utcNonPaymentReportedAt: null,
+        utcForfeitedAt: null,
+        utcOperatorCancellationReportedAt: null,
+        operatorCancellationReason: null,
+        createdAt: new Date('2030-01-01T00:00:00.000Z'),
+        tour: {
+          name: 'Klein Curacao',
+          cancellationHours: 48,
+          destination: { slug: 'curacao' },
+        },
+        payments: [],
+        settlement: null,
+        review: null,
+        reviewInvitation: null,
+        ...over,
+      });
+    }
 
-      expect(res.bookingsCount).toBe(3);
-      expect(res.upcomingCount).toBe(1);
-      // USD 300 paid - 50 refunded = 250; EUR nets to zero and disappears.
-      expect(res.totalSpend).toEqual([{ currency: 'USD', amount: '250' }]);
+    // The security property this whole feature rests on: a weaker token that
+    // is perfectly VALID elsewhere must not open the account surface.
+    describe('session scope gate', () => {
+      it.each([
+        ['no token at all', () => undefined],
+        ['a `/bookings` pair-login token', () => issueTravelerSession(EMAIL)],
+        ['a checkout booking-scoped token', () => issueBookingSession('b1')],
+        ['a garbage token', () => 'v1.nonsense.nonsense'],
+      ])('rejects %s on every account read', async (_label, token) => {
+        const t = token();
+        await expect(svc.listTravellerBookings({}, t)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+        await expect(svc.getTravellerSummary(t)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+        await expect(svc.listTravellerPayments({}, t)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+      });
+    });
+
+    describe('listTravellerBookings', () => {
+      it('scopes by contact email case-insensitively (covers pre-account guest bookings)', async () => {
+        m.booking.count.mockResolvedValue(1);
+        m.booking.findMany.mockResolvedValue([travellerRow()]);
+
+        await svc.listTravellerBookings({}, historyToken());
+
+        const where = m.booking.findMany.mock.calls[0][0].where;
+        expect(where).toEqual({
+          contactEmail: { equals: EMAIL, mode: 'insensitive' },
+        });
+        // NEVER userId - guests who booked before any account existed must
+        // still see their trips.
+        expect(where.userId).toBeUndefined();
+      });
+
+      it('withholds operator/ops/PII context and commission from the row', async () => {
+        m.booking.count.mockResolvedValue(1);
+        m.booking.findMany.mockResolvedValue([travellerRow()]);
+
+        const [row] = (await svc.listTravellerBookings({}, historyToken()))
+          .data as Record<string, unknown>[];
+
+        for (const withheld of [
+          'settlementStatus',
+          'settlementMethod',
+          'settlementHeld',
+          'contactEmail',
+          'contactFullName',
+          'utcNonPaymentReportedAt',
+          'utcForfeitedAt',
+          'utcOperatorCancellationReportedAt',
+          'operatorCancellationReason',
+        ]) {
+          expect(row).not.toHaveProperty(withheld);
+        }
+        // Nulled (not omitted) so the payload shape never varies by caller.
+        expect(row.commissionRate).toBeNull();
+        expect(row.commissionAmount).toBeNull();
+      });
+
+      it('keeps what the cards render: money, verdicts, deep-link slug and review state', async () => {
+        m.booking.count.mockResolvedValue(1);
+        m.booking.findMany.mockResolvedValue([travellerRow()]);
+
+        const [row] = (await svc.listTravellerBookings({}, historyToken()))
+          .data as Record<string, unknown>[];
+
+        expect(row).toMatchObject({
+          displayRef: 'IT-2030-AAAA',
+          publicRef: 'p1',
+          tourName: 'Klein Curacao',
+          partySize: 2,
+          // The manage deep-link is /{destinationSlug}/thank-you/{publicRef}.
+          destinationSlug: 'curacao',
+          paymentStatus: 'UNPAID',
+          paidAmount: '0',
+          canRequestCancellation: true,
+          cancellationBlockedReason: null,
+        });
+        expect(row.review).toEqual({
+          reviewed: false,
+          canReview: false,
+          reviewToken: null,
+        });
+      });
+
+      it('caps the page size the client can ask for', async () => {
+        m.booking.count.mockResolvedValue(0);
+        m.booking.findMany.mockResolvedValue([]);
+
+        const res = await svc.listTravellerBookings(
+          { page: 2, limit: 5 },
+          historyToken(),
+        );
+
+        expect(m.booking.findMany.mock.calls[0][0]).toMatchObject({
+          skip: 5,
+          take: 5,
+        });
+        expect(res).toMatchObject({ page: 2, limit: 5 });
+      });
+    });
+
+    describe('getTravellerSummary', () => {
+      it('runs the same ledger math as the dashboard summary, scoped by email', async () => {
+        m.booking.count.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
+        m.payment.groupBy
+          .mockResolvedValueOnce([
+            { currency: 'EUR', _sum: { amount: D('200.00') } },
+          ])
+          .mockResolvedValueOnce([
+            { currency: 'EUR', _sum: { amount: D('50.00') } },
+          ]);
+
+        const res = await svc.getTravellerSummary(historyToken());
+
+        expect(res).toEqual({
+          bookingsCount: 2,
+          upcomingCount: 1,
+          totalSpend: [{ currency: 'EUR', amount: '150' }],
+        });
+        expect(m.payment.groupBy.mock.calls[0][0].where).toMatchObject({
+          booking: { contactEmail: { equals: EMAIL, mode: 'insensitive' } },
+        });
+      });
+
+      // A settled refund flips BOTH the refund row and the original charge to
+      // REFUNDED - counting only SUCCEEDED would drop the pair, and when the
+      // two legs settle out of lockstep (reconcileRefundRow skips the charge
+      // flip on a row with no intentId) it would bill the traveller for money
+      // they already got back.
+      it('counts REFUNDED rows on both legs, like the per-row payment badge', async () => {
+        m.booking.count.mockResolvedValue(0);
+        m.payment.groupBy.mockResolvedValue([]);
+
+        await svc.getTravellerSummary(historyToken());
+
+        for (const call of m.payment.groupBy.mock.calls) {
+          expect(call[0].where.status).toEqual({
+            in: ['SUCCEEDED', 'REFUNDED'],
+          });
+        }
+      });
+    });
+
+    describe('listTravellerPayments', () => {
+      const paymentRow = {
+        id: 'pay1',
+        kind: 'DEPOSIT',
+        status: 'SUCCEEDED',
+        provider: 'STRIPE',
+        methodType: 'card',
+        amount: D('31.99'),
+        currency: 'EUR',
+        createdAt: new Date('2030-01-01T10:00:00.000Z'),
+        booking: {
+          displayRef: 'IT-2030-AAAA',
+          publicRef: 'p1',
+          localDate: day('2030-06-05'),
+          tour: { name: 'Klein Curacao', destination: { slug: 'curacao' } },
+        },
+      };
+
+      it('returns a traveler-safe row and nothing else', async () => {
+        m.payment.count.mockResolvedValue(1);
+        m.payment.findMany.mockResolvedValue([paymentRow]);
+
+        const [row] = (await svc.listTravellerPayments({}, historyToken()))
+          .data as Record<string, unknown>[];
+
+        expect(row).toEqual({
+          id: 'pay1',
+          kind: 'DEPOSIT',
+          status: 'SUCCEEDED',
+          provider: 'STRIPE',
+          methodType: 'card',
+          amount: '31.99',
+          currency: 'EUR',
+          createdAt: '2030-01-01T10:00:00.000Z',
+          bookingDisplayRef: 'IT-2030-AAAA',
+          bookingPublicRef: 'p1',
+          destinationSlug: 'curacao',
+          tourName: 'Klein Curacao',
+          bookingLocalDate: '2030-06-05',
+        });
+        // Payout internals and provider ids are operator/platform context.
+        for (const withheld of [
+          'intentId',
+          'chargeId',
+          'contactFullName',
+          'settlementStatus',
+        ]) {
+          expect(row).not.toHaveProperty(withheld);
+        }
+      });
+
+      it('scopes to the session email through the booking relation', async () => {
+        m.payment.count.mockResolvedValue(0);
+        m.payment.findMany.mockResolvedValue([]);
+
+        await svc.listTravellerPayments({}, historyToken());
+
+        expect(m.payment.findMany.mock.calls[0][0].where).toEqual({
+          booking: { contactEmail: { equals: EMAIL, mode: 'insensitive' } },
+        });
+      });
     });
   });
 });

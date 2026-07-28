@@ -17,6 +17,7 @@ import {
   PricingModel,
   RedemptionMethod,
   TierKey,
+  TourApprovalStatus,
   TourBookingType,
   TourStatus,
   WholeUnitType,
@@ -280,6 +281,20 @@ export class TourResponseDto {
   lastBookedAt!: Date | null;
   @ApiProperty({ example: false }) isSponsored!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
+  @ApiProperty({
+    enum: TourApprovalStatus,
+    example: TourApprovalStatus.NOT_SUBMITTED,
+    description:
+      'Content-review workflow (conflict #1): operators submit-for-review, the platform approves; publish requires APPROVED.',
+  })
+  approvalStatus!: TourApprovalStatus;
+  @ApiPropertyOptional({ example: null }) submittedAt!: Date | null;
+  @ApiPropertyOptional({
+    example: null,
+    nullable: true,
+    description: "The admin's approve/reject note (cleared on re-submit).",
+  })
+  reviewNote!: string | null;
   @ApiPropertyOptional({ example: null }) publishedAt!: Date | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
@@ -1171,6 +1186,29 @@ export class CreateTourDto {
   @IsString()
   @MaxLength(60)
   breadcrumbLabel?: string;
+}
+
+export class ApproveTourDto {
+  @ApiPropertyOptional({
+    example: 'Great photos - approved.',
+    description: 'Optional note stored on the tour (visible to the operator).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
+
+export class RejectTourDto {
+  @ApiProperty({
+    example:
+      'The hero photo is blurry and the overview is one sentence - please expand it.',
+    description: 'REQUIRED actionable note - the operator fixes and resubmits.',
+  })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(1000)
+  note!: string;
 }
 
 export class UpdateTourDto {

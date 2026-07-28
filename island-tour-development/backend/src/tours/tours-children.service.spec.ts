@@ -22,6 +22,7 @@
 
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
 import {
   BadRequestException,
   ConflictException,
@@ -396,6 +397,13 @@ describe('TourChildrenService', () => {
         {
           provide: ContentTranslationEnqueuer,
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
+        {
+          provide: TranslationClearMarkService,
+          useValue: {
+            mark: jest.fn().mockResolvedValue(undefined),
+            markForPageType: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -2676,6 +2684,73 @@ describe('TourChildrenService', () => {
         }),
       );
       expect(result).toEqual(translation);
+    });
+  });
+
+  describe('upsertLocationTranslation - per-field clears', () => {
+    it('clears ONLY the short description, keeping the title', async () => {
+      // The bug this covers: clearing one field used to delete the whole row,
+      // so emptying an itinerary stop's description also wiped its title.
+      prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
+      prisma.tourLocationTranslation.upsert.mockResolvedValue({});
+
+      await service.upsertLocationTranslation(
+        'tour-1',
+        'loc-1',
+        Locale.nl,
+        { title: 'Hoofdkade', shortDescription: '  ' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tourLocationTranslation.delete).not.toHaveBeenCalled();
+      expect(prisma.tourLocationTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            title: 'Hoofdkade',
+            shortDescription: '',
+          }),
+        }),
+      );
+    });
+
+    it('clears the title too - the row still survives to hold the pair', async () => {
+      prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
+      prisma.tourLocationTranslation.upsert.mockResolvedValue({});
+
+      await service.upsertLocationTranslation(
+        'tour-1',
+        'loc-1',
+        Locale.nl,
+        { title: '', shortDescription: 'Blijft staan.' },
+        'user-1',
+        Role.TOUR_OPERATOR,
+      );
+
+      expect(prisma.tourLocationTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            title: '',
+            shortDescription: 'Blijft staan.',
+          }),
+        }),
+      );
+    });
+
+    it('refuses to blank the English title - it is the source', async () => {
+      prisma.tourLocation.findFirst.mockResolvedValue({ id: 'loc-1' });
+
+      await expect(
+        service.upsertLocationTranslation(
+          'tour-1',
+          'loc-1',
+          Locale.en,
+          { title: '' },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.tourLocationTranslation.upsert).not.toHaveBeenCalled();
     });
   });
 

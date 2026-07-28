@@ -11,7 +11,8 @@ that shares the provider layer:
 |---|---|---|---|---|
 | **Background** | Any English-source save (create or update) | **BullMQ queue** (async, debounced) | All 6 non-EN | Protect human edits |
 | **Manual** | "Translate with AI" button in the Translation Console | Synchronous HTTP | Current locale only | **Force** (after confirm dialog) |
-| **Inline** | Per-field AI icon inside a form field | Synchronous HTTP | Current locale, one field | Persists nothing (form-fill) |
+| **Inline** | Per-field AI icon inside a form field (console + collection editor) | Synchronous HTTP | Current locale, one field | Persists nothing (form-fill) |
+| **Section** | "Translate section" button on each console card header | Synchronous HTTP, **one batched request** | Current locale, one card | Persists nothing (form-fill) |
 | **Nightly sweep** | `NightlyJobsService.run()` | BullMQ (same queue) | All 6 | Protect human edits |
 
 ---
@@ -102,6 +103,18 @@ the form field (dirty) for review-then-Save-all - the exact semantics of "Copy f
 The human Save then stamps the row `isMachineTranslated: false`, so the AI-filled text is
 treated as human-approved from that point on.
 
+The **section path** (`SectionAiTranslateButton`, in every console card's header actions slot,
+2026-07-28) batches ONLY that card's fields into ONE
+`POST /content-translation/translate-fields` request (caps: 100 keys / 30k chars; the
+dashboard sends an index-keyed map and splits into sequential batches only above the cap).
+The backend forwards the whole map to `provider.translateFields` - the same battle-tested
+one-call path the background job uses (JSON mode, key-preserving validation, internal 12k
+chunking, 429-hint waits) - so one system prompt covers the whole card and terminology stays
+consistent across its fields. It replaced a sequential per-field `translate-text` loop that
+took 1-3s per field and died mid-card on rate limits. Like the per-field icon, it persists
+nothing - the human reviews and Saves. It sits between the per-field icon (one field) and
+the header button (whole locale, forced, persisted server-side).
+
 ## 4. Overwrite policy - who wins when
 
 The single most important contract in the system. Decided per unit × locale:
@@ -111,11 +124,96 @@ The single most important contract in the system. Decided per unit × locale:
 | Missing | Write, stamp machine + hash | Write, stamp machine + hash |
 | `isMachineTranslated: true`, `sourceHash` matches current EN | **Skip** (zero provider calls) | **Skip** (even under force) |
 | `isMachineTranslated: true`, hash stale | Re-translate, re-stamp | Re-translate, re-stamp |
-| `isMachineTranslated: false` (human) | **Field-level gap-fill only**: fill EMPTY fields, never touch non-empty ones, row **keeps** its human flag | **Full rewrite** + re-stamp machine |
+| `isMachineTranslated: false` (human) | **Skip the whole row**, empty fields included | **Full rewrite** + re-stamp machine |
+| Missing, but a **clear mark** exists for this (unit, locale) | **Skip** - the blank is deliberate | Write + re-stamp (the mark is then pruned) |
 
-Why gap-fill never re-stamps: the founder's flow is "clear a field → Save all → Translate"
-to refill just that field. If the gap-fill re-stamped the row machine, the next background
-refresh would clobber every hand-written field on it.
+**A human row is owned by the human (founder, 2026-07-28).** Clearing a field in the console
+and saving is a deliberate "show English here": the field stays empty and the public page
+falls back to English. Auto-translation only ever fills rows the human has not saved.
+
+This replaced a field-level **gap-fill** (empty field on a human row = "please translate
+this"), which existed for the old "clear → Save all → Translate" refill workflow. The
+per-field AI icon and the per-card "Translate section" button do that job directly now, and
+gap-fill made an intentional clear impossible - it silently refilled on the next English edit
+or nightly sweep. Do not reintroduce it. The console's "Translate with AI" button
+(`force=true`, behind a confirm dialog) remains the one path that overrides a human row.
+
+### How a "clear" is stored (this decides whether English shows)
+
+**Every field of every item clears independently, and the row always survives** (revised
+2026-07-28 after the first shape shipped). Clearing writes `null` where the column is nullable
+and `''` where it is NOT NULL; the row stays, carrying `isMachineTranslated: false` so the AI
+leaves it alone, and public reads fall back to English FOR THAT FIELD.
+
+| Surface | Column | Clearing sends |
+|---|---|---|
+| Core translations (tour/destination/category/collection/hub/homepage) | nullable | `null` in the wrapped `{ fields }` upsert |
+| Page content (`aboutText`, `metaTitle`, `metaDescription`) | nullable | `null` in the flat PATCH |
+| FAQ group, page-content sections, collection rationales, tour sub-entities (highlights, inclusions, exclusions, info items, itinerary, pickups), hub curation (picks, comparison groups/columns, content blocks) | **NOT NULL** | `''` in the normal upsert - `clearableField` trims it and the row is kept |
+
+English is refused everywhere (`clearableField` throws): it is what every other locale falls
+back TO, so a blank there has nothing behind it. Delete the item itself instead.
+
+The FIRST implementation made these pairs atomic - clear both fields to delete the row, clear
+one and get a 400. That was wrong in both directions: you could not leave an English heading
+above a translated body, and clearing an itinerary stop's description also destroyed its
+title. It only looked necessary because reads picked a row instead of merging fields. Do not
+go back to it.
+
+The per-item `DELETE .../translations/:locale` routes still exist (and still write clear
+marks) for removing a locale's row outright, but the console no longer calls them for field
+clears.
+
+#### Clear marks - why a deleted row does not come back
+
+Deleting the row makes the clear render correctly, but leaves the AI unable to tell
+"the human cleared this" from "nobody has translated this yet" - so the next English edit
+(or the nightly sweep) helpfully re-created it, and the clear appeared to undo itself.
+
+`translation_clear_marks` (`prisma/translation-clears.prisma`) is the missing bit:
+
+```
+translation_clear_marks
+  entityType · entityId · unitKey · locale · clearedBy · createdAt
+  UNIQUE (entityType, entityId, unitKey, locale)
+```
+
+- `unitKey` is the registry's `TranslationUnit.key` (`main`, `pc`, `faq:<groupId>`,
+  `highlight:<id>`, `hubsection:<type>:<order>`, ...). Both sides build it through
+  `translationUnitKeys` (`src/content-translation/translation-unit-keys.ts`) so the clear
+  endpoints and the registry cannot drift apart.
+- **Written** only by the console's clear endpoints, via `TranslationClearMarkService.mark()`.
+  A write failure is logged and swallowed - the mark is bookkeeping, never a reason to fail
+  the clear the admin asked for.
+- **Read** only by `EntityRegistry.collect()`, which stamps `unit.cleared[locale]`;
+  `ContentTranslationService` then skips that unit × locale. Public reads never look here.
+- **Pruned** lazily by the registry once a row exists again for that unit + locale: the row's
+  own `isMachineTranslated: false` is the policy at that point, and a stale mark would wrongly
+  suppress translation after a wholesale editor save (hub curation is delete-then-insert).
+  That is why there is no `unmark()` hanging off ~20 upsert paths.
+
+A mark is scoped to ONE unit and ONE locale: clearing a Dutch FAQ never stops the German FAQ
+or the Dutch main copy from translating.
+
+Every delete route refuses `locale=en` (English is the source the other locales derive from;
+delete the item itself instead) and is idempotent.
+
+#### The read side that makes a blank mean "English"
+
+A cleared field is only correct if the read fills it. Three helpers in
+`common/utils/translation.util.ts` do that, and every public read uses one:
+
+| Helper | Used by | What it does |
+|---|---|---|
+| `mergeTranslation(rows, locale)` | entity main copy, page content, tour sub-entities, collection rationales | Per-FIELD merge of the locale row over the English one. NULL, blank strings and empty arrays all count as "says nothing". |
+| `resolveGroupedLocale` / `resolveFaqLocale` | FAQ groups, page-content sections | Groups the two locale rows by their group key, then merges per field. |
+| `resolveBlocksByPosition` | `HubContentSection` | Same, keyed on (sectionType, displayOrder). |
+| `orBase(translated, base)` | hub our-picks, comparison groups/columns | Blank-aware `??` for surfaces whose English lives on the BASE row. |
+
+`resolveBlocksByPosition` replaced `resolveLocaleSet` for hub blocks. Set-level fallback meant
+translating one Discover block hid every untranslated sibling of its type; (sectionType,
+displayOrder) is a real group key (it has a DB unique constraint), so blocks now fall back per
+block and per field like everything else.
 
 `sourceHash = sha1(JSON of the unit's English source)`. It is stamped on machine writes and
 **reset to `null` by every human HTTP upsert** (together with `isMachineTranslated: false`) -
@@ -165,21 +263,30 @@ on the save path.
 |---|---|
 | tour | Main translation (15 fields incl. arrays) + 6 child types (highlights, inclusions, exclusions, features, locations, pickups - source = each child's **en translation row**, not the base row). **No FAQ units - tours have no FAQs (house rule).** |
 | destination | Main (**`name` skipped** - proper noun) + page content + section groups + FAQ groups |
-| hub | Main (**`name` skipped**) + page content + FAQ groups |
+| hub | Main (**`name` skipped**) + page content + FAQ groups + Curation surfaces: our-pick blurbs, comparison group names + standout notes (source = the BASE row), content-section blocks (locale lives ON the row; blocks matched across locales by `(sectionType, displayOrder)`; headingless types translate the body once and mirror it into `heading`) |
 | category | Main (name translates) + page content + FAQ groups |
 | collection | Main + page content + FAQ groups + per-tour rationales |
 | homepage | 11 HomePageTranslation fields + FAQ groups (entityId `'default'`) |
 
-Excluded v1: Pages module (TipTap), hub our-picks, hub comparison, HubContentSection.
+Excluded v1: Pages module (TipTap).
 
 ## 7. Rate limits, failure handling, ops
 
 - **Free-tier tuning:** worker concurrency 1 + limiter 8 jobs/min; 60s debounce;
   `sourceHash` skip makes repeats free; nightly sweep bounded at 10 per type. Headroom is
   left for the review queue sharing the same key (~15 RPM Gemini free tier).
-- **429 / malformed output twice / timeout (30s):** throw → BullMQ retries (3 attempts,
-  exponential 10s). After 3 failures the job parks in failed (retained 1000) and the nightly
-  sweep re-enqueues the entity anyway.
+- **429 with a named cooldown** ("try again in 7.26s" - Groq/Gemini TPM meters): the provider
+  base waits it out in-process and retries (max 2 retries, hints ≤ 25s only) - a short wait
+  beats failing a synchronous button click. Chunks are capped at 12k chars and the
+  OpenAI-compat transport sends an explicit 8192-token completion budget, so one chunk can't
+  eat a whole TPM window or clip mid-JSON. This TPM budget is also why there is NO
+  "translate everything at once" button in the editors: a whole-entity 6-locale run needs
+  minutes of token budget on free tiers, which only the background queue can wait out - the
+  editors offer the per-field inline icon, and whole-entity coverage belongs to the
+  background job + nightly sweep (and the console's per-locale button).
+- **429 without a hint / malformed output twice / timeout (30s):** throw → BullMQ retries
+  (3 attempts, exponential 10s). After 3 failures the job parks in failed (retained 1000) and
+  the nightly sweep re-enqueues the entity anyway.
 - **Redis down:** saves succeed, enqueue warns and swallows; the sweep catches up.
 - **Kill switch:** `CONTENT_TRANSLATION_DISABLED=1` (use for bulk operations routed
   through services; prisma-direct seeds bypass the hooks anyway).
@@ -199,9 +306,43 @@ guests write in any language.
 1. `removeOnComplete: true` on the content queue - a count would block re-enqueues.
 2. Every human HTTP upsert sets `isMachineTranslated: false` + `sourceHash: null`.
 3. Machine writes go through registry prisma upserts only - never entity services (recursion).
-4. Gap-fill on human rows never re-stamps the row machine.
+4. Human rows are skipped entirely by background/nightly runs - a cleared field stays
+   cleared and falls back to English. (No gap-fill; see the overwrite policy above.)
+4b. Where a clear DELETES the row (every NOT NULL surface), the delete endpoint must also
+   write a `translation_clear_marks` row through `translationUnitKeys` - otherwise the gap
+   reads as "never translated" and the next English edit re-creates the content. Only
+   `EntityRegistry` reads or prunes marks; public reads never touch that table.
+4c. Public reads merge translations **per FIELD**, never per row - `mergeTranslation`,
+   `resolveGroupedLocale`/`resolveFaqLocale`, `resolveBlocksByPosition`, `orBase`. Row-level
+   fallback misses the everyday case: the locale row exists and one field inside it was
+   cleared, so the locale wins the row and the cleared field renders blank. The four
+   `GET /:id/page-content` routes take `fallback=true` for this - opt-in, because the
+   dashboard editor must keep reading the locale raw or an admin edits English text in a
+   Dutch box and saves it as Dutch.
+4d. Every per-item translation upsert runs its NOT NULL fields through `clearableField`:
+   blank is legal in a translated locale (that IS the clear) and refused in English. Do not
+   put `@MinLength` back on those DTOs - it is what made half-cleared pairs 400.
+4e. The public `GET /:id/faqs` reads `{ locale, en }` and resolves, on all four entities.
+   Filtering on the requested locale alone (its original shape) hides every untranslated FAQ
+   in six of seven locales.
 5. Background/nightly never force; only the dashboard button forces, always behind a confirm.
 6. `DestinationTranslation.name` / `HubTranslation.name` never enter a provider payload.
 7. Tours have no FAQ units; the `tour` page type is unmapped in `PAGE_TYPE_TO_ENTITY`.
 8. API keys ride headers, never URL query params.
 9. One `@RequirePermissions` key per route (the decorator is ALL-semantics).
+10. The hub curation editors (Our Picks, comparison, content sections) are
+    replace-all writes: their services snapshot prior translations and restore
+    `isMachineTranslated` + `sourceHash` on rows whose text round-trips
+    UNCHANGED. Removing that restore would mark every machine row human on the
+    next tab save, and English edits would silently stop refreshing them.
+11. The hub editor is ENGLISH-ONLY (UX restructure, 2026-07-28): its managers
+    render only the English fields but still seed EVERY locale into state and
+    round-trip it in the replace-all payload - dropping the non-en rows from
+    the payload would DELETE them. Hub translations are edited in the
+    Translation Console, which saves through per-item HUMAN upserts
+    (`PUT /hubs/:id/our-picks/:pickId/translations/:locale`,
+    `.../comparison/groups/:groupId/...`, `.../comparison/tours/:comparisonTourId/...`,
+    `.../content-sections/:sectionType/:displayOrder/...`). Their `en` branch
+    edits the BASE row, clears any stray `en` translation row (it would shadow
+    the base on public reads) and re-enqueues; non-en branches reset the
+    machine bookkeeping and do NOT enqueue.

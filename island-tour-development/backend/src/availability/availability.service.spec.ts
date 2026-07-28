@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
+import { mondayZeroWeekday } from '@/common/utils/timezone.util';
 import { AvailabilityService } from './availability.service';
 
 /** A @db.Time(0) storage value (time-only, epoch day). */
@@ -262,6 +263,121 @@ describe('AvailabilityService', () => {
     });
   });
 
+  describe('manageCalendar', () => {
+    const exceptionRow = (over: Record<string, unknown> = {}) => ({
+      id: 'e1',
+      tourId: 't1',
+      date: day('2030-06-05'),
+      startTime: null,
+      type: 'CLOSE_DATE',
+      capacity: null,
+      note: null,
+      createdBy: null,
+      ...over,
+    });
+    /** Schedule weekday index (0=Monday) for a YYYY-MM-DD key. */
+    const weekdayOf = (key: string) => mondayZeroWeekday(day(key));
+
+    it('derives day statuses across a full month', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.departure.findMany.mockResolvedValue([
+        // 5 Jun - fully open
+        departureRow({ id: 'a', date: day('2030-06-05') }),
+        // 6 Jun - one slot closed, one open -> partial
+        departureRow({ id: 'b', date: day('2030-06-06') }),
+        departureRow({
+          id: 'c',
+          date: day('2030-06-06'),
+          startTime: time('13:00'),
+          status: 'CLOSED',
+          bookedCount: 2,
+        }),
+        // 7 Jun - CLOSE_DATE exception (materializer already closed the row)
+        departureRow({
+          id: 'd',
+          date: day('2030-06-07'),
+          status: 'CLOSED',
+          bookedCount: 3,
+        }),
+      ]);
+      prisma.availabilityException.findMany.mockResolvedValue([
+        exceptionRow({ date: day('2030-06-07') }),
+      ]);
+      prisma.availabilitySchedule.findMany.mockResolvedValue([
+        {
+          weekday: weekdayOf('2030-06-05'),
+          startTime: time('09:00'),
+          validFrom: day('2030-01-01'),
+          validUntil: null,
+        },
+      ]);
+
+      const res = await svc.manageCalendar('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        month: '2030-06',
+      });
+
+      expect(res).toHaveLength(30); // June has 30 days - every day present
+      const byDate = new Map(res.map((d) => [d.date, d]));
+
+      expect(byDate.get('2030-06-05')).toMatchObject({
+        status: 'open',
+        scheduled: true,
+        scheduledTimes: ['09:00'],
+        bookedTotal: 5,
+      });
+      expect(byDate.get('2030-06-06')).toMatchObject({
+        status: 'partial',
+        bookedTotal: 7,
+      });
+      expect(byDate.get('2030-06-07')).toMatchObject({
+        status: 'closed',
+        bookedTotal: 3,
+      });
+      expect(byDate.get('2030-06-07')?.exceptions).toHaveLength(1);
+      // A departure-less day is no_service; the weekly pattern marks only the
+      // matching weekday in its validity window as scheduled.
+      expect(byDate.get('2030-06-04')).toMatchObject({
+        status: 'no_service',
+        scheduled: false,
+        bookedTotal: 0,
+      });
+      expect(byDate.get('2030-06-12')?.scheduled).toBe(true); // next weekday hit
+      // Management view: exact remaining always disclosed (5 left, >= threshold).
+      expect(byDate.get('2030-06-05')?.departures[0].remaining).toBe(5);
+    });
+
+    it('a CLOSE_DATE exception closes the day even before rows re-materialize', async () => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.departure.findMany.mockResolvedValue([
+        departureRow({ id: 'a', date: day('2030-06-05'), status: 'OPEN' }),
+      ]);
+      prisma.availabilityException.findMany.mockResolvedValue([
+        exceptionRow({ date: day('2030-06-05') }),
+      ]);
+      prisma.availabilitySchedule.findMany.mockResolvedValue([]);
+
+      const res = await svc.manageCalendar('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        month: '2030-06',
+      });
+      expect(res.find((d) => d.date === '2030-06-05')?.status).toBe('closed');
+    });
+
+    it('forbids an operator who does not own the tour', async () => {
+      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, operatorId: 'op2' });
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      await expect(
+        svc.manageCalendar('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          month: '2030-06',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
   describe('updateDeparture', () => {
     it('preserves booked seats, re-derives status, and flags manuallyEdited', async () => {
       prisma.departure.findUnique.mockResolvedValue(
@@ -337,6 +453,14 @@ describe('AvailabilityService', () => {
         type: 'CLOSE_DATE',
       });
       expect(materializer.materializeTour).toHaveBeenCalledWith('t1');
+      // The exception's own day is reconciled too - the default pass only
+      // covers ~90 days, and a beyond-horizon exception must be visible
+      // immediately (not after the nightly long-horizon job).
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't1',
+        '2030-06-10',
+        '2030-06-10',
+      );
       expect(prisma.tour.update).toHaveBeenCalled(); // refreshIsBookable
       expect(notifications.emitAvailabilityUpdate).toHaveBeenCalled();
     });

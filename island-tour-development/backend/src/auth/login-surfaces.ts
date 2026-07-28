@@ -7,7 +7,13 @@ import type { PrismaClient } from '@prisma/client';
  * `x-login-surface` header and the sign-in hook rejects a mismatch, so a
  * credential can only mint a session at a door its account is eligible for.
  *
- * - account: traveler door   (dashboard /account)
+ * - account: RETIRED 2026-07-28. Was the traveler door (dashboard /account).
+ *   That page is deleted and no client sends this header any more: travellers
+ *   are passwordless and use `/{locale}/traveller` on the public site, which
+ *   authorizes with the traveler HMAC session, not Better Auth. The value is
+ *   kept so any session stamped with it before the cutover still validates,
+ *   and so `getLoginSurfaces` keeps reporting a customer hat truthfully.
+ *   Nothing here grants access to a surface that still exists.
  * - portal:  operator door   (dashboard /portal, owners + team seats)
  * - staff:   platform staff  (dashboard /staff)
  * - admin:   system admin    (separate admin app)

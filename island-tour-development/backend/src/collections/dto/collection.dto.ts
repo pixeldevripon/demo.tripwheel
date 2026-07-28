@@ -208,6 +208,16 @@ export class ActiveCollectionsQueryDto {
   locale?: Locale = Locale.en;
 }
 
+export class AdminCollectionsQueryDto {
+  @ApiPropertyOptional({
+    example: 'curacao',
+    description: 'Destination slug; omit to list collections for ALL islands',
+  })
+  @IsOptional()
+  @IsString()
+  destinationSlug?: string;
+}
+
 export class CollectionBySlugQueryDto {
   @ApiProperty({ example: 'curacao', description: 'Destination slug' })
   @IsString()
