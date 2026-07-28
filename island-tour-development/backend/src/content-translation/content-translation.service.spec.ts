@@ -74,11 +74,22 @@ const enRow = (fields: Record<string, unknown>) => ({
   ...fields,
 });
 
+/** No clear marks unless a test says otherwise. */
+function mockClearMarks() {
+  return {
+    mark: jest.fn().mockResolvedValue(undefined),
+    markForPageType: jest.fn().mockResolvedValue(undefined),
+    loadFor: jest.fn().mockResolvedValue(new Set<string>()),
+    forget: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('ContentTranslationService', () => {
   let prisma: any;
   let provider: any;
   let publicCache: any;
   let enqueuer: any;
+  let clearMarks: any;
   let svc: ContentTranslationService;
 
   beforeEach(() => {
@@ -86,8 +97,9 @@ describe('ContentTranslationService', () => {
     provider = mockProvider();
     publicCache = mockPublicCache();
     enqueuer = { enqueue: jest.fn(), enqueueForPageType: jest.fn() };
+    clearMarks = mockClearMarks();
     svc = new ContentTranslationService(
-      new EntityRegistry(prisma),
+      new EntityRegistry(prisma, clearMarks),
       publicCache,
       provider,
       prisma,
@@ -198,10 +210,11 @@ describe('ContentTranslationService', () => {
     expect(res.skipped).toBe(1);
   });
 
-  it('gap-fills a field the human cleared-and-saved, without re-stamping the row', async () => {
-    // The founder's exact flow: clear the Dutch title, Save all (row flips
-    // human), click Translate - the empty field must fill, the hand-written
-    // fields must survive, and the row must STAY human.
+  it('leaves a field the human cleared-and-saved EMPTY (no gap-fill)', async () => {
+    // Founder decision 2026-07-28: clearing a field in the console and
+    // saving is a deliberate "show English here". The row is human, so the
+    // AI must not touch it - not the empty field, not the written one. The
+    // public page falls back to English for the cleared field.
     prisma.category.findUnique.mockResolvedValue({
       id: 'c1',
       name: 'Snorkeling',
@@ -211,7 +224,7 @@ describe('ContentTranslationService', () => {
           locale: Locale.nl,
           isMachineTranslated: false,
           sourceHash: null,
-          name: null, // cleared and saved
+          name: null, // cleared and saved - must STAY cleared
           overview: 'Handgeschreven overzicht.',
         },
       ],
@@ -220,16 +233,99 @@ describe('ContentTranslationService', () => {
 
     const res = await svc.translateEntity('category', 'c1', [Locale.nl]);
 
+    expect(res.written).toBe(0);
+    expect(res.skipped).toBe(1);
+    expect(provider.translateFields).not.toHaveBeenCalled();
+    expect(prisma.categoryTranslation.upsert).not.toHaveBeenCalled();
+  });
+
+  it('does NOT re-create a FAQ the console cleared (the row is gone, the mark is not)', async () => {
+    // The NOT NULL surfaces cannot store a blank, so clearing DELETES the
+    // locale row. Without the mark that gap looks exactly like "never
+    // translated" and the next English edit would put the FAQ back - which is
+    // the bug the clear-mark table exists to kill.
+    prisma.category.findUnique.mockResolvedValue({
+      id: 'c1',
+      name: 'Snorkeling',
+      translations: [enRow({ overview: 'Best snorkeling trips.' })],
+      pageContents: [],
+    });
+    prisma.faq.findMany.mockResolvedValue([
+      {
+        locale: Locale.en,
+        faqGroupId: 'g1',
+        question: 'What should I bring?',
+        answer: 'Sunscreen.',
+        displayOrder: 0,
+        isActive: true,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+    ]);
+    clearMarks.loadFor.mockResolvedValue(new Set(['faq:g1@@nl']));
+
+    const res = await svc.translateEntity('category', 'c1', [Locale.nl]);
+
+    expect(prisma.faq.upsert).not.toHaveBeenCalled();
+    // The main unit still translates - a clear is per unit, not per entity.
+    expect(prisma.categoryTranslation.upsert).toHaveBeenCalledTimes(1);
+    expect(res.skipped).toBe(1);
+  });
+
+  it('a mark never suppresses another locale', async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: 'c1',
+      name: 'Snorkeling',
+      translations: [enRow({ overview: 'Best snorkeling trips.' })],
+      pageContents: [],
+    });
+    clearMarks.loadFor.mockResolvedValue(new Set(['main@@nl']));
+
+    const nl = await svc.translateEntity('category', 'c1', [Locale.nl]);
+    const de = await svc.translateEntity('category', 'c1', [Locale.de]);
+
+    expect(nl.written).toBe(0);
+    expect(de.written).toBe(1);
+  });
+
+  it('force overrides a clear mark - the admin asked for it explicitly', async () => {
+    prisma.category.findUnique.mockResolvedValue({
+      id: 'c1',
+      name: 'Snorkeling',
+      translations: [enRow({ overview: 'Best snorkeling trips.' })],
+      pageContents: [],
+    });
+    clearMarks.loadFor.mockResolvedValue(new Set(['main@@nl']));
+
+    const res = await svc.translateEntity('category', 'c1', [Locale.nl], true);
+
     expect(res.written).toBe(1);
-    // Only the cleared field was requested from the provider...
-    const payload = provider.translateFields.mock.calls[0][0];
-    expect(Object.keys(payload)).toEqual(['main.name']);
-    // ...and only it was written - no overview, no machine re-stamp.
+  });
+
+  it('force DOES rewrite a human row, cleared fields included', async () => {
+    // The escape hatch stays: the console's "Translate with AI" button (behind
+    // a confirm dialog) is the one path that overrides a human row.
+    prisma.category.findUnique.mockResolvedValue({
+      id: 'c1',
+      name: 'Snorkeling',
+      translations: [
+        enRow({ overview: 'Best snorkeling trips.' }),
+        {
+          locale: Locale.nl,
+          isMachineTranslated: false,
+          sourceHash: null,
+          name: null,
+          overview: 'Handgeschreven overzicht.',
+        },
+      ],
+      pageContents: [],
+    });
+
+    const res = await svc.translateEntity('category', 'c1', [Locale.nl], true);
+
+    expect(res.written).toBe(1);
     const call = prisma.categoryTranslation.upsert.mock.calls[0][0];
-    expect(call.update.name).toBe('nl:Snorkeling');
-    expect(call.update.overview).toBeUndefined();
-    expect(call.update.isMachineTranslated).toBeUndefined();
-    expect(call.update.sourceHash).toBeUndefined();
+    expect(call.update.isMachineTranslated).toBe(true);
   });
 
   it('skips locales already built from THIS source without a provider call', async () => {

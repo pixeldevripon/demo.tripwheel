@@ -2,6 +2,8 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -9,7 +11,11 @@ import {
 } from '@/common/faq/dto/faq-group.dto';
 import {
   applyTranslation,
+  clearableField,
   faqSelect,
+  mergeTranslation,
+  orBase,
+  resolveBlocksByPosition,
   resolveFaqLocale,
   resolveLocaleSet,
 } from '@/common/utils/translation.util';
@@ -60,8 +66,12 @@ import {
   SetOurPicksDto,
   UpdateHubFaqDto,
   UpdateHubDto,
+  UpsertComparisonGroupTranslationDto,
+  UpsertComparisonTourTranslationDto,
   UpsertHubPageContentDto,
+  UpsertHubSectionTranslationDto,
   UpsertHubTranslationsDto,
+  UpsertOurPickTranslationDto,
 } from './dto/hub.dto';
 
 @Injectable()
@@ -73,6 +83,7 @@ export class HubService {
     private readonly faqGroups: FaqGroupService,
     private readonly fx: FxRatesService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   /**
@@ -542,14 +553,18 @@ export class HubService {
       where: { id },
       select: {
         ...this.hubDetailSelect,
-        translations: { where: { locale }, select: this.hubTranslationSelect },
+        // Both locales: the merge below needs English to fall back to.
+        translations: {
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, ...this.hubTranslationSelect },
+        },
       },
     });
 
     if (!hub) throw new NotFoundException(`Hub ${id} not found`);
 
     const { translations, ...hubData } = hub;
-    const t = translations[0];
+    const t = mergeTranslation(translations, locale);
 
     return {
       ...applyTranslation(hubData, t, locale),
@@ -574,7 +589,11 @@ export class HubService {
       },
       select: {
         ...this.hubDetailSelect,
-        translations: { where: { locale }, select: this.hubTranslationSelect },
+        // Both locales: the merge below needs English to fall back to.
+        translations: {
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, ...this.hubTranslationSelect },
+        },
       },
     });
 
@@ -585,7 +604,7 @@ export class HubService {
     }
 
     const { translations, ...hubData } = hub;
-    const t = translations[0];
+    const t = mergeTranslation(translations, locale);
 
     return {
       ...applyTranslation(hubData, t, locale),
@@ -1038,6 +1057,16 @@ export class HubService {
         throw err;
       });
 
+    // A whole-locale delete is the broadest possible clear - mark it so the
+    // AI treats the absent row as deliberate, not as untranslated.
+    await this.clearMarks.mark(
+      'hub',
+      id,
+      translationUnitKeys.main(),
+      locale,
+      adminId,
+    );
+
     this.logger.log(
       `Admin ${adminId} deleted translation for hub ${id} [${locale}]`,
     );
@@ -1046,11 +1075,20 @@ export class HubService {
 
   // ── Page Content ──────────────────────────────────────────────────────────────
 
-  async getPageContent(id: string, locale: Locale) {
+  /**
+   * `fallback` is the public read: fill blanks from English so a page never
+   * renders an empty About band. The dashboard editor leaves it off and gets
+   * the locale exactly as stored - anything else would have an admin edit
+   * English text inside a Dutch box and save it as Dutch.
+   */
+  async getPageContent(id: string, locale: Locale, fallback = false) {
     await this.findHubOrThrow(id);
 
-    const row = await this.prisma.hubPageContent.findUnique({
-      where: { hubId_locale: { hubId: id, locale } },
+    const rows = await this.prisma.hubPageContent.findMany({
+      where: {
+        hubId: id,
+        locale: fallback ? { in: [locale, Locale.en] } : locale,
+      },
       select: {
         locale: true,
         aboutText: true,
@@ -1059,6 +1097,9 @@ export class HubService {
       },
     });
 
+    const row = fallback
+      ? mergeTranslation(rows, locale)
+      : rows.find((r) => r.locale === locale);
     return (
       row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
     );
@@ -1124,6 +1165,29 @@ export class HubService {
       where: { hubId: id, ...(locale && { locale }) },
       select: this.contentSectionSelect,
       orderBy: [{ sectionType: 'asc' }, { displayOrder: 'asc' }],
+    });
+  }
+
+  /**
+   * Admin read-back for the Translation Console: EVERY stored locale, not just
+   * one. The public `getContentSections` takes a `LocaleQueryDto` whose locale
+   * DEFAULTS to `en`, so calling it without a locale silently returns English
+   * only - the console then found no sibling row for the target locale, showed
+   * every field blank, and made a save that had persisted correctly look like
+   * it had vanished on reload. Mirrors `getOurPicksForEdit` /
+   * `getComparisonForEdit`, which already exist for the same reason.
+   */
+  async getContentSectionsForEdit(id: string) {
+    await this.findHubOrThrow(id);
+
+    return this.prisma.hubContentSection.findMany({
+      where: { hubId: id },
+      select: this.contentSectionSelect,
+      orderBy: [
+        { sectionType: 'asc' },
+        { displayOrder: 'asc' },
+        { locale: 'asc' },
+      ],
     });
   }
 
@@ -1337,7 +1401,9 @@ export class HubService {
     const ourPicks = rows.map((r) => ({
       id: r.id,
       pickType: r.pickType,
-      description: r.translations[0]?.description ?? r.description,
+      // `orBase`, not `??`: a CLEARED translation is stored as '' and must
+      // fall back to the base English blurb, not render empty.
+      description: orBase(r.translations[0]?.description, r.description),
       displayOrder: r.displayOrder,
       tour: {
         ...this.tourCard(r.tour),
@@ -1584,13 +1650,14 @@ export class HubService {
       const orderedTourIds = g.comparisonTours.map((ct) => ct.tour.id);
       return {
         id: g.id,
-        groupName: g.translations[0]?.groupName ?? g.groupName,
+        groupName: orBase(g.translations[0]?.groupName, g.groupName),
         displayOrder: g.displayOrder,
         tours: g.comparisonTours.map((ct) => ({
           id: ct.id,
           displayOrder: ct.displayOrder,
           standoutNote:
-            ct.translations[0]?.standoutNote ?? ct.standoutNote ?? null,
+            orBase(ct.translations[0]?.standoutNote, ct.standoutNote ?? '') ||
+            null,
           tour: this.tourCard(ct.tour),
         })),
         rows: this.buildComparisonRows(orderedTourIds, attrsByTour),
@@ -1650,6 +1717,451 @@ export class HubService {
         translations: ct.translations,
       })),
     }));
+  }
+
+  // ── Curation translation upserts (Translation Console per-item saves) ─────────
+  // The structural editors save via the replace-all endpoints above; the
+  // Translation Console edits ONE locale of ONE item through these, so a
+  // console save can never race a concurrent structural edit into data loss.
+  // All four are HUMAN write paths: non-en writes reset the machine
+  // bookkeeping (the AI refresher must never overwrite them), en writes edit
+  // the base source and re-enqueue the machine locales.
+
+  async upsertOurPickTranslation(
+    hubId: string,
+    pickId: string,
+    locale: Locale,
+    dto: UpsertOurPickTranslationDto,
+    adminId: string,
+  ) {
+    const pick = await this.prisma.hubOurPick.findFirst({
+      where: { id: pickId, hubId },
+      select: { id: true },
+    });
+    if (!pick) {
+      throw new NotFoundException(
+        `Our Pick with ID ${pickId} not found for this hub`,
+      );
+    }
+
+    // Blank clears this locale (stored '', row kept) and the card falls back to
+    // the base English blurb; English itself is refused.
+    const description = clearableField(
+      dto.description,
+      locale,
+      'The Our Pick rationale',
+    );
+
+    if (locale === Locale.en) {
+      // en IS the base blurb on the pick row itself. Both writes stay scoped
+      // to the hub (not just the PK) so a concurrent re-parent/replace can
+      // never redirect them, and any stray en translation row is cleared -
+      // public reads prefer the translation row, so a stray one would shadow
+      // this edit.
+      const [updated] = await this.prisma.$transaction([
+        this.prisma.hubOurPick.updateMany({
+          where: { id: pickId, hubId },
+          data: { description },
+        }),
+        this.prisma.hubOurPickTranslation.deleteMany({
+          where: { ourPickId: pickId, locale: Locale.en, ourPick: { hubId } },
+        }),
+      ]);
+      if (updated.count === 0) {
+        throw new NotFoundException(
+          `Our Pick with ID ${pickId} not found for this hub`,
+        );
+      }
+      this.logger.log(
+        `Admin ${adminId} updated Our-Pick ${pickId} base blurb for hub ${hubId}`,
+      );
+      this.contentTranslation.enqueue('hub', hubId);
+      return { locale, description: description };
+    }
+
+    const row = await this.prisma.hubOurPickTranslation.upsert({
+      where: { ourPickId_locale: { ourPickId: pickId, locale } },
+      update: {
+        description: description,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+      create: { ourPickId: pickId, locale, description: description },
+      select: { locale: true, description: true },
+    });
+    this.logger.log(
+      `Admin ${adminId} upserted Our-Pick ${pickId} translation [${locale}] for hub ${hubId}`,
+    );
+    return row;
+  }
+
+  async upsertComparisonGroupTranslation(
+    hubId: string,
+    groupId: string,
+    locale: Locale,
+    dto: UpsertComparisonGroupTranslationDto,
+    adminId: string,
+  ) {
+    const group = await this.prisma.hubComparisonGroup.findFirst({
+      where: { id: groupId, hubId },
+      select: { id: true },
+    });
+    if (!group) {
+      throw new NotFoundException(
+        `Comparison group with ID ${groupId} not found for this hub`,
+      );
+    }
+
+    // Blank clears this locale (stored '', row kept) - the table falls back to
+    // the base English group name.
+    const groupName = clearableField(
+      dto.groupName,
+      locale,
+      'The comparison group name',
+    );
+
+    if (locale === Locale.en) {
+      // Hub-scoped writes + stray en translation-row cleanup (same rationale
+      // as upsertOurPickTranslation).
+      const [updated] = await this.prisma.$transaction([
+        this.prisma.hubComparisonGroup.updateMany({
+          where: { id: groupId, hubId },
+          data: { groupName },
+        }),
+        this.prisma.hubComparisonGroupTranslation.deleteMany({
+          where: { groupId, locale: Locale.en, group: { hubId } },
+        }),
+      ]);
+      if (updated.count === 0) {
+        throw new NotFoundException(
+          `Comparison group with ID ${groupId} not found for this hub`,
+        );
+      }
+      this.logger.log(
+        `Admin ${adminId} updated comparison group ${groupId} base name for hub ${hubId}`,
+      );
+      this.contentTranslation.enqueue('hub', hubId);
+      return { locale, groupName };
+    }
+
+    const row = await this.prisma.hubComparisonGroupTranslation.upsert({
+      where: { groupId_locale: { groupId, locale } },
+      update: {
+        groupName,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+      create: { groupId, locale, groupName },
+      select: { locale: true, groupName: true },
+    });
+    this.logger.log(
+      `Admin ${adminId} upserted comparison group ${groupId} translation [${locale}] for hub ${hubId}`,
+    );
+    return row;
+  }
+
+  async upsertComparisonTourTranslation(
+    hubId: string,
+    comparisonTourId: string,
+    locale: Locale,
+    dto: UpsertComparisonTourTranslationDto,
+    adminId: string,
+  ) {
+    const column = await this.prisma.hubComparisonTour.findFirst({
+      where: { id: comparisonTourId, group: { hubId } },
+      select: { id: true },
+    });
+    if (!column) {
+      throw new NotFoundException(
+        `Comparison tour column with ID ${comparisonTourId} not found for this hub`,
+      );
+    }
+
+    // Blank clears this locale (stored '', row kept) - the column falls back to
+    // the base English standout note.
+    const standoutNote = clearableField(
+      dto.standoutNote,
+      locale,
+      'The standout note',
+    );
+
+    if (locale === Locale.en) {
+      // Hub-scoped writes + stray en translation-row cleanup (same rationale
+      // as upsertOurPickTranslation).
+      const [updated] = await this.prisma.$transaction([
+        this.prisma.hubComparisonTour.updateMany({
+          where: { id: comparisonTourId, group: { hubId } },
+          data: { standoutNote },
+        }),
+        this.prisma.hubComparisonTourTranslation.deleteMany({
+          where: {
+            comparisonTourId,
+            locale: Locale.en,
+            comparisonTour: { group: { hubId } },
+          },
+        }),
+      ]);
+      if (updated.count === 0) {
+        throw new NotFoundException(
+          `Comparison tour column with ID ${comparisonTourId} not found for this hub`,
+        );
+      }
+      this.logger.log(
+        `Admin ${adminId} updated comparison tour ${comparisonTourId} base standout note for hub ${hubId}`,
+      );
+      this.contentTranslation.enqueue('hub', hubId);
+      return { locale, standoutNote };
+    }
+
+    const row = await this.prisma.hubComparisonTourTranslation.upsert({
+      where: { comparisonTourId_locale: { comparisonTourId, locale } },
+      update: {
+        standoutNote,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+      create: { comparisonTourId, locale, standoutNote },
+      select: { locale: true, standoutNote: true },
+    });
+    this.logger.log(
+      `Admin ${adminId} upserted comparison tour ${comparisonTourId} translation [${locale}] for hub ${hubId}`,
+    );
+    return row;
+  }
+
+  /**
+   * Clear ONE locale of a curation item (Translation Console). Every one of
+   * these translation columns is NOT NULL, so a blank row cannot be stored:
+   * deleting the row IS the cleared state and the public page falls back to
+   * the base English value. English lives on the BASE row and is refused here.
+   */
+  async deleteOurPickTranslation(
+    hubId: string,
+    pickId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    this.assertClearableLocale(locale, 'Our Pick rationale');
+    const { count } = await this.prisma.hubOurPickTranslation.deleteMany({
+      where: { ourPickId: pickId, locale, ourPick: { hubId } },
+    });
+    // NOT NULL copy - the clear removed the row, so the mark is what tells
+    // the AI to leave this locale blank instead of re-creating it.
+    await this.clearMarks.mark(
+      'hub',
+      hubId,
+      translationUnitKeys.ourPick(pickId),
+      locale,
+      adminId,
+    );
+
+    this.logger.log(
+      `Admin ${adminId} cleared Our-Pick ${pickId} translation [${locale}] for hub ${hubId}`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
+  }
+
+  async deleteComparisonGroupTranslation(
+    hubId: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    this.assertClearableLocale(locale, 'comparison group name');
+    const { count } =
+      await this.prisma.hubComparisonGroupTranslation.deleteMany({
+        where: { groupId, locale, group: { hubId } },
+      });
+    // NOT NULL copy - the clear removed the row, so the mark is what tells
+    // the AI to leave this locale blank instead of re-creating it.
+    await this.clearMarks.mark(
+      'hub',
+      hubId,
+      translationUnitKeys.comparisonGroup(groupId),
+      locale,
+      adminId,
+    );
+
+    this.logger.log(
+      `Admin ${adminId} cleared comparison group ${groupId} translation [${locale}] for hub ${hubId}`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
+  }
+
+  async deleteComparisonTourTranslation(
+    hubId: string,
+    comparisonTourId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    this.assertClearableLocale(locale, 'standout note');
+    const { count } = await this.prisma.hubComparisonTourTranslation.deleteMany(
+      {
+        where: {
+          comparisonTourId,
+          locale,
+          comparisonTour: { group: { hubId } },
+        },
+      },
+    );
+    // NOT NULL copy - the clear removed the row, so the mark is what tells
+    // the AI to leave this locale blank instead of re-creating it.
+    await this.clearMarks.mark(
+      'hub',
+      hubId,
+      translationUnitKeys.comparisonTour(comparisonTourId),
+      locale,
+      adminId,
+    );
+
+    this.logger.log(
+      `Admin ${adminId} cleared comparison tour ${comparisonTourId} translation [${locale}] for hub ${hubId}`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
+  }
+
+  /**
+   * Content-section blocks fall back as a SET (`resolveLocaleSet`), not per
+   * block: the public page uses the locale's blocks only if it has any at
+   * all. So clearing one block's translation while its siblings stay
+   * translated would drop that block from the page entirely rather than
+   * showing it in English. Clearing is therefore all-or-nothing per
+   * (locale, sectionType): the caller clears the block, and if it was the
+   * last translated block of that type the whole type falls back to English.
+   */
+  async deleteContentSectionTranslation(
+    hubId: string,
+    sectionType: HubSectionType,
+    displayOrder: number,
+    locale: Locale,
+    adminId: string,
+  ) {
+    this.assertClearableLocale(locale, 'content block');
+    this.assertDisplayOrder(displayOrder);
+    const { count } = await this.prisma.hubContentSection.deleteMany({
+      where: { hubId, locale, sectionType, displayOrder },
+    });
+    // NOT NULL copy - the clear removed the row, so the mark is what tells
+    // the AI to leave this locale blank instead of re-creating it.
+    await this.clearMarks.mark(
+      'hub',
+      hubId,
+      translationUnitKeys.hubSection(sectionType, displayOrder),
+      locale,
+      adminId,
+    );
+
+    this.logger.log(
+      `Admin ${adminId} cleared ${sectionType} block #${displayOrder} translation [${locale}] for hub ${hubId}`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
+  }
+
+  private assertClearableLocale(locale: Locale, label: string) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        `English is the source ${label} and cannot be cleared - edit it in the hub editor instead`,
+      );
+    }
+  }
+
+  /** Block positions are 0-based; this Nest's ParseIntPipe takes no bounds. */
+  private assertDisplayOrder(displayOrder: number) {
+    if (!Number.isInteger(displayOrder) || displayOrder < 0) {
+      throw new BadRequestException('displayOrder must be 0 or greater');
+    }
+  }
+
+  async upsertContentSectionTranslation(
+    hubId: string,
+    sectionType: HubSectionType,
+    displayOrder: number,
+    locale: Locale,
+    dto: UpsertHubSectionTranslationDto,
+    adminId: string,
+  ) {
+    this.assertDisplayOrder(displayOrder);
+    // Blocks have no FK group key - identity across locales is
+    // (sectionType, displayOrder), anchored by the English source row.
+    const enRow = await this.prisma.hubContentSection.findUnique({
+      where: {
+        hubId_locale_sectionType_displayOrder: {
+          hubId,
+          locale: Locale.en,
+          sectionType,
+          displayOrder,
+        },
+      },
+      select: { id: true, image: true },
+    });
+    if (!enRow) {
+      throw new NotFoundException(
+        `No ${sectionType} block #${displayOrder} exists for this hub`,
+      );
+    }
+
+    // Headingless block types (Discover Intro / Highlight) store the body
+    // copied into `heading` - mirror it when no heading is sent (the same
+    // convention the editor and the AI unit writer follow).
+    // Heading and body clear independently in a translated locale: a blank
+    // stores '' and keeps the row, so that field alone falls back to English.
+    const body = clearableField(dto.body, locale, 'The block body');
+    const heading =
+      dto.heading === undefined
+        ? body
+        : clearableField(dto.heading, locale, 'The block heading');
+    const select = {
+      locale: true,
+      sectionType: true,
+      displayOrder: true,
+      heading: true,
+      body: true,
+    } as const;
+
+    if (locale === Locale.en) {
+      const row = await this.prisma.hubContentSection.update({
+        where: { id: enRow.id },
+        data: { heading, body },
+        select,
+      });
+      this.logger.log(
+        `Admin ${adminId} updated ${sectionType} block #${displayOrder} base copy for hub ${hubId}`,
+      );
+      this.contentTranslation.enqueue('hub', hubId);
+      return row;
+    }
+
+    const row = await this.prisma.hubContentSection.upsert({
+      where: {
+        hubId_locale_sectionType_displayOrder: {
+          hubId,
+          locale,
+          sectionType,
+          displayOrder,
+        },
+      },
+      update: {
+        heading,
+        body,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+      create: {
+        hubId,
+        locale,
+        sectionType,
+        displayOrder,
+        heading,
+        body,
+        // The image is locale-neutral - siblings mirror the English row's.
+        image: enRow.image,
+      },
+      select,
+    });
+    this.logger.log(
+      `Admin ${adminId} upserted ${sectionType} block #${displayOrder} translation [${locale}] for hub ${hubId}`,
+    );
+    return row;
   }
 
   // ── Hero at-a-glance stats (computed, not editorial) ────────────────────────────
@@ -1872,11 +2384,14 @@ export class HubService {
 
     const faqs = resolveFaqLocale(faqRows, locale);
 
-    // Each section type is an independently-rendered block, so the English
-    // fallback is applied per type - a hub with translated Discover copy but
-    // English-only Fast Facts renders both, not just the Discover block.
+    // Blocks fall back per BLOCK and per FIELD, keyed on the same
+    // (sectionType, displayOrder) pair the editor and the Translation Console
+    // address them by. Previously this was set-level (`resolveLocaleSet`), so
+    // translating one Discover block hid every untranslated sibling instead of
+    // showing it in English - and a heading cleared in the console rendered as
+    // a blank line rather than the English heading.
     const sectionsOfType = (type: HubSectionType) =>
-      resolveLocaleSet(
+      resolveBlocksByPosition(
         sectionRows.filter((s) => s.sectionType === type),
         locale,
       );
@@ -1942,19 +2457,28 @@ export class HubService {
 
   // ── FAQ ───────────────────────────────────────────────────────────────────────
 
+  /**
+   * Public FAQ read. With a locale it fetches that locale AND English and
+   * resolves per group and per field: an untranslated FAQ shows in English
+   * rather than vanishing, and a field cleared in the Translation Console
+   * falls back on its own (English question next to a translated answer).
+   * Without a locale it returns every row - the admin listing.
+   */
   async getFaqs(id: string, query: FaqLocaleQueryDto) {
     await this.findHubOrThrow(id);
 
-    return this.prisma.faq.findMany({
+    const rows = await this.prisma.faq.findMany({
       where: {
         pageType: FAQ_PAGE_TYPE.HUB,
         entityId: id,
         isActive: true,
-        ...(query.locale && { locale: query.locale }),
+        ...(query.locale && { locale: { in: [query.locale, Locale.en] } }),
       },
       select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
+
+    return query.locale ? resolveFaqLocale(rows, query.locale) : rows;
   }
 
   async createFaq(id: string, dto: CreateHubFaqDto, adminId: string) {
@@ -2064,6 +2588,25 @@ export class HubService {
     await this.findHubOrThrow(id);
     this.logger.log(`Admin ${adminId} updated FAQ ${groupId} for hub ${id}`);
     return this.faqGroups.updateGroup(FAQ_PAGE_TYPE.HUB, id, groupId, dto);
+  }
+
+  /** Clear ONE locale of a FAQ (Translation Console) - see FaqGroupService. */
+  async deleteFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    await this.findHubOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} cleared FAQ ${groupId} [${locale}] for hub ${id}`,
+    );
+    return this.faqGroups.deleteTranslation(
+      FAQ_PAGE_TYPE.HUB,
+      id,
+      groupId,
+      locale,
+    );
   }
 
   async deleteFaqGroup(id: string, groupId: string, adminId: string) {

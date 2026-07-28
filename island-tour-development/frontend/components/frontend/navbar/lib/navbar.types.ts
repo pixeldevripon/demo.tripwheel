@@ -8,6 +8,7 @@ export type NavDict = {
     selectIsland: string;
     wishlist: string;
     account: string;
+    myAccount: string;
     myBookings: string;
     logout: string;
     menu: string;

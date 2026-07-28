@@ -3,6 +3,8 @@ import { Locale } from '@/common/constants/locales';
 import {
   applyTranslation,
   faqSelect,
+  mergeTranslation,
+  resolveFaqLocale,
   resolveGroupedLocale,
   translationSelect,
 } from '@/common/utils/translation.util';
@@ -14,6 +16,8 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -58,6 +62,7 @@ export class DestinationService {
     private readonly faqGroups: FaqGroupService,
     private readonly contentSections: PageContentSectionService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   private readonly destinationSelect = {
@@ -151,14 +156,18 @@ export class DestinationService {
       where: { id },
       select: {
         ...this.destinationSelect,
-        translations: { where: { locale }, select: translationSelect },
+        // Both locales: the merge below needs English to fall back to.
+        translations: {
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, ...translationSelect },
+        },
       },
     });
     if (!destination)
       throw new NotFoundException(`Destination ${id} not found`);
 
     const { translations, ...dest } = destination;
-    const t = translations[0];
+    const t = mergeTranslation(translations, locale);
 
     return {
       ...applyTranslation(dest, t, locale),
@@ -173,14 +182,17 @@ export class DestinationService {
       where: { slug },
       select: {
         ...this.destinationSelect,
-        translations: { where: { locale }, select: translationSelect },
+        translations: {
+          where: { locale: { in: [locale, Locale.en] } },
+          select: { locale: true, ...translationSelect },
+        },
       },
     });
     if (!destination)
       throw new NotFoundException(`Destination with slug "${slug}" not found`);
 
     const { translations, ...dest } = destination;
-    const t = translations[0];
+    const t = mergeTranslation(translations, locale);
 
     return {
       ...applyTranslation(dest, t, locale),
@@ -505,6 +517,16 @@ export class DestinationService {
         throw err;
       });
 
+    // A whole-locale delete is the broadest possible clear - mark it so the
+    // AI treats the absent row as deliberate, not as untranslated.
+    await this.clearMarks.mark(
+      'destination',
+      id,
+      translationUnitKeys.main(),
+      locale,
+      adminId,
+    );
+
     this.logger.log(
       `Admin ${adminId} deleted translation for destination ${id} [${locale}]`,
     );
@@ -513,15 +535,24 @@ export class DestinationService {
 
   // ── Page Content ──────────────────────────────────────────────────────────────
 
-  async getPageContent(id: string, locale: Locale) {
+  /**
+   * `fallback` is the public read: fill blanks from English so a page never
+   * renders an empty About band. The dashboard editor leaves it off and gets
+   * the locale exactly as stored - anything else would have an admin edit
+   * English text inside a Dutch box and save it as Dutch.
+   */
+  async getPageContent(id: string, locale: Locale, fallback = false) {
     await this.findDestinationOrThrow(id);
 
     // The authored sections render inside the same About band as `aboutText`, so
     // they ride along on this one read rather than adding a second public
     // endpoint (and a second cache tag) for the same strip of the page.
-    const [row, sections] = await Promise.all([
-      this.prisma.destinationPageContent.findUnique({
-        where: { destinationId_locale: { destinationId: id, locale } },
+    const [rows, sections] = await Promise.all([
+      this.prisma.destinationPageContent.findMany({
+        where: {
+          destinationId: id,
+          locale: fallback ? { in: [locale, Locale.en] } : locale,
+        },
         select: {
           locale: true,
           aboutText: true,
@@ -531,6 +562,10 @@ export class DestinationService {
       }),
       this.getPublicContentSections(id, locale),
     ]);
+
+    const row = fallback
+      ? mergeTranslation(rows, locale)
+      : rows.find((r) => r.locale === locale);
 
     return {
       ...(row ?? {
@@ -611,19 +646,28 @@ export class DestinationService {
 
   // ── FAQ ───────────────────────────────────────────────────────────────────────
 
+  /**
+   * Public FAQ read. With a locale it fetches that locale AND English and
+   * resolves per group and per field: an untranslated FAQ shows in English
+   * rather than vanishing, and a field cleared in the Translation Console
+   * falls back on its own (English question next to a translated answer).
+   * Without a locale it returns every row - the admin listing.
+   */
   async getFaqs(id: string, query: FaqLocaleQueryDto) {
     await this.findDestinationOrThrow(id);
 
-    return this.prisma.faq.findMany({
+    const rows = await this.prisma.faq.findMany({
       where: {
         pageType: FAQ_PAGE_TYPE.DESTINATION,
         entityId: id,
         isActive: true,
-        ...(query.locale && { locale: query.locale }),
+        ...(query.locale && { locale: { in: [query.locale, Locale.en] } }),
       },
       select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
+
+    return query.locale ? resolveFaqLocale(rows, query.locale) : rows;
   }
 
   async createFaq(id: string, dto: CreateDestinationFaqDto, adminId: string) {
@@ -750,6 +794,25 @@ export class DestinationService {
     );
   }
 
+  /** Clear ONE locale of a FAQ (Translation Console) - see FaqGroupService. */
+  async deleteFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} cleared FAQ ${groupId} [${locale}] for destination ${id}`,
+    );
+    return this.faqGroups.deleteTranslation(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      locale,
+    );
+  }
+
   async deleteFaqGroup(id: string, groupId: string, adminId: string) {
     await this.findDestinationOrThrow(id);
     this.logger.log(
@@ -777,6 +840,25 @@ export class DestinationService {
       `Admin ${adminId} created content section for destination ${id}`,
     );
     return this.contentSections.createGroup(FAQ_PAGE_TYPE.DESTINATION, id, dto);
+  }
+
+  /** Clear ONE locale of an About-band section (Translation Console). */
+  async deleteContentSectionTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} cleared content section ${groupId} [${locale}] for destination ${id}`,
+    );
+    return this.contentSections.deleteTranslation(
+      FAQ_PAGE_TYPE.DESTINATION,
+      id,
+      groupId,
+      locale,
+    );
   }
 
   async upsertContentSectionTranslation(

@@ -1123,3 +1123,85 @@ export class ComparisonGroupForEditDto {
   @ApiProperty({ type: [ComparisonTourForEditDto] })
   tours!: ComparisonTourForEditDto[];
 }
+
+// ── Curation translation upserts (Translation Console per-item saves) ─────────
+// The structural editors save whole sets via the PUT replace endpoints above;
+// the Translation Console edits ONE locale of ONE item through these DTOs.
+// Caps mirror the replace DTOs' fields exactly.
+
+export class UpsertOurPickTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
+  @ApiProperty({ example: 'De beste boot - comfort wint.' })
+  @IsString()
+  @MaxLength(2000)
+  description!: string;
+}
+
+export class UpsertComparisonGroupTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
+  @ApiProperty({ example: 'Comforttrips' })
+  @IsString()
+  @MaxLength(200)
+  groupName!: string;
+}
+
+export class UpsertComparisonTourTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
+  @ApiProperty({ example: 'Duikschool, massage met uitzicht' })
+  @IsString()
+  @MaxLength(500)
+  standoutNote!: string;
+}
+
+export class UpsertHubSectionTranslationDto {
+  // Blank = cleared for this locale (stored '', the row survives and the
+  // page falls back to English per field). English is guarded in the
+  // service - see `clearableField`.
+  @ApiPropertyOptional({
+    example: 'Het Witte Strand',
+    description:
+      'Omit for headingless block types (Discover Intro / Highlight) - the body is mirrored into the stored heading, matching the editor convention.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  heading?: string;
+
+  @ApiProperty({ example: 'Een twee kilometer lang poederzacht strand...' })
+  @IsString()
+  @MaxLength(5000)
+  body!: string;
+}
+
+export class OurPickTranslationResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'De beste boot - comfort wint.' })
+  description!: string;
+}
+
+export class ComparisonGroupTranslationResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'Comforttrips' }) groupName!: string;
+}
+
+export class ComparisonTourTranslationResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ example: 'Duikschool, massage met uitzicht' })
+  standoutNote!: string;
+}
+
+export class HubSectionTranslationResponseDto {
+  @ApiProperty({ enum: Locale, example: Locale.nl }) locale!: Locale;
+  @ApiProperty({ enum: HubSectionType, example: HubSectionType.DISCOVER })
+  sectionType!: HubSectionType;
+  @ApiProperty({ example: 0 }) displayOrder!: number;
+  @ApiProperty({ example: 'Het Witte Strand' }) heading!: string;
+  @ApiProperty({ example: 'Een twee kilometer lang poederzacht strand...' })
+  body!: string;
+}

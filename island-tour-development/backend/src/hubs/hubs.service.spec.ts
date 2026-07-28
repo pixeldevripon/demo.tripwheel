@@ -12,6 +12,7 @@ import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
 import {
   BadRequestException,
   ConflictException,
@@ -20,6 +21,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  HubSectionType,
   HubStatus,
   HubType,
   Locale,
@@ -82,6 +84,7 @@ function createMockPrismaService() {
     },
     hubPageContent: {
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       upsert: jest.fn(),
     },
     faq: {
@@ -100,38 +103,58 @@ function createMockPrismaService() {
     },
     hubContentSection: {
       findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
       deleteMany: jest.fn(),
       createMany: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn(),
     },
     hubOurPick: {
       findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn(),
       deleteMany: jest.fn(),
       create: jest.fn().mockResolvedValue({ id: 'pick-new' }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     hubOurPickTranslation: {
       createMany: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     hubComparisonGroup: {
       findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn(),
       deleteMany: jest.fn(),
       create: jest.fn().mockResolvedValue({ id: 'group-new' }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     hubComparisonGroupTranslation: {
       createMany: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     hubComparisonTour: {
       create: jest.fn().mockResolvedValue({ id: 'comptour-new' }),
+      findFirst: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     hubComparisonTourTranslation: {
       createMany: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };
 
   return {
     ...mockTx,
+    // Supports both $transaction forms: interactive (callback) and batch
+    // (array of already-started promises from the mocked delegates).
     $transaction: jest
       .fn()
-      .mockImplementation((fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
+      .mockImplementation(
+        (arg: ((tx: typeof mockTx) => unknown) | Promise<unknown>[]) =>
+          typeof arg === 'function' ? arg(mockTx) : Promise.all(arg),
+      ),
     _tx: mockTx, // expose for per-test access
   };
 }
@@ -256,6 +279,13 @@ describe('HubService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: FaqGroupService, useValue: mockFaqGroups },
         { provide: ContentTranslationEnqueuer, useValue: enqueuer },
+        {
+          provide: TranslationClearMarkService,
+          useValue: {
+            mark: jest.fn().mockResolvedValue(undefined),
+            markForPageType: jest.fn().mockResolvedValue(undefined),
+          },
+        },
         {
           provide: FxRatesService,
           useValue: {
@@ -1177,7 +1207,7 @@ describe('HubService', () => {
         metaTitle: 'Title',
         metaDescription: 'Desc',
       };
-      prisma.hubPageContent.findUnique.mockResolvedValue(content);
+      prisma.hubPageContent.findMany.mockResolvedValue([content]);
 
       const result = await service.getPageContent('hub-1', Locale.en);
 
@@ -1194,7 +1224,7 @@ describe('HubService', () => {
 
     it('returns null-filled shell when no page content row exists', async () => {
       prisma.hub.findUnique.mockResolvedValue(makeHub());
-      prisma.hubPageContent.findUnique.mockResolvedValue(null);
+      prisma.hubPageContent.findMany.mockResolvedValue([]);
 
       const result = await service.getPageContent('hub-1', Locale.de);
 
@@ -1295,7 +1325,9 @@ describe('HubService', () => {
 
       expect(prisma.faq.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ locale: Locale.nl }),
+          where: expect.objectContaining({
+            locale: { in: [Locale.nl, Locale.en] },
+          }),
         }),
       );
     });
@@ -1859,6 +1891,529 @@ describe('HubService', () => {
         isMachineTranslated: true,
         sourceHash: 'hash-b',
       });
+    });
+  });
+
+  // ── Curation translation upserts (Translation Console per-item saves) ────────
+
+  describe('upsertOurPickTranslation', () => {
+    it('upserts a non-en locale and resets the machine bookkeeping', async () => {
+      prisma.hubOurPick.findFirst.mockResolvedValue({ id: 'pick-1' });
+      prisma.hubOurPickTranslation.upsert.mockResolvedValue({
+        locale: Locale.nl,
+        description: 'NL blurb',
+      });
+
+      const result = await service.upsertOurPickTranslation(
+        'hub-1',
+        'pick-1',
+        Locale.nl,
+        { description: 'NL blurb' },
+        'admin-1',
+      );
+
+      expect(prisma.hubOurPick.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'pick-1', hubId: 'hub-1' } }),
+      );
+      expect(prisma.hubOurPickTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            ourPickId_locale: { ourPickId: 'pick-1', locale: Locale.nl },
+          },
+          update: {
+            description: 'NL blurb',
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
+        }),
+      );
+      // A human touch-up must NOT re-source the other locales.
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+      expect(result).toEqual({ locale: Locale.nl, description: 'NL blurb' });
+    });
+
+    it('en edits the base blurb hub-scoped, clears stray en rows and re-queues AI translation', async () => {
+      prisma.hubOurPick.findFirst.mockResolvedValue({ id: 'pick-1' });
+
+      await service.upsertOurPickTranslation(
+        'hub-1',
+        'pick-1',
+        Locale.en,
+        { description: 'New EN blurb' },
+        'admin-1',
+      );
+
+      expect(prisma.hubOurPick.updateMany).toHaveBeenCalledWith({
+        where: { id: 'pick-1', hubId: 'hub-1' },
+        data: { description: 'New EN blurb' },
+      });
+      // A stray en translation row would shadow the base blurb on public
+      // reads - the en write must clear it (hub-scoped).
+      expect(prisma.hubOurPickTranslation.deleteMany).toHaveBeenCalledWith({
+        where: {
+          ourPickId: 'pick-1',
+          locale: Locale.en,
+          ourPick: { hubId: 'hub-1' },
+        },
+      });
+      expect(prisma.hubOurPickTranslation.upsert).not.toHaveBeenCalled();
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+
+    it('404s (and does not enqueue) when the en write matches no hub-scoped row', async () => {
+      prisma.hubOurPick.findFirst.mockResolvedValue({ id: 'pick-1' });
+      prisma.hubOurPick.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await expect(
+        service.upsertOurPickTranslation(
+          'hub-1',
+          'pick-1',
+          Locale.en,
+          { description: 'x' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('404s when the pick does not belong to the hub', async () => {
+      prisma.hubOurPick.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.upsertOurPickTranslation(
+          'hub-1',
+          'pick-of-other-hub',
+          Locale.nl,
+          { description: 'x' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.hubOurPickTranslation.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('upsertComparisonGroupTranslation', () => {
+    it('upserts a non-en group name and resets the machine bookkeeping', async () => {
+      prisma.hubComparisonGroup.findFirst.mockResolvedValue({ id: 'group-1' });
+      prisma.hubComparisonGroupTranslation.upsert.mockResolvedValue({
+        locale: Locale.fr,
+        groupName: 'Voyages confort',
+      });
+
+      await service.upsertComparisonGroupTranslation(
+        'hub-1',
+        'group-1',
+        Locale.fr,
+        { groupName: 'Voyages confort' },
+        'admin-1',
+      );
+
+      expect(prisma.hubComparisonGroupTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { groupId_locale: { groupId: 'group-1', locale: Locale.fr } },
+          update: {
+            groupName: 'Voyages confort',
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
+        }),
+      );
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('en edits the base name hub-scoped, clears stray en rows and re-queues AI translation', async () => {
+      prisma.hubComparisonGroup.findFirst.mockResolvedValue({ id: 'group-1' });
+
+      await service.upsertComparisonGroupTranslation(
+        'hub-1',
+        'group-1',
+        Locale.en,
+        { groupName: 'Comfort trips v2' },
+        'admin-1',
+      );
+
+      expect(prisma.hubComparisonGroup.updateMany).toHaveBeenCalledWith({
+        where: { id: 'group-1', hubId: 'hub-1' },
+        data: { groupName: 'Comfort trips v2' },
+      });
+      expect(
+        prisma.hubComparisonGroupTranslation.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: {
+          groupId: 'group-1',
+          locale: Locale.en,
+          group: { hubId: 'hub-1' },
+        },
+      });
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+
+    it('404s when the group does not belong to the hub', async () => {
+      prisma.hubComparisonGroup.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.upsertComparisonGroupTranslation(
+          'hub-1',
+          'group-x',
+          Locale.fr,
+          { groupName: 'x' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('upsertComparisonTourTranslation', () => {
+    it('scopes the column lookup through its group to the hub', async () => {
+      prisma.hubComparisonTour.findFirst.mockResolvedValue({ id: 'ct-1' });
+      prisma.hubComparisonTourTranslation.upsert.mockResolvedValue({
+        locale: Locale.de,
+        standoutNote: 'DE note',
+      });
+
+      await service.upsertComparisonTourTranslation(
+        'hub-1',
+        'ct-1',
+        Locale.de,
+        { standoutNote: 'DE note' },
+        'admin-1',
+      );
+
+      expect(prisma.hubComparisonTour.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ct-1', group: { hubId: 'hub-1' } },
+        }),
+      );
+      expect(prisma.hubComparisonTourTranslation.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: {
+            standoutNote: 'DE note',
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
+        }),
+      );
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('en edits the base standout note hub-scoped, clears stray en rows and re-queues AI translation', async () => {
+      prisma.hubComparisonTour.findFirst.mockResolvedValue({ id: 'ct-1' });
+
+      await service.upsertComparisonTourTranslation(
+        'hub-1',
+        'ct-1',
+        Locale.en,
+        { standoutNote: 'Base note v2' },
+        'admin-1',
+      );
+
+      expect(prisma.hubComparisonTour.updateMany).toHaveBeenCalledWith({
+        where: { id: 'ct-1', group: { hubId: 'hub-1' } },
+        data: { standoutNote: 'Base note v2' },
+      });
+      expect(
+        prisma.hubComparisonTourTranslation.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: {
+          comparisonTourId: 'ct-1',
+          locale: Locale.en,
+          comparisonTour: { group: { hubId: 'hub-1' } },
+        },
+      });
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+
+    it('404s when the column does not belong to the hub', async () => {
+      prisma.hubComparisonTour.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.upsertComparisonTourTranslation(
+          'hub-1',
+          'ct-x',
+          Locale.de,
+          { standoutNote: 'x' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('upsertContentSectionTranslation', () => {
+    const enRow = { id: 'sec-en', image: 'https://img.example/x.jpg' };
+
+    it('upserts a non-en sibling row keyed by (sectionType, displayOrder), copying the image', async () => {
+      prisma.hubContentSection.findUnique.mockResolvedValue(enRow);
+      prisma.hubContentSection.upsert.mockResolvedValue({
+        locale: Locale.nl,
+        sectionType: HubSectionType.DISCOVER,
+        displayOrder: 1,
+        heading: 'NL kop',
+        body: 'NL tekst',
+      });
+
+      await service.upsertContentSectionTranslation(
+        'hub-1',
+        HubSectionType.DISCOVER,
+        1,
+        Locale.nl,
+        { heading: 'NL kop', body: 'NL tekst' },
+        'admin-1',
+      );
+
+      // The English source row anchors the block's identity.
+      expect(prisma.hubContentSection.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            hubId_locale_sectionType_displayOrder: {
+              hubId: 'hub-1',
+              locale: Locale.en,
+              sectionType: HubSectionType.DISCOVER,
+              displayOrder: 1,
+            },
+          },
+        }),
+      );
+      expect(prisma.hubContentSection.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            hubId_locale_sectionType_displayOrder: {
+              hubId: 'hub-1',
+              locale: Locale.nl,
+              sectionType: HubSectionType.DISCOVER,
+              displayOrder: 1,
+            },
+          },
+          update: {
+            heading: 'NL kop',
+            body: 'NL tekst',
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
+          create: expect.objectContaining({
+            image: 'https://img.example/x.jpg',
+          }),
+        }),
+      );
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('mirrors the body into the heading when none is sent (headingless types)', async () => {
+      prisma.hubContentSection.findUnique.mockResolvedValue(enRow);
+      prisma.hubContentSection.upsert.mockResolvedValue({});
+
+      await service.upsertContentSectionTranslation(
+        'hub-1',
+        HubSectionType.HIGHLIGHT,
+        0,
+        Locale.de,
+        { body: 'Nur Text' },
+        'admin-1',
+      );
+
+      const call = prisma.hubContentSection.upsert.mock.calls[0][0] as {
+        update: Record<string, unknown>;
+      };
+      expect(call.update.heading).toBe('Nur Text');
+      expect(call.update.body).toBe('Nur Text');
+    });
+
+    it('en edits the source row in place and re-queues AI translation', async () => {
+      prisma.hubContentSection.findUnique.mockResolvedValue(enRow);
+      prisma.hubContentSection.update.mockResolvedValue({});
+
+      await service.upsertContentSectionTranslation(
+        'hub-1',
+        HubSectionType.LOCAL_TIP,
+        0,
+        Locale.en,
+        { heading: 'New tip', body: 'New body' },
+        'admin-1',
+      );
+
+      expect(prisma.hubContentSection.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'sec-en' },
+          data: { heading: 'New tip', body: 'New body' },
+        }),
+      );
+      expect(prisma.hubContentSection.upsert).not.toHaveBeenCalled();
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hub', 'hub-1');
+    });
+
+    it('404s when no English block exists at (sectionType, displayOrder)', async () => {
+      prisma.hubContentSection.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.upsertContentSectionTranslation(
+          'hub-1',
+          HubSectionType.DISCOVER,
+          9,
+          Locale.nl,
+          { heading: 'x', body: 'y' },
+          'admin-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.hubContentSection.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Curation translation clears (Translation Console) ───────────────────────
+  // Every one of these columns is NOT NULL, so "cleared" means the row is
+  // deleted and the public page falls back to the English base value.
+
+  describe('curation translation clears', () => {
+    it('deletes only the requested locale, hub-scoped, for each surface', async () => {
+      prisma.hubOurPickTranslation.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.hubComparisonGroupTranslation.deleteMany.mockResolvedValue({
+        count: 1,
+      });
+      prisma.hubComparisonTourTranslation.deleteMany.mockResolvedValue({
+        count: 1,
+      });
+      prisma.hubContentSection.deleteMany.mockResolvedValue({ count: 1 });
+
+      await service.deleteOurPickTranslation(
+        'hub-1',
+        'pick-1',
+        Locale.nl,
+        'admin-1',
+      );
+      expect(prisma.hubOurPickTranslation.deleteMany).toHaveBeenCalledWith({
+        where: {
+          ourPickId: 'pick-1',
+          locale: Locale.nl,
+          ourPick: { hubId: 'hub-1' },
+        },
+      });
+
+      await service.deleteComparisonGroupTranslation(
+        'hub-1',
+        'group-1',
+        Locale.fr,
+        'admin-1',
+      );
+      expect(
+        prisma.hubComparisonGroupTranslation.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: {
+          groupId: 'group-1',
+          locale: Locale.fr,
+          group: { hubId: 'hub-1' },
+        },
+      });
+
+      await service.deleteComparisonTourTranslation(
+        'hub-1',
+        'ct-1',
+        Locale.de,
+        'admin-1',
+      );
+      expect(
+        prisma.hubComparisonTourTranslation.deleteMany,
+      ).toHaveBeenCalledWith({
+        where: {
+          comparisonTourId: 'ct-1',
+          locale: Locale.de,
+          comparisonTour: { group: { hubId: 'hub-1' } },
+        },
+      });
+
+      await service.deleteContentSectionTranslation(
+        'hub-1',
+        HubSectionType.DISCOVER,
+        2,
+        Locale.es,
+        'admin-1',
+      );
+      expect(prisma.hubContentSection.deleteMany).toHaveBeenCalledWith({
+        where: {
+          hubId: 'hub-1',
+          locale: Locale.es,
+          sectionType: HubSectionType.DISCOVER,
+          displayOrder: 2,
+        },
+      });
+
+      // A clear must never re-queue the AI - it would undo the clear.
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('refuses to clear English on every surface - it is the source', async () => {
+      await expect(
+        service.deleteOurPickTranslation('hub-1', 'p', Locale.en, 'a'),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.deleteComparisonGroupTranslation('hub-1', 'g', Locale.en, 'a'),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.deleteComparisonTourTranslation('hub-1', 'c', Locale.en, 'a'),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.deleteContentSectionTranslation(
+          'hub-1',
+          HubSectionType.DISCOVER,
+          0,
+          Locale.en,
+          'a',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.hubOurPickTranslation.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.hubContentSection.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a negative displayOrder (this Nest ParseIntPipe takes no bounds)', async () => {
+      await expect(
+        service.deleteContentSectionTranslation(
+          'hub-1',
+          HubSectionType.DISCOVER,
+          -1,
+          Locale.nl,
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.hubContentSection.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent - clearing an absent translation succeeds', async () => {
+      prisma.hubOurPickTranslation.deleteMany.mockResolvedValue({ count: 0 });
+
+      const res = await service.deleteOurPickTranslation(
+        'hub-1',
+        'pick-1',
+        Locale.nl,
+        'admin-1',
+      );
+
+      expect(res.message).toBe('Nothing to clear');
+    });
+  });
+
+  describe('getContentSectionsForEdit', () => {
+    /**
+     * The Translation Console read. The PUBLIC `getContentSections` takes a
+     * LocaleQueryDto whose locale defaults to `en`, so calling it without one
+     * returns English only - the console then found no sibling row for the
+     * target locale, rendered every field blank, and made a save that had
+     * persisted look like it vanished on reload.
+     */
+    it('returns EVERY locale, with no locale filter in the query', async () => {
+      prisma.hub.findUnique.mockResolvedValue({ id: 'hub-1' });
+      prisma.hubContentSection.findMany.mockResolvedValue([]);
+
+      await service.getContentSectionsForEdit('hub-1');
+
+      const where = prisma.hubContentSection.findMany.mock.calls[0][0].where;
+      expect(where).toEqual({ hubId: 'hub-1' });
+      expect(where).not.toHaveProperty('locale');
+    });
+
+    it('404s for a hub that does not exist', async () => {
+      prisma.hub.findUnique.mockResolvedValue(null);
+
+      await expect(service.getContentSectionsForEdit('nope')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

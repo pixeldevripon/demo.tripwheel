@@ -2,6 +2,8 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -10,6 +12,8 @@ import {
 import {
   applyTranslation,
   faqSelect,
+  mergeTranslation,
+  resolveFaqLocale,
   translationSelect,
 } from '@/common/utils/translation.util';
 import { generateSlug } from '@/common/utils/slug.util';
@@ -48,6 +52,7 @@ export class CategoryService {
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   private readonly categorySelect = {
@@ -269,7 +274,14 @@ export class CategoryService {
         where: { slug: categorySlug },
         select: {
           ...this.categorySelect,
-          translations: { where: { locale }, select: translationSelect },
+          // Both rows: editorial fields live ONLY on translation rows, so a
+          // per-FIELD English fallback needs the en row too. Fetching just
+          // `locale` renders a cleared (or never-translated) field as EMPTY
+          // instead of falling back.
+          translations: {
+            where: { locale: { in: [locale, Locale.en] } },
+            select: { ...translationSelect, locale: true },
+          },
         },
       }),
     ]);
@@ -300,12 +312,15 @@ export class CategoryService {
     );
 
     const { translations, ...cat } = category;
-    const t = translations[0];
+    const t = translations.find((row) => row.locale === locale);
+    const en = translations.find((row) => row.locale === Locale.en);
+    // Per-FIELD fallback: a field cleared in the Translation Console is null
+    // here and must show English, not a blank.
     return {
-      ...applyTranslation(cat, t, locale),
-      overview: t?.overview ?? null,
-      h1Override: t?.h1Override ?? null,
-      breadcrumbLabel: t?.breadcrumbLabel ?? null,
+      ...applyTranslation(cat, t ?? en, locale),
+      overview: t?.overview ?? en?.overview ?? null,
+      h1Override: t?.h1Override ?? en?.h1Override ?? null,
+      breadcrumbLabel: t?.breadcrumbLabel ?? en?.breadcrumbLabel ?? null,
       publishedTourCount,
       subCategories,
     };
@@ -766,6 +781,16 @@ export class CategoryService {
         throw err;
       });
 
+    // A whole-locale delete is the broadest possible clear - mark it so the
+    // AI treats the absent row as deliberate, not as untranslated.
+    await this.clearMarks.mark(
+      'category',
+      id,
+      translationUnitKeys.main(),
+      locale,
+      adminId,
+    );
+
     this.logger.log(
       `Admin ${adminId} deleted translation for category ${id} [${locale}]`,
     );
@@ -774,11 +799,20 @@ export class CategoryService {
 
   // ── Page Content ──────────────────────────────────────────────────────────────
 
-  async getPageContent(id: string, locale: Locale) {
+  /**
+   * `fallback` is the public read: fill blanks from English so a page never
+   * renders an empty About band. The dashboard editor leaves it off and gets
+   * the locale exactly as stored - anything else would have an admin edit
+   * English text inside a Dutch box and save it as Dutch.
+   */
+  async getPageContent(id: string, locale: Locale, fallback = false) {
     await this.findCategoryOrThrow(id);
 
-    const row = await this.prisma.categoryPageContent.findUnique({
-      where: { categoryId_locale: { categoryId: id, locale } },
+    const rows = await this.prisma.categoryPageContent.findMany({
+      where: {
+        categoryId: id,
+        locale: fallback ? { in: [locale, Locale.en] } : locale,
+      },
       select: {
         locale: true,
         aboutText: true,
@@ -787,6 +821,9 @@ export class CategoryService {
       },
     });
 
+    const row = fallback
+      ? mergeTranslation(rows, locale)
+      : rows.find((r) => r.locale === locale);
     return (
       row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
     );
@@ -836,19 +873,28 @@ export class CategoryService {
 
   // ── FAQ ───────────────────────────────────────────────────────────────────────
 
+  /**
+   * Public FAQ read. With a locale it fetches that locale AND English and
+   * resolves per group and per field: an untranslated FAQ shows in English
+   * rather than vanishing, and a field cleared in the Translation Console
+   * falls back on its own (English question next to a translated answer).
+   * Without a locale it returns every row - the admin listing.
+   */
   async getFaqs(id: string, query: FaqLocaleQueryDto) {
     await this.findCategoryOrThrow(id);
 
-    return this.prisma.faq.findMany({
+    const rows = await this.prisma.faq.findMany({
       where: {
         pageType: FAQ_PAGE_TYPE.CATEGORY,
         entityId: id,
         isActive: true,
-        ...(query.locale && { locale: query.locale }),
+        ...(query.locale && { locale: { in: [query.locale, Locale.en] } }),
       },
       select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
+
+    return query.locale ? resolveFaqLocale(rows, query.locale) : rows;
   }
 
   async createFaq(id: string, dto: CreateCategoryFaqDto, adminId: string) {
@@ -960,6 +1006,25 @@ export class CategoryService {
       `Admin ${adminId} updated FAQ ${groupId} for category ${id}`,
     );
     return this.faqGroups.updateGroup(FAQ_PAGE_TYPE.CATEGORY, id, groupId, dto);
+  }
+
+  /** Clear ONE locale of a FAQ (Translation Console) - see FaqGroupService. */
+  async deleteFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    await this.findCategoryOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} cleared FAQ ${groupId} [${locale}] for category ${id}`,
+    );
+    return this.faqGroups.deleteTranslation(
+      FAQ_PAGE_TYPE.CATEGORY,
+      id,
+      groupId,
+      locale,
+    );
   }
 
   async deleteFaqGroup(id: string, groupId: string, adminId: string) {

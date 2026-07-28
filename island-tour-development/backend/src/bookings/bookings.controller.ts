@@ -27,20 +27,24 @@ import {
   LookupBookingDto,
   QuoteBookingDto,
   RecoverReferenceDto,
+  ReportCancellationDto,
   RequestCancellationDto,
+  RequestTravellerCodeDto,
   ReserveBookingDto,
+  TravellerListQueryDto,
   UpdateBookingDto,
+  VerifyTravellerCodeDto,
 } from './dto/booking.dto';
 import {
   ApiCalendarDocs,
   ApiCancelDocs,
   ApiConfirmForfeitDocs,
+  ApiDismissCancellationReportDocs,
   ApiDismissNonPaymentDocs,
+  ApiReportCancellationDocs,
   ApiReportNonPaymentDocs,
   ApiClaimConversionDocs,
   ApiConfirmDocs,
-  ApiCustomerCancellationRequestDocs,
-  ApiCustomerSummaryDocs,
   ApiExtendDocs,
   ApiGetBookingDocs,
   ApiListBookingsDocs,
@@ -48,10 +52,15 @@ import {
   ApiQuoteDocs,
   ApiRecoverReferenceDocs,
   ApiRequestCancellationDocs,
+  ApiRequestTravellerCodeDocs,
   ApiReserveDocs,
   ApiResendConfirmationDocs,
   ApiThankYouDocs,
+  ApiTravellerBookingsDocs,
+  ApiTravellerPaymentsDocs,
+  ApiTravellerSummaryDocs,
   ApiUpdateBookingDocs,
+  ApiVerifyTravellerCodeDocs,
 } from './bookings.swagger';
 
 /**
@@ -146,6 +155,35 @@ export class BookingsController {
     });
   }
 
+  // ── Operator cancellation report (conflict #2) - report, never execute ───
+
+  @Post(':id/report-cancellation')
+  @RequirePermissions(Permission.EDIT_BOOKING)
+  @ApiReportCancellationDocs()
+  reportCancellation(
+    @Param('id') id: string,
+    @Body() dto: ReportCancellationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.reportCancellation(id, dto, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  @Post(':id/dismiss-cancellation-report')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiDismissCancellationReportDocs()
+  dismissCancellationReport(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.bookings.dismissCancellationReport(id, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
   @Post(':id/extend')
   @Public()
   @ApiExtendDocs()
@@ -209,6 +247,89 @@ export class BookingsController {
   @ApiRecoverReferenceDocs()
   recoverReference(@Body() dto: RecoverReferenceDto) {
     return this.bookings.recoverReference(dto);
+  }
+
+  // ── Traveller account area (/{locale}/traveller) ────────────────────────
+  //
+  // A separate, stronger login from `/bookings`: the pair lookup proves
+  // possession of ONE (forwardable) confirmation email, which is the wrong
+  // credential for a person's whole booking + payment history. These routes
+  // require a HISTORY-scoped session, minted only by the OTP exchange below.
+  // Static routes - MUST stay above the `:id` routes further down.
+
+  /**
+   * POST /bookings/traveller/request-code
+   *
+   * Step 1 of the account login. Sends mail, so it gets the same human-pace
+   * throttle as resend/recover-reference, and the same browser-only rule:
+   * `skipIf: isTrustedInternalOrigin` would bypass every limit below if this
+   * were ever called from SSR.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('traveller/request-code')
+  @Public()
+  @ApiRequestTravellerCodeDocs()
+  requestTravellerCode(@Body() dto: RequestTravellerCodeDto) {
+    return this.bookings.requestTravellerLoginCode(dto);
+  }
+
+  /**
+   * POST /bookings/traveller/verify-code
+   *
+   * Step 2: a credential check, so it carries the lookup throttle (tighter
+   * than the global tiers, which are sized for page loads and far too loose
+   * for guessing codes). Browser-only for the same reason. The service also
+   * caps attempts per code, so the throttle is the outer of two limits.
+   */
+  @Throttle({
+    short: { limit: 2, ttl: 10_000 },
+    medium: { limit: 6, ttl: 60_000 },
+    long: { limit: 30, ttl: 3_600_000 },
+  })
+  @Post('traveller/verify-code')
+  @Public()
+  @ApiVerifyTravellerCodeDocs()
+  verifyTravellerCode(@Body() dto: VerifyTravellerCodeDto) {
+    return this.bookings.verifyTravellerLoginCode(dto);
+  }
+
+  /**
+   * GET /bookings/traveller/bookings - the account area's booking list.
+   * `@Public` (no Better Auth on the public site); the gate is the
+   * HISTORY-scoped X-Traveler-Session, enforced in the service. Read-only
+   * and session-authed, so SSR calls are fine here.
+   */
+  @Get('traveller/bookings')
+  @Public()
+  @ApiTravellerBookingsDocs()
+  travellerBookings(
+    @Query() query: TravellerListQueryDto,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.listTravellerBookings(query, sessionToken);
+  }
+
+  /** GET /bookings/traveller/summary - the account area's stat row. */
+  @Get('traveller/summary')
+  @Public()
+  @ApiTravellerSummaryDocs()
+  travellerSummary(@Headers(TRAVELER_SESSION_HEADER) sessionToken?: string) {
+    return this.bookings.getTravellerSummary(sessionToken);
+  }
+
+  /** GET /bookings/traveller/payments - the account area's payment history. */
+  @Get('traveller/payments')
+  @Public()
+  @ApiTravellerPaymentsDocs()
+  travellerPayments(
+    @Query() query: TravellerListQueryDto,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.listTravellerPayments(query, sessionToken);
   }
 
   @Get('typ/:publicRef')
@@ -343,43 +464,13 @@ export class BookingsController {
     return this.bookings.list(query, { id: user.id, role: user.role });
   }
 
-  /**
-   * GET /bookings/me/summary - the customer dashboard's stat row: booking
-   * counts + net spend per currency, computed live from the payment ledger
-   * for the caller's OWN bookings. Static route: MUST stay above `:id`.
-   */
-  @Get('me/summary')
-  @RequirePermissions(Permission.VIEW_BOOKINGS)
-  @ApiCustomerSummaryDocs()
-  customerSummary(@AuthenticatedUser() user: TypedAuthUser) {
-    return this.bookings.getCustomerSummary({ id: user.id });
-  }
-
-  /**
-   * POST /bookings/:id/cancellation-request - cancellation request from a
-   * logged-in customer (dashboard /account surface). Ownership = the booking's
-   * userId; foreign ids 404. Same downstream flow (admin email + notices) as
-   * the public TYP route above.
-   */
-  @Throttle({
-    short: { limit: 1, ttl: 10_000 },
-    medium: { limit: 3, ttl: 60_000 },
-    long: { limit: 10, ttl: 3_600_000 },
-  })
-  @Post(':id/cancellation-request')
-  @RequirePermissions(Permission.VIEW_BOOKINGS)
-  @ApiCustomerCancellationRequestDocs()
-  requestCancellationAsCustomer(
-    @Param('id') id: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-    @Body() dto: RequestCancellationDto,
-  ) {
-    return this.bookings.requestCancellationAsCustomer(
-      id,
-      { id: user.id },
-      dto.reason,
-    );
-  }
+  // GET /bookings/me/summary and POST /bookings/:id/cancellation-request
+  // lived here until 2026-07-28. Both served the dashboard's /account
+  // customer surface, which is deleted: they required a Better Auth session,
+  // and no traveller can mint one any more (no password is ever set for a
+  // Role.USER account). The traveller equivalents are the @Public,
+  // HMAC-session routes above - `traveller/summary` and the tokenized
+  // `typ/:publicRef/cancellation-request`.
 
   @Get(':id')
   @RequirePermissions(Permission.VIEW_BOOKINGS)

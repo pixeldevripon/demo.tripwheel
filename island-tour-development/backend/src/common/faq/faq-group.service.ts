@@ -1,8 +1,15 @@
 import { Locale } from '@/common/constants/locales';
-import { faqSelect } from '@/common/utils/translation.util';
+import { clearableField, faqSelect } from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { FaqPageType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import type {
@@ -41,6 +48,7 @@ export class FaqGroupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   private buildGroup(rows: FaqRow[]) {
@@ -146,14 +154,21 @@ export class FaqGroupService {
     const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
     const existing = rows.find((r) => r.locale === locale);
 
+    // Each field clears independently: a blank stores '' and KEEPS the row, so
+    // the page falls back to English for that field alone (translate the answer
+    // but not the question and both render correctly). English is refused - it
+    // is what everything else falls back to.
+    const question = clearableField(dto.question, locale, 'The question');
+    const answer = clearableField(dto.answer, locale, 'The answer');
+
     // This is the HUMAN write path (dashboard) - it always resets the machine
     // bookkeeping, so the AI refresher never overwrites what was typed here.
     const row = existing
       ? await this.prisma.faq.update({
           where: { id: existing.id },
           data: {
-            question: dto.question,
-            answer: dto.answer,
+            question,
+            answer,
             isMachineTranslated: false,
             sourceHash: null,
           },
@@ -165,8 +180,8 @@ export class FaqGroupService {
             entityId,
             faqGroupId: groupId,
             locale,
-            question: dto.question,
-            answer: dto.answer,
+            question,
+            answer,
             // Group-level attributes are mirrored so every locale row stays in sync.
             displayOrder: base.displayOrder,
             isActive: base.isActive,
@@ -206,6 +221,48 @@ export class FaqGroupService {
     this.logger.log(`Updated FAQ group ${groupId} for ${pageType} ${entityId}`);
     const rows = await this.getGroupRowsOrThrow(pageType, entityId, groupId);
     return this.buildGroup(rows);
+  }
+
+  /**
+   * Remove ONE locale's row from a group - the Translation Console's "clear".
+   * `Faq.question`/`answer` are NOT NULL, so a blank translation cannot be
+   * stored: deleting the row IS the cleared state, and the public page falls
+   * back to English. English is the source every locale derives from and is
+   * refused here (delete the whole group instead).
+   */
+  async deleteTranslation(
+    pageType: FaqPageType,
+    entityId: string,
+    groupId: string,
+    locale: Locale,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source translation and cannot be cleared - delete the FAQ instead',
+      );
+    }
+    await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+
+    const { count } = await this.prisma.faq.deleteMany({
+      where: { pageType, entityId, faqGroupId: groupId, locale },
+    });
+
+    // `Faq.question`/`answer` are NOT NULL, so the clear had to remove the
+    // row - record it, or the next English edit reads the gap as "never
+    // translated" and puts the FAQ back.
+    await this.clearMarks.markForPageType(
+      pageType,
+      entityId,
+      translationUnitKeys.faq(groupId),
+      locale,
+    );
+
+    this.logger.log(
+      `Deleted FAQ group ${groupId} translation [${locale}] for ${pageType} ${entityId}`,
+    );
+    // Nothing to re-source: the AI must not refill a deliberately cleared
+    // translation (human rows are skipped outright by the policy).
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
   }
 
   async deleteGroup(pageType: FaqPageType, entityId: string, groupId: string) {

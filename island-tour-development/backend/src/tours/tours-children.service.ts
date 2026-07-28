@@ -1,6 +1,9 @@
 import { Locale as LocaleEnum } from '@/common/constants/locales';
+import { clearableField } from '@/common/utils/translation.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import { ToursService } from './tours.service';
 import {
   BadRequestException,
@@ -48,6 +51,7 @@ export class TourChildrenService {
     private readonly prisma: PrismaService,
     private readonly toursService: ToursService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   // ── Common helper ─────────────────────────────────────────────────────────────
@@ -744,16 +748,21 @@ export class TourChildrenService {
         `Highlight ${highlightId} not found on tour ${tourId}`,
       );
 
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const text = clearableField(dto.text, locale, 'The highlight text');
+
     const result = await this.prisma.tourHighlightTranslation.upsert({
       where: { highlightId_locale: { highlightId, locale } },
       create: {
         highlightId,
         locale,
-        text: dto.text,
+        text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        text: dto.text,
+        text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -803,6 +812,14 @@ export class TourChildrenService {
         throw err;
       });
 
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.highlight(highlightId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted highlight translation [${locale}] for highlight ${highlightId}`,
     );
@@ -950,16 +967,21 @@ export class TourChildrenService {
         `Inclusion ${inclusionId} not found on tour ${tourId}`,
       );
 
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const label = clearableField(dto.label, locale, 'The inclusion label');
+
     const result = await this.prisma.tourInclusionTranslation.upsert({
       where: { inclusionId_locale: { inclusionId, locale } },
       create: {
         inclusionId,
         locale,
-        label: dto.label,
+        label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        label: dto.label,
+        label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -1009,6 +1031,14 @@ export class TourChildrenService {
         throw err;
       });
 
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.inclusion(inclusionId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted inclusion translation [${locale}] for inclusion ${inclusionId}`,
     );
@@ -1162,16 +1192,21 @@ export class TourChildrenService {
         `Exclusion ${exclusionId} not found on tour ${tourId}`,
       );
 
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const label = clearableField(dto.label, locale, 'The exclusion label');
+
     const result = await this.prisma.tourExclusionTranslation.upsert({
       where: { exclusionId_locale: { exclusionId, locale } },
       create: {
         exclusionId,
         locale,
-        label: dto.label,
+        label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        label: dto.label,
+        label,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -1221,6 +1256,14 @@ export class TourChildrenService {
         throw err;
       });
 
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.exclusion(exclusionId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted exclusion translation [${locale}] for exclusion ${exclusionId}`,
     );
@@ -1344,16 +1387,21 @@ export class TourChildrenService {
       throw new NotFoundException(
         `Feature ${featureId} not found on tour ${tourId}`,
       );
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const text = clearableField(dto.text, locale, 'The item text');
+
     const result = await this.prisma.tourFeatureTranslation.upsert({
       where: { featureId_locale: { featureId, locale } },
       create: {
         featureId,
         locale,
-        text: dto.text,
+        text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        text: dto.text,
+        text,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -1396,6 +1444,14 @@ export class TourChildrenService {
           );
         throw err;
       });
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.feature(featureId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted feature translation [${locale}] for feature ${featureId}`,
     );
@@ -1568,18 +1624,28 @@ export class TourChildrenService {
       throw new NotFoundException(
         `Location ${locationId} not found on tour ${tourId}`,
       );
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const title = clearableField(dto.title, locale, 'The stop title');
+    const shortDescription = clearableField(
+      dto.shortDescription,
+      locale,
+      'The short description',
+    );
+
     const result = await this.prisma.tourLocationTranslation.upsert({
       where: { locationId_locale: { locationId, locale } },
       create: {
         locationId,
         locale,
-        title: dto.title,
-        shortDescription: dto.shortDescription ?? null,
+        title,
+        shortDescription,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        title: dto.title,
-        shortDescription: dto.shortDescription ?? null,
+        title,
+        shortDescription,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -1627,6 +1693,14 @@ export class TourChildrenService {
           );
         throw err;
       });
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.location(locationId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted location translation [${locale}] for location ${locationId}`,
     );
@@ -1797,18 +1871,24 @@ export class TourChildrenService {
       throw new NotFoundException(
         `Pickup location ${pickupLocationId} not found on tour ${tourId}`,
       );
+    // Each field clears independently: a blank stores '' and keeps the row,
+    // so the page falls back to English for that field alone. English is
+    // refused - it is the source everything else falls back to.
+    const title = clearableField(dto.title, locale, 'The pickup title');
+    const directions = clearableField(dto.directions, locale, 'The directions');
+
     const result = await this.prisma.pickupLocationTranslation.upsert({
       where: { pickupLocationId_locale: { pickupLocationId, locale } },
       create: {
         pickupLocationId,
         locale,
-        title: dto.title,
-        directions: dto.directions ?? null,
+        title,
+        directions,
         isMachineTranslated: dto.isMachineTranslated ?? false,
       },
       update: {
-        title: dto.title,
-        directions: dto.directions ?? null,
+        title,
+        directions,
         isMachineTranslated: dto.isMachineTranslated ?? false,
         // Human write path - reset the AI bookkeeping.
         sourceHash: null,
@@ -1858,6 +1938,14 @@ export class TourChildrenService {
           );
         throw err;
       });
+    // The row is gone (its text column is NOT NULL) - record the clear so
+    // the AI does not read the gap as untranslated and put it back.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.pickup(pickupLocationId),
+      locale,
+    );
     this.logger.log(
       `User ${requesterId} deleted pickup translation [${locale}] for pickup ${pickupLocationId}`,
     );
@@ -2045,6 +2133,15 @@ export class TourChildrenService {
         }
         throw err;
       });
+
+    // A whole-locale delete is the broadest possible clear - mark it so the
+    // AI treats the absent row as deliberate, not as untranslated.
+    await this.clearMarks.mark(
+      'tour',
+      tourId,
+      translationUnitKeys.main(),
+      locale,
+    );
 
     this.logger.log(
       `User ${requesterId} deleted translation [${locale}] for tour ${tourId}`,

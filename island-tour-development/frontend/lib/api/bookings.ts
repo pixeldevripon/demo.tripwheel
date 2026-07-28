@@ -44,7 +44,11 @@ export interface BookingQuote {
     depositAmount: string;
     sourceBalanceAmount: string;
     balanceAmount: string;
-    commissionRate: string;
+    /**
+     * Always null on the quote: the commission snapshot is platform-internal
+     * and this route is public. Never render it.
+     */
+    commissionRate: string | null;
     commissionAmount: string | null;
     paymentModel: string;
     pax: number;
@@ -330,20 +334,22 @@ export async function resendConfirmationEmail(
  */
 export async function requestBookingCancellation(
     publicRef: string,
-    reason?: string,
-    sessionToken?: string | null
+    reason?: string
 ): Promise<{ requested: boolean }> {
-    return apiFetch<{ requested: boolean }>(
-        `/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request`,
-        {
-            method: 'POST',
-            // The backend requires a traveler session owning the booking - a
-            // leaked TYP link alone must never cancel a trip. The cancel page
-            // reads the HttpOnly cookie server-side and hands the token down.
-            headers: sessionToken
-                ? { [TRAVELER_SESSION_HEADER]: sessionToken }
-                : undefined,
-            body: JSON.stringify(reason?.trim() ? { reason: reason.trim() } : {}),
-        }
-    );
+    // Goes through our OWN route handler, which reads the HttpOnly session
+    // server-side. The token is never handed to the browser: since the
+    // account door (/{locale}/traveller) began issuing HISTORY-scoped
+    // sessions, the cookie on this page can be the strongest traveller
+    // credential there is - 24h against every booking on the email - so
+    // serializing it into a client prop would put it one XSS away from being
+    // exfiltrated. The backend still owns ownership and eligibility.
+    const res = await fetch('/api/traveller/cancellation-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicRef, reason }),
+    });
+    if (!res.ok) {
+        throw new Error('Could not send the cancellation request');
+    }
+    return { requested: true };
 }

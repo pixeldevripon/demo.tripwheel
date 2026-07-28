@@ -26,7 +26,8 @@ export type Dictionary = Awaited<ReturnType<(typeof dictionaries)['en']>>;
 // Cache key bump: editing this file busts the 'use cache' entries in dev so newly
 // added dictionary keys (e.g. `search`, `wishlist`, `allTours.emptyState`,
 // `checkout.pickupSelect/pickupPricePP`, `checkout.hostedCheckoutTitle`,
-// `booking.showExtras/addOnsTitle/perBookingShort/instantConfirmation*`)
+// `booking.showExtras/addOnsTitle/perBookingShort/instantConfirmation*`,
+// `traveller.*`, `nav.myAccount`)
 // are picked up without a restart.
 export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
     'use cache';

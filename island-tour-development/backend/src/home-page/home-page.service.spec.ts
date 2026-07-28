@@ -53,6 +53,9 @@ function createMockFaqGroupService() {
     updateGroup: jest.fn().mockResolvedValue({}),
     deleteGroup: jest.fn().mockResolvedValue({}),
     upsertTranslation: jest.fn().mockResolvedValue({}),
+    deleteTranslation: jest
+      .fn()
+      .mockResolvedValue({ message: 'Translation cleared' }),
   };
 }
 
@@ -552,6 +555,34 @@ describe('HomePageService', () => {
 
       expect(prisma.homePage.upsert).toHaveBeenCalled();
       expect(faqGroups.createGroup).toHaveBeenCalled();
+    });
+
+    // The Translation Console clears a homepage FAQ by emptying both fields;
+    // question/answer are NOT NULL, so that has to delete the locale row. This
+    // route was the one FAQ surface missing it - the console got a 404 and
+    // reported "Saved with 1 failure".
+    it('clears one locale of a FAQ, always against the singleton key', async () => {
+      const res = await service.deleteFaqTranslation(
+        'default',
+        'g1',
+        Locale.es,
+        'admin-1',
+      );
+
+      expect(faqGroups.deleteTranslation).toHaveBeenCalledWith(
+        FaqPageType.homepage,
+        'default',
+        'g1',
+        Locale.es,
+      );
+      expect(res).toEqual({ message: 'Translation cleared' });
+    });
+
+    it('404s a FAQ clear aimed at anything but the singleton', async () => {
+      await expect(
+        service.deleteFaqTranslation('nope', 'g1', Locale.es, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(faqGroups.deleteTranslation).not.toHaveBeenCalled();
     });
   });
 

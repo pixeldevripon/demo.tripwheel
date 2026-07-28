@@ -79,6 +79,25 @@
             opacity: 0;
         }
     }
+
+    /* Blinking text caret for the one-time-code inputs. The shadcn input-otp
+       preset ships the `animate-caret-blink` class but not the keyframes, so
+       without this the caret renders as a static line. */
+    @keyframes caret-blink {
+        0%,
+        70%,
+        100% {
+            opacity: 1;
+        }
+        20%,
+        50% {
+            opacity: 0;
+        }
+    }
+
+    .animate-caret-blink {
+        animation: caret-blink 1.25s ease-out infinite;
+    }
 }
 
 @layer utilities {

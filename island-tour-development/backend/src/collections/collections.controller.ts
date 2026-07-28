@@ -1,3 +1,4 @@
+import { PageContentQueryDto } from '@/common/dto/page-content-query.dto';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
@@ -188,8 +189,12 @@ export class CollectionsController {
   @Get(':id/page-content')
   @Public()
   @ApiGetCollectionPageContentDocs()
-  getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.collectionsService.getPageContent(id, query.locale!);
+  getPageContent(@Param('id') id: string, @Query() query: PageContentQueryDto) {
+    return this.collectionsService.getPageContent(
+      id,
+      query.locale!,
+      query.fallback,
+    );
   }
 
   @Patch(':id/page-content/:locale')
@@ -273,6 +278,30 @@ export class CollectionsController {
     return this.collectionsService.deleteFaqGroup(id, groupId, user.id);
   }
 
+  /**
+   * Clear ONE locale of a FAQ (Translation Console). Question/answer are NOT
+   * NULL, so removing the row IS the cleared state - the public page falls
+   * back to English. `en` is rejected; delete the FAQ group instead.
+   */
+  @Delete(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({
+    summary: 'Admin: clear one locale of a FAQ (falls back to English)',
+  })
+  deleteFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.deleteFaqTranslation(
+      id,
+      groupId,
+      locale,
+      user.id,
+    );
+  }
+
   @Put(':id/faqs/groups/:groupId/translations/:locale')
   @RequirePermissions(Permission.EDIT_COLLECTION)
   @ApiOperation({
@@ -348,6 +377,31 @@ export class CollectionsController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.collectionsService.replaceTours(id, dto, user.id);
+  }
+
+  /**
+   * Clear ONE locale of a tour rationale (Translation Console). `rationale` is
+   * NOT NULL, so removing the row IS the cleared state - the page falls back
+   * to English. `en` is rejected (it is a publish gate).
+   */
+  @Delete(':id/tours/:tourId/rationale/:locale')
+  @RequirePermissions(Permission.EDIT_COLLECTION)
+  @ApiOperation({
+    summary:
+      'Admin: clear one locale of a tour rationale (falls back to English)',
+  })
+  deleteTourRationale(
+    @Param('id') id: string,
+    @Param('tourId') tourId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.collectionsService.deleteTourRationale(
+      id,
+      tourId,
+      locale,
+      user.id,
+    );
   }
 
   @Put(':id/tours/:tourId/rationale/:locale')

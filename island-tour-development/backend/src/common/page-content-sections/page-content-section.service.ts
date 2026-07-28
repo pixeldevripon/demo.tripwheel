@@ -1,7 +1,15 @@
+import { clearableField } from '@/common/utils/translation.util';
 import { Locale } from '@/common/constants/locales';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { FaqPageType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import type {
@@ -56,6 +64,7 @@ export class PageContentSectionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   private buildGroup(rows: SectionRow[]) {
@@ -150,14 +159,19 @@ export class PageContentSectionService {
     const base = rows.find((r) => r.locale === Locale.en) ?? rows[0];
     const existing = rows.find((r) => r.locale === locale);
 
+    // Heading and body clear independently: a blank stores '' and keeps the
+    // row, so that one field falls back to English. See `clearableField`.
+    const heading = clearableField(dto.heading, locale, 'The heading');
+    const body = clearableField(dto.body, locale, 'The body');
+
     // This is the HUMAN write path (dashboard) - it always resets the machine
     // bookkeeping, so the AI refresher never overwrites what was typed here.
     const row = existing
       ? await this.prisma.pageContentSection.update({
           where: { id: existing.id },
           data: {
-            heading: dto.heading,
-            body: dto.body,
+            heading,
+            body,
             isMachineTranslated: false,
             sourceHash: null,
           },
@@ -169,8 +183,8 @@ export class PageContentSectionService {
             entityId,
             sectionGroupId: groupId,
             locale,
-            heading: dto.heading,
-            body: dto.body,
+            heading,
+            body,
             // Group-level attributes are mirrored so every locale row stays in
             // sync and can be read standalone.
             sectionKey: base.sectionKey,
@@ -214,6 +228,44 @@ export class PageContentSectionService {
     );
     const rows = await this.getGroupRowsOrThrow(pageType, entityId, groupId);
     return this.buildGroup(rows);
+  }
+
+  /**
+   * Remove ONE locale's row from a section - the Translation Console's
+   * "clear". `heading`/`body` are NOT NULL, so a blank translation cannot be
+   * stored: deleting the row IS the cleared state, and the public page falls
+   * back to English. English is the source and is refused here.
+   */
+  async deleteTranslation(
+    pageType: FaqPageType,
+    entityId: string,
+    groupId: string,
+    locale: Locale,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source translation and cannot be cleared - delete the section instead',
+      );
+    }
+    await this.getGroupRowsOrThrow(pageType, entityId, groupId);
+
+    const { count } = await this.prisma.pageContentSection.deleteMany({
+      where: { pageType, entityId, sectionGroupId: groupId, locale },
+    });
+
+    // heading/body are NOT NULL - the clear removed the row, so the mark is
+    // the only record that this locale is meant to stay blank.
+    await this.clearMarks.markForPageType(
+      pageType,
+      entityId,
+      translationUnitKeys.section(groupId),
+      locale,
+    );
+
+    this.logger.log(
+      `Deleted content section ${groupId} translation [${locale}] for ${pageType} ${entityId}`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
   }
 
   async deleteGroup(pageType: FaqPageType, entityId: string, groupId: string) {

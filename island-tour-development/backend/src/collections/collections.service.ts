@@ -2,6 +2,8 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
+import { translationUnitKeys } from '@/content-translation/translation-unit-keys';
 import type {
   CreateFaqGroupDto,
   UpdateFaqGroupDto,
@@ -16,7 +18,9 @@ import {
 } from '@/common/utils/slug-registry.util';
 import {
   applyTranslation,
+  clearableField,
   faqSelect,
+  mergeTranslation,
   resolveFaqLocale,
   translationSelect,
 } from '@/common/utils/translation.util';
@@ -62,6 +66,7 @@ export class CollectionsService {
     private readonly toursService: ToursService,
     private readonly faqGroups: FaqGroupService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly clearMarks: TranslationClearMarkService,
   ) {}
 
   private readonly collectionSelect = {
@@ -633,6 +638,16 @@ export class CollectionsService {
           );
         throw err;
       });
+    // A whole-locale delete is the broadest possible clear - mark it so the
+    // AI treats the absent row as deliberate, not as untranslated.
+    await this.clearMarks.mark(
+      'collection',
+      id,
+      translationUnitKeys.main(),
+      locale,
+      adminId,
+    );
+
     this.logger.log(
       `Admin ${adminId} deleted translation for collection ${id} [${locale}]`,
     );
@@ -641,10 +656,19 @@ export class CollectionsService {
 
   // ── Page Content ──────────────────────────────────────────────────────────────
 
-  async getPageContent(id: string, locale: Locale) {
+  /**
+   * `fallback` is the public read: fill blanks from English so a page never
+   * renders an empty About band. The dashboard editor leaves it off and gets
+   * the locale exactly as stored - anything else would have an admin edit
+   * English text inside a Dutch box and save it as Dutch.
+   */
+  async getPageContent(id: string, locale: Locale, fallback = false) {
     await this.findCollectionOrThrow(id);
-    const row = await this.prisma.collectionPageContent.findUnique({
-      where: { collectionId_locale: { collectionId: id, locale } },
+    const rows = await this.prisma.collectionPageContent.findMany({
+      where: {
+        collectionId: id,
+        locale: fallback ? { in: [locale, Locale.en] } : locale,
+      },
       select: {
         locale: true,
         aboutText: true,
@@ -652,6 +676,9 @@ export class CollectionsService {
         metaDescription: true,
       },
     });
+    const row = fallback
+      ? mergeTranslation(rows, locale)
+      : rows.find((r) => r.locale === locale);
     return (
       row ?? { locale, aboutText: null, metaTitle: null, metaDescription: null }
     );
@@ -699,18 +726,28 @@ export class CollectionsService {
 
   // ── FAQ ─────────────────────────────────────────────────────────────────────
 
+  /**
+   * Public FAQ read. With a locale it fetches that locale AND English and
+   * resolves per group and per field: an untranslated FAQ shows in English
+   * rather than vanishing, and a field cleared in the Translation Console
+   * falls back on its own (English question next to a translated answer).
+   * Without a locale it returns every row - the admin listing.
+   */
   async getFaqs(id: string, query: FaqLocaleQueryDto) {
     await this.findCollectionOrThrow(id);
-    return this.prisma.faq.findMany({
+
+    const rows = await this.prisma.faq.findMany({
       where: {
         pageType: FAQ_PAGE_TYPE.COLLECTION,
         entityId: id,
         isActive: true,
-        ...(query.locale && { locale: query.locale }),
+        ...(query.locale && { locale: { in: [query.locale, Locale.en] } }),
       },
       select: faqSelect,
       orderBy: [{ locale: 'asc' }, { displayOrder: 'asc' }],
     });
+
+    return query.locale ? resolveFaqLocale(rows, query.locale) : rows;
   }
 
   async createFaq(id: string, dto: CreateCollectionFaqDto, adminId: string) {
@@ -828,6 +865,25 @@ export class CollectionsService {
       id,
       groupId,
       dto,
+    );
+  }
+
+  /** Clear ONE locale of a FAQ (Translation Console) - see FaqGroupService. */
+  async deleteFaqTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    await this.findCollectionOrThrow(id);
+    this.logger.log(
+      `Admin ${adminId} cleared FAQ ${groupId} [${locale}] for collection ${id}`,
+    );
+    return this.faqGroups.deleteTranslation(
+      FAQ_PAGE_TYPE.COLLECTION,
+      id,
+      groupId,
+      locale,
     );
   }
 
@@ -1007,15 +1063,19 @@ export class CollectionsService {
         `Tour ${tourId} is not a member of collection ${id}`,
       );
 
+    // Blank clears this locale (stored '', row kept) and the card falls back to
+    // the English rationale. English is refused - it is a publish gate.
+    const rationale = clearableField(dto.rationale, locale, 'The rationale');
+
     const result = await this.prisma.collectionTourRationale.upsert({
       where: {
         collectionTourId_locale: { collectionTourId: member.id, locale },
       },
-      create: { collectionTourId: member.id, locale, rationale: dto.rationale },
+      create: { collectionTourId: member.id, locale, rationale },
       // Human write path - reset the AI bookkeeping so the machine refresher
       // never overwrites what was typed here.
       update: {
-        rationale: dto.rationale,
+        rationale,
         isMachineTranslated: false,
         sourceHash: null,
       },
@@ -1027,6 +1087,52 @@ export class CollectionsService {
     // An English edit re-sources the other locales.
     if (locale === Locale.en) this.contentTranslation.enqueue('collection', id);
     return { ...result, tourId };
+  }
+
+  /**
+   * Clear ONE locale's rationale (Translation Console). `rationale` is NOT
+   * NULL, so a blank row cannot be stored: deleting it IS the cleared state
+   * and the public page falls back to English. English is the source (and a
+   * publish gate) - refused here.
+   */
+  async deleteTourRationale(
+    id: string,
+    tourId: string,
+    locale: Locale,
+    adminId: string,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source rationale and cannot be cleared - remove the tour from the collection instead',
+      );
+    }
+    const member = await this.prisma.collectionTour.findUnique({
+      where: { collectionId_tourId: { collectionId: id, tourId } },
+      select: { id: true },
+    });
+    if (!member)
+      throw new NotFoundException(
+        `Tour ${tourId} is not a member of collection ${id}`,
+      );
+
+    const { count } = await this.prisma.collectionTourRationale.deleteMany({
+      where: { collectionTourId: member.id, locale },
+    });
+
+    // NOT NULL copy - the clear removed the row, so the mark is what tells
+    // the AI to leave this locale blank instead of re-creating it.
+    await this.clearMarks.mark(
+      'collection',
+      id,
+      translationUnitKeys.rationale(member.id),
+      locale,
+      adminId,
+    );
+
+    this.logger.log(
+      `Admin ${adminId} cleared rationale for collection ${id} tour ${tourId} [${locale}]`,
+    );
+    return { message: count > 0 ? 'Translation cleared' : 'Nothing to clear' };
   }
 
   // ── Status transition + publish guard (G5) ───────────────────────────────────────
@@ -1260,11 +1366,13 @@ export class CollectionsService {
 
     const rationaleByTourId = new Map<string, string | null>();
     for (const m of members) {
-      const exact = m.translations.find((r) => r.locale === locale)?.rationale;
-      const fallback = m.translations.find(
-        (r) => r.locale === Locale.en,
-      )?.rationale;
-      rationaleByTourId.set(m.tourId, exact ?? fallback ?? null);
+      // A CLEARED rationale is stored as '' (the column is NOT NULL), so this
+      // has to be blank-aware, not nullish - otherwise the card renders an
+      // empty note instead of the English one.
+      rationaleByTourId.set(
+        m.tourId,
+        mergeTranslation(m.translations, locale)?.rationale || null,
+      );
     }
 
     const orderedIds = members.map((m) => m.tourId);

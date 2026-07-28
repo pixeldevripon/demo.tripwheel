@@ -167,7 +167,6 @@ async function CancelBody({
                 displayRef={booking.displayRef}
                 refundLabel={refundLabel}
                 thankYouHref={thankYouHref}
-                sessionToken={sessionToken ?? ''}
             />
         </MountReveal>
     );

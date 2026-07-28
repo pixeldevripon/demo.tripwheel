@@ -81,9 +81,39 @@ export function readTravelerBooking(): TravelerBooking | null {
 
 export function clearTravelerBooking(): void {
     document.cookie = `${TRAVELER_BOOKING_COOKIE}=;path=/;max-age=0;samesite=lax`;
+    document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=;path=/;max-age=0;samesite=lax`;
     // Also drop the HttpOnly session cookie (fire-and-forget: the token
     // expires in 24h anyway, so a lost delete is not a security hole).
     void fetch('/api/traveler-session', { method: 'DELETE' }).catch(() => {});
+}
+
+// ── Account-area identity (the OTP door) ────────────────────────────────────
+// The navbar cannot ask the server whether someone is signed in: reading the
+// HttpOnly cookie in the layout would make every page request-time and cost
+// the prerendered shell. So the account door mirrors the pattern above with
+// its own DISPLAY-ONLY cookie - the email, nothing else, authorizing nothing.
+// Without it a traveller who signs in at /{locale}/traveller would still see
+// the signed-out navbar.
+
+export const TRAVELLER_ACCOUNT_COOKIE = 'it.travellerAccount';
+
+/** Matches the 24h traveler session it shadows - never outlive the real one. */
+const TRAVELLER_ACCOUNT_MAX_AGE = 60 * 60 * 24;
+
+/** Remember who signed in at the account door (display identity only). */
+export function saveTravellerAccount(email: string): void {
+    document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=${encodeURIComponent(email)};path=/;max-age=${TRAVELLER_ACCOUNT_MAX_AGE};samesite=lax`;
+}
+
+/** The signed-in account email, or null when absent / not email-shaped. */
+export function readTravellerAccount(): string | null {
+    const row = document.cookie
+        .split('; ')
+        .find(c => c.startsWith(`${TRAVELLER_ACCOUNT_COOKIE}=`));
+    if (!row) return null;
+    // The cookie is client-writable, so trust only an email-shaped value.
+    const email = decodeURIComponent(row.slice(row.indexOf('=') + 1));
+    return email.includes('@') && email.length <= 320 ? email : null;
 }
 
 /**

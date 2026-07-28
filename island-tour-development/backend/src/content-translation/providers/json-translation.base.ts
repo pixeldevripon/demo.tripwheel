@@ -117,14 +117,16 @@ export abstract class JsonTranslationProvider implements TranslationProvider {
     let current: Record<string, TranslatableValue> = {};
     let size = 0;
     for (const [key, value] of Object.entries(fields)) {
-      const valueSize = JSON.stringify(value).length;
-      if (size > 0 && size + valueSize > MAX_CHARS_PER_CALL) {
+      // Keys ride in the serialized payload too - count them, or a map of
+      // long keys with short values silently overshoots the call budget.
+      const entrySize = JSON.stringify(value).length + key.length + 4;
+      if (size > 0 && size + entrySize > MAX_CHARS_PER_CALL) {
         chunks.push(current);
         current = {};
         size = 0;
       }
       current[key] = value;
-      size += valueSize;
+      size += entrySize;
     }
     if (Object.keys(current).length > 0) chunks.push(current);
     return chunks;

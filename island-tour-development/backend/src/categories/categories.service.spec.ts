@@ -12,6 +12,7 @@ import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
 import {
   BadRequestException,
   ConflictException,
@@ -57,6 +58,7 @@ function createMockPrismaService() {
     },
     categoryPageContent: {
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       upsert: jest.fn(),
     },
     faq: {
@@ -199,6 +201,13 @@ describe('CategoryService', () => {
         {
           provide: ContentTranslationEnqueuer,
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
+        {
+          provide: TranslationClearMarkService,
+          useValue: {
+            mark: jest.fn().mockResolvedValue(undefined),
+            markForPageType: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -1184,7 +1193,7 @@ describe('CategoryService', () => {
         metaTitle: 'Title',
         metaDescription: 'Desc',
       };
-      prisma.categoryPageContent.findUnique.mockResolvedValue(row);
+      prisma.categoryPageContent.findMany.mockResolvedValue([row]);
 
       const result = await service.getPageContent('cat-1', Locale.nl);
 
@@ -1193,7 +1202,7 @@ describe('CategoryService', () => {
 
     it('returns null-filled placeholder when no page content row exists for locale', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
-      prisma.categoryPageContent.findUnique.mockResolvedValue(null);
+      prisma.categoryPageContent.findMany.mockResolvedValue([]);
 
       const result = await service.getPageContent('cat-1', Locale.nl);
 
@@ -1296,7 +1305,7 @@ describe('CategoryService', () => {
       );
     });
 
-    it('filters by locale when locale is provided in query', async () => {
+    it('reads the locale AND English so an untranslated FAQ still renders', async () => {
       prisma.category.findUnique.mockResolvedValue(makeCategoryRecord());
       prisma.faq.findMany.mockResolvedValue([
         makeFaqRecord({ locale: Locale.nl }),
@@ -1307,7 +1316,9 @@ describe('CategoryService', () => {
 
       expect(prisma.faq.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ locale: Locale.nl }),
+          where: expect.objectContaining({
+            locale: { in: [Locale.nl, Locale.en] },
+          }),
         }),
       );
     });

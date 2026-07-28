@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Ticket } from 'lucide-react';
+import { LogOut, Ticket, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import { crossFade } from '@/lib/motion';
 import {
     clearTravelerBooking,
     readTravelerBooking,
+    readTravellerAccount,
     type TravelerBooking,
 } from '@/lib/traveler-booking';
 
@@ -37,17 +38,28 @@ export function AccountMenu({
     const ref = useRef<HTMLDivElement>(null);
     useClickOutside(ref, () => setOpen(false), open);
     const bookingsHref = localizeHref(locale, '/bookings');
+    const accountHref = localizeHref(locale, '/traveller');
 
     // Read after mount (SSR has no document); the SSR pass renders the plain
     // lookup link, which is also the no-cookie state.
+    //
+    // TWO ways to be signed in, and the menu must recognise both: a `/bookings`
+    // pair lookup (which saves a booking record) or the account door's OTP
+    // login (which saves only the email). Neither cookie authorizes anything -
+    // the real credential is HttpOnly and unreadable here.
     const [booking, setBooking] = useState<TravelerBooking | null>(null);
+    const [accountEmail, setAccountEmail] = useState<string | null>(null);
     useEffect(() => {
         setBooking(readTravelerBooking());
+        setAccountEmail(readTravellerAccount());
     }, []);
+
+    const identityEmail = accountEmail ?? booking?.email ?? null;
 
     function handleLogout() {
         clearTravelerBooking();
         setBooking(null);
+        setAccountEmail(null);
         setOpen(false);
     }
 
@@ -61,10 +73,10 @@ export function AccountMenu({
         />
     );
 
-    if (!booking) {
+    if (!identityEmail) {
         return (
             <Link
-                href={bookingsHref}
+                href={accountHref}
                 aria-label={dict.account}
                 className='flex items-center no-underline'>
                 <motion.span className='inline-flex' {...iconPress}>
@@ -97,11 +109,11 @@ export function AccountMenu({
                             with - the only identity the public site has. */}
                         <div className='flex items-center gap-3 px-5 py-4'>
                             <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-sm font-semibold uppercase text-it-ink'>
-                                {booking.email.trim().charAt(0)}
+                                {identityEmail.trim().charAt(0)}
                             </span>
                             <span className='min-w-0'>
                                 <span className='block text-sm leading-[1.4] font-medium text-it-ink truncate'>
-                                    {booking.email}
+                                    {identityEmail}
                                 </span>
                                 <span className='block text-xs leading-[1.6] text-it-ink-muted truncate'>
                                     {dict.account}
@@ -109,8 +121,24 @@ export function AccountMenu({
                             </span>
                         </div>
 
-                        {/* Always the lookup page - it prefills itself from
-                            the cookie's saved search data. */}
+                        {/* The account area: every booking and payment, behind
+                            its own emailed-code sign-in. */}
+                        <div className='border-t border-it-border'>
+                            <Link
+                                href={accountHref}
+                                onClick={() => setOpen(false)}
+                                className='flex w-full items-center gap-2.5 px-5 py-3 text-sm text-it-ink no-underline transition-colors duration-200 hover:bg-it-surface'>
+                                <UserRound
+                                    size={16}
+                                    strokeWidth={1.5}
+                                    className='shrink-0 text-it-ink-muted'
+                                />
+                                {dict.myAccount}
+                            </Link>
+                        </div>
+
+                        {/* The lookup page - it prefills itself from the
+                            cookie's saved search data. */}
                         <div className='border-t border-it-border'>
                             <Link
                                 href={bookingsHref}

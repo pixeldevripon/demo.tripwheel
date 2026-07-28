@@ -1,0 +1,45 @@
+// Translation clear marks - "this locale is deliberately blank here".
+//
+// The public read contract everywhere is nullish coalescing
+// (`translation?.field ?? english`), so a locale falls back to English only when
+// its value is NULL or its row is MISSING. For the many NOT NULL per-item
+// surfaces (FAQ question/answer, page-content sections, hub curation copy, tour
+// highlights/inclusions/...) a blank cannot be stored at all - clearing one in
+// the Translation Console has to DELETE that locale's row.
+//
+// That leaves the AI pipeline unable to tell "the human cleared this" from
+// "nobody has translated this yet", so the next English edit (or the nightly
+// sweep) helpfully re-created the row and the clear appeared to undo itself.
+// This table is the missing bit: the console records the clear, and
+// `ContentTranslationService` treats a marked (unit, locale) as done.
+//
+// Rows are written ONLY by the console's clear endpoints and garbage-collected
+// by `EntityRegistry` once a real row exists for that unit+locale again (a
+// human re-adding a translation makes the mark meaningless). Nothing else -
+// public reads never look here.
+model TranslationClearMark {
+  id String @id @default(uuid())
+
+  // `ContentEntityType` from content-translation.constants.ts
+  // ('tour' | 'destination' | 'hub' | 'category' | 'collection' | 'homepage').
+  // A plain string, not an enum: the vocabulary is a code-level registry
+  // concern and adding a type must not need a migration.
+  entityType String
+  entityId   String
+
+  // `TranslationUnit.key` - the registry's stable id for one translatable row
+  // per locale: 'main', 'pc', 'faq:<groupId>', 'section:<groupId>',
+  // 'highlight:<id>', 'ourpick:<id>', 'hubsection:<type>:<order>', ... Built
+  // through `translationUnitKeys` so the clear endpoints and the registry can
+  // never drift apart.
+  unitKey String
+  locale  Locale
+
+  // Who cleared it, for the audit trail the mutating-admin-action logs expect.
+  clearedBy String?
+  createdAt DateTime @default(now())
+
+  @@unique([entityType, entityId, unitKey, locale])
+  @@index([entityType, entityId])
+  @@map("translation_clear_marks")
+}

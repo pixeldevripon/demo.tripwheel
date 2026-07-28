@@ -7,6 +7,7 @@ import {
   slugRowBlocks,
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
+import { mergeTranslation } from '@/common/utils/translation.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -1799,30 +1800,22 @@ export class ToursService {
       ...rest
     } = tour;
 
-    const resolvedTranslation =
-      translations.find((t) => t.locale === locale) ??
-      translations.find((t) => t.locale === Locale.en) ??
-      null;
+    // PER-FIELD, not per-row: a field cleared in the Translation Console
+    // leaves the locale row in place with a NULL in it, and row-level fallback
+    // would render that as empty instead of showing English.
+    const resolvedTranslation = mergeTranslation(translations, locale) ?? null;
 
     const resolvedHighlights = highlights.map((h) => ({
       id: h.id,
       displayOrder: h.displayOrder,
-      text:
-        (
-          h.translations.find((t) => t.locale === locale) ??
-          h.translations.find((t) => t.locale === Locale.en)
-        )?.text ?? '',
+      text: mergeTranslation(h.translations, locale)?.text ?? '',
     }));
 
     const resolvedInclusions = inclusions.map((i) => ({
       id: i.id,
       icon: i.icon,
       displayOrder: i.displayOrder,
-      label:
-        (
-          i.translations.find((t) => t.locale === locale) ??
-          i.translations.find((t) => t.locale === Locale.en)
-        )?.label ?? '',
+      label: mergeTranslation(i.translations, locale)?.label ?? '',
     }));
 
     const resolvedExclusions = exclusions.map((e) => ({
@@ -1831,17 +1824,11 @@ export class ToursService {
       type: e.type,
       priceText: e.priceText,
       displayOrder: e.displayOrder,
-      label:
-        (
-          e.translations.find((t) => t.locale === locale) ??
-          e.translations.find((t) => t.locale === Locale.en)
-        )?.label ?? '',
+      label: mergeTranslation(e.translations, locale)?.label ?? '',
     }));
 
     const resolvedLocations = locations.map((l) => {
-      const tr =
-        l.translations.find((t) => t.locale === locale) ??
-        l.translations.find((t) => t.locale === Locale.en);
+      const tr = mergeTranslation(l.translations, locale);
       return {
         id: l.id,
         types: l.types,
@@ -1861,9 +1848,7 @@ export class ToursService {
     });
 
     const resolvedPickupLocations = pickupLocations.map((p) => {
-      const tr =
-        p.translations.find((t) => t.locale === locale) ??
-        p.translations.find((t) => t.locale === Locale.en);
+      const tr = mergeTranslation(p.translations, locale);
       return {
         id: p.id,
         name: p.name,
@@ -1886,11 +1871,7 @@ export class ToursService {
       id: f.id,
       type: f.type,
       displayOrder: f.displayOrder,
-      text:
-        (
-          f.translations.find((t) => t.locale === locale) ??
-          f.translations.find((t) => t.locale === Locale.en)
-        )?.text ?? '',
+      text: mergeTranslation(f.translations, locale)?.text ?? '',
     }));
 
     const detail = {

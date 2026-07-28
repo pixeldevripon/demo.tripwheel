@@ -1,3 +1,4 @@
+import { PageContentQueryDto } from '@/common/dto/page-content-query.dto';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
@@ -9,13 +10,14 @@ import {
   Get,
   Param,
   ParseEnumPipe,
+  ParseIntPipe,
   Patch,
   Post,
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { Locale, Permission } from '@prisma/client';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { HubSectionType, Locale, Permission } from '@prisma/client';
 import {
   ActiveHubsQueryDto,
   AddAllowedCategoryDto,
@@ -31,8 +33,12 @@ import {
   SetOurPicksDto,
   UpdateHubFaqDto,
   UpdateHubDto,
+  UpsertComparisonGroupTranslationDto,
+  UpsertComparisonTourTranslationDto,
   UpsertHubPageContentDto,
+  UpsertHubSectionTranslationDto,
   UpsertHubTranslationsDto,
+  UpsertOurPickTranslationDto,
 } from './dto/hub.dto';
 import {
   CreateFaqGroupDto,
@@ -61,11 +67,17 @@ import {
   ApiGetPageContentDocs,
   ApiGetTranslationsByLocaleDocs,
   ApiRemoveAllowedCategoryDocs,
+  ApiClearCurationTranslationDocs,
+  ApiClearSectionTranslationDocs,
   ApiUpdateFaqDocs,
   ApiUpdateFaqGroupDocs,
   ApiUpdateHubDocs,
+  ApiUpsertComparisonGroupTranslationDocs,
+  ApiUpsertComparisonTourTranslationDocs,
   ApiUpsertFaqTranslationDocs,
+  ApiUpsertOurPickTranslationDocs,
   ApiUpsertPageContentDocs,
+  ApiUpsertSectionTranslationDocs,
   ApiUpsertTranslationsDocs,
 } from './hubs.swagger';
 
@@ -218,8 +230,8 @@ export class HubController {
   @Get(':id/page-content')
   @Public()
   @ApiGetPageContentDocs()
-  getPageContent(@Param('id') id: string, @Query() query: LocaleQueryDto) {
-    return this.hubService.getPageContent(id, query.locale!);
+  getPageContent(@Param('id') id: string, @Query() query: PageContentQueryDto) {
+    return this.hubService.getPageContent(id, query.locale!, query.fallback);
   }
 
   @Patch(':id/page-content/:locale')
@@ -285,6 +297,25 @@ export class HubController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.deleteFaqGroup(id, groupId, user.id);
+  }
+
+  /**
+   * Clear ONE locale of a FAQ (Translation Console). Question/answer are NOT
+   * NULL, so removing the row IS the cleared state - the public page falls
+   * back to English. `en` is rejected; delete the FAQ group instead.
+   */
+  @Delete(':id/faqs/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiOperation({
+    summary: 'Admin: clear one locale of a FAQ (falls back to English)',
+  })
+  deleteFaqTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteFaqTranslation(id, groupId, locale, user.id);
   }
 
   @Put(':id/faqs/groups/:groupId/translations/:locale')
@@ -379,6 +410,16 @@ export class HubController {
     return this.hubService.getContentSections(id, query.locale);
   }
 
+  /**
+   * Every stored locale, for the Translation Console. Declared before the
+   * dynamic `:sectionType` routes so `edit` is never read as a section type.
+   */
+  @Get(':id/content-sections/edit')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  getContentSectionsForEdit(@Param('id') id: string) {
+    return this.hubService.getContentSectionsForEdit(id);
+  }
+
   @Put(':id/content-sections')
   @RequirePermissions(Permission.MANAGE_HUBS)
   replaceContentSections(
@@ -387,6 +428,52 @@ export class HubController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.replaceContentSections(id, dto, user.id);
+  }
+
+  /** Translation Console "clear" - drop one locale's row for this block. */
+  @Delete(
+    ':id/content-sections/:sectionType/:displayOrder/translations/:locale',
+  )
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiClearSectionTranslationDocs()
+  deleteContentSectionTranslation(
+    @Param('id') id: string,
+    @Param('sectionType', new ParseEnumPipe(HubSectionType))
+    sectionType: HubSectionType,
+    @Param('displayOrder', ParseIntPipe) displayOrder: number,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteContentSectionTranslation(
+      id,
+      sectionType,
+      displayOrder,
+      locale,
+      user.id,
+    );
+  }
+
+  /** Translation Console per-block save - one locale of one content block. */
+  @Put(':id/content-sections/:sectionType/:displayOrder/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertSectionTranslationDocs()
+  upsertContentSectionTranslation(
+    @Param('id') id: string,
+    @Param('sectionType', new ParseEnumPipe(HubSectionType))
+    sectionType: HubSectionType,
+    @Param('displayOrder', ParseIntPipe) displayOrder: number,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertHubSectionTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertContentSectionTranslation(
+      id,
+      sectionType,
+      displayOrder,
+      locale,
+      dto,
+      user.id,
+    );
   }
 
   // ── Our Picks (best overall / most popular / best for families) ─────────────────
@@ -417,6 +504,44 @@ export class HubController {
     return this.hubService.setOurPicks(id, dto, user.id);
   }
 
+  /** Translation Console "clear" - drop one locale's rationale row. */
+  @Delete(':id/our-picks/:pickId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiClearCurationTranslationDocs('Our Pick rationale', 'pickId')
+  deleteOurPickTranslation(
+    @Param('id') id: string,
+    @Param('pickId') pickId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteOurPickTranslation(
+      id,
+      pickId,
+      locale,
+      user.id,
+    );
+  }
+
+  /** Translation Console per-item save - one locale of one pick's rationale. */
+  @Put(':id/our-picks/:pickId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertOurPickTranslationDocs()
+  upsertOurPickTranslation(
+    @Param('id') id: string,
+    @Param('pickId') pickId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertOurPickTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertOurPickTranslation(
+      id,
+      pickId,
+      locale,
+      dto,
+      user.id,
+    );
+  }
+
   // ── Comparison table (Comfort vs Adventure, per-locale, standout cells) ─────────
 
   @Get(':id/comparison')
@@ -443,5 +568,81 @@ export class HubController {
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
     return this.hubService.setComparison(id, dto, user.id);
+  }
+
+  /** Translation Console "clear" - drop one locale's group-name row. */
+  @Delete(':id/comparison/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiClearCurationTranslationDocs('comparison group name', 'groupId')
+  deleteComparisonGroupTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteComparisonGroupTranslation(
+      id,
+      groupId,
+      locale,
+      user.id,
+    );
+  }
+
+  /** Translation Console "clear" - drop one locale's standout-note row. */
+  @Delete(':id/comparison/tours/:comparisonTourId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiClearCurationTranslationDocs('standout note', 'comparisonTourId')
+  deleteComparisonTourTranslation(
+    @Param('id') id: string,
+    @Param('comparisonTourId') comparisonTourId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.deleteComparisonTourTranslation(
+      id,
+      comparisonTourId,
+      locale,
+      user.id,
+    );
+  }
+
+  /** Translation Console per-item save - one locale of one group's name. */
+  @Put(':id/comparison/groups/:groupId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertComparisonGroupTranslationDocs()
+  upsertComparisonGroupTranslation(
+    @Param('id') id: string,
+    @Param('groupId') groupId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertComparisonGroupTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertComparisonGroupTranslation(
+      id,
+      groupId,
+      locale,
+      dto,
+      user.id,
+    );
+  }
+
+  /** Translation Console per-item save - one locale of one column's standout note. */
+  @Put(':id/comparison/tours/:comparisonTourId/translations/:locale')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiUpsertComparisonTourTranslationDocs()
+  upsertComparisonTourTranslation(
+    @Param('id') id: string,
+    @Param('comparisonTourId') comparisonTourId: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @Body() dto: UpsertComparisonTourTranslationDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.upsertComparisonTourTranslation(
+      id,
+      comparisonTourId,
+      locale,
+      dto,
+      user.id,
+    );
   }
 }

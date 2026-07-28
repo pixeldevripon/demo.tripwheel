@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { isSameOrigin } from '@/lib/api/same-origin';
 import {
     TRAVELER_SESSION_COOKIE,
     TRAVELER_SESSION_MAX_AGE,
@@ -18,26 +19,6 @@ import {
 
 /** Tokens are `v1.<payload>.<sig>` and small; reject anything else early. */
 const TOKEN_SHAPE = /^v1\.[A-Za-z0-9_-]{1,512}\.[A-Za-z0-9_-]{1,128}$/;
-
-/**
- * CSRF guard. Route Handlers get no automatic CSRF protection (unlike Server
- * Actions), and a cross-site `text/plain` form-post can deliver a JSON-ish
- * body without a preflight - enough to plant a shape-valid token in a
- * victim's cookie jar or force a logout. Modern browsers always send
- * `Sec-Fetch-Site`; fall back to an Origin host check, and allow requests
- * with neither header (non-browser clients can already set their own cookies).
- */
-function isSameOrigin(req: NextRequest): boolean {
-    const site = req.headers.get('sec-fetch-site');
-    if (site) return site === 'same-origin' || site === 'none';
-    const origin = req.headers.get('origin');
-    if (!origin) return true;
-    try {
-        return new URL(origin).host === req.nextUrl.host;
-    } catch {
-        return false;
-    }
-}
 
 export async function POST(req: NextRequest) {
     if (!isSameOrigin(req)) {

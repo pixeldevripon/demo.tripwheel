@@ -6,7 +6,7 @@
  * compact HMAC-signed, 24h token the frontend stores in a first-party
  * HttpOnly cookie and replays via the `x-traveler-session` header.
  *
- * TWO SCOPES - matched to how much the caller actually proved:
+ * THREE SCOPES - matched to how much the caller actually proved:
  *
  * - EMAIL scope (`{ e }`): issued ONLY by the pair lookup, where the caller
  *   proved knowledge of email + booking reference (both delivered to that
@@ -17,6 +17,12 @@
  *   exactly THAT booking and nothing else. Minting an email-scoped token
  *   here would let anyone reserve a throwaway booking, type a victim's
  *   email, and unlock the victim's real bookings.
+ * - HISTORY scope (`{ e, h: 1 }`): issued ONLY by the traveller OTP login,
+ *   where the caller proved live inbox OWNERSHIP (received a one-time code).
+ *   Strictly stronger than EMAIL scope: it owns every matching booking AND
+ *   unlocks the account surface (all bookings + payment history). A pair
+ *   lookup proves only possession of one forwarded confirmation email, so
+ *   its token must never open the history area.
  *
  * Deliberately stateless (no DB session table): the token grants nothing by
  * itself - every use re-checks it against the specific booking - and 24h
@@ -47,12 +53,19 @@ function sign(payload: string): Buffer {
   return createHmac('sha256', secret()).update(payload).digest();
 }
 
-/** What a verified token proves. Exactly one of the two fields is set. */
+/** What a verified token proves. Exactly one of email/bookingId is set. */
 export interface TravelerSessionClaims {
-  /** Pair-login proof: unlocks every booking with this contactEmail. */
+  /** Pair-login or OTP proof: unlocks every booking with this contactEmail. */
   email: string | null;
   /** Checkout proof: unlocks exactly this booking id. */
   bookingId: string | null;
+  /**
+   * OTP-proven inbox ownership: additionally unlocks the traveller account
+   * surface (all bookings + payment history). Always false for pair-login
+   * and checkout tokens - including every token minted before this flag
+   * existed (missing `h` verifies as false).
+   */
+  history: boolean;
 }
 
 function issue(payload: Record<string, string | number>): string {
@@ -81,6 +94,15 @@ export function issueBookingSession(bookingId: string): string {
 }
 
 /**
+ * HISTORY-scoped token. Only call after the caller PROVED live inbox
+ * ownership via the traveller OTP login (received and returned a one-time
+ * code). Format: `v1.<base64url({ e, h: 1, exp })>.<base64url(hmac)>`.
+ */
+export function issueTravelerHistorySession(email: string): string {
+  return issue({ e: email.trim().toLowerCase(), h: 1 });
+}
+
+/**
  * Verify a token and return its claims, or null for any failure - malformed,
  * tampered, or expired. Never throws on bad input.
  */
@@ -99,13 +121,15 @@ export function verifyTravelerSession(
     }
     const parsed = JSON.parse(
       Buffer.from(payload, 'base64url').toString('utf8'),
-    ) as { e?: unknown; b?: unknown; exp?: unknown };
+    ) as { e?: unknown; b?: unknown; h?: unknown; exp?: unknown };
     if (typeof parsed.exp !== 'number' || parsed.exp < Date.now()) return null;
     const email = typeof parsed.e === 'string' && parsed.e ? parsed.e : null;
     const bookingId =
       typeof parsed.b === 'string' && parsed.b ? parsed.b : null;
     if (!email && !bookingId) return null;
-    return { email, bookingId };
+    // `h` rides inside the signed payload, so it cannot be added to an
+    // existing token; legacy tokens (no `h`) verify as history: false.
+    return { email, bookingId, history: parsed.h === 1 && !!email };
   } catch {
     return null;
   }
@@ -164,4 +188,38 @@ export function sessionOwnsBooking(
     !!booking.contactEmail &&
     claims.email === booking.contactEmail.trim().toLowerCase()
   );
+}
+
+/**
+ * The single gate for the traveller account endpoints: returns the session
+ * email ONLY for HISTORY-scoped (OTP-proven) claims, null for pair-login,
+ * checkout, and invalid tokens alike.
+ */
+export function sessionHistoryEmail(
+  claims: TravelerSessionClaims | null,
+): string | null {
+  return claims?.history && claims.email ? claims.email : null;
+}
+
+// ── Traveller OTP login codes ────────────────────────────────────────────────
+// The 6-digit code is never stored: only this keyed HMAC is, so a DB dump
+// alone cannot forge a login. Keyed by the same TRAVELER_SESSION_SECRET the
+// session tokens use - one secret, one rotation story for the whole surface.
+
+/** Deterministic keyed hash of an OTP login code, hex encoded. */
+export function hashLoginCode(email: string, code: string): string {
+  return createHmac('sha256', secret())
+    .update(`${email.trim().toLowerCase()}:${code}`)
+    .digest('hex');
+}
+
+/** Timing-safe comparison of a submitted code against the stored hash. */
+export function loginCodeMatches(
+  email: string,
+  code: string,
+  storedHash: string,
+): boolean {
+  const expected = Buffer.from(hashLoginCode(email, code), 'hex');
+  const given = Buffer.from(storedHash, 'hex');
+  return given.length === expected.length && timingSafeEqual(given, expected);
 }

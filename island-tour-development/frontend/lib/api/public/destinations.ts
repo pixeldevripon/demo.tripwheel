@@ -81,7 +81,8 @@ export async function getDestinationPageContent(
   cacheTag(`destination:${destinationId}`);
 
   return publicGet<DestinationPageContent>(
-    `/destinations/${destinationId}/page-content${buildQuery({ locale })}`,
+    // `fallback` fills blanks from English (see the category loader).
+    `/destinations/${destinationId}/page-content${buildQuery({ locale, fallback: true })}`,
   );
 }
 

@@ -15,6 +15,7 @@ import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { PageContentSectionService } from '@/common/page-content-sections/page-content-section.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { TranslationClearMarkService } from '@/content-translation/translation-clear-mark.service';
 import {
   BadRequestException,
   ConflictException,
@@ -54,6 +55,7 @@ function createMockPrismaService() {
     },
     destinationPageContent: {
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       upsert: jest.fn(),
     },
     pageContentSection: {
@@ -149,6 +151,13 @@ describe('DestinationService', () => {
         {
           provide: ContentTranslationEnqueuer,
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
+        {
+          provide: TranslationClearMarkService,
+          useValue: {
+            mark: jest.fn().mockResolvedValue(undefined),
+            markForPageType: jest.fn().mockResolvedValue(undefined),
+          },
         },
         {
           provide: FaqGroupService,
@@ -974,7 +983,7 @@ describe('DestinationService', () => {
         metaDescription: 'SEO desc',
       };
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.destinationPageContent.findUnique.mockResolvedValue(content);
+      prisma.destinationPageContent.findMany.mockResolvedValue([content]);
 
       const result = await service.getPageContent('dest-1', Locale.en);
 
@@ -984,7 +993,7 @@ describe('DestinationService', () => {
     it('returns null-filled placeholder when no content row exists for that locale', async () => {
       const dest = makeDestination();
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.destinationPageContent.findUnique.mockResolvedValue(null);
+      prisma.destinationPageContent.findMany.mockResolvedValue([]);
 
       const result = await service.getPageContent('dest-1', Locale.nl);
 
@@ -1000,7 +1009,7 @@ describe('DestinationService', () => {
     it('collapses authored sections to the requested locale, per section', async () => {
       const dest = makeDestination();
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.destinationPageContent.findUnique.mockResolvedValue(null);
+      prisma.destinationPageContent.findMany.mockResolvedValue([]);
       // Section A is translated to NL; section B is English-only. Both must come
       // back - falling back as a set would drop A's translation or B entirely.
       prisma.pageContentSection.findMany.mockResolvedValue([
@@ -1049,7 +1058,7 @@ describe('DestinationService', () => {
     it('only reads active sections in the requested locale plus English', async () => {
       const dest = makeDestination();
       prisma.destination.findUnique.mockResolvedValue(dest);
-      prisma.destinationPageContent.findUnique.mockResolvedValue(null);
+      prisma.destinationPageContent.findMany.mockResolvedValue([]);
 
       await service.getPageContent('dest-1', Locale.nl);
 
@@ -1163,7 +1172,9 @@ describe('DestinationService', () => {
 
       expect(prisma.faq.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ locale: Locale.nl }),
+          where: expect.objectContaining({
+            locale: { in: [Locale.nl, Locale.en] },
+          }),
         }),
       );
     });

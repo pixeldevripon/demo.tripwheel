@@ -267,3 +267,21 @@ model BookingAddOn {
   @@index([bookingId])
   @@map("booking_addons")
 }
+
+// One-time login code for the traveller account area (/{locale}/traveller).
+// The code itself is never stored - only an HMAC keyed by TRAVELER_SESSION_SECRET,
+// so a DB dump alone cannot forge a login. Rows are single-use (consumedAt) and
+// expire 10 minutes after creation; request-code opportunistically deletes rows
+// expired for more than 24h, so no cleanup job is needed.
+model TravelerLoginCode {
+  id         String    @id @default(uuid())
+  email      String // stored lowercased
+  codeHash   String // HMAC-SHA256(TRAVELER_SESSION_SECRET, `${email}:${code}`), hex
+  expiresAt  DateTime // createdAt + 10 min
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@map("traveler_login_codes")
+}

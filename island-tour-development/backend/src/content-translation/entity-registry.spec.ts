@@ -39,13 +39,25 @@ function hubRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** No clear marks unless a test says otherwise. */
+function mockClearMarks() {
+  return {
+    mark: jest.fn().mockResolvedValue(undefined),
+    markForPageType: jest.fn().mockResolvedValue(undefined),
+    loadFor: jest.fn().mockResolvedValue(new Set<string>()),
+    forget: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('EntityRegistry - hub curation units', () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let registry: EntityRegistry;
+  let clearMarks: ReturnType<typeof mockClearMarks>;
 
   beforeEach(() => {
     prisma = mockPrisma();
-    registry = new EntityRegistry(prisma);
+    clearMarks = mockClearMarks();
+    registry = new EntityRegistry(prisma, clearMarks as never);
   });
 
   it('builds an Our-Pick unit sourced from the BASE description and upserts by (pick, locale)', async () => {
@@ -276,5 +288,79 @@ describe('EntityRegistry - hub curation units', () => {
 
     const units = (await registry.collect('hub', 'hub-1'))!;
     expect(units.some((u) => u.key.startsWith('hubsection:'))).toBe(false);
+  });
+});
+
+describe('EntityRegistry - clear marks', () => {
+  let prisma: ReturnType<typeof mockPrisma>;
+  let clearMarks: ReturnType<typeof mockClearMarks>;
+  let registry: EntityRegistry;
+
+  beforeEach(() => {
+    prisma = mockPrisma();
+    clearMarks = mockClearMarks();
+    registry = new EntityRegistry(prisma as never, clearMarks as never);
+  });
+
+  it('stamps `cleared` on the unit whose locale row is absent', async () => {
+    prisma.hub.findUnique.mockResolvedValue(
+      hubRow({
+        ourPicks: [
+          {
+            id: 'pick-1',
+            description: 'The one to book.',
+            translations: [],
+          },
+        ],
+      }),
+    );
+    clearMarks.loadFor.mockResolvedValue(new Set(['ourpick:pick-1@@nl']));
+
+    const units = await registry.collect('hub', 'h1');
+    const pick = units?.find((u) => u.key === 'ourpick:pick-1');
+
+    expect(pick?.cleared?.nl).toBe(true);
+    expect(pick?.cleared?.de).toBeUndefined();
+  });
+
+  it('garbage-collects a mark once the human has typed the translation back in', async () => {
+    // The row itself now carries the policy (isMachineTranslated: false), so
+    // the mark is dead weight - and would wrongly suppress translation if a
+    // wholesale editor save later replaced the row.
+    prisma.hub.findUnique.mockResolvedValue(
+      hubRow({
+        ourPicks: [
+          {
+            id: 'pick-1',
+            description: 'The one to book.',
+            translations: [
+              {
+                locale: 'nl',
+                description: 'Deze moet je boeken.',
+                isMachineTranslated: false,
+                sourceHash: null,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    clearMarks.loadFor.mockResolvedValue(new Set(['ourpick:pick-1@@nl']));
+
+    const units = await registry.collect('hub', 'h1');
+    const pick = units?.find((u) => u.key === 'ourpick:pick-1');
+
+    expect(pick?.cleared?.nl).toBeUndefined();
+    expect(clearMarks.forget).toHaveBeenCalledWith('hub', 'h1', [
+      { unitKey: 'ourpick:pick-1', locale: 'nl' },
+    ]);
+  });
+
+  it('skips the mark query result entirely when an entity has none', async () => {
+    prisma.hub.findUnique.mockResolvedValue(hubRow({}));
+
+    await registry.collect('hub', 'h1');
+
+    expect(clearMarks.forget).not.toHaveBeenCalled();
   });
 });

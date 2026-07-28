@@ -84,27 +84,10 @@ export const auth = betterAuth({
         sendInBackground(
           'invite',
           (async () => {
-            // Customers (Role.USER) are provisioned by bookings, never by the
-            // staff/operator invite flows - greet them with the customer
-            // welcome copy. `role` is a Better Auth additionalField; fall
-            // back to a lookup in case the hook payload omits it.
-            const role =
-              (user as { role?: Role }).role ??
-              (
-                await authPrismaClient.user.findUnique({
-                  where: { id: user.id },
-                  select: { role: true },
-                })
-              )?.role;
-            if (role === Role.USER) {
-              await mailService.sendCustomerWelcomeEmail(
-                user.email,
-                url,
-                user.name ?? undefined,
-              );
-              return;
-            }
-
+            // Only staff/operator invites reach this arm. Customers used to
+            // be greeted with a set-password welcome here; travellers are
+            // passwordless since 2026-07-28, so booking provisioning no
+            // longer requests a reset and a Role.USER can never arrive.
             const member = await authPrismaClient.staffMember.findUnique({
               where: { userId: user.id },
               select: {

@@ -26,15 +26,10 @@ export function getStaffUrl(): string {
   return getPortalUrl().replace(/\/portal$/, '/staff');
 }
 
-/**
- * The customer door of the same dashboard app (`/account/*`) - derived from
- * PORTAL_URL exactly like getStaffUrl, so ONE env var keeps configuring the
- * app's base. Customer welcome/set-password links must land on the account
- * surface, never the operator portal or staff door.
- */
-export function getAccountUrl(): string {
-  return getPortalUrl().replace(/\/portal$/, '/account');
-}
+// `getAccountUrl()` lived here until 2026-07-28. The dashboard's `/account`
+// customer door was removed: travellers are passwordless and manage their
+// bookings at `/{locale}/traveller` on the public site, so nothing in the
+// backend needs to link a customer into the ops dashboard any more.
 
 /**
  * Role precedence for one-account-many-hats: attaching an identity may only

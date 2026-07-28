@@ -13,16 +13,21 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
   AddAllowedCategoryResponseDto,
   AllowedCategoryItemDto,
+  ComparisonGroupTranslationResponseDto,
+  ComparisonTourTranslationResponseDto,
   DeleteHubResponseDto,
   DeleteMessageResponseDto,
   HubFaqResponseDto,
   HubByDestinationResponseDto,
   HubDetailLocalizedResponseDto,
   HubPageContentResponseDto,
+  HubSectionTranslationResponseDto,
   HubTranslationEntryDto,
+  OurPickTranslationResponseDto,
   PaginatedLocalizedHubsResponseDto,
   RemoveAllowedCategoryResponseDto,
 } from './dto/hub.dto';
+import { HubSectionType } from '@prisma/client';
 
 // ── Shared error sets ─────────────────────────────────────────────────────────
 
@@ -465,6 +470,159 @@ export function ApiUpsertFaqTranslationDocs() {
     ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
     ApiResponse({ status: 200, type: HubFaqResponseDto }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+// ── Curation translation upserts (Translation Console per-item saves) ─────────
+
+export function ApiUpsertOurPickTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Upsert one locale of an Our Pick's rationale (Admin/Editor)",
+      description:
+        'Human write path for the Translation Console. `en` edits the base ' +
+        'blurb and re-queues AI translation; other locales upsert the ' +
+        'translation row and clear its machine flag so the AI refresher ' +
+        'never overwrites it.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({ name: 'pickId', description: 'Our Pick UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: OurPickTranslationResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertComparisonGroupTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Upsert one locale of a comparison group's name (Admin/Editor)",
+      description:
+        'Human write path for the Translation Console. `en` edits the base ' +
+        'name and re-queues AI translation; other locales upsert the ' +
+        'translation row and clear its machine flag.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({ name: 'groupId', description: 'Comparison group UUID' }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: ComparisonGroupTranslationResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertComparisonTourTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        "Upsert one locale of a comparison column's standout note (Admin/Editor)",
+      description:
+        'Human write path for the Translation Console. `en` edits the base ' +
+        'note and re-queues AI translation; other locales upsert the ' +
+        'translation row and clear its machine flag.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({
+      name: 'comparisonTourId',
+      description: 'Comparison tour column UUID',
+    }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: ComparisonTourTranslationResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+/** Shared docs for the three curation "clear one locale" routes. */
+export function ApiClearCurationTranslationDocs(
+  label: string,
+  idParam: string,
+) {
+  return applyDecorators(
+    ApiOperation({
+      summary: `Clear one locale of a ${label} (Admin/Editor)`,
+      description:
+        "Deletes that locale's translation row - the Translation Console's " +
+        '"clear". The column is NOT NULL, so a blank translation cannot be ' +
+        'stored: removing the row IS the cleared state, and the public page ' +
+        'falls back to the English source. `en` is rejected (it lives on the ' +
+        'base row). Idempotent - clearing an absent row succeeds.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({ name: idParam, description: `${label} owner UUID` }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({
+      status: 400,
+      type: BadRequestErrorDto,
+      description: 'locale is en',
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiClearSectionTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Clear one locale of a content block (Admin/Editor)',
+      description:
+        "Deletes that locale's row for the block addressed by " +
+        '(sectionType, displayOrder). Blocks fall back as a SET per locale, ' +
+        'so clearing one while its siblings stay translated drops it from ' +
+        'the page rather than showing it in English - clear the whole type ' +
+        'to fall back cleanly. `en` is rejected. Idempotent.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({
+      name: 'sectionType',
+      enum: HubSectionType,
+      description: 'Block type',
+    }),
+    ApiParam({
+      name: 'displayOrder',
+      description: 'Block position within its type (0-based)',
+    }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: DeleteMessageResponseDto }),
+    ApiResponse({
+      status: 400,
+      type: BadRequestErrorDto,
+      description: 'locale is en',
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpsertSectionTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Upsert one locale of a content block (Admin/Editor)',
+      description:
+        'Human write path for the Translation Console. Blocks are addressed ' +
+        'by (sectionType, displayOrder) - their cross-locale identity. `en` ' +
+        'edits the source row and re-queues AI translation; other locales ' +
+        'upsert the sibling row and clear its machine flag. Omit `heading` ' +
+        'for headingless block types (the body is mirrored into it).',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiParam({
+      name: 'sectionType',
+      enum: HubSectionType,
+      description: 'Block type',
+    }),
+    ApiParam({
+      name: 'displayOrder',
+      description: 'Block position within its type (0-based)',
+    }),
+    ApiParam({ name: 'locale', enum: Locale, description: 'Target locale' }),
+    ApiResponse({ status: 200, type: HubSectionTranslationResponseDto }),
+    ApiResponse({
+      status: 404,
+      type: NotFoundErrorDto,
+      description: 'No English block exists at (sectionType, displayOrder)',
+    }),
     ...adminErrors,
   );
 }
