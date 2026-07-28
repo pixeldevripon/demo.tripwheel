@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { instagramApi } from '@/lib/api/instagram';
 import type {
-  CreateInstagramPostPayload,
   ReorderInstagramPostsPayload,
+  SaveInstagramCredentialsPayload,
   UpdateInstagramAccountPayload,
   UpdateInstagramPostPayload,
 } from '@/types/instagram';
@@ -13,6 +13,8 @@ import type {
 export const instagramKeys = {
   all: ['instagram'] as const,
   account: () => [...instagramKeys.all, 'account'] as const,
+  credentials: () => [...instagramKeys.all, 'credentials'] as const,
+  connection: () => [...instagramKeys.all, 'connection'] as const,
   posts: () => [...instagramKeys.all, 'posts'] as const,
 };
 
@@ -39,46 +41,65 @@ export function useUpdateInstagramAccount() {
   });
 }
 
+// ── Credential (dashboard-entered access token) ─────────────────────────────
+
+export function useInstagramCredentials() {
+  return useQuery({
+    queryKey: instagramKeys.credentials(),
+    queryFn: instagramApi.getCredentials,
+  });
+}
+
+export function useSaveInstagramCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SaveInstagramCredentialsPayload) =>
+      instagramApi.saveCredentials(payload),
+    onSuccess: () => {
+      // The token feeds the connection + config, so refresh the whole tree.
+      qc.invalidateQueries({ queryKey: instagramKeys.all });
+      toast.success('Instagram access token saved');
+    },
+    onError,
+  });
+}
+
+// ── Connection (token status + manual sync) ─────────────────────────────────
+
+export function useInstagramConnection() {
+  return useQuery({
+    queryKey: instagramKeys.connection(),
+    queryFn: instagramApi.getConnection,
+  });
+}
+
+/** Run a sync now; refresh both the tiles and the connection (last-sync stamp). */
+export function useSyncInstagram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => instagramApi.sync(),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: instagramKeys.all });
+      if (!result.ran) {
+        toast.info('Nothing to sync - connect an account first.');
+      } else if (result.status === 'OK') {
+        toast.success(
+          `Sync complete: +${result.created} new, ${result.updated} updated, ${result.removed} removed.`,
+        );
+      } else {
+        toast.warning(
+          result.error ?? `Sync finished with status ${result.status}.`,
+        );
+      }
+    },
+    onError: (err: Error) => toast.error(err.message || 'Sync failed'),
+  });
+}
+
 export function useInstagramPosts() {
   return useQuery({
     queryKey: instagramKeys.posts(),
     queryFn: instagramApi.getPosts,
-  });
-}
-
-/**
- * Add tiles from one media-library pick. There is no single-tile counterpart:
- * tiles are only ever created by picking media, and picking one photo is just
- * an array of one.
- *
- * Sequential on purpose, and it must stay that way: the backend sets
- * `displayOrder` to `max(displayOrder) + 1` via a read-then-write with no lock,
- * so N parallel POSTs would all read the same max and land on the same slot -
- * the public order would then fall back to the id tiebreak instead of the order
- * the admin picked them in.
- *
- * Invalidation is in `onSettled` rather than `onSuccess`: if the run dies on
- * tile 7 of 10, six tiles really were created, and the grid has to show them.
- */
-export function useCreateInstagramPosts() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payloads: CreateInstagramPostPayload[]) => {
-      const created = [];
-      for (const payload of payloads) {
-        created.push(await instagramApi.createPost(payload));
-      }
-      return created;
-    },
-    onSuccess: (created) =>
-      toast.success(
-        created.length === 1 ? 'Tile added' : `${created.length} tiles added`,
-      ),
-    onError: (err: Error) =>
-      toast.error(
-        `${err.message || 'Failed to add the tiles'} - any tiles already added were kept.`,
-      ),
-    onSettled: () => qc.invalidateQueries({ queryKey: instagramKeys.posts() }),
   });
 }
 
