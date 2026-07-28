@@ -1,5 +1,6 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Alert02Icon,
   ArrowDown02Icon,
@@ -13,9 +14,9 @@ import {
   ViewOffIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { StatusBadge } from '@/components/common/status-badge';
@@ -167,11 +168,15 @@ function InstagramSettingsCard() {
   const { data: account, isLoading: accountLoading } = useInstagramAccount();
   const { data: siteInfo, isLoading: siteLoading } = useSiteInfo();
 
-  const { mutate: saveToken, isPending: savingToken } =
+  // mutateAsync, not mutate: Save Changes writes up to three endpoints and they
+  // have to run in sequence so a failure can stop the chain and re-sync the form
+  // (see onSubmit). Fired in parallel they left half-saved state on screen.
+  const { mutateAsync: saveToken, isPending: savingToken } =
     useSaveInstagramCredentials();
-  const { mutate: saveAccount, isPending: savingAccount } =
+  const { mutateAsync: saveAccount, isPending: savingAccount } =
     useUpdateInstagramAccount();
-  const { mutate: saveSiteInfo, isPending: savingSite } = useUpdateSiteInfo();
+  const { mutateAsync: saveSiteInfo, isPending: savingSite } =
+    useUpdateSiteInfo();
   const sync = useSyncInstagram();
 
   const {
@@ -180,7 +185,7 @@ function InstagramSettingsCard() {
     reset,
     watch,
     setValue,
-    formState: { dirtyFields },
+    formState: { dirtyFields, errors },
   } = useForm<InstagramSettingsValues>({
       resolver: zodResolver(instagramSettingsSchema),
       defaultValues: {
@@ -198,12 +203,17 @@ function InstagramSettingsCard() {
       // (when a value is absent) are section-on + the gallery layout.
       reset({
         accessToken: '',
-        enabled: siteInfo.enableInstagram ?? true,
+        enabled: siteInfo.enableInstagram,
         layout: account.layout ?? 'GALLERY',
         syncFetchLimit: account.syncFetchLimit ?? 24,
         syncIntervalMinutes: account.syncIntervalMinutes ?? 1440,
       });
     }
+    // Deps are query-data REFERENCES, and TanStack's structural sharing keeps
+    // the previous reference when a refetch returns deep-equal JSON. So this
+    // effect deliberately CANNOT be relied on to re-baseline the form after a
+    // save that changed nothing observable (re-saving the same token is exactly
+    // that) - onSubmit calls reset() itself for that reason.
   }, [cred, account, siteInfo, reset]);
 
   if (
@@ -232,33 +242,78 @@ function InstagramSettingsCard() {
     : 1440;
   const connected = connection?.connected ?? false;
 
-  function onSubmit(values: InstagramSettingsValues) {
-    // Only the changed pieces are written. The token is written ONLY when its
-    // field was actually edited (RHF dirty state, so a browser autofill that
-    // never fires onChange can never overwrite the stored token on an unrelated
-    // save). A dirty-but-empty field is an explicit clear (falls back to env).
-    if (dirtyFields.accessToken) {
-      saveToken({ accessToken: (values.accessToken ?? '').trim() });
-    }
+  /**
+   * One button, three endpoints (token / account / kill switch), run IN SEQUENCE
+   * and always followed by a reset to server truth.
+   *
+   * Both halves of that matter:
+   *
+   * - Sequenced + stop-on-failure. Fired in parallel, one rejected PATCH left
+   *   the other two applied and no way to tell which had landed.
+   * - Always reset(), success or failure. Nothing else reliably re-baselines
+   *   this form: the effect above keys off query-data references, and TanStack's
+   *   structural sharing hands back the SAME reference when a refetch is
+   *   deep-equal - so after saving a token while one was already stored, the
+   *   effect never ran, the field kept its text and stayed dirty, and every
+   *   later save re-sent the token. The backend reads a token write as a
+   *   reconnect, so changing the layout would silently drop igUserId, the
+   *   refreshed token, the expiry and the last-sync stamp.
+   *   The same reset is what stops a REJECTED field from sitting on screen
+   *   looking saved.
+   *
+   * `next*` tracks server truth as each write lands, so a failure halfway
+   * through re-syncs the fields that did save and reverts the ones that did not.
+   */
+  async function onSubmit(values: InstagramSettingsValues) {
+    let nextLayout: InstagramLayout = account?.layout ?? 'GALLERY';
+    let nextFetchLimit = account?.syncFetchLimit ?? 24;
+    let nextInterval = account?.syncIntervalMinutes ?? 1440;
+    let nextEnabled = siteInfo?.enableInstagram ?? true;
 
-    const accountPatch: {
-      layout?: InstagramLayout;
-      syncFetchLimit?: number;
-      syncIntervalMinutes?: number;
-    } = {};
-    if (values.layout !== (account?.layout ?? 'GALLERY')) {
-      accountPatch.layout = values.layout;
-    }
-    if (values.syncFetchLimit !== (account?.syncFetchLimit ?? 24)) {
-      accountPatch.syncFetchLimit = values.syncFetchLimit;
-    }
-    if (values.syncIntervalMinutes !== (account?.syncIntervalMinutes ?? 1440)) {
-      accountPatch.syncIntervalMinutes = values.syncIntervalMinutes;
-    }
-    if (Object.keys(accountPatch).length > 0) saveAccount(accountPatch);
+    try {
+      // The token goes out only when its field was actually edited. It is
+      // write-only, so there is nothing to diff it against here - the backend
+      // no-ops a re-submit of the value it already holds rather than treating it
+      // as a reconnect.
+      if (dirtyFields.accessToken) {
+        await saveToken({ accessToken: (values.accessToken ?? '').trim() });
+      }
 
-    if (values.enabled !== (siteInfo?.enableInstagram ?? true)) {
-      saveSiteInfo({ enableInstagram: values.enabled });
+      const accountPatch: {
+        layout?: InstagramLayout;
+        syncFetchLimit?: number;
+        syncIntervalMinutes?: number;
+      } = {};
+      if (values.layout !== nextLayout) accountPatch.layout = values.layout;
+      if (values.syncFetchLimit !== nextFetchLimit) {
+        accountPatch.syncFetchLimit = values.syncFetchLimit;
+      }
+      if (values.syncIntervalMinutes !== nextInterval) {
+        accountPatch.syncIntervalMinutes = values.syncIntervalMinutes;
+      }
+      if (Object.keys(accountPatch).length > 0) {
+        const saved = await saveAccount(accountPatch);
+        nextLayout = saved.layout ?? nextLayout;
+        nextFetchLimit = saved.syncFetchLimit ?? nextFetchLimit;
+        nextInterval = saved.syncIntervalMinutes ?? nextInterval;
+      }
+
+      if (values.enabled !== nextEnabled) {
+        const saved = await saveSiteInfo({ enableInstagram: values.enabled });
+        nextEnabled = saved.enableInstagram;
+      }
+    } catch {
+      // Each mutation hook already toasts the reason; what this handler owes the
+      // user is the re-sync below, so the form stops showing anything the server
+      // did not accept.
+    } finally {
+      reset({
+        accessToken: '',
+        enabled: nextEnabled,
+        layout: nextLayout,
+        syncFetchLimit: nextFetchLimit,
+        syncIntervalMinutes: nextInterval,
+      });
     }
   }
 
@@ -266,7 +321,13 @@ function InstagramSettingsCard() {
     <SettingsCard
       title="Instagram"
       description="Sync tiles from your Instagram account and control how the section renders."
-      onSubmit={handleSubmit(onSubmit)}
+      // The second callback is not optional here: handleSubmit silently skips
+      // onSubmit when the resolver rejects, so without it a validation failure
+      // made Save Changes do nothing at all - no toast, no message, no write.
+      onSubmit={handleSubmit(onSubmit, (invalid) => {
+        const first = Object.values(invalid).find((e) => e?.message)?.message;
+        toast.error(first ?? 'Some fields need fixing before this can save.');
+      })}
       isSaving={savingToken || savingAccount || savingSite}
       status={
         connected ? (
@@ -323,15 +384,22 @@ function InstagramSettingsCard() {
 
         {/* Even two-column field grid. */}
         <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          {/* autoComplete="off", not "new-password": this is an API credential,
+              and a "new-password" field invites the browser's password UI to
+              write into it. Anything a manager fills here counts as a user edit,
+              which would send it as the Instagram token on the next save. */}
           <SecretField
             label="Access Token"
             registration={register('accessToken')}
             placeholder="IGAA..."
-            autoComplete="new-password"
+            error={errors.accessToken?.message}
             description={
-              cred.hasAccessToken
-                ? 'Stored encrypted, auto-refreshed. Leave blank to keep it.'
-                : 'Long-lived token; stored encrypted and auto-refreshed.'
+              cred.maskedAccessToken
+                ? `Current: ${cred.maskedAccessToken}. Leave blank to keep it.`
+                : cred.hasAccessToken
+                  ? // Stored but unreadable - the encryption key changed under it.
+                    'Stored value cannot be decrypted. Paste the token again to fix it.'
+                  : 'Long-lived token; stored encrypted and auto-refreshed.'
             }
           />
 
@@ -342,6 +410,7 @@ function InstagramSettingsCard() {
               setValueAs: clampFetchLimit,
             })}
             placeholder="24"
+            error={errors.syncFetchLimit?.message}
             description="Recent posts pulled each sync (1-50)."
           />
 

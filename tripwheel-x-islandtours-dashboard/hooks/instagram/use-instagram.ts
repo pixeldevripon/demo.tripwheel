@@ -56,8 +56,14 @@ export function useSaveInstagramCredentials() {
     mutationFn: (payload: SaveInstagramCredentialsPayload) =>
       instagramApi.saveCredentials(payload),
     onSuccess: () => {
-      // The token feeds the connection + config, so refresh the whole tree.
-      qc.invalidateQueries({ queryKey: instagramKeys.all });
+      // Only what a token write can actually change: the credential status
+      // (masked tail) and the connection it re-seeds. NOT the whole tree - the
+      // account row's layout/sync fields are untouched by this endpoint, and
+      // invalidating them here raced the account PATCH that the settings form
+      // sends next, so a stale GET could land after the write and leave the
+      // cache showing pre-save layout.
+      qc.invalidateQueries({ queryKey: instagramKeys.credentials() });
+      qc.invalidateQueries({ queryKey: instagramKeys.connection() });
       toast.success('Instagram access token saved');
     },
     onError,
