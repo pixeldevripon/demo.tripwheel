@@ -3,6 +3,13 @@
 
 // ── Enums (string unions matching prisma/enums.prisma) ──────────────────────────
 export type TripStatus = 'DRAFT' | 'LIVE' | 'PAUSED' | 'ARCHIVED';
+
+// Mirrors backend TourApprovalStatus (conflict #1 content-review workflow).
+export type TripApprovalStatus =
+  | 'NOT_SUBMITTED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED';
 export type PricingModel = 'PER_PERSON' | 'UNIT';
 export type WholeUnitType = 'GROUP' | 'BOAT' | 'VEHICLE' | 'AIRCRAFT' | 'PACKAGE';
 export type PickupModel = 'INCLUDED' | 'PAID_ADDON' | 'NONE';
@@ -144,6 +151,11 @@ export interface TripListItem {
 
   isSponsored: boolean;
   isActive: boolean;
+  // Approval workflow (conflict #1): operators submit-for-review, the
+  // platform approves; publish requires APPROVED.
+  approvalStatus: TripApprovalStatus;
+  submittedAt: string | null;
+  reviewNote: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

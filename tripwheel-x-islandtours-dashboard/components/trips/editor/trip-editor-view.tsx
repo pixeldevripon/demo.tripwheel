@@ -31,10 +31,19 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/status-badge';
-import { TRIP_STATUS } from '@/components/common/status-maps';
+import { TRIP_APPROVAL_STATUS, TRIP_STATUS } from '@/components/common/status-maps';
 import { EnglishContentEditor } from '@/components/common/english-content-editor';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -43,6 +52,9 @@ import { useRole } from '@/contexts/role-context';
 import {
     usePauseTrip,
     usePublishTrip,
+    useSubmitTripForReview,
+    useApproveTrip,
+    useRejectTrip,
     useTrip,
     useTripTranslationByLocale,
     useUnpauseTrip,
@@ -202,7 +214,7 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
 
     const { data: trip, isLoading } = useTrip(id);
     const { data: enTranslation } = useTripTranslationByLocale(id, 'en');
-    const { can } = useRole();
+    const { can, role } = useRole();
 
     // Pickups is meaningless while the tour's pickup model (Details tab) is
     // "None" - hide the section entirely instead of rendering a dead editor.
@@ -238,7 +250,42 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
     const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
     const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
     const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
+    const { mutate: submitForReview, isPending: isSubmitting } =
+        useSubmitTripForReview();
+    const { mutate: approveTrip, isPending: isApproving } = useApproveTrip();
+    const { mutate: rejectTrip, isPending: isRejecting } = useRejectTrip();
+    const [rejectOpen, setRejectOpen] = useState(false);
+    const [rejectNote, setRejectNote] = useState('');
     const isLifecyclePending = isPublishing || isPausing || isUnpausing;
+
+    function handleSubmitForReview() {
+        submitForReview(id, {
+            onSuccess: () =>
+                toast.success('Submitted - Island Tours will review it.'),
+            onError: err =>
+                toast.error(
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to submit for review.',
+                ),
+        });
+    }
+
+    function handleApprove() {
+        approveTrip(
+            { id },
+            {
+                onSuccess: () =>
+                    toast.success('Approved - publish when ready.'),
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to approve.',
+                    ),
+            },
+        );
+    }
 
     function handlePublish() {
         publishTrip(id, {
@@ -302,6 +349,13 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
     const publishChecks = getPublishChecks(trip, !!enTranslation?.overview?.trim());
     const listingChecks = getListingChecks(trip);
     const statusMeta = TRIP_STATUS[trip.status];
+    // Review overlay (conflict #1): only the in-flight states get a chip.
+    const approvalMeta =
+        trip.status === 'DRAFT' &&
+        (trip.approvalStatus === 'PENDING' ||
+            trip.approvalStatus === 'REJECTED')
+            ? TRIP_APPROVAL_STATUS[trip.approvalStatus]
+            : null;
 
     return (
         <TripDetailShell id={id} name={trip.name} isLoading={false} subtitle='Edit trip'>
@@ -313,6 +367,13 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
                         hint={statusMeta.hint}>
                         {statusMeta.label}
                     </StatusBadge>
+                    {approvalMeta && (
+                        <StatusBadge
+                            variant={approvalMeta.variant}
+                            hint={approvalMeta.hint}>
+                            {approvalMeta.label}
+                        </StatusBadge>
+                    )}
                     {trip.isSponsored && (
                         // Icon instead of the status dot: Sponsored is a
                         // commercial PROPERTY, not a lifecycle state - the
@@ -375,6 +436,18 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
                 )}
             </div>
 
+            {/* Review verdict (conflict #1): the admin's actionable note. */}
+            {trip.approvalStatus === 'REJECTED' && trip.reviewNote && (
+                <div className='mb-4 rounded-md border border-danger-border bg-danger-subtle px-4 py-3'>
+                    <p className='text-xs font-semibold text-danger-fg'>
+                        Changes requested by Island Tours
+                    </p>
+                    <p className='mt-1 text-sm text-danger-fg'>
+                        {trip.reviewNote}
+                    </p>
+                </div>
+            )}
+
             {/* Warnings from the details form */}
             {warnings.length > 0 && (
                 <div className='mb-4 space-y-1 rounded-md border border-warning-border bg-warning-subtle px-4 py-3'>
@@ -412,7 +485,72 @@ export function TripEditorView({ id, initialTab }: TripEditorViewProps) {
                 canManage={can('MANAGE_TRIPS')}
                 onPublish={handlePublish}
                 isPublishing={isPublishing}
+                approvalStatus={trip.approvalStatus}
+                isAdmin={role === 'ADMIN'}
+                canSubmit={can('EDIT_TRIP')}
+                onSubmitForReview={handleSubmitForReview}
+                isSubmitting={isSubmitting}
+                onApprove={handleApprove}
+                isApproving={isApproving}
+                onRejectOpen={() => setRejectOpen(true)}
             />
+
+            {/* Reject with a REQUIRED actionable note (the operator sees it). */}
+            <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+                <DialogContent className='sm:max-w-md'>
+                    <DialogHeader>
+                        <DialogTitle>
+                            Request changes on "{trip.name}"?
+                        </DialogTitle>
+                        <DialogDescription>
+                            The note below is shown to the operator - tell
+                            them exactly what to fix so they can resubmit.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        value={rejectNote}
+                        onChange={e => setRejectNote(e.target.value)}
+                        maxLength={1000}
+                        rows={4}
+                        placeholder='e.g. The hero photo is blurry and the overview needs at least two paragraphs.'
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant='outline'
+                            disabled={isRejecting}
+                            onClick={() => setRejectOpen(false)}>
+                            Back
+                        </Button>
+                        <Button
+                            variant='destructive'
+                            disabled={
+                                isRejecting || rejectNote.trim().length < 5
+                            }
+                            onClick={() =>
+                                rejectTrip(
+                                    { id, note: rejectNote.trim() },
+                                    {
+                                        onSuccess: () => {
+                                            setRejectOpen(false);
+                                            setRejectNote('');
+                                            toast.success(
+                                                'Changes requested - the operator sees your note.',
+                                            );
+                                        },
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to reject.',
+                                            ),
+                                    },
+                                )
+                            }>
+                            Request changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Sticky two-level rails: switching never requires scrolling
                 back up, even deep inside a long section. */}

@@ -29,6 +29,7 @@ import type { Resolver } from 'react-hook-form';
 import { useUpdateTrip, useLanguages, useAddLanguage, useRemoveLanguage } from '@/hooks/trips/use-trips';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
+import { useRole } from '@/contexts/role-context';
 import { MultiSelect } from '@/components/ui/multi-select';
 import type {
   TripListItem,
@@ -364,8 +365,15 @@ function durationHint(mins: number): string {
 
 export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
   const { mutate: updateTrip, isPending } = useUpdateTrip();
+  const { role } = useRole();
   const { data: categories } = useActiveCategories();
   const { data: hubs } = useActiveHubs(trip.destinationId || undefined);
+
+  // Booking deadlines derive from the cancellation window at read time, so
+  // changing it on a published tour retroactively moves EXISTING bookings'
+  // deadlines - the backend rejects it for non-admins once the tour leaves
+  // DRAFT (access-roles matrix, Tours notes).
+  const cancellationLocked = trip.status !== 'DRAFT' && role !== 'ADMIN';
 
   const {
     register,
@@ -644,7 +652,11 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  name="cancellationHours"
  control={control}
  render={({ field }) => (
- <Select value={field.value} onValueChange={field.onChange}>
+ <Select
+ value={field.value}
+ onValueChange={field.onChange}
+ disabled={cancellationLocked}
+ >
  <SelectTrigger>
  <SelectValue />
  </SelectTrigger>
@@ -657,6 +669,12 @@ export function TripDetailsTab({ trip, onWarnings }: TripDetailsTabProps) {
  </Select>
  )}
  />
+ {cancellationLocked && (
+ <p className="text-xs text-muted-foreground mt-1">
+ Locked after publishing - changing it would move existing bookings&apos;
+ free-cancellation deadlines. Contact Island Tours to change it.
+ </p>
+ )}
  </Field>
  </div>
 

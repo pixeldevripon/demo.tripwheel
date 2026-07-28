@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Archive02Icon, Calendar03Icon, Delete02Icon, File02Icon, Image02Icon, MoreHorizontalIcon, PauseIcon, PencilEdit02Icon, PlayIcon, RotateLeft01Icon, Tag01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
+import { Archive02Icon, Calendar03Icon, CheckmarkCircle02Icon, Delete02Icon, File02Icon, Image02Icon, MoreHorizontalIcon, PauseIcon, PencilEdit02Icon, PlayIcon, RotateLeft01Icon, SentIcon, Tag01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,19 @@ import {
   usePauseTrip,
   useUnpauseTrip,
   useRestoreTrip,
+  useSubmitTripForReview,
+  useApproveTrip,
+  useRejectTrip,
 } from '@/hooks/trips/use-trips';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import type { TripListItem } from '@/types/trip';
 import { TripDeleteDialog } from './trip-delete-dialog';
@@ -36,12 +48,58 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const { can, role } = useRole();
 
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectNote, setRejectNote] = useState('');
+
   const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
   const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
   const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
   const { mutate: restoreTrip, isPending: isRestoring } = useRestoreTrip();
+  const { mutate: submitForReview, isPending: isSubmitting } =
+    useSubmitTripForReview();
+  const { mutate: approveTrip, isPending: isApproving } = useApproveTrip();
+  const { mutate: rejectTrip, isPending: isRejecting } = useRejectTrip();
 
-  const isLifecyclePending = isPublishing || isPausing || isUnpausing || isRestoring;
+  const isLifecyclePending =
+    isPublishing || isPausing || isUnpausing || isRestoring ||
+    isSubmitting || isApproving || isRejecting;
+
+  // Conflict #1: publishing is always Island Tours'. Operators (EDIT_TRIP
+  // without MANAGE_TRIPS) submit a ready DRAFT for review; the admin
+  // approves/rejects and publishes. Pause/archive stay available to the
+  // operator (downward transitions are always safe).
+  const isPlatform = can('MANAGE_TRIPS');
+  const canSubmitForReview =
+    !isPlatform &&
+    can('EDIT_TRIP') &&
+    trip.status === 'DRAFT' &&
+    (trip.approvalStatus === 'NOT_SUBMITTED' ||
+      trip.approvalStatus === 'REJECTED');
+  const canDecideReview =
+    isPlatform && trip.status === 'DRAFT' && trip.approvalStatus === 'PENDING';
+
+  function handleSubmitForReview() {
+    submitForReview(trip.id, {
+      onSuccess: () =>
+        toast.success(`"${trip.name}" submitted - Island Tours will review it.`),
+      onError: (err) =>
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to submit for review.',
+        ),
+    });
+  }
+
+  function handleApprove() {
+    approveTrip(
+      { id: trip.id },
+      {
+        onSuccess: () =>
+          toast.success(`"${trip.name}" approved - publish when ready.`),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Failed to approve.'),
+      },
+    );
+  }
 
   function handlePublish() {
     publishTrip(trip.id, {
@@ -116,12 +174,53 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
             </>
           )}
 
+          {/* Review pipeline (conflict #1) */}
+          {canSubmitForReview && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleSubmitForReview}
+                disabled={isLifecyclePending}
+              >
+                <HugeiconsIcon icon={SentIcon} />
+                {trip.approvalStatus === 'REJECTED'
+                  ? 'Resubmit for review'
+                  : 'Submit for review'}
+              </DropdownMenuItem>
+            </>
+          )}
+          {canDecideReview && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleApprove}
+                disabled={isLifecyclePending}
+              >
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} />
+                Approve
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setRejectOpen(true)}
+                disabled={isLifecyclePending}
+              >
+                <HugeiconsIcon icon={Delete02Icon} />
+                Request changes
+              </DropdownMenuItem>
+            </>
+          )}
+
           {/* Lifecycle */}
           {can('MANAGE_TRIPS') && (
             <>
               <DropdownMenuSeparator />
               {trip.status === 'DRAFT' && (
-                <DropdownMenuItem onClick={handlePublish} disabled={isLifecyclePending}>
+                <DropdownMenuItem
+                  onClick={handlePublish}
+                  disabled={
+                    isLifecyclePending ||
+                    (role !== 'ADMIN' && trip.approvalStatus !== 'APPROVED')
+                  }
+                >
                   <HugeiconsIcon icon={PlayIcon} />
                   Publish
                 </DropdownMenuItem>
@@ -158,6 +257,28 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
             </>
           )}
 
+          {/* Operator downward transitions (safe: takes the tour OFFLINE) */}
+          {!isPlatform && can('EDIT_TRIP') && (
+            <>
+              {!isArchived && <DropdownMenuSeparator />}
+              {trip.status === 'LIVE' && (
+                <DropdownMenuItem onClick={handlePause} disabled={isLifecyclePending}>
+                  <HugeiconsIcon icon={PauseIcon} />
+                  Pause
+                </DropdownMenuItem>
+              )}
+              {!isArchived && (
+                <DropdownMenuItem
+                  onClick={() => setArchiveOpen(true)}
+                  disabled={isLifecyclePending}
+                >
+                  <HugeiconsIcon icon={Archive02Icon} />
+                  Archive
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+
           {/* Destructive - permanently delete */}
           {can('DELETE_TRIP') && (isArchived || role === 'ADMIN') && (
             <>
@@ -173,6 +294,57 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Reject with a REQUIRED actionable note (the operator sees it). */}
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request changes on "{trip.name}"?</DialogTitle>
+            <DialogDescription>
+              The note below is shown to the operator - tell them exactly what
+              to fix so they can resubmit.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            maxLength={1000}
+            rows={4}
+            placeholder="e.g. The hero photo is blurry and the overview needs at least two paragraphs."
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={isRejecting}
+              onClick={() => setRejectOpen(false)}
+            >
+              Back
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isRejecting || rejectNote.trim().length < 5}
+              onClick={() =>
+                rejectTrip(
+                  { id: trip.id, note: rejectNote.trim() },
+                  {
+                    onSuccess: () => {
+                      setRejectOpen(false);
+                      setRejectNote('');
+                      toast.success('Changes requested - the operator was notified in their dashboard.');
+                    },
+                    onError: (err) =>
+                      toast.error(
+                        err instanceof Error ? err.message : 'Failed to reject.',
+                      ),
+                  },
+                )
+              }
+            >
+              Request changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <TripDeleteDialog
         trip={trip}

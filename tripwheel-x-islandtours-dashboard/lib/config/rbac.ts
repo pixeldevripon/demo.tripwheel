@@ -85,11 +85,17 @@ export const Permission = {
   EDIT_BOOKING: 'EDIT_BOOKING',
   DELETE_BOOKING: 'DELETE_BOOKING',
   MANAGE_BOOKINGS: 'MANAGE_BOOKINGS',
+  // Conflict #7: money + traveler contact on booking rows. Without it a seat
+  // gets the MANIFEST projection (who/when/where).
+  VIEW_BOOKING_FINANCIALS: 'VIEW_BOOKING_FINANCIALS',
 
   // Payments
   VIEW_PAYMENTS: 'VIEW_PAYMENTS',
   EDIT_PAYMENT: 'EDIT_PAYMENT',
   DELETE_PAYMENT: 'DELETE_PAYMENT',
+  // Payout-ledger flips (settlements mark-paid/unpaid) - admin-only, mirrors
+  // the backend platform-staff ceiling exclusion.
+  MANAGE_PAYMENTS: 'MANAGE_PAYMENTS',
 
   // Enquiries
   VIEW_ENQUIRIES: 'VIEW_ENQUIRIES',
@@ -200,11 +206,14 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_BOOKINGS',
     'EDIT_BOOKING',
     'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
     // Admin-only booking ops (non-payment forfeit confirmation - guide s15).
     'MANAGE_BOOKINGS',
     'VIEW_PAYMENTS',
     'EDIT_PAYMENT',
     'DELETE_PAYMENT',
+    // Payout ledger (settlements mark-paid/unpaid) - admin-only.
+    'MANAGE_PAYMENTS',
     'VIEW_ENQUIRIES',
     'DELETE_ENQUIRY',
     'REPLY_ENQUIRY',
@@ -262,6 +271,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_BOOKINGS',
     'EDIT_BOOKING',
     'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
     'VIEW_PAYMENTS',
     'EDIT_PAYMENT',
     'DELETE_PAYMENT',
@@ -276,6 +286,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'DELETE_REVIEW',
     'APPROVE_REVIEW',
     'UPLOAD_MEDIA',
+    'VIEW_MEDIA',
     'MANAGE_MEDIA',
     'VIEW_PROFILE',
     'EDIT_PROFILE',
@@ -292,6 +303,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'VIEW_BOOKINGS',
     'EDIT_BOOKING',
     'DELETE_BOOKING',
+    'VIEW_BOOKING_FINANCIALS',
     'VIEW_PAYMENTS',
     'EDIT_PAYMENT',
     'DELETE_PAYMENT',
@@ -306,6 +318,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'DELETE_REVIEW',
     'APPROVE_REVIEW',
     'UPLOAD_MEDIA',
+    'VIEW_MEDIA',
     'MANAGE_MEDIA',
     'VIEW_PROFILE',
     'EDIT_PROFILE',
@@ -347,10 +360,17 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     // Mirrors backend roles.config: operators view OWN bookings/payments only
     // (the list endpoints scope by operatorId).
     'VIEW_BOOKINGS',
+    // Owners/managers keep the full booking row; a guide-level designation
+    // omits this and gets the manifest projection instead (conflict #7).
+    'VIEW_BOOKING_FINANCIALS',
+    // Gates only the two operator REPORT routes (report-non-payment,
+    // report-cancellation) - ownership-pinned server-side, no money moves.
+    'EDIT_BOOKING',
     'VIEW_PAYMENTS',
     'VIEW_PROFILE',
     'EDIT_PROFILE',
-    'MANAGE_TRIPS',
+    // Conflict #1: NO MANAGE_TRIPS - publishing is always Island Tours'.
+    // Operators submit-for-review + pause/archive via EDIT_TRIP routes.
     'VIEW_CATEGORIES',
   ],
 

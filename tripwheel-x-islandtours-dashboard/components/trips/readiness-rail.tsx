@@ -24,7 +24,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ReadinessCheck } from '@/lib/trips/readiness';
-import type { TripStatus } from '@/types/trip';
+import type { TripApprovalStatus, TripStatus } from '@/types/trip';
 
 interface ReadinessChipProps {
     tripId: string;
@@ -84,6 +84,17 @@ interface ReadinessRailProps {
     canManage: boolean;
     onPublish: () => void;
     isPublishing: boolean;
+    /** Approval workflow (conflict #1): operators submit, the platform decides. */
+    approvalStatus: TripApprovalStatus;
+    /** True ADMIN role only - the backend's publish gate bypass is role-keyed,
+     *  so a platform-staff MANAGE_TRIPS holder must still wait for APPROVED. */
+    isAdmin: boolean;
+    canSubmit: boolean;
+    onSubmitForReview: () => void;
+    isSubmitting: boolean;
+    onApprove: () => void;
+    isApproving: boolean;
+    onRejectOpen: () => void;
 }
 
 export function ReadinessRail({
@@ -94,6 +105,14 @@ export function ReadinessRail({
     canManage,
     onPublish,
     isPublishing,
+    approvalStatus,
+    isAdmin,
+    canSubmit,
+    onSubmitForReview,
+    isSubmitting,
+    onApprove,
+    isApproving,
+    onRejectOpen,
 }: ReadinessRailProps) {
     const passedCount = publishChecks.filter(c => c.passed).length;
     const allPassed = passedCount === publishChecks.length;
@@ -127,12 +146,67 @@ export function ReadinessRail({
                                     this tour can go live.
                                 </p>
                             )}
+                            {approvalStatus === 'PENDING' && (
+                                <>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        onClick={onRejectOpen}
+                                        disabled={isApproving}>
+                                        Request changes
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        onClick={onApprove}
+                                        disabled={isApproving}>
+                                        {isApproving ? 'Approving...' : 'Approve'}
+                                    </Button>
+                                </>
+                            )}
                             <Button
                                 size='sm'
                                 onClick={onPublish}
-                                disabled={!allPassed || isPublishing}>
+                                disabled={
+                                    !allPassed ||
+                                    isPublishing ||
+                                    (!isAdmin &&
+                                        approvalStatus !== 'APPROVED')
+                                }>
                                 {isPublishing ? 'Publishing...' : 'Publish'}
                             </Button>
+                        </div>
+                    )}
+                    {/* Operator lane (conflict #1): submit a ready DRAFT for
+                        review - Island Tours publishes it. */}
+                    {isDraft && !canManage && canSubmit && (
+                        <div className='flex items-center gap-3'>
+                            {approvalStatus === 'PENDING' ? (
+                                <p className='text-xs font-medium text-warning-fg'>
+                                    In review by Island Tours - you will see
+                                    the verdict here.
+                                </p>
+                            ) : (
+                                <>
+                                    {!allPassed && (
+                                        <p className='text-xs text-content-muted'>
+                                            {remaining} item
+                                            {remaining === 1 ? '' : 's'} left
+                                            before you can submit.
+                                        </p>
+                                    )}
+                                    <Button
+                                        size='sm'
+                                        onClick={onSubmitForReview}
+                                        disabled={!allPassed || isSubmitting}>
+                                        {isSubmitting
+                                            ? 'Submitting...'
+                                            : approvalStatus === 'REJECTED'
+                                              ? 'Resubmit for review'
+                                              : 'Submit for review'}
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

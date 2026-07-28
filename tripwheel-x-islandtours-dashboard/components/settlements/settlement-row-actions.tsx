@@ -26,13 +26,13 @@ import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { SettlementListItem } from '@/types/booking';
 
 /**
- * Payout actions (v1 payout is a MANUAL bank transfer):
+ * Payout actions (v1 payout is a MANUAL bank transfer) - ADMIN ONLY, both of
+ * them (backend: MANAGE_PAYMENTS; the access-roles matrix keeps operators
+ * strictly view-own on settlements):
  *  - "Mark as paid" appears only on an eligible row (server-computed
- *    `payoutEligible`) and asks for confirmation. The ADMIN uses it after
- *    sending the transfer; the OPERATOR uses it to confirm the money arrived
- *    (the backend pins a non-admin to their own rows).
- *  - "Revert to due" undoes a mis-click on a paid row - ADMIN ONLY: reverting
- *    a payout is a ledger correction, never an operator action.
+ *    `payoutEligible`) and asks for confirmation, AFTER the admin actually
+ *    sent the transfer.
+ *  - "Revert to due" undoes a mis-click on a paid row (ledger correction).
  * The backend re-checks eligibility on every call, so a stale row can never
  * be paid twice or paid while a cancellation request is pending.
  */
@@ -44,10 +44,10 @@ export function SettlementRowActions({ row }: { row: SettlementListItem }) {
     const { mutate: markUnpaid, isPending: isReverting } =
         useMarkSettlementUnpaid();
 
-    // MANAGE_BOOKINGS = platform admin; everyone on this page holds
-    // VIEW_PAYMENTS, which is what the backend requires for mark-paid.
-    const isAdmin = can('MANAGE_BOOKINGS');
-    const canPay = row.status === 'RECORDED' && row.payoutEligible;
+    // Both ledger flips are MANAGE_PAYMENTS on the backend (admin-only);
+    // operators keep the page read-only for their own rows.
+    const isAdmin = can('MANAGE_PAYMENTS');
+    const canPay = isAdmin && row.status === 'RECORDED' && row.payoutEligible;
     const canRevert = isAdmin && row.status === 'PAID_OUT';
     if (!canPay && !canRevert) return null;
 
@@ -86,19 +86,9 @@ export function SettlementRowActions({ row }: { row: SettlementListItem }) {
             <ConfirmDialog
                 open={payOpen}
                 onOpenChange={setPayOpen}
-                title={
-                    isAdmin
-                        ? `Mark ${amount} as paid to ${operator}?`
-                        : `Mark ${amount} as received?`
-                }
-                description={
-                    isAdmin
-                        ? `Booking ${row.displayRef}. Only confirm AFTER the bank transfer was actually made - this tells the operator the money is on its way.`
-                        : `Booking ${row.displayRef}. Only confirm AFTER the transfer from Island Tours arrived in your account - this settles the payout and cannot be undone from your side.`
-                }
-                confirmLabel={
-                    isAdmin ? 'Money was sent - mark paid' : 'Money arrived - mark paid'
-                }
+                title={`Mark ${amount} as paid to ${operator}?`}
+                description={`Booking ${row.displayRef}. Only confirm AFTER the bank transfer was actually made - this tells the operator the money is on its way.`}
+                confirmLabel='Money was sent - mark paid'
                 loading={isPaying}
                 onConfirm={() =>
                     markPaid(row.id, { onSuccess: () => setPayOpen(false) })

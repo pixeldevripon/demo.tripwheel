@@ -8,7 +8,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/common/status-badge';
-import { TRIP_STATUS } from '@/components/common/status-maps';
+import { TRIP_APPROVAL_STATUS, TRIP_STATUS } from '@/components/common/status-maps';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatPriceFrom } from '@/lib/currency/current';
@@ -123,10 +123,26 @@ export function makeTripColumns({
       header: 'Status',
       cell: ({ row }) => {
         const meta = TRIP_STATUS[row.original.status];
+        // Review overlay (conflict #1): only the in-flight states get a
+        // second badge - a plain DRAFT or an approved/live tour reads fine
+        // from the status alone.
+        const approval =
+          row.original.status === 'DRAFT' &&
+          (row.original.approvalStatus === 'PENDING' ||
+            row.original.approvalStatus === 'REJECTED')
+            ? TRIP_APPROVAL_STATUS[row.original.approvalStatus]
+            : null;
         return (
-          <StatusBadge variant={meta.variant} hint={meta.hint}>
-            {meta.label}
-          </StatusBadge>
+          <div className="flex flex-wrap items-center gap-1">
+            <StatusBadge variant={meta.variant} hint={meta.hint}>
+              {meta.label}
+            </StatusBadge>
+            {approval && (
+              <StatusBadge variant={approval.variant} hint={approval.hint}>
+                {approval.label}
+              </StatusBadge>
+            )}
+          </div>
         );
       },
       enableSorting: true,

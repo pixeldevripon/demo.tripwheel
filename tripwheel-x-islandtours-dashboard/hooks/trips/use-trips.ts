@@ -217,6 +217,41 @@ export function useUpdateTrip() {
   });
 }
 
+export function useSubmitTripForReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => tripsApi.submitForReview(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
+    },
+  });
+}
+
+export function useApproveTrip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      tripsApi.approve(id, note),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
+    },
+  });
+}
+
+export function useRejectTrip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string }) =>
+      tripsApi.reject(id, note),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
+    },
+  });
+}
+
 export function usePublishTrip() {
   const queryClient = useQueryClient();
   return useMutation({

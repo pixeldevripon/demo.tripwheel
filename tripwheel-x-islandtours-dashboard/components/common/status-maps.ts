@@ -10,6 +10,7 @@ import type {
 import type { OperatorVerificationStatus } from '@/types/operator';
 import type {
     AvailabilityScheduleStatus,
+    TripApprovalStatus,
     TripStatus,
 } from '@/types/trip';
 import type { ReviewModerationStatus } from '@/types/review';
@@ -85,6 +86,11 @@ export const BOOKING_DISPLAY_STATUS: Record<BookingDisplayStatus, StatusMeta> = 
         label: 'Cancellation requested',
         variant: 'warning',
         hint: 'Traveller asked to cancel; awaiting an admin decision',
+    },
+    OPERATOR_CANCELLATION_REPORTED: {
+        label: 'Operator cancellation',
+        variant: 'warning',
+        hint: 'Operator reported they must cancel; an admin executes the refund or dismisses',
     },
     NON_PAYMENT_REPORTED: {
         label: 'Non-payment reported',
@@ -238,12 +244,40 @@ export const TRIP_STATUS: Record<TripStatus, StatusMeta> = {
     PAUSED: {
         label: 'Paused',
         variant: 'warning',
-        hint: 'Temporarily hidden; no new bookings',
+        hint: 'Temporarily hidden; no new bookings. Resuming is done by Island Tours - contact us to go live again',
     },
     ARCHIVED: {
         label: 'Archived',
         variant: 'neutral',
         hint: 'Retired; kept for records only',
+    },
+};
+
+/**
+ * Approval-workflow overlay (conflict #1). Rendered as a SECONDARY badge next
+ * to the trip status while a DRAFT moves through review; APPROVED and
+ * NOT_SUBMITTED stay silent (the status badge already tells the story).
+ */
+export const TRIP_APPROVAL_STATUS: Record<TripApprovalStatus, StatusMeta> = {
+    NOT_SUBMITTED: {
+        label: 'Not submitted',
+        variant: 'neutral',
+        hint: 'Not yet sent to Island Tours for review',
+    },
+    PENDING: {
+        label: 'In review',
+        variant: 'warning',
+        hint: 'Awaiting Island Tours approval',
+    },
+    APPROVED: {
+        label: 'Approved',
+        variant: 'success',
+        hint: 'Approved - Island Tours publishes it',
+    },
+    REJECTED: {
+        label: 'Changes requested',
+        variant: 'danger',
+        hint: 'See the review note, fix, and resubmit',
     },
 };
 

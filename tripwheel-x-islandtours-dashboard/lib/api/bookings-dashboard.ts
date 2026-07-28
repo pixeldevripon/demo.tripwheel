@@ -77,6 +77,27 @@ export const bookingsDashboardApi = {
         });
     },
 
+    // ── Operator cancellation report (conflict #2) ──────────────────────────
+
+    /** Operator reports they must cancel - the admin executes the refund. */
+    reportCancellation(id: string, reason?: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(
+            `/bookings/${id}/report-cancellation`,
+            {
+                method: 'POST',
+                body: JSON.stringify(reason?.trim() ? { reason } : {}),
+            },
+        );
+    },
+
+    /** Admin dismisses an operator cancellation report (tour runs after all). */
+    dismissCancellationReport(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(
+            `/bookings/${id}/dismiss-cancellation-report`,
+            { method: 'POST', body: JSON.stringify({}) },
+        );
+    },
+
     /** Customer stat row - always the caller's OWN bookings (self-scoped). */
     getMyBookingSummary(): Promise<CustomerBookingSummary> {
         return apiFetch<CustomerBookingSummary>('/bookings/me/summary');

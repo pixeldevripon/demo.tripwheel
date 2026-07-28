@@ -39,6 +39,7 @@ import {
 import { formatDate } from '@/lib/utils';
 import { bookingMoney as money, paymentModelLabel, refundDue } from '@/lib/bookings/format';
 import type { BookingListItem } from '@/types/booking';
+import { useRole } from '@/contexts/role-context';
 
 export function BookingDetailsSheet({
   booking: b,
@@ -58,6 +59,11 @@ export function BookingDetailsSheet({
   /** 1-based position within the current page, for the "n of N" label. */
   position?: { index: number; count: number };
 }) {
+  const { can } = useRole();
+  // Conflict #7: a seat without VIEW_BOOKING_FINANCIALS receives the manifest
+  // projection - every money field and the traveler email arrive null, so the
+  // Payment/Settlement sections would render as rows of dashes. Hide them.
+  const showFinancials = can('VIEW_BOOKING_FINANCIALS');
   const due = refundDue(b);
   const statusMeta = BOOKING_DISPLAY_STATUS[b.displayStatus];
 
@@ -104,7 +110,10 @@ export function BookingDetailsSheet({
             <Row
               label="Name"
               value={
-                b.contactFullName || b.contactEmail ? (
+                // The lead name is the manifest's whole point - always shown.
+                // Only the deep-link into Customers is withheld from a seat
+                // that cannot see traveler contact details.
+                showFinancials && (b.contactFullName || b.contactEmail) ? (
                   <Link
                     href={`/customers?q=${encodeURIComponent(b.contactEmail ?? b.contactFullName ?? '')}`}
                     className="hover:underline underline-offset-4"
@@ -112,14 +121,14 @@ export function BookingDetailsSheet({
                     {b.contactFullName ?? '-'}
                   </Link>
                 ) : (
-                  '-'
+                  (b.contactFullName ?? '-')
                 )
               }
             />
             <Row
               label="Email"
               value={
-                b.contactEmail ? (
+                showFinancials && b.contactEmail ? (
                   <a
                     href={`mailto:${b.contactEmail}`}
                     className="hover:underline underline-offset-4"
@@ -131,8 +140,23 @@ export function BookingDetailsSheet({
                 )
               }
             />
+            {/* Manifest fields (conflict #7): the day-of-tour facts every
+                seat gets, financials permission or not. */}
+            <Row label="Phone" value={b.contactPhone ?? '-'} />
+            {b.pickupAddress && (
+              <Row
+                label="Pickup"
+                value={
+                  b.pickupWindowStart && b.pickupWindowEnd
+                    ? `${b.pickupAddress} · ${b.pickupWindowStart}-${b.pickupWindowEnd}`
+                    : b.pickupAddress
+                }
+              />
+            )}
+            {b.notes && <Row label="Special requests" value={b.notes} />}
           </Section>
 
+          {showFinancials && (
           <Section label="Payment">
             <Row label="Model" value={paymentModelLabel[b.paymentModel]} />
             <div className="mt-2 divide-y rounded-lg border bg-muted/30">
@@ -152,7 +176,9 @@ export function BookingDetailsSheet({
               <MoneyRow label="Paid so far" value={money(b.paidAmount, b.currency)} />
             </div>
           </Section>
+          )}
 
+          {showFinancials && (
           <Section label="Settlement">
             <Row
               label="Status"
@@ -183,6 +209,7 @@ export function BookingDetailsSheet({
               />
             )}
           </Section>
+          )}
 
           <Section label="Timeline">
             <Row label="Booked" value={formatDate(b.createdAt, 'long')} />

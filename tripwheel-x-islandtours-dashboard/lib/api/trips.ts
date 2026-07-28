@@ -100,6 +100,29 @@ export const tripsApi = {
     return apiFetch<TripListItem>(`/tours/${id}/publish`, { method: 'POST' });
   },
 
+  /** Operator submits a DRAFT for platform review (conflict #1). */
+  submitForReview(id: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/submit-for-review`, {
+      method: 'POST',
+    });
+  },
+
+  /** Admin approves a PENDING submission (publish stays a separate step). */
+  approve(id: string, note?: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(note?.trim() ? { note } : {}),
+    });
+  },
+
+  /** Admin rejects a PENDING submission with a required actionable note. */
+  reject(id: string, note: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  },
+
   pause(id: string): Promise<TripListItem> {
     return apiFetch<TripListItem>(`/tours/${id}/pause`, { method: 'POST' });
   },

@@ -108,6 +108,44 @@ export function useDismissNonPayment() {
     });
 }
 
+/** Operator reports they must cancel (conflict #2) - the admin executes. */
+export function useReportCancellation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+            bookingsDashboardApi.reportCancellation(id, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success(
+                'Cancellation reported - Island Tours will process the refund.',
+            );
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to report the cancellation.',
+            ),
+    });
+}
+
+/** Admin dismisses an operator cancellation report (tour runs after all). */
+export function useDismissCancellationReport() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) =>
+            bookingsDashboardApi.dismissCancellationReport(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('Report dismissed - the booking stays confirmed.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to dismiss report.',
+            ),
+    });
+}
+
 /** Admin "mark cancelled" (master 6.4) - invalidates every bookings list. */
 export function useCancelBooking() {
     const queryClient = useQueryClient();

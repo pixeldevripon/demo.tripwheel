@@ -106,12 +106,18 @@ export function CustomerBookingsView() {
             header: 'Payment',
             cell: ({ row }) => {
                 const b = row.original;
-                const meta = BOOKING_PAYMENT_STATE[b.paymentStatus];
+                const meta = b.paymentStatus
+                    ? BOOKING_PAYMENT_STATE[b.paymentStatus]
+                    : null;
                 return (
                     <div className='min-w-0 space-y-1'>
-                        <StatusBadge variant={meta.variant} hint={meta.hint}>
-                            {meta.label}
-                        </StatusBadge>
+                        {meta && (
+                            <StatusBadge
+                                variant={meta.variant}
+                                hint={meta.hint}>
+                                {meta.label}
+                            </StatusBadge>
+                        )}
                         <span className='block text-xs text-muted-foreground'>
                             {bookingMoney(b.paidAmount, b.currency)} paid
                         </span>

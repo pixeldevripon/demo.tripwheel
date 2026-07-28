@@ -10,7 +10,17 @@ export const paymentModelLabel: Record<BookingPaymentModel, string> = {
   OPERATOR_FULL: 'Operator full',
 };
 
-export function bookingMoney(amount: string | number, rawCurrency: string): string {
+/**
+ * Money for a booking row. Null is a real value here (conflict #7: the server
+ * nulls every money field for a seat without VIEW_BOOKING_FINANCIALS), and it
+ * must render as "withheld", never as 0 - `Number(null)` is 0, which would
+ * tell a guide the trip was free.
+ */
+export function bookingMoney(
+  amount: string | number | null | undefined,
+  rawCurrency: string,
+): string {
+  if (amount == null) return '-';
   const currency: Currency = isCurrency(rawCurrency) ? rawCurrency : 'EUR';
   return formatPriceFrom(amount, currency, 'en');
 }
@@ -56,6 +66,9 @@ export function partyPriceLines(
 ): Array<{ count: number; each: string }> {
   const byPrice = new Map<string, number>();
   for (const item of b.unitItems) {
+    // Per-traveler prices are nulled on the manifest projection - there is no
+    // price breakdown to show that seat.
+    if (item.priceRetail == null) continue;
     byPrice.set(item.priceRetail, (byPrice.get(item.priceRetail) ?? 0) + 1);
   }
   return [...byPrice.entries()]
@@ -71,5 +84,8 @@ export function refundDue(b: BookingListItem): string | null {
   if (b.paymentModel === 'OPERATOR_FULL') return null;
   const amount =
     b.paymentModel === 'PAID_IN_FULL' ? b.totalRetail : b.depositAmount;
+  // Withheld amounts (manifest projection) yield no refund figure at all -
+  // never fall through to Number(null) === 0.
+  if (amount == null) return null;
   return Number(amount) > 0 ? bookingMoney(amount, b.currency) : null;
 }

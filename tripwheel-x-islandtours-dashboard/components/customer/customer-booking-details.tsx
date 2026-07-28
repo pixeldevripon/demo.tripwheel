@@ -71,7 +71,12 @@ export function CustomerBookingDetails({
     if (!booking) return <Sheet open={false} onOpenChange={onOpenChange} />;
 
     const statusMeta = BOOKING_DISPLAY_STATUS[booking.displayStatus];
-    const payMeta = BOOKING_PAYMENT_STATE[booking.paymentStatus];
+    // paymentStatus is null only on the manifest projection, which a
+    // customer never receives for their own booking - guard anyway so the
+    // component cannot crash on an unexpected payload.
+    const payMeta = booking.paymentStatus
+        ? BOOKING_PAYMENT_STATE[booking.paymentStatus]
+        : null;
     const balance = Number(booking.balanceAmount);
     const deposit = Number(booking.depositAmount);
     const partyLines = partyPriceLines(booking);
@@ -87,9 +92,13 @@ export function CustomerBookingDetails({
                             hint={statusMeta.hint}>
                             {statusMeta.label}
                         </StatusBadge>
-                        <StatusBadge variant={payMeta.variant} hint={payMeta.hint}>
-                            {payMeta.label}
-                        </StatusBadge>
+                        {payMeta && (
+                            <StatusBadge
+                                variant={payMeta.variant}
+                                hint={payMeta.hint}>
+                                {payMeta.label}
+                            </StatusBadge>
+                        )}
                     </SheetTitle>
                     <SheetDescription>{booking.tourName}</SheetDescription>
                 </SheetHeader>

@@ -21,6 +21,7 @@ export type BookingStatus =
 export type BookingDisplayStatus =
     | BookingStatus
     | 'CANCELLATION_REQUESTED'
+    | 'OPERATOR_CANCELLATION_REPORTED'
     | 'NON_PAYMENT_REPORTED'
     | 'FORFEITED';
 
@@ -64,9 +65,10 @@ export interface BookingListItem {
     localDate: string;
     startTime: string | null;
     currency: string;
-    totalRetail: string;
-    depositAmount: string;
-    balanceAmount: string;
+    /** Null on the MANIFEST projection (conflict #7). */
+    totalRetail: string | null;
+    depositAmount: string | null;
+    balanceAmount: string | null;
     commissionRate: string | null;
     commissionAmount: string | null;
     paymentModel: BookingPaymentModel;
@@ -75,23 +77,37 @@ export interface BookingListItem {
         id: string;
         ageBandId: string | null;
         status: BookingStatus;
-        priceRetail: string;
+        priceRetail: string | null;
     }>;
     tourName: string;
     contactFullName: string | null;
+    /**
+     * Null for a manifest-only seat (conflict #7): a guide-level designation
+     * without VIEW_BOOKING_FINANCIALS gets who/when/where, no money and no
+     * traveler email. Every money field below is nulled the same way.
+     */
     contactEmail: string | null;
+    /** Manifest fields (conflict #7) - present even without VIEW_BOOKING_FINANCIALS. */
+    contactPhone: string | null;
+    notes: string | null;
+    pickupAddress: string | null;
+    pickupWindowStart: string | null;
+    pickupWindowEnd: string | null;
     partySize: number;
     createdAt: string;
     utcCancellationRequestedAt: string | null;
     /** Non-payment forfeit lifecycle (guide s15) - drives report/forfeit actions. */
     utcNonPaymentReportedAt: string | null;
     utcForfeitedAt: string | null;
+    /** Operator cancellation report (conflict #2) - operators report, admin executes. */
+    utcOperatorCancellationReportedAt: string | null;
+    operatorCancellationReason: string | null;
     freeCancelDeadline: string | null;
     requestedInFreeWindow: boolean | null;
     /** Ledger-derived: net paid vs totalRetail (see backend derivePaymentState). */
-    paymentStatus: BookingPaymentStatus;
+    paymentStatus: BookingPaymentStatus | null;
     /** Net amount paid (SUCCEEDED payments minus refunds), exact decimal string. */
-    paidAmount: string;
+    paidAmount: string | null;
     /**
      * Server verdict on cancellation. Never re-derive this client-side: the
      * start time is a LOCAL wall clock and is meaningless without the tour
