@@ -92,6 +92,13 @@ export interface InstagramConnection {
 export interface InstagramCredentialStatus {
   hasAccessToken: boolean;
   isConfigured: boolean;
+  /**
+   * Bullets + the last 4 characters (`••••••••WQZD`), so an admin can tell WHICH
+   * token is stored without it being usable - same masking as the Stripe secret
+   * key. Null when none is stored, or when the stored value no longer decrypts
+   * (a rotated ENCRYPTION_KEY), which `hasAccessToken: true` + a null mask flags.
+   */
+  maskedAccessToken: string | null;
 }
 
 /** Save the access token. Omit to leave it unchanged; '' clears it. */
