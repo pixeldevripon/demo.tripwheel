@@ -1,8 +1,10 @@
 // Mirrors backend: src/instagram/dto/instagram.dto.ts
-// The brand Instagram grid on destination pages. Phase 1 is admin-curated;
-// phase 2 adds API-synced tiles (source = 'API') to the same list.
+// The brand Instagram grid on destination pages. Phase 2 (auto-sync) is the only
+// path now: an admin connects the account and a daily job mirrors the feed into
+// these tiles. The only per-tile curation left is reorder + hide (+ alt/island).
 
 export type InstagramSource = 'MANUAL' | 'API';
+export type InstagramSyncStatus = 'OK' | 'PARTIAL' | 'FAILED' | 'EXPIRING';
 
 /**
  * Which public layout draws the tiles.
@@ -19,6 +21,10 @@ export interface InstagramAccount {
   /** Explicit override; null means the public site derives it from the handle. */
   profileUrl: string | null;
   layout: InstagramLayout;
+  /** How many recent posts each sync pulls (1..25). */
+  syncFetchLimit: number;
+  /** Minutes between automatic syncs (180 / 360 / 720 / 1440). */
+  syncIntervalMinutes: number;
 }
 
 export interface InstagramPost {
@@ -45,45 +51,61 @@ export interface InstagramPost {
   syncedAt: string | null;
 }
 
+/**
+ * The account form carries the layout and the sync tuning; handle + link are
+ * auto-derived, so they are not here.
+ */
 export interface UpdateInstagramAccountPayload {
-  username?: string;
-  profileUrl?: string;
   layout?: InstagramLayout;
+  syncFetchLimit?: number;
+  syncIntervalMinutes?: number;
 }
 
-// VIDEO is never sent: the backend derives it from `videoUrl`, so a tile cannot
-// claim to be a reel without one. IMAGE vs CAROUSEL_ALBUM IS ours to send - it
-// describes the linked post, which we cannot see from the tile.
-export type InstagramBadgeType = 'IMAGE' | 'CAROUSEL_ALBUM';
-
-export interface CreateInstagramPostPayload {
-  imageUrl: string;
-  videoUrl?: string;
-  imagePublicId?: string;
-  permalink?: string;
-  caption?: string;
-  altText?: string;
-  mediaType?: InstagramBadgeType;
-  isPinned?: boolean;
-  width?: number;
-  height?: number;
-  destinationId?: string;
-  isActive?: boolean;
-}
-
+/**
+ * Curation of a SYNCED tile - the only edits left. Media, caption and permalink
+ * belong to the sync (a re-run reverts any edit), so they are not here.
+ */
 export interface UpdateInstagramPostPayload {
-  imageUrl?: string;
-  /** Empty string clears the video and turns the tile back into a photo. */
-  videoUrl?: string;
-  permalink?: string;
-  caption?: string;
   altText?: string;
-  mediaType?: InstagramBadgeType;
-  isPinned?: boolean;
+  /** null moves the tile back to brand-wide. */
   destinationId?: string | null;
+  /** Hide a tile from the public grid without deleting it. */
   isActive?: boolean;
 }
 
 export interface ReorderInstagramPostsPayload {
   items: { id: string; displayOrder: number }[];
+}
+
+/** The connection state the panel renders - never the token. */
+export interface InstagramConnection {
+  /** True once an access token is configured (dashboard or env fallback). */
+  connected: boolean;
+  igUserId: string | null;
+  tokenExpiresAt: string | null;
+  lastSyncedAt: string | null;
+  lastSyncStatus: InstagramSyncStatus | null;
+  lastSyncError: string | null;
+}
+
+/** Non-secret view of the access token credential for the dashboard form. */
+export interface InstagramCredentialStatus {
+  hasAccessToken: boolean;
+  isConfigured: boolean;
+}
+
+/** Save the access token. Omit to leave it unchanged; '' clears it. */
+export interface SaveInstagramCredentialsPayload {
+  accessToken?: string;
+}
+
+/** One sync run's tally, returned by "Sync now". */
+export interface InstagramSyncResult {
+  ran: boolean;
+  created: number;
+  updated: number;
+  removed: number;
+  failed: number;
+  status: InstagramSyncStatus;
+  error: string | null;
 }

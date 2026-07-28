@@ -1,8 +1,11 @@
 import type {
-  CreateInstagramPostPayload,
   InstagramAccount,
+  InstagramConnection,
+  InstagramCredentialStatus,
   InstagramPost,
+  InstagramSyncResult,
   ReorderInstagramPostsPayload,
+  SaveInstagramCredentialsPayload,
   UpdateInstagramAccountPayload,
   UpdateInstagramPostPayload,
 } from '@/types/instagram';
@@ -21,19 +24,35 @@ export const instagramApi = {
     payload: UpdateInstagramAccountPayload,
   ): Promise<InstagramAccount> {
     return apiFetch<InstagramAccount>('/instagram/account', {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(payload),
     });
   },
 
-  getPosts(): Promise<InstagramPost[]> {
-    return apiFetch<InstagramPost[]>('/instagram/posts');
+  // ── Credential (dashboard-entered access token) ───────────────────────────
+  getCredentials(): Promise<InstagramCredentialStatus> {
+    return apiFetch<InstagramCredentialStatus>('/instagram/credentials');
   },
-  createPost(payload: CreateInstagramPostPayload): Promise<InstagramPost> {
-    return apiFetch<InstagramPost>('/instagram/posts', {
-      method: 'POST',
+  saveCredentials(
+    payload: SaveInstagramCredentialsPayload,
+  ): Promise<InstagramCredentialStatus> {
+    return apiFetch<InstagramCredentialStatus>('/instagram/credentials', {
+      method: 'PATCH',
       body: JSON.stringify(payload),
     });
+  },
+
+  // ── Connection (token status + manual sync) ───────────────────────────────
+  getConnection(): Promise<InstagramConnection> {
+    return apiFetch<InstagramConnection>('/instagram/connection');
+  },
+  sync(): Promise<InstagramSyncResult> {
+    return apiFetch<InstagramSyncResult>('/instagram/sync', { method: 'POST' });
+  },
+
+  // ── Tiles (curation only) ─────────────────────────────────────────────────
+  getPosts(): Promise<InstagramPost[]> {
+    return apiFetch<InstagramPost[]>('/instagram/posts');
   },
   updatePost(
     id: string,

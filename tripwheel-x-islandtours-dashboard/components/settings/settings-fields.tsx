@@ -64,7 +64,7 @@ export function SettingsCard({
 }) {
   return (
     <Card>
-      <CardHeader className="border-b pb-6">
+      <CardHeader className="border-b">
         <div className="flex flex-wrap items-center gap-3">
           <CardTitle>{title}</CardTitle>
           {status}
