@@ -14,11 +14,28 @@ import { apiFetch } from './fetch';
  * Operator-scoped settings. Every call is for the operator's OWN id; the backend
  * enforces ownership (assertOwnerOrAdmin) so an operator can never read or write
  * another operator's configuration. GET endpoints return null when unconfigured.
+ *
+ * ## Why the nullable getters end in `?? null`
+ *
+ * Those endpoints return `prisma.findUnique(...)` directly, and Nest serialises
+ * a returned `null` as an EMPTY 200 body - not the four bytes `null`. `apiFetch`
+ * maps an empty body to `undefined` (correct for the 204/empty-DELETE replies it
+ * also has to handle), which TanStack Query rejects outright: "Query data cannot
+ * be undefined". So an operator who has never filled in their company details
+ * blows up the query instead of getting the empty form.
+ *
+ * `apiFetch` cannot fix this itself - it has no way to tell "no row" from "no
+ * content". Normalising here, where the `| null` contract is declared, is the
+ * narrow fix.
  */
 export const operatorSettingsApi = {
   // ── Company Information ─────────────────────────────────────────────────────
-  getCompanyInfo(operatorId: string): Promise<OperatorCompanyInfo | null> {
-    return apiFetch<OperatorCompanyInfo | null>(`/operators/${operatorId}/company-info`);
+  async getCompanyInfo(operatorId: string): Promise<OperatorCompanyInfo | null> {
+    return (
+      (await apiFetch<OperatorCompanyInfo | null>(
+        `/operators/${operatorId}/company-info`,
+      )) ?? null
+    );
   },
   updateCompanyInfo(
     operatorId: string,
@@ -45,8 +62,12 @@ export const operatorSettingsApi = {
   },
 
   // ── Payments: Stripe ───────────────────────────────────────────────────────
-  getStripeConfig(operatorId: string): Promise<OperatorStripeConfig | null> {
-    return apiFetch<OperatorStripeConfig | null>(`/operators/${operatorId}/stripe-config`);
+  async getStripeConfig(operatorId: string): Promise<OperatorStripeConfig | null> {
+    return (
+      (await apiFetch<OperatorStripeConfig | null>(
+        `/operators/${operatorId}/stripe-config`,
+      )) ?? null
+    );
   },
   updateStripeConfig(
     operatorId: string,
@@ -59,8 +80,12 @@ export const operatorSettingsApi = {
   },
 
   // ── Payments: Mollie ───────────────────────────────────────────────────────
-  getMollieConfig(operatorId: string): Promise<OperatorMollieConfig | null> {
-    return apiFetch<OperatorMollieConfig | null>(`/operators/${operatorId}/mollie-config`);
+  async getMollieConfig(operatorId: string): Promise<OperatorMollieConfig | null> {
+    return (
+      (await apiFetch<OperatorMollieConfig | null>(
+        `/operators/${operatorId}/mollie-config`,
+      )) ?? null
+    );
   },
   updateMollieConfig(
     operatorId: string,

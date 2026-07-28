@@ -108,7 +108,18 @@ function clearSessionCookies(request: NextRequest, response: NextResponse) {
  * inverse of the monorepo, where the dashboard lived behind a `/dashboard`
  * prefix and everything else was the public site.
  */
-const UNGUARDED_PREFIXES = ['/portal', '/staff', '/onboarding', '/api'];
+const UNGUARDED_PREFIXES = [
+    '/portal',
+    '/staff',
+    '/onboarding',
+    '/api',
+    // Emailed password-change confirmation. Reached from the mailbox, very
+    // often on a phone with no dashboard session - guarding it would bounce
+    // the link to /portal and drop the ?token= it exists to read. Safe to
+    // leave open: the single-use token IS the credential, and the backend
+    // route that redeems it is @Public for the same reason.
+    '/profile/confirm-password-change',
+];
 
 function isUnguarded(pathname: string): boolean {
     return UNGUARDED_PREFIXES.some(

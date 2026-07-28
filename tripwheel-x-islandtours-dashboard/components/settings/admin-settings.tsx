@@ -1,7 +1,6 @@
 'use client';
 
 import { EntityTabs } from '@/components/common/entity-tabs';
-import { CompanyInfoForm } from './company-info-form';
 import { InstagramForm } from './instagram-form';
 import { IntegrationsForm } from './integrations-form';
 import { PaymentsForm } from './payments-form';
@@ -12,13 +11,28 @@ import { SiteInfoForm } from './site-info-form';
 import { SocialMediaForm } from './social-media-form';
 
 /**
- * Admin settings sections. Seven tabs: Account (legal entity + social), Site,
- * SEO, Payments, Integrations, Reviews (the third-party review feed + the
- * post-tour review request cadence), Instagram (the brand grid on destination
- * pages - its own tab because it is a curation surface, not a credential
- * form). The old standalone social / legal-entity tabs are aliased so legacy
- * links land on their new parent. Tabs are URL-synced and stay mounted so
- * switching sections never discards unsaved edits.
+ * Admin settings sections, ordered outward from the site itself: what the site
+ * IS (Site - identity plus the footer's social links, SEO), where it shows up
+ * (Instagram - the brand grid on destination pages, its own tab because it is
+ * a curation surface, not a credential form), then what it runs on (Payments,
+ * Integrations, Reviews - the third-party review feed + the post-tour review
+ * request cadence).
+ *
+ * The FIRST tab is the no-`?tab=` default, so Site leads: it is the one every
+ * admin opens, and it is where `?tab=general` already pointed. Tabs are
+ * URL-synced and stay mounted so switching sections never discards unsaved
+ * edits.
+ *
+ * Social folded INTO Site on 2026-07-28 - six optional footer URLs did not
+ * earn a tab of their own once the legal entity left the page. Two stacked
+ * `SettingsCard`s in one tab is the house pattern (Reviews does the same);
+ * each keeps its own Save, so nothing about the write path changes.
+ *
+ * The platform's legal entity ("Company Information") LEFT this page the same
+ * day - it now lives on `/profile` under Company, in the profile page's flat
+ * block layout. Its old tab values, and `social`, stay aliased so bookmarked
+ * `?tab=social` / `company` / `legal-entity` / `account` links still resolve
+ * to a real tab instead of falling through to the first one.
  *
  * `reviews` was previously ALIASED to `integrations` and is now a real tab.
  * The alias had to go: EntityTabs resolves aliases before it looks the value
@@ -32,23 +46,24 @@ export function AdminSettings() {
       basePath="/settings"
       aliases={{
         general: 'site',
-        company: 'account',
-        'legal-entity': 'account',
-        social: 'account',
+        social: 'site',
+        company: 'site',
+        'legal-entity': 'site',
+        account: 'site',
       }}
       tabs={[
         {
-          value: 'account',
-          label: 'Account',
+          value: 'site',
+          label: 'Site',
           content: (
             <div className="space-y-6">
-              <CompanyInfoForm />
+              <SiteInfoForm />
               <SocialMediaForm />
             </div>
           ),
         },
-        { value: 'site', label: 'Site', content: <SiteInfoForm /> },
         { value: 'seo', label: 'SEO', content: <SeoForm /> },
+        { value: 'instagram', label: 'Instagram', content: <InstagramForm /> },
         { value: 'payments', label: 'Payments', content: <PaymentsForm /> },
         {
           value: 'integrations',
@@ -65,7 +80,6 @@ export function AdminSettings() {
             </div>
           ),
         },
-        { value: 'instagram', label: 'Instagram', content: <InstagramForm /> },
       ]}
     />
   );

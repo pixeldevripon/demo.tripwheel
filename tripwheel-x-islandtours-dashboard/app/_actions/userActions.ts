@@ -29,6 +29,57 @@ export async function setPasswordAction(newPassword: string): Promise<void> {
     }
 }
 
+/**
+ * Step 1 of the password change: verify the current password and send the
+ * confirmation email. Nothing on the account changes here.
+ *
+ * A server action rather than a browser fetch for the same reason as
+ * setPasswordAction: the backend hands the cookie to Better Auth's
+ * server-scope verifyPassword, and this keeps every password operation on one
+ * path. The thrown error carries the backend status so the form can tell
+ * "wrong password" (401) apart from everything else.
+ */
+export async function requestPasswordChangeAction(
+    currentPassword: string,
+    newPassword: string,
+): Promise<void> {
+    const cookie = (await headers()).get('cookie') ?? '';
+    const res = await fetch(`${BACKEND_URL}/api/v1/users/me/password-change/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...serverAuthHeaders(cookie) },
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (!res.ok) {
+        const body = await safeJson(res);
+        const message = Array.isArray(body?.message)
+            ? body.message.join(', ')
+            : (body?.message ?? `Failed to start the password change (${res.status})`);
+        throw Object.assign(new Error(message), { status: res.status });
+    }
+}
+
+/**
+ * Step 2: redeem the emailed token. Deliberately takes no session - the link
+ * is usually opened on a phone that is not signed in; the single-use token is
+ * the credential.
+ */
+export async function confirmPasswordChangeAction(token: string): Promise<void> {
+    const res = await fetch(`${BACKEND_URL}/api/v1/users/me/password-change/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+    });
+
+    if (!res.ok) {
+        const body = await safeJson(res);
+        const message = Array.isArray(body?.message)
+            ? body.message.join(', ')
+            : (body?.message ?? `Failed to confirm the password change (${res.status})`);
+        throw Object.assign(new Error(message), { status: res.status });
+    }
+}
+
 async function safeJson(res: Response) {
     try {
         const text = await res.text();

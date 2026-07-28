@@ -232,14 +232,18 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.MANAGE_STAFF, Permission.MANAGE_TEAM],
             },
             {
+                // ADMIN-ONLY since 2026-07-28. Operators used to reach this
+                // for "Your Business" (EDIT_OPERATOR_PROFILE), which now
+                // lives on /profile, and for Payments
+                // (MANAGE_OPERATOR_PAYMENTS), which is still parked - so the
+                // page had nothing left for them and the link was a dead end.
+                // Restore MANAGE_OPERATOR_PAYMENTS here when payments ships.
                 title: 'Settings',
                 url: 'settings',
                 icon: Settings02Icon,
                 permissions: [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
-                    Permission.EDIT_OPERATOR_PROFILE,
-                    Permission.MANAGE_OPERATOR_PAYMENTS,
                 ],
             },
 /*             {
