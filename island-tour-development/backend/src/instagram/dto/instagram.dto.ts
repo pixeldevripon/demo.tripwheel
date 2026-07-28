@@ -273,6 +273,16 @@ export class InstagramCredentialStatusResponseDto {
     description: 'A token is set, so a sync can run.',
   })
   isConfigured!: boolean;
+
+  @ApiProperty({
+    example: '••••••••WQZD',
+    nullable: true,
+    description:
+      'Bullets + the last 4 characters, so an admin can tell WHICH token is ' +
+      'stored without it being usable (same masking as the Stripe keys). Null ' +
+      'when none is stored, or when the stored value no longer decrypts.',
+  })
+  maskedAccessToken!: string | null;
 }
 
 /** One sync run's tally. */

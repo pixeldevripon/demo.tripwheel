@@ -120,8 +120,9 @@ export function ApiGetInstagramCredentialsDocs() {
       summary: 'Get Instagram access token status (admin)',
       description:
         'Non-secret view: booleans for whether a token is stored / configured, ' +
-        'and whether it is coming from the env fallback. The token is never ' +
-        'returned.',
+        'plus the masked tail (bullets + last 4 characters) so an admin can ' +
+        'tell WHICH token is stored. The token itself is never returned. ' +
+        'There is no env fallback - the credential is DB-only.',
     }),
     ApiResponse({
       status: 200,

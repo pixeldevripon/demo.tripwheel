@@ -20,7 +20,13 @@ model SiteInfo {
   // Defaults ON: the section is intended to show once tiles exist (the public
   // feed still gates on having tiles, so an empty feed never renders).
   // (`instagramWidgetId` was dropped with the third-party-embed approach.)
-  enableInstagram    Boolean? @default(true)
+  //
+  // NOT NULL on purpose. As a nullable column a NULL had to be read as SOME
+  // default, and the read sites disagreed: the dashboard showed the box ticked
+  // (`?? true`) while the public projection hid the section (`?? false`) - and
+  // because the form only PATCHes when the value differs from what it read,
+  // ticking the already-ticked box wrote nothing and the split never healed.
+  enableInstagram    Boolean  @default(true)
 
   // "Your local host" — the small looping avatar beside the WhatsApp button in
   // the FAQ block. It lives in site info, NOT on the homepage record, because

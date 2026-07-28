@@ -1,5 +1,5 @@
 import { auth } from '@/auth/auth.instance';
-import { decrypt, encrypt } from '@/common/utils/crypto.util';
+import { decrypt, encrypt, maskSecret } from '@/common/utils/crypto.util';
 import {
   getPortalUrl,
   provisionOrAttachAccount,
@@ -143,12 +143,6 @@ export class OperatorsService {
     throw new ForbiddenException(
       'You can only access your own operator profile',
     );
-  }
-
-  /** Masks an encrypted secret for display: bullet prefix + last 4 plaintext chars. */
-  private maskSecret(encrypted: string | null): string | null {
-    if (!encrypted) return null;
-    return '••••••••' + decrypt(encrypted).slice(-4);
   }
 
   // ── Core Operator CRUD ─────────────────────────────────────────────────────
@@ -567,8 +561,8 @@ export class OperatorsService {
     });
     return {
       ...result,
-      secretKey: this.maskSecret(result.secretKey),
-      webhookSecret: this.maskSecret(result.webhookSecret),
+      secretKey: maskSecret(result.secretKey),
+      webhookSecret: maskSecret(result.webhookSecret),
     };
   }
 
@@ -588,8 +582,8 @@ export class OperatorsService {
 
     return {
       ...config,
-      secretKey: this.maskSecret(config.secretKey),
-      webhookSecret: this.maskSecret(config.webhookSecret),
+      secretKey: maskSecret(config.secretKey),
+      webhookSecret: maskSecret(config.webhookSecret),
     };
   }
 
@@ -616,7 +610,7 @@ export class OperatorsService {
     });
     return {
       ...result,
-      apiKey: this.maskSecret(result.apiKey),
+      apiKey: maskSecret(result.apiKey),
     };
   }
 
@@ -636,7 +630,7 @@ export class OperatorsService {
 
     return {
       ...config,
-      apiKey: this.maskSecret(config.apiKey),
+      apiKey: maskSecret(config.apiKey),
     };
   }
 

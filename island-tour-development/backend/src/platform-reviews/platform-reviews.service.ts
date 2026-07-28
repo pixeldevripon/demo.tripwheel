@@ -1,4 +1,4 @@
-import { decrypt, encrypt } from '@/common/utils/crypto.util';
+import { decrypt, encrypt, maskSecret } from '@/common/utils/crypto.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -61,11 +61,6 @@ export class PlatformReviewsService {
     });
   }
 
-  private maskSecret(encrypted: string | null): string | null {
-    if (!encrypted) return null;
-    return '••••••••' + decrypt(encrypted).slice(-4);
-  }
-
   private toConfigResponse(
     row: Awaited<ReturnType<PlatformReviewsService['getRow']>>,
   ): PlatformReviewsConfigResponseDto {
@@ -73,7 +68,7 @@ export class PlatformReviewsService {
     return {
       id: row.id,
       provider: row.provider ?? null,
-      apiKey: this.maskSecret(row.apiKey || null),
+      apiKey: maskSecret(row.apiKey || null),
       businessId: row.businessId ?? null,
       enabled: row.enabled,
       displayPages: Array.isArray(row.displayPages)
