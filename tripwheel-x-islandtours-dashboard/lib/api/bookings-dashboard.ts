@@ -7,7 +7,6 @@ import type {
     BookingListItem,
     BookingsQueryParams,
     CancelBookingPayload,
-    CustomerBookingSummary,
     PaginatedBookings,
     PaginatedPayments,
     PaginatedSettlements,
@@ -77,27 +76,27 @@ export const bookingsDashboardApi = {
         });
     },
 
-    /** Customer stat row - always the caller's OWN bookings (self-scoped). */
-    getMyBookingSummary(): Promise<CustomerBookingSummary> {
-        return apiFetch<CustomerBookingSummary>('/bookings/me/summary');
-    },
+    // ── Operator cancellation report (conflict #2) ──────────────────────────
 
-    /**
-     * Customer cancellation REQUEST (never cancels on click - the admin
-     * processes it). Ownership enforced server-side via booking.userId.
-     */
-    requestCancellation(
-        id: string,
-        reason?: string,
-    ): Promise<{ requested: boolean }> {
-        return apiFetch<{ requested: boolean }>(
-            `/bookings/${id}/cancellation-request`,
+    /** Operator reports they must cancel - the admin executes the refund. */
+    reportCancellation(id: string, reason?: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(
+            `/bookings/${id}/report-cancellation`,
             {
                 method: 'POST',
                 body: JSON.stringify(reason?.trim() ? { reason } : {}),
             },
         );
     },
+
+    /** Admin dismisses an operator cancellation report (tour runs after all). */
+    dismissCancellationReport(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(
+            `/bookings/${id}/dismiss-cancellation-report`,
+            { method: 'POST', body: JSON.stringify({}) },
+        );
+    },
+
 };
 
 export const paymentsDashboardApi = {

@@ -9,7 +9,6 @@ import {
 import { StatusBadge } from '@/components/common/status-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     useUpdateProfile,
@@ -28,6 +27,11 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ChangeEmailDialog } from './change-email-dialog';
+import {
+    ProfileSaveButton,
+    ProfileSection,
+    ProfileTextField,
+} from './profile-section';
 
 // bundle-dynamic-imports: Load heavy cropper only when needed
 const ImageCropper = dynamic(() => import('./image-cropper'), {
@@ -118,8 +122,7 @@ function AvatarBlock({ user }: { user: UserProfile }) {
     };
 
     return (
-        <section className='border-b border-line pb-10'>
-            <h2 className='text-base font-semibold'>Avatar</h2>
+        <ProfileSection title='Avatar'>
             <div className='mt-5 flex items-start gap-5'>
                 <Avatar className='size-14 shrink-0 ring-1 ring-line'>
                     {user.image ? (
@@ -181,7 +184,7 @@ function AvatarBlock({ user }: { user: UserProfile }) {
                     onCropComplete={handleCropComplete}
                 />
             ) : null}
-        </section>
+        </ProfileSection>
     );
 }
 
@@ -211,44 +214,22 @@ function AccountInfoBlock({ user }: { user: UserProfile }) {
     });
 
     return (
-        <section className='border-b border-line py-10'>
-            <div className='flex items-start justify-between gap-4'>
-                <div>
-                    <h2 className='text-base font-semibold'>Account info</h2>
-                    <p className='mt-1 text-sm text-muted-foreground'>
-                        Displayed on your account, emails and notifications.
-                    </p>
-                </div>
-                <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
+        <ProfileSection
+            title='Account info'
+            description='Displayed on your account, emails and notifications.'
+            action={
+                <ProfileSaveButton
                     onClick={onSave}
-                    disabled={!isDirty || updateMutation.isPending}>
-                    {updateMutation.isPending ? (
-                        <HugeiconsIcon
-                            icon={Loading03Icon}
-                            className='size-4 animate-spin'
-                        />
-                    ) : null}
-                    Save
-                </Button>
-            </div>
-
+                    disabled={!isDirty}
+                    isPending={updateMutation.isPending}
+                />
+            }>
             <form onSubmit={onSave} className='mt-6 max-w-xl space-y-6'>
-                <div className='space-y-2'>
-                    <Label htmlFor='name'>Full name</Label>
-                    <Input
-                        id='name'
-                        aria-invalid={!!errors.name}
-                        {...register('name')}
-                    />
-                    {errors.name && (
-                        <p className='text-xs font-medium text-danger-fg'>
-                            {errors.name.message}
-                        </p>
-                    )}
-                </div>
+                <ProfileTextField
+                    label='Full name'
+                    registration={register('name')}
+                    error={errors.name?.message}
+                />
 
                 {/* Email changes go through the verified Better Auth
                     change-email flow (dialog) - never a profile save. The
@@ -281,7 +262,7 @@ function AccountInfoBlock({ user }: { user: UserProfile }) {
                 onOpenChange={setEmailDialogOpen}
                 currentEmail={user.email}
             />
-        </section>
+        </ProfileSection>
     );
 }
 
@@ -319,8 +300,7 @@ function AccountDetailsBlock({ user }: { user: UserProfile }) {
     ];
 
     return (
-        <section className='py-10'>
-            <h2 className='text-base font-semibold'>Account details</h2>
+        <ProfileSection title='Account details'>
             <dl className='mt-4'>
                 {rows.map(row => (
                     <div
@@ -333,6 +313,6 @@ function AccountDetailsBlock({ user }: { user: UserProfile }) {
                     </div>
                 ))}
             </dl>
-        </section>
+        </ProfileSection>
     );
 }

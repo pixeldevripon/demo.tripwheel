@@ -1,6 +1,6 @@
 'use client';
 
-import { StarIcon } from '@hugeicons/core-free-icons';
+import { StarIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -15,14 +15,15 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import {
+  useModerateReview,
   useRespondToReview,
-  useReviewHistory,
 } from '@/hooks/reviews/use-reviews';
 import type { AdminReview } from '@/types/review';
 
@@ -34,10 +35,8 @@ const GUEST_TYPE_LABEL: Record<string, string> = {
 };
 
 /**
- * Everything about one review on one screen: the content, the verification
- * chain (booking reference -> tour -> operator), and the append-only audit
- * trail. The trail is here rather than behind another click because "who
- * changed this and why" is the question moderation exists to be able to answer.
+ * One review on one screen: the traveler's words first, then the verification
+ * chain (booking reference -> tour -> operator) and the response thread.
  */
 export function ReviewDetailSheet({
   review,
@@ -54,12 +53,27 @@ export function ReviewDetailSheet({
   const { can } = useRole();
   const [response, setResponse] = useState('');
   const respond = useRespondToReview();
-  const { data: history, isLoading: historyLoading } = useReviewHistory(
-    open && review ? review.id : null,
-  );
+  const moderate = useModerateReview();
 
   if (!review) return null;
   const meta = REVIEW_STATUS[review.moderationStatus];
+  const canApprove =
+    can('APPROVE_REVIEW') && review.moderationStatus !== 'APPROVED';
+
+  async function approve() {
+    try {
+      await moderate.mutateAsync({
+        id: review!.id,
+        tourId: review!.tourId,
+        payload: { status: 'APPROVED' },
+      });
+      toast.success('Review approved and published.');
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to approve the review.',
+      );
+    }
+  }
 
   async function submitResponse() {
     if (!response.trim()) return;
@@ -107,8 +121,42 @@ export function ReviewDetailSheet({
         </SheetHeader>
 
         <div className='min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 pb-8'>
-          {/* Verification chain - the whole "confirmed booking" promise in one row. */}
-          <section className='grid grid-cols-2 gap-3 rounded-lg bg-surface-inset p-3 text-sm'>
+          {/* The traveler's words - the reason this sheet exists - come first. */}
+          <section>
+            {review.title && (
+              <h3 className='font-heading text-lg font-semibold'>
+                {review.title}
+              </h3>
+            )}
+            <p
+              className={
+                review.comment
+                  ? 'mt-1 text-sm leading-relaxed whitespace-pre-wrap text-content-muted'
+                  : 'mt-1 text-sm text-content-subtle italic'
+              }>
+              {review.comment ?? 'Rating only - no written review.'}
+            </p>
+            {review.photos.length > 0 && (
+              <div className='mt-3 flex flex-wrap gap-2'>
+                {review.photos.map((src) => (
+                  <div
+                    key={src}
+                    className='relative size-20 overflow-hidden rounded-md bg-surface-inset'>
+                    <Image
+                      src={src}
+                      alt=''
+                      fill
+                      sizes='80px'
+                      className='object-cover'
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Verification chain - the whole "confirmed booking" promise in one card. */}
+          <section className='grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg bg-surface-inset p-4 text-sm sm:grid-cols-3'>
             <Meta label='Booking' value={review.bookingRef ?? '-'} />
             <Meta label='Source' value={review.source} />
             <Meta
@@ -139,36 +187,8 @@ export function ReviewDetailSheet({
             />
           </section>
 
-          <section>
-            {review.title && (
-              <h3 className='font-heading text-lg font-semibold'>
-                {review.title}
-              </h3>
-            )}
-            <p className='mt-1 text-sm whitespace-pre-wrap text-content-muted'>
-              {review.comment ?? 'Rating only - no written review.'}
-            </p>
-            {review.photos.length > 0 && (
-              <div className='mt-3 flex flex-wrap gap-2'>
-                {review.photos.map((src) => (
-                  <div
-                    key={src}
-                    className='relative size-20 overflow-hidden rounded-md bg-surface-inset'>
-                    <Image
-                      src={src}
-                      alt=''
-                      fill
-                      sizes='80px'
-                      className='object-cover'
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
           {review.rejectionReason && (
-            <section className='rounded-lg border border-danger-border bg-danger-subtle p-3'>
+            <section className='rounded-lg border border-danger-border bg-danger-subtle p-4'>
               <Label className='text-xs font-semibold uppercase'>
                 Rejection ground
               </Label>
@@ -182,8 +202,8 @@ export function ReviewDetailSheet({
           <section>
             <Label className='text-xs font-semibold uppercase'>Response</Label>
             {review.responseText ? (
-              <div className='mt-1 rounded-lg bg-surface-inset p-3'>
-                <p className='text-sm whitespace-pre-wrap'>
+              <div className='mt-2 rounded-lg bg-surface-inset p-4'>
+                <p className='text-sm leading-relaxed whitespace-pre-wrap'>
                   {review.responseText}
                 </p>
                 <p className='mt-2 text-xs text-content-muted'>
@@ -197,7 +217,7 @@ export function ReviewDetailSheet({
                 </p>
               </div>
             ) : can('APPROVE_REVIEW') ? (
-              <div className='mt-1 space-y-2'>
+              <div className='mt-2 space-y-2'>
                 <Textarea
                   rows={3}
                   value={response}
@@ -212,45 +232,23 @@ export function ReviewDetailSheet({
                 </Button>
               </div>
             ) : (
-              <p className='mt-1 text-sm text-content-subtle italic'>
+              <p className='mt-2 text-sm text-content-subtle italic'>
                 No response yet.
               </p>
             )}
           </section>
-
-          {/* The audit trail. Append-only, and it outlives the review itself. */}
-          <section>
-            <Label className='text-xs font-semibold uppercase'>
-              Moderation history
-            </Label>
-            {historyLoading ? (
-              <p className='mt-1 text-sm text-content-muted'>Loading...</p>
-            ) : (
-              <ol className='mt-2 space-y-2'>
-                {(history ?? []).map((h) => (
-                  <li
-                    key={h.id}
-                    className='border-l-2 border-line pl-3 text-sm'>
-                    <div className='font-medium'>
-                      {h.isDeletion
-                        ? 'Deleted'
-                        : `${h.fromStatus ?? 'New'} -> ${h.toStatus ?? '-'}`}
-                    </div>
-                    <div className='text-xs text-content-muted'>
-                      {new Date(h.createdAt).toLocaleString()}
-                      {h.actorId ? ` · ${h.actorId}` : ''}
-                    </div>
-                    {h.reason && (
-                      <div className='text-xs text-content-muted'>
-                        {h.reason}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
         </div>
+
+        {canApprove && (
+          <SheetFooter className='border-t'>
+            <Button
+              disabled={moderate.isPending}
+              onClick={() => void approve()}>
+              <HugeiconsIcon icon={Tick02Icon} />
+              {moderate.isPending ? 'Approving...' : 'Approve & publish'}
+            </Button>
+          </SheetFooter>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -258,9 +256,9 @@ export function ReviewDetailSheet({
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className='min-w-0'>
       <div className='text-xs text-content-subtle uppercase'>{label}</div>
-      <div className='truncate'>{value}</div>
+      <div className='mt-0.5 truncate font-medium'>{value}</div>
     </div>
   );
 }

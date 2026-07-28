@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Alert02Icon, Calendar03Icon, Cancel01Icon, Delete02Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, Cancel01Icon, Delete02Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -14,15 +14,6 @@ import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -30,19 +21,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { DatePickerField } from '@/components/date-picker-field';
-import { scheduledSlotsForDate } from '@/lib/trips/availability';
+import { TripAvailabilityCalendar } from '@/components/trips/trip-availability-calendar';
 import { cn } from '@/lib/utils';
 import {
   useSchedules,
   useCreateSchedule,
   useUpdateSchedule,
   useRemoveSchedule,
-  useExceptions,
-  useCreateException,
-  useRemoveException,
   useUpdateTrip,
 } from '@/hooks/trips/use-trips';
-import type { TourSchedule, TourException, TourExceptionType } from '@/types/trip';
+import type { TourSchedule } from '@/types/trip';
 
 // 0 = Monday … 6 = Sunday (matches the backend AvailabilitySchedule.weekday).
 const WEEKDAYS = [
@@ -302,12 +290,15 @@ interface TripSchedulesTabProps {
   // The tour's declared start times (Details tab). A schedule slot must be one of
   // these (backend rule, master §2.1), so the form offers only these when set.
   declaredStartTimes: string[];
+  // Tour-local IANA zone - the calendar's "today" follows the island's clock.
+  timeZone: string;
 }
 
 export function TripSchedulesTab({
   tripId,
   maxPartySize,
   declaredStartTimes,
+  timeZone,
 }: TripSchedulesTabProps) {
   const { data: schedules, isLoading } = useSchedules(tripId);
   const { mutateAsync: createSchedule, isPending: isCreating } = useCreateSchedule();
@@ -687,469 +678,15 @@ export function TripSchedulesTab({
         </CardContent>
       </Card>
 
-      <ExceptionsSection
+      {/* Date-specific work (close a day/slot, extra departure, capacity)
+          lives ENTIRELY in the calendar - the old Date Exceptions form card
+          was removed once the calendar covered every exception type. */}
+      <TripAvailabilityCalendar
         tripId={tripId}
+        timeZone={timeZone}
         maxPartySize={maxPartySize}
-        schedules={schedules ?? []}
+        declaredStartTimes={declaredStartTimes}
       />
     </div>
-  );
-}
-
-// ── Date exceptions (one-off overrides of the recurring pattern) ───────────────
-
-// Which fields each exception type needs. The materializer reads:
-//   CLOSE_DATE   → whole date stop-sell (no time, no capacity)
-//   CLOSE_SLOT   → one start time stop-sell (pick an existing scheduled slot)
-//   ADD_SLOT     → extra departure (free time - intentionally a NEW slot; capacity)
-//   SET_CAPACITY → override capacity for one scheduled slot, or the whole day
-// timeMode drives the time control:
-//   'none'        → no time field
-//   'slot'        → dropdown of the date's scheduled slots (required)
-//   'slot-or-all' → dropdown of the date's slots + an "All day" option
-//   'free'        → free HH:MM input (a brand-new departure time)
-const EXCEPTION_TYPES: {
-  value: TourExceptionType;
-  label: string;
-  help: string;
-  timeMode: 'none' | 'slot' | 'slot-or-all' | 'free';
-  needsCapacity: boolean;
-}[] = [
-  {
-    value: 'CLOSE_DATE',
-    label: 'Close entire day',
-    help: 'Stop-sell every departure on this date (e.g. a public holiday).',
-    timeMode: 'none',
-    needsCapacity: false,
-  },
-  {
-    value: 'CLOSE_SLOT',
-    label: 'Close one time slot',
-    help: 'Stop-sell a single scheduled start time on this date (e.g. the captain is out).',
-    timeMode: 'slot',
-    needsCapacity: false,
-  },
-  {
-    value: 'ADD_SLOT',
-    label: 'Add extra departure',
-    help: 'Add a one-off departure at a NEW time the weekly pattern does not produce.',
-    timeMode: 'free',
-    needsCapacity: true,
-  },
-  {
-    value: 'SET_CAPACITY',
-    label: 'Change capacity',
-    help: 'Override the seats for one scheduled slot, or the whole day.',
-    timeMode: 'slot-or-all',
-    needsCapacity: true,
-  },
-];
-
-
-const EXCEPTION_BADGE: Record<TourExceptionType, string> = {
-  CLOSE_DATE: 'bg-destructive/10 text-destructive',
-  CLOSE_SLOT: 'bg-destructive/10 text-destructive',
-  ADD_SLOT: 'bg-success-subtle text-success-fg',
-  SET_CAPACITY: 'bg-warning-subtle text-warning-fg',
-};
-
-function exceptionLabel(type: TourExceptionType): string {
-  return EXCEPTION_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
-interface ExceptionRowProps {
-  exception: TourException;
-  tripId: string;
-}
-
-function ExceptionRow({ exception, tripId }: ExceptionRowProps) {
-  const { mutate: removeException, isPending } = useRemoveException();
-
-  function handleDelete() {
-    removeException(
-      { tripId, exceptionId: exception.id },
-      {
-        onSuccess: () => toast.success('Exception removed.'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to remove.'),
-      }
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg ring-1 ring-foreground/10 px-3 py-3">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <span
-          className={cn(
-            'shrink-0 px-2 py-0.5 text-2xs font-semibold',
-            EXCEPTION_BADGE[exception.type]
-          )}
-        >
-          {exceptionLabel(exception.type)}
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">
-            {formatDay(exception.date)}
-            {exception.startTime ? ` · ${exception.startTime}` : ' · All day'}
-            {exception.capacity != null ? ` · cap ${exception.capacity}` : ''}
-          </p>
-          {exception.note && (
-            <p className="text-xs text-muted-foreground truncate">{exception.note}</p>
-          )}
-        </div>
-      </div>
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        onClick={handleDelete}
-        disabled={isPending}
-        className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-      >
-        <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-      </Button>
-    </div>
-  );
-}
-
-interface ExceptionsSectionProps {
-  tripId: string;
-  maxPartySize: number | null;
-  schedules: TourSchedule[];
-}
-
-function ExceptionsSection({ tripId, maxPartySize, schedules }: ExceptionsSectionProps) {
-  const { data: exceptions, isLoading } = useExceptions(tripId);
-  const { mutateAsync: createException, isPending: isCreating } = useCreateException();
-
-  const [type, setType] = useState<TourExceptionType>('CLOSE_DATE');
-  const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [capacity, setCapacity] = useState('');
-  const [note, setNote] = useState('');
-  // Inline field + form errors (client validation and server error).
-  const [errors, setErrors] = useState<{
-    date?: string;
-    startTime?: string;
-    capacity?: string;
-    form?: string;
-  }>({});
-  const clearError = (key: keyof typeof errors) =>
-    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
-
-  const config = EXCEPTION_TYPES.find((t) => t.value === type)!;
-  // ADD_SLOT needs a resolvable capacity: its own value or the tour default.
-  const capacityRequired =
-    type === 'SET_CAPACITY' || (type === 'ADD_SLOT' && maxPartySize == null);
-
-  // Slots the operator can target on the chosen date (for CLOSE_SLOT / SET_CAPACITY).
-  const isSlotPicker = config.timeMode === 'slot' || config.timeMode === 'slot-or-all';
-  const slotOptions = isSlotPicker
-    ? scheduledSlotsForDate(date, schedules, exceptions ?? [])
-    : [];
-
-  const sorted = [...(exceptions ?? [])].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return (a.startTime ?? '').localeCompare(b.startTime ?? '');
-  });
-
-  // Changing the type or date invalidates a previously-picked slot, so clear the
-  // time (done in the change handlers - the repo lints against setState-in-effect).
-  function changeType(next: TourExceptionType) {
-    setType(next);
-    setStartTime('');
-    setErrors({});
-  }
-  function changeDate(next: string) {
-    setDate(next);
-    setStartTime('');
-    clearError('date');
-    clearError('startTime');
-  }
-
-  function resetForm() {
-    setDate('');
-    setStartTime('');
-    setCapacity('');
-    setNote('');
-    setErrors({});
-  }
-
-  async function handleCreate() {
-    // '__all__' is the SET_CAPACITY "whole day" sentinel (Radix Select forbids an
-    // empty-string item value); treat it as no time.
-    const time = startTime === '__all__' ? '' : startTime.trim();
-    const next: typeof errors = {};
-    if (!date) next.date = 'Pick a date.';
-    if (config.timeMode === 'slot' && !time) {
-      next.startTime = 'Pick a scheduled time slot to close.';
-    }
-    if (config.timeMode === 'free' && !HHMM.test(time)) {
-      next.startTime = 'Start time must be HH:MM (00:00-23:59).';
-    }
-    const cap = capacity.trim() ? Number(capacity) : undefined;
-    if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
-      next.capacity = 'Capacity must be a whole number of at least 1.';
-    }
-    if (cap === undefined && capacityRequired) {
-      next.capacity =
-        type === 'ADD_SLOT'
-          ? 'Required - this tour has no Max Party Size, so a capacity is needed for the extra departure.'
-          : 'Enter the new capacity.';
-    }
-    if (Object.keys(next).length > 0) {
-      setErrors(next);
-      return;
-    }
-    setErrors({});
-
-    // Only send startTime when the type uses one and it is set ('' = whole day for
-    // slot-or-all, which the backend reads as a date-wide override).
-    const sendTime = config.timeMode !== 'none' && time ? time : undefined;
-
-    try {
-      await createException({
-        tripId,
-        payload: {
-          date,
-          type,
-          startTime: sendTime,
-          capacity: config.needsCapacity ? cap : undefined,
-          note: note.trim() || undefined,
-        },
-      });
-      toast.success('Exception added.');
-      resetForm();
-    } catch (err) {
-      setErrors({
-        form: err instanceof Error ? err.message : 'Failed to add exception.',
-      });
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle className="text-lg font-semibold">
-          Date Exceptions
-        </CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">
-          One-off overrides of the weekly pattern for specific dates - close a holiday, cancel a
-          single slot, add an extra departure, or change capacity. Departures update automatically.
-        </p>
-      </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-md" />
-            ))}
-          </div>
-        ) : sorted.length > 0 ? (
-          <div className="space-y-2">
-            {sorted.map((exception) => (
-              <ExceptionRow key={exception.id} exception={exception} tripId={tripId} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-6">No date exceptions yet.</p>
-        )}
-
-        <div className="space-y-4 pt-4 border-t">
-          <p className="text-xs font-semibold text-muted-foreground">Add Exception</p>
-
-          <Field>
-            <Label>
-              Type <span className="text-destructive">*</span>
-            </Label>
-            {/* Plain-language radio cards (04 §2.2, Phase 18): each option
-                shows WHAT it does inline - no more decoding a dropdown. */}
-            <div role="radiogroup" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {EXCEPTION_TYPES.map((t) => {
-                const selected = type === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => changeType(t.value as TourExceptionType)}
-                    className={cn(
-                      'rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast',
-                      selected
-                        ? 'border-primary bg-primary-subtle'
-                        : 'border-line bg-surface hover:border-line-strong',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'block text-sm font-medium',
-                        selected ? 'text-primary-subtle-content' : 'text-content',
-                      )}
-                    >
-                      {t.label}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-content-muted">
-                      {t.help}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field>
-              <Label>
-                Date <span className="text-destructive">*</span>
-              </Label>
-              <DatePickerField value={date} onChange={changeDate} placeholder="Pick a date" />
-              {errors.date && (
-                <p className="text-xs text-destructive mt-1.5">{errors.date}</p>
-              )}
-              {date && (
-                /* Reuses the same availability derivation the slot pickers
-                   use - the operator sees what the day actually runs. */
-                <p className="mt-1.5 text-xs text-content-muted">
-                  {(() => {
-                    const slots = scheduledSlotsForDate(date, schedules, exceptions ?? []);
-                    return slots.length > 0
-                      ? `Scheduled departures on this date: ${slots.join(', ')}`
-                      : 'No scheduled departures on this date.';
-                  })()}
-                </p>
-              )}
-            </Field>
-
-            {/* Free time entry - ADD_SLOT introduces a brand-new departure time. */}
-            {config.timeMode === 'free' && (
-              <Field>
-                <Label>
-                  Start Time <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={startTime}
-                  onChange={(e) => {
-                    setStartTime(e.target.value);
-                    clearError('startTime');
-                  }}
-                  placeholder="HH:MM (e.g. 14:30)"
-                  inputMode="numeric"
-                  aria-invalid={!!errors.startTime}
-                  className="h-9 w-40"
-                />
-                {errors.startTime ? (
-                  <p className="text-xs text-destructive mt-1.5">{errors.startTime}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    A new departure time not already in the weekly pattern. Use
-                    24-hour HH:MM, e.g. 14:30 for 2:30 PM.
-                  </p>
-                )}
-              </Field>
-            )}
-
-            {/* Slot picker - CLOSE_SLOT / SET_CAPACITY target an existing scheduled slot. */}
-            {isSlotPicker && (
-              <Field>
-                <Label>
-                  Time Slot{' '}
-                  {config.timeMode === 'slot' ? (
-                    <span className="text-destructive">*</span>
-                  ) : (
-                    '(optional)'
-                  )}
-                </Label>
-                <Select
-                  value={startTime}
-                  onValueChange={(v) => {
-                    setStartTime(v);
-                    clearError('startTime');
-                  }}
-                  disabled={!date || slotOptions.length === 0}
-                >
-                  <SelectTrigger className="max-w-xs">
-                    <SelectValue
-                      placeholder={
-                        !date
-                          ? 'Pick a date first'
-                          : slotOptions.length === 0
-                            ? 'No scheduled slots on this date'
-                            : config.timeMode === 'slot-or-all'
-                              ? 'All day (every slot)'
-                              : 'Select a slot'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {config.timeMode === 'slot-or-all' && (
-                      <SelectItem value="__all__">All day (every slot)</SelectItem>
-                    )}
-                    {slotOptions.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.startTime && (
-                  <p className="text-xs text-destructive mt-1.5">{errors.startTime}</p>
-                )}
-                {date && slotOptions.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No recurring slots run on this weekday. Add a schedule first, or use{' '}
-                    <span className="font-medium">Add extra departure</span>.
-                  </p>
-                )}
-              </Field>
-            )}
-          </div>
-
-          {config.needsCapacity && (
-            <Field>
-              <Label>
-                Capacity {capacityRequired ? <span className="text-destructive">*</span> : '(optional)'}
-              </Label>
-              <Input
-                type="number"
-                min={1}
-                value={capacity}
-                onChange={(e) => {
-                  setCapacity(e.target.value);
-                  clearError('capacity');
-                }}
-                placeholder={
-                  capacityRequired
-                    ? 'Required'
-                    : "Leave blank to use the tour's max party size"
-                }
-                aria-invalid={!!errors.capacity}
-                className="max-w-xs"
-              />
-              {errors.capacity && (
-                <p className="text-xs text-destructive mt-1.5">{errors.capacity}</p>
-              )}
-            </Field>
-          )}
-
-          <Field>
-            <Label>Note (optional)</Label>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Independence Day closure"
-              className="max-w-md"
-            />
-          </Field>
-
-          {errors.form && (
-            <p className="text-sm text-destructive">{errors.form}</p>
-          )}
-          <div className="flex justify-end">
-            <Button type="button" size="sm" onClick={handleCreate} disabled={isCreating}>
-              {isCreating ? 'Adding...' : 'Add Exception'}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

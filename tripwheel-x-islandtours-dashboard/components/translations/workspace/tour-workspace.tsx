@@ -20,6 +20,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspaceSkeleton } from './workspace-skeleton';
 import {
     useExclusions,
+    useDeleteExclusionTranslation,
+    useDeleteFeatureTranslation,
+    useDeleteHighlightTranslation,
+    useDeleteInclusionTranslation,
+    useDeleteLocationTranslation,
+    useDeletePickupLocationTranslation,
     useFeatures,
     useHighlights,
     useInclusions,
@@ -44,6 +50,7 @@ import {
     TOUR_SUB_ENTITIES,
 } from '@/lib/translatable-schema';
 import { FieldPair } from './field-pair';
+import { SectionAiTranslateButton } from './section-ai-translate-button';
 import { WorkspaceShell } from './workspace-shell';
 
 const LINES_FIELDS = new Set(
@@ -93,12 +100,94 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
             if (translated) setValue(name, translated, { shouldDirty: true });
         };
     }
+
+    /** The per-card "Translate section" fill target (form-fill, no persist). */
+    function fillField(name: string, text: string) {
+        setValue(name, text, { shouldDirty: true });
+    }
     const upsertHighlight = useUpsertHighlightTranslation();
     const upsertInclusion = useUpsertInclusionTranslation();
     const upsertExclusion = useUpsertExclusionTranslation();
     const upsertFeature = useUpsertFeatureTranslation();
     const upsertLocation = useUpsertLocationTranslation();
     const upsertPickup = useUpsertPickupLocationTranslation();
+    const deleteHighlight = useDeleteHighlightTranslation();
+    const deleteInclusion = useDeleteInclusionTranslation();
+    const deleteExclusion = useDeleteExclusionTranslation();
+    const deleteFeature = useDeleteFeatureTranslation();
+    const deleteLocation = useDeleteLocationTranslation();
+    const deletePickup = useDeletePickupLocationTranslation();
+
+    /**
+     * Per sub-entity: how to write one locale's row and how to remove it.
+     * Keyed by TOUR_SUB_ENTITIES[].key so the save loop stays generic - the
+     * only thing that differs between the six is the id param name.
+     */
+    type SubOps = {
+        upsert: (
+            itemId: string,
+            payload: Record<string, string | undefined>,
+        ) => Promise<unknown>;
+        remove: (itemId: string) => Promise<unknown>;
+        /** Human label prefix used in the per-item failure toast. */
+        noun: string;
+    };
+    const subOps: Record<string, SubOps> = {
+        highlights: {
+            upsert: (highlightId, payload) =>
+                upsertHighlight.mutateAsync({
+                    tripId: id, highlightId, locale, payload,
+                } as never),
+            remove: highlightId =>
+                deleteHighlight.mutateAsync({ tripId: id, highlightId, locale }),
+            noun: 'Highlight',
+        },
+        inclusions: {
+            upsert: (inclusionId, payload) =>
+                upsertInclusion.mutateAsync({
+                    tripId: id, inclusionId, locale, payload,
+                } as never),
+            remove: inclusionId =>
+                deleteInclusion.mutateAsync({ tripId: id, inclusionId, locale }),
+            noun: 'Inclusion',
+        },
+        exclusions: {
+            upsert: (exclusionId, payload) =>
+                upsertExclusion.mutateAsync({
+                    tripId: id, exclusionId, locale, payload,
+                } as never),
+            remove: exclusionId =>
+                deleteExclusion.mutateAsync({ tripId: id, exclusionId, locale }),
+            noun: 'Exclusion',
+        },
+        features: {
+            upsert: (featureId, payload) =>
+                upsertFeature.mutateAsync({
+                    tripId: id, featureId, locale, payload,
+                } as never),
+            remove: featureId =>
+                deleteFeature.mutateAsync({ tripId: id, featureId, locale }),
+            noun: 'Info item',
+        },
+        locations: {
+            upsert: (locationId, payload) =>
+                upsertLocation.mutateAsync({
+                    tripId: id, locationId, locale, payload,
+                } as never),
+            remove: locationId =>
+                deleteLocation.mutateAsync({ tripId: id, locationId, locale }),
+            noun: 'Stop',
+        },
+        pickups: {
+            upsert: (pickupLocationId, payload) =>
+                upsertPickup.mutateAsync({
+                    tripId: id, pickupLocationId, locale, payload,
+                } as never),
+            remove: pickupLocationId =>
+                deletePickup.mutateAsync({ tripId: id, pickupLocationId, locale }),
+            noun: 'Pickup',
+        },
+    };
 
     const subData = useMemo(() => {
         const listFor = {
@@ -239,88 +328,39 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
             }
         }
 
-        // 2) Sub-entities: per-item upserts ONLY for changed, non-empty values
-        //    (the required-string payloads can't clear; use the editor tabs to
-        //    delete an item translation outright). EN included - the EN tab
-        //    edits the source rows the other locales derive from.
+        // 2) Sub-entities: one pass over every sub-entity type.
+        //    EVERY field clears independently. An emptied field is sent as ''
+        //    and the row is KEPT, so the public page falls back to English for
+        //    that field alone - clearing an itinerary stop's short description
+        //    must not take its title down with it (which is exactly what
+        //    delete-the-row used to do).
+        //    EN is the SOURCE every other locale derives from, so a blank
+        //    there is refused before it leaves the browser.
         const jobs: Array<{ label: string; run: () => Promise<unknown> }> = [];
+        const refusedEnClear: string[] = [];
 
-        {
-            for (const item of subData.highlights ?? []) {
-                const text = (v[itemKey('highlights', item.id, 'text')] ?? '').trim();
-                if (text && text !== item.existing.text)
-                    jobs.push({
-                        label: `Highlight "${item.base.text.slice(0, 30)}"`,
-                        run: () =>
-                            upsertHighlight.mutateAsync({
-                                tripId: id, highlightId: item.id, locale, payload: { text },
-                            } as never),
-                    });
-            }
-            for (const item of subData.inclusions ?? []) {
-                const label = (v[itemKey('inclusions', item.id, 'label')] ?? '').trim();
-                if (label && label !== item.existing.label)
-                    jobs.push({
-                        label: `Inclusion "${item.base.label.slice(0, 30)}"`,
-                        run: () =>
-                            upsertInclusion.mutateAsync({
-                                tripId: id, inclusionId: item.id, locale, payload: { label },
-                            } as never),
-                    });
-            }
-            for (const item of subData.exclusions ?? []) {
-                const label = (v[itemKey('exclusions', item.id, 'label')] ?? '').trim();
-                if (label && label !== item.existing.label)
-                    jobs.push({
-                        label: `Exclusion "${item.base.label.slice(0, 30)}"`,
-                        run: () =>
-                            upsertExclusion.mutateAsync({
-                                tripId: id, exclusionId: item.id, locale, payload: { label },
-                            } as never),
-                    });
-            }
-            for (const item of subData.features ?? []) {
-                const text = (v[itemKey('features', item.id, 'text')] ?? '').trim();
-                if (text && text !== item.existing.text)
-                    jobs.push({
-                        label: `Info item "${item.base.text.slice(0, 30)}"`,
-                        run: () =>
-                            upsertFeature.mutateAsync({
-                                tripId: id, featureId: item.id, locale, payload: { text },
-                            } as never),
-                    });
-            }
-            for (const item of subData.locations ?? []) {
-                const title = (v[itemKey('locations', item.id, 'title')] ?? '').trim();
-                const shortDescription = (v[itemKey('locations', item.id, 'shortDescription')] ?? '').trim();
-                const changed =
-                    (title && title !== item.existing.title) ||
-                    (shortDescription && shortDescription !== item.existing.shortDescription);
-                if (title && changed)
-                    jobs.push({
-                        label: `Stop "${item.base.title.slice(0, 30)}"`,
-                        run: () =>
-                            upsertLocation.mutateAsync({
-                                tripId: id, locationId: item.id, locale,
-                                payload: { title, shortDescription: shortDescription || undefined },
-                            } as never),
-                    });
-            }
-            for (const item of subData.pickups ?? []) {
-                const title = (v[itemKey('pickups', item.id, 'title')] ?? '').trim();
-                const directions = (v[itemKey('pickups', item.id, 'directions')] ?? '').trim();
-                const changed =
-                    (title && title !== item.existing.title) ||
-                    (directions && directions !== item.existing.directions);
-                if (title && changed)
-                    jobs.push({
-                        label: `Pickup "${item.base.title.slice(0, 30)}"`,
-                        run: () =>
-                            upsertPickup.mutateAsync({
-                                tripId: id, pickupLocationId: item.id, locale,
-                                payload: { title, directions: directions || undefined },
-                            } as never),
-                    });
+        for (const sub of TOUR_SUB_ENTITIES) {
+            const ops = subOps[sub.key];
+            if (!ops) continue;
+            const [required] = sub.fields;
+            for (const item of subData[sub.key] ?? []) {
+                const valueOf = (field: string) =>
+                    (v[itemKey(sub.key, item.id, field)] ?? '').trim();
+                const changed = sub.fields.some(
+                    f => valueOf(f.name) !== (item.existing[f.name] ?? '').trim(),
+                );
+                if (!changed) continue;
+
+                const label = `${ops.noun} "${(item.base[required.name] ?? '').slice(0, 30)}"`;
+
+                if (locale === 'en' && !valueOf(required.name)) {
+                    refusedEnClear.push(label);
+                    continue;
+                }
+
+                const payload: Record<string, string> = {};
+                for (const f of sub.fields) payload[f.name] = valueOf(f.name);
+                jobs.push({ label, run: () => ops.upsert(item.id, payload) });
             }
         }
 
@@ -352,6 +392,11 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                 `Saved with ${failed.length} failure${failed.length === 1 ? '' : 's'}: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`,
             );
         }
+        if (refusedEnClear.length > 0) {
+            toast.warning(
+                `${refusedEnClear.length} English item${refusedEnClear.length === 1 ? '' : 's'} left unchanged - English is the source every translation falls back to. Delete the item in the tour editor instead.`,
+            );
+        }
     }
 
     if (isLoading) {
@@ -374,7 +419,21 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
             onTranslateWithAI={() => generate.mutate({ force: true })}
             isTranslating={generate.isPending}>
             <div className='space-y-6'>
-                <CollapsibleCard title='Tour copy & SEO' defaultOpen>
+                <CollapsibleCard
+                    title='Tour copy & SEO'
+                    defaultOpen
+                    actions={
+                        <SectionAiTranslateButton
+                            locale={locale}
+                            fields={TOUR_FIELDS.map(f => ({
+                                name: f.name,
+                                source: toFormValue(
+                                    source?.[f.name as keyof typeof source],
+                                ),
+                            }))}
+                            onFill={fillField}
+                        />
+                    }>
                     <div>
                         {TOUR_FIELDS.map(f => {
                             const src = toFormValue(
@@ -409,6 +468,22 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                                             {items.length === 1 ? '' : 's'}
                                         </span>
                                     </>
+                                }
+                                actions={
+                                    <SectionAiTranslateButton
+                                        locale={locale}
+                                        fields={items.flatMap(item =>
+                                            sub.fields.map(f => ({
+                                                name: itemKey(
+                                                    sub.key,
+                                                    item.id,
+                                                    f.name,
+                                                ),
+                                                source: item.base[f.name],
+                                            })),
+                                        )}
+                                        onFill={fillField}
+                                    />
                                 }>
                                 <div>
                                     {items.map(item =>

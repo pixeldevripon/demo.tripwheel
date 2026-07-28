@@ -7,7 +7,9 @@ export function ProfileSkeleton() {
             <div className='flex flex-col gap-8 lg:flex-row lg:gap-12'>
                 {/* Left rail: section nav only */}
                 <div className='shrink-0 lg:w-52'>
+                    {/* Account, Company (admins/operators only), Security. */}
                     <div className='flex gap-1 lg:flex-col'>
+                        <Skeleton className='h-9 w-28 rounded-md lg:w-full' />
                         <Skeleton className='h-9 w-28 rounded-md lg:w-full' />
                         <Skeleton className='h-9 w-28 rounded-md lg:w-full' />
                     </div>

@@ -28,3 +28,15 @@ export function reviewUrl(token: string, locale = 'en'): string {
 export function pageUrl(slug: string, locale = 'en'): string {
   return `${PUBLIC_SITE_URL}/${locale}/${slug}`;
 }
+
+/**
+ * The traveller account area on the public site.
+ *
+ * Travellers used to sign in here, at `/account`. That door was removed on
+ * 2026-07-28: they are passwordless again and manage their own bookings and
+ * payments on the public site instead. Anything in this app that needs to send
+ * a traveller somewhere must send them there.
+ */
+export function travellerAccountUrl(locale = 'en'): string {
+  return `${PUBLIC_SITE_URL}/${locale}/traveller`;
+}

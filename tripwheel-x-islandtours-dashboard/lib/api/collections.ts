@@ -34,7 +34,8 @@ function buildQuery(params: Record<string, string | undefined>): string {
 
 export const collectionsApi = {
   // Admin
-  getAllAdmin(destinationSlug: string): Promise<Collection[]> {
+  /** Omit `destinationSlug` to list collections across ALL islands. */
+  getAllAdmin(destinationSlug?: string): Promise<Collection[]> {
     return apiFetch<Collection[]>(`/collections/admin/all${buildQuery({ destinationSlug })}`);
   },
   getById(id: string): Promise<Collection> {
@@ -158,6 +159,18 @@ export const collectionsApi = {
     return apiFetch<CollectionTourRationale>(
       `/collections/${id}/tours/${tourId}/rationale/${locale}`,
       { method: 'PUT', body: JSON.stringify(payload) }
+    );
+  },
+
+  /** Clear ONE locale's rationale (NOT NULL column - the row is removed). */
+  deleteTourRationale(
+    id: string,
+    tourId: string,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(
+      `/collections/${id}/tours/${tourId}/rationale/${locale}`,
+      { method: 'DELETE' }
     );
   },
 };

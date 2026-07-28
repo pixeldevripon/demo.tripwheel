@@ -1,5 +1,6 @@
 import DashboardShell from '@/components/shell/dashboard-shell';
 import { DashboardSkeleton } from '@/components/skeletons/dashboard-skeleton';
+import { travellerAccountUrl } from '@/lib/public-site';
 import { getDashboardSession } from '@/lib/server/dashboard-session';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -50,6 +51,16 @@ async function DashboardContent({ children }: { children: React.ReactNode }) {
 
     if (!session) {
         redirect('/portal');
+    }
+
+    // Travellers have no surface in this app since the /account door was
+    // removed (2026-07-28) - they hold no permissions here, so they would
+    // otherwise land on an empty shell with a blank sidebar. A session can
+    // still exist for a short while after the cutover, so send them where
+    // they actually belong. Every route under this layout is covered, not
+    // just the root.
+    if (session.role === 'USER') {
+        redirect(travellerAccountUrl());
     }
 
     // `/users/me` carries the operator record, so its absence is decidable from

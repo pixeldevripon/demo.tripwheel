@@ -24,12 +24,19 @@ interface MakeColumnsOptions {
   actions?: (booking: BookingListItem) => ReactNode;
   /** When set, the reference cell becomes a button that opens the details sheet. */
   onOpenDetails?: (booking: BookingListItem) => void;
+  /**
+   * Conflict #7: a seat without VIEW_BOOKING_FINANCIALS gets the manifest
+   * projection - the server nulls every money field and the traveler email,
+   * so the money columns would render as empty cells. Drop them instead.
+   */
+  showFinancials?: boolean;
 }
 
 export function makeBookingColumns({
   cancellationView = false,
   actions,
   onOpenDetails,
+  showFinancials = true,
 }: MakeColumnsOptions = {}): ColumnDef<BookingListItem>[] {
   const cols: ColumnDef<BookingListItem>[] = [
     {
@@ -97,6 +104,17 @@ export function makeBookingColumns({
       header: 'Guest',
       cell: ({ row }) => {
         const b = row.original;
+        // Manifest seats get no email at all (server-nulled), so the row
+        // reads as the lead name only and does not link into Customers.
+        if (!showFinancials) {
+          return b.contactFullName ? (
+            <span className="text-sm truncate max-w-40 block">
+              {b.contactFullName}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">-</span>
+          );
+        }
         if (!b.contactFullName && !b.contactEmail) {
           return <span className="text-xs text-muted-foreground">-</span>;
         }
@@ -137,7 +155,7 @@ export function makeBookingColumns({
   // The queue is a decision list: Payment (total/model) and the free-window
   // verdict are context, not the decision - both live in the details sheet a
   // row click opens. The main bookings list keeps Payment.
-  if (!cancellationView) {
+  if (!cancellationView && showFinancials) {
     cols.push({
       id: 'payment',
       header: 'Payment',
@@ -162,7 +180,7 @@ export function makeBookingColumns({
     });
   }
 
-  if (cancellationView) {
+  if (cancellationView && showFinancials) {
     cols.push(
       {
         id: 'refund',

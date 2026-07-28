@@ -78,7 +78,12 @@ function PaymentDetailBody({
         <div className="flex items-center justify-between gap-3 pr-8">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
-              <SheetTitle className="tabular-nums">
+              <SheetTitle
+                className={`tabular-nums ${
+                  p.kind === 'REFUND' ? 'text-danger-fg' : ''
+                }`}
+              >
+                {p.kind === 'REFUND' ? '-' : ''}
                 {money(p.amount, p.currency)}
               </SheetTitle>
               <StatusBadge variant={statusMeta.variant} hint={statusMeta.hint}>
@@ -96,7 +101,11 @@ function PaymentDetailBody({
       <div className="flex-1 divide-y overflow-y-auto px-4">
         <Section label="Payment">
           <div className="mb-2 divide-y rounded-lg border bg-muted/30">
-            <MoneyRow label="Amount" value={money(p.amount, p.currency)} strong />
+            <MoneyRow
+              label="Amount"
+              value={`${p.kind === 'REFUND' ? '-' : ''}${money(p.amount, p.currency)}`}
+              strong
+            />
           </div>
           <Row label="Kind" value={kindLabel[p.kind]} />
           <Row

@@ -27,39 +27,6 @@ export function useBookings(params: BookingsQueryParams = {}, enabled = true) {
     });
 }
 
-/** Customer stat row (GET /bookings/me/summary) - self-scoped server-side. */
-export function useCustomerBookingSummary(enabled = true) {
-    return useQuery({
-        queryKey: bookingKeys.summary(),
-        queryFn: () => bookingsDashboardApi.getMyBookingSummary(),
-        enabled,
-    });
-}
-
-/**
- * Customer cancellation REQUEST - emails the admin, never cancels on click.
- * Invalidates the lists so the "Cancellation requested" state shows at once.
- */
-export function useRequestCancellation() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
-            bookingsDashboardApi.requestCancellation(id, reason),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
-            toast.success(
-                "Cancellation requested - we'll email you once it is processed.",
-            );
-        },
-        onError: err =>
-            toast.error(
-                err instanceof Error
-                    ? err.message
-                    : 'Failed to request cancellation.',
-            ),
-    });
-}
-
 /** Operator reports the OPERATOR_LINK balance unpaid (guide s15). */
 export function useReportNonPayment() {
     const queryClient = useQueryClient();
@@ -97,6 +64,44 @@ export function useDismissNonPayment() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => bookingsDashboardApi.dismissNonPayment(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success('Report dismissed - the booking stays confirmed.');
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to dismiss report.',
+            ),
+    });
+}
+
+/** Operator reports they must cancel (conflict #2) - the admin executes. */
+export function useReportCancellation() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+            bookingsDashboardApi.reportCancellation(id, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success(
+                'Cancellation reported - Island Tours will process the refund.',
+            );
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to report the cancellation.',
+            ),
+    });
+}
+
+/** Admin dismisses an operator cancellation report (tour runs after all). */
+export function useDismissCancellationReport() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) =>
+            bookingsDashboardApi.dismissCancellationReport(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bookingKeys.all });
             toast.success('Report dismissed - the booking stays confirmed.');

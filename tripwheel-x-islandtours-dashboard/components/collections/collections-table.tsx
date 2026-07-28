@@ -25,6 +25,8 @@ interface CollectionsTableProps {
   canEdit: boolean;
   canDelete: boolean;
   onDeactivate: (collection: Collection) => void;
+  /** Show the Island column (the cross-island "All Islands" view). */
+  showIsland?: boolean;
   filterSlot?: React.ReactNode;
   actionSlot?: React.ReactNode;
 }
@@ -34,10 +36,16 @@ export function CollectionsTable({
   canEdit,
   canDelete,
   onDeactivate,
+  showIsland = false,
   filterSlot,
   actionSlot,
 }: CollectionsTableProps) {
-  const columns = makeCollectionColumns({ canEdit, canDelete, onDeactivate });
+  const columns = makeCollectionColumns({
+    canEdit,
+    canDelete,
+    onDeactivate,
+    showIsland,
+  });
   // Client-side status filter: the per-destination list is a small unpaged array.
   const [status, setStatus] = useState<'all' | CollectionStatus>('all');
   const rows =

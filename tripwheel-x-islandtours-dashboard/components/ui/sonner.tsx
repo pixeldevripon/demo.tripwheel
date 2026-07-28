@@ -12,6 +12,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      // TOP-right, not the library default of bottom-right: every long
+      // dashboard form has a sticky action bar (Save / Copy from English) in
+      // the bottom-right corner, and a toast landed straight on top of Save -
+      // blocking the click for as long as it was on screen.
+      position="top-right"
       className="toaster group [--normal-bg:var(--popover)] [--normal-text:var(--popover-foreground)] [--normal-border:var(--border)] [--border-radius:var(--radius)]"
       icons={{
         success: (

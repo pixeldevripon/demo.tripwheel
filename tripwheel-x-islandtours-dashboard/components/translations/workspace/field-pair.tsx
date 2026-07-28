@@ -10,12 +10,10 @@
  * "Save all".
  */
 
-import { AiMagicIcon, Loading03Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { useState } from 'react';
 import type { UseFormRegister } from 'react-hook-form';
 
-import { Button } from '@/components/ui/button';
+import { AiFieldIconButton } from '@/components/common/ai-translate-field-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,28 +104,13 @@ export function FieldPair({
                             />
                         )}
                         {showAiButton && (
-                            <Button
-                                variant='ghost'
-                                size='icon-sm'
-                                type='button'
-                                className={`absolute right-1 size-6 text-content-muted hover:text-content ${
-                                    isMultiline
-                                        ? 'top-1'
-                                        : 'top-1/2 -translate-y-1/2'
-                                }`}
-                                aria-label={`Translate "${field.label}" with AI`}
-                                title={`Translate this field into ${targetLabel} with AI - fills the input for review, replacing what is typed there.`}
-                                disabled={isTranslating}
-                                onClick={handleAiTranslate}>
-                                <HugeiconsIcon
-                                    icon={
-                                        isTranslating
-                                            ? Loading03Icon
-                                            : AiMagicIcon
-                                    }
-                                    className={`size-3.5 ${isTranslating ? 'animate-spin' : ''}`}
-                                />
-                            </Button>
+                            <AiFieldIconButton
+                                onClick={() => void handleAiTranslate()}
+                                isTranslating={isTranslating}
+                                label={field.label}
+                                targetLabel={targetLabel}
+                                multiline={isMultiline}
+                            />
                         )}
                     </div>
                     {field.description && (

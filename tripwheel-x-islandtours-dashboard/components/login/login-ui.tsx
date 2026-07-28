@@ -5,6 +5,8 @@ import { AlertCircleIcon, Tick02Icon } from '@hugeicons/core-free-icons';
 
 import Link from 'next/link';
 
+import { travellerAccountUrl } from '@/lib/public-site';
+
 /**
  * Shared primitives for the three login surfaces (traveler / operator / staff).
  * Kept in one place so the field / button / feedback styling stays identical
@@ -72,9 +74,11 @@ const WRONG_DOOR_COPY: Record<
         body: 'This email belongs to a staff account. Please use the staff sign-in.',
         label: 'Go to staff sign-in',
     },
+    // Travellers no longer sign in here at all - their account area lives on
+    // the public site and uses an emailed code, not a password.
     account: {
-        body: 'This email belongs to a traveler account. Please log in to your traveler account.',
-        label: 'Go to traveler log-in',
+        body: 'This email belongs to a traveller account. Manage your bookings on the Island Tours site - we will email you a sign-in code.',
+        label: 'Go to your account',
     },
     // Unreachable today (ADMIN passes every door, so the backend never
     // suggests 'admin') - kept so a future admin-adjacent role that CAN be
@@ -103,9 +107,15 @@ export function WrongDoorNote({
     return (
         <ErrorNote>
             {copy.body}{' '}
-            {correctSurface === 'admin' ? (
+            {/* Both live on ANOTHER origin, so they need a full navigation
+                rather than a client-side <Link>. */}
+            {correctSurface === 'admin' || correctSurface === 'account' ? (
                 <a
-                    href={adminUrl}
+                    href={
+                        correctSurface === 'admin'
+                            ? adminUrl
+                            : travellerAccountUrl()
+                    }
                     className='font-semibold underline underline-offset-2'>
                     {copy.label}
                 </a>

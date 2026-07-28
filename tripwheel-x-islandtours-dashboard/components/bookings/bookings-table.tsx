@@ -19,6 +19,7 @@ import { BOOKING_DISPLAY_STATUS } from '@/components/common/status-maps';
 import type { BookingDisplayStatus, BookingListItem } from '@/types/booking';
 import { makeBookingColumns } from './booking-columns';
 import { BookingDetailsSheet } from './booking-details-sheet';
+import { useRole } from '@/contexts/role-context';
 import { BookingRowActions } from './booking-row-actions';
 
 interface BookingsTableProps {
@@ -75,11 +76,15 @@ export function BookingsTable({
 }: BookingsTableProps) {
   // Details sheet state lives here (not per-row) so prev/next arrows can walk
   // the rows of the current page.
+  const { can } = useRole();
   const [detailsIndex, setDetailsIndex] = useState<number | null>(null);
   const detailsBooking = detailsIndex != null ? data[detailsIndex] : undefined;
 
   const columns = makeBookingColumns({
     cancellationView,
+    // Conflict #7: the server already nulls the money fields for a seat
+    // without this permission - drop the columns rather than show blanks.
+    showFinancials: can('VIEW_BOOKING_FINANCIALS'),
     // Clicking the reference cell opens the same details sheet as the row menu.
     onOpenDetails: (booking) =>
       setDetailsIndex(data.findIndex((b) => b.id === booking.id)),

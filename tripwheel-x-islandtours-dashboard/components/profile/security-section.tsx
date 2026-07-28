@@ -1,11 +1,10 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
-import { Loading03Icon } from '@hugeicons/core-free-icons';
-
-import { setPasswordAction } from '@/app/_actions/userActions';
+import {
+    requestPasswordChangeAction,
+    setPasswordAction,
+} from '@/app/_actions/userActions';
 import { SecretField } from '@/components/settings/settings-fields';
-import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 import {
     changePasswordSchema,
@@ -19,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import type { Resolver } from 'react-hook-form';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { ProfileSaveButton, ProfileSection } from './profile-section';
 
 /**
  * The Security section (Webflow-settings style): the change-password form
@@ -28,10 +28,19 @@ import { toast } from 'sonner';
  */
 export function SecuritySection() {
     const router = useRouter();
-    const { data: session } = authClient.useSession();
-    const hasPassword = Boolean(
-        (session?.user as { hasPassword?: boolean } | undefined)?.hasPassword,
-    );
+    const { data: session, isPending } = authClient.useSession();
+    // Tri-state on purpose. `Boolean(session?.user.hasPassword)` collapses
+    // "still loading" and "definitely has no password" into the same false,
+    // which made every credentialed account (all of them - the seed and the
+    // Better Auth account hooks both set hasPassword) flash "This account has
+    // no password yet" on load, and show it permanently if the session fetch
+    // failed. Only claim "no password" once the session has actually resolved.
+    const hasPassword = isPending
+        ? null
+        : Boolean(
+              (session?.user as { hasPassword?: boolean } | undefined)
+                  ?.hasPassword,
+          );
     const passwordChangedAt = (
         session?.user as { passwordChangedAt?: string } | undefined
     )?.passwordChangedAt;
@@ -46,29 +55,38 @@ export function SecuritySection() {
         // same field shape, they just disagree on whether currentPassword
         // exists (see PasswordFormValues in lib/validations/profile.ts).
         resolver: zodResolver(
-            hasPassword ? changePasswordSchema : setPasswordSchema,
+            hasPassword === false ? setPasswordSchema : changePasswordSchema,
         ) as Resolver<PasswordFormValues>,
         defaultValues: { currentPassword: '', newPassword: '' },
     });
 
     const mutation = useMutation({
         mutationFn: async (values: PasswordFormValues) => {
-            if (hasPassword) {
-                const result = await authClient.changePassword({
-                    newPassword: values.newPassword,
-                    currentPassword: values.currentPassword ?? '',
-                    revokeOtherSessions: true,
-                });
-                if (result.error) throw result.error;
-            } else {
+            if (hasPassword === false) {
+                // No password to verify, so nothing to confirm by email.
                 await setPasswordAction(values.newPassword);
+                return 'set' as const;
             }
+            // Verifies the current password server-side and emails a confirm
+            // link. The password does NOT change until that link is used.
+            await requestPasswordChangeAction(
+                values.currentPassword ?? '',
+                values.newPassword,
+            );
+            return 'requested' as const;
         },
-        onSuccess: () => {
-            toast.success(hasPassword ? 'Password updated' : 'Password set', {
-                description:
-                    'Your security credentials have been successfully updated.',
-            });
+        onSuccess: outcome => {
+            if (outcome === 'set') {
+                toast.success('Password set', {
+                    description:
+                        'Your security credentials have been successfully updated.',
+                });
+            } else {
+                toast.success('Check your email', {
+                    description:
+                        'We sent a confirmation link to your account address. Your password changes once you open it.',
+                });
+            }
             reset({ currentPassword: '', newPassword: '' });
             router.refresh();
         },
@@ -93,37 +111,27 @@ export function SecuritySection() {
 
     return (
         <div>
-            <section className='pb-10'>
-                <div className='flex items-start justify-between gap-4'>
-                    <div>
-                        <h2 className='text-base font-semibold'>
-                            {hasPassword ? 'Change password' : 'Set password'}
-                        </h2>
-                        <p className='mt-1 text-sm text-muted-foreground'>
-                            {hasPassword
-                                ? passwordChangedAt
-                                    ? `Last changed ${formatDate(passwordChangedAt, { year: 'numeric', month: 'short', day: 'numeric' })}. Updating signs out your other sessions.`
-                                    : 'Updating signs out your other sessions.'
-                                : 'Your account has no password yet - set one to sign in with it.'}
-                        </p>
-                    </div>
-                    <Button
-                        type='button'
-                        size='sm'
+            <ProfileSection
+                title={hasPassword ? 'Change password' : 'Set password'}
+                description={
+                    hasPassword
+                        ? passwordChangedAt
+                            ? `Last changed ${formatDate(passwordChangedAt, { year: 'numeric', month: 'short', day: 'numeric' })}. Updating signs out your other sessions.`
+                            : 'Updating signs out your other sessions.'
+                        : 'Your account has no password yet - set one to sign in with it.'
+                }
+                action={
+                    <ProfileSaveButton
                         onClick={onSubmit}
-                        disabled={mutation.isPending}>
-                        {mutation.isPending ? (
-                            <HugeiconsIcon
-                                icon={Loading03Icon}
-                                className='size-4 animate-spin'
-                            />
-                        ) : null}
-                        {hasPassword ? 'Update password' : 'Set password'}
-                    </Button>
-                </div>
-
+                        isPending={mutation.isPending}
+                        variant='default'
+                        label={
+                            hasPassword ? 'Update password' : 'Set password'
+                        }
+                    />
+                }>
                 <form onSubmit={onSubmit} className='mt-6 max-w-md space-y-5'>
-                    {hasPassword && (
+                    {hasPassword !== false && (
                         <SecretField
                             label='Current password'
                             autoComplete='current-password'
@@ -139,7 +147,7 @@ export function SecuritySection() {
                         description='At least 12 characters.'
                     />
                 </form>
-            </section>
+            </ProfileSection>
         </div>
     );
 }

@@ -6,8 +6,11 @@ import { ROLE_PERMISSIONS, type PermissionKey, type RoleKey } from '@/lib/config
 interface RoleContextValue {
     role: string | undefined;
     /**
-     * Which login door minted this session ('account'|'portal'|'staff'|
-     * 'admin'); null/undefined = legacy session, shape the view by role.
+     * Which login door minted this session ('portal'|'staff'|'admin');
+     * null/undefined = legacy session, shape the view by role. Drives
+     * sign-out routing so a multi-hat account returns to the door it
+     * entered through. (The 'account' traveller door was removed
+     * 2026-07-28; a session stamped with it can no longer be created here.)
      */
     surface: string | null | undefined;
     /** The EFFECTIVE permission set gating this session's UI. */

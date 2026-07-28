@@ -31,10 +31,14 @@ export const collectionKeys = {
   resolvedTours: (id: string) => [...collectionKeys.detail(id), 'resolved'] as const,
 };
 
+/** Pass the `'all'` sentinel to list collections across every island. */
 export function useCollectionsByDestination(destinationSlug: string | undefined) {
   return useQuery({
     queryKey: collectionKeys.byDestination(destinationSlug ?? ''),
-    queryFn: () => collectionsApi.getAllAdmin(destinationSlug as string),
+    queryFn: () =>
+      collectionsApi.getAllAdmin(
+        destinationSlug === 'all' ? undefined : destinationSlug,
+      ),
     enabled: !!destinationSlug,
     placeholderData: keepPreviousData,
   });
@@ -255,6 +259,18 @@ export function useReplaceCollectionTours() {
 }
 
 // Per-tour, per-locale rationale. Invalidates the editor read-back so translations refresh.
+/** Clear ONE locale's rationale (row delete) - falls back to English. */
+export function useDeleteCollectionTourRationale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tourId, locale }: { id: string; tourId: string; locale: Locale }) =>
+      collectionsApi.deleteTourRationale(id, tourId, locale),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: collectionKeys.toursForEdit(vars.id) });
+    },
+  });
+}
+
 export function useUpsertCollectionTourRationale() {
   const qc = useQueryClient();
   return useMutation({

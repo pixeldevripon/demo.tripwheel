@@ -29,6 +29,8 @@ export interface CollectionFilterQuery {
 export interface Collection {
   id: string;
   destinationId: string;
+  /** Island label for the admin list (returned by GET /collections/admin/all). */
+  destination?: { name: string; slug: string };
   name: string;
   slug: string;
   collectionType: CollectionType;

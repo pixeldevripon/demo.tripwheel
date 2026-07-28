@@ -18,34 +18,29 @@ interface AuthFormProps {
      * Which door renders the form. Same sign-in logic on every door; the
      * variant only pins the surface's own forgot route, button style and
      * placeholder so the doors never link into (or look like) each other.
-     * `account` is the customer/traveler door.
      */
-    variant?: 'portal' | 'staff' | 'account';
+    variant?: 'portal' | 'staff';
 }
 
-const FORGOT_HREF: Record<'portal' | 'staff' | 'account', string> = {
+const FORGOT_HREF: Record<'portal' | 'staff', string> = {
     portal: '/portal/forgot',
     staff: '/staff/forgot',
-    account: '/account/forgot',
 };
 
-const ID_PREFIX: Record<'portal' | 'staff' | 'account', string> = {
+const ID_PREFIX: Record<'portal' | 'staff', string> = {
     portal: 'o',
     staff: 's',
-    account: 'a',
 };
 
-const SUBMIT_CLASS: Record<'portal' | 'staff' | 'account', string> = {
+const SUBMIT_CLASS: Record<'portal' | 'staff', string> = {
     portal: primaryBtn,
     staff: staffBtn,
-    account: primaryBtn,
 };
 
 /** Each dashboard door maps 1:1 onto its backend login surface. */
-const SURFACE: Record<'portal' | 'staff' | 'account', LoginSurface> = {
+const SURFACE: Record<'portal' | 'staff', LoginSurface> = {
     portal: 'portal',
     staff: 'staff',
-    account: 'account',
 };
 
 export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
@@ -128,9 +123,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
                     placeholder={
                         isStaff
                             ? 'you@islandtours.com'
-                            : variant === 'account'
-                              ? 'you@example.com'
-                              : 'you@yourcompany.com'
+                            : 'you@yourcompany.com'
                     }
                     value={email}
                     onChange={e => setEmail(e.target.value)}

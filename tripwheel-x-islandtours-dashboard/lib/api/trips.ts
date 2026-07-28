@@ -12,6 +12,7 @@ import type {
   CreatePickupLocationPayload,
   CreateTourSchedulePayload,
   CreateTourExceptionPayload,
+  ManageCalendarDay,
   CreateTripPayload,
   MyTripsQueryParams,
   PaginatedTrips,
@@ -97,6 +98,29 @@ export const tripsApi = {
 
   publish(id: string): Promise<TripListItem> {
     return apiFetch<TripListItem>(`/tours/${id}/publish`, { method: 'POST' });
+  },
+
+  /** Operator submits a DRAFT for platform review (conflict #1). */
+  submitForReview(id: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/submit-for-review`, {
+      method: 'POST',
+    });
+  },
+
+  /** Admin approves a PENDING submission (publish stays a separate step). */
+  approve(id: string, note?: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(note?.trim() ? { note } : {}),
+    });
+  },
+
+  /** Admin rejects a PENDING submission with a required actionable note. */
+  reject(id: string, note: string): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
   },
 
   pause(id: string): Promise<TripListItem> {
@@ -515,5 +539,12 @@ export const tripsApi = {
 
   removeException(exceptionId: string): Promise<void> {
     return apiFetch<void>(`/availability/exceptions/${exceptionId}`, { method: 'DELETE' });
+  },
+
+  // Management calendar (operator month grid - one-tap close/reopen layer)
+  getManageCalendar(tripId: string, month: string): Promise<ManageCalendarDay[]> {
+    return apiFetch<ManageCalendarDay[]>(
+      `/availability/manage-calendar${buildQuery({ tourId: tripId, month })}`
+    );
   },
 };

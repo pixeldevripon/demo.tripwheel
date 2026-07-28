@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { PAYMENT_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
-import { formatPriceFrom } from '@/lib/currency/current';
 import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { PaymentKind, PaymentListItem } from '@/types/booking';
 import { PaymentRowActions } from './payment-row-actions';
@@ -13,13 +12,25 @@ import { PaymentRowActions } from './payment-row-actions';
 export const kindLabel: Record<PaymentKind, string> = {
   DEPOSIT: 'Deposit',
   BALANCE: 'Balance',
-  FULL: 'Full',
+  FULL: 'Full payment',
   REFUND: 'Refund',
 };
 
+/**
+ * Ledger money: unlike the listing "From" prices (formatPriceFrom, which keeps
+ * whole amounts bare), admin money columns always carry cents so $36.00 and
+ * $89.25 read as the same kind of number.
+ */
 export function money(amount: string, rawCurrency: string): string {
   const currency: Currency = isCurrency(rawCurrency) ? rawCurrency : 'EUR';
-  return formatPriceFrom(amount, currency, 'en');
+  const n = Number(amount);
+  return new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(n) ? n : 0);
 }
 
 export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
@@ -71,9 +82,17 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
       header: 'Amount',
       cell: ({ row }) => {
         const p = row.original;
+        // Refunds are money OUT: signed and tinted so they can never be
+        // mistaken for the charge they reverse one row away.
+        const isRefund = p.kind === 'REFUND';
         return (
           <div className="min-w-0">
-            <span className="text-sm font-medium tabular-nums block">
+            <span
+              className={`text-sm font-medium tabular-nums block ${
+                isRefund ? 'text-danger-fg' : ''
+              }`}
+            >
+              {isRefund ? '-' : ''}
               {money(p.amount, p.currency)}
             </span>
             <span className="text-xs text-muted-foreground">

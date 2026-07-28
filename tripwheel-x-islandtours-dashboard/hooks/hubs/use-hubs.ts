@@ -14,7 +14,12 @@ import type {
   ReplaceContentSectionsPayload,
   SetOurPicksPayload,
   SetComparisonPayload,
+  UpsertOurPickTranslationPayload,
+  UpsertComparisonGroupTranslationPayload,
+  UpsertComparisonTourTranslationPayload,
+  UpsertHubSectionTranslationPayload,
 } from '@/types/hub';
+import type { HubSectionType } from '@/types/enums';
 
 export const hubKeys = {
   all: ['hubs'] as const,
@@ -30,6 +35,8 @@ export const hubKeys = {
   allowedCategories: (id: string) => [...hubKeys.all, 'allowed-categories', id] as const,
   contentSections: (id: string, locale?: Locale) =>
     [...hubKeys.all, 'content-sections', id, locale] as const,
+  contentSectionsEdit: (id: string) =>
+    [...hubKeys.all, 'content-sections-edit', id] as const,
   ourPicks: (id: string, locale?: Locale) => [...hubKeys.all, 'our-picks', id, locale] as const,
   ourPicksEdit: (id: string) => [...hubKeys.all, 'our-picks-edit', id] as const,
   comparison: (id: string, locale?: Locale) => [...hubKeys.all, 'comparison', id, locale] as const,
@@ -275,6 +282,15 @@ export function useHubContentSections(id: string, locale?: Locale) {
   });
 }
 
+/** Every stored locale - what the Translation Console needs. */
+export function useHubContentSectionsForEdit(id: string) {
+  return useQuery({
+    queryKey: hubKeys.contentSectionsEdit(id),
+    queryFn: () => hubsApi.getContentSectionsForEdit(id),
+    enabled: !!id,
+  });
+}
+
 export function useReplaceHubContentSections() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -282,6 +298,10 @@ export function useReplaceHubContentSections() {
       hubsApi.replaceContentSections(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: hubKeys.contentSections(variables.id) });
+      // Separate key, separate invalidation - the console reads this one.
+      queryClient.invalidateQueries({
+        queryKey: hubKeys.contentSectionsEdit(variables.id),
+      });
     },
   });
 }
@@ -344,6 +364,163 @@ export function useSetHubComparison() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
       queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
+    },
+  });
+}
+
+// ── Curation translation upserts (Translation Console per-item saves) ──────────
+
+export function useUpsertHubOurPickTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      pickId,
+      locale,
+      payload,
+    }: {
+      id: string;
+      pickId: string;
+      locale: Locale;
+      payload: UpsertOurPickTranslationPayload;
+    }) => hubsApi.upsertOurPickTranslation(id, pickId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicks(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicksEdit(variables.id) });
+    },
+  });
+}
+
+export function useUpsertHubComparisonGroupTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      groupId,
+      locale,
+      payload,
+    }: {
+      id: string;
+      groupId: string;
+      locale: Locale;
+      payload: UpsertComparisonGroupTranslationPayload;
+    }) => hubsApi.upsertComparisonGroupTranslation(id, groupId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
+    },
+  });
+}
+
+export function useUpsertHubComparisonTourTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      comparisonTourId,
+      locale,
+      payload,
+    }: {
+      id: string;
+      comparisonTourId: string;
+      locale: Locale;
+      payload: UpsertComparisonTourTranslationPayload;
+    }) => hubsApi.upsertComparisonTourTranslation(id, comparisonTourId, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
+    },
+  });
+}
+
+/** Clear one locale of a curation item - the Console's "clear" (row delete). */
+export function useDeleteHubOurPickTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, pickId, locale }: { id: string; pickId: string; locale: Locale }) =>
+      hubsApi.deleteOurPickTranslation(id, pickId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicks(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.ourPicksEdit(variables.id) });
+    },
+  });
+}
+
+export function useDeleteHubComparisonGroupTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, groupId, locale }: { id: string; groupId: string; locale: Locale }) =>
+      hubsApi.deleteComparisonGroupTranslation(id, groupId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
+    },
+  });
+}
+
+export function useDeleteHubComparisonTourTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      comparisonTourId,
+      locale,
+    }: { id: string; comparisonTourId: string; locale: Locale }) =>
+      hubsApi.deleteComparisonTourTranslation(id, comparisonTourId, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparison(variables.id) });
+      queryClient.invalidateQueries({ queryKey: hubKeys.comparisonEdit(variables.id) });
+    },
+  });
+}
+
+export function useDeleteHubContentSectionTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      sectionType,
+      displayOrder,
+      locale,
+    }: {
+      id: string;
+      sectionType: HubSectionType;
+      displayOrder: number;
+      locale: Locale;
+    }) => hubsApi.deleteContentSectionTranslation(id, sectionType, displayOrder, locale),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.contentSections(variables.id) });
+      // Separate key, separate invalidation - the console reads this one.
+      queryClient.invalidateQueries({
+        queryKey: hubKeys.contentSectionsEdit(variables.id),
+      });
+    },
+  });
+}
+
+export function useUpsertHubContentSectionTranslation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      sectionType,
+      displayOrder,
+      locale,
+      payload,
+    }: {
+      id: string;
+      sectionType: HubSectionType;
+      displayOrder: number;
+      locale: Locale;
+      payload: UpsertHubSectionTranslationPayload;
+    }) =>
+      hubsApi.upsertContentSectionTranslation(id, sectionType, displayOrder, locale, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.contentSections(variables.id) });
+      // Separate key, separate invalidation - the console reads this one.
+      queryClient.invalidateQueries({
+        queryKey: hubKeys.contentSectionsEdit(variables.id),
+      });
     },
   });
 }

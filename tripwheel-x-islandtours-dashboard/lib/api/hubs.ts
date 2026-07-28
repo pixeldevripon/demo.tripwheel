@@ -24,8 +24,13 @@ import type {
   ComparisonGroupForEdit,
   SetComparisonPayload,
   SetComparisonResponse,
+  UpsertOurPickTranslationPayload,
+  UpsertComparisonGroupTranslationPayload,
+  UpsertComparisonTourTranslationPayload,
+  UpsertHubSectionTranslationPayload,
   Locale,
 } from '@/types/hub';
+import type { HubSectionType } from '@/types/enums';
 
 import { apiFetch } from './fetch';
 
@@ -162,6 +167,16 @@ export const hubsApi = {
     return apiFetch<HubContentSection[]>(`/hubs/${id}/content-sections${query}`);
   },
 
+  /**
+   * EVERY stored locale, for the Translation Console. Do NOT use
+   * `getContentSections` for that: its `locale` query param defaults to `en`
+   * on the backend, so omitting it returns English only and every translated
+   * field reads back blank.
+   */
+  getContentSectionsForEdit(id: string): Promise<HubContentSection[]> {
+    return apiFetch<HubContentSection[]>(`/hubs/${id}/content-sections/edit`);
+  },
+
   replaceContentSections(
     id: string,
     payload: ReplaceContentSectionsPayload
@@ -206,5 +221,107 @@ export const hubsApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     });
+  },
+
+  // ── Curation translation upserts (Translation Console per-item saves) ────────
+
+  upsertOurPickTranslation(
+    id: string,
+    pickId: string,
+    locale: Locale,
+    payload: UpsertOurPickTranslationPayload
+  ): Promise<{ locale: Locale; description: string }> {
+    return apiFetch(`/hubs/${id}/our-picks/${pickId}/translations/${locale}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  upsertComparisonGroupTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale,
+    payload: UpsertComparisonGroupTranslationPayload
+  ): Promise<{ locale: Locale; groupName: string }> {
+    return apiFetch(`/hubs/${id}/comparison/groups/${groupId}/translations/${locale}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  upsertComparisonTourTranslation(
+    id: string,
+    comparisonTourId: string,
+    locale: Locale,
+    payload: UpsertComparisonTourTranslationPayload
+  ): Promise<{ locale: Locale; standoutNote: string }> {
+    return apiFetch(`/hubs/${id}/comparison/tours/${comparisonTourId}/translations/${locale}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  upsertContentSectionTranslation(
+    id: string,
+    sectionType: HubSectionType,
+    displayOrder: number,
+    locale: Locale,
+    payload: UpsertHubSectionTranslationPayload
+  ): Promise<HubContentSection> {
+    return apiFetch(
+      `/hubs/${id}/content-sections/${sectionType}/${displayOrder}/translations/${locale}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  // ── Curation translation clears ─────────────────────────────────────────────
+  // Every one of these columns is NOT NULL, so "cleared" means the row is
+  // gone and the public page falls back to the English base value.
+
+  deleteOurPickTranslation(
+    id: string,
+    pickId: string,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch(`/hubs/${id}/our-picks/${pickId}/translations/${locale}`, {
+      method: 'DELETE',
+    });
+  },
+
+  deleteComparisonGroupTranslation(
+    id: string,
+    groupId: string,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch(
+      `/hubs/${id}/comparison/groups/${groupId}/translations/${locale}`,
+      { method: 'DELETE' }
+    );
+  },
+
+  deleteComparisonTourTranslation(
+    id: string,
+    comparisonTourId: string,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch(
+      `/hubs/${id}/comparison/tours/${comparisonTourId}/translations/${locale}`,
+      { method: 'DELETE' }
+    );
+  },
+
+  deleteContentSectionTranslation(
+    id: string,
+    sectionType: HubSectionType,
+    displayOrder: number,
+    locale: Locale
+  ): Promise<{ message: string }> {
+    return apiFetch(
+      `/hubs/${id}/content-sections/${sectionType}/${displayOrder}/translations/${locale}`,
+      { method: 'DELETE' }
+    );
   },
 };

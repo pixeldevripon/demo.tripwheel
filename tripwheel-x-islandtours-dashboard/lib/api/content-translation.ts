@@ -23,16 +23,17 @@ export interface GenerateTranslationResult {
   reason?: string;
 }
 
+const PATH_SEGMENT: Record<Exclude<TranslatableEntityType, 'homepage'>, string> = {
+  tour: 'tours',
+  destination: 'destinations',
+  hub: 'hubs',
+  category: 'categories',
+  collection: 'collections',
+};
+
 function pathFor(type: TranslatableEntityType, id: string, locale: Locale): string {
   if (type === 'homepage') return `/home-page/translations/${locale}/generate`;
-  const segment: Record<Exclude<TranslatableEntityType, 'homepage'>, string> = {
-    tour: 'tours',
-    destination: 'destinations',
-    hub: 'hubs',
-    category: 'categories',
-    collection: 'collections',
-  };
-  return `/${segment[type]}/${id}/translations/${locale}/generate`;
+  return `/${PATH_SEGMENT[type]}/${id}/translations/${locale}/generate`;
 }
 
 export const contentTranslationApi = {
@@ -58,4 +59,19 @@ export const contentTranslationApi = {
       method: 'POST',
       body: JSON.stringify({ text, targetLocale }),
     }),
+
+  /**
+   * Batched inline translation (the per-card "Translate section" button):
+   * the whole field map rides in ONE request and comes back translated under
+   * the same keys in ONE response. Persists NOTHING, like translateText.
+   * Backend caps: 100 entries, 30k characters total.
+   */
+  translateFields: (fields: Record<string, string>, targetLocale: Locale) =>
+    apiFetch<{ fields: Record<string, string> }>(
+      '/content-translation/translate-fields',
+      {
+        method: 'POST',
+        body: JSON.stringify({ fields, targetLocale }),
+      },
+    ),
 };
