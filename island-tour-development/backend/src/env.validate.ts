@@ -167,6 +167,12 @@ const OPTIONAL: Record<string, (v: string) => string | null> = {
   META_PIXEL_ID: () => null,
   META_CAPI_TOKEN: () => null,
   META_CAPI_TEST_CODE: () => null,
+  // Instagram feed auto-sync (Instagram API with Instagram Login) is configured
+  // ENTIRELY from the DASHBOARD (Settings > Instagram): the admin pastes a
+  // long-lived access token, stored encrypted on InstagramAccount with the
+  // existing ENCRYPTION_KEY (crypto.util). It is DB-only by design - there is
+  // deliberately no INSTAGRAM_ACCESS_TOKEN env var. The nightly refresh rotates
+  // the token in place, also in the database.
 };
 
 export function validateEnv(): void {

@@ -2,7 +2,14 @@
 // lead-webhook points, payment-config placeholders (no real secrets), and a few
 // media-gallery rows. All keyed by the fixed 'default' id where applicable.
 
-import { InstagramMediaType, Prisma, Role } from '@prisma/client';
+import {
+  InstagramMediaType,
+  InstagramSource,
+  InstagramSyncStatus,
+  Prisma,
+  Role,
+} from '@prisma/client';
+import { encrypt } from '../../src/common/utils/crypto.util';
 import { DEMO_WEBHOOK_HOST, log, photo, prisma, section } from './_shared';
 
 export async function seedSettings(): Promise<void> {
@@ -177,7 +184,16 @@ export async function seedSettings(): Promise<void> {
     }
   }
 
-  // ── Instagram grid (handle row + curated tiles, all brand-wide) ──
+  // ── Instagram grid (auto-sync demo: a CONNECTED demo account + synced tiles) ──
+  //
+  // Phase 2 is now the only path - tiles come from the sync, not a manual
+  // picker. So the demo seeds the account as CONNECTED to the demo provider
+  // (INSTAGRAM_APP_ID=demo) with a fake, ENCRYPTED, 60-day token, and seeds the
+  // tiles as source=API with the SAME igMediaIds the demo provider returns. That
+  // makes the dashboard show "Connected (demo)" out of the box, AND makes a
+  // later "Sync now" idempotent - it upserts these very rows instead of
+  // duplicating them.
+  const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
   await prisma.instagramAccount.upsert({
     where: { id: 'default' },
     update: {},
@@ -187,11 +203,17 @@ export async function seedSettings(): Promise<void> {
       // Left empty on purpose: the service derives the profile link from the
       // handle, and the demo data should exercise that path.
       profileUrl: '',
+      igUserId: 'demo-ig-user',
+      accessToken: encrypt('demo-instagram-token'),
+      tokenExpiresAt: new Date(Date.now() + SIXTY_DAYS_MS),
+      lastSyncedAt: new Date(),
+      lastSyncStatus: InstagramSyncStatus.OK,
     },
   });
 
-  // The last tile carries a video, so the demo grid exercises the reel path
-  // (poster painted first, muted loop over it) and not just stills.
+  // The first tile carries a video, so the demo grid exercises the reel path
+  // (poster painted first, muted loop over it) and not just stills. igMediaIds
+  // mirror InstagramDemoProvider.DEMO_MEDIA so a demo sync updates-not-duplicates.
   const DEMO_REEL =
     'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4';
 
@@ -201,35 +223,37 @@ export async function seedSettings(): Promise<void> {
     caption: string,
     videoUrl?: string,
   ][] = [
-    ['01', 'willemstad', 'Sunrise over the Handelskade, Willemstad'],
-    ['02', 'catamaranDeck', 'Deck days on the west-coast catamaran run'],
-    ['03', 'turtleReef', 'Playa Piskado regulars #turtles'],
-    ['04', 'jeepTrail', 'Dust, cactus and coastline on the buggy trail'],
-    ['05', 'beachChairs', 'Slow afternoon at Cas Abao'],
-    ['06', 'sunsetSea', 'Last light off the south shore', DEMO_REEL],
+    ['01', 'sunsetSea', 'Last light off the south shore', DEMO_REEL],
+    ['02', 'willemstad', 'Sunrise over the Handelskade, Willemstad'],
+    ['03', 'catamaranDeck', 'Deck days on the west-coast catamaran run'],
+    ['04', 'turtleReef', 'Playa Piskado regulars #turtles'],
+    ['05', 'jeepTrail', 'Dust, cactus and coastline on the buggy trail'],
+    ['06', 'beachChairs', 'Slow afternoon at Cas Abao'],
   ];
 
   let igCount = 0;
   for (const [slot, photoName, caption, videoUrl] of igTiles) {
-    const imagePublicId = `demo/ig-${slot}`;
-    const existing = await prisma.instagramPost.findFirst({
-      where: { imagePublicId },
+    const igMediaId = `demo-ig-media-${slot}`;
+    const existing = await prisma.instagramPost.findUnique({
+      where: { igMediaId },
       select: { id: true },
     });
     if (existing) continue;
     await prisma.instagramPost.create({
       data: {
-        imageUrl: photo(photoName, 768, 674), // the grid tile is 384x337 at 2x
+        source: InstagramSource.API,
+        igMediaId,
+        imageUrl: photo(photoName, 768, 960), // 4:5 gallery portrait
         ...(videoUrl && {
           videoUrl,
           mediaType: InstagramMediaType.VIDEO,
         }),
-        imagePublicId,
-        // No permalink: demo tiles fall back to the profile link, which is the
-        // same path a real tile takes when an admin leaves the field empty.
+        imagePublicId: `demo/ig-${slot}`,
         caption,
         width: 768,
-        height: 674,
+        height: 960,
+        postedAt: new Date(Date.now() - igCount * 24 * 60 * 60 * 1000),
+        syncedAt: new Date(),
         displayOrder: igCount,
       },
     });

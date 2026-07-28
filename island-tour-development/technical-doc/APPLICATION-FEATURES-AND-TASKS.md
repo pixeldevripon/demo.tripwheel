@@ -3534,13 +3534,56 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
     media badge when a post is both. They are `pointer-events-none` LABELS: the whole tile stays one
     outbound link. (They were briefly removed on the argument that this is Instagram's product chrome;
     reinstated by decision - without them a still and a reel are identical until the reel plays.)
-  - **PENDING (phase 2 - API sync):** Instagram Login OAuth + encrypted token (`INSTAGRAM_TOKEN_SECRET`,
-    the 3-file env change), daily sync job mirroring media into Cloudinary, and the **60-day long-lived
-    token refresh** (`GET /refresh_access_token`, token must be ≥24h old and unexpired; refresh at
-    <10 days with an admin warning at 7). Needs an Instagram **Business/Creator** account and Meta app
-    review for `instagram_business_basic`. Rows land in the same tables as `source = API`; the frontend
-    does not change. Synced tiles reject edits to sync-owned fields (photo/caption/permalink) but stay
-    curatable (order, visibility, pinning, alt text).
+  - **EXECUTED 2026-07-28 (phase 2 - API auto-sync, now the ONLY path):** the feed is a mirror of the
+    connected account; the manual tile picker is retired (decision: remove manual UI entirely, keep
+    reorder & hide). Built:
+    - **Provider seam** (`src/instagram/providers/`): `InstagramApiProvider` interface with a live
+      `InstagramGraphProvider` ("Instagram API with Instagram Login" - the Basic Display API it
+      replaces is retired) and an `InstagramDemoProvider` (canned Curacao media, no network). The
+      module binds one at boot from config; **`INSTAGRAM_APP_ID=demo`** runs the whole loop - connect,
+      sync, mirror, render, dashboard - with **no Meta app and no App Review**.
+    - **Env (3-file change):** `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_REDIRECT_URI`,
+      all optional-together (unset ⇒ sync dormant). The long-lived token reuses the existing
+      `ENCRYPTION_KEY` + `crypto.util` - **there is NO separate `INSTAGRAM_TOKEN_SECRET`** (the earlier
+      plan's name; dropped).
+    - **Schema:** OAuth columns on `InstagramAccount` (`igUserId`, encrypted `accessToken`,
+      `tokenExpiresAt`, `lastSyncedAt`, `lastSyncStatus`, `lastSyncError`) + `InstagramSyncStatus` enum
+      + `InstagramPost.videoPublicId`. Migrations `20260728060000` / `20260728061500`.
+    - **OAuth:** `GET /instagram/oauth/authorize-url` (signed-state CSRF) → dashboard callback page
+      `/settings/instagram/callback` → `POST /instagram/oauth/callback` exchanges code → 60-day
+      long-lived token, stored encrypted. `GET /instagram/connection`, `POST /instagram/disconnect`.
+    - **Sync** (`instagram-sync.service.ts`, `POST /instagram/sync` + daily `@Cron 02:30 UTC`): fetch
+      recent media, **mirror each asset into Cloudinary** (media_url CDN links expire in days and
+      hotlinking breaks ToS), **upsert on `igMediaId`**. New post → mirror + create; seen post →
+      refresh metadata only (media already mirrored; `displayOrder`/`isActive` are admin-owned, never
+      clobbered); gone post → delete + Cloudinary cleanup. **60-day token refresh** at <10 days
+      (`refresh_access_token`, token ≥24h old, unexpired), surfaced as `EXPIRING`.
+    - **Dashboard:** connection panel (Connect / Reconnect / Disconnect / Sync now + status), and the
+      tile grid slimmed to **reorder + hide + alt/island** (no add/create/pin). Needs an Instagram
+      **Business/Creator** account and Meta app review for `instagram_business_basic` to go live.
+    - **EXECUTED 2026-07-28 (env-token path + dashboard credentials + auto handle):** for a single
+      first-party brand account, `INSTAGRAM_ACCESS_TOKEN` (env) OR a dashboard-entered access token
+      syncs the account directly - no OAuth/redirect/App-Review. The env/dashboard token SEEDS the DB
+      connection once, then the nightly refresh owns it, so **env-token mode auto-refreshes on the
+      same 60-day/10-day schedule** as OAuth (not a token that silently dies). Credentials (App ID /
+      Secret / Redirect / Access Token) are **editable from the dashboard**, DB-first-then-env,
+      secrets encrypted (`configAppId/configAppSecret/configRedirectUri/configAccessToken`, migration
+      `20260728120000`); `InstagramConfigService.resolve()` is now async. The **handle + profile link
+      are auto-derived** from the connected account (`/me?fields=user_id,username`, refreshed every
+      sync) - the manual Handle/Profile-Link fields are removed. Demo stays an env-only boot toggle.
+      Verified live against a real BUSINESS account: 15 tiles mirrored to Cloudinary, handle
+      auto-resolved.
+    - **Tests:** 53 unit tests across service (incl. removePost mirror-cleanup), sync (mirror/upsert/
+      preserve-curation/refresh/partial/fail/**refresh-fail-still-EXPIRING**), token (encrypt
+      round-trip, no-leak), config (demo detection), OAuth state.
+    - **Post-build review fixes (code + security reviewers):** (1) `env.validate.ts` now accepts the
+      `demo` sentinel for `INSTAGRAM_APP_ID` - it previously rejected it and would have crashed boot;
+      (2) manual `removePost` now cleans its Cloudinary mirror via a shared `deleteInstagramMirror`
+      helper (was leaking an asset pair per delete, and double-mirroring on delete-then-resync);
+      (3) a failed token refresh now records `EXPIRING` even when the same run's sync succeeds (the
+      final status no longer clobbers the warning); (4) per-row isolation on the cleanup loop +
+      reconcile wrapped so a mid-run DB error still records a FAILED result. `isPinned` documented as
+      reserved/always-false (the `instagram_business_basic` scope exposes no pinned state).
 - Destination description section: `About tours in {Destination}` — **350 to 500 words, exactly 3 H2s**,
   SEO content from the destination model.
 - **SEO ownership lock:** the destination page owns destination-level keywords and About content;

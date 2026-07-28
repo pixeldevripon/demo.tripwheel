@@ -190,6 +190,55 @@ export class CloudinaryService {
   }
 
   /**
+   * Mirror a REMOTE asset into Cloudinary by URL, into a caller-named subfolder.
+   *
+   * The Instagram sync's reason to exist: a post's `media_url` is a CDN link that
+   * expires within days and that Instagram's terms forbid hotlinking, so every
+   * synced tile must become an asset WE own. Cloudinary's uploader accepts an
+   * https URL directly (it fetches server-side), so this is a one-call mirror.
+   *
+   * `resourceType: 'auto'` lets a reel come back as a video and a photo as an
+   * image without the caller having to know which it handed in.
+   */
+  async uploadFromUrl(
+    remoteUrl: string,
+    subFolder: string,
+  ): Promise<CloudinaryUploadResult> {
+    const result = await cloudinary.uploader.upload(remoteUrl, {
+      folder: `${CLOUDINARY_ROOT_FOLDER}/${subFolder}`,
+      resource_type: 'auto',
+    });
+
+    return {
+      publicId: result.public_id,
+      url: this.getOptimizedUrl(result.public_id, result.resource_type, {
+        bytes: result.bytes,
+        width: result.width,
+        format: result.format,
+      }),
+      resourceType: result.resource_type,
+      bytes: result.bytes,
+      format: result.format,
+      width: result.width,
+      height: result.height,
+    };
+  }
+
+  /**
+   * A still-frame delivery URL for a mirrored video, by public_id. Cloudinary
+   * renders a poster from the first frame when you request the video asset as
+   * `.jpg`. Used by the Instagram sync when a reel arrives without its own
+   * thumbnail, so a video tile always has the poster it needs.
+   */
+  videoPosterUrl(publicId: string): string {
+    return cloudinary.url(publicId, {
+      resource_type: 'video',
+      format: 'jpg',
+      secure: true,
+    });
+  }
+
+  /**
    * Delete a Cloudinary asset by its public_id.
    * Uses resource_type 'image' by default - for video use deleteFileByType.
    * Silently logs on failure rather than throwing, so callers can treat

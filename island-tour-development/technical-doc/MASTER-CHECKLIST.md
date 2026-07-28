@@ -1518,7 +1518,8 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Admin: site info, SEO, social, company, payments (Stripe/Mollie/methods), integrations, Mailchimp, platform-reviews form
 - [x] Integrations tab cards: Meta CAPI (pixel id + token + test code), AI Translation (8-provider dropdown + per-provider model picker with Free/Paid badges + custom base URL; replaced the Google Translate card 2026-07-27), WhatsApp; GTM container ID + Cookiebot CBID live on the SEO form
 - [x] Review-request cadence screen (`review-requests-form.tsx`) driving the post-tour invite cron
-- [x] Instagram management tab (`instagram-form.tsx` — account, tiles, video support, layout) feeding the public Instagram section
+- [x] Instagram management tab (`instagram-form.tsx` — account, connection panel, layout, curation) feeding the public Instagram section
+- [x] Instagram API auto-sync (phase 2, 2026-07-28): OAuth connect + encrypted 60-day token (reuses `ENCRYPTION_KEY`), daily `@Cron` sync mirroring media into Cloudinary, upsert on `igMediaId`, provider seam with an offline `INSTAGRAM_APP_ID=demo` mode. Manual tile picker retired; curation is reorder + hide only. Needs a Business/Creator account + `instagram_business_basic` app review to go live.
 - [x] FAQ host avatar + video clip admin-managed on the site-info form
 - [x] Operator: company + payments, plus the **Payout Provider** switcher (`operator-payments-form.tsx` — active provider = payout destination only; travelers are always charged by platform settings)
 - [x] `PATCH /settings/site` correctly busts the public `site-info` tag (defect B-1 fixed and regression-tested in both repos)

@@ -12,6 +12,8 @@
 > `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`
 > FX & multi-currency (how conversion works, providers, env, snapshots, spotlight commission):
 > `technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md`
+> Instagram feed (auto-sync flow, dashboard access token, sync cadence, token refresh, mirroring, code map):
+> `technical-doc/02-architecture/INSTAGRAM-FEED.md`
 > Settlement & payouts (v1/v2 money flow, settlements ledger):
 > `technical-doc/02-architecture/SETTLEMENT-AND-PAYOUTS.md` (visual:
 > `technical-doc/02-architecture/settlement-payout-flow.html`) · Event-driven & queues (BullMQ,
