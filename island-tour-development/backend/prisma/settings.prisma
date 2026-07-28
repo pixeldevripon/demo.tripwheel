@@ -17,8 +17,10 @@ model SiteInfo {
   whatsappNumber     String?  @default("")
   // Master kill switch for the Instagram grid. The feed itself lives in
   // instagram.prisma — this only decides whether the public site renders it.
+  // Defaults ON: the section is intended to show once tiles exist (the public
+  // feed still gates on having tiles, so an empty feed never renders).
   // (`instagramWidgetId` was dropped with the third-party-embed approach.)
-  enableInstagram    Boolean? @default(false)
+  enableInstagram    Boolean? @default(true)
 
   // "Your local host" — the small looping avatar beside the WhatsApp button in
   // the FAQ block. It lives in site info, NOT on the homepage record, because

@@ -1,3 +1,4 @@
+import { CloudinaryService } from '@/media-gallery/cloudinary.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import {
   BadRequestException,
@@ -5,14 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { InstagramLayout, type Prisma } from '@prisma/client';
 import {
-  InstagramLayout,
-  InstagramMediaType,
-  InstagramSource,
-  type Prisma,
-} from '@prisma/client';
-import {
-  CreateInstagramPostDto,
   InstagramAccountResponseDto,
   InstagramPostResponseDto,
   PublicInstagramFeedResponseDto,
@@ -21,6 +16,8 @@ import {
   UpdateInstagramAccountDto,
   UpdateInstagramPostDto,
 } from './dto/instagram.dto';
+import { deleteInstagramMirror } from './instagram-mirror.util';
+import { InstagramSyncScheduler } from './instagram-sync.scheduler';
 
 const ACCOUNT_ID = 'default';
 
@@ -48,6 +45,7 @@ const POST_SELECT = {
   imageUrl: true,
   imagePublicId: true,
   videoUrl: true,
+  videoPublicId: true,
   caption: true,
   altText: true,
   width: true,
@@ -63,6 +61,19 @@ const POST_SELECT = {
 
 type PostRow = Prisma.InstagramPostGetPayload<{ select: typeof POST_SELECT }>;
 
+const ACCOUNT_SELECT = {
+  id: true,
+  username: true,
+  profileUrl: true,
+  layout: true,
+  syncFetchLimit: true,
+  syncIntervalMinutes: true,
+} satisfies Prisma.InstagramAccountSelect;
+
+type AccountRow = Prisma.InstagramAccountGetPayload<{
+  select: typeof ACCOUNT_SELECT;
+}>;
+
 /**
  * The brand Instagram grid (master 3.9), rendered first-party.
  *
@@ -76,7 +87,11 @@ type PostRow = Prisma.InstagramPostGetPayload<{ select: typeof POST_SELECT }>;
 export class InstagramService {
   private readonly logger = new Logger(InstagramService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+    private readonly scheduler: InstagramSyncScheduler,
+  ) {}
 
   // ── Public read ─────────────────────────────────────────────────────────────
 
@@ -107,7 +122,7 @@ export class InstagramService {
 
     const username = account?.username?.trim() || null;
     const profileUrl = resolveProfileUrl(account?.profileUrl, username);
-    const layout = account?.layout ?? InstagramLayout.GRID;
+    const layout = account?.layout ?? InstagramLayout.GALLERY;
 
     if (!siteInfo?.enableInstagram) {
       return { enabled: false, username, profileUrl, layout, posts: [] };
@@ -182,46 +197,53 @@ export class InstagramService {
   async getAccount(): Promise<InstagramAccountResponseDto> {
     const account = await this.prisma.instagramAccount.findUnique({
       where: { id: ACCOUNT_ID },
-      select: { id: true, username: true, profileUrl: true, layout: true },
+      select: ACCOUNT_SELECT,
     });
 
     // Read-only endpoint: never upsert on GET, just describe the empty state.
-    return {
-      id: ACCOUNT_ID,
-      username: account?.username || null,
-      profileUrl: account?.profileUrl || null,
-      layout: account?.layout ?? InstagramLayout.GRID,
-    };
+    return toAccountResponse(account);
   }
 
+  /**
+   * The account form carries the LAYOUT and the sync tuning (posts-per-sync,
+   * auto-sync cadence). The handle and profile link are auto-derived from the
+   * connected account (resolved on seed), so they are never set here - only
+   * displayed read-only. Changing the cadence re-registers the cron live.
+   */
   async updateAccount(
     dto: UpdateInstagramAccountDto,
     adminId: string,
   ): Promise<InstagramAccountResponseDto> {
     const data = {
-      ...(dto.username !== undefined && {
-        username: normalizeHandle(dto.username),
-      }),
-      ...(dto.profileUrl !== undefined && {
-        profileUrl: dto.profileUrl.trim(),
-      }),
       ...(dto.layout !== undefined && { layout: dto.layout }),
+      ...(dto.syncFetchLimit !== undefined && {
+        syncFetchLimit: dto.syncFetchLimit,
+      }),
+      ...(dto.syncIntervalMinutes !== undefined && {
+        syncIntervalMinutes: dto.syncIntervalMinutes,
+      }),
     };
-
     const account = await this.prisma.instagramAccount.upsert({
       where: { id: ACCOUNT_ID },
       update: data,
       create: { id: ACCOUNT_ID, ...data },
-      select: { id: true, username: true, profileUrl: true, layout: true },
+      select: ACCOUNT_SELECT,
     });
 
-    this.logger.log(`Admin ${adminId} updated the Instagram account settings`);
-    return {
-      id: account.id,
-      username: account.username || null,
-      profileUrl: account.profileUrl || null,
-      layout: account.layout,
-    };
+    // A cadence change must take effect without a restart. Best-effort: a
+    // scheduling hiccup must not fail the save the admin just made.
+    if (dto.syncIntervalMinutes !== undefined) {
+      try {
+        await this.scheduler.applySchedule();
+      } catch (err) {
+        this.logger.error(
+          `Failed to re-register the Instagram sync cron: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    }
+
+    this.logger.log(`Admin ${adminId} updated the Instagram section settings`);
+    return toAccountResponse(account);
   }
 
   // ── Posts (admin) ───────────────────────────────────────────────────────────
@@ -239,128 +261,49 @@ export class InstagramService {
     return rows.map(toPostResponse);
   }
 
-  async createPost(
-    dto: CreateInstagramPostDto,
-    adminId: string,
-  ): Promise<InstagramPostResponseDto> {
-    if (dto.destinationId)
-      await this.assertDestinationExists(dto.destinationId);
-
-    // New tiles land at the end of the grid rather than silently sharing slot 0
-    // with an existing one, which would make the order depend on the id tiebreak.
-    const last = await this.prisma.instagramPost.findFirst({
-      select: { displayOrder: true },
-      orderBy: { displayOrder: 'desc' },
-    });
-
-    const videoUrl = dto.videoUrl?.trim() || null;
-
-    const row = await this.prisma.instagramPost.create({
-      data: {
-        source: InstagramSource.MANUAL,
-        mediaType: resolveMediaType(videoUrl, dto.mediaType),
-        imageUrl: dto.imageUrl.trim(),
-        videoUrl,
-        imagePublicId: dto.imagePublicId?.trim() || null,
-        permalink: dto.permalink?.trim() || '',
-        caption: dto.caption?.trim() || null,
-        altText: dto.altText?.trim() || null,
-        width: dto.width ?? null,
-        height: dto.height ?? null,
-        destinationId: dto.destinationId ?? null,
-        isActive: dto.isActive ?? true,
-        isPinned: dto.isPinned ?? false,
-        displayOrder: (last?.displayOrder ?? -1) + 1,
-      },
-      select: POST_SELECT,
-    });
-
-    this.logger.log(`Admin ${adminId} added Instagram tile ${row.id}`);
-    return toPostResponse(row);
-  }
-
+  /**
+   * Curate a synced tile: hide/show, alt text, and the pinned destination. The
+   * media, caption and permalink belong to the sync (a re-run would revert any
+   * edit), so they are not editable here - the DTO does not carry them.
+   */
   async updatePost(
     id: string,
     dto: UpdateInstagramPostDto,
     adminId: string,
   ): Promise<InstagramPostResponseDto> {
-    const existing = await this.findPostOrThrow(id);
+    await this.findPostOrThrow(id);
     if (dto.destinationId)
       await this.assertDestinationExists(dto.destinationId);
-
-    // An API-synced row's photo and caption belong to the sync job: editing them
-    // here would be silently reverted on the next run. Curation fields (order,
-    // visibility, pinning, alt text) stay editable on every row, which is the
-    // whole point of keeping synced tiles in the same table.
-    if (existing.source === InstagramSource.API) {
-      const ownedBySync: (keyof UpdateInstagramPostDto)[] = [
-        'imageUrl',
-        'imagePublicId',
-        'videoUrl',
-        'permalink',
-        'caption',
-        'width',
-        'height',
-      ];
-      const attempted = ownedBySync.filter((key) => dto[key] !== undefined);
-      if (attempted.length) {
-        throw new BadRequestException(
-          `Synced tiles own these fields - the next sync would overwrite your edit: ${attempted.join(', ')}`,
-        );
-      }
-    }
-
-    // Attaching or clearing the video flips what kind of tile this is, so
-    // mediaType is recomputed here rather than trusted from the client. Left
-    // alone when neither the video nor the badge is part of the patch (a
-    // visibility toggle must not retype the tile), and never touched on a
-    // synced row.
-    const videoUrl =
-      dto.videoUrl === undefined ? undefined : dto.videoUrl?.trim() || null;
-    const mediaType =
-      videoUrl === undefined && dto.mediaType === undefined
-        ? undefined
-        : resolveMediaType(
-            videoUrl === undefined ? existing.videoUrl : videoUrl,
-            dto.mediaType,
-          );
 
     const row = await this.prisma.instagramPost.update({
       where: { id },
       data: {
-        ...(dto.imageUrl !== undefined && { imageUrl: dto.imageUrl.trim() }),
-        ...(dto.imagePublicId !== undefined && {
-          imagePublicId: dto.imagePublicId.trim() || null,
-        }),
-        ...(videoUrl !== undefined && { videoUrl }),
-        ...(mediaType !== undefined && { mediaType }),
-        ...(dto.permalink !== undefined && {
-          permalink: dto.permalink.trim(),
-        }),
-        ...(dto.caption !== undefined && {
-          caption: dto.caption.trim() || null,
-        }),
         ...(dto.altText !== undefined && {
           altText: dto.altText.trim() || null,
         }),
-        ...(dto.width !== undefined && { width: dto.width }),
-        ...(dto.height !== undefined && { height: dto.height }),
         ...(dto.destinationId !== undefined && {
           destinationId: dto.destinationId,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-        ...(dto.isPinned !== undefined && { isPinned: dto.isPinned }),
       },
       select: POST_SELECT,
     });
 
-    this.logger.log(`Admin ${adminId} updated Instagram tile ${id}`);
+    this.logger.log(`Admin ${adminId} curated Instagram tile ${id}`);
     return toPostResponse(row);
   }
 
   async removePost(id: string, adminId: string): Promise<{ message: string }> {
-    await this.findPostOrThrow(id);
+    const existing = await this.findPostOrThrow(id);
     await this.prisma.instagramPost.delete({ where: { id } });
+    // Clean the mirrored Cloudinary assets, exactly as the sync's own "gone
+    // post" path does - otherwise a manual delete leaks the asset pair forever,
+    // and a delete-then-resync re-mirrors the post under a new public id.
+    await deleteInstagramMirror(
+      this.cloudinary,
+      existing.imagePublicId,
+      existing.videoPublicId,
+    );
 
     this.logger.log(`Admin ${adminId} removed Instagram tile ${id}`);
     return { message: 'Instagram tile removed' };
@@ -428,22 +371,19 @@ export class InstagramService {
 
 const INSTAGRAM_HOME = 'https://www.instagram.com/';
 
-/**
- * The corner badge's meaning, resolved rather than trusted.
- *
- * VIDEO is owned by the video itself: a tile with a reel is a reel, and a tile
- * without one cannot claim to be, however the client asks. What IS the admin's
- * to say is whether a still tile links to a single photo or to a carousel -
- * that fact lives in the linked post, which we cannot see from here.
- */
-function resolveMediaType(
-  videoUrl: string | null,
-  requested?: InstagramMediaType,
-): InstagramMediaType {
-  if (videoUrl) return InstagramMediaType.VIDEO;
-  return requested === InstagramMediaType.CAROUSEL_ALBUM
-    ? InstagramMediaType.CAROUSEL_ALBUM
-    : InstagramMediaType.IMAGE;
+/** Shape the account row (or the empty state) into the response DTO. Defaults
+ * mirror the schema (@default): layout GRID, 24 posts/sync, daily (1440 min). */
+function toAccountResponse(
+  row: AccountRow | null,
+): InstagramAccountResponseDto {
+  return {
+    id: row?.id ?? ACCOUNT_ID,
+    username: row?.username || null,
+    profileUrl: row?.profileUrl || null,
+    layout: row?.layout ?? InstagramLayout.GALLERY,
+    syncFetchLimit: row?.syncFetchLimit ?? 24,
+    syncIntervalMinutes: row?.syncIntervalMinutes ?? 1440,
+  };
 }
 
 function toPostResponse(row: PostRow): InstagramPostResponseDto {
@@ -466,16 +406,6 @@ function toPostResponse(row: PostRow): InstagramPostResponseDto {
     postedAt: row.postedAt,
     syncedAt: row.syncedAt,
   };
-}
-
-/** Accepts "@handle", "handle", or a pasted profile URL; stores the bare handle. */
-function normalizeHandle(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return '';
-  const fromUrl = trimmed.match(
-    /^https?:\/\/(?:www\.)?instagram\.com\/([^/?#]+)/i,
-  );
-  return (fromUrl ? fromUrl[1] : trimmed).replace(/^@/, '').trim();
 }
 
 /** An explicit override wins; otherwise the handle builds the link. */

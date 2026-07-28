@@ -3,11 +3,13 @@ import {
   InstagramLayout,
   InstagramMediaType,
   InstagramSource,
+  InstagramSyncStatus,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -17,6 +19,9 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
+/** Allowed automatic-sync cadences, in minutes (every 3h / 6h / 12h / daily). */
+export const INSTAGRAM_SYNC_INTERVALS = [180, 360, 720, 1440] as const;
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
@@ -46,6 +51,20 @@ export class InstagramAccountResponseDto {
     description: 'Which public layout renders the tiles.',
   })
   layout!: InstagramLayout;
+
+  @ApiProperty({
+    example: 24,
+    description: 'How many recent posts each sync pulls (1..25).',
+  })
+  syncFetchLimit!: number;
+
+  @ApiProperty({
+    example: 1440,
+    enum: INSTAGRAM_SYNC_INTERVALS,
+    description:
+      'Minutes between automatic syncs (180 = every 3h, 1440 = daily).',
+  })
+  syncIntervalMinutes!: number;
 }
 
 /** One curated tile, as the dashboard sees it. */
@@ -209,6 +228,77 @@ export class PublicInstagramFeedResponseDto {
   posts!: PublicInstagramPostDto[];
 }
 
+/** The connection panel's view: status, never the token. */
+export class InstagramConnectionResponseDto {
+  @ApiProperty({
+    example: true,
+    description: 'True once an access token is configured (dashboard or env).',
+  })
+  connected!: boolean;
+
+  @ApiProperty({ example: '17841400000000000', nullable: true })
+  igUserId!: string | null;
+
+  @ApiProperty({
+    example: '2026-09-26T00:00:00.000Z',
+    nullable: true,
+    description: 'When the long-lived token expires.',
+  })
+  tokenExpiresAt!: Date | null;
+
+  @ApiProperty({ example: '2026-07-28T03:00:00.000Z', nullable: true })
+  lastSyncedAt!: Date | null;
+
+  @ApiProperty({
+    enum: InstagramSyncStatus,
+    nullable: true,
+    example: InstagramSyncStatus.OK,
+  })
+  lastSyncStatus!: InstagramSyncStatus | null;
+
+  @ApiProperty({ nullable: true, example: null })
+  lastSyncError!: string | null;
+}
+
+/** Non-secret view of the access token credential for the dashboard form. */
+export class InstagramCredentialStatusResponseDto {
+  @ApiProperty({
+    example: true,
+    description: 'An access token is stored in the database.',
+  })
+  hasAccessToken!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'A token is set, so a sync can run.',
+  })
+  isConfigured!: boolean;
+}
+
+/** One sync run's tally. */
+export class InstagramSyncResultResponseDto {
+  @ApiProperty({ example: true, description: 'False = nothing connected.' })
+  ran!: boolean;
+
+  @ApiProperty({ example: 3 })
+  created!: number;
+
+  @ApiProperty({ example: 12 })
+  updated!: number;
+
+  @ApiProperty({ example: 1 })
+  removed!: number;
+
+  @ApiProperty({ example: 0 })
+  failed!: number;
+
+  @ApiProperty({ enum: InstagramSyncStatus, example: InstagramSyncStatus.OK })
+  status!: InstagramSyncStatus;
+
+  @ApiProperty({ nullable: true, example: null })
+  error!: string | null;
+}
+
 // ── Query DTOs ────────────────────────────────────────────────────────────────
 
 export class PublicInstagramFeedQueryDto {
@@ -241,25 +331,24 @@ export class PublicInstagramFeedQueryDto {
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
+/**
+ * Save the Instagram access token from the dashboard (stored in the database,
+ * DB-only - there is no env fallback). Optional: an omitted `accessToken` is left
+ * unchanged, an empty string CLEARS it (the feed then has no token). The token is
+ * write-only - it is never returned by any GET. Saving one re-seeds the
+ * connection (see the config service), so the next sync resolves the account.
+ */
+export class SaveInstagramCredentialsDto {
+  @ApiPropertyOptional({
+    description: 'Long-lived access token (write-only, stored encrypted).',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  accessToken?: string;
+}
+
 export class UpdateInstagramAccountDto {
-  @ApiPropertyOptional({
-    example: 'island.tours_',
-    description: "Handle. A leading '@' is stripped by the service.",
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  username?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://www.instagram.com/island.tours_',
-    description: 'Empty string clears it, and the username derives the link.',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  profileUrl?: string;
-
   @ApiPropertyOptional({
     enum: InstagramLayout,
     description:
@@ -269,181 +358,65 @@ export class UpdateInstagramAccountDto {
   @IsOptional()
   @IsEnum(InstagramLayout)
   layout?: InstagramLayout;
-}
 
-export class CreateInstagramPostDto {
-  @ApiProperty({
-    example: 'https://res.cloudinary.com/demo/image/upload/v1/reef.jpg',
+  @ApiPropertyOptional({
+    example: 24,
+    minimum: 1,
+    maximum: 50,
     description:
-      'Media-library asset URL. Required even for a video tile, where it is ' +
-      'the poster.',
+      'Posts pulled per sync (1..50). Instagram serves ~25 per page, so the ' +
+      'sync paginates to reach larger counts.',
   })
-  @IsString()
-  @MaxLength(600)
-  imageUrl!: string;
-
-  @ApiPropertyOptional({
-    example: 'https://res.cloudinary.com/demo/video/upload/v1/reel.mp4',
-    description:
-      'Media-library video. Present means this is a video tile - mediaType is ' +
-      'derived from it, never sent.',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(600)
-  videoUrl?: string;
-
-  @ApiPropertyOptional({ example: 'reef-sunset-01' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  imagePublicId?: string;
-
-  @ApiPropertyOptional({
-    enum: [InstagramMediaType.IMAGE, InstagramMediaType.CAROUSEL_ALBUM],
-    description:
-      'What the linked post is, for the corner badge. VIDEO is not accepted ' +
-      'here - attaching a video is what makes a tile a reel.',
-  })
-  @IsOptional()
-  @IsEnum(InstagramMediaType)
-  mediaType?: InstagramMediaType;
-
-  @ApiPropertyOptional({
-    example: false,
-    description: 'Shows the pin badge. Never affects ordering.',
-  })
-  @IsOptional()
-  @IsBoolean()
-  isPinned?: boolean;
-
-  @ApiPropertyOptional({
-    example: 'https://www.instagram.com/p/C8xYzAbCdEf/',
-    description: 'Omit to link the tile at the account profile instead.',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(600)
-  permalink?: string;
-
-  @ApiPropertyOptional({ example: 'Sunset sail off Willemstad' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(2200)
-  caption?: string;
-
-  @ApiPropertyOptional({ example: 'Catamaran at sunset' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  altText?: string;
-
-  @ApiPropertyOptional({ example: 1080 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  width?: number;
-
-  @ApiPropertyOptional({ example: 1080 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  height?: number;
+  @Max(50)
+  syncFetchLimit?: number;
 
   @ApiPropertyOptional({
-    example: null,
-    description: 'null / omitted = brand-wide',
+    enum: INSTAGRAM_SYNC_INTERVALS,
+    description:
+      'Auto-sync cadence in minutes. One of 180 (3h), 360 (6h), 720 (12h), ' +
+      '1440 (daily). Applied to the scheduler live.',
   })
   @IsOptional()
-  @IsUUID()
-  destinationId?: string;
-
-  @ApiPropertyOptional({ example: true, default: true })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
+  @Type(() => Number)
+  @IsIn(INSTAGRAM_SYNC_INTERVALS)
+  syncIntervalMinutes?: number;
 }
 
+/**
+ * Curation of a SYNCED tile. The sync owns the media, caption and permalink, so
+ * they are not here - the only edits an admin makes are visibility (hide/show),
+ * alt text (captions make poor alt text), and the pinned destination. Reorder is
+ * its own endpoint. There is deliberately no create DTO: tiles come only from
+ * the sync now.
+ */
 export class UpdateInstagramPostDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(600)
-  imageUrl?: string;
-
   @ApiPropertyOptional({
-    description:
-      'Empty string clears the video and turns the tile back into a photo. ' +
-      'Omit to leave it as it is.',
+    example: 'Catamaran at sunset off Willemstad',
+    description: 'Overrides the caption-derived alt text.',
   })
-  @IsOptional()
-  @IsString()
-  @MaxLength(600)
-  videoUrl?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  imagePublicId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(600)
-  permalink?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(2200)
-  caption?: string;
-
-  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(300)
   altText?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  width?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  height?: number;
 
   @ApiPropertyOptional({
     nullable: true,
-    description: 'null moves the tile back to brand-wide',
+    description:
+      'Pin the tile to one destination (shown only on that island page). ' +
+      'null moves it back to brand-wide.',
   })
   @IsOptional()
   @IsUUID()
   destinationId?: string | null;
 
   @ApiPropertyOptional({
-    enum: [InstagramMediaType.IMAGE, InstagramMediaType.CAROUSEL_ALBUM],
-    description:
-      'Badge only. VIDEO is rejected - attach or clear a video instead.',
+    example: true,
+    description: 'Hide a tile from the public grid without deleting it.',
   })
-  @IsOptional()
-  @IsEnum(InstagramMediaType)
-  mediaType?: InstagramMediaType;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isPinned?: boolean;
-
-  @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

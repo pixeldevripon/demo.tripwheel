@@ -1,3 +1,4 @@
+import { CloudinaryService } from '@/media-gallery/cloudinary.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -7,6 +8,7 @@ import {
   InstagramSource,
 } from '@prisma/client';
 import { InstagramService } from './instagram.service';
+import { InstagramSyncScheduler } from './instagram-sync.scheduler';
 
 function createMockPrismaService() {
   return {
@@ -56,14 +58,20 @@ function tile(overrides: Partial<Record<string, unknown>> = {}) {
 describe('InstagramService', () => {
   let service: InstagramService;
   let prisma: ReturnType<typeof createMockPrismaService>;
+  let cloudinary: { deleteFile: jest.Mock };
+  let scheduler: { applySchedule: jest.Mock };
 
   beforeEach(async () => {
     prisma = createMockPrismaService();
+    cloudinary = { deleteFile: jest.fn().mockResolvedValue(undefined) };
+    scheduler = { applySchedule: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InstagramService,
         { provide: PrismaService, useValue: prisma },
+        { provide: CloudinaryService, useValue: cloudinary },
+        { provide: InstagramSyncScheduler, useValue: scheduler },
       ],
     }).compile();
 
@@ -250,23 +258,38 @@ describe('InstagramService', () => {
         id: 'default',
         username: 'island.tours_',
         profileUrl: '',
-        layout: InstagramLayout.GRID,
+        layout: InstagramLayout.GALLERY,
       });
     });
 
-    it.each([
-      ['@island.tours_', 'island.tours_'],
-      ['island.tours_', 'island.tours_'],
-      ['https://www.instagram.com/island.tours_', 'island.tours_'],
-      ['https://instagram.com/island.tours_/?hl=en', 'island.tours_'],
-    ])('normalizes %s to the bare handle', async (input, expected) => {
-      await service.updateAccount({ username: input }, 'admin-1');
-
-      expect(prisma.instagramAccount.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          update: expect.objectContaining({ username: expected }),
-        }),
+    it('saves the layout - the handle/link are auto-derived, not set here', async () => {
+      await service.updateAccount(
+        { layout: InstagramLayout.GALLERY },
+        'admin-1',
       );
+
+      const call = prisma.instagramAccount.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({ layout: InstagramLayout.GALLERY });
+      // Never writes the handle or link from the account form.
+      expect(call.update).not.toHaveProperty('username');
+      expect(call.update).not.toHaveProperty('profileUrl');
+      // A layout-only change does not touch the cron.
+      expect(scheduler.applySchedule).not.toHaveBeenCalled();
+    });
+
+    it('persists the sync tuning and re-registers the cron when the cadence changes', async () => {
+      await service.updateAccount(
+        { syncFetchLimit: 12, syncIntervalMinutes: 360 },
+        'admin-1',
+      );
+
+      const call = prisma.instagramAccount.upsert.mock.calls[0][0];
+      expect(call.update).toEqual({
+        syncFetchLimit: 12,
+        syncIntervalMinutes: 360,
+      });
+      // The cadence change is applied to the live scheduler.
+      expect(scheduler.applySchedule).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -280,182 +303,17 @@ describe('InstagramService', () => {
         id: 'default',
         username: null,
         profileUrl: null,
-        // An unconfigured feed still reports a layout, so the dashboard's
-        // selector always has a value to show.
-        layout: InstagramLayout.GRID,
+        // An unconfigured feed still reports a layout + sync defaults, so the
+        // dashboard's controls always have values to show. Default = GALLERY.
+        layout: InstagramLayout.GALLERY,
+        syncFetchLimit: 24,
+        syncIntervalMinutes: 1440,
       });
       expect(prisma.instagramAccount.upsert).not.toHaveBeenCalled();
     });
   });
 
   // ── Tiles ───────────────────────────────────────────────────────────────────
-
-  describe('createPost', () => {
-    it('appends to the end of the grid instead of sharing slot 0', async () => {
-      prisma.instagramPost.findFirst.mockResolvedValue({ displayOrder: 4 });
-      prisma.instagramPost.create.mockResolvedValue({
-        id: 'tile-9',
-        source: InstagramSource.MANUAL,
-        mediaType: InstagramMediaType.IMAGE,
-        permalink: '',
-        imageUrl: 'https://cdn.example/a.jpg',
-        imagePublicId: null,
-        videoUrl: null,
-        caption: null,
-        altText: null,
-        width: null,
-        height: null,
-        displayOrder: 5,
-        isActive: true,
-        isPinned: false,
-        destinationId: null,
-        postedAt: null,
-        syncedAt: null,
-        destination: null,
-      });
-
-      await service.createPost(
-        { imageUrl: 'https://cdn.example/a.jpg' },
-        'admin-1',
-      );
-
-      expect(prisma.instagramPost.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ displayOrder: 5 }),
-        }),
-      );
-    });
-
-    it.each([
-      ['a video', 'https://cdn.example/reel.mp4', InstagramMediaType.VIDEO],
-      ['no video', undefined, InstagramMediaType.IMAGE],
-    ])(
-      'derives mediaType from %s rather than trusting the client',
-      async (_label, videoUrl, expected) => {
-        prisma.instagramPost.create.mockResolvedValue({
-          id: 'tile-9',
-          source: InstagramSource.MANUAL,
-          mediaType: expected,
-          permalink: '',
-          imageUrl: 'https://cdn.example/a.jpg',
-          imagePublicId: null,
-          videoUrl: videoUrl ?? null,
-          caption: null,
-          altText: null,
-          width: null,
-          height: null,
-          displayOrder: 0,
-          isActive: true,
-          destinationId: null,
-          postedAt: null,
-          syncedAt: null,
-          destination: null,
-        });
-
-        await service.createPost(
-          { imageUrl: 'https://cdn.example/a.jpg', videoUrl },
-          'admin-1',
-        );
-
-        expect(prisma.instagramPost.create).toHaveBeenCalledWith(
-          expect.objectContaining({
-            data: expect.objectContaining({ mediaType: expected }),
-          }),
-        );
-      },
-    );
-
-    it('honours a CAROUSEL_ALBUM badge on a still tile', async () => {
-      prisma.instagramPost.create.mockResolvedValue({
-        id: 'tile-9',
-        source: InstagramSource.MANUAL,
-        mediaType: InstagramMediaType.CAROUSEL_ALBUM,
-        permalink: '',
-        imageUrl: 'https://cdn.example/a.jpg',
-        imagePublicId: null,
-        videoUrl: null,
-        caption: null,
-        altText: null,
-        width: null,
-        height: null,
-        displayOrder: 0,
-        isActive: true,
-        isPinned: false,
-        destinationId: null,
-        postedAt: null,
-        syncedAt: null,
-        destination: null,
-      });
-
-      await service.createPost(
-        {
-          imageUrl: 'https://cdn.example/a.jpg',
-          mediaType: InstagramMediaType.CAROUSEL_ALBUM,
-        },
-        'admin-1',
-      );
-
-      expect(prisma.instagramPost.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            mediaType: InstagramMediaType.CAROUSEL_ALBUM,
-          }),
-        }),
-      );
-    });
-
-    it('a video beats a requested badge - a reel cannot be labelled a carousel', async () => {
-      prisma.instagramPost.create.mockResolvedValue({
-        id: 'tile-9',
-        source: InstagramSource.MANUAL,
-        mediaType: InstagramMediaType.VIDEO,
-        permalink: '',
-        imageUrl: 'https://cdn.example/a.jpg',
-        imagePublicId: null,
-        videoUrl: 'https://cdn.example/reel.mp4',
-        caption: null,
-        altText: null,
-        width: null,
-        height: null,
-        displayOrder: 0,
-        isActive: true,
-        isPinned: false,
-        destinationId: null,
-        postedAt: null,
-        syncedAt: null,
-        destination: null,
-      });
-
-      await service.createPost(
-        {
-          imageUrl: 'https://cdn.example/a.jpg',
-          videoUrl: 'https://cdn.example/reel.mp4',
-          mediaType: InstagramMediaType.CAROUSEL_ALBUM,
-        },
-        'admin-1',
-      );
-
-      expect(prisma.instagramPost.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            mediaType: InstagramMediaType.VIDEO,
-          }),
-        }),
-      );
-    });
-
-    it('rejects a destination that does not exist', async () => {
-      prisma.destination.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.createPost(
-          { imageUrl: 'https://cdn.example/a.jpg', destinationId: 'nope' },
-          'admin-1',
-        ),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.instagramPost.create).not.toHaveBeenCalled();
-    });
-  });
 
   describe('updatePost', () => {
     const syncedRow = {
@@ -479,20 +337,7 @@ describe('InstagramService', () => {
       destination: null,
     };
 
-    it('refuses edits to fields the sync owns - the next run would revert them', async () => {
-      prisma.instagramPost.findUnique.mockResolvedValue(syncedRow);
-
-      await expect(
-        service.updatePost(
-          'tile-1',
-          { caption: 'my better caption' },
-          'admin-1',
-        ),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.instagramPost.update).not.toHaveBeenCalled();
-    });
-
-    it('still allows curation on a synced tile (order, visibility, pinning, alt)', async () => {
+    it('curates a synced tile: hide, alt text, and island only', async () => {
       prisma.instagramPost.findUnique.mockResolvedValue(syncedRow);
       prisma.instagramPost.update.mockResolvedValue({
         ...syncedRow,
@@ -515,64 +360,37 @@ describe('InstagramService', () => {
       );
     });
 
-    it('retypes the tile to VIDEO when a video is attached', async () => {
-      prisma.instagramPost.findUnique.mockResolvedValue({
-        ...syncedRow,
-        source: InstagramSource.MANUAL,
-      });
+    it('never writes sync-owned fields - the DTO does not carry them', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue(syncedRow);
       prisma.instagramPost.update.mockResolvedValue(syncedRow);
 
+      // Even if callers reach past the DTO, the service only maps curation keys.
       await service.updatePost(
         'tile-1',
-        { videoUrl: 'https://cdn.example/reel.mp4' },
+        {
+          isActive: true,
+          // @ts-expect-error - not part of UpdateInstagramPostDto
+          imageUrl: 'https://cdn.example/hijack.jpg',
+          caption: 'rewrite',
+        },
         'admin-1',
       );
 
-      expect(prisma.instagramPost.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            videoUrl: 'https://cdn.example/reel.mp4',
-            mediaType: InstagramMediaType.VIDEO,
-          }),
-        }),
-      );
-    });
-
-    it('clearing the video turns it back into a photo tile', async () => {
-      prisma.instagramPost.findUnique.mockResolvedValue({
-        ...syncedRow,
-        source: InstagramSource.MANUAL,
-        mediaType: InstagramMediaType.VIDEO,
-        videoUrl: 'https://cdn.example/reel.mp4',
-      });
-      prisma.instagramPost.update.mockResolvedValue(syncedRow);
-
-      await service.updatePost('tile-1', { videoUrl: '' }, 'admin-1');
-
-      expect(prisma.instagramPost.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            videoUrl: null,
-            mediaType: InstagramMediaType.IMAGE,
-          }),
-        }),
-      );
-    });
-
-    it('leaves the tile type alone when the patch does not mention the video', async () => {
-      prisma.instagramPost.findUnique.mockResolvedValue({
-        ...syncedRow,
-        source: InstagramSource.MANUAL,
-        mediaType: InstagramMediaType.VIDEO,
-        videoUrl: 'https://cdn.example/reel.mp4',
-      });
-      prisma.instagramPost.update.mockResolvedValue(syncedRow);
-
-      await service.updatePost('tile-1', { isActive: false }, 'admin-1');
-
       const patch = prisma.instagramPost.update.mock.calls[0][0].data;
+      expect(patch).not.toHaveProperty('imageUrl');
+      expect(patch).not.toHaveProperty('caption');
       expect(patch).not.toHaveProperty('mediaType');
       expect(patch).not.toHaveProperty('videoUrl');
+    });
+
+    it('rejects a destination that does not exist', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue(syncedRow);
+      prisma.destination.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updatePost('tile-1', { destinationId: 'nope' }, 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.instagramPost.update).not.toHaveBeenCalled();
     });
 
     it('404s on an unknown tile', async () => {
@@ -634,6 +452,35 @@ describe('InstagramService', () => {
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(prisma.instagramPost.update).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('removePost', () => {
+    it('cleans up the mirrored Cloudinary assets so a delete never orphans them', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue({
+        id: 'tile-1',
+        source: InstagramSource.API,
+        imagePublicId: 'instagram/poster',
+        videoPublicId: 'instagram/reel',
+      });
+
+      await service.removePost('tile-1', 'admin-1');
+
+      expect(prisma.instagramPost.delete).toHaveBeenCalledWith({
+        where: { id: 'tile-1' },
+      });
+      expect(cloudinary.deleteFile).toHaveBeenCalledWith('instagram/poster');
+      expect(cloudinary.deleteFile).toHaveBeenCalledWith('instagram/reel');
+    });
+
+    it('404s on an unknown tile and touches nothing', async () => {
+      prisma.instagramPost.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.removePost('gone', 'admin-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.instagramPost.delete).not.toHaveBeenCalled();
+      expect(cloudinary.deleteFile).not.toHaveBeenCalled();
     });
   });
 });

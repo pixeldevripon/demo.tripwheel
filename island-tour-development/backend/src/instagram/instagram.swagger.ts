@@ -9,7 +9,10 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   InstagramAccountResponseDto,
+  InstagramConnectionResponseDto,
+  InstagramCredentialStatusResponseDto,
   InstagramPostResponseDto,
+  InstagramSyncResultResponseDto,
   PublicInstagramFeedResponseDto,
 } from './dto/instagram.dto';
 
@@ -81,11 +84,12 @@ export function ApiGetInstagramAccountDocs() {
 export function ApiUpdateInstagramAccountDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update the Instagram handle / profile link (admin)',
+      summary: 'Update the Instagram section settings (admin)',
       description:
-        "Accepts '@handle', 'handle' or a pasted profile URL and stores the " +
-        'bare handle. An empty profileUrl is fine - the link is derived from ' +
-        'the handle.',
+        'Sets the public layout and the sync tuning (posts-per-sync, auto-sync ' +
+        'cadence). The handle and profile link are auto-derived from the ' +
+        'connected account and never set here. Changing the cadence re-registers ' +
+        'the sync cron live.',
     }),
     ApiResponse({
       status: 200,
@@ -110,18 +114,72 @@ export function ApiListInstagramPostsDocs() {
   );
 }
 
-export function ApiCreateInstagramPostDocs() {
+export function ApiGetInstagramCredentialsDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Add a curated Instagram tile (admin)',
+      summary: 'Get Instagram access token status (admin)',
       description:
-        'The image must be a media-library asset. New tiles land at the end ' +
-        'of the grid.',
+        'Non-secret view: booleans for whether a token is stored / configured, ' +
+        'and whether it is coming from the env fallback. The token is never ' +
+        'returned.',
     }),
     ApiResponse({
-      status: 201,
-      description: 'Tile created successfully',
-      type: InstagramPostResponseDto,
+      status: 200,
+      description: 'Credential status',
+      type: InstagramCredentialStatusResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiSaveInstagramCredentialsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Save the Instagram access token (admin)',
+      description:
+        'Stores the long-lived access token in the database, encrypted. Omit ' +
+        'it to leave the stored one; send an empty string to clear it (the feed ' +
+        'then has no token). Saving re-seeds the connection. DB-only - no env.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Saved; returns the fresh non-secret status',
+      type: InstagramCredentialStatusResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiGetInstagramConnectionDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Instagram connection status (admin)',
+      description:
+        'Whether a token is configured, the resolved account id, the token ' +
+        'expiry, and the last sync outcome. Never returns the token itself.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Connection status retrieved',
+      type: InstagramConnectionResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiSyncInstagramDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Run a sync now (admin)',
+      description:
+        'Pulls recent media, mirrors each asset into Cloudinary, and upserts ' +
+        'the tiles. Refreshes the token first if it is near expiry. A missing ' +
+        'connection is a no-op, not an error.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Sync run finished',
+      type: InstagramSyncResultResponseDto,
     }),
     ...adminErrors,
   );
@@ -130,11 +188,11 @@ export function ApiCreateInstagramPostDocs() {
 export function ApiUpdateInstagramPostDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'Update an Instagram tile (admin)',
+      summary: 'Curate a synced tile: hide/show, alt text, island (admin)',
       description:
-        'On API-synced tiles the photo, caption and permalink are owned by the ' +
-        'sync job and rejected here (the next run would revert the edit); ' +
-        'order, visibility, pinning and alt text stay editable on every tile.',
+        'Synced tiles own their media, caption and permalink (the sync fills ' +
+        'them); this endpoint edits only the curation fields - visibility ' +
+        '(isActive), alt text, and the pinned destination.',
     }),
     ApiResponse({
       status: 200,

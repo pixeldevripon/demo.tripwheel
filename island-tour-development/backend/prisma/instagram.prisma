@@ -9,20 +9,23 @@
 // `SiteInfo.instagramWidgetId` was the abandoned start of that approach and is
 // dropped in the same migration that adds these tables.
 //
-// PHASE 1 (here): posts are admin-curated — an image picked from the media
-// library plus the permalink it should link out to. PHASE 2 syncs the same rows
-// from the Instagram API (`source = API`), which is why `igMediaId`, `postedAt`
-// and `syncedAt` already exist: the sync fills columns rather than migrating a
-// second table, and the frontend never changes.
+// AUTO-SYNC SHIPPED: the feed is a MIRROR of the connected account. An admin
+// pastes a long-lived access token in the dashboard (configAccessToken), a daily
+// job pulls the recent media, mirrors each asset into Cloudinary, and upserts
+// these rows with `source = API` keyed on `igMediaId`. The manual picker is
+// retired; the only curation left is reorder (`displayOrder`) and hide
+// (`isActive`), both admin-owned and never touched by a re-sync. There is no
+// OAuth - the token IS the credential. The public frontend never changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The connected brand account (singleton, id 'default'). Phase 1 stores only
-/// what the header row renders; Phase 2 adds the OAuth columns (igUserId,
-/// encrypted accessToken, tokenExpiresAt, lastSyncedAt/Status/Error).
+/// The connected brand account (singleton, id 'default'). Holds what the header
+/// row renders plus the API connection: the configured token (configAccessToken),
+/// and the working connection seeded from it (igUserId, encrypted accessToken,
+/// tokenExpiresAt, lastSyncedAt/Status/Error).
 ///
 /// Separate from SocialMedia.instagramUrl on purpose: that row is the footer's
 /// social icon list, a plain link set an admin can point anywhere. This is the
-/// account the feed belongs to, and in Phase 2 it holds a credential.
+/// account the feed belongs to, and it holds the credential.
 model InstagramAccount {
   id String @id @default("default")
 
@@ -37,7 +40,56 @@ model InstagramAccount {
 
   /// Which of the two public layouts renders the tiles. Lives here rather than
   /// on SiteInfo because it is a property of this feed, not a site-wide toggle.
-  layout InstagramLayout @default(GRID)
+  /// Defaults to GALLERY (the Instagram-profile look) - the intended default
+  /// presentation for the brand feed.
+  layout InstagramLayout @default(GALLERY)
+
+  // ── Sync tuning (dashboard-configurable) ────────────────────────────────────
+
+  /// How many recent posts each sync pulls in ONE request. Kept a little above
+  /// the largest display cap (gallery = 15) so an admin has spares to
+  /// reorder/hide. Bounded 1..25 (one Instagram media page) by the DTO; the sync
+  /// clamps defensively too. Default 24.
+  syncFetchLimit Int @default(24)
+
+  /// Minutes between automatic syncs. The scheduler maps the allowed values to a
+  /// cron kept at :30 past the hour, UTC (180 → every 3h, 360 → 6h, 720 → 12h,
+  /// 1440 → daily 02:30). Changing it re-registers the cron live. Default 1440.
+  syncIntervalMinutes Int @default(1440)
+
+  // ── Dashboard-entered credential (overrides the env var when set) ───────────
+  // Resolved DB-first-then-env by InstagramConfigService, mirroring how the
+  // translation API key is configured. Null => fall back to INSTAGRAM_ACCESS_TOKEN.
+
+  /// The long-lived access token entered in the dashboard, ENCRYPTED
+  /// (crypto.util). The primary credential - overrides INSTAGRAM_ACCESS_TOKEN.
+  /// It SEEDS the working connection below on the next sync.
+  configAccessToken String?
+
+  // ── Instagram API connection, seeded from the configured token ──────────────
+
+  /// The connected account's Instagram-scoped user id, resolved from the token
+  /// via GET /me. The media list is read from GET /{igUserId}/media.
+  igUserId String?
+
+  /// The 60-day long-lived access token, ENCRYPTED with crypto.util (ENCRYPTION_KEY)
+  /// - never stored or logged in plaintext. Null when disconnected. The daily job
+  /// refreshes it in place before it lapses.
+  accessToken String?
+
+  /// When `accessToken` expires. The refresh runs once this is inside ~10 days;
+  /// past it the connection is dead and the admin must reconnect.
+  tokenExpiresAt DateTime?
+
+  /// Last time a sync run finished (success or not) - shown in the dashboard.
+  lastSyncedAt DateTime?
+
+  /// Outcome of that run, so the panel can flag a stale or failing connection.
+  lastSyncStatus InstagramSyncStatus?
+
+  /// Human-readable reason for a PARTIAL/FAILED/EXPIRING run. Null on OK. Never
+  /// contains the token (only the API's error message).
+  lastSyncError String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -61,11 +113,11 @@ model InstagramPost {
   /// straight from Instagram's own media_type.
   mediaType InstagramMediaType @default(IMAGE)
 
-  /// Instagram's pinned-post marker (the badge in the tile corner). Manual rows
-  /// can set it to mirror a pinned post; the phase-2 sync fills it from the API.
-  /// It is a BADGE ONLY and never reorders the grid - displayOrder owns order,
-  /// and having two things fight over it is how a curated deck stops making
-  /// sense.
+  /// Reserved pinned-post marker (a corner badge). Currently ALWAYS false: the
+  /// `instagram_business_basic` scope the sync uses does not expose a post's
+  /// pinned state, so nothing populates this. Kept as a column so a future
+  /// scope/design can light it up without a migration. If it is ever set, it is
+  /// a BADGE ONLY and must never reorder the grid - displayOrder owns order.
   isPinned Boolean @default(false)
 
   /// Where the tile links. For MANUAL rows an admin pastes the post URL; empty
@@ -91,7 +143,11 @@ model InstagramPost {
 
   /// The video for a reel/video post, null on a photo tile. Phase 2 maps
   /// Instagram's `media_url` here and its `thumbnail_url` into imageUrl.
-  videoUrl String?
+  videoUrl      String?
+  /// Cloudinary public id of the mirrored VIDEO asset (null on a photo tile).
+  /// Symmetric with imagePublicId, so the sync can clean up a removed reel's
+  /// derivative without parsing it back out of the URL.
+  videoPublicId String?
 
   width  Int?
   height Int?

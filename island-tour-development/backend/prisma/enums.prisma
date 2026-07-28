@@ -671,6 +671,19 @@ enum InstagramLayout {
   GALLERY
 }
 
+// Outcome of the last auto-sync run, surfaced in the dashboard connection panel.
+//   OK       - the run mirrored media and upserted rows cleanly.
+//   PARTIAL  - the run finished but some items failed to mirror (kept the rest).
+//   FAILED   - the run could not complete (auth, network, or API error).
+//   EXPIRING - the token is inside the refresh window and refresh is failing;
+//              the connection needs re-authorising before it lapses.
+enum InstagramSyncStatus {
+  OK
+  PARTIAL
+  FAILED
+  EXPIRING
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {
