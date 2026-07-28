@@ -559,6 +559,22 @@
         background: color-mix(in oklch, var(--it-heading), transparent 35%);
     }
 
+    /* ── Inner scroll only where the panel is actually capped (lg+) ─────────────
+     * Pairs with .it-modal-scroll on panels that are height-capped ONLY at lg+
+     * (the sticky booking rail). Below lg such a panel has no max-height, so it
+     * never overflows - but `overflow-y: auto` still makes it a scroll container,
+     * and `overscroll-behavior: contain` then refuses to chain the gesture to the
+     * page. The result is a touch dead zone: a drag started anywhere over the
+     * panel scrolls nothing. Restoring the defaults hands the gesture back to the
+     * document. Modals that scroll at every width just use .it-modal-scroll alone.
+     * ----------------------------------------------------------------------- */
+    @media (max-width: 1023px) {
+        .it-modal-scroll-lg-only {
+            overflow: visible;
+            overscroll-behavior: auto;
+        }
+    }
+
     /* ── Long-form page prose (legal / policy Pages) ────────────────────────────
      * THE single source of the legal-page typography. Extracted verbatim from
      * the descendant-variant block LegalPageShell used to carry inline, so the
