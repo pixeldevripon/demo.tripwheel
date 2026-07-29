@@ -1,15 +1,15 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import { Mail01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
-import { type ColumnDef } from '@tanstack/react-table';
-import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { formatDate } from '@/lib/utils';
 import type { StaffMember, StaffScope } from '@/types/staff';
 import { SEAT_ROLE_LABEL } from '@/types/staff';
+import { type ColumnDef } from '@tanstack/react-table';
+import Link from 'next/link';
 import { StaffRowActions } from './staff-row-actions';
 
 interface BuildStaffColumnsOptions {
@@ -29,7 +29,7 @@ export function buildStaffColumns({
                 const member = row.original;
                 return (
                     <div className='flex items-center gap-3'>
-                        <span className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold uppercase'>
+                        <span className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-medium uppercase'>
                             {member.user.image ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
@@ -44,7 +44,7 @@ export function buildStaffColumns({
                         <div className='min-w-0'>
                             <Link
                                 href={`/users/${member.id}`}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={e => e.stopPropagation()}
                                 className='block max-w-50 truncate font-medium hover:underline'>
                                 {member.user.name}
                             </Link>
@@ -169,8 +169,9 @@ export function buildStaffColumns({
             enableSorting: false,
             enableHiding: false,
             size: 48,
-        },
+        }
     );
 
     return columns;
 }
+

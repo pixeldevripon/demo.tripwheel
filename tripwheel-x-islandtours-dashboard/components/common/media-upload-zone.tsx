@@ -54,13 +54,13 @@ export function MediaUploadZone({
                 disabled
                     ? 'pointer-events-none opacity-50 cursor-not-allowed'
                     : 'cursor-pointer',
-                compact ? 'gap-2 py-4 px-3' : 'gap-4 py-8 px-6',
+                compact ? 'gap-2 py-4 px-3' : 'gap-4 py-8 px-6'
             )}>
             {/* Icon container */}
             <div
                 className={cn(
                     'flex items-center justify-center rounded-full bg-muted transition-all duration-200 group-hover:bg-primary/10 group-hover:scale-105',
-                    compact ? 'size-9' : 'size-14',
+                    compact ? 'size-9' : 'size-14'
                 )}>
                 <HugeiconsIcon
                     icon={
@@ -75,10 +75,16 @@ export function MediaUploadZone({
 
             {/* Text */}
             <div className='text-center space-y-1'>
-                <p className={cn('font-semibold', compact ? 'text-2xs' : 'text-xs')}>
+                <p
+                    className={cn(
+                        'font-medium',
+                        compact ? 'text-2xs' : 'text-xs'
+                    )}>
                     {label}
                 </p>
-                {hint && <p className='text-2xs text-muted-foreground'>{hint}</p>}
+                {hint && (
+                    <p className='text-2xs text-muted-foreground'>{hint}</p>
+                )}
             </div>
 
             {/* CTA - only in full (non-compact) mode */}
@@ -95,3 +101,4 @@ export function MediaUploadZone({
         </div>
     );
 }
+

@@ -1,22 +1,30 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+/**
+ * Inclusions: a label, and nothing else.
+ *
+ * The icon picker is gone (2026-07-29). It offered eight choices - Check,
+ * Drink, Food, Transport, Gear, Guide, Photo, Ticket - none of which reached a
+ * traveller. The public tour page renders a hardcoded `/icons/check-green.svg`
+ * beside EVERY inclusion (`tour-detail-content.tsx:581`), and its mapping keeps
+ * only `label`. No other consumer reads the value either: it is absent from the
+ * JSON-LD and the confirmation email, and the OCTO serializer does not even
+ * SELECT it - `include:` takes `translations.label` alone. The one thing that
+ * ever displayed it was this file's own row badge, printing the raw string
+ * "check".
+ *
+ * The column stays. It is `@default("check")`, the create path already writes
+ * `dto.icon ?? 'check'`, and update only touches it when the key is present -
+ * so omitting it costs nothing and needs no migration.
+ *
+ * With the second field gone this becomes a one-field list, which is what
+ * `quickAdd` is for: the row is composed inline as a bullet instead of opening
+ * a panel.
+ */
+
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Field, FieldError } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     useAddInclusion,
     useInclusions,
@@ -24,62 +32,38 @@ import {
 } from '@/hooks/trips/use-trips';
 import { EditableListSection } from './editable-list-section';
 
-const ICON_OPTIONS = [
-    { value: 'check', label: 'Check' },
-    { value: 'drink', label: 'Drink' },
-    { value: 'food', label: 'Food' },
-    { value: 'transport', label: 'Transport' },
-    { value: 'gear', label: 'Gear' },
-    { value: 'guide', label: 'Guide' },
-    { value: 'photo', label: 'Photo' },
-    { value: 'ticket', label: 'Ticket' },
-];
-
 const addInclusionSchema = z.object({
     label: z.string().min(2, 'At least 2 characters').max(100),
-    icon: z.string().optional(),
 });
 
-type AddInclusionFormValues = z.infer<typeof addInclusionSchema>;
-
 interface TripInclusionsTabProps {
+    /** Drop the Card chrome - the wizard section header names this list. */
+    bare?: boolean;
     tripId: string;
 }
 
-export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
+export function TripInclusionsTab({ tripId, bare }: TripInclusionsTabProps) {
     const { data: inclusions, isLoading } = useInclusions(tripId);
     const { mutate: addInclusion, isPending: isAdding } = useAddInclusion();
     const { mutate: removeInclusion, isPending: isRemoving } =
         useRemoveInclusion();
 
-    const {
-        register,
-        handleSubmit,
-        reset,
-        setValue,
-        formState: { errors },
-    } = useForm<AddInclusionFormValues>({
-        resolver: zodResolver(addInclusionSchema),
-        defaultValues: { label: '', icon: 'check' },
-    });
-
-    function onAdd(values: AddInclusionFormValues) {
+    function onAdd(label: string): string | null {
+        const parsed = addInclusionSchema.safeParse({ label });
+        if (!parsed.success) {
+            return parsed.error.issues[0]?.message ?? 'Invalid inclusion.';
+        }
         addInclusion(
             {
                 tripId,
                 payload: {
-                    label: values.label,
-                    icon: values.icon || 'check',
+                    label: parsed.data.label,
                     // The old form appended at the end via a hidden field -
                     // preserved so ordering behavior is unchanged.
                     displayOrder: inclusions?.length ?? 0,
                 },
             },
             {
-                onSuccess: () => {
-                    toast.success('Inclusion added.');
-                    reset({ label: '', icon: 'check' });
-                },
                 onError: err =>
                     toast.error(
                         err instanceof Error
@@ -88,10 +72,12 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
                     ),
             },
         );
+        return null;
     }
 
     return (
         <EditableListSection
+            bare={bare}
             title='Inclusions'
             items={inclusions}
             isLoading={isLoading}
@@ -99,13 +85,8 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
             renderSummary={inc => {
                 const en = inc.translations.find(t => t.locale === 'en');
                 return (
-                    <span className='flex min-w-0 items-center gap-2'>
-                        <Badge variant='secondary' className='shrink-0 text-xs'>
-                            {inc.icon}
-                        </Badge>
-                        <span className='truncate'>
-                            {en?.label ?? '(no EN translation)'}
-                        </span>
+                    <span className='truncate'>
+                        {en?.label ?? '(no EN translation)'}
                     </span>
                 );
             }}
@@ -113,7 +94,6 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
                 removeInclusion(
                     { tripId, inclusionId: inc.id },
                     {
-                        onSuccess: () => toast.success('Inclusion removed.'),
                         onError: err =>
                             toast.error(
                                 err instanceof Error
@@ -125,45 +105,12 @@ export function TripInclusionsTab({ tripId }: TripInclusionsTabProps) {
             }
             isDeleting={isRemoving}
             emptyText='No inclusions yet.'
-            addForm={{
-                heading: 'Add Inclusion',
-                children: (
-                    <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
-                        <Field>
-                            <Label>Label (English)</Label>
-                            <Input
-                                {...register('label')}
-                                placeholder='Welcome drink included'
-                                aria-invalid={!!errors.label}
-                            />
-                            <FieldError>{errors.label?.message}</FieldError>
-                        </Field>
-                        <Field>
-                            <Label>Icon</Label>
-                            <Select
-                                defaultValue='check'
-                                onValueChange={val => setValue('icon', val)}>
-                                <SelectTrigger className='w-full'>
-                                    <SelectValue placeholder='Select icon...' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ICON_OPTIONS.map(opt => (
-                                        <SelectItem
-                                            key={opt.value}
-                                            value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-                        <div className='flex justify-end'>
-                            <Button type='submit' size='sm' disabled={isAdding}>
-                                {isAdding ? 'Adding...' : 'Add Inclusion'}
-                            </Button>
-                        </div>
-                    </form>
-                ),
+            quickAdd={{
+                addLabel: 'Add inclusion',
+                placeholder: 'Welcome drink on arrival',
+                ariaLabel: 'New inclusion (English)',
+                disabled: isAdding,
+                onAdd,
             }}
         />
     );

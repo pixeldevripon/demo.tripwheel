@@ -1,8 +1,8 @@
 'use client';
 
+import { MountReveal } from '@/components/mount-reveal';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MountReveal } from '@/components/mount-reveal';
 
 /**
  * Staff surface shell (`/staff/*`) - deliberately NOT the operator portal's
@@ -29,7 +29,7 @@ export default function StaffLayout({
                 priority
                 className='mb-4 h-auto w-28 object-contain'
             />
-            <div className='mb-6 rounded-full border border-white/20 px-3 py-1 text-2xs font-bold uppercase tracking-caps text-white/70'>
+            <div className='mb-6 rounded-full border border-white/20 px-3 py-1 text-2xs font-medium uppercase tracking-caps text-white/70'>
                 Staff access
             </div>
 
@@ -43,3 +43,4 @@ export default function StaffLayout({
         </div>
     );
 }
+

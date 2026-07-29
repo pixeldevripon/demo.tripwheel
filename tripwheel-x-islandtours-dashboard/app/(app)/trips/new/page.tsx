@@ -1,23 +1,18 @@
-import { Breadcrumb } from '@/components/breadcrumb';
-import { TripCreateForm } from '@/components/trips/create/trip-create-form';
+import { Suspense } from 'react';
 
+import { TripWizard } from '@/components/trips/wizard/trip-wizard';
+
+/**
+ * Creating a tour starts here and continues on `/trips/[id]/edit` - step 1
+ * mints the draft and replaces the URL, because every later step writes to a
+ * child collection that needs the row to exist first (07 §1).
+ *
+ * `TripWizard` reads `useSearchParams`, so it needs a Suspense boundary.
+ */
 export default function NewTripPage() {
-  return (
-    <div className="w-full max-w-2xl">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'My Trips', href: '/trips' },
-          { label: 'New Trip' },
-        ]}
-      />
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">New Trip</h1>
-        <p className="text-sm text-content-muted mt-1">Create a new tour listing</p>
-      </div>
-      <div>
-        <TripCreateForm />
-      </div>
-    </div>
-  );
+    return (
+        <Suspense>
+            <TripWizard />
+        </Suspense>
+    );
 }

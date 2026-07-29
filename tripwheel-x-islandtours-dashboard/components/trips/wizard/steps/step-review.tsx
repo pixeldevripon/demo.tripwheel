@@ -1,0 +1,743 @@
+'use client';
+
+/**
+ * Step 9 - Review and publish (07 §8).
+ *
+ * The terminal step while creating, and the LANDING screen when editing
+ * anything already published (07 §6). That dual role is what lets the wizard
+ * be the only navigation: an operator changing one price on a live tour is one
+ * click from it, and never has to walk eight steps to get there.
+ *
+ * The readiness contract is unchanged. `getPublishChecks` and
+ * `getListingChecks` are the same pure functions the old rail used, the
+ * "Publish Readiness" heading is kept verbatim (e2e text contract), publish
+ * checks gate the CTA, and listing checks warn without ever blocking - the
+ * distinction the old card omitted and the reason "published but invisible"
+ * used to be a surprise.
+ *
+ * Every summary card reads from the query cache. This step fetches nothing the
+ * steps behind it did not already load.
+ */
+
+import {
+    Archive02Icon,
+    ArrowRight01Icon,
+    Cancel01Icon,
+    LinkSquare02Icon,
+    Megaphone01Icon,
+    PauseIcon,
+    RotateLeft01Icon,
+    Tick02Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+import { StatusBadge } from '@/components/common/status-badge';
+import { TRIP_STATUS } from '@/components/common/status-maps';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useRole } from '@/contexts/role-context';
+import {
+    useApproveTrip,
+    usePauseTrip,
+    usePublishTrip,
+    useRejectTrip,
+    useSchedules,
+    useSubmitTripForReview,
+    useTripTranslationByLocale,
+    useUnpauseTrip,
+} from '@/hooks/trips/use-trips';
+import { useDestination } from '@/hooks/destinations/use-destinations';
+import { formatPriceFrom } from '@/lib/currency/current';
+import { tourUrl } from '@/lib/public-site';
+import { crossFade, springPop } from '@/lib/motion';
+import {
+    getListingChecks,
+    getPublishChecks,
+    type ReadinessCheck,
+} from '@/lib/trips/readiness';
+import { TAB_TO_STEP, type WizardStepId } from '@/lib/trips/wizard-steps';
+import { cn } from '@/lib/utils';
+import { TIER_META } from '@/types/tier';
+import type { TripListItem } from '@/types/trip';
+import { TripArchiveDialog } from '../../trip-archive-dialog';
+import { useWizard } from '../wizard-context';
+import { WizardStepBody, WizardStepHeader } from '../wizard-step';
+
+interface StepReviewProps {
+    trip: TripListItem;
+}
+
+export function StepReview({ trip }: StepReviewProps) {
+    const { goTo } = useWizard();
+    const { can, role } = useRole();
+    const reduceMotion = useReducedMotion();
+
+    const { data: enTranslation } = useTripTranslationByLocale(trip.id, 'en');
+    const { data: schedules } = useSchedules(trip.id);
+    // Cached by the location step's maps - this is the only source of the
+    // destination SLUG, which the tour payload does not carry.
+    const { data: destination } = useDestination(trip.destinationId);
+
+    const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
+    const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
+    const { mutate: unpauseTrip, isPending: isUnpausing } = useUnpauseTrip();
+    const { mutate: submitForReview, isPending: isSubmitting } =
+        useSubmitTripForReview();
+    const { mutate: approveTrip, isPending: isApproving } = useApproveTrip();
+    const { mutate: rejectTrip, isPending: isRejecting } = useRejectTrip();
+
+    const [rejectOpen, setRejectOpen] = useState(false);
+    const [rejectNote, setRejectNote] = useState('');
+    const [archiveOpen, setArchiveOpen] = useState(false);
+
+    const publishChecks = getPublishChecks(
+        trip,
+        !!enTranslation?.overview?.trim()
+    );
+    const listingChecks = getListingChecks(trip);
+    const passed = publishChecks.filter(c => c.passed).length;
+    const allPassed = passed === publishChecks.length;
+    const remaining = publishChecks.length - passed;
+
+    const canManage = can('MANAGE_TRIPS');
+    const canSubmit = can('EDIT_TRIP');
+    const isAdmin = role === 'ADMIN';
+    const isDraft = trip.status === 'DRAFT';
+    const statusMeta = TRIP_STATUS[trip.status];
+
+    // `check.tab` is still the old tab id - route it through the same map the
+    // readiness chips and bookmarks use.
+    const stepFor = (check: ReadinessCheck): WizardStepId =>
+        TAB_TO_STEP[check.tab] ?? 'review';
+
+    return (
+        <>
+            <WizardStepHeader
+                step='review'
+                title={
+                    trip.status === 'LIVE'
+                        ? 'This tour is live'
+                        : allPassed
+                          ? 'Ready to publish'
+                          : 'Almost there'
+                }
+                description={
+                    trip.status === 'LIVE'
+                        ? 'Everything below is what travellers see. Edit any section and it updates immediately.'
+                        : allPassed
+                          ? 'Everything required is in place.'
+                          : `${remaining} thing${remaining === 1 ? '' : 's'} left before this tour can go live.`
+                }
+                aside={
+                    <div className='flex items-center gap-2'>
+                        {/* The subtitle claims "everything below is what
+                            travellers see" - and until now the screen gave no
+                            way to go and look. Only for LIVE tours: a draft has
+                            no page to open, and a dead link is worse than none.
+                            The destination SLUG is not on the tour payload, so
+                            it comes from the destination query the wizard
+                            already has cached for its maps. */}
+                        {trip.status === 'LIVE' && destination?.slug && (
+                            <a
+                                href={tourUrl(destination.slug, trip.slug)}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-content-muted transition-colors duration-fast hover:bg-surface-sunken hover:text-content'>
+                                <HugeiconsIcon
+                                    icon={LinkSquare02Icon}
+                                    className='size-3.5'
+                                />
+                                View live page
+                            </a>
+                        )}
+                        <StatusBadge
+                            variant={statusMeta.variant}
+                            hint={statusMeta.hint}>
+                            {statusMeta.label}
+                        </StatusBadge>
+                        {trip.isSponsored && (
+                            <StatusBadge
+                                variant='neutral'
+                                icon={
+                                    <HugeiconsIcon
+                                        icon={Megaphone01Icon}
+                                        className='size-3'
+                                    />
+                                }>
+                                Sponsored
+                            </StatusBadge>
+                        )}
+                    </div>
+                }
+            />
+
+            <WizardStepBody>
+                {/* Review verdict: the admin's actionable note. */}
+                {trip.approvalStatus === 'REJECTED' && trip.reviewNote && (
+                    <div className='rounded-lg border border-danger-border bg-danger-subtle px-4 py-3'>
+                        <p className='text-xs font-medium text-danger-fg'>
+                            Changes requested by Island Tours
+                        </p>
+                        <p className='mt-1 text-sm text-danger-fg'>
+                            {trip.reviewNote}
+                        </p>
+                    </div>
+                )}
+
+                <section className='py-6'>
+                    <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
+                        {/* Literal heading kept - e2e text contract. */}
+                        <p className='text-sm font-medium text-content'>
+                            Publish Readiness
+                        </p>
+                        <span
+                            className={cn(
+                                'rounded-full px-2 py-0.5 text-2xs font-medium',
+                                allPassed
+                                    ? 'bg-success-subtle text-success-fg'
+                                    : 'bg-warning-subtle text-warning-fg'
+                            )}>
+                            {passed}/{publishChecks.length}
+                        </span>
+                    </div>
+
+                    <ul className='space-y-1.5'>
+                        {publishChecks.map((check, i) => (
+                            <CheckRow
+                                key={check.key}
+                                check={check}
+                                index={i}
+                                onFix={() => goTo(stepFor(check))}
+                            />
+                        ))}
+                    </ul>
+
+                    <div className='mt-6 border-t border-line pt-4'>
+                        <p className='mb-2 text-xs font-medium text-content-muted'>
+                            To appear in listings
+                        </p>
+                        <ul className='space-y-1.5'>
+                            {listingChecks.map((check, i) => (
+                                <CheckRow
+                                    key={check.key}
+                                    check={check}
+                                    index={publishChecks.length + i}
+                                    onFix={() => goTo(stepFor(check))}
+                                />
+                            ))}
+                        </ul>
+                        {!trip.isBookable && trip.status === 'LIVE' && (
+                            <p className='mt-3 text-xs text-warning-fg'>
+                                Published, but not listed yet: this tour has no
+                                bookable departures in the next 30 days. It
+                                lists automatically once it does.
+                            </p>
+                        )}
+                    </div>
+                </section>
+
+                {/* Summary. Every row jumps to the step that owns it. Two
+                    columns of hairline-separated rows, matching how a step's
+                    own sections are drawn. */}
+                <motion.div
+                    // Separators only BETWEEN rows - no rule around the block.
+                    // A border-t plus a border-b on every child boxed the group
+                    // into a hard-cornered panel, which is the card look this
+                    // step just shed.
+                    className='grid grid-cols-1 divide-y divide-line sm:grid-cols-2 sm:gap-x-8 sm:divide-y-0 sm:[&>*:not(:nth-last-child(-n+2))]:border-b sm:[&>*]:border-line'
+                    initial={reduceMotion ? false : 'hidden'}
+                    animate='visible'
+                    variants={{
+                        visible: { transition: { staggerChildren: 0.035 } },
+                    }}>
+                    <SummaryCard
+                        title='Basics'
+                        step='basics'
+                        onEdit={goTo}
+                        lines={[
+                            trip.name,
+                            [
+                                trip.destinationName ?? '',
+                                `${trip.categoryIds.length} categor${trip.categoryIds.length === 1 ? 'y' : 'ies'}`,
+                            ]
+                                .filter(Boolean)
+                                .join(' · '),
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Pricing'
+                        step='pricing'
+                        onEdit={goTo}
+                        lines={[
+                            `${trip.pricingModel === 'UNIT' ? `Per ${(trip.wholeUnitType ?? 'unit').toLowerCase()}` : 'Per person'} · ${trip.defaultCurrency}`,
+                            (trip.priceFrom ?? trip.basePrice)
+                                ? `from ${formatPriceFrom(
+                                      (trip.priceFrom ?? trip.basePrice)!,
+                                      trip.defaultCurrency,
+                                      'en'
+                                  )}`
+                                : 'No price set',
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Booking rules'
+                        step='rules'
+                        onEdit={goTo}
+                        lines={[
+                            trip.maxPartySize
+                                ? `${trip.minPartySize} to ${trip.maxPartySize} guests`
+                                : `${trip.minPartySize}+ guests, no maximum`,
+                            `Free cancellation ${trip.cancellationHours}h before`,
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Schedule'
+                        step='schedule'
+                        onEdit={goTo}
+                        lines={[
+                            trip.durationMinutesFrom
+                                ? `${trip.durationMinutesFrom} minutes`
+                                : 'No duration set',
+                            `${schedules?.length ?? 0} weekly rule${(schedules?.length ?? 0) === 1 ? '' : 's'}`,
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Location'
+                        step='location'
+                        onEdit={goTo}
+                        lines={[
+                            trip.departureCity ?? 'No departure city',
+                            // The meeting point, in words. "Meeting point set"
+                            // is the readiness list's job, not the review's.
+                            enTranslation?.meetingPointText?.trim() ||
+                                (trip.meetingPointLat != null &&
+                                trip.meetingPointLng != null
+                                    ? 'Pinned on the map'
+                                    : 'No meeting point yet'),
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Photos'
+                        step='media'
+                        onEdit={goTo}
+                        lines={[
+                            `${trip.imageCount ?? 0} photo${(trip.imageCount ?? 0) === 1 ? '' : 's'}`,
+                            trip.heroImage
+                                ? 'Cover photo chosen'
+                                : 'No cover photo',
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Description'
+                        step='content'
+                        onEdit={goTo}
+                        lines={[
+                            // The overview ITSELF, not "Overview written".
+                            // Readiness two blocks up already reports whether it
+                            // exists; repeating that here spent a review row on
+                            // a boolean the operator had just read.
+                            enTranslation?.overview?.trim() || 'No overview yet',
+                            `${trip.highlightCount ?? 0} highlight${(trip.highlightCount ?? 0) === 1 ? '' : 's'}`,
+                        ]}
+                    />
+                    <SummaryCard
+                        title='Reach'
+                        step='reach'
+                        onEdit={goTo}
+                        lines={[
+                            `${TIER_META[trip.tierKey].label} tier · ${trip.commissionTier}%`,
+                            // "0 hubs" reads as a gap; hubs are optional.
+                            trip.hubIds.length
+                                ? `${trip.hubIds.length} hub${trip.hubIds.length === 1 ? '' : 's'}`
+                                : 'No hubs (optional)',
+                        ]}
+                    />
+                </motion.div>
+
+                {/* Lifecycle. The only place these actions live. */}
+                <div className='flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6'>
+                    {isDraft && !canManage && canSubmit && (
+                        <>
+                            {trip.approvalStatus === 'PENDING' ? (
+                                <p className='text-xs font-medium text-warning-fg'>
+                                    In review by Island Tours - you will see the
+                                    verdict here.
+                                </p>
+                            ) : (
+                                <>
+                                    {!allPassed && (
+                                        <p className='mr-auto text-xs text-content-muted'>
+                                            {remaining} item
+                                            {remaining === 1 ? '' : 's'} left
+                                            before you can submit.
+                                        </p>
+                                    )}
+                                    <Button
+                                        disabled={!allPassed || isSubmitting}
+                                        onClick={() =>
+                                            submitForReview(trip.id, {
+                                                onSuccess: () =>
+                                                    toast.success(
+                                                        'Submitted - Island Tours will review it.'
+                                                    ),
+                                                onError: err =>
+                                                    toast.error(
+                                                        err instanceof Error
+                                                            ? err.message
+                                                            : 'Failed to submit for review.'
+                                                    ),
+                                            })
+                                        }>
+                                        {isSubmitting
+                                            ? 'Submitting...'
+                                            : trip.approvalStatus === 'REJECTED'
+                                              ? 'Resubmit for review'
+                                              : 'Submit for review'}
+                                    </Button>
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {isDraft && canManage && (
+                        <>
+                            {!allPassed && (
+                                <p className='mr-auto text-xs text-content-muted'>
+                                    {remaining} item
+                                    {remaining === 1 ? '' : 's'} left before
+                                    this tour can go live.
+                                </p>
+                            )}
+                            {trip.approvalStatus === 'PENDING' && (
+                                <>
+                                    <Button
+                                        variant='outline'
+                                        disabled={isApproving}
+                                        onClick={() => setRejectOpen(true)}>
+                                        Request changes
+                                    </Button>
+                                    <Button
+                                        variant='outline'
+                                        disabled={isApproving}
+                                        onClick={() =>
+                                            approveTrip(
+                                                { id: trip.id },
+                                                {
+                                                    onSuccess: () =>
+                                                        toast.success(
+                                                            'Approved - publish when ready.'
+                                                        ),
+                                                    onError: err =>
+                                                        toast.error(
+                                                            err instanceof Error
+                                                                ? err.message
+                                                                : 'Failed to approve.'
+                                                        ),
+                                                }
+                                            )
+                                        }>
+                                        {isApproving
+                                            ? 'Approving...'
+                                            : 'Approve'}
+                                    </Button>
+                                </>
+                            )}
+                            <Button
+                                disabled={
+                                    !allPassed ||
+                                    isPublishing ||
+                                    (!isAdmin &&
+                                        trip.approvalStatus !== 'APPROVED')
+                                }
+                                onClick={() =>
+                                    publishTrip(trip.id, {
+                                        onSuccess: () =>
+                                            toast.success(
+                                                'Trip published successfully.'
+                                            ),
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to publish.'
+                                            ),
+                                    })
+                                }>
+                                {isPublishing ? 'Publishing...' : 'Publish'}
+                            </Button>
+                        </>
+                    )}
+
+                    {canManage && trip.status === 'LIVE' && (
+                        <>
+                            <Button
+                                variant='outline'
+                                disabled={isPausing}
+                                onClick={() =>
+                                    pauseTrip(trip.id, {
+                                        onSuccess: () =>
+                                            toast.success('Trip paused.'),
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to pause.'
+                                            ),
+                                    })
+                                }>
+                                <HugeiconsIcon
+                                    icon={PauseIcon}
+                                    className='size-3.5'
+                                />
+                                Pause
+                            </Button>
+                            <Button
+                                variant='outline'
+                                onClick={() => setArchiveOpen(true)}>
+                                <HugeiconsIcon
+                                    icon={Archive02Icon}
+                                    className='size-3.5'
+                                />
+                                Archive
+                            </Button>
+                        </>
+                    )}
+
+                    {canManage && trip.status === 'PAUSED' && (
+                        <>
+                            <Button
+                                disabled={isUnpausing}
+                                onClick={() =>
+                                    unpauseTrip(trip.id, {
+                                        onSuccess: () =>
+                                            toast.success('Trip resumed.'),
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to unpause.'
+                                            ),
+                                    })
+                                }>
+                                <HugeiconsIcon
+                                    icon={RotateLeft01Icon}
+                                    className='size-3.5'
+                                />
+                                Unpause
+                            </Button>
+                            <Button
+                                variant='outline'
+                                onClick={() => setArchiveOpen(true)}>
+                                <HugeiconsIcon
+                                    icon={Archive02Icon}
+                                    className='size-3.5'
+                                />
+                                Archive
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </WizardStepBody>
+
+            <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+                <DialogContent className='sm:max-w-md'>
+                    <DialogHeader>
+                        <DialogTitle>
+                            Request changes on &ldquo;{trip.name}&rdquo;?
+                        </DialogTitle>
+                        <DialogDescription>
+                            The note below is shown to the operator - tell them
+                            exactly what to fix so they can resubmit.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea
+                        value={rejectNote}
+                        onChange={e => setRejectNote(e.target.value)}
+                        maxLength={1000}
+                        rows={4}
+                        placeholder='e.g. The hero photo is blurry and the overview needs at least two paragraphs.'
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant='outline'
+                            disabled={isRejecting}
+                            onClick={() => setRejectOpen(false)}>
+                            Back
+                        </Button>
+                        <Button
+                            variant='destructive'
+                            disabled={
+                                isRejecting || rejectNote.trim().length < 5
+                            }
+                            onClick={() =>
+                                rejectTrip(
+                                    { id: trip.id, note: rejectNote.trim() },
+                                    {
+                                        onSuccess: () => {
+                                            setRejectOpen(false);
+                                            setRejectNote('');
+                                            toast.success(
+                                                'Changes requested - the operator sees your note.'
+                                            );
+                                        },
+                                        onError: err =>
+                                            toast.error(
+                                                err instanceof Error
+                                                    ? err.message
+                                                    : 'Failed to reject.'
+                                            ),
+                                    }
+                                )
+                            }>
+                            Request changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <TripArchiveDialog
+                tripId={trip.id}
+                tripName={trip.name}
+                tripStatus={trip.status}
+                open={archiveOpen}
+                onOpenChange={setArchiveOpen}
+            />
+        </>
+    );
+}
+
+function CheckRow({
+    check,
+    index,
+    onFix,
+}: {
+    check: ReadinessCheck;
+    index: number;
+    onFix: () => void;
+}) {
+    const reduceMotion = useReducedMotion();
+    return (
+        // Status icon on the RIGHT so every label starts flush left, in line
+        // with the heading above and the summary cards below. A leading icon
+        // indented the whole list by 26px for no reading benefit.
+        <li className='flex items-center gap-3 text-sm'>
+            <span
+                className={
+                    check.passed ? 'text-content-muted' : 'text-content'
+                }>
+                {check.label}
+            </span>
+            {!check.passed && (
+                <Button
+                    size='sm'
+                    variant='ghost'
+                    onClick={onFix}
+                    className='ml-auto h-auto py-0.5 text-xs text-primary'>
+                    Fix this
+                </Button>
+            )}
+            <AnimatePresence mode='wait' initial={false}>
+                <motion.span
+                    key={check.passed ? 'on' : 'off'}
+                    initial={reduceMotion ? false : { scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={
+                        reduceMotion
+                            ? { duration: 0 }
+                            : { ...springPop, delay: index * 0.02 }
+                    }
+                    className={cn('flex shrink-0', check.passed && 'ml-auto')}>
+                    <HugeiconsIcon
+                        icon={check.passed ? Tick02Icon : Cancel01Icon}
+                        className={cn(
+                            'size-4',
+                            check.passed
+                                ? 'text-success-solid'
+                                : 'text-danger-fg'
+                        )}
+                    />
+                </motion.span>
+            </AnimatePresence>
+        </li>
+    );
+}
+
+function SummaryCard({
+    title,
+    step,
+    lines,
+    onEdit,
+}: {
+    title: string;
+    step: WizardStepId;
+    lines: (string | null | undefined)[];
+    onEdit: (step: WizardStepId) => void;
+}) {
+    return (
+        // A ROW, not a card. Every other surface in the wizard shed its border,
+        // ring and fill; eight bordered boxes here made Review look like a
+        // different product from the step before it.
+        //
+        // The whole row is the target. It used to be a plain div with a 28px
+        // "Edit" text button in the corner - eight small hit areas where eight
+        // full-width ones were free, and the word repeated down the column.
+        // The chevron says the same thing without saying it eight times.
+        <motion.button
+            type='button'
+            onClick={() => onEdit(step)}
+            variants={{
+                hidden: { opacity: 0, y: 8 },
+                visible: { opacity: 1, y: 0 },
+            }}
+            transition={crossFade}
+            // No `w-full`. With an explicit 100% width the negative margin can
+            // only SHIFT the box, not widen it - so the row sat 12px left of
+            // its column and `px-3` pulled the chevron a further 12px in,
+            // landing it 24px short of the readiness ticks above, which have no
+            // horizontal padding at all. Letting the grid stretch it to auto
+            // width makes `-mx-3` bleed both edges and `px-3` return the content
+            // to exactly the column edges.
+            // NOT rounded. The separator hairline is `border-b` on this same
+            // element (the grid sets it), so any border-radius curves the line
+            // up at both ends - which is what made these read as rounded boxes
+            // rather than as rows with a rule between them. `WizardSection` can
+            // keep its rounded hover because its border lives on the PARENT,
+            // not on the button.
+            className='group -mx-3 flex items-center gap-3 px-3 py-3 text-left transition-colors duration-fast hover:bg-surface-sunken/60'>
+            <span className='min-w-0 flex-1'>
+                <span className='block text-xs font-medium text-content-muted'>
+                    {title}
+                </span>
+                {lines.filter(Boolean).map((line, i) => (
+                    <span
+                        key={i}
+                        className={cn(
+                            'mt-0.5 block truncate text-sm',
+                            i === 0
+                                ? 'font-medium text-content'
+                                : 'text-content-muted'
+                        )}>
+                        {line}
+                    </span>
+                ))}
+            </span>
+            <HugeiconsIcon
+                icon={ArrowRight01Icon}
+                className='size-4 shrink-0 text-content-subtle transition-colors duration-fast group-hover:text-content-muted'
+            />
+        </motion.button>
+    );
+}
+

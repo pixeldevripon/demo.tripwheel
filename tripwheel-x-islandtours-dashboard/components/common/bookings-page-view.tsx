@@ -16,7 +16,7 @@ export function BookingsPageView() {
         <div>
             <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
                 <div>
-                    <h1 className='text-2xl font-semibold'>Bookings</h1>
+                    <h1 className='text-2xl font-medium'>Bookings</h1>
                     <p className='text-sm text-muted-foreground mt-1'>
                         Every reservation with guest, payment and commission
                         context. Operators see bookings on their own tours only.
@@ -27,3 +27,4 @@ export function BookingsPageView() {
         </div>
     );
 }
+

@@ -90,11 +90,21 @@ export interface TranslatableFieldDef {
     placeholder?: string;
 }
 
-/** The 15 tour-level fields (13 body + 2 SEO; one flat upsert covers all). */
+/**
+ * The 14 tour-level fields (12 body + 2 SEO; one flat upsert covers all).
+ *
+ * `description` was removed: nothing on the public site rendered it. It fed
+ * only tour search and the listing-completeness input to the quality score,
+ * both of which now read `overview` - so operators were writing a second body
+ * of copy no traveller could ever read. Removing it here drops it from the
+ * creation wizard AND the translation console together, so no locale is left
+ * translating a field with no English source.
+ *
+ * The column and the API still accept it; existing values are untouched.
+ */
 export const TOUR_FIELDS: TranslatableFieldDef[] = [
     { name: 'title', label: 'Display title', kind: 'input' },
     { name: 'overview', label: 'Overview', kind: 'textarea', rows: 3 },
-    { name: 'description', label: 'Description', kind: 'textarea', rows: 5 },
     {
         name: 'shortDescription',
         label: 'Short description',

@@ -1,9 +1,14 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import { Mail01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
-import Link from 'next/link';
+import {
+    SheetPager,
+    type SheetPagerProps,
+} from '@/components/common/detail-sheet';
+import { StatusBadge } from '@/components/common/status-badge';
+import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { Badge } from '@/components/ui/badge';
 import {
     Sheet,
@@ -13,14 +18,9 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusBadge } from '@/components/common/status-badge';
-import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { usePermissionCatalog, useStaffMembers } from '@/hooks/staff/use-staff';
-import {
-    SheetPager,
-    type SheetPagerProps,
-} from '@/components/common/detail-sheet';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
+import Link from 'next/link';
 
 interface DesignationSheetProps extends SheetPagerProps {
     scope: StaffScope;
@@ -64,28 +64,22 @@ function DesignationSheetBody({
     onPrev,
     onNext,
     position,
-}: {
-    scope: StaffScope;
-    designation: StaffDesignation;
-} & SheetPagerProps) {
+}: { scope: StaffScope; designation: StaffDesignation } & SheetPagerProps) {
     const { data: catalog } = usePermissionCatalog(scope);
     const { data: members, isLoading: membersLoading } = useStaffMembers(
         scope,
-        {
-            designationId: designation.id,
-            limit: 100,
-        },
+        { designationId: designation.id, limit: 100 }
     );
 
     const granted = new Set<string>(designation.permissions);
     const totalGrantable =
         catalog?.groups.reduce((n, g) => n + g.permissions.length, 0) ?? 0;
     const grantedGroups = (catalog?.groups ?? [])
-        .map((group) => ({
+        .map(group => ({
             group: group.group,
-            permissions: group.permissions.filter((p) => granted.has(p.key)),
+            permissions: group.permissions.filter(p => granted.has(p.key)),
         }))
-        .filter((group) => group.permissions.length > 0);
+        .filter(group => group.permissions.length > 0);
 
     return (
         <>
@@ -126,18 +120,17 @@ function DesignationSheetBody({
                             base set.
                         </p>
                     ) : (
-                        grantedGroups.map((group) => (
+                        grantedGroups.map(group => (
                             <div key={group.group} className='space-y-1.5'>
                                 <p className='text-xs font-medium text-muted-foreground'>
                                     {group.group}
                                 </p>
                                 <div className='flex flex-wrap gap-1.5'>
-                                    {group.permissions.map((permission) => (
+                                    {group.permissions.map(permission => (
                                         <Badge
                                             key={permission.key}
                                             variant='secondary'
-                                            className='font-normal'
-                                        >
+                                            className='font-light'>
                                             {permission.label}
                                         </Badge>
                                     ))}
@@ -159,7 +152,7 @@ function DesignationSheetBody({
                             {Array.from({
                                 length: Math.min(
                                     Math.max(designation.memberCount, 1),
-                                    5,
+                                    5
                                 ),
                             }).map((_, i) => (
                                 <Skeleton key={i} className='h-12 rounded-lg' />
@@ -171,15 +164,14 @@ function DesignationSheetBody({
                         </p>
                     ) : (
                         <div className='divide-y divide-line rounded-lg border border-line'>
-                            {(members?.data ?? []).map((member) => {
+                            {(members?.data ?? []).map(member => {
                                 const statusMeta =
                                     STAFF_MEMBER_STATUS[member.status];
                                 return (
                                     <div
                                         key={member.id}
-                                        className='flex items-center gap-3 px-3 py-2.5'
-                                    >
-                                        <span className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold uppercase'>
+                                        className='flex items-center gap-3 px-3 py-2.5'>
+                                        <span className='flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-medium uppercase'>
                                             {member.user.image ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img
@@ -194,8 +186,7 @@ function DesignationSheetBody({
                                         <div className='min-w-0 flex-1'>
                                             <Link
                                                 href={`/users/${member.id}`}
-                                                className='block max-w-60 truncate text-sm font-medium hover:underline'
-                                            >
+                                                className='block max-w-60 truncate text-sm font-medium hover:underline'>
                                                 {member.user.name}
                                             </Link>
                                             <span className='flex items-center gap-1 text-xs text-muted-foreground'>
@@ -210,8 +201,7 @@ function DesignationSheetBody({
                                         </div>
                                         <StatusBadge
                                             variant={statusMeta.variant}
-                                            hint={statusMeta.hint}
-                                        >
+                                            hint={statusMeta.hint}>
                                             {statusMeta.label}
                                         </StatusBadge>
                                     </div>
@@ -224,3 +214,4 @@ function DesignationSheetBody({
         </>
     );
 }
+

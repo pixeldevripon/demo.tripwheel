@@ -1,8 +1,6 @@
 'use client';
 
 import { MountReveal } from '@/components/mount-reveal';
-import Link from 'next/link';
-import { quietLink } from './login-ui';
 import AuthForm from './auth-form';
 // import OperatorTwoFactor from './operator-two-factor'; // 2FA — uncomment when enabled
 
@@ -67,7 +65,7 @@ export function OperatorLogin() {
 
     return (
         <MountReveal className={cardClass}>
-            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                 Operator portal
             </h1>
             <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
@@ -76,7 +74,7 @@ export function OperatorLogin() {
 
             <AuthForm />
 
-{/*             <div className='mt-4 flex flex-col items-center gap-2.5'>
+            {/*             <div className='mt-4 flex flex-col items-center gap-2.5'>
                 <Link href='/apply' className={quietLink}>
                     New here? Apply to list your tours &rarr;
                 </Link>

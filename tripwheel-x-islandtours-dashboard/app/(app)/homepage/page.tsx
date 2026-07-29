@@ -16,7 +16,7 @@ export default async function HomepagePage({
     return (
         <div>
             <div className='mb-6'>
-                <h1 className='text-2xl font-semibold'>Homepage</h1>
+                <h1 className='text-2xl font-medium'>Homepage</h1>
                 <p className='mt-1 text-sm text-muted-foreground'>
                     The copy and imagery on the public homepage. Sections and
                     their layouts are fixed in the site design - what you change
@@ -28,3 +28,4 @@ export default async function HomepagePage({
         </div>
     );
 }
+

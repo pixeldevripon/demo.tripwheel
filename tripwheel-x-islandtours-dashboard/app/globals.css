@@ -310,9 +310,11 @@
  * @theme inline emits `--x: var(--x)` pairs; the real values live in the
  * UNLAYERED `:root` above, which outranks every layer. */
 @theme inline {
-    /* Typography (Devripon preset): DM Sans = heading face, Geist = body,
-     * IBM Plex Mono = code/refs/money. Wired in app/layout.tsx. */
-    --font-heading: var(--font-heading);
+    /* Typography: ONE text face. `--font-heading` is an alias of the sans
+     * stack, not a second webfont - the h1-h6 rules below and the few
+     * `font-heading` utilities keep working, they just resolve to Geist.
+     * IBM Plex Mono still carries code/refs/money. Wired in app/layout.tsx. */
+    --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);
     --font-mono: var(--font-mono-face);
 
@@ -540,6 +542,23 @@
         display: none;
     }
 
+    /* The code editor in Settings > Scripts owns TWO scrollable elements: its
+       own wrapper and CodeMirror's internal `.cm-scroller`. `hide-scrollbar` on
+       the wrapper only reaches the first, so a second bar sat right beside it -
+       two teal rails a few pixels apart inside one dialog.
+       CodeMirror renders `.cm-scroller` itself, so this has to be a descendant
+       rule; it is scoped to the editor's `data-slot` rather than applied to
+       `.cm-scroller` globally, which would silently restyle every future
+       CodeMirror in the app. Scrolling is unaffected - only the bar is hidden. */
+    [data-slot='script-editor'] .cm-scroller {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    [data-slot='script-editor'] .cm-scroller::-webkit-scrollbar {
+        display: none;
+    }
+
     .scrollbar-thin {
         scrollbar-width: thin; /* Firefox */
         scrollbar-color: color-mix(in oklch, var(--content-subtle), transparent 40%)
@@ -609,4 +628,82 @@
 /* Smooth sidebar collapse animation */
 [data-slot='sidebar-inset'] {
     transition: margin-left 0.2s ease;
+}
+
+/* ── Toast (sonner) ──────────────────────────────────────────────────────────
+ * `classNames.toast` pointed at `cn-toast`, which was never written - so every
+ * toast fell through to sonner's `richColors`, which tints the WHOLE toast in
+ * the semantic colour. A five-line backend validation message rendered as a
+ * block of bold red text on pink: unreadable, and it read as a crash rather
+ * than as a form telling you something.
+ *
+ * The shape is a neutral surface with a real title/description hierarchy, so
+ * the eye lands on WHAT happened before it reads why. The icon is the only
+ * semantic colour on the toast - there is no coloured rail. A bar and an icon
+ * both saying "error" is the same signal twice, and the bar was the louder of
+ * the two on an otherwise quiet surface.
+ */
+.cn-toast {
+    position: relative;
+    width: 100%;
+    align-items: flex-start;
+    gap: 0.625rem;
+    overflow: hidden;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-overlay);
+    box-shadow: var(--elevation-lg);
+}
+
+/* Optical alignment: the icon sits slightly high in its own box, so nudge it
+ * down onto the title's cap height rather than its line box. */
+.cn-toast [data-icon] {
+    margin-top: 0.0625rem;
+    margin-inline-end: 0.125rem;
+    flex-shrink: 0;
+    color: var(--content-subtle);
+}
+
+.cn-toast[data-type='error'] [data-icon] {
+    color: var(--danger-solid);
+}
+.cn-toast[data-type='success'] [data-icon] {
+    color: var(--success-solid);
+}
+.cn-toast[data-type='warning'] [data-icon] {
+    color: var(--warning-solid);
+}
+.cn-toast[data-type='info'] [data-icon] {
+    color: var(--primary);
+}
+
+.cn-toast [data-content] {
+    min-width: 0;
+}
+
+/* 13px, not 14. A toast is a passing remark, and at body size it read as a
+ * paragraph that had appeared over the page rather than a note about what just
+ * happened. */
+.cn-toast [data-title] {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--content);
+}
+
+/* Detail reads as body copy. Never coloured - colour is the rail's job. */
+.cn-toast [data-description] {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--content-muted);
+}
+
+.cn-toast [data-button] {
+    height: 1.625rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
 }

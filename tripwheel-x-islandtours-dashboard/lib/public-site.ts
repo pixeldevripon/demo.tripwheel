@@ -30,6 +30,23 @@ export function pageUrl(slug: string, locale = 'en'): string {
 }
 
 /**
+ * A tour's live URL - the ONE canonical flat form, `/{locale}/{destination}/{tour-slug}/`.
+ *
+ * Hubs never appear in it: they are discovery tags with no URL effect, so
+ * there is no `/{hub}/` variant to get wrong. The destination SLUG is not on
+ * the tour payload (it carries `destinationName` and `destinationId` only), so
+ * callers resolve it from the destination query - which the wizard already
+ * holds in cache for its maps.
+ */
+export function tourUrl(
+  destinationSlug: string,
+  tourSlug: string,
+  locale = 'en',
+): string {
+  return `${PUBLIC_SITE_URL}/${locale}/${destinationSlug}/${tourSlug}/`;
+}
+
+/**
  * The traveller account area on the public site.
  *
  * Travellers used to sign in here, at `/account`. That door was removed on

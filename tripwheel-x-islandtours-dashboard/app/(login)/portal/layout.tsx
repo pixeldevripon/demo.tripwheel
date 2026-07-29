@@ -1,11 +1,11 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import { SecurityCheckIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
+import { MountReveal } from '@/components/mount-reveal';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { MountReveal } from '@/components/mount-reveal';
 
 /**
  * Operator portal shell (`/portal/*`). The split-screen brand panel is part of
@@ -34,23 +34,29 @@ export default function PortalLayout({
                         height={131}
                         className='h-auto w-28 object-contain'
                     />
-                    <div className='mt-2.5 text-2xs font-bold tracking-[0.12em] opacity-75'>
+                    <div className='mt-2.5 text-2xs font-medium tracking-[0.12em] opacity-75'>
                         Operator portal
                     </div>
                 </div>
                 <div className='relative z-10'>
-                    <h2 className='max-w-95 font-it-display text-xl font-semibold leading-[1.3] tracking-[-0.01em] text-white!'>
-                        Your tours, availability, and bookings. One place, every day.
+                    <h2 className='max-w-95 font-it-display text-xl font-medium leading-[1.3] tracking-[-0.01em] text-white!'>
+                        Your tours, availability, and bookings. One place, every
+                        day.
                     </h2>
                     <p className='mt-2.5 max-w-90 text-sm opacity-85'>
-                        Close a date in one tap, keep your content current, and see every booking the
-                        moment it lands.
+                        Close a date in one tap, keep your content current, and
+                        see every booking the moment it lands.
                     </p>
                 </div>
                 <div className='relative z-10 flex max-w-105 items-start gap-2 rounded-[12px] border border-white/20 bg-white/10 px-3 py-3 text-sm'>
-                    <HugeiconsIcon icon={SecurityCheckIcon} className='mt-0.5 size-4.25 shrink-0' strokeWidth={1.5} />
+                    <HugeiconsIcon
+                        icon={SecurityCheckIcon}
+                        className='mt-0.5 size-4.25 shrink-0'
+                        strokeWidth={1.5}
+                    />
                     <span>
-                        We&apos;ll never ask for your password or codes by email, text, or phone.
+                        We&apos;ll never ask for your password or codes by
+                        email, text, or phone.
                     </span>
                 </div>
             </aside>
@@ -63,9 +69,11 @@ export default function PortalLayout({
 
                 {/* Anti-phishing line, mobile (brand panel hidden) */}
                 <p className='mt-4 block w-full max-w-100 rounded-[12px] border border-info-border bg-info-subtle px-3 py-3 text-xs text-info-fg md:hidden'>
-                    We&apos;ll never ask for your password or codes by email, text, or phone.
+                    We&apos;ll never ask for your password or codes by email,
+                    text, or phone.
                 </p>
             </main>
         </div>
     );
 }
+

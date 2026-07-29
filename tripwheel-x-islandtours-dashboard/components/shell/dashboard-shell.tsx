@@ -1,7 +1,6 @@
 'use client';
 
 import { AppSidebar } from '@/components/shell/app-sidebar';
-import { OverlayCenterSync } from '@/components/shell/overlay-center-sync';
 import { SiteHeader } from '@/components/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
@@ -90,7 +89,6 @@ export default function DashboardShell({
                     painted by the header (rounded-t) and content pane
                     (rounded-b) instead. */}
                 <SidebarInset className='bg-white dark:bg-sidebar shadow-none! min-w-0 md:peer-data-[variant=inset]:rounded-2xl'>
-                    <OverlayCenterSync />
                     <SiteHeader
                         userName={userName}
                         userEmail={userEmail}

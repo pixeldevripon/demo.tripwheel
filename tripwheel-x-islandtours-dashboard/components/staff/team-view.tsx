@@ -2,9 +2,9 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStaffScope } from '@/hooks/staff/use-staff-scope';
-import { StaffNoAccess } from './staff-no-access';
 import { DesignationsTab } from './designations-tab';
 import { StaffMembersTab } from './staff-members-tab';
+import { StaffNoAccess } from './staff-no-access';
 
 /**
  * One route, two audiences (mirrors the backend's two route families):
@@ -21,7 +21,7 @@ export function TeamView() {
     return (
         <div>
             <div className='mb-6'>
-                <h1 className='text-2xl font-semibold'>Users</h1>
+                <h1 className='text-2xl font-medium'>Users</h1>
                 <p className='mt-1 text-sm text-muted-foreground'>
                     {scope === 'platform'
                         ? 'Invite users, group them under designations, and control exactly what each person can do.'
@@ -44,3 +44,4 @@ export function TeamView() {
         </div>
     );
 }
+

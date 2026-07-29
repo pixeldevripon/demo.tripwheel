@@ -12,9 +12,9 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 
 import { Breadcrumb } from '@/components/breadcrumb';
+import { StatusBadge } from '@/components/common/status-badge';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/common/status-badge';
 import {
     ALL_LOCALES,
     LOCALE_LABELS,
@@ -82,7 +82,7 @@ export function WorkspaceShell({
 
             <div className='mb-4 flex flex-wrap items-start justify-between gap-3'>
                 <div>
-                    <h1 className='text-2xl font-semibold'>
+                    <h1 className='text-2xl font-medium'>
                         {entityName ?? '…'}
                     </h1>
                     <p className='text-sm text-content-muted mt-1'>
@@ -112,7 +112,7 @@ export function WorkspaceShell({
                             href={`/translations/${type}/${id}/${l}`}
                             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-fast ${
                                 l === locale
-                                    ? 'border-transparent bg-primary-subtle font-semibold text-primary-subtle-content'
+                                    ? 'border-transparent bg-primary-subtle font-medium text-primary-subtle-content'
                                     : 'border-line bg-surface-raised text-content-muted hover:text-content'
                             }`}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -144,7 +144,9 @@ export function WorkspaceShell({
                                 }
                                 className={`size-4 ${isTranslating ? 'animate-spin' : ''}`}
                             />
-                            {isTranslating ? 'Translating…' : 'Translate with AI'}
+                            {isTranslating
+                                ? 'Translating…'
+                                : 'Translate with AI'}
                         </Button>
                         <ConfirmDialog
                             open={confirmTranslate}
@@ -190,9 +192,7 @@ export function WorkspaceShell({
             <div className='sticky bottom-0 z-20 mt-8 -mx-4 lg:-mx-8 lg:-mb-8 border-t border-line bg-surface-raised/95 backdrop-blur-sm'>
                 <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-8'>
                     <p className='text-xs text-content-muted'>
-                        {isDirty
-                            ? 'Unsaved changes.'
-                            : 'All changes saved.'}
+                        {isDirty ? 'Unsaved changes.' : 'All changes saved.'}
                     </p>
                     <div className='flex flex-wrap items-center gap-2'>
                         {!isEn && (
@@ -218,3 +218,4 @@ export function WorkspaceShell({
         </div>
     );
 }
+

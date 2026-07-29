@@ -125,9 +125,7 @@ export function SecuritySection() {
                         onClick={onSubmit}
                         isPending={mutation.isPending}
                         variant='default'
-                        label={
-                            hasPassword ? 'Update password' : 'Set password'
-                        }
+                        label={hasPassword ? 'Update password' : 'Set password'}
                     />
                 }>
                 <form onSubmit={onSubmit} className='mt-6 max-w-md space-y-5'>

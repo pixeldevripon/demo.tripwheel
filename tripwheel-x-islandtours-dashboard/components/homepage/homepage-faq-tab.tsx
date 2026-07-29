@@ -19,7 +19,7 @@ export function HomepageFaqTab() {
     return (
         <Card>
             <CardHeader className='border-b pb-4'>
-                <CardTitle className='text-lg font-semibold'>FAQs</CardTitle>
+                <CardTitle className='text-lg font-medium'>FAQs</CardTitle>
             </CardHeader>
             <CardContent className='pt-6'>
                 <p className='mb-6 rounded-md bg-surface-sunken px-3 py-2 text-xs text-content-muted'>
@@ -33,3 +33,4 @@ export function HomepageFaqTab() {
         </Card>
     );
 }
+

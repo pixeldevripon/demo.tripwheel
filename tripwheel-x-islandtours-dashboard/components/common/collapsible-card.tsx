@@ -36,8 +36,25 @@ interface CollapsibleCardProps {
     /** Right-side controls (delete, …) - clicks here never toggle. */
     actions?: ReactNode;
     defaultOpen?: boolean;
+    /**
+     * Controlled open state. Omit for the uncontrolled default. The wizard
+     * drives this so a step can force a card open when validation fails inside
+     * it, and so open/closed survives step navigation (07 §5.3).
+     */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    /** Danger border - the card holds a field that failed validation. */
+    invalid?: boolean;
     /** Compact paddings (dense lists like FAQ items). */
     compact?: boolean;
+    /**
+     * Drop the card chrome entirely - no border box, no rounding, no shadow,
+     * no ring, no horizontal padding. Rows separate with a single hairline
+     * instead. Opt-in: the translation console and the FAQ manager want the
+     * card look; the creation wizard's lists do not, and stacking boxed rows
+     * inside an already-bounded section read as cards within cards.
+     */
+    flat?: boolean;
     className?: string;
     children: ReactNode;
 }
@@ -48,15 +65,22 @@ export function CollapsibleCard({
     leading,
     actions,
     defaultOpen = false,
+    open: controlledOpen,
+    onOpenChange,
+    invalid = false,
     compact = false,
+    flat = false,
     className,
     children,
 }: CollapsibleCardProps) {
-    const [open, setOpen] = useState(defaultOpen);
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+    const open = controlledOpen ?? uncontrolledOpen;
     const reduceMotion = useReducedMotion();
 
     function toggle() {
-        setOpen(v => !v);
+        const next = !open;
+        if (controlledOpen === undefined) setUncontrolledOpen(next);
+        onOpenChange?.(next);
     }
 
     function onHeaderKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -70,8 +94,18 @@ export function CollapsibleCard({
     return (
         <div
             className={cn(
-                'overflow-hidden rounded-lg border border-line bg-card text-sm shadow-xs ring-1 ring-foreground/5',
-                className,
+                'overflow-hidden text-sm transition-colors duration-fast',
+                flat
+                    ? 'border-b last:border-b-0'
+                    : 'rounded-lg border bg-card shadow-xs ring-1',
+                invalid
+                    ? flat
+                        ? 'border-danger-border'
+                        : 'border-danger-border ring-danger-border/40'
+                    : flat
+                      ? 'border-line'
+                      : 'border-line ring-foreground/5',
+                className
             )}>
             <div
                 role='button'
@@ -82,14 +116,22 @@ export function CollapsibleCard({
                 className={cn(
                     'flex w-full cursor-pointer items-center gap-3 text-left outline-none transition-colors duration-fast select-none',
                     'hover:bg-surface-sunken/60 focus-visible:bg-surface-sunken/60',
-                    compact ? 'px-4 py-3' : 'px-6 py-4',
+                    flat ? 'py-3' : compact ? 'px-4 py-3' : 'px-6 py-4'
                 )}>
                 {leading && <span className='shrink-0'>{leading}</span>}
                 <div className='min-w-0 flex-1'>
+                    {/* Flat rows take the compact type scale. `flat` sets
+                        `compact={false}`, which was landing these on the 16px
+                        card-title size - a list row was rendering larger than
+                        the section heading above it. */}
                     <div
                         className={cn(
-                            'font-semibold text-content',
-                            compact ? 'text-sm leading-snug' : 'text-base',
+                            'text-content',
+                            flat
+                                ? 'text-sm leading-snug font-normal'
+                                : compact
+                                  ? 'text-sm leading-snug font-medium'
+                                  : 'text-base font-medium'
                         )}>
                         {title}
                     </div>
@@ -107,25 +149,19 @@ export function CollapsibleCard({
                     icon={ArrowDown01Icon}
                     className={cn(
                         'size-4 shrink-0 text-content-subtle transition-transform duration-normal',
-                        open && 'rotate-180',
+                        open && 'rotate-180'
                     )}
                 />
             </div>
 
             <motion.div
                 initial={false}
-                animate={{
-                    height: open ? 'auto' : 0,
-                    opacity: open ? 1 : 0,
-                }}
+                animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
                 transition={
                     reduceMotion
                         ? { duration: 0 }
                         : {
-                              height: {
-                                  duration: 0.4,
-                                  ease: [0.4, 0, 0.2, 1],
-                              },
+                              height: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
                               opacity: {
                                   duration: 0.22,
                                   ease: [0.4, 0, 0.2, 1],
@@ -137,8 +173,11 @@ export function CollapsibleCard({
                 className='overflow-hidden'>
                 <div
                     className={cn(
-                        'border-t border-line',
-                        compact ? 'px-4 py-4' : 'px-6 py-6',
+                        flat
+                            ? 'pb-6'
+                            : compact
+                              ? 'border-t border-line px-4 py-4'
+                              : 'border-t border-line px-6 py-6'
                     )}>
                     {children}
                 </div>
@@ -146,3 +185,4 @@ export function CollapsibleCard({
         </div>
     );
 }
+

@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import {
     SidebarGroup,
     SidebarGroupContent,
@@ -14,7 +15,6 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import { useBookings } from '@/hooks/bookings/use-bookings';
 import { usePendingReviewCount } from '@/hooks/reviews/use-reviews';
 import { useSpotlightQueue } from '@/hooks/tiers/use-tiers';
@@ -28,7 +28,7 @@ interface NavMainProps {
 function CountChip({ count }: { count: number }) {
     if (count <= 0) return null;
     return (
-        <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-semibold tabular-nums text-primary-subtle-content'>
+        <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-medium tabular-nums text-primary-subtle-content'>
             {count > 99 ? '99+' : count}
         </span>
     );
@@ -124,9 +124,7 @@ export function NavMain({ groups }: NavMainProps) {
             {groups.map((group, groupIndex) => (
                 <motion.div
                     key={group.label ?? 'main'}
-                    initial={
-                        reduceMotion ? false : { opacity: 0, y: 6 }
-                    }
+                    initial={reduceMotion ? false : { opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
                         duration: 0.26,
@@ -135,7 +133,7 @@ export function NavMain({ groups }: NavMainProps) {
                     }}>
                     <SidebarGroup>
                         {group.label && (
-                            <SidebarGroupLabel className='px-4 text-2xs font-semibold tracking-caps uppercase text-sidebar-content/60 group-data-[collapsible=icon]:hidden'>
+                            <SidebarGroupLabel className='px-4 text-2xs font-medium tracking-caps uppercase text-sidebar-content/60 group-data-[collapsible=icon]:hidden'>
                                 {group.label}
                             </SidebarGroupLabel>
                         )}
@@ -156,7 +154,7 @@ export function NavMain({ groups }: NavMainProps) {
                                                     'relative h-10 rounded-md transition-colors duration-fast',
                                                     active
                                                         ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                                                        : 'hover:bg-sidebar-accent/50',
+                                                        : 'hover:bg-sidebar-accent/50'
                                                 )}>
                                                 <Link
                                                     href={toHref(item.url)}
@@ -176,7 +174,7 @@ export function NavMain({ groups }: NavMainProps) {
                                                             'absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full',
                                                             active
                                                                 ? 'bg-primary'
-                                                                : 'bg-transparent',
+                                                                : 'bg-transparent'
                                                         )}
                                                     />
                                                     {item.icon && (
@@ -189,7 +187,7 @@ export function NavMain({ groups }: NavMainProps) {
                                                         {item.title}
                                                     </span>
                                                     {item.badge != null ? (
-                                                        <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-semibold tabular-nums text-primary-subtle-content'>
+                                                        <span className='ml-auto rounded-full bg-primary-subtle px-1.5 text-2xs font-medium tabular-nums text-primary-subtle-content'>
                                                             {item.badge}
                                                         </span>
                                                     ) : DynamicBadge ? (
@@ -208,3 +206,4 @@ export function NavMain({ groups }: NavMainProps) {
         </>
     );
 }
+

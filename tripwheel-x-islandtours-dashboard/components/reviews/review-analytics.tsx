@@ -12,16 +12,16 @@ import {
 } from 'recharts';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
     type ChartConfig,
 } from '@/components/ui/chart';
-import { reviewAnalyticsApi } from '@/lib/api/reviews';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRole } from '@/contexts/role-context';
+import { reviewAnalyticsApi } from '@/lib/api/reviews';
 
 /**
  * DASH-9 - review analytics.
@@ -91,8 +91,11 @@ export function ReviewAnalytics() {
     }
     if (!data) return null;
 
-    const chartData = data.trend.map((t) => ({ ...t, label: periodLabel(t.period) }));
-    const hasTrend = chartData.some((t) => t.avgRating !== null);
+    const chartData = data.trend.map(t => ({
+        ...t,
+        label: periodLabel(t.period),
+    }));
+    const hasTrend = chartData.some(t => t.avgRating !== null);
 
     return (
         <div className='space-y-4'>
@@ -103,7 +106,9 @@ export function ReviewAnalytics() {
                     </CardHeader>
                     <CardContent>
                         {hasTrend ? (
-                            <ChartContainer config={trendConfig} className='h-[220px] w-full'>
+                            <ChartContainer
+                                config={trendConfig}
+                                className='h-[220px] w-full'>
                                 <AreaChart data={chartData}>
                                     <CartesianGrid vertical={false} />
                                     <XAxis
@@ -121,7 +126,9 @@ export function ReviewAnalytics() {
                                         axisLine={false}
                                         width={24}
                                     />
-                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                    <ChartTooltip
+                                        content={<ChartTooltipContent />}
+                                    />
                                     <Area
                                         dataKey='avgRating'
                                         type='monotone'
@@ -161,7 +168,9 @@ export function ReviewAnalytics() {
                                         width={28}
                                         allowDecimals={false}
                                     />
-                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                    <ChartTooltip
+                                        content={<ChartTooltipContent />}
+                                    />
                                     <Bar
                                         dataKey='created'
                                         fill='var(--color-created)'
@@ -184,8 +193,10 @@ export function ReviewAnalytics() {
                     <CardContent>
                         {data.themes.length > 0 ? (
                             <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                {data.themes.map((t) => (
-                                    <li key={t.tag} className='flex items-center gap-3'>
+                                {data.themes.map(t => (
+                                    <li
+                                        key={t.tag}
+                                        className='flex items-center gap-3'>
                                         <span className='w-40 shrink-0 truncate text-sm'>
                                             {t.tag}
                                         </span>
@@ -199,7 +210,9 @@ export function ReviewAnalytics() {
                                         <Progress
                                             value={
                                                 data.themes[0].count
-                                                    ? (t.count / data.themes[0].count) *
+                                                    ? (t.count /
+                                                          data.themes[0]
+                                                              .count) *
                                                       100
                                                     : 0
                                             }
@@ -231,8 +244,10 @@ export function ReviewAnalytics() {
                                     ['Rejected', data.moderation.rejected],
                                 ] as const
                             ).map(([label, value]) => (
-                                <div key={label} className='rounded-md border p-3'>
-                                    <div className='text-xl font-semibold tabular-nums'>
+                                <div
+                                    key={label}
+                                    className='rounded-md border p-3'>
+                                    <div className='text-xl font-medium tabular-nums'>
                                         {value}
                                     </div>
                                     <div className='text-xs text-muted-foreground'>
@@ -252,8 +267,10 @@ export function ReviewAnalytics() {
                                         Operator rating
                                     </span>
                                     <span className='tabular-nums'>
-                                        {data.eligibility.aggregateRating ?? '—'} (
-                                        {data.eligibility.aggregateReviewCount})
+                                        {data.eligibility.aggregateRating ??
+                                            '—'}{' '}
+                                        ({data.eligibility.aggregateReviewCount}
+                                        )
                                     </span>
                                 </div>
                                 <div className='flex justify-between'>
@@ -272,3 +289,4 @@ export function ReviewAnalytics() {
         </div>
     );
 }
+

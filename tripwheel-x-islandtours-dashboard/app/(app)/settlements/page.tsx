@@ -13,7 +13,7 @@ export default function SettlementsPage() {
         <div>
             <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
                 <div>
-                    <h1 className='text-2xl font-semibold'>Settlements</h1>
+                    <h1 className='text-2xl font-medium'>Settlements</h1>
                     <p className='text-sm text-muted-foreground mt-1'>
                         Payouts on paid-in-full bookings: the money Island Tours
                         collected at checkout and owes to the operator after its
@@ -26,3 +26,4 @@ export default function SettlementsPage() {
         </div>
     );
 }
+

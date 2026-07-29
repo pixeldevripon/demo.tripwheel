@@ -39,13 +39,15 @@ interface SectionTogglerProps {
 // Section Toggler Component
 export default function SectionToggler({
     visibleSections,
-    setVisibleSections }: SectionTogglerProps) {
+    setVisibleSections,
+}: SectionTogglerProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleToggle = (sectionId: string) => {
         setVisibleSections((prev: any) => ({
             ...prev,
-            [sectionId]: !prev[sectionId] }));
+            [sectionId]: !prev[sectionId],
+        }));
     };
 
     return (
@@ -55,12 +57,10 @@ export default function SectionToggler({
             <div
                 className={cn(
                     'bg-white dark:bg-card transition-all duration-400 ease-linear rounded-lg rounded-br-none rounded-t-none overflow-hidden shadow-2xl border border-border border-t-0',
-                    isOpen
-                        ? 'max-h-96 opacity-100'
-                        : 'max-h-0 opacity-0'
+                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 )}>
                 <div className='p-6'>
-                    <h3 className='text-sm font-semibold text-foreground mb-2'>
+                    <h3 className='text-sm font-medium text-foreground mb-2'>
                         Screen elements
                     </h3>
                     <p className='text-sm text-muted-foreground mb-4'>
@@ -105,11 +105,18 @@ export default function SectionToggler({
                     size='sm'
                     onClick={() => setIsOpen(!isOpen)}
                     className='gap-2 border-t-0 bg-white dark:bg-card hover:bg-secondary rounded-none rounded-b-lg shadow-sm'>
-                    <HugeiconsIcon icon={Settings04Icon} className="size-4" />
+                    <HugeiconsIcon icon={Settings04Icon} className='size-4' />
                     Screen Options
-                    <HugeiconsIcon icon={ArrowDown01Icon} className={cn("size-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                    <HugeiconsIcon
+                        icon={ArrowDown01Icon}
+                        className={cn(
+                            'size-4 transition-transform duration-200',
+                            isOpen && 'rotate-180'
+                        )}
+                    />
                 </Button>
             </div>
         </div>
     );
 }
+

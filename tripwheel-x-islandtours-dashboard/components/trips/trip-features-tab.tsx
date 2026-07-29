@@ -58,10 +58,12 @@ const addFeatureSchema = z.object({
 type AddFeatureFormValues = z.infer<typeof addFeatureSchema>;
 
 interface TripFeaturesTabProps {
+    /** Drop the Card chrome - the wizard section header names this list. */
+    bare?: boolean;
     tripId: string;
 }
 
-export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
+export function TripFeaturesTab({ tripId, bare }: TripFeaturesTabProps) {
     const { data: features, isLoading } = useFeatures(tripId);
     const { mutate: addFeature, isPending: isAdding } = useAddFeature();
     const { mutate: removeFeature, isPending: isRemoving } =
@@ -92,7 +94,6 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             },
             {
                 onSuccess: () => {
-                    toast.success('Feature added.');
                     reset({ type: 'ADDITIONAL_INFORMATION', text: '' });
                 },
                 onError: err =>
@@ -107,20 +108,28 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
 
     return (
         <EditableListSection
+            bare={bare}
             title='Info & Terms'
             items={features}
             isLoading={isLoading}
             getId={f => f.id}
             renderSummary={f => {
                 const en = f.translations.find(t => t.locale === 'en');
+                // Text first, category second - the same reading order as
+                // What's included and What's not included. Leading with the
+                // badge meant three lists on one step scanned three different
+                // ways, and it put the least useful part of the row (a label
+                // the operator picked from a dropdown) in the first column.
                 return (
                     <span className='flex min-w-0 items-center gap-2'>
-                        <Badge variant='secondary' className='shrink-0 text-xs'>
-                            {FEATURE_TYPE_LABELS[f.type] ?? f.type}
-                        </Badge>
                         <span className='truncate'>
                             {en?.text ?? '(no EN translation)'}
                         </span>
+                        <Badge
+                            variant='outline'
+                            className='hidden shrink-0 text-xs md:inline-flex'>
+                            {FEATURE_TYPE_LABELS[f.type] ?? f.type}
+                        </Badge>
                     </span>
                 );
             }}
@@ -128,7 +137,6 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
                 removeFeature(
                     { tripId, featureId: f.id },
                     {
-                        onSuccess: () => toast.success('Feature removed.'),
                         onError: err =>
                             toast.error(
                                 err instanceof Error
@@ -141,7 +149,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
             isDeleting={isRemoving}
             emptyText='No info items yet.'
             addForm={{
-                heading: 'Add Info Item',
+                heading: 'Add info item',
                 children: (
                     <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
                         <Field>
@@ -181,7 +189,7 @@ export function TripFeaturesTab({ tripId }: TripFeaturesTabProps) {
                         </Field>
                         <div className='flex justify-end'>
                             <Button type='submit' size='sm' disabled={isAdding}>
-                                {isAdding ? 'Adding...' : 'Add Info Item'}
+                                {isAdding ? 'Adding...' : 'Add info item'}
                             </Button>
                         </div>
                     </form>

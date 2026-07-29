@@ -7,8 +7,8 @@
  * thin wrappers that only supply their list label and route.
  */
 
-import { Skeleton } from '@/components/ui/skeleton';
 import { Breadcrumb } from '@/components/breadcrumb';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EntityDetailShellProps {
     /** Breadcrumb label of the list page, e.g. "Destinations". */
@@ -53,7 +53,7 @@ export function EntityDetailShell({
             />
 
             <div className='mb-6'>
-                <h1 className='text-2xl font-semibold'>
+                <h1 className='text-2xl font-medium'>
                     {isLoading ? (
                         <Skeleton className='h-7 w-48 inline-block' />
                     ) : (
@@ -67,3 +67,4 @@ export function EntityDetailShell({
         </div>
     );
 }
+

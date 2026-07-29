@@ -1,10 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import {
-    CloudUploadIcon,
-    Loading03Icon,
-} from '@hugeicons/core-free-icons';
+import { CloudUploadIcon, Loading03Icon } from '@hugeicons/core-free-icons';
 
 import { StatusBadge } from '@/components/common/status-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -126,7 +123,10 @@ function AvatarBlock({ user }: { user: UserProfile }) {
             <div className='mt-5 flex items-start gap-5'>
                 <Avatar className='size-14 shrink-0 ring-1 ring-line'>
                     {user.image ? (
-                        <AvatarImage src={user.image} className='object-cover' />
+                        <AvatarImage
+                            src={user.image}
+                            className='object-cover'
+                        />
                     ) : null}
                     <AvatarFallback className='bg-muted text-lg'>
                         {user.name?.charAt(0) || 'U'}
@@ -143,9 +143,7 @@ function AvatarBlock({ user }: { user: UserProfile }) {
                                     uploading ? Loading03Icon : CloudUploadIcon
                                 }
                                 className={
-                                    uploading
-                                        ? 'size-4 animate-spin'
-                                        : 'size-4'
+                                    uploading ? 'size-4 animate-spin' : 'size-4'
                                 }
                             />
                             Upload

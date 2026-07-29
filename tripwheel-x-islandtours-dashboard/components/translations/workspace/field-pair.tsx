@@ -67,7 +67,7 @@ export function FieldPair({
                 }>
                 {!sourceHidden && (
                     <div className='min-w-0'>
-                        <p className='mb-1 text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                        <p className='mb-1 text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                             English (source)
                         </p>
                         <div className='min-h-10 rounded-md border border-line-subtle bg-surface-sunken px-3 py-2 text-sm whitespace-pre-wrap text-content-muted'>
@@ -81,7 +81,7 @@ export function FieldPair({
                 )}
                 <div className='min-w-0'>
                     {!sourceHidden && (
-                        <p className='mb-1 text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                        <p className='mb-1 text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                             {targetLabel}
                         </p>
                     )}
@@ -123,3 +123,4 @@ export function FieldPair({
         </div>
     );
 }
+

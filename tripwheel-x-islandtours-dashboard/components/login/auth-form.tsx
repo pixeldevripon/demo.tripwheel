@@ -75,7 +75,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
 
             const { error: authError } = await signIn.email(
                 { email, password },
-                { headers: { 'x-login-surface': surface } },
+                { headers: { 'x-login-surface': surface } }
             );
             if (authError) {
                 // Belt-and-braces: a wrong-door rejection can still come from
@@ -89,7 +89,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
                         setWrongDoor(retry.suggested);
                     } else {
                         setError(
-                            'This account cannot sign in here. Please use the login page for your account type.',
+                            'This account cannot sign in here. Please use the login page for your account type.'
                         );
                     }
                 } else {
@@ -121,9 +121,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
                     autoComplete='username'
                     inputMode='email'
                     placeholder={
-                        isStaff
-                            ? 'you@islandtours.com'
-                            : 'you@yourcompany.com'
+                        isStaff ? 'you@islandtours.com' : 'you@yourcompany.com'
                     }
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -149,7 +147,7 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
                         type='button'
                         aria-live='polite'
                         onClick={() => setShowPw(v => !v)}
-                        className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
+                        className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
                         {showPw ? 'Hide' : 'Show'}
                     </button>
                 </div>
@@ -173,3 +171,4 @@ export default function AuthForm({ variant = 'portal' }: AuthFormProps) {
         </form>
     );
 }
+
