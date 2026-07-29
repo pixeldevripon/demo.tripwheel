@@ -32,7 +32,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRole } from '@/contexts/role-context';
 import { useUpdateTrip } from '@/hooks/trips/use-trips';
-import { tripToUpdatePayload } from '@/lib/trips/update-payload';
+import {
+    numberOrNull,
+    tripToUpdatePayload,
+} from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
@@ -144,7 +147,9 @@ function toCancellationValue(h: number): RulesValues['cancellationHours'] {
 function toDefaults(trip: TripListItem): RulesValues {
     return {
         minPartySize: String(trip.minPartySize),
-        maxPartySize: trip.maxPartySize != null ? String(trip.maxPartySize) : '',
+        // NOT NULL since 20260729190000 - a draft created from the four basics
+        // fields carries the schema default (10) until this step is saved.
+        maxPartySize: String(trip.maxPartySize),
         bookingType: trip.bookingType ?? '',
         instantConfirmation: trip.instantConfirmation,
         bookingCutoffMinutes: String(trip.bookingCutoffMinutes),
@@ -242,22 +247,23 @@ export function StepRules({ trip }: StepRulesProps) {
                             ...tripToUpdatePayload(trip),
                             minPartySize: Number(values.minPartySize),
                             maxPartySize: Number(values.maxPartySize),
-                            bookingType: values.bookingType || undefined,
+                            // `|| null`, never `|| undefined`: an undefined key
+                            // is dropped in transit and read as "leave it
+                            // alone", so unsetting any of these four silently
+                            // did nothing.
+                            bookingType: values.bookingType || null,
                             instantConfirmation: values.instantConfirmation,
                             bookingCutoffMinutes: Number(
                                 values.bookingCutoffMinutes,
                             ),
-                            checkInMinutesBefore:
-                                values.checkInMinutesBefore !== ''
-                                    ? Number(values.checkInMinutesBefore)
-                                    : undefined,
+                            checkInMinutesBefore: numberOrNull(
+                                values.checkInMinutesBefore,
+                            ),
                             cancellationHours: Number(values.cancellationHours),
                             paymentModel: values.paymentModel,
                             onArrivalPayment: values.onArrivalPayment,
-                            minAgeYears: values.minAgeYears
-                                ? Number(values.minAgeYears)
-                                : undefined,
-                            fitnessLevel: values.fitnessLevel || undefined,
+                            minAgeYears: numberOrNull(values.minAgeYears),
+                            fitnessLevel: values.fitnessLevel || null,
                             weatherDependent: values.weatherDependent,
                             wheelchairAccessible: values.wheelchairAccessible,
                             familyFriendly: values.familyFriendly,
@@ -284,9 +290,12 @@ export function StepRules({ trip }: StepRulesProps) {
 
     useStepCommit('rules', { submit, isPending, isDirty });
 
+    // Only empty while the operator has the field cleared mid-edit. "1+ guests"
+    // used to fill that gap, which reads as "no ceiling" - the exact thing the
+    // required maximum exists to rule out.
     const capacitySummary = v.maxPartySize
         ? `${v.minPartySize || 1} to ${v.maxPartySize} guests`
-        : `${v.minPartySize || 1}+ guests`;
+        : 'Not set';
 
     return (
         <>

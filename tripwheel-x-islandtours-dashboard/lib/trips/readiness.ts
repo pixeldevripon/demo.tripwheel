@@ -26,12 +26,24 @@ export interface ReadinessCheck {
 export function getPublishChecks(
     trip: Pick<
         TripListItem,
-        'imageCount' | 'highlightCount' | 'heroImage' | 'priceFrom' | 'basePrice'
+        | 'imageCount'
+        | 'highlightCount'
+        | 'heroImage'
+        | 'priceFrom'
+        | 'basePrice'
+        | 'pricingModel'
+        | 'wholeUnitType'
     >,
     hasEnOverview: boolean,
 ): ReadinessCheck[] {
     const imageCount = trip.imageCount ?? 0;
     const highlightCount = trip.highlightCount ?? 0;
+    // The backend asks a DIFFERENT price question of a unit-priced tour: a
+    // whole-unit base price AND a unit type, with no age-band fallback. One
+    // shared "price set" line let a UNIT tour with a price but no unit type
+    // show a full green checklist and an enabled Publish, then fail on the
+    // server - the exact drift the strict-subset rule above exists to stop.
+    const isUnit = trip.pricingModel === 'UNIT';
     return [
         {
             key: 'images',
@@ -61,8 +73,12 @@ export function getPublishChecks(
         },
         {
             key: 'price',
-            label: 'Price set (base price or age band)',
-            passed: trip.priceFrom != null || trip.basePrice != null,
+            label: isUnit
+                ? 'Whole-unit price and unit type set'
+                : 'Price set (base price or age band)',
+            passed: isUnit
+                ? trip.basePrice != null && !!trip.wholeUnitType
+                : trip.priceFrom != null || trip.basePrice != null,
             tab: 'pricing',
         },
     ];

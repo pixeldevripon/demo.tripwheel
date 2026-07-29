@@ -44,7 +44,11 @@ import {
     useUpdateLocation,
     useUpdateTrip,
 } from '@/hooks/trips/use-trips';
-import { tripToUpdatePayload } from '@/lib/trips/update-payload';
+import {
+    blankToNull,
+    numberOrNull,
+    tripToUpdatePayload,
+} from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
 import {
     NEW_STOP_KEY,
@@ -61,13 +65,46 @@ import {
     WizardStepHeader,
 } from '../wizard-step';
 
-const locationSchema = z.object({
-    departureCity: z.string().max(120).optional().or(z.literal('')),
-    meetingPointLat: z.string().optional().or(z.literal('')),
-    meetingPointLng: z.string().optional().or(z.literal('')),
-    pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
-    pickupRequired: z.boolean(),
-});
+/**
+ * A coordinate box takes free text, so it also takes "12,1091".
+ *
+ * `Number('12,1091')` is NaN, `JSON.stringify(NaN)` is `null`, and the backend
+ * treats a null as "clear this column" - so a decimal comma, which is the
+ * normal way to write one across the Dutch Caribbean, wiped the meeting point
+ * and moved the map instead of reporting a typo. `@IsLatitude()` on the DTO
+ * never saw it: `@IsOptional()` skips null outright.
+ */
+function coordinate(axis: 'Latitude' | 'Longitude', limit: number) {
+    return z
+        .string()
+        .refine(
+            s =>
+                s.trim() === '' ||
+                (Number.isFinite(Number(s)) && Math.abs(Number(s)) <= limit),
+            `${axis} must be a number between -${limit} and ${limit} - use a dot, not a comma.`,
+        );
+}
+
+const locationSchema = z
+    .object({
+        departureCity: z.string().max(120).optional().or(z.literal('')),
+        meetingPointLat: coordinate('Latitude', 90),
+        meetingPointLng: coordinate('Longitude', 180),
+        pickupModel: z.enum(['NONE', 'INCLUDED', 'PAID_ADDON']),
+        pickupRequired: z.boolean(),
+    })
+    // Half a point is not a point. Saving one axis alone left the map with
+    // nothing to draw and the tour page with a meeting point it cannot plot.
+    .superRefine((v, ctx) => {
+        const lat = v.meetingPointLat.trim();
+        const lng = v.meetingPointLng.trim();
+        if (!!lat === !!lng) return;
+        ctx.addIssue({
+            code: 'custom',
+            path: [lat ? 'meetingPointLng' : 'meetingPointLat'],
+            message: 'A meeting point needs both a latitude and a longitude.',
+        });
+    });
 
 type LocationValues = {
     departureCity: string;
@@ -239,13 +276,16 @@ export function StepLocation({ trip }: StepLocationProps) {
                         id: trip.id,
                         payload: {
                             ...tripToUpdatePayload(trip),
-                            departureCity: values.departureCity || undefined,
-                            meetingPointLat: values.meetingPointLat
-                                ? Number(values.meetingPointLat)
-                                : undefined,
-                            meetingPointLng: values.meetingPointLng
-                                ? Number(values.meetingPointLng)
-                                : undefined,
+                            // null clears; undefined would be dropped by
+                            // JSON.stringify and read as "leave it alone", so
+                            // emptying the map pin used to do nothing at all.
+                            departureCity: blankToNull(values.departureCity),
+                            meetingPointLat: numberOrNull(
+                                values.meetingPointLat,
+                            ),
+                            meetingPointLng: numberOrNull(
+                                values.meetingPointLng,
+                            ),
                             pickupModel: values.pickupModel,
                             pickupRequired: values.pickupRequired,
                         },

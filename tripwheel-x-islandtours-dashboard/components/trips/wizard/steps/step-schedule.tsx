@@ -32,7 +32,10 @@ import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSchedules, useUpdateTrip } from '@/hooks/trips/use-trips';
-import { tripToUpdatePayload } from '@/lib/trips/update-payload';
+import {
+    numberOrNull,
+    tripToUpdatePayload,
+} from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
 import { TripAvailabilityCalendar } from '../../trip-availability-calendar';
 import {
@@ -155,12 +158,15 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                         id: trip.id,
                         payload: {
                             ...tripToUpdatePayload(trip),
-                            durationMinutesFrom: values.durationMinutesFrom
-                                ? Number(values.durationMinutesFrom)
-                                : undefined,
-                            durationMinutesTo: values.durationMinutesTo
-                                ? Number(values.durationMinutesTo)
-                                : undefined,
+                            // null, not undefined: "Leave empty for a fixed
+                            // duration" is a promise this step has to keep,
+                            // and an undefined key never reaches the column.
+                            durationMinutesFrom: numberOrNull(
+                                values.durationMinutesFrom,
+                            ),
+                            durationMinutesTo: numberOrNull(
+                                values.durationMinutesTo,
+                            ),
                         },
                     });
                     ok = true;

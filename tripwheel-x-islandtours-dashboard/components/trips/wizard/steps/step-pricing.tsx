@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/select';
 import { useUpdateTrip } from '@/hooks/trips/use-trips';
 import { formatPriceFrom } from '@/lib/currency/current';
+import { blankToNull, numberOrNull } from '@/lib/trips/update-payload';
 import type { Currency, TripListItem } from '@/types/trip';
 import { AddOnsManager } from '../pricing/add-ons-manager';
 import { AgeBandsManager } from '../pricing/age-bands-manager';
@@ -181,28 +182,30 @@ export function StepPricing({ trip }: StepPricingProps) {
         let ok = false;
         await handleSubmit(
             async values => {
+                const isUnitModel = values.pricingModel === 'UNIT';
                 try {
                     await updateTrip({
                         id: trip.id,
                         payload: {
                             pricingModel: values.pricingModel,
                             defaultCurrency: values.defaultCurrency,
-                            basePrice: values.basePrice || undefined,
-                            wholeUnitType:
-                                values.pricingModel === 'UNIT' &&
-                                values.wholeUnitType
-                                    ? values.wholeUnitType
-                                    : undefined,
-                            unitIncludedGuests:
-                                values.pricingModel === 'UNIT' &&
-                                values.unitIncludedGuests
-                                    ? Number(values.unitIncludedGuests)
-                                    : undefined,
-                            extraPersonPrice:
-                                values.pricingModel === 'UNIT' &&
-                                values.extraPersonPrice
-                                    ? values.extraPersonPrice
-                                    : undefined,
+                            // null, not undefined - an undefined key never
+                            // reaches the column, so clearing the optional
+                            // per-person base price reported success and left
+                            // the old figure on the card. The three unit
+                            // fields are nulled outright on a per-person tour;
+                            // the backend does the same, and agreeing with it
+                            // beats leaving stale charter data behind.
+                            basePrice: blankToNull(values.basePrice),
+                            wholeUnitType: isUnitModel
+                                ? values.wholeUnitType || null
+                                : null,
+                            unitIncludedGuests: isUnitModel
+                                ? numberOrNull(values.unitIncludedGuests)
+                                : null,
+                            extraPersonPrice: isUnitModel
+                                ? blankToNull(values.extraPersonPrice)
+                                : null,
                         },
                     });
                     ok = true;

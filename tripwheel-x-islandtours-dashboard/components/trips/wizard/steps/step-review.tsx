@@ -69,6 +69,7 @@ import {
 } from '@/lib/trips/readiness';
 import {
     isStepComplete,
+    TAB_TO_SECTION,
     TAB_TO_STEP,
     type WizardStepId,
 } from '@/lib/trips/wizard-steps';
@@ -87,7 +88,7 @@ interface StepReviewProps {
 }
 
 export function StepReview({ trip }: StepReviewProps) {
-    const { goTo } = useWizard();
+    const { goTo, revealSection } = useWizard();
     const { can, role } = useRole();
     const reduceMotion = useReducedMotion();
 
@@ -133,6 +134,29 @@ export function StepReview({ trip }: StepReviewProps) {
     // readiness chips and bookmarks use.
     const stepFor = (check: ReadinessCheck): WizardStepId =>
         TAB_TO_STEP[check.tab] ?? 'review';
+
+    /**
+     * "Fix this" has to land on the FIELD, not merely on the screen that
+     * contains it.
+     *
+     * A step is a stack of eight or nine collapsed rows, so arriving with the
+     * offending one folded away is the same dead end as arriving on the wrong
+     * step: the operator is told what is wrong, taken somewhere, and still has
+     * to hunt. `TAB_TO_SECTION` already names the section that owns each
+     * legacy tab's fields - the deep-link path uses it for exactly this - so
+     * reuse it and open the section BEFORE navigating. Accordion state is held
+     * by the provider and keyed by step, so it survives the step change and
+     * the section is already open when the step mounts.
+     *
+     * Not every check has a section: the media step is one job with no
+     * collapsibles, so `images`/`hero` just navigate.
+     */
+    const fix = (check: ReadinessCheck) => {
+        const target = stepFor(check);
+        const section = TAB_TO_SECTION[check.tab];
+        if (section) revealSection(`${target}:${section}`);
+        goTo(target);
+    };
 
     return (
         <>
@@ -231,7 +255,7 @@ export function StepReview({ trip }: StepReviewProps) {
                                 key={check.key}
                                 check={check}
                                 index={i}
-                                onFix={() => goTo(stepFor(check))}
+                                onFix={() => fix(check)}
                             />
                         ))}
                     </ul>
@@ -246,7 +270,7 @@ export function StepReview({ trip }: StepReviewProps) {
                                     key={check.key}
                                     check={check}
                                     index={publishChecks.length + i}
-                                    onFix={() => goTo(stepFor(check))}
+                                    onFix={() => fix(check)}
                                 />
                             ))}
                         </ul>
@@ -427,6 +451,17 @@ export function StepReview({ trip }: StepReviewProps) {
                                 <p className='text-xs font-medium text-warning-fg'>
                                     In review by Island Tours - you will see the
                                     verdict here.
+                                </p>
+                            ) : trip.approvalStatus === 'APPROVED' ? (
+                                // A tour sits DRAFT+APPROVED between an admin
+                                // approving it and an admin publishing it -
+                                // two separate actions, and publishing is
+                                // MANAGE_TRIPS-only. The operator used to see
+                                // an enabled "Submit for review" here, which
+                                // `submitForReview` answers with a 409.
+                                <p className='text-xs font-medium text-success-fg'>
+                                    Approved - Island Tours will publish it
+                                    shortly.
                                 </p>
                             ) : (
                                 <>

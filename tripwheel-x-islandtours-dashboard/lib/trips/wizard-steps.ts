@@ -170,6 +170,9 @@ export const TAB_TO_STEP: Record<string, WizardStepId> = {
  */
 export const TAB_TO_SECTION: Record<string, string> = {
     details: 'group-size',
+    // The base price and the pricing model share the "How you charge" section,
+    // which is what the `price` readiness check sends an operator to.
+    pricing: 'model',
     schedules: 'weekly',
     copy: 'overview',
     translations: 'overview',
@@ -230,11 +233,15 @@ const CHECK_STEP: Record<string, WizardStepId> = {
  * soon as the draft exists, because there is nothing on it that must be filled.
  *
  * The hand-written predicates this replaced invented requirements the platform
- * does not have. `rules` demanded `maxPartySize`, which is OPTIONAL - the
- * capacity check has always accepted per-schedule overrides instead
- * (`maxPartySize != null || isBookable`), so a live, fully bookable tour sat
- * on step 3 with a hollow circle forever. `location` demanded meeting-point
- * coordinates, which nothing requires at all.
+ * does not have. `rules` demanded a `maxPartySize` that was nullable at the
+ * time, and the capacity check it was meant to mirror accepted per-schedule
+ * overrides instead (`maxPartySize != null || isBookable`) - so a live, fully
+ * bookable tour sat on step 3 with a hollow circle forever. `location`
+ * demanded meeting-point coordinates, which nothing requires at all.
+ *
+ * `maxPartySize` is NOT NULL as of `20260729190000` and the capacity check is
+ * gone entirely, so `rules` owns no checks now: it is complete as soon as the
+ * draft exists, which is true - the column always holds a usable number.
  */
 export function isStepComplete(
     step: WizardStepId,
