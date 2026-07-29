@@ -349,7 +349,13 @@ export function StartTimesSection({
 
 interface RecurringSchedulesSectionProps {
     tripId: string;
-    maxPartySize: number | null;
+    /**
+     * The tour-level default every schedule without an override falls back on.
+     * NOT NULL since `20260729190000` - so a capacity override is always
+     * genuinely optional here, and the "this tour has no default, enter one"
+     * warning and required marker that used to live on this form are gone.
+     */
+    maxPartySize: number;
     declaredStartTimes: string[];
     /** Drop the Card chrome - the wizard supplies its own section header. */
     bare?: boolean;
@@ -406,15 +412,6 @@ export function RecurringSchedulesSection({
         schedulesByWeekday.has(w.value)
     );
     const totalSchedules = schedules?.length ?? 0;
-
-    // With no tour-level Max Party Size, a schedule has no default capacity to fall
-    // back on, so a capacity override is mandatory - otherwise the backend skips
-    // the slot and the tour never lists. Surface this instead of failing silently.
-    const capacityRequired = maxPartySize == null;
-    // Existing schedules that would produce zero departures (no override + no default).
-    const uncapacitatedCount = capacityRequired
-        ? (schedules ?? []).filter(s => s.capacityOverride == null).length
-        : 0;
 
     // The tour's declared start times, de-duped and sorted. When present, the form
     // constrains the picker to these so a slot can never be rejected on save.
@@ -483,10 +480,6 @@ export function RecurringSchedulesSection({
             next.capacity =
                 'Capacity override must be a whole number of at least 1.';
         }
-        if (cap === undefined && capacityRequired) {
-            next.capacity =
-                'Required - this tour has no maximum group size. Enter a capacity, or set one on the Booking rules step first.';
-        }
         if (Object.keys(next).length > 0) {
             setErrors(next);
             return;
@@ -522,28 +515,6 @@ export function RecurringSchedulesSection({
 
     const body = (
         <div className='space-y-4'>
-            {capacityRequired && (
-                <div className='flex gap-2.5 bg-warning-subtle border border-warning-border px-3 py-2.5'>
-                    <HugeiconsIcon
-                        icon={Alert02Icon}
-                        className='size-4 shrink-0 text-warning-fg mt-0.5'
-                    />
-                    <div className='text-sm text-warning-fg'>
-                        <p className='font-medium'>
-                            This tour has no Max Party Size set.
-                        </p>
-                        <p className='mt-0.5'>
-                            Each schedule needs its own capacity override, or it
-                            will not create any bookable departures and the tour
-                            will not list. Set a Max Party Size on the Details
-                            tab to use as the shared default
-                            {uncapacitatedCount > 0
-                                ? ` - ${uncapacitatedCount} existing schedule(s) currently have no capacity and produce no departures.`
-                                : '.'}
-                        </p>
-                    </div>
-                </div>
-            )}
             {isLoading ? (
                 <div className='space-y-2'>
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -767,14 +738,7 @@ export function RecurringSchedulesSection({
                 </Field>
 
                 <Field>
-                    <Label>
-                        Capacity {capacityRequired ? '' : 'override '}
-                        {capacityRequired ? (
-                            <span className='text-destructive'>*</span>
-                        ) : (
-                            '(optional)'
-                        )}
-                    </Label>
+                    <Label>Capacity override (optional)</Label>
                     <Input
                         type='number'
                         min={1}
@@ -783,11 +747,7 @@ export function RecurringSchedulesSection({
                             setCapacity(e.target.value);
                             clearError('capacity');
                         }}
-                        placeholder={
-                            capacityRequired
-                                ? 'Required - this tour has no Max Party Size default'
-                                : "Leave blank to use the tour's max party size"
-                        }
+                        placeholder={`Leave blank for ${maxPartySize} seats`}
                         aria-invalid={!!errors.capacity}
                         className='max-w-xs'
                     />

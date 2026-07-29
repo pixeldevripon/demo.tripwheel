@@ -45,8 +45,8 @@ interface TripAvailabilityCalendarProps {
     tripId: string;
     /** Tour-local IANA zone - "today"/"past" must follow the ISLAND's clock. */
     timeZone: string;
-    /** Tour default capacity; null = ADD_SLOT needs an explicit capacity. */
-    maxPartySize: number | null;
+    /** Tour default capacity - NOT NULL, so ADD_SLOT can always omit one. */
+    maxPartySize: number;
     /** The tour's declared start times - offered as one-tap chips when adding
       an extra departure (typing stays possible for a brand-new time). */
     declaredStartTimes: string[];
@@ -255,7 +255,7 @@ interface DayCellProps {
     isToday: boolean;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    maxPartySize: number | null;
+    maxPartySize: number;
     declaredStartTimes: string[];
 }
 
@@ -416,7 +416,7 @@ type PanelState =
 interface DayPopoverProps {
     tripId: string;
     day: ManageCalendarDay;
-    maxPartySize: number | null;
+    maxPartySize: number;
     declaredStartTimes: string[];
     onClose: () => void;
 }
@@ -532,10 +532,6 @@ function DayPopover({
         if (panel.kind === 'add-slot') {
             if (!HHMM.test(timeDraft.trim())) {
                 setError('Time must be HH:MM, e.g. 14:30.');
-                return;
-            }
-            if (cap === undefined && maxPartySize == null) {
-                setError('This tour has no Max Party Size - enter a capacity.');
                 return;
             }
             // A 0-seat extra departure would materialize permanently sold out.
@@ -790,11 +786,7 @@ function DayPopover({
                                         }
                                         type='number'
                                         min={1}
-                                        placeholder={
-                                            maxPartySize != null
-                                                ? `Seats (${maxPartySize})`
-                                                : 'Seats'
-                                        }
+                                        placeholder={`Seats (${maxPartySize})`}
                                         className='h-8 flex-1 text-xs'
                                     />
                                 </div>

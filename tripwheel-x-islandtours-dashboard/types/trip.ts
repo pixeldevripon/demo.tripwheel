@@ -520,6 +520,22 @@ export interface CreateTripPayload {
   breadcrumbLabel?: string;
 }
 
+/**
+ * PATCH /tours/:id.
+ *
+ * `undefined` and `null` mean DIFFERENT things here, and the difference is the
+ * whole contract: the backend writes each column behind a
+ * `dto.x !== undefined` guard, and `JSON.stringify` drops undefined keys from
+ * the body outright. So an omitted key preserves the stored value and an
+ * explicit `null` clears it.
+ *
+ * Every nullable column is therefore typed `| null`. They were typed without
+ * it, which quietly forced every wizard step to express "the operator emptied
+ * this box" as `undefined` - the one value that means "leave it alone" - so
+ * clearing a duration, a meeting point or a minimum age reported success and
+ * changed nothing. Use `blankToNull` / `numberOrNull` from
+ * `lib/trips/update-payload.ts` rather than hand-rolling the conversion.
+ */
 export interface UpdateTripPayload {
   name?: string;
   // Renaming the slug issues a 301 redirect + 90-day cooldown (backend handles it).
@@ -528,13 +544,13 @@ export interface UpdateTripPayload {
   primaryCategoryId?: string;
   hubIds?: string[];
   pricingModel?: PricingModel;
-  wholeUnitType?: WholeUnitType;
+  wholeUnitType?: WholeUnitType | null;
   defaultCurrency?: Currency;
-  basePrice?: string;
-  unitIncludedGuests?: number;
-  extraPersonPrice?: string;
-  durationMinutesFrom?: number;
-  durationMinutesTo?: number;
+  basePrice?: string | null;
+  unitIncludedGuests?: number | null;
+  extraPersonPrice?: string | null;
+  durationMinutesFrom?: number | null;
+  durationMinutesTo?: number | null;
   pickupModel?: PickupModel;
   pickupRequired?: boolean;
   maxPartySize?: number;
@@ -544,7 +560,7 @@ export interface UpdateTripPayload {
   paymentModel?: PaymentModel;
   onArrivalPayment?: OnArrivalPayment;
   instantConfirmation?: boolean;
-  bookingType?: TourBookingType;
+  bookingType?: TourBookingType | null;
   // OCTO product attributes (master E.3 §1.4)
   timeZone?: string;
   availabilityType?: OctoAvailabilityType;
@@ -555,11 +571,11 @@ export interface UpdateTripPayload {
   deliveryMethods?: DeliveryMethod[];
   redemptionMethod?: RedemptionMethod;
   startTimes?: string[];
-  meetingPointLat?: number;
-  meetingPointLng?: number;
-  departureCity?: string;
-  minAgeYears?: number;
-  fitnessLevel?: FitnessLevel;
+  meetingPointLat?: number | null;
+  meetingPointLng?: number | null;
+  departureCity?: string | null;
+  minAgeYears?: number | null;
+  fitnessLevel?: FitnessLevel | null;
   weatherDependent?: boolean;
   wheelchairAccessible?: boolean;
   familyFriendly?: boolean;
@@ -567,7 +583,7 @@ export interface UpdateTripPayload {
   isLocalsFavourite?: boolean;
   // Manual demand-badge override (null = use the computed daily signal)
   likelyToSellOutOverride?: boolean | null;
-  checkInMinutesBefore?: number;
+  checkInMinutesBefore?: number | null;
   reference?: string | null;
   ogImage?: string | null;
   h1Override?: string | null;
