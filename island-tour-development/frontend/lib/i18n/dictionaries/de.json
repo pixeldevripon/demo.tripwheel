@@ -9,8 +9,8 @@
         "language": "Sprache",
         "categories": "Kategorien",
         "search": "Suchen",
-        "myBookings": "Meine Buchungen",
-        "myAccount": "Mein Konto"
+        "myBookings": "Buchungen",
+        "myAccount": "Konten"
     },
     "footer": {
         "tagline": "Von Inselbewohnern gemacht.",

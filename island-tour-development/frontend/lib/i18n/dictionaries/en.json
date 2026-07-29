@@ -9,8 +9,8 @@
         "language": "Language",
         "categories": "Categories",
         "search": "Search for",
-        "myBookings": "My bookings",
-        "myAccount": "My account"
+        "myBookings": "Bookings",
+        "myAccount": "Accounts"
     },
     "footer": {
         "tagline": "Built by Islanders.",

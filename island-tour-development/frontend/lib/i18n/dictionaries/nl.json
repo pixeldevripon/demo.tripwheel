@@ -9,8 +9,8 @@
         "language": "Taal",
         "categories": "Categorieën",
         "search": "Zoeken naar",
-        "myBookings": "Mijn boekingen",
-        "myAccount": "Mijn account"
+        "myBookings": "Boekingen",
+        "myAccount": "Accounts"
     },
     "footer": {
         "tagline": "Gemaakt door eilandbewoners.",

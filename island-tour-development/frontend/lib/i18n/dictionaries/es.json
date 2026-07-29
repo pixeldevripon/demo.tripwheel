@@ -9,8 +9,8 @@
         "language": "Idioma",
         "categories": "Categorías",
         "search": "Buscar",
-        "myBookings": "Mis reservas",
-        "myAccount": "Mi cuenta"
+        "myBookings": "Reservas",
+        "myAccount": "Cuentas"
     },
     "footer": {
         "tagline": "Hecho por isleños.",
