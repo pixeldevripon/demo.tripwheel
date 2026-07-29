@@ -1,6 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Loading03Icon } from '@hugeicons/core-free-icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +65,15 @@ export function ConfirmDialog({
               onConfirm();
             }}
           >
+            {/* The dialog stays open for the whole request (see above), so
+                without this the confirm button just greys out and the user is
+                left guessing whether their click registered. */}
+            {loading && (
+              <HugeiconsIcon
+                icon={Loading03Icon}
+                className="size-4 animate-spin"
+              />
+            )}
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

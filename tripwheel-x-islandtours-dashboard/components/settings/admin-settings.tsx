@@ -1,6 +1,7 @@
 'use client';
 
 import { EntityTabs } from '@/components/common/entity-tabs';
+import { CalendarFeedsForm } from './calendar-feeds-form';
 import { CustomScriptsForm } from './custom-scripts-form';
 import { InstagramForm } from './instagram-form';
 import { IntegrationsForm } from './integrations-form';
@@ -47,53 +48,75 @@ import { SocialMediaForm } from './social-media-form';
  * is the one surface here that executes ARBITRARY THIRD-PARTY CODE on every
  * page including checkout, and a thing you audit should not be a card you have
  * to scroll to find.
+ *
+ * `calendar` is the one tab here that is NOT platform-wide: an admin holds
+ * MANAGE_AVAILABILITY and (per CLAUDE.md rule 19) is auto-provisioned an
+ * operator record, so the feeds it mints are that admin's OWN operator's, not
+ * every operator's. It is here rather than only on the operator page because
+ * ADMIN is a strict superset (rule 3) and this branch renders INSTEAD of
+ * `OperatorSettings`, so leaving it out hid the feature from admins entirely.
+ * It sits last: it is the least platform-shaped thing on the page.
  */
 export function AdminSettings() {
-  return (
-    <EntityTabs
-      basePath="/settings"
-      aliases={{
-        general: 'site',
-        social: 'site',
-        company: 'site',
-        'legal-entity': 'site',
-        account: 'site',
-      }}
-      tabs={[
-        {
-          value: 'site',
-          label: 'Site',
-          content: (
-            <div className="space-y-6">
-              <SiteInfoForm />
-              <SocialMediaForm />
-            </div>
-          ),
-        },
-        { value: 'seo', label: 'SEO', content: <SeoForm /> },
-        {
-          value: 'scripts',
-          label: 'Scripts',
-          content: <CustomScriptsForm />,
-        },
-        { value: 'instagram', label: 'Instagram', content: <InstagramForm /> },
-        { value: 'payments', label: 'Payments', content: <PaymentsForm /> },
-        {
-          value: 'integrations',
-          label: 'Integrations',
-          content: <IntegrationsForm />,
-        },
-        {
-          value: 'reviews',
-          label: 'Reviews',
-          content: (
-            <div className="space-y-6">
-              <ReviewRequestsForm />
-              <ReviewsForm />
-            </div>
-          ),
-        },
-      ]}
-    />
-  );
+    return (
+        <EntityTabs
+            basePath='/settings'
+            aliases={{
+                general: 'site',
+                social: 'site',
+                company: 'site',
+                'legal-entity': 'site',
+                account: 'site',
+            }}
+            tabs={[
+                {
+                    value: 'site',
+                    label: 'Site',
+                    content: (
+                        <div className='space-y-6'>
+                            <SiteInfoForm />
+                            <SocialMediaForm />
+                        </div>
+                    ),
+                },
+                { value: 'seo', label: 'SEO', content: <SeoForm /> },
+                {
+                    value: 'scripts',
+                    label: 'Scripts',
+                    content: <CustomScriptsForm />,
+                },
+                {
+                    value: 'instagram',
+                    label: 'Instagram',
+                    content: <InstagramForm />,
+                },
+                {
+                    value: 'payments',
+                    label: 'Payments',
+                    content: <PaymentsForm />,
+                },
+                {
+                    value: 'integrations',
+                    label: 'Integrations',
+                    content: <IntegrationsForm />,
+                },
+                {
+                    value: 'reviews',
+                    label: 'Reviews',
+                    content: (
+                        <div className='space-y-6'>
+                            <ReviewRequestsForm />
+                            <ReviewsForm />
+                        </div>
+                    ),
+                },
+                {
+                    value: 'calendar',
+                    label: 'iCal sync',
+                    content: <CalendarFeedsForm />,
+                },
+            ]}
+        />
+    );
 }
+

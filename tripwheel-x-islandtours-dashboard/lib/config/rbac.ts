@@ -8,6 +8,8 @@ export const Permission = {
   MANAGE_TRIPS: 'MANAGE_TRIPS',
   // Editorial curation (Locals' favourite etc.) — admin-only, never operators.
   MANAGE_EDITORIAL: 'MANAGE_EDITORIAL',
+  // Schedules, exceptions, departures - and the calendar export feeds built on them.
+  MANAGE_AVAILABILITY: 'MANAGE_AVAILABILITY',
   MANAGE_OPERATORS: 'MANAGE_OPERATORS',
   CREATE_CONTENT: 'CREATE_CONTENT',
   VIEW_CONTENT: 'VIEW_CONTENT',
@@ -160,6 +162,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'MANAGE_SYSTEM',
     'MANAGE_TRIPS',
     'MANAGE_EDITORIAL',
+    'MANAGE_AVAILABILITY',
     'CREATE_CONTENT',
     'VIEW_CONTENT',
     'EDIT_CONTENT',
@@ -371,6 +374,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'EDIT_PROFILE',
     // Conflict #1: NO MANAGE_TRIPS - publishing is always Island Tours'.
     // Operators submit-for-review + pause/archive via EDIT_TRIP routes.
+    'MANAGE_AVAILABILITY',
     'VIEW_CATEGORIES',
   ],
 
