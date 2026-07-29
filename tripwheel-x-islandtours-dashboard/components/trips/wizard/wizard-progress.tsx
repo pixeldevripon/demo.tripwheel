@@ -18,7 +18,7 @@
  * where the opaque circle covers it. That is what makes the line meet the
  * circle instead of floating short of it.
  *
- * The completeness state reads from `WizardStepDef.isComplete`, derived from
+ * The completeness state comes from `isStepComplete()`, derived from
  * the same trip fields as `lib/trips/readiness.ts` - a step can never look
  * finished here while failing its publish check on the review step. Signal
  * only; nothing on this rail blocks anything.
@@ -29,9 +29,11 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { springPop } from '@/lib/motion';
+import { useTripTranslationByLocale } from '@/hooks/trips/use-trips';
 import {
     WIZARD_STEPS,
     getStepIndex,
+    isStepComplete,
     type WizardStepId,
 } from '@/lib/trips/wizard-steps';
 import { cn } from '@/lib/utils';
@@ -68,6 +70,14 @@ interface WizardProgressProps {
 export function WizardProgress({ trip }: WizardProgressProps) {
     const { step, visited, goTo, canNavigateTo } = useWizard();
     const reduceMotion = useReducedMotion();
+    // The overview is a publish check but lives on the translation record, not
+    // the tour. Cached by the description and review steps, so this is a read,
+    // not a fetch.
+    const { data: enTranslation } = useTripTranslationByLocale(
+        trip?.id ?? '',
+        'en',
+    );
+    const hasEnOverview = !!enTranslation?.overview?.trim();
 
     const activeIndex = getStepIndex(step);
     const total = WIZARD_STEPS.length;
@@ -75,7 +85,7 @@ export function WizardProgress({ trip }: WizardProgressProps) {
     function stateFor(id: WizardStepId, index: number): StepState {
         if (id === step) return 'current';
         if (!canNavigateTo(id)) return 'locked';
-        if (trip && WIZARD_STEPS[index].isComplete?.(trip)) return 'complete';
+        if (trip && isStepComplete(id, trip, hasEnOverview)) return 'complete';
         return 'incomplete';
     }
 

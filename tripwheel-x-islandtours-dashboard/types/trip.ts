@@ -81,7 +81,8 @@ export interface TripListItem {
   // Pickup / party / booking window
   pickupModel: PickupModel;
   pickupRequired: boolean;
-  maxPartySize: number | null;
+  /** Required: also the default capacity every departure falls back on. */
+  maxPartySize: number;
   minPartySize: number;
   bookingCutoffMinutes: number;
   cancellationHours: number;

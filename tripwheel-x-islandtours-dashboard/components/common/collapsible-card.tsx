@@ -124,9 +124,15 @@ export function CollapsibleCard({
                         `compact={false}`, which was landing these on the 16px
                         card-title size - a list row was rendering larger than
                         the section heading above it. */}
+                    {/* Open takes the primary colour, same rule as
+                        `WizardSection`: in a stack of rows the expanded one
+                        otherwise reads exactly like the collapsed ones around
+                        it. Colour only - the weight stays put so the row does
+                        not reflow as it opens. */}
                     <div
                         className={cn(
-                            'text-content',
+                            'transition-colors duration-fast',
+                            open ? 'text-primary' : 'text-content',
                             flat
                                 ? 'text-sm leading-snug font-normal'
                                 : compact

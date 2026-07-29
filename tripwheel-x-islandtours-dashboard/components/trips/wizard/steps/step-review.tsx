@@ -20,6 +20,7 @@
  */
 
 import {
+    Alert02Icon,
     Archive02Icon,
     ArrowRight01Icon,
     Cancel01Icon,
@@ -66,13 +67,20 @@ import {
     getPublishChecks,
     type ReadinessCheck,
 } from '@/lib/trips/readiness';
-import { TAB_TO_STEP, type WizardStepId } from '@/lib/trips/wizard-steps';
+import {
+    isStepComplete,
+    TAB_TO_STEP,
+    type WizardStepId,
+} from '@/lib/trips/wizard-steps';
 import { cn } from '@/lib/utils';
 import { TIER_META } from '@/types/tier';
 import type { TripListItem } from '@/types/trip';
 import { TripArchiveDialog } from '../../trip-archive-dialog';
 import { useWizard } from '../wizard-context';
 import { WizardStepBody, WizardStepHeader } from '../wizard-step';
+
+/** A summary line: a bare string is a fact, the object form marks a gap. */
+type SummaryLine = string | { text: string; missing?: boolean };
 
 interface StepReviewProps {
     trip: TripListItem;
@@ -115,6 +123,11 @@ export function StepReview({ trip }: StepReviewProps) {
     const isAdmin = role === 'ADMIN';
     const isDraft = trip.status === 'DRAFT';
     const statusMeta = TRIP_STATUS[trip.status];
+
+    // One definition of "done", shared with the progress rail - a row and a
+    // rail dot can never disagree about the same step.
+    const stepDone = (id: WizardStepId) =>
+        isStepComplete(id, trip, !!enTranslation?.overview?.trim());
 
     // `check.tab` is still the old tab id - route it through the same map the
     // readiness chips and bookmarks use.
@@ -244,6 +257,24 @@ export function StepReview({ trip }: StepReviewProps) {
                                 lists automatically once it does.
                             </p>
                         )}
+                        {/* The cliff. Both listing checks are present-tense -
+                            "are there departures NOW" - so a live tour whose
+                            recurring rules have all been deleted still shows
+                            green while it has departures left. It does: the
+                            materializer only retires UNBOOKED, unedited ones,
+                            so anything booked survives the rules that made it.
+                            Nothing generates more, so the tour drops out of
+                            listings the day the last one passes, silently. */}
+                        {trip.status === 'LIVE' &&
+                            trip.isBookable &&
+                            (schedules?.length ?? 0) === 0 && (
+                                <p className='mt-3 text-xs text-warning-fg'>
+                                    No recurring schedules. The departures still
+                                    on sale are the last ones - once they pass,
+                                    this tour stops appearing in listings. Add a
+                                    weekly rule to keep it selling.
+                                </p>
+                            )}
                     </div>
                 </section>
 
@@ -265,6 +296,7 @@ export function StepReview({ trip }: StepReviewProps) {
                         title='Basics'
                         step='basics'
                         onEdit={goTo}
+                        complete={stepDone('basics')}
                         lines={[
                             trip.name,
                             [
@@ -279,6 +311,7 @@ export function StepReview({ trip }: StepReviewProps) {
                         title='Pricing'
                         step='pricing'
                         onEdit={goTo}
+                        complete={stepDone('pricing')}
                         lines={[
                             `${trip.pricingModel === 'UNIT' ? `Per ${(trip.wholeUnitType ?? 'unit').toLowerCase()}` : 'Per person'} · ${trip.defaultCurrency}`,
                             (trip.priceFrom ?? trip.basePrice)
@@ -287,13 +320,14 @@ export function StepReview({ trip }: StepReviewProps) {
                                       trip.defaultCurrency,
                                       'en'
                                   )}`
-                                : 'No price set',
+                                : { text: 'No price set', missing: true },
                         ]}
                     />
                     <SummaryCard
                         title='Booking rules'
                         step='rules'
                         onEdit={goTo}
+                        complete={stepDone('rules')}
                         lines={[
                             trip.maxPartySize
                                 ? `${trip.minPartySize} to ${trip.maxPartySize} guests`
@@ -305,17 +339,21 @@ export function StepReview({ trip }: StepReviewProps) {
                         title='Schedule'
                         step='schedule'
                         onEdit={goTo}
+                        complete={stepDone('schedule')}
                         lines={[
                             trip.durationMinutesFrom
                                 ? `${trip.durationMinutesFrom} minutes`
-                                : 'No duration set',
-                            `${schedules?.length ?? 0} weekly rule${(schedules?.length ?? 0) === 1 ? '' : 's'}`,
+                                : { text: 'No duration set', missing: true },
+                            (schedules?.length ?? 0) === 0
+                                ? { text: 'No weekly rules', missing: true }
+                                : `${schedules?.length} weekly rule${schedules?.length === 1 ? '' : 's'}`,
                         ]}
                     />
                     <SummaryCard
                         title='Location'
                         step='location'
                         onEdit={goTo}
+                        complete={stepDone('location')}
                         lines={[
                             trip.departureCity ?? 'No departure city',
                             // The meeting point, in words. "Meeting point set"
@@ -331,30 +369,46 @@ export function StepReview({ trip }: StepReviewProps) {
                         title='Photos'
                         step='media'
                         onEdit={goTo}
+                        complete={stepDone('media')}
                         lines={[
-                            `${trip.imageCount ?? 0} photo${(trip.imageCount ?? 0) === 1 ? '' : 's'}`,
+                            (trip.imageCount ?? 0) < 5
+                                ? {
+                                      text: `${trip.imageCount ?? 0} photo${(trip.imageCount ?? 0) === 1 ? '' : 's'}`,
+                                      missing: true,
+                                  }
+                                : `${trip.imageCount} photos`,
                             trip.heroImage
                                 ? 'Cover photo chosen'
-                                : 'No cover photo',
+                                : { text: 'No cover photo', missing: true },
                         ]}
                     />
                     <SummaryCard
                         title='Description'
                         step='content'
                         onEdit={goTo}
+                        complete={stepDone('content')}
                         lines={[
                             // The overview ITSELF, not "Overview written".
                             // Readiness two blocks up already reports whether it
                             // exists; repeating that here spent a review row on
                             // a boolean the operator had just read.
-                            enTranslation?.overview?.trim() || 'No overview yet',
-                            `${trip.highlightCount ?? 0} highlight${(trip.highlightCount ?? 0) === 1 ? '' : 's'}`,
+                            enTranslation?.overview?.trim() || {
+                                text: 'No overview yet',
+                                missing: true,
+                            },
+                            (trip.highlightCount ?? 0) < 3
+                                ? {
+                                      text: `${trip.highlightCount ?? 0} of 3 highlights`,
+                                      missing: true,
+                                  }
+                                : `${trip.highlightCount} highlights`,
                         ]}
                     />
                     <SummaryCard
                         title='Reach'
                         step='reach'
                         onEdit={goTo}
+                        complete={stepDone('reach')}
                         lines={[
                             `${TIER_META[trip.tierKey].label} tier · ${trip.commissionTier}%`,
                             // "0 hubs" reads as a gap; hubs are optional.
@@ -643,7 +697,10 @@ function CheckRow({
                     size='sm'
                     variant='ghost'
                     onClick={onFix}
-                    className='ml-auto h-auto py-0.5 text-xs text-primary'>
+                    // Warning, not primary. An unmet check is the same
+                    // severity as the glyph beside it, and teal read as a
+                    // fifth navigation link in a column of them.
+                    className='ml-auto h-auto py-0.5 text-xs text-warning-fg'>
                     Fix this
                 </Button>
             )}
@@ -665,7 +722,11 @@ function CheckRow({
                             'size-4',
                             check.passed
                                 ? 'text-success-solid'
-                                : 'text-danger-fg'
+                                // Warning, not danger. A draft that is not
+                                // finished yet is INCOMPLETE, not broken -
+                                // red said something had gone wrong when the
+                                // operator had simply not got there yet.
+                                : 'text-warning-solid'
                         )}
                     />
                 </motion.span>
@@ -678,13 +739,28 @@ function SummaryCard({
     title,
     step,
     lines,
+    complete,
     onEdit,
 }: {
     title: string;
     step: WizardStepId;
-    lines: (string | null | undefined)[];
+    /**
+     * A plain string is a FACT. `{ text, missing: true }` is a gap.
+     *
+     * Tinting every secondary line whenever the step was incomplete painted
+     * "Free cancellation 48h before" amber on a row whose real problem was
+     * capacity - a set, valid value flagged as a fault. A line knows whether
+     * it is reporting something absent; the step does not.
+     */
+    lines: (SummaryLine | null | undefined)[];
+    /** No readiness check this step owns is failing. */
+    complete: boolean;
     onEdit: (step: WizardStepId) => void;
 }) {
+    const hasGap = lines.some(
+        l => typeof l === 'object' && l !== null && !!l.missing,
+    );
+
     return (
         // A ROW, not a card. Every other surface in the wizard shed its border,
         // ring and fill; eight bordered boxes here made Review look like a
@@ -720,19 +796,41 @@ function SummaryCard({
                 <span className='block text-xs font-medium text-content-muted'>
                     {title}
                 </span>
-                {lines.filter(Boolean).map((line, i) => (
-                    <span
-                        key={i}
-                        className={cn(
-                            'mt-0.5 block truncate text-sm',
-                            i === 0
-                                ? 'font-medium text-content'
-                                : 'text-content-muted'
-                        )}>
-                        {line}
-                    </span>
-                ))}
+                {lines.filter(Boolean).map((line, i) => {
+                    const text = typeof line === 'string' ? line : line!.text;
+                    const missing =
+                        typeof line === 'string' ? false : !!line!.missing;
+                    return (
+                        <span
+                            key={i}
+                            className={cn(
+                                'mt-0.5 block truncate text-sm',
+                                missing
+                                    ? 'text-warning-fg'
+                                    : i === 0
+                                      ? 'font-medium text-content'
+                                      : 'text-content-muted'
+                            )}>
+                            {text}
+                        </span>
+                    );
+                })}
             </span>
+            {/* Only the rows that NEED something speak. No tick: one on every
+                settled row put eight glyphs in a grid to report the absence of
+                news, and the three steps that own no readiness checks were
+                permanently green - a badge for having nothing to do.
+                
+                The warning fires on either signal: a failing readiness check
+                (`!complete`), OR a line that reports something absent. Keying
+                it to `complete` alone left rows with amber text and no glyph,
+                which read as the icon having gone missing. */}
+            {(!complete || hasGap) && (
+                <HugeiconsIcon
+                    icon={Alert02Icon}
+                    className='size-4 shrink-0 text-warning-solid'
+                />
+            )}
             <HugeiconsIcon
                 icon={ArrowRight01Icon}
                 className='size-4 shrink-0 text-content-subtle transition-colors duration-fast group-hover:text-content-muted'

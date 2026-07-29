@@ -37,6 +37,7 @@ import {
 } from '@/hooks/trips/use-trips';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import type { AddOnUnit, Currency, TourAddOn } from '@/types/trip';
 import { FieldGrid, SelectField } from '../wizard-fields';
 
@@ -264,7 +265,11 @@ function AddOnRow({
                         addOn.isActive ? 'bg-success-solid' : 'bg-content-subtle'
                     }`}
                 />
-                <span className='min-w-0 truncate text-sm font-medium text-content'>
+                <span
+                    className={cn(
+                        'min-w-0 truncate text-sm font-medium transition-colors duration-fast',
+                        editing ? 'text-primary' : 'text-content'
+                    )}>
                     {addOn.name}
                 </span>
                 {/* Text first, one muted chip after, dropped on narrow

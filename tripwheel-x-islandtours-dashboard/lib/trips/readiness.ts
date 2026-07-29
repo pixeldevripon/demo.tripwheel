@@ -68,8 +68,19 @@ export function getPublishChecks(
     ];
 }
 
+/**
+ * The capacity check is GONE (2026-07-29). It read "Capacity set (max party
+ * size or per-schedule override)" and could pass for two different reasons,
+ * which made it the most confusing line on the screen - and it pointed at two
+ * different steps depending on which reason applied.
+ *
+ * `maxPartySize` is NOT NULL as of the `20260729190000_max_party_size_required`
+ * migration, so capacity ALWAYS resolves: a departure takes its schedule's
+ * `capacityOverride`, else the tour's max. A check that can never fail is not a
+ * check.
+ */
 export function getListingChecks(
-    trip: Pick<TripListItem, 'isBookable' | 'maxPartySize'>,
+    trip: Pick<TripListItem, 'isBookable'>,
 ): ReadinessCheck[] {
     return [
         {
@@ -77,14 +88,6 @@ export function getListingChecks(
             label: 'Bookable departures in the next 30 days',
             passed: trip.isBookable,
             tab: 'schedules',
-        },
-        {
-            key: 'capacity',
-            label: 'Capacity set (max party size or per-schedule override)',
-            // A tour-level max party size guarantees capacity; without one,
-            // bookability itself proves the per-schedule overrides exist.
-            passed: trip.maxPartySize != null || trip.isBookable,
-            tab: trip.maxPartySize != null ? 'details' : 'schedules',
         },
     ];
 }

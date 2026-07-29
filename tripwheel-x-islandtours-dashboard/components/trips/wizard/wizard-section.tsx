@@ -130,14 +130,21 @@ export function WizardSection({
                     so the heading got heavier as you clicked it and the row
                     reflowed a hair. The chevron and the held tint already say
                     "open". */}
+                {/* An OPEN section takes the primary colour. Nine identical
+                    titles in a column gave the open one no more presence than
+                    the eight closed ones, so on a long step you lost track of
+                    which drawer you were inside. Colour only - the weight
+                    stays put, because shifting it on open reflows the row. */}
                 <span
                     className={cn(
                         'text-sm transition-colors duration-fast',
                         invalid
                             ? 'font-medium text-danger-fg'
-                            : muted
-                              ? 'font-normal text-content-muted'
-                              : 'font-medium text-content'
+                            : open
+                              ? 'font-medium text-primary'
+                              : muted
+                                ? 'font-normal text-content-muted'
+                                : 'font-medium text-content'
                     )}>
                     {title}
                 </span>

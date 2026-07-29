@@ -4,11 +4,17 @@
  * Step 3 - Capacity and booking rules (07 §3).
  *
  * Deliberately asked BEFORE the schedule step (07 §2.2 a). `maxPartySize` is
- * the default seat count every departure falls back on; when it is null each
- * schedule needs its own capacity override or the availability engine
- * materialises nothing and the tour silently never lists. The old editor asked
- * for schedules first and then apologised with a warning banner - answering in
- * dependency order removes the banner's reason to exist.
+ * the default seat count every departure falls back on, and it is REQUIRED - a
+ * schedule with no capacity override of its own takes this number, so every
+ * schedule an operator adds afterwards sells without further thought.
+ *
+ * It used to be nullable, and null meant the availability engine materialised
+ * nothing and the tour silently never listed. That was reported by a readiness
+ * check ("Capacity set (max party size or per-schedule override)") which could
+ * pass for two different reasons and pointed at two different steps - the most
+ * confusing line on the review screen. The column is NOT NULL as of
+ * `20260729190000_max_party_size_required`, so the failure mode and the check
+ * are both gone.
  *
  * Fields, schema rules and payload coercions are lifted from
  * `TripDetailsTab`; the body is rebuilt through `tripToUpdatePayload` so the
@@ -48,7 +54,14 @@ import {
 const rulesSchema = z
     .object({
     minPartySize: z.coerce.number().int().min(1),
-    maxPartySize: z.coerce.number().int().min(1).optional().or(z.literal('')),
+    // REQUIRED. It is the default capacity every departure falls back on, so a
+    // tour without one used to materialise nothing and never list - reported
+    // only by a readiness check that could pass two different ways. NOT NULL in
+    // the database since 20260729190000.
+    maxPartySize: z.coerce
+        .number({ message: 'Set a maximum number of guests' })
+        .int()
+        .min(1, 'At least 1 guest'),
     bookingType: z.enum(['PRIVATE', 'SHARED']).optional().or(z.literal('')),
     instantConfirmation: z.boolean(),
     bookingCutoffMinutes: z.coerce.number().int().min(0).max(10080),
@@ -228,9 +241,7 @@ export function StepRules({ trip }: StepRulesProps) {
                         payload: {
                             ...tripToUpdatePayload(trip),
                             minPartySize: Number(values.minPartySize),
-                            maxPartySize: values.maxPartySize
-                                ? Number(values.maxPartySize)
-                                : undefined,
+                            maxPartySize: Number(values.maxPartySize),
                             bookingType: values.bookingType || undefined,
                             instantConfirmation: values.instantConfirmation,
                             bookingCutoffMinutes: Number(
@@ -305,18 +316,23 @@ export function StepRules({ trip }: StepRulesProps) {
                                 </FieldError>
                             </Field>
                             <Field>
-                                <Label>Maximum guests</Label>
+                                <Label>
+                                    Maximum guests{' '}
+                                    <span aria-hidden className='text-danger-fg'>
+                                        *
+                                    </span>
+                                </Label>
                                 <Input
                                     {...register('maxPartySize')}
                                     type='number'
                                     min={1}
-                                    placeholder='Optional'
+                                    placeholder='e.g. 20'
                                     aria-invalid={!!errors.maxPartySize}
                                 />
                                 <ConsequenceText>
                                     {v.maxPartySize
                                         ? `Every departure opens with ${v.maxPartySize} seats unless a schedule overrides it.`
-                                        : 'Without a maximum, every schedule you add must carry its own capacity or it will not produce bookable departures.'}
+                                        : 'Sets the seats on every departure, so each schedule you add sells without needing its own capacity.'}
                                 </ConsequenceText>
                                 <FieldError>
                                     {errors.maxPartySize?.message}
