@@ -32,6 +32,7 @@ import {
 import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
 import { AvailabilityService } from '@/availability/availability.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
+import { MailService } from '@/mail/mail.service';
 import { ToursService } from './tours.service';
 
 // ── Mock factory ──────────────────────────────────────────────────────────────
@@ -159,6 +160,12 @@ describe('ToursService', () => {
     nextBookableDateByTour: jest.Mock;
   };
 
+  let mail: {
+    sendTourSubmittedForReviewEmail: jest.Mock;
+    sendTourChangesRequestedEmail: jest.Mock;
+    sendTourApprovedEmail: jest.Mock;
+  };
+
   beforeEach(async () => {
     prisma = createMockPrismaService();
     availability = {
@@ -168,11 +175,17 @@ describe('ToursService', () => {
       // opt IN to availability rather than inherit it.
       nextBookableDateByTour: jest.fn().mockResolvedValue(new Map()),
     };
+    mail = {
+      sendTourSubmittedForReviewEmail: jest.fn().mockResolvedValue(undefined),
+      sendTourChangesRequestedEmail: jest.fn().mockResolvedValue(undefined),
+      sendTourApprovedEmail: jest.fn().mockResolvedValue(undefined),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToursService,
         { provide: PrismaService, useValue: prisma },
         { provide: AvailabilityService, useValue: availability },
+        { provide: MailService, useValue: mail },
         {
           provide: FxRatesService,
           // No conversion in unit tests (no ?currency) -> money falls back to source.
@@ -1090,6 +1103,14 @@ describe('ToursService', () => {
 
   // ── Approval workflow (conflict #1: publishing is always Island Tours') ──
   describe('approval workflow', () => {
+    // Two tests below drive ADMIN_EMAIL in opposite directions; restore it so
+    // neither leaks into the rest of the file.
+    const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    afterEach(() => {
+      if (ORIGINAL_ADMIN_EMAIL === undefined) delete process.env.ADMIN_EMAIL;
+      else process.env.ADMIN_EMAIL = ORIGINAL_ADMIN_EMAIL;
+    });
+
     const ready = (over: Record<string, unknown> = {}) =>
       makeTour({
         images: [
@@ -1191,6 +1212,196 @@ describe('ToursService', () => {
       await expect(service.rejectTour('tour-1', 'admin', 'x')).rejects.toThrow(
         ConflictException,
       );
+    });
+
+    // ── Review-round-trip email (fire-and-forget) ────────────────────────────
+    //
+    // Both notifications load their OWN recipient with a second findUnique, so
+    // these tests queue that second resolution behind the guard read.
+
+    it('emails the reviewer mailbox on submit, and never blocks on it', async () => {
+      process.env.ADMIN_EMAIL = 'reviews@islandtours.test';
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(ready())
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          destination: { name: 'Curacao' },
+          operator: {
+            companyInfo: { companyName: 'Miss Ann Boat Trips' },
+            user: { name: 'Op Owner' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+
+      await service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR);
+      // Fire-and-forget: the promise chain settles after the method returns.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mail.sendTourSubmittedForReviewEmail).toHaveBeenCalledWith(
+        'reviews@islandtours.test',
+        expect.objectContaining({
+          tourName: 'Sunset Catamaran Cruise',
+          operatorName: 'Miss Ann Boat Trips',
+          destinationName: 'Curacao',
+        }),
+      );
+    });
+
+    it('submits successfully even with no reviewer mailbox configured', async () => {
+      delete process.env.ADMIN_EMAIL;
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(ready());
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+      );
+
+      await expect(
+        service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
+      ).resolves.toBeDefined();
+      expect(mail.sendTourSubmittedForReviewEmail).not.toHaveBeenCalled();
+    });
+
+    it('emails the operator the review note, preferring their contact address', async () => {
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(
+          makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+        )
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          operator: {
+            contactEmail: 'tours@missann.test',
+            user: { name: 'Op Owner', email: 'owner@missann.test' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.REJECTED }),
+      );
+
+      await service.rejectTour('tour-1', 'admin', '  Photos are blurry  ');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mail.sendTourChangesRequestedEmail).toHaveBeenCalledWith(
+        'tours@missann.test',
+        expect.objectContaining({
+          tourName: 'Sunset Catamaran Cruise',
+          note: 'Photos are blurry',
+          name: 'Op Owner',
+        }),
+      );
+    });
+
+    it('falls back to the owner login when the operator has no contact address', async () => {
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(
+          makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+        )
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          operator: {
+            contactEmail: null,
+            user: { name: 'Op Owner', email: 'owner@missann.test' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.REJECTED }),
+      );
+
+      await service.rejectTour('tour-1', 'admin', 'Photos are blurry');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mail.sendTourChangesRequestedEmail).toHaveBeenCalledWith(
+        'owner@missann.test',
+        expect.anything(),
+      );
+    });
+
+    it('emails the operator on approval, without claiming the tour is live', async () => {
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(
+          makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+        )
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          operator: {
+            contactEmail: 'tours@missann.test',
+            user: { name: 'Op Owner', email: 'owner@missann.test' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.APPROVED }),
+      );
+
+      await service.approveTour('tour-1', 'admin', '  Lovely photos  ');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mail.sendTourApprovedEmail).toHaveBeenCalledWith(
+        'tours@missann.test',
+        expect.objectContaining({
+          tourName: 'Sunset Catamaran Cruise',
+          note: 'Lovely photos',
+          name: 'Op Owner',
+        }),
+      );
+    });
+
+    it('approves without a note and sends none', async () => {
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(
+          makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+        )
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          operator: {
+            contactEmail: 'tours@missann.test',
+            user: { name: 'Op Owner', email: 'owner@missann.test' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.APPROVED }),
+      );
+
+      await service.approveTour('tour-1', 'admin');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mail.sendTourApprovedEmail).toHaveBeenCalledWith(
+        'tours@missann.test',
+        expect.objectContaining({ note: undefined }),
+      );
+    });
+
+    it('still records the verdict when the email throws', async () => {
+      mail.sendTourChangesRequestedEmail.mockRejectedValue(
+        new Error('Resend is down'),
+      );
+      prisma.tour.findUnique
+        .mockResolvedValueOnce(
+          makeTour({ approvalStatus: TourApprovalStatus.PENDING }),
+        )
+        .mockResolvedValueOnce({
+          name: 'Sunset Catamaran Cruise',
+          operator: {
+            contactEmail: 'tours@missann.test',
+            user: { name: 'Op Owner', email: 'owner@missann.test' },
+          },
+        });
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ approvalStatus: TourApprovalStatus.REJECTED }),
+      );
+
+      await expect(
+        service.rejectTour('tour-1', 'admin', 'Photos are blurry'),
+      ).resolves.toBeDefined();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(prisma.tour.update).toHaveBeenCalled();
     });
 
     it('publish blocks a non-admin on an unapproved tour', async () => {

@@ -16,6 +16,14 @@ export {
   hatAddedTemplate,
   type HatAddedTemplateProps,
 } from './hat-added.template';
+export {
+  tourApprovedTemplate,
+  tourChangesRequestedTemplate,
+  tourSubmittedForReviewTemplate,
+  type TourApprovedTemplateProps,
+  type TourChangesRequestedTemplateProps,
+  type TourSubmittedForReviewTemplateProps,
+} from './tour-review.template';
 
 // The booking confirmation is NOT a TS template function: it is the design-owned
 // `booking-confirmation-email.template.html` (master 6.5 + its locked wireframe),

@@ -16,6 +16,12 @@ import {
   passwordResetTemplate,
   staffInviteTemplate,
   type StaffInviteTemplateProps,
+  tourApprovedTemplate,
+  type TourApprovedTemplateProps,
+  tourChangesRequestedTemplate,
+  type TourChangesRequestedTemplateProps,
+  tourSubmittedForReviewTemplate,
+  type TourSubmittedForReviewTemplateProps,
 } from './templates';
 import {
   escapeHtml,
@@ -305,6 +311,72 @@ export class MailService {
     const siteLogoUrl = await this.getSiteLogo();
     const { html, text } = hatAddedTemplate({ ...params, siteLogoUrl });
     await this.sendMail({ to, subject: hatAddedSubject(params), html, text });
+  }
+
+  // ── Tour approval workflow (access-roles conflict #1) ────────────────────────
+
+  /**
+   * To Island Tours: an operator submitted a tour and it is sitting in the
+   * review queue. Operators cannot publish, so nothing moves until a human
+   * here looks - this is what stops that wait being indefinite.
+   */
+  async sendTourSubmittedForReviewEmail(
+    to: string,
+    params: Omit<TourSubmittedForReviewTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = tourSubmittedForReviewTemplate({
+      ...params,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: `Tour submitted for review: ${params.tourName}`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * To the operator: Island Tours approved the tour. Deliberately NOT "your
+   * tour is live" - publishing is a separate admin action, and sending an
+   * operator to look for a page that is still a draft creates the support
+   * ticket this email exists to prevent.
+   */
+  async sendTourApprovedEmail(
+    to: string,
+    params: Omit<TourApprovedTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = tourApprovedTemplate({ ...params, siteLogoUrl });
+    await this.sendMail({
+      to,
+      subject: `Approved: ${params.tourName}`,
+      html,
+      text,
+    });
+  }
+
+  /**
+   * To the operator: Island Tours wants changes before publishing. The admin's
+   * note is the reason this email exists - the dashboard shows it too, but
+   * only to someone who thinks to go and look.
+   */
+  async sendTourChangesRequestedEmail(
+    to: string,
+    params: Omit<TourChangesRequestedTemplateProps, 'siteLogoUrl'>,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = tourChangesRequestedTemplate({
+      ...params,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      subject: `Changes requested: ${params.tourName}`,
+      html,
+      text,
+    });
   }
 
   // ── Email verification ────────────────────────────────────────────────────────

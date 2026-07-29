@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Island Tours · Operator Portal · Availability (best-of-both handoff)</title>
+<style>
+  :root{
+    --bg:#eef0f6; --card:#fff; --line:#e6e9f1; --line2:#d8dde9;
+    --ink:#101828; --ink2:#404a5c; --ink3:#69718a; --faint:#9aa1b5;
+    --teal:#0e7c86; --teal-dark:#0b6570; --teal-tint:#e7f3f4; --teal-line:#a3d1d6;
+    --violet:#6941c6; --green:#067647; --green-bg:#e9f9ef; --green-line:#b3e6c4;
+    --red:#b42318; --red-line:#f2c1bd;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  select,input{font:inherit;color:var(--ink)}
+  .wrap{max-width:860px;margin:0 auto;padding:24px 20px 90px}
+
+  /* top nav: the portal's two homes for availability */
+  .topNav{position:sticky;top:0;z-index:40;background:#fff;border-bottom:1px solid var(--line)}
+  .topNav .in{max-width:860px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .topNav .brand{font-weight:800;font-size:14px}
+  .topNav .brand span{color:var(--faint);font-weight:500}
+  .navPills{display:flex;background:#e9ecf3;border-radius:11px;padding:3px;gap:2px}
+  .navPills button{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:650;color:var(--ink3)}
+  .navPills button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.08)}
+
+  /* header, dev style */
+  .head h1{font-size:24px;font-weight:800;letter-spacing:-.01em}
+  .head h1 select{border:none;background:transparent;font-size:24px;font-weight:800;letter-spacing:-.01em;max-width:100%;padding:0}
+  .head .sub{color:var(--ink3);font-size:13px;margin-top:2px}
+  .headRow{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .headRow .grow{flex:1;min-width:240px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-weight:600;font-size:13px;border:1px solid var(--line2);background:#fff;color:var(--ink)}
+  .btn:hover{border-color:var(--faint)}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn.primary:hover{background:var(--teal-dark)}
+  .btn.sm{padding:5px 11px;font-size:12.5px;border-radius:8px}
+  .btn.dark{background:#101f2e;border-color:#101f2e;color:#fff}
+  .btn.dark:hover{background:#1c3040}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .live{display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);border:1px solid var(--green-line);color:var(--green);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:650;margin-top:8px}
+  .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+  /* publish readiness, dev style */
+  .ready{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin:18px 0}
+  .ready .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .ready .top b{font-size:14px}
+  .ready .count{background:var(--green-bg);color:var(--green);border:1px solid var(--green-line);border-radius:999px;font-size:12px;font-weight:700;padding:1px 9px}
+  .ready .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .ready .chips span{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--ink2);background:#fbfcfe}
+  .ready .chips span::before{content:"✓";color:var(--green);font-weight:700;font-size:11px}
+
+  /* tabs, dev style */
+  .segTrack{display:inline-flex;background:#e2e6ef;border-radius:12px;padding:3px;gap:2px;margin:6px 0 14px}
+  .segTrack span{padding:7px 18px;border-radius:9px;font-size:13.5px;font-weight:650;color:var(--ink3)}
+  .segTrack span.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(16,24,40,.08)}
+  .subTabs{display:flex;gap:2px;border-bottom:2px solid var(--line);margin-bottom:6px}
+  .subTabs span{padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink3);border-bottom:2px solid transparent;margin-bottom:-2px}
+  .subTabs span.on{color:var(--ink);border-color:var(--ink)}
+  .localTime{font-size:12px;color:var(--faint);margin:8px 0 16px}
+
+  /* cards */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+  .card h2{font-size:16px;font-weight:750}
+  .card .cardSub{color:var(--ink3);font-size:12.5px;margin:3px 0 14px}
+
+  /* weekly schedule */
+  .ruleRow{display:flex;align-items:center;gap:16px;padding:13px 2px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .ruleRow:first-of-type{border-top:none}
+  .ruleRow .time{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;min-width:58px}
+  .ruleRow.paused .time,.ruleRow.paused .meta{color:var(--faint)}
+  .days{display:flex;gap:4px}
+  .days button{width:29px;height:29px;border-radius:8px;border:1px solid var(--line2);font-size:11.5px;font-weight:700;color:var(--ink2);background:#fff}
+  .days button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+  .ruleRow .meta{font-size:12.5px;color:var(--ink3);flex:1;min-width:170px}
+  .gap{font-size:12.5px;color:var(--faint);border-top:1px dashed var(--line);padding:9px 2px 0;margin-top:2px}
+  .addRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;display:none}
+  .addRow.on{display:flex}
+  .addRow select{border:1px solid var(--line2);border-radius:8px;padding:6px 9px}
+  .ttNote{font-size:12px;color:var(--faint);margin-top:12px}
+
+  /* calendar */
+  .calHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .calHead h2{margin-right:2px}
+  .calNav button{width:29px;height:29px;border:1px solid var(--line2);border-radius:8px;color:var(--ink2)}
+  .legend{margin-left:auto;display:flex;gap:12px;font-size:11.5px;color:var(--ink3);align-items:center;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .l-open i{border:2px solid var(--teal-line)} .l-sold i{background:var(--violet)} .l-closed i{background:#e2e6ee}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}
+  .dow{font-size:10.5px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;padding:0 5px 4px}
+  .cell{border:1px solid var(--line);border-radius:11px;min-height:78px;padding:6px;background:#fff;text-align:left;display:flex;flex-direction:column;gap:3px}
+  .cell:hover{border-color:var(--teal-line)}
+  .cell .d{font-size:11.5px;font-weight:700;color:var(--ink2)}
+  .cell.other .d{color:#c2c8d6;font-weight:500}
+  .cell.other{border-color:transparent;background:transparent}
+  .cell.other:hover{border-color:var(--line)}
+  .cell.past{opacity:.45}
+  .cell.today .d{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--teal);color:#fff;margin:-1px 0 0 -2px}
+  .cell.sel{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-tint)}
+  .cell.dayClosed{background:#f5f6f9}
+  .pill{display:inline-flex;gap:4px;border-radius:7px;padding:1px 6px;font-size:10.5px;font-weight:650;border:1.5px solid transparent;white-space:nowrap;align-self:flex-start}
+  .pill b{font-variant-numeric:tabular-nums;font-weight:650}
+  .pill.open{border-color:var(--teal-line);color:var(--teal-dark)}
+  .pill.sold{background:var(--violet);color:#fff}
+  .pill.closed{background:#eef0f5;color:var(--ink3)}
+  .pill.closed b{text-decoration:line-through}
+  .none{font-size:10px;color:#c6cbd8}
+
+  /* day card */
+  .dayCard{border:1px solid var(--teal-line);background:#fbfeff;border-radius:12px;padding:16px;margin-top:14px;display:none}
+  .dayCard.on{display:block}
+  .dayCard .dcHead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .dayCard h3{font-size:15px;font-weight:750}
+  .dayCard .dcHead .x{margin-left:auto;color:var(--faint);font-size:17px;line-height:1}
+  .slot{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;flex-wrap:wrap}
+  .slot .t{font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;min-width:48px}
+  .slot .f{font-size:12.5px;color:var(--ink2);flex:1;min-width:130px}
+  .slot .f small{display:block;color:var(--faint);font-size:11px;margin-top:1px}
+  .state{border-radius:999px;padding:2px 10px;font-size:11.5px;font-weight:650}
+  .state.open{background:var(--teal-tint);color:var(--teal-dark)}
+  .state.sold{background:#f1eafd;color:var(--violet)}
+  .state.closed{background:#eef0f5;color:var(--ink3)}
+  .dayActs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line2)}
+  .reasons{display:flex;gap:6px}
+  .reasons button{border:1px solid var(--line2);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--ink2);background:#fff}
+  .reasons button.on{background:var(--teal-tint);border-color:var(--teal-line);color:var(--teal-dark)}
+  .noteIn{border:1px solid var(--line2);border-radius:8px;padding:6px 10px;font-size:12.5px;min-width:180px;flex:1}
+  .dayBtnRow{display:flex;gap:10px;margin-top:10px}
+  .dcAdd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line2)}
+  .dcAdd select{border:1px solid var(--line2);border-radius:8px;padding:6px 9px;font-size:12.5px}
+  .btn.close{color:var(--red);border-color:var(--red-line)}
+  .okLine{background:var(--green-bg);border:1px solid var(--green-line);color:var(--green);border-radius:9px;padding:8px 11px;font-size:12.5px;margin-top:10px;display:none}
+  .okLine.on{display:block}
+
+  /* closed dates list */
+  .logRow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);font-size:13px;flex-wrap:wrap}
+  .logRow:first-of-type{border-top:none}
+  .logRow b{min-width:110px}
+  .logRow .who{color:var(--faint);font-size:12px;margin-left:auto}
+  .logEmpty{color:var(--faint);font-size:13px;padding:10px 2px}
+
+  /* ===== agenda (Availability nav section) ===== */
+  .weekStrip{display:flex;gap:5px;margin:2px 0 14px;max-width:430px}
+  .weekStrip button{flex:1;border:1px solid transparent;border-radius:10px;padding:5px 0;text-align:center}
+  .weekStrip .dw{display:block;font-size:9.5px;font-weight:700;color:var(--faint);text-transform:uppercase}
+  .weekStrip .dn{display:block;font-size:13.5px;font-weight:700;color:var(--ink2);margin-top:1px}
+  .weekStrip button.today{background:var(--teal);border-color:var(--teal)}
+  .weekStrip button.today .dw,.weekStrip button.today .dn{color:#fff}
+  .weekStrip button.past{opacity:.4}
+  .freshCard{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .freshCard.done{background:var(--green-bg);border-color:var(--green-line)}
+  .freshCard .txt{font-size:12.5px;color:var(--ink3)}
+  .freshCard .txt b{display:block;font-size:13.5px;color:var(--ink)}
+  .freshCard .btn{margin-left:auto}
+  .agBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .filterRow{display:flex;gap:6px;flex-wrap:wrap}
+  .filterRow button{border:1px solid var(--line2);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:650;color:var(--ink2);background:#fff}
+  .filterRow button.on{background:#101f2e;border-color:#101f2e;color:#fff}
+  .agBar .btn{margin-left:auto}
+  .bulkConfirm{border:1px solid var(--red-line);background:#fffbfa;border-radius:12px;padding:14px;margin-bottom:12px;display:none}
+  .bulkConfirm.on{display:block}
+  .bulkConfirm p{font-size:13px;color:var(--ink2);margin-bottom:10px}
+  .bulkConfirm .rowx{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .dayGroup h3{font-size:11.5px;font-weight:750;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;padding:10px 2px 7px}
+  .depRow{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;background:#fff;cursor:pointer}
+  .depRow:hover{border-color:var(--teal-line)}
+  .depRow .top{display:flex;align-items:center;gap:10px}
+  .depRow .time{font-size:16px;font-weight:750;font-variant-numeric:tabular-nums;min-width:50px}
+  .depRow .tourName{font-size:13px;font-weight:600;color:var(--ink2);flex:1;line-height:1.25}
+  .depRow .frac{font-size:12.5px;color:var(--ink3);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .depRow .chev{color:var(--faint);font-size:15px}
+  .depRow .bar{height:4px;border-radius:99px;background:#eef1f6;margin-top:9px;overflow:hidden}
+  .depRow .bar i{display:block;height:100%;border-radius:99px;background:var(--teal)}
+  .depRow .under{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .depRow .under .audit{font-size:11px;color:var(--faint)}
+  .depRow .under .btn{margin-left:auto}
+  .depRow.closedRow{background:#f8f9fb}
+  .depRow.closedRow .time{color:var(--faint);text-decoration:line-through}
+  .loadMore{width:100%;text-align:center;color:var(--teal-dark);font-weight:650;font-size:13px;padding:10px 0 4px}
+
+  /* footer bar, dev style (Tours view only) */
+  .footBar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 0;display:none}
+  .footBar.on{display:block}
+  .footBar .in{max-width:860px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between}
+  .footBar button{color:var(--ink2);font-weight:600;font-size:13.5px}
+  .credit{font-size:11px;color:var(--faint);margin:4px 0 20px}
+
+  /* snackbar */
+  #snack{position:fixed;left:50%;bottom:64px;transform:translateX(-50%) translateY(90px);background:#101f2e;color:#e8eef5;border-radius:11px;padding:10px 16px;font-size:13px;display:flex;gap:14px;align-items:center;z-index:50;transition:transform .18s;max-width:92vw}
+  #snack.on{transform:translateX(-50%) translateY(0)}
+  #snack button{color:#7dd3dc;font-weight:700}
+
+  @media (max-width:640px){
+    .cell{min-height:60px;padding:4px}
+    .pill{font-size:9.5px;padding:1px 4px}
+    .calGrid{grid-template-columns:repeat(7,minmax(84px,1fr));overflow-x:auto;padding-bottom:6px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topNav"><div class="in">
+  <div class="brand">Island Tours <span>· Operator Portal</span></div>
+  <div class="navPills">
+    <button id="navT" class="on" onclick="showView('tours')">Tours</button>
+    <button id="navA" onclick="showView('agenda')">Availability</button>
+  </div>
+</div></div>
+
+<!-- ================= AVAILABILITY: the daily agenda ================= -->
+<div class="wrap" id="viewAgenda" style="display:none">
+  <div class="headRow"><div class="grow head">
+    <h1>Availability</h1>
+    <div class="sub">Every departure across your tours, today first. Counts show Island Tours bookings only; full through another channel? Close the departure here. Timetable setup lives under Tours.</div>
+  </div></div>
+  <div class="localTime">All times are local to Curaçao. · Tue Jul 28</div>
+
+  <div class="weekStrip" id="weekStrip"></div>
+
+  <div class="freshCard" id="freshCard">
+    <div class="txt"><b>Confirm today's availability</b><span id="freshSub">Last confirmed yesterday, 17:40</span></div>
+    <button class="btn primary sm" id="freshBtn" onclick="confirmFresh()">Confirm</button>
+  </div>
+
+  <div class="agBar">
+    <div class="filterRow" id="filterRow">
+      <button class="on" onclick="setFilter('all',this)">All tours</button>
+      <button onclick="setFilter('kc',this)">KC Catamaran</button>
+      <button onclick="setFilter('sunset',this)">Sunset Sail</button>
+      <button onclick="setFilter('buggy',this)">Buggy X</button>
+    </div>
+    <button class="btn sm" id="bulkBtn" onclick="armBulk()">Close all of today</button>
+  </div>
+
+  <div class="bulkConfirm" id="bulkConfirm"></div>
+
+  <div id="agendaList"></div>
+  <button class="loadMore" onclick="snack('The agenda pages forward day by day; the demo shows three days.',null)">Load more days ›</button>
+  <div class="credit">Best-of-both handoff · July 29, 2026 · This page is the daily habit: one operator, all tours, one list (a one-tour operator sees the same page, just shorter); access matrix v1.7: all seats incl. staff can close and reopen here. The Tours view is setup and per-date corrections. One model underneath: a closure made here shows on the tour calendar instantly, and the other way around. Sample data. The master wins on any conflict.</div>
+</div>
+
+<!-- ================= TOURS: the schedules tab ================= -->
+<div class="wrap" id="viewTours">
+
+  <div class="headRow">
+    <div class="grow head">
+      <h1><select id="tourSel" onchange="switchTour(this.value)">
+        <option value="sunset">Sunset Champagne Sail - Private Charter</option>
+        <option value="kc">Klein Curaçao Luxury Catamaran</option>
+        <option value="buggy">Buggy X Off-Road Adventure</option>
+      </select></h1>
+      <div class="sub">Edit tour</div>
+      <span class="live">Live</span>
+    </div>
+    <div style="display:flex;gap:8px"><button class="btn" onclick="snack('Tour-level Pause is part of the tour editor, outside this proposal. To stop selling dates, use the calendar below.',null)">Pause</button><button class="btn" onclick="snack('Archiving is part of the tour editor, outside this proposal.',null)">Archive</button></div>
+  </div>
+
+  <div class="ready">
+    <div class="top"><b>Publish Readiness</b><span class="count">7/7</span></div>
+    <div class="chips">
+      <span>At least 5 images uploaded</span><span>Hero image set</span><span>At least 3 highlights added</span>
+      <span>English overview filled</span><span>Price set (base price or age band)</span>
+      <span>Bookable departures in the next 30 days</span><span>Capacity set (max party size or per-schedule override)</span>
+    </div>
+  </div>
+
+  <div class="segTrack"><span class="on">Setup</span><span>Content</span><span>Reach</span></div>
+  <div class="subTabs"><span>Details</span><span>Pricing</span><span class="on">Schedules</span></div>
+  <div class="localTime">All times are local to Curaçao.</div>
+
+  <div class="card">
+    <h2>Weekly Schedule</h2>
+    <div class="cardSub">The departure times this tour repeats every week. The calendar below shows the result.</div>
+    <div id="ruleList"></div>
+    <div class="gap" id="gapHint"></div>
+    <div style="margin-top:13px"><button class="btn sm" onclick="toggleAdd()">+ Add time</button></div>
+    <div class="addRow" id="addRow">
+      <input type="time" id="addTime" style="border:1px solid var(--line2);border-radius:8px;padding:6px 9px;font-size:13px">
+      <span class="days" id="addDays"></span>
+      <button class="btn dark sm" onclick="commitAdd()">Add time</button>
+      <button class="btn sm" onclick="toggleAdd()">Cancel</button>
+    </div>
+    <div class="ttNote">Changes apply to future dates only. Dates that already have bookings are kept.</div>
+  </div>
+
+  <div class="card">
+    <div class="calHead">
+      <h2 id="calTitle">August 2026</h2>
+      <span class="calNav"><button id="calPrev" onclick="navMonth(-1)">‹</button> <button id="calNext" onclick="navMonth(1)">›</button></span>
+      <span style="display:inline-flex;gap:6px;align-items:center"><input type="date" id="jumpDate" min="2026-07-28" max="2027-06-30" style="border:1px solid var(--line2);border-radius:8px;padding:5px 8px;font-size:12.5px"><button class="btn sm" onclick="gotoDate()" title="Jump straight to a date to close it">Go</button></span>
+      <div class="legend">
+        <span class="l-open"><i></i>Open</span>
+        <span class="l-sold"><i></i>Sold out</span>
+        <span class="l-closed"><i></i>Closed</span>
+      </div>
+    </div>
+    <div class="cardSub" style="margin-bottom:0">Live view of every departure. Booked counts are Island Tours bookings only. Tap a date to close or reopen it; page with ‹ › or jump straight to a date, up to 12 months ahead. The weekly schedule stays untouched.</div>
+    <div class="calGrid" id="calGrid"></div>
+
+    <div class="dayCard" id="dayCard">
+      <div class="dcHead"><h3 id="dcTitle"></h3><span class="cardSub" id="dcSub" style="margin:0"></span><button class="x" onclick="closeDayCard()">✕</button></div>
+      <div id="dcSlots"></div>
+      <div class="dayActs" id="dcActs">
+        <span style="font-size:12.5px;font-weight:650;color:var(--ink2)">Reason</span>
+        <span class="reasons" id="dcReasons"></span>
+        <input class="noteIn" id="dcNote" placeholder="Note (optional)">
+      </div>
+      <div class="dayBtnRow">
+        <button class="btn close" id="dcCloseDay" onclick="closeWholeDay()">Close entire day</button>
+      </div>
+      <div class="dcAdd" id="dcAdd"></div>
+      <div class="okLine" id="dcOk"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Date Changes</h2>
+    <div class="cardSub">One-off changes to specific dates: days or departures you closed, and extra departures you added. The weekly schedule itself stays untouched.</div>
+    <div id="logList"></div>
+  </div>
+
+  <div class="credit">Best-of-both handoff · July 29, 2026 · Companion to island-tours-portal-availability-review.md. Sample data. The master wins on any conflict.</div>
+</div>
+
+<div class="footBar on" id="footBar"><div class="in"><button onclick="snack('The Pricing and Content steps are part of the tour editor, outside this availability proposal.',null)">‹ Pricing</button><button onclick="snack('The Pricing and Content steps are part of the tour editor, outside this availability proposal.',null)">Next: Content ›</button></div></div>
+<div id="snack"><span id="snackTxt"></span><button id="snackBtn">Undo</button></div>
+
+<script>
+/* ===== sample data (in-memory, shared by both views) ===== */
+const TODAY='2026-07-28';
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DOWFULL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const TOURS={
+  sunset:{name:'Sunset Champagne Sail - Private Charter', short:'Sunset Sail', model:'unit', cap:1, maxParty:8,
+    rules:[{id:'r1',time:'16:30',days:[0,1,2,3,5,6],status:'active'}]},
+  kc:{name:'Klein Curaçao Luxury Catamaran', short:'KC Catamaran', model:'seat', cap:40, maxParty:null,
+    rules:[{id:'r2',time:'09:00',days:[0,1,2,3,4,5,6],status:'active'},
+           {id:'r3',time:'13:30',days:[0,1,2,3,4,5,6],status:'active'}]},
+  buggy:{name:'Buggy X Off-Road Adventure', short:'Buggy X', model:'seat', cap:12, maxParty:null,
+    rules:[{id:'r4',time:'08:00',days:[0,1,2,3,4,5],status:'active'},
+           {id:'r5',time:'11:00',days:[0,1,2,3,4,5],status:'active'},
+           {id:'r6',time:'14:30',days:[0,1,2,3,4,5],status:'active'}]}
+};
+const SEED={
+  'kc|2026-08-09|09:00':40,'kc|2026-08-28|09:00':34,'kc|2026-08-28|13:30':38,'kc|2026-08-15|13:30':37,
+  'kc|2026-07-28|09:00':34,'kc|2026-07-28|13:30':36,
+  'kc|2026-07-29|09:00':12,'kc|2026-07-29|13:30':8,'kc|2026-07-30|09:00':21,'kc|2026-07-30|13:30':5,
+  'sunset|2026-07-28|16:30':1,'sunset|2026-07-29|16:30':0,'sunset|2026-07-30|16:30':1,
+  'buggy|2026-07-28|08:00':10,'buggy|2026-07-28|11:00':12,'buggy|2026-07-28|14:30':4,
+  'buggy|2026-07-29|08:00':3,'buggy|2026-07-29|11:00':6,'buggy|2026-07-29|14:30':0
+};
+const SOLD_AT={'kc|2026-08-09|09:00':'Aug 2, 16:12','sunset|2026-07-28|16:30':'Jul 25, 20:41','buggy|2026-07-28|11:00':'Jul 26, 14:05'};
+let EXC=[
+  {id:'x1',tour:'kc',type:'day',date:'2026-08-10',time:null,reason:'Other',note:'Boat maintenance',actor:'Maria',when:'Jul 20, 09:14'},
+  {id:'x2',tour:'kc',type:'slot',date:'2026-07-30',time:'13:30',reason:'Other',note:'Weather',actor:'Maria',when:'Jul 27, 08:12'}
+];
+let seq=10;
+const KEPT=new Set();
+
+/* ===== helpers ===== */
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;}return h;}
+function bookedFor(tour,d,t){const k=tour+'|'+d+'|'+t;if(k in SEED)return SEED[k];
+  if(TOURS[tour].model==='unit')return (hash(k)%4===0)?1:0;
+  const h=hash(k)%34,v=h<6?0:h,cap=TOURS[tour].cap;
+  return cap<34?Math.min(cap-1,Math.round(v*cap/40)):v;}
+function pad(n){return (n<10?'0':'')+n;}
+function parts(ds){const p=ds.split('-').map(Number);return {y:p[0],m:p[1],d:p[2]};}
+function wd(ds){const p=parts(ds);return (new Date(Date.UTC(p.y,p.m-1,p.d)).getUTCDay()+6)%7;}
+function addDays(ds,n){const p=parts(ds);const dt=new Date(Date.UTC(p.y,p.m-1,p.d));dt.setUTCDate(dt.getUTCDate()+n);return dt.getUTCFullYear()+'-'+pad(dt.getUTCMonth()+1)+'-'+pad(dt.getUTCDate());}
+function nice(ds){const p=parts(ds);return DOW[wd(ds)]+' '+MONTHS[p.m-1]+' '+p.d;}
+function niceFull(ds){const p=parts(ds);return DOWFULL[wd(ds)]+', '+MONTHS[p.m-1]+' '+p.d;}
+
+function closedBy(tour,d,t){return EXC.find(e=>e.tour===tour&&((e.type==='day'&&e.date===d)||(e.type==='slot'&&e.date===d&&e.time===t)))||null;}
+function departures(tour,d){
+  const T=TOURS[tour],w=wd(d),times=new Set(),added=new Set();
+  T.rules.forEach(r=>{if(r.status==='active'&&r.days.includes(w))times.add(r.time);});
+  T.rules.forEach(r=>{if(!(r.status==='active'&&r.days.includes(w))&&KEPT.has(tour+'|'+r.time+'|'+w)&&bookedFor(tour,d,r.time)>0&&d>=TODAY)times.add(r.time);});
+  EXC.forEach(e=>{if(e.tour===tour&&e.type==='add'&&e.date===d&&!times.has(e.time)){times.add(e.time);added.add(e.time);}});
+  return [...times].sort().map(t=>{
+    const cap=T.cap,k=tour+'|'+d+'|'+t;
+    const bk=Math.min(added.has(t)&&!(k in SEED)?0:bookedFor(tour,d,t),cap);
+    const closed=closedBy(tour,d,t);
+    return {time:t,cap,booked:bk,state:closed?'closed':(bk>=cap?'sold':'open'),closed,oneOff:added.has(t)};
+  });
+}
+
+/* ===== snackbar ===== */
+let snackTimer=null;
+function snack(txt,undoFn){
+  const s=document.getElementById('snack');
+  document.getElementById('snackTxt').textContent=txt;
+  const b=document.getElementById('snackBtn');
+  b.style.display=undoFn?'block':'none';
+  b.onclick=()=>{undoFn&&undoFn();s.classList.remove('on');};
+  s.classList.add('on');
+  clearTimeout(snackTimer);snackTimer=setTimeout(()=>s.classList.remove('on'),6000);
+}
+
+/* ===== view switching ===== */
+function showView(v){
+  const ag=v==='agenda';
+  document.getElementById('viewAgenda').style.display=ag?'block':'none';
+  document.getElementById('viewTours').style.display=ag?'none':'block';
+  document.getElementById('navA').classList.toggle('on',ag);
+  document.getElementById('navT').classList.toggle('on',!ag);
+  document.getElementById('footBar').classList.toggle('on',!ag);
+  window.scrollTo(0,0);
+}
+function gotoTour(tid,d){
+  cur=tid;document.getElementById('tourSel').value=tid;
+  showView('tours');renderAll();openDay(d);
+}
+
+/* ===== state ===== */
+let cur='sunset', sel=null, reason=null, calMonth='2026-08';
+let agFilter='all', bulkArmed=false, bulkReason=null;
+
+function switchTour(t){cur=t;sel=null;reason=null;renderAll();}
+function renderAll(){renderRules();renderCal();renderDayCard();renderLog();renderAgenda();}
+
+/* ===== weekly schedule ===== */
+function capText(T){return T.model==='unit'?'Private charter: one booking per departure (up to '+T.maxParty+' guests)':'Capacity '+T.cap+' per departure';}
+function renderRules(){
+  const T=TOURS[cur],el=document.getElementById('ruleList');
+  el.innerHTML=T.rules.filter(r=>r.status!=='removed').map(r=>{
+    const chips=DOW.map((n,i)=>'<button class="'+(r.days.includes(i)?'on':'')+'" title="'+DOWFULL[i]+'" onclick="toggleDay(\''+r.id+'\','+i+')">'+n[0]+'</button>').join('');
+    return '<div class="ruleRow'+(r.status==='paused'?' paused':'')+'">'+
+      '<span class="time">'+r.time+'</span><span class="days">'+chips+'</span>'+
+      '<span class="meta">'+capText(T)+(r.status==='paused'?' · <b style="color:#b54708">Paused</b>':'')+'</span>'+
+      (r.status==='active'
+        ? '<button class="btn sm" onclick="pauseRule(\''+r.id+'\')">Pause</button>'
+        : '<button class="btn sm primary" onclick="resumeRule(\''+r.id+'\')">Resume</button>'+
+          '<button class="btn sm" style="color:var(--red);border-color:var(--red-line)" onclick="removeRule(\''+r.id+'\')">Remove</button>')+
+      '</div>';
+  }).join('');
+  const missing=DOW.filter((n,i)=>!T.rules.some(r=>r.status==='active'&&r.days.includes(i)));
+  document.getElementById('gapHint').textContent=
+    missing.length===0?'Departures run every day of the week.':
+    missing.length===7?'This schedule is fully paused.':
+    'No departures on '+missing.map(m=>({Mon:'Mondays',Tue:'Tuesdays',Wed:'Wednesdays',Thu:'Thursdays',Fri:'Fridays',Sat:'Saturdays',Sun:'Sundays'})[m]).join(', ')+'.';
+  renderAdd();
+}
+function findRule(id){return TOURS[cur].rules.find(r=>r.id===id);}
+function toggleDay(id,i){
+  const r=findRule(id);if(!r)return;
+  if(r.days.includes(i)){
+    r.days=r.days.filter(x=>x!==i);KEPT.add(cur+'|'+r.time+'|'+i);
+    let kept=0;for(let k=0;k<62;k++){const d=addDays(TODAY,k);if(wd(d)===i&&bookedFor(cur,d,r.time)>0)kept++;}
+    renderAll();
+    snack(DOWFULL[i]+'s removed from '+r.time+'.'+(kept?' '+kept+' booked date'+(kept>1?'s are':' is')+' kept.':''),
+      ()=>{KEPT.delete(cur+'|'+r.time+'|'+i);r.days.push(i);r.days.sort((a,b)=>a-b);renderAll();});
+  }else{
+    r.days.push(i);r.days.sort((a,b)=>a-b);renderAll();
+    snack(DOWFULL[i]+'s added to '+r.time+' from today onward.',()=>{r.days=r.days.filter(x=>x!==i);renderAll();});
+  }
+}
+function pauseRule(id){
+  const r=findRule(id);r.status='paused';r.days.forEach(i=>KEPT.add(cur+'|'+r.time+'|'+i));renderAll();
+  snack(r.time+' paused. Future dates without bookings are off sale; booked dates are kept.',
+    ()=>{r.status='active';r.days.forEach(i=>KEPT.delete(cur+'|'+r.time+'|'+i));renderAll();});
+}
+function resumeRule(id){
+  const r=findRule(id);r.status='active';r.days.forEach(i=>KEPT.delete(cur+'|'+r.time+'|'+i));renderAll();
+  snack(r.time+' resumed from today onward.',null);
+}
+function removeRule(id){
+  const r=findRule(id);if(!r||r.status!=='paused')return;
+  r.status='removed';renderAll();
+  snack(r.time+' removed from the weekly schedule. Booked dates are kept.',
+    ()=>{r.status='paused';renderAll();});
+}
+let addDaysSel=[0,1,2,3,4,5,6];
+function toggleAdd(){document.getElementById('addRow').classList.toggle('on');renderAdd();}
+function renderAdd(){
+  document.getElementById('addDays').innerHTML=DOW.map((n,i)=>'<button class="'+(addDaysSel.includes(i)?'on':'')+'" onclick="addDayToggle('+i+')">'+n[0]+'</button>').join('');
+}
+function addDayToggle(i){addDaysSel=addDaysSel.includes(i)?addDaysSel.filter(x=>x!==i):[...addDaysSel,i].sort((a,b)=>a-b);renderAdd();}
+function commitAdd(){
+  const t=document.getElementById('addTime').value;
+  if(!t){snack('Pick a time first.',null);return;}
+  if(!addDaysSel.length){snack('Pick at least one day.',null);return;}
+  const T=TOURS[cur];
+  if(T.rules.some(r=>r.status!=='removed'&&r.time===t)){snack(t+' already has a row. Toggle its weekdays instead.',null);return;}
+  T.rules.push({id:'r'+(seq++),time:t,days:[...addDaysSel],status:'active'});
+  T.rules.sort((a,b)=>a.time<b.time?-1:1);
+  toggleAdd();renderAll();
+  snack(t+' added. Departures appear on the calendar from today onward.',null);
+}
+
+/* ===== calendar ===== */
+const CAL_MIN='2026-07', CAL_MAX='2027-06';
+const MONTHS_FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function monthLabel(ym){const q=ym.split('-').map(Number);return MONTHS_FULL[q[1]-1]+' '+q[0];}
+function navMonth(dir){
+  const q=calMonth.split('-').map(Number);let y=q[0],m=q[1]+dir;
+  if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+  let ym=y+'-'+pad(m);
+  if(ym<CAL_MIN)ym=CAL_MIN; if(ym>CAL_MAX)ym=CAL_MAX;
+  calMonth=ym;renderCal();
+}
+function gotoDate(){
+  const v=document.getElementById('jumpDate').value;
+  if(!v){snack('Pick a date first.',null);return;}
+  if(v.slice(0,7)<CAL_MIN||v.slice(0,7)>CAL_MAX){snack('The calendar covers 12 months ahead.',null);return;}
+  openDay(v);
+}
+function renderCal(){
+  const grid=document.getElementById('calGrid');
+  document.getElementById('calTitle').textContent=monthLabel(calMonth);
+  document.getElementById('calPrev').disabled=calMonth<=CAL_MIN;
+  document.getElementById('calNext').disabled=calMonth>=CAL_MAX;
+  let html=DOW.map(x=>'<div class="dow">'+x+'</div>').join('');
+  const first=calMonth+'-01';
+  let d=addDays(first,-wd(first));
+  for(let i=0;i<42;i++){
+    const p=parts(d),inMonth=d.slice(0,7)===calMonth;
+    const deps=departures(cur,d);
+    const dayClosed=deps.length&&deps.every(x=>x.state==='closed');
+    const pills=deps.length?deps.map(pillHtml).join(''):'<span class="none">No departures</span>';
+    html+='<button class="cell'+(inMonth?'':' other')+(d<TODAY?' past':'')+(d===TODAY?' today':'')+(dayClosed?' dayClosed':'')+(sel===d?' sel':'')+'" onclick="openDay(\''+d+'\')"><span class="d">'+p.d+'</span>'+pills+'</button>';
+    d=addDays(d,1);
+  }
+  grid.innerHTML=html;
+}
+function pillHtml(dep){
+  const T=TOURS[cur];
+  if(dep.state==='closed')return '<span class="pill closed"><b>'+dep.time+'</b> Closed</span>';
+  if(dep.state==='sold')return '<span class="pill sold"><b>'+dep.time+'</b> Sold out</span>';
+  return '<span class="pill open"><b>'+dep.time+'</b> '+(T.model==='unit'?'Open':dep.booked+'/'+dep.cap)+'</span>';
+}
+
+/* ===== day card ===== */
+const REASONS=['Fully booked','Other'];
+function openDay(d){sel=d;reason=null;
+  let ym=d.slice(0,7);
+  if(ym<CAL_MIN)ym=CAL_MIN; if(ym>CAL_MAX)ym=CAL_MAX;
+  calMonth=ym;
+  document.getElementById('dcNote').value='';setOk('');renderCal();renderDayCard();
+  document.getElementById('dayCard').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function closeDayCard(){sel=null;renderCal();renderDayCard();}
+function setOk(html){const o=document.getElementById('dcOk');o.innerHTML=html;o.classList.toggle('on',!!html);}
+function renderDayCard(){
+  const card=document.getElementById('dayCard');
+  if(!sel){card.classList.remove('on');return;}
+  card.classList.add('on');
+  const T=TOURS[cur],deps=departures(cur,sel),past=sel<TODAY;
+  document.getElementById('dcTitle').textContent=niceFull(sel);
+  document.getElementById('dcSub').textContent=past?'Past date, read only':(deps.length?deps.length+' departure'+(deps.length>1?'s':''):'No departures scheduled');
+  document.getElementById('dcSlots').innerHTML=deps.length?deps.map(dep=>slotHtml(dep,past)).join(''):
+    '<div class="logEmpty">Nothing runs on this date. Add a one-off departure below, or extend the weekly schedule.</div>';
+  document.getElementById('dcReasons').innerHTML=REASONS.map(r=>'<button class="'+(reason===r?'on':'')+'" onclick="reason=\''+r+'\';renderDayCard()">'+r+'</button>').join('');
+  renderDcAdd(deps,past);
+  const allClosed=deps.length&&deps.every(x=>x.state==='closed');
+  const anyOpen=deps.some(x=>x.state==='open');
+  document.getElementById('dcActs').style.display=(past||!anyOpen)?'none':'';
+  const btn=document.getElementById('dcCloseDay');
+  btn.textContent=allClosed?'Reopen day':'Close entire day';
+  btn.className='btn '+(allClosed?'primary':'close');
+  btn.disabled=past||!deps.length;
+  btn.parentElement.style.display=(!past&&deps.length>=2&&(anyOpen||allClosed))?'':'none';
+}
+function slotHtml(dep,past){
+  const T=TOURS[cur];
+  let f,state,act='',sub='';
+  if(T.model==='unit'){f=dep.state==='sold'?'1 booking':(dep.booked?'1 booking':'Not yet booked · takes one booking (up to '+T.maxParty+' guests)');}
+  else{f=dep.booked+'/'+dep.cap+' booked via Island Tours';}
+  if(dep.state==='sold'){
+    state='<span class="state sold">Sold out</span>';
+    const at=SOLD_AT[cur+'|'+sel+'|'+dep.time];
+    sub='Sold out from bookings'+(at?' at '+at:'')+'. Reopens automatically if a spot frees up.';
+  }else if(dep.state==='closed'){
+    state='<span class="state closed">Closed</span>';
+    const c=dep.closed;
+    sub='Closed by '+(c.actor==='you'?'you':c.actor)+' · '+c.when+((c.note||c.reason)?' · '+(c.note||c.reason):'')+'.';
+    if(!past)act='<button class="btn sm primary" onclick="reopenSlot(\''+dep.time+'\')">Reopen</button>';
+  }else{
+    state='<span class="state open">Open</span>';
+    if(!past)act='<button class="btn sm" onclick="closeSlot(\''+dep.time+'\')">Close</button>';
+  }
+  return '<div class="slot"><span class="t">'+dep.time+'</span><span class="f">'+f+(sub?'<small>'+sub+'</small>':'')+'</span>'+state+act+'</div>';
+}
+function dcAddSwitch(s){document.getElementById('dcAddCustom').style.display=s.value==='custom'?'':'none';}
+function renderDcAdd(deps,past){
+  const el=document.getElementById('dcAdd');
+  const dayClosed=EXC.some(e=>e.tour===cur&&e.type==='day'&&e.date===sel);
+  if(past||dayClosed){el.innerHTML=(dayClosed&&!past)?'<span class="small muted">Reopen the day first to add a departure.</span>':'';return;}
+  const T=TOURS[cur];
+  const have=new Set(deps.map(x=>x.time));
+  const opts=[...new Set(T.rules.filter(r=>r.status!=='removed').map(r=>r.time))].filter(t=>!have.has(t));
+  el.innerHTML='<span style="font-size:12.5px;font-weight:650;color:var(--ink2)">Extra departure</span>'+
+    '<select id="dcAddTime" onchange="dcAddSwitch(this)">'+opts.map(t=>'<option value="'+t+'">'+t+'</option>').join('')+'<option value="custom">Other time...</option></select>'+
+    '<input type="time" id="dcAddCustom" style="display:none;border:1px solid var(--line2);border-radius:8px;padding:5px 8px;font-size:12.5px">'+
+    '<button class="btn sm" onclick="addOneOff()">Add on this date only</button>';
+  dcAddSwitch(document.getElementById('dcAddTime'));
+}
+function addOneOff(){
+  const s=document.getElementById('dcAddTime');
+  let t=s.value;
+  if(t==='custom'){t=document.getElementById('dcAddCustom').value;if(!t){snack('Pick a time first.',null);return;}}
+  if(departures(cur,sel).some(x=>x.time===t)){snack(t+' already runs on this date.',null);return;}
+  const x={id:'x'+(seq++),tour:cur,type:'add',date:sel,time:t,reason:'',note:'',actor:'you',when:'just now'};
+  EXC.unshift(x);renderAll();renderDayCard();
+  setOk(t+' added on '+nice(sel)+' only. The weekly schedule is unchanged; other '+DOWFULL[wd(sel)]+'s stay as they are.');
+  snack(t+' added on '+nice(sel)+' · one-off.',()=>{EXC=EXC.filter(e=>e.id!==x.id);renderAll();if(sel)renderDayCard();});
+}
+function reasonNote(){return {reason:reason||'',note:document.getElementById('dcNote').value.trim()};}
+function guestsKept(deps){
+  const tot=deps.reduce((s,x)=>s+(x.state!=='closed'?x.booked:0),0);
+  if(!tot)return 'No bookings on it yet.';
+  return TOURS[cur].model==='unit'?'The booked party keeps its charter.':tot+' booked guests keep their bookings.';
+}
+function closeSlot(t){
+  const deps=departures(cur,sel),dep=deps.find(x=>x.time===t),rn=reasonNote();
+  const x={id:'x'+(seq++),tour:cur,type:'slot',date:sel,time:t,reason:rn.reason,note:rn.note,actor:'you',when:'just now'};
+  EXC.unshift(x);renderAll();
+  setOk(t+' closed. New sales stopped. '+(dep&&dep.booked?(TOURS[cur].model==='unit'?'The booked party keeps its charter.':dep.booked+' booked guests keep their bookings.'):'No bookings on it yet.'));
+  snack(t+' on '+nice(sel)+' closed.',()=>{EXC=EXC.filter(e=>e.id!==x.id);renderAll();setOk('');});
+}
+function reopenSlot(t){
+  const e=closedBy(cur,sel,t);if(!e)return;
+  if(e.type==='day'){EXC=EXC.filter(x=>x.id!==e.id);renderAll();setOk('Day reopened. The weekly schedule applies again.');snack(nice(sel)+' reopened.',null);return;}
+  EXC=EXC.filter(x=>x.id!==e.id);renderAll();setOk(t+' reopened.');
+  snack(t+' on '+nice(sel)+' reopened.',null);
+}
+function closeWholeDay(){
+  if(!sel)return;
+  const deps=departures(cur,sel);
+  const allClosed=deps.length&&deps.every(x=>x.state==='closed');
+  if(allClosed){
+    const es=EXC.filter(e=>e.tour===cur&&e.date===sel&&e.type!=='add');
+    EXC=EXC.filter(e=>!es.includes(e));renderAll();
+    setOk('Day reopened. The weekly schedule applies again.');
+    snack(nice(sel)+' reopened.',null);return;
+  }
+  const rn=reasonNote(),kept=guestsKept(deps);
+  const x={id:'x'+(seq++),tour:cur,type:'day',date:sel,time:null,reason:rn.reason,note:rn.note,actor:'you',when:'just now'};
+  EXC.unshift(x);renderAll();
+  setOk('Day closed. New sales stopped. '+kept+' Closed by you · just now.');
+  snack(nice(sel)+' closed'+(rn.reason?' · '+rn.reason:'')+'.',()=>{EXC=EXC.filter(e=>e.id!==x.id);renderAll();setOk('');});
+}
+
+/* ===== closed dates list ===== */
+function renderLog(){
+  const el=document.getElementById('logList');
+  const rows=EXC.filter(e=>e.tour===cur);
+  if(!rows.length){el.innerHTML='<div class="logEmpty">No date changes yet. Tap a date on the calendar to close it or add an extra departure.</div>';return;}
+  el.innerHTML=rows.map(e=>{
+    const what=e.type==='day'?'Whole day closed':(e.type==='add'?e.time+' added (one-off)':e.time+' closed');
+    const why=[e.reason,e.note].filter(Boolean).join(' · ');
+    return '<div class="logRow"><b>'+nice(e.date)+'</b><span>'+what+(why?' · '+why:'')+'</span>'+
+      '<span class="who">'+(e.actor==='you'?'You':e.actor)+' · '+e.when+'</span>'+
+      '<button class="btn sm" onclick="reopenLog(\''+e.id+'\')">'+(e.type==='add'?'Remove':'Reopen')+'</button></div>';
+  }).join('');
+}
+function reopenLog(id){
+  const e=EXC.find(x=>x.id===id);if(!e)return;
+  EXC=EXC.filter(x=>x.id!==id);renderAll();
+  snack(nice(e.date)+(e.type==='add'?' one-off removed.':' reopened.')+' The weekly schedule applies again.',()=>{EXC.unshift(e);renderAll();});
+}
+
+/* ===== agenda ===== */
+function renderWeek(){
+  const el=document.getElementById('weekStrip');
+  let html='';
+  for(let i=-1;i<6;i++){
+    const d=addDays(TODAY,i);const p=parts(d);
+    html+='<button class="'+(d===TODAY?'today':(d<TODAY?'past':''))+'" onclick="snack(\'The agenda pages to any day; the demo shows Jul 28 to 30.\',null)"><span class="dw">'+DOW[wd(d)]+'</span><span class="dn">'+p.d+'</span></button>';
+  }
+  el.innerHTML=html;
+}
+function setFilter(f,btn){
+  agFilter=f;bulkArmed=false;
+  document.querySelectorAll('#filterRow button').forEach(b=>b.classList.toggle('on',b===btn));
+  document.getElementById('bulkBtn').textContent=f==='all'?'Close all of today':'Close today · '+TOURS[f].short;
+  renderAgenda();
+}
+function agRows(d){
+  const rows=[];
+  Object.keys(TOURS).forEach(tid=>{
+    if(agFilter!=='all'&&agFilter!==tid)return;
+    departures(tid,d).forEach(dep=>rows.push({tid,dep}));
+  });
+  rows.sort((a,b)=>a.dep.time<b.dep.time?-1:1);
+  return rows;
+}
+function renderAgenda(){
+  const el=document.getElementById('agendaList');
+  const days=[[TODAY,'Today · Tue Jul 28'],[addDays(TODAY,1),'Tomorrow · Wed Jul 29'],[addDays(TODAY,2),'Thu Jul 30']];
+  el.innerHTML=days.map(([d,label])=>{
+    const rows=agRows(d);
+    const inner=rows.length?rows.map(r=>agRowHtml(d,r)).join(''):'<div class="logEmpty">Nothing scheduled.</div>';
+    return '<div class="dayGroup"><h3>'+label+'</h3>'+inner+'</div>';
+  }).join('');
+  renderBulk();
+}
+function agRowHtml(d,r){
+  const T=TOURS[r.tid],dep=r.dep;
+  const pct=Math.round(100*dep.booked/dep.cap);
+  let state,action='',audit='';
+  if(dep.state==='sold'){
+    state='<span class="state sold">Sold out</span>';
+    const at=SOLD_AT[r.tid+'|'+d+'|'+dep.time];
+    audit=at?('Sold out '+at+' · reopens automatically if a spot frees up'):'Sold out from bookings';
+  }else if(dep.state==='closed'){
+    state='<span class="state closed">Closed</span>';
+    const c=dep.closed;
+    audit='By '+(c.actor==='you'?'you':c.actor)+' · '+c.when+(c.note||c.reason?' · '+(c.note||c.reason):'');
+    action='<button class="btn sm primary" onclick="event.stopPropagation();agReopen(\''+r.tid+'\',\''+d+'\',\''+dep.time+'\')">Reopen</button>';
+  }else{
+    state='<span class="state open">Open</span>';
+    action='<button class="btn sm" onclick="event.stopPropagation();agClose(\''+r.tid+'\',\''+d+'\',\''+dep.time+'\')">Close</button>';
+  }
+  const frac=T.model==='unit'?(dep.booked?'1 booking':'0 bookings'):dep.booked+'/'+dep.cap;
+  return '<div class="depRow'+(dep.state==='closed'?' closedRow':'')+'" onclick="gotoTour(\''+r.tid+'\',\''+d+'\')" title="Open this date on the tour calendar">'+
+    '<div class="top"><span class="time">'+dep.time+'</span><span class="tourName">'+T.name+'</span><span class="frac">'+frac+'</span><span class="chev">›</span></div>'+
+    (dep.state!=='closed'?'<div class="bar"><i style="width:'+pct+'%"></i></div>':'')+
+    '<div class="under">'+state+(audit?'<span class="audit">'+audit+'</span>':'')+action+'</div></div>';
+}
+function agClose(tid,d,t){
+  const dep=departures(tid,d).find(x=>x.time===t);
+  const x={id:'x'+(seq++),tour:tid,type:'slot',date:d,time:t,reason:'',note:'',actor:'you',when:'just now'};
+  EXC.unshift(x);renderAll();
+  snack(t+' '+TOURS[tid].short+' closed. '+(dep&&dep.booked?(TOURS[tid].model==='unit'?'The booked party keeps its charter.':dep.booked+' booked guests keep their bookings.'):'No bookings on it yet.'),
+    ()=>{EXC=EXC.filter(e=>e.id!==x.id);renderAll();});
+}
+function agReopen(tid,d,t){
+  const e=closedBy(tid,d,t);if(!e)return;
+  if(e.type==='day'){snack('This date is closed as a whole day. Reopen it on the tour calendar.',null);return;}
+  EXC=EXC.filter(x=>x.id!==e.id);renderAll();
+  snack(t+' '+TOURS[tid].short+' reopened.',null);
+}
+function armBulk(){
+  const rows=agRows(TODAY).filter(r=>r.dep.state==='open');
+  if(!rows.length){snack('Nothing left to close today'+(agFilter!=='all'?' for this tour':'')+'.',null);return;}
+  bulkArmed=true;bulkReason=null;renderBulk();
+}
+function renderBulk(){
+  const box=document.getElementById('bulkConfirm');
+  if(!bulkArmed){box.classList.remove('on');box.innerHTML='';return;}
+  const rows=agRows(TODAY).filter(r=>r.dep.state==='open');
+  if(!rows.length){bulkArmed=false;box.classList.remove('on');box.innerHTML='';return;}
+  const nTours=new Set(rows.map(r=>r.tid)).size;
+  const guests=rows.reduce((s,r)=>s+r.dep.booked,0);
+  box.classList.add('on');
+  box.innerHTML='<p>Stops new sales on <b>'+rows.length+' departure'+(rows.length>1?'s':'')+'</b>'+(agFilter==='all'&&nTours>1?' across '+nTours+' tours':'')+' today. <b>'+guests+' booked guest'+(guests===1?'':'s')+' keep their bookings.</b> If a departure will not run at all, contact booked guests and Island Tours support.</p>'+
+    '<div class="rowx"><span style="font-size:12.5px;font-weight:650;color:var(--ink2)">Reason</span>'+
+    '<span class="reasons">'+REASONS.map(r=>'<button onclick="pickBulkReason(this)">'+r+'</button>').join('')+'</span>'+
+    '<input class="noteIn" id="bNote" placeholder="Note (optional)">'+
+    '<button class="btn close sm" onclick="confirmBulk()">Close '+rows.length+' departure'+(rows.length>1?'s':'')+'</button>'+
+    '<button class="btn sm" onclick="bulkArmed=false;renderBulk()">Cancel</button></div>';
+}
+function pickBulkReason(b){bulkReason=b.textContent;b.closest('.reasons').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
+function confirmBulk(){
+  const rows=agRows(TODAY).filter(r=>r.dep.state==='open');
+  const note=(document.getElementById('bNote')||{value:''}).value.trim();
+  const made=[];
+  rows.forEach(r=>{const x={id:'x'+(seq++),tour:r.tid,type:'slot',date:TODAY,time:r.dep.time,reason:bulkReason||'',note:note,actor:'you',when:'just now'};EXC.unshift(x);made.push(x.id);});
+  bulkArmed=false;renderAll();
+  snack('Today closed · '+rows.length+' departure'+(rows.length>1?'s':'')+(bulkReason?' · '+bulkReason:'')+'.',
+    ()=>{EXC=EXC.filter(e=>!made.includes(e.id));renderAll();});
+}
+function confirmFresh(){
+  const c=document.getElementById('freshCard');
+  c.classList.add('done');
+  c.querySelector('b').textContent='Availability confirmed';
+  document.getElementById('freshSub').textContent='Today, just now ✓';
+  document.getElementById('freshBtn').style.display='none';
+  snack('Confirmed. Opening this page also counts; the reminder emails point here.',null);
+}
+
+/* ===== init ===== */
+renderWeek();renderAll();
+</script>
+</body>
+</html>

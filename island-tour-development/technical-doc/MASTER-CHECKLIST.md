@@ -1192,6 +1192,9 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
   - [x] #8 tier change + Spotlight request owner-account-only (`assertOwnerAuthority`; team seats rejected)
   - [x] #2 operators REPORT cancellations (`report-cancellation`), admin executes (FULL refund, `cancelledBy=OPERATOR`); pending report holds the payout
   - [x] #1 tour approval workflow (`TourApprovalStatus`); operators lost `MANAGE_TRIPS` and submit-for-review instead; publish/unpause/restore stay platform
+    - [x] All three legs of the round trip notify by email: submit-for-review → `ADMIN_EMAIL` (the reviewer mailbox); approve and request-changes → the operator (`operator.contactEmail`, else the owner login), carrying the admin's note. Fire-and-forget - a mail failure logs and never rolls back a submission or a verdict, and an unset `ADMIN_EMAIL` still lets the tour queue. All three load their own recipient rather than widening `tourSelect`, which feeds public payloads.
+    - [x] The approval email never says "live": `APPROVED` is still `DRAFT` until an admin publishes, so the copy names who acts next instead of sending the operator to look for a page that does not exist.
+    - [ ] An ADMIN publishing an unreviewed tour directly (publish stamps the approval, conflict #1) sends no verdict email - the operator's first signal is the live page. Fine at launch volume; revisit if direct publishes become the norm.
   - [x] #6 media: route permissions (stage 1) + `operatorId` shared-library scoping (stage 2)
   - [x] #7 `VIEW_BOOKING_FINANCIALS` shapes the booking PROJECTION (manifest for guide-level seats), not the route
   - [ ] PDF ground rule 1 (three separate logins) vs the shipped 4-door system - **founder decision owed, no code**
