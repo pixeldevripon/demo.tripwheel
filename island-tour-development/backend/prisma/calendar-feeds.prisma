@@ -1,0 +1,58 @@
+// Calendar export (iCal/RFC 5545) — the operator-facing read-only side of calendar
+// integration. An operator subscribes a URL from this table in Google/Apple/Outlook
+// Calendar and their bookings (or their inventory) show up there.
+//
+// EXPORT ONLY. Nothing here can change availability: a feed is projected FROM the
+// platform, never INTO it. Inbound iCal (blocking dates from an external calendar)
+// is a separate, later concern and would go through AvailabilityException, not here.
+
+// Two feeds, two audiences. An operator may subscribe to either or both.
+//   BOOKINGS   - the operations calendar: one event per booking on their tours.
+//                Carries traveller-identifying detail (see CalendarFeed.token).
+//   DEPARTURES - the inventory calendar: one event per departure with its fill,
+//                for capacity planning. Carries no traveller data.
+enum CalendarFeedKind {
+  BOOKINGS   @map("bookings")
+  DEPARTURES @map("departures")
+
+  @@map("calendar_feed_kind")
+}
+
+model CalendarFeed {
+  id         String           @id @default(uuid())
+  operatorId String
+  kind       CalendarFeedKind
+
+  /// The ONLY credential guarding the feed URL. Calendar clients cannot carry a
+  /// session cookie, so the token IS the authentication - 32 random bytes, base64url.
+  /// Stored in the clear because the route must look a subscriber up BY it; it is a
+  /// capability URL, not a password. Treat it as secret: anyone holding the BOOKINGS
+  /// URL can read that operator's traveller names and party sizes. Rotate (new token,
+  /// old one dead) or revoke from the dashboard.
+  token String @unique
+
+  /// Operator-facing label so a rotated/second subscription is identifiable.
+  label String?
+
+  /// Set when the operator revokes the feed. The row is KEPT rather than deleted so
+  /// the token can never be re-minted for someone else, and so a revoked feed answers
+  /// 404 forever instead of 404-then-somebody-else's-calendar.
+  revokedAt DateTime?
+
+  /// Observability for "is my calendar actually syncing?" in the dashboard. Written
+  /// on every 200 (not on 304 - a conditional hit means the client is up to date).
+  lastFetchedAt DateTime?
+  fetchCount    Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String? // user id that minted it (operator owner or a staff seat)
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  // One live feed per operator per kind - "get me my bookings URL" must be an
+  // idempotent answer, not a growing pile of subscriptions.
+  @@unique([operatorId, kind])
+  @@index([operatorId])
+  @@map("calendar_feeds")
+}

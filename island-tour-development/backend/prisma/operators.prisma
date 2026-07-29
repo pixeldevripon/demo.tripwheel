@@ -45,6 +45,7 @@ model Operator {
   customers                 Customer[]
   spotlightRequests         SpotlightRequest[]
   notificationSubscriptions NotificationSubscription[]
+  calendarFeeds             CalendarFeed[]
 
   @@index([verificationStatus])
   @@map("operators")

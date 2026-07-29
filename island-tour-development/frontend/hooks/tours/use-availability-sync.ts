@@ -64,8 +64,11 @@ export function useAvailabilitySync(): void {
             .catch(() => {
                 if (controller.signal.aborted) return;
                 // Fail open: an empty map leaves every future day selectable
-                // rather than blanking the calendar on a transient error.
-                setCalendarDays({});
+                // rather than blanking the calendar on a transient error. The
+                // `failed` flag marks it as such - an empty map is otherwise
+                // indistinguishable from a genuinely sold-out tour, and the
+                // dead-end recovery must not fire on a network blip.
+                setCalendarDays({}, true);
             });
         return () => controller.abort();
     }, [tourId, setCalendarDays, setCalendarLoading]);

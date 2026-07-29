@@ -73,6 +73,10 @@ export function BookingStoreProvider({
             spectatorBands,
             hasSpectators: spectatorBands.length > 0,
             isPatternB: participantBands.length > 1 || spectatorBands.length > 0,
+            // `?? 99` was the guard for a nullable column. It is NOT NULL as
+            // of 20260729190000, so the fallback is unreachable - kept only so
+            // a payload from an older cached page cannot open an unbounded
+            // party picker.
             maxParty: next.maxPartySize ?? 99,
             quote: null,
         });

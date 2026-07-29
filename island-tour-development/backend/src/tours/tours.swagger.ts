@@ -14,6 +14,7 @@ import {
   PaginatedToursResponseDto,
   RecomputeDemandResponseDto,
   SetLocalsFavouriteResponseDto,
+  TourAlternativeResponseDto,
   TourDetailResponseDto,
   TourPublicDetailResponseDto,
   TourResponseDto,
@@ -88,6 +89,46 @@ export function ApiGetTourBySlugDocs() {
       description: 'Content locale - falls back to EN',
     }),
     ApiResponse({ status: 200, type: TourPublicDetailResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...publicErrors,
+  );
+}
+
+// ── Public dead-end alternatives ──────────────────────────────────────────────
+
+export function ApiGetTourAlternativesDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary:
+        'Alternatives for the all-sold-out dead end (public - booking widget)',
+      description: [
+        'Returns up to 3 tours in the SAME destination that have a live-bookable',
+        'departure within the next 7 days, in the canonical ranking order',
+        '(`is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC`).',
+        '',
+        'Candidates are drawn from progressively wider rings - the source tour’s',
+        'primary category, then its other categories, then the destination - so the',
+        'block is same-category wherever the inventory allows and never empty when',
+        'the destination has anything bookable this week.',
+        '',
+        'Returns `[]` (200, not 404) when nothing in the destination has room; the',
+        'widget then keeps its plain no-availability state.',
+      ].join('\n'),
+    }),
+    tourIdParam,
+    ApiQuery({
+      name: 'locale',
+      required: false,
+      enum: Locale,
+      description: 'Content locale for the card titles - falls back to EN',
+    }),
+    ApiQuery({
+      name: 'currency',
+      required: false,
+      description:
+        'Shopper display currency; adds the converted `money` object',
+    }),
+    ApiResponse({ status: 200, type: [TourAlternativeResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...publicErrors,
   );

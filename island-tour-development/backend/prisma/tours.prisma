@@ -43,7 +43,7 @@ model Tour {
   pickupModel          PickupModel      @default(NONE)
   pickupRequired       Boolean          @default(false) // → OCTO option.pickupRequired
   minPartySize         Int              @default(1) // minimum travelers per booking
-  maxPartySize         Int? // maximum travelers per booking
+  maxPartySize         Int              @default(10) // maximum travelers per booking; ALSO the default departure capacity every schedule falls back on
   bookingCutoffMinutes Int              @default(120) // → availability.utcCutoffAt
   cancellationHours    Int              @default(48) // enum-bound [24,48,72,168]
   startTimes           String[]         @default([]) // the tour's slot set ('HH:MM'); availability schedules switch these on per weekday

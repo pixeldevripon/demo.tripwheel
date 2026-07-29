@@ -22,6 +22,7 @@ import {
   CreateTourDto,
   MyToursQueryDto,
   SetLocalsFavouriteDto,
+  TourAlternativesQueryDto,
   TourBySlugQueryDto,
   RejectTourDto,
   TourQueryDto,
@@ -35,6 +36,7 @@ import {
   ApiGetAllToursDocs,
   ApiGetLocalsFavouriteStatsDocs,
   ApiGetMyToursDocs,
+  ApiGetTourAlternativesDocs,
   ApiGetTourByIdDocs,
   ApiGetTourBySlugDocs,
   ApiPauseTourDocs,
@@ -94,6 +96,23 @@ export class ToursController {
   @ApiGetTourBySlugDocs()
   findBySlug(@Param('slug') slug: string, @Query() query: TourBySlugQueryDto) {
     return this.toursService.findBySlug(slug, query);
+  }
+
+  // ── All-sold-out dead-end alternatives (public) ───────────────────────────────
+
+  /**
+   * AVAILABILITY-AND-DEPARTURES.md §8: what the booking widget shows instead of a
+   * blank calendar when the tour has no open departure in the next 30 days. Up to
+   * 3 same-destination tours that still have room within 7 days.
+   */
+  @Get(':id/alternatives')
+  @Public()
+  @ApiGetTourAlternativesDocs()
+  findAlternatives(
+    @Param('id') id: string,
+    @Query() query: TourAlternativesQueryDto,
+  ) {
+    return this.toursService.findDeadEndAlternatives(id, query);
   }
 
   // ── Operator "my tours" - static route before :id ─────────────────────────────

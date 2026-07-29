@@ -233,10 +233,10 @@
 - [x] `AVAILABILITY_UPDATE` notification emitted on inventory change
 - [x] `GET /availability/manage-calendar` operator month grid (per-day status/booked totals/exceptions + `scheduled` pattern flag) powering the dashboard's one-tap Availability calendar on the trip Schedules tab — close/reopen day, close/reopen slot, add departure, day/slot capacity, all via the existing exception mutations; booked days require a confirming tap (2026-07-28)
 - [~] A newly created schedule only materializes 90 days ahead and depends on the 3 AM cron to reach the full 12-month horizon — a sharp edge documented in the booking checklist. Mitigated for EXCEPTIONS (2026-07-28): every exception mutation also reconciles the exception's own day (`syncTourAvailability(tourId, date)`), so a beyond-horizon add/close/capacity change is visible immediately; schedules themselves still rely on the cron
-- [ ] All-sold-out recovery path (surfacing/recovering a tour whose every departure is sold out)
+- [x] All-sold-out recovery path (surfacing/recovering a tour whose every departure is sold out) — `GET /tours/:id/alternatives` + `AvailabilityService.nextBookableDateByTour` behind the widget's `availabilityDeadEnd` state (2026-07-29, AVAILABILITY-AND-DEPARTURES.md §8.1)
 - [ ] `CHECK (booked_count <= capacity)` database constraint as a negative-inventory backstop
 - [ ] Concurrency/load test suite firing 50/100/500 simultaneous reservations at 1-seat and N-seat departures, asserting exactly `capacity` succeed and the counter never goes negative
-- [ ] iCal export feed of departures for operators, and optional iCal import writing `availability_exceptions` (never mutating capacity directly) with `ical_sync_logs`
+- [~] iCal export feed of departures for operators, and optional iCal import writing `availability_exceptions` (never mutating capacity directly) with `ical_sync_logs` — **EXPORT SHIPPED 2026-07-29**: `calendar_feeds` table + `backend/src/calendar-feeds/` + shared RFC 5545 writer `src/common/ics/ics.util.ts` (the traveller booking `.ics` now shares it). Two tokenized, rotatable, revocable feeds per operator — `BOOKINGS` (needs `VIEW_BOOKINGS`; traveller name + pax + ref, deliberately no email/phone/pickup address) and `DEPARTURES` (needs `MANAGE_AVAILABILITY`; fill counts, no traveller data). `@Public()` `GET /calendar-feeds/:token/calendar.ics` with ETag/`If-None-Match` 304 (DTSTAMP pinned to the data mtime, or the feed never caches); cancellations published as `STATUS:CANCELLED` rather than dropped; windows −30d/+364d bookings and −30d/+90d departures (a year of departures measured 6,039 events / 2.1 MB). Operator UI = dashboard Settings → Calendar sync. **IMPORT + `ical_sync_logs` still open** — design notes and the DTEND/RRULE/SSRF traps in `02-architecture/AVAILABILITY-AND-DEPARTURES.md` §9a
 
 ### Bookings
 
@@ -754,7 +754,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [ ] Capacity scarcity subscript `N left` on date cells only when `available_capacity_for_date < 5`, in neutral gray, mirrored onto the selected date pill
 - [ ] Calendar forward-window cap at 12 months / `tour.max_advance_days` with the disabled-arrow tooltip "Bookings open up to {N} months ahead"
 - [ ] Booking-cutoff "Closed" state on date cells past `tour.booking_cutoff_minutes` (default 120, range 0–10080)
-- [ ] All-sold-out alternatives module: "These trips still have room this week" with 2–3 same-category tours holding a departure within 7 days, plus the silent GA4 dead-end event (B.77)
+- [x] All-sold-out alternatives module: "These trips still have departures this week" (headline reworded 2026-07-29) with 2–3 same-category tours holding a departure within 7 days, plus the silent GA4 dead-end event (B.77) — `availability-dead-end.tsx`; the whole selector stack is replaced, not just the calendar, and same-category widens to the destination rather than rendering an empty block (2026-07-29)
 - [ ] Locked S1 error microcopy set (sold-out date with auto-suggest, all-slots-sold-out, API failure with Retry + WhatsApp, below-min-party, missing departure time, offline cached-dates notice)
 - [ ] Unified loading-state timing rule (<200ms nothing · 200–1500ms skeleton · >1500ms skeleton + "Loading…" · >5000ms timeout + retry) applied to every widget async operation
 
@@ -991,7 +991,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [ ] `related_tour_click` event on the tour-detail related rows (LD33)
 - [ ] GA4 `search` event with `results_count` on every search render
 - [ ] GA4 `login` event with `method: booking_ref` on successful booking lookup, plus a PII-free silent failure counter
-- [ ] Silent GA4 dead-end event when the widget hits the all-sold-out state (B.77)
+- [x] Silent GA4 dead-end event when the widget hits the all-sold-out state (B.77) — `lib/tracking/availability-dead-end.ts`, once per load, carries `alternative_count` so a 0-alternative dead end is distinguishable (2026-07-29)
 - [ ] §8.4 Definition of Done verification: Tag Assistant clean fires, exactly one GA4 `purchase` per test booking, one deduplicated Meta `Purchase`, Enhanced Conversions match rate >60%
 
 ## Consent / cookies
