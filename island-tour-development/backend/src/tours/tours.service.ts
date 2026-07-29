@@ -57,6 +57,13 @@ import {
   UpdateTourDto,
 } from './dto/tour.dto';
 
+/**
+ * Mirrors `@default(10)` on `tours.maxPartySize`. Only used to reason about a
+ * create body that omitted the field - Prisma writes the real default; this is
+ * what the range guard compares against so it cannot disagree with the row.
+ */
+const DEFAULT_MAX_PARTY_SIZE = 10;
+
 @Injectable()
 export class ToursService {
   private readonly logger = new Logger(ToursService.name);
@@ -2285,6 +2292,21 @@ export class ToursService {
 
     const hubIds = [...new Set(dto.hubIds ?? [])];
 
+    // Same range guard as `update` - an API client can send both ends at once,
+    // and the schema defaults (1 / 10) hold whichever end is omitted.
+    const createMin = dto.minPartySize ?? 1;
+    const createMax = dto.maxPartySize ?? DEFAULT_MAX_PARTY_SIZE;
+    if (createMin > createMax) {
+      throw new BadRequestException(
+        `minPartySize (${createMin}) cannot exceed maxPartySize (${createMax})`,
+      );
+    }
+    if ((dto.meetingPointLat == null) !== (dto.meetingPointLng == null)) {
+      throw new BadRequestException(
+        'A meeting point needs both a latitude and a longitude',
+      );
+    }
+
     // Resolve a unique slug - always checks the slug registry (flat URLs, V2 §5).
     const slug = await this.resolveUniqueSlug(
       baseSlug,
@@ -2341,6 +2363,10 @@ export class ToursService {
             durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
             pickupRequired: dto.pickupRequired ?? false,
+            // NOT NULL since 20260729190000. `undefined` falls through to the
+            // schema default (10) rather than writing null, which is what lets
+            // the wizard mint a draft from four fields and ask for the real
+            // capacity on the booking-rules step.
             maxPartySize: dto.maxPartySize,
             minPartySize: dto.minPartySize ?? 1,
             bookingCutoffMinutes: dto.bookingCutoffMinutes ?? 120,
@@ -2447,6 +2473,37 @@ export class ToursService {
 
     if (tour.status === TourStatus.ARCHIVED) {
       throw new BadRequestException('Cannot update an archived tour');
+    }
+
+    // Party size is a RANGE, and either end can arrive alone - so the guard has
+    // to compare the incoming value against the stored one, not just against
+    // its sibling in the same body. Unguarded, min > max produces departures
+    // whose capacity can never satisfy their own minimum: bookable in the grid,
+    // impossible at checkout.
+    const nextMin = dto.minPartySize ?? tour.minPartySize;
+    const nextMax = dto.maxPartySize ?? tour.maxPartySize;
+    if (nextMin > nextMax) {
+      throw new BadRequestException(
+        `minPartySize (${nextMin}) cannot exceed maxPartySize (${nextMax})`,
+      );
+    }
+
+    // Half a meeting point is not a meeting point: one axis alone cannot be
+    // plotted on the tour page or the confirmation email, so it is stored data
+    // nothing can ever read. Resolved against the stored row for the same
+    // reason as the party range - either axis can arrive on its own.
+    const nextLat =
+      dto.meetingPointLat !== undefined
+        ? dto.meetingPointLat
+        : tour.meetingPointLat;
+    const nextLng =
+      dto.meetingPointLng !== undefined
+        ? dto.meetingPointLng
+        : tour.meetingPointLng;
+    if ((nextLat == null) !== (nextLng == null)) {
+      throw new BadRequestException(
+        'A meeting point needs both a latitude and a longitude',
+      );
     }
 
     // Free-cancellation window is admin-only once the tour has left DRAFT:
@@ -2678,8 +2735,13 @@ export class ToursService {
           }),
           ...(dto.reference !== undefined && { reference: dto.reference }),
           ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
+          // `new Date(null)` is the epoch, not null - so an explicit null,
+          // which every other nullable column here treats as "clear it", would
+          // have stamped 1970-01-01 as the confirmation date.
           ...(dto.availabilityConfirmedAt !== undefined && {
-            availabilityConfirmedAt: new Date(dto.availabilityConfirmedAt),
+            availabilityConfirmedAt: dto.availabilityConfirmedAt
+              ? new Date(dto.availabilityConfirmedAt)
+              : null,
           }),
           ...(dto.h1Override !== undefined && { h1Override: dto.h1Override }),
           ...(dto.breadcrumbLabel !== undefined && {
@@ -2954,11 +3016,21 @@ export class ToursService {
     // isBookable). If it has no bookable departure yet, it stays hidden until the
     // operator adds availability - the dashboard surfaces this so it is not silent.
     const bookable = await this.availability.computeIsBookable(id);
+    const now = new Date();
     const updated = await this.prisma.tour.update({
       where: { id },
       data: {
         status: TourStatus.LIVE,
-        publishedAt: new Date(),
+        publishedAt: now,
+        // Stamped ONCE, on the first publish, and never moved by a later
+        // pause/republish - unlike `publishedAt`, which tracks the current
+        // spell. Nothing wrote it before, so it was null on every tour the app
+        // published: the tier engine read that as "still provisional" and
+        // exempted those tours from demotion forever (tiers.service
+        // `isInProvisionalWindow` returns true for null), and the wizard could
+        // never mark its review step done. The demo seed always set it, which
+        // is why seeded data looked correct and published data did not.
+        firstPublishedAt: tour.firstPublishedAt ?? now,
         isBookable: bookable,
         // LIVE implies APPROVED: an admin publish is itself the approval.
         approvalStatus: TourApprovalStatus.APPROVED,

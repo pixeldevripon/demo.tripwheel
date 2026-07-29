@@ -134,6 +134,7 @@
 - [x] Master E.3 localized content on `TourTranslation`: `shortDescription`, `whatToBring`, `knowBeforeYouGo`, `notSuitableFor`, `localTip`, `categoryDisplay`, `meetingPointText`, `whatToExpectIntro`, `operatorNote`, per-locale meta
 - [x] Typed `TourExclusion` shape (`type` + `priceText`) per LD18
 - [x] Pricing & party fields: `pricingModel`, `unitType`, `unitIncludedGuests`, `extraPersonPrice`, age bands, add-ons, min/max party size (migration `20260710140000_add_unit_pricing_fields`)
+- [x] `maxPartySize` NOT NULL, default 10 (migration `20260729190000_max_party_size_required`) — it is the capacity every departure falls back on, so a null meant the materializer skipped the slot and the tour never listed. Optional in `CreateTourDto` (create mints a draft from name/destination/categories and asks for capacity two steps later); required in the wizard's booking-rules step. `minPartySize > maxPartySize` is rejected on create AND update, comparing an incoming value against the stored one so a single-ended PATCH cannot invert the range.
 - [x] Booking-logic fields: `bookingCutoffMinutes` (default 120), `pickupModel`, `startTimes[]`, `checkInMinutesBefore`, `durationMinutes`/`durationMinutesTo`, `instantConfirmation`, `bookingType`, `meetingPointLat/Lng`
 - [x] `cancellationHours` enum-bound `[24,48,72,168]`, NOT NULL, default 48 (schema default + DTO `@IsIn` + service default)
 - [x] `paymentModel` on the tour, snapshotted onto the booking at reserve
@@ -206,6 +207,7 @@
 - [x] Diversity pass after ranking so one operator cannot dominate the top of a result set
 - [x] Nightly `recomputeQualityScores` as the only writer of `quality_score` (read-only at query time)
 - [x] `runEligibilityLifecycle`: 90-day one-time provisional window from first publish → nightly bar check → grace → auto-demote to the highest still-qualifying tier, with existing bookings keeping their snapshotted commission
+- [x] `firstPublishedAt` is actually WRITTEN — `publish()` stamps it once (never moved by a later republish; that is `publishedAt`). It was read by `isInProvisionalWindow` but written by nothing except the demo seed, so every app-published tour sat permanently inside the provisional window and was never demoted. Backfilled by `20260729210000_backfill_first_published_at`.
 - [x] Spotlight request/approval: `POST /tiers/tours/:tourId/spotlight`, `GET /tiers/tours/:tourId/spotlight`, `GET /tiers/admin/spotlight`, `PATCH /tiers/admin/spotlight/:id/approve`, `PATCH /tiers/admin/spotlight/:id/reject`
 - [x] Spotlight invariants: 35% commission, transactional max-3-per-destination cap, extra bar (≥10 reviews, rating ≥4.5), manual approval, separate block (never interleaved)
 - [x] `runSpotlightLifecycle`: APPROVED→ACTIVE at `startsAt`, ACTIVE→EXPIRED at `endsAt`, mirroring `tour.isSponsored`
