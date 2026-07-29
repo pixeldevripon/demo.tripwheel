@@ -60,3 +60,47 @@ blast radius depending on this exact split holding.
 `lib/api/public/*.ts` (the SSR-secret-carrying layer) — if a mutation route ever moves there from
 `lib/api/*.ts` (the browser layer), re-check whether it inherits the backend's throttle-bypass for
 routes that were only ever meant to be browser-called.
+
+## Second pass, same day — cancel flow + price-trust, full file read (not just grep)
+
+Extended the same review to the full money-path surface named in a follow-up audit request:
+`checkout-payment.tsx`, `checkout-payment-mollie.tsx`, `checkout-processing.tsx`,
+`checkout-summary.tsx`, `checkout-fields.tsx`, `lib/checkout/checkout.ts`, the cancel page
+(`app/(frontend)/[locale]/cancel/[publicRef]/page.tsx` + `cancel-request-card.tsx`), the traveler
+login (`components/frontend/login/traveler-login.tsx`), `app/api/traveller/cancellation-request/route.ts`,
+and all `thank-you/*.tsx` components. No new critical/high findings — this confirms and extends the
+first pass:
+
+- **Price trust is clean end-to-end.** `quoteBooking` results (`totalRetail`/`depositAmount`/
+  `balanceAmount`) are stored in client state (`checkout-client.tsx` `liveTotals`) ONLY for display;
+  neither `reserveBooking` (`lib/api/bookings.ts` `ReserveRequest`) nor `createPaymentIntent`
+  (`redirects: { returnUrl, cancelUrl, cardToken }`) ever sends a price-shaped field back. The
+  reserve/intent calls carry only ids, quantities, `quoteId` (forward-compat, reserve recomputes),
+  and the PSP redirect URLs (always same-origin, built from `window.location.origin` +
+  a server-derived relative path). Nothing for the backend to blindly trust here.
+- **The `/bookings` login's `returnTo` param is a real, tested allowlist, not just a comment.**
+  `traveler-login.tsx` (~line 155): `/^\/(?:[a-z0-9-]+\/thank-you|cancel)\/[A-Za-z0-9-]+$/` rejects
+  protocol-relative (`//evil.com`) and absolute URLs alike (the char class after the leading `/`
+  cannot itself be `/`), then goes through `router.push` (client router, not `window.location`).
+  This is the ONE open-redirect-shaped input on the money path that takes a URL from the query
+  string; it is fail-closed.
+- **The cancellation-request proxy (`app/api/traveller/cancellation-request/route.ts`) is the right
+  pattern for a write that needs the HISTORY-scoped 24h session**: same-origin check
+  (`isSameOrigin`), shape-validates `publicRef` (`^[A-Za-z0-9-]{1,64}$`) and `reason` (string or
+  absent) before ever touching the network, reads the HttpOnly cookie server-side and forwards it
+  as `x-traveler-session` — the token is never serialized into a client component prop, exactly the
+  XSS-exfiltration concern the code comment names. Deliberately skips the `publicFetch` internal-key
+  helper so a user-triggered write doesn't inherit the backend's throttle exemption.
+- **No `dangerouslySetInnerHTML` anywhere in the checkout/thank-you/cancel component trees** (grepped
+  the full directories); tour titles, guest names, and cancellation "reason" free text all render as
+  plain JSX children (auto-escaped). No client-side `console.*` of PII anywhere in `thank-you/*.tsx`
+  either (checked every file, not just the ones from the first pass).
+- **Mollie's `cancelUrl: window.location.href` (`checkout-payment-mollie.tsx` `createAndGo`)** always
+  reflects the browser's own current address bar — it cannot be forged to a foreign origin without
+  an XSS already in play, so it adds no frontend-side open-redirect surface. Whether the backend's
+  redirect allowlist actually enforces this is the backend review's territory (see that memory for
+  the `CORS_ORIGINS`-empty fail-open gap already on file there).
+
+**How to apply:** Same as above — this second pass didn't find anything the first pass missed, it
+just widened the read to files not yet opened. Future reviews of this surface can trust both passes
+and focus on diffing since 2026-07-29 rather than re-reading files unchanged since then.
