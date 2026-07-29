@@ -386,6 +386,79 @@ export class ToursService {
     t.reviewNote = null;
   }
 
+  /**
+   * The operator's private commercial terms and our internal ranking state.
+   *
+   * The tier drives placement (COMMERCIAL-MODEL), but the RATE an operator
+   * agreed to pay is their own business, and `qualityScore` / `eligibilityState`
+   * / `grace*` are platform internals. Left in a public payload they let anyone
+   * scrape every operator's exact commission and see who is on probation.
+   *
+   * ## Why this strips on OUTPUT instead of narrowing `tourSelect`
+   *
+   * `tierRank` is load-bearing server-side: BOTH `deriveTourBadge` and
+   * `applyMostPopularCap` decide the Sponsored badge from
+   * `isSponsored || tierRank <= PAID_TIER_MAX_RANK`. Dropping it from the select
+   * would silently kill the badge and the per-category cap. So it must be
+   * selected, used, and only then removed - call this LAST, after badge
+   * derivation and after `applyMostPopularCap`.
+   *
+   * ## What deliberately stays
+   *
+   * - `isSponsored` - a boolean, not a rate; the public site renders it
+   *   (`lib/tours/booking.ts` sponsored notice, wishlist cards).
+   * - `operatorId` - a join key the public site uses for its `operator:<id>`
+   *   cache tag, and the operator's name/logo are already public on the page.
+   *
+   * Fields are nulled rather than deleted so the documented response contract
+   * (`TourResponseDto`) stays structurally valid for every consumer.
+   */
+  private neutralizeCommercialFields(t: {
+    commissionTier?: unknown;
+    tierKey?: unknown;
+    tierRank?: unknown;
+    tierLockedUntil?: unknown;
+    qualityScore?: unknown;
+    eligibilityState?: unknown;
+    graceStartedAt?: unknown;
+    graceMetric?: unknown;
+  }): void {
+    t.commissionTier = null;
+    t.tierKey = null;
+    t.tierRank = null;
+    t.tierLockedUntil = null;
+    t.qualityScore = null;
+    t.eligibilityState = null;
+    t.graceStartedAt = null;
+    t.graceMetric = null;
+  }
+
+  /**
+   * Everything a traveler-facing payload must have stripped: the review
+   * workflow AND the commercial/ranking internals.
+   *
+   * Use this at every `@Public()` read exit (browse grid, search, typeahead,
+   * slug detail, wishlist resolve). `findOne` is the one shared route - the
+   * dashboard reads it too - so it applies this only to non-staff, non-owner
+   * callers.
+   */
+  private neutralizeForPublic(t: {
+    approvalStatus?: unknown;
+    submittedAt?: unknown;
+    reviewNote?: unknown;
+    commissionTier?: unknown;
+    tierKey?: unknown;
+    tierRank?: unknown;
+    tierLockedUntil?: unknown;
+    qualityScore?: unknown;
+    eligibilityState?: unknown;
+    graceStartedAt?: unknown;
+    graceMetric?: unknown;
+  }): void {
+    this.neutralizeApprovalFields(t);
+    this.neutralizeCommercialFields(t);
+  }
+
   async assertOwnership(
     tour: { operatorId: string },
     userId: string,
@@ -467,6 +540,9 @@ export class ToursService {
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t));
     await this.attachMoney(result, target);
+    // Wishlist resolve is @Public() - strip the review workflow and the
+    // commercial internals before this leaves the server.
+    result.forEach((t) => this.neutralizeForPublic(t));
     return result;
   }
 
@@ -529,7 +605,7 @@ export class ToursService {
         {
           translations: {
             some: {
-              OR: [{ title: ci }, { overview: ci }, { description: ci }],
+              OR: [{ title: ci }, { overview: ci }],
             },
           },
         },
@@ -588,6 +664,8 @@ export class ToursService {
     // §3.6 "max 1 per category" cap on the Most popular badge (display order).
     this.applyMostPopularCap(hits);
     await this.attachMoney(hits, params.currency);
+    // Last, after the badge + cap have consumed `tierRank`.
+    hits.forEach((t) => this.neutralizeForPublic(t));
     return {
       total,
       page,
@@ -661,7 +739,7 @@ export class ToursService {
       { name: ci },
       {
         translations: {
-          some: { OR: [{ title: ci }, { overview: ci }, { description: ci }] },
+          some: { OR: [{ title: ci }, { overview: ci }] },
         },
       },
       { categories: { some: { category: { name: ci } } } },
@@ -790,6 +868,9 @@ export class ToursService {
     this.applyMostPopularCap(tours);
     this.applyMostPopularCap(beyond);
     await this.attachMoney([...tours, ...beyond], params.currency);
+    // Last, after the badge + cap have consumed `tierRank`.
+    tours.forEach((t) => this.neutralizeForPublic(t));
+    beyond.forEach((t) => this.neutralizeForPublic(t));
 
     return {
       query: term,
@@ -1056,6 +1137,10 @@ export class ToursService {
     this.applyMostPopularCap(ordered);
 
     await this.attachMoney(ordered, query.currency);
+    // Only the commercial half here - the approval fields were already
+    // neutralized per-card above. Must run AFTER applyMostPopularCap, which
+    // reads `tierRank`.
+    ordered.forEach((t) => this.neutralizeCommercialFields(t));
     return { total, page, limit, sort, data: ordered };
   }
 
@@ -1113,7 +1198,7 @@ export class ToursService {
         // EN is the canonical content locale - completeness reads the base copy.
         translations: {
           where: { locale: Locale.en },
-          select: { overview: true, description: true },
+          select: { overview: true, shortDescription: true },
         },
         _count: {
           select: {
@@ -1134,7 +1219,7 @@ export class ToursService {
       const completeness = listingCompleteness({
         imageCount: t._count.images,
         hasOverview: Boolean(en?.overview?.trim()),
-        hasDescription: Boolean(en?.description?.trim()),
+        hasShortDescription: Boolean(en?.shortDescription?.trim()),
         highlightCount: t._count.highlights,
         inclusionCount: t._count.inclusions,
         exclusionCount: t._count.exclusions,
@@ -1588,7 +1673,7 @@ export class ToursService {
           () => null,
         ));
     if (!isPlatform && !isOwner) {
-      this.neutralizeApprovalFields(result);
+      this.neutralizeForPublic(result);
     }
     return result;
   }
@@ -1888,7 +1973,7 @@ export class ToursService {
       features: resolvedFeatures,
       languages: languages.map((l) => l.language),
     };
-    this.neutralizeApprovalFields(detail);
+    this.neutralizeForPublic(detail);
     await this.attachMoney([detail], query.currency);
     return detail;
   }
@@ -2531,7 +2616,7 @@ export class ToursService {
         highlights: { select: { id: true } },
         translations: {
           where: { locale: Locale.en },
-          select: { overview: true },
+          select: { overview: true, shortDescription: true },
         },
         _count: { select: { ageBands: true } },
       },
