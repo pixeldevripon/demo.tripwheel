@@ -1,3 +1,4 @@
+import { twitterCard } from '@/lib/seo/twitter-card';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 
@@ -74,12 +75,19 @@ export async function generateMetadata({
 
     const heading = dict.destination.allTours.heading;
 
+    const allToursTitle = heading.title
+        .replace('{destination}', dest.name)
+        .replace('{year}', String(await getCurrentYear()));
+    const allToursDescription = heading.subtitle.replace(
+        '{destination}',
+        dest.name,
+    );
+
     return {
-        title: heading.title
-            .replace('{destination}', dest.name)
-            .replace('{year}', String(await getCurrentYear())),
-        description: heading.subtitle.replace('{destination}', dest.name),
+        title: allToursTitle,
+        description: allToursDescription,
         ...(dest.ogImage && { openGraph: { images: [{ url: dest.ogImage }] } }),
+        ...twitterCard(allToursTitle, allToursDescription),
         alternates,
     };
 }

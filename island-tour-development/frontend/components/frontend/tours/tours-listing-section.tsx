@@ -170,6 +170,8 @@ export async function ToursListingSection({
                     categories={filterCategories}
                     lockCategory={lockCategory}
                     priceMax={priceMax}
+                    currency={currency}
+                    locale={locale}
                     attributes={filters.attributes}
                     shown={tours?.length}
                     total={total}

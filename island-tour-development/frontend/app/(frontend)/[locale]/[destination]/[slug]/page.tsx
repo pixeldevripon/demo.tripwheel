@@ -1,3 +1,4 @@
+import { twitterCard } from '@/lib/seo/twitter-card';
 import { CategoryPage } from '@/components/frontend/category/category-page';
 import { CollectionPage } from '@/components/frontend/collection/collection-page';
 import { HubPage } from '@/components/frontend/hub/hub-page';
@@ -200,6 +201,10 @@ export async function generateMetadata({
                     ...(page.ogImage && {
                         openGraph: { images: [{ url: page.ogImage }] },
                     }),
+                    ...twitterCard(
+                        page.metaTitle || page.title,
+                        page.metaDescription,
+                    ),
                     alternates,
                 };
             }
@@ -218,12 +223,15 @@ export async function generateMetadata({
             resolveDestinationName(destination, locale as Locale),
         ]);
         if (!category) return { alternates };
+        const categoryTitle =
+            pageContent?.metaTitle ??
+            `${category.name} in ${destinationName} | Island Tours`;
+        const categoryDescription =
+            pageContent?.metaDescription ?? category.overview ?? undefined;
         return {
-            title:
-                pageContent?.metaTitle ??
-                `${category.name} in ${destinationName} | Island Tours`,
-            description:
-                pageContent?.metaDescription ?? category.overview ?? undefined,
+            title: categoryTitle,
+            description: categoryDescription,
+            ...twitterCard(categoryTitle, categoryDescription),
             alternates,
         };
     }
@@ -241,14 +249,15 @@ export async function generateMetadata({
         // the alternates so the page's own notFound() still governs the response.
         if (!render) return { alternates };
 
+        const collectionTitle =
+            render.pageContent?.metaTitle ??
+            `${render.h1Override ?? render.name} | Island Tours`;
+        const collectionDescription =
+            render.pageContent?.metaDescription ?? render.overview ?? undefined;
         return {
-            title:
-                render.pageContent?.metaTitle ??
-                `${render.h1Override ?? render.name} | Island Tours`,
-            description:
-                render.pageContent?.metaDescription ??
-                render.overview ??
-                undefined,
+            title: collectionTitle,
+            description: collectionDescription,
+            ...twitterCard(collectionTitle, collectionDescription),
             alternates,
         };
     }
@@ -262,17 +271,21 @@ export async function generateMetadata({
         // alternates so the page's own notFound() still governs the response.
         if (!render) return { alternates };
 
+        const entityTitle =
+            render.pageContent?.metaTitle ??
+            `${render.hero.h1} | Island Tours`;
+        const entityDescription =
+            render.pageContent?.metaDescription ??
+            render.editorialLead ??
+            undefined;
+
         return {
-            title:
-                render.pageContent?.metaTitle ??
-                `${render.hero.h1} | Island Tours`,
-            description:
-                render.pageContent?.metaDescription ??
-                render.editorialLead ??
-                undefined,
+            title: entityTitle,
+            description: entityDescription,
             ...(render.ogImage && {
                 openGraph: { images: [{ url: render.ogImage }] },
             }),
+            ...twitterCard(entityTitle, entityDescription),
             alternates,
         };
     }
@@ -306,11 +319,25 @@ export async function generateMetadata({
             };
         });
 
+        const tourMetaTitle = `${tourTitle} | Island Tours`;
+        const tourMetaDescription =
+            tour.translation?.shortDescription ?? undefined;
         return {
-            title: `${tourTitle} | Island Tours`,
-            description: tour.translation?.shortDescription ?? undefined,
+            title: tourMetaTitle,
+            description: tourMetaDescription,
             alternates,
             openGraph: ogImages.length ? { images: ogImages } : undefined,
+            // Stated explicitly: the root layout carries an admin-authored
+            // sitewide twitter title/description, and Next merges `twitter`
+            // shallowly - so a page that omits it inherits the generic site
+            // copy even though og:* correctly describes the page. Without this
+            // a shared tour link previewed as "Island Tours".
+            twitter: {
+                title: tourMetaTitle,
+                ...(tourMetaDescription && {
+                    description: tourMetaDescription,
+                }),
+            },
         };
     }
 

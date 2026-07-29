@@ -1,3 +1,4 @@
+import { twitterCard } from '@/lib/seo/twitter-card';
 import { LegalPageShell } from '@/components/frontend/legal/legal-page-shell';
 import { PageBody } from '@/components/frontend/legal/page-body';
 import { getPublishedPage } from '@/lib/api/public';
@@ -78,6 +79,10 @@ export async function generateMetadata({
             ...(page.ogImage && {
                 openGraph: { images: [{ url: page.ogImage }] },
             }),
+            ...twitterCard(
+                page.metaTitle || page.title,
+                page.metaDescription,
+            ),
             alternates,
         };
     }

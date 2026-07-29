@@ -1,3 +1,4 @@
+import { twitterCard } from '@/lib/seo/twitter-card';
 import {
     DestinationAbout,
     fallbackAboutSections,
@@ -119,6 +120,10 @@ export async function generateMetadata({
                 ...(page.ogImage && {
                     openGraph: { images: [{ url: page.ogImage }] },
                 }),
+                ...twitterCard(
+                    page.metaTitle || page.title,
+                    page.metaDescription,
+                ),
                 alternates,
             };
         }
@@ -135,6 +140,7 @@ export async function generateMetadata({
         ...(island.ogImage && {
             openGraph: { images: [{ url: island.ogImage }] },
         }),
+        ...twitterCard(pageContent?.metaTitle, pageContent?.metaDescription),
         alternates,
     };
 }
