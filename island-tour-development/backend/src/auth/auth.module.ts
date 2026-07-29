@@ -1,7 +1,11 @@
-import { timingSafeEqual } from 'node:crypto';
-import { ExecutionContext, Module, OnModuleDestroy } from '@nestjs/common';
+import { Module, OnModuleDestroy } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import {
+  hasOwnThrottleOverride,
+  isTrustedInternalOrigin,
+} from '@/auth/internal-origin.util';
+import { TrustedOriginThrottlerGuard } from '@/auth/trusted-origin-throttler.guard';
 import { AuthController } from '@/auth/auth.controller';
 import { LoginPrecheckController } from '@/auth/login-precheck.controller';
 import { LoginPrecheckService } from '@/auth/login-precheck.service';
@@ -12,51 +16,13 @@ import { RolesGuard } from '@/auth/guards/roles.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { authPrismaClient } from '@/auth/auth.instance';
 
-/** Constant-time string compare (avoids leaking the secret via timing). */
-function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
-
-/**
- * True when a request carries the internal API secret, identifying it as a
- * first-party call from our own SSR/build server (the Next.js frontend).
- *
- * Such calls bypass the per-IP throttle: rate limiting exists to stop abusive
- * ANONYMOUS clients, but our SSR/build server is trusted infrastructure that
- * legitimately bursts many requests from a single origin IP while prerendering
- * (which would otherwise trip the limiter and fail the build). Only this
- * authenticated origin is exempted - unlike blanket-skipping the public read
- * endpoints, anonymous traffic to those routes stays fully throttled.
- *
- * The secret is server-only (never `NEXT_PUBLIC_`), so it is never shipped to a
- * browser; browser-side auth requests carry no such header and remain throttled
- * (and are separately guarded by Better Auth's own per-path rate limiter). When
- * the secret is unset the bypass never triggers - throttling applies to all.
- *
- * IMPORTANT: this exempts requests ONLY from THIS NestJS throttle. It has no
- * effect on Better Auth's own limiter (`auth.instance.ts` rateLimit) - and
- * `/api/auth/*` is already `@SkipThrottle()`'d from the NestJS guard anyway
- * (auth.controller.ts), so login/session routes are governed solely by Better
- * Auth. Do not assume the internal key relaxes anything under `/api/auth/*`.
- */
-function isTrustedInternalOrigin(context: ExecutionContext): boolean {
-  const secret = process.env.INTERNAL_API_SECRET;
-  if (!secret) return false;
-  const req = context.switchToHttp().getRequest<{
-    headers: Record<string, string | string[] | undefined>;
-  }>();
-  const provided = req.headers['x-internal-api-key'];
-  return typeof provided === 'string' && safeEqual(provided, secret);
-}
-
 /**
  * AuthModule wires Better Auth into NestJS.
  *
  * APP_GUARD providers are applied globally in registration order:
- *   1. ThrottlerGuard     - rate-limit before hitting the DB for session checks
+ *   1. TrustedOriginThrottlerGuard - rate-limit before hitting the DB for
+ *                                    session checks (ThrottlerGuard + a tracker
+ *                                    that understands our SSR callers)
  *   2. AuthGuard          - validates session cookie / Bearer token
  *   3. RolesGuard         - checks @Roles() decorator metadata
  *   4. PermissionsGuard   - checks @RequirePermissions() metadata
@@ -75,7 +41,19 @@ function isTrustedInternalOrigin(context: ExecutionContext): boolean {
       // weakening protection for anonymous clients - so the tiers below stay
       // strict. Auth brute-force is separately handled by Better Auth's own
       // per-path rate limiter (see auth.instance.ts `rateLimit.customRules`).
-      skipIf: isTrustedInternalOrigin,
+      //
+      // SCOPED, not wholesale: a route that declares its OWN `@Throttle()` did
+      // so because these tiers were too loose for it - the mail-senders, the
+      // credential paths, settle. Those limits are the whole protection there,
+      // so one leak of INTERNAL_API_SECRET must not lift them all at once.
+      // Using `@Throttle()` itself as the marker means the rule cannot drift:
+      // tightening a route removes it from the bypass automatically.
+      // Such a route reached from SSR is then limited by the SSR egress IP, so
+      // that caller must forward INTERNAL_CLIENT_IP_HEADER - see
+      // `TrustedOriginThrottlerGuard`, which tracks by it and warns when a
+      // trusted origin is throttled without it.
+      skipIf: (context) =>
+        isTrustedInternalOrigin(context) && !hasOwnThrottleOverride(context),
       // In test, use a single permissive throttler so E2E suites don't hit 429s.
       // Otherwise three tiers: burst / sustained / hourly.
       throttlers:
@@ -102,7 +80,7 @@ function isTrustedInternalOrigin(context: ExecutionContext): boolean {
   providers: [
     LoginPrecheckService,
     SessionSurfaceService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: TrustedOriginThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

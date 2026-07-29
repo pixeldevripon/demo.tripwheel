@@ -35,7 +35,7 @@ export function CollectionToursSection({
                     />
 
                     {/* Sitewide tour grid: 2-col mobile, 3-col sm, 4-col lg. */}
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10'>
+                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
                         {tours.map((tour, i) => (
                             <MountReveal key={tour.id} listItem>
                                 <TourCard

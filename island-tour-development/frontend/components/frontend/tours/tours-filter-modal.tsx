@@ -1,6 +1,8 @@
 'use client';
 
 import { springPop } from '@/lib/motion';
+import type { Currency, Locale } from '@/lib/constants/locales';
+import { formatPriceFrom } from '@/lib/currency/current';
 import { PRICE_MAX, PRICE_MIN } from '@/lib/tours/filters';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -310,6 +312,14 @@ interface ToursFilterModalProps {
     hasReviews?: boolean;
     /** Effective price ceiling for this destination/category (slider max). */
     priceMax?: number;
+    /**
+     * Display currency + locale for the slider's bound labels. Required rather
+     * than defaulted: the labels used to hardcode `$`, which is wrong on a
+     * multi-currency platform - the bounds are in whatever currency the rest of
+     * the page is priced in, and a wrong symbol misstates the price.
+     */
+    currency: Currency;
+    locale: Locale;
 }
 
 export function ToursFilterModal({
@@ -320,6 +330,8 @@ export function ToursFilterModal({
     onApply,
     hasReviews = false,
     priceMax = PRICE_MAX,
+    currency,
+    locale,
 }: ToursFilterModalProps) {
     const [draft, setDraft] = useState<TourFilters>(value);
 
@@ -449,8 +461,20 @@ export function ToursFilterModal({
                                     }
                                 />
                                 <div className='flex items-center justify-between text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    <span>${draft.price[0]}</span>
-                                    <span>${draft.price[1]}</span>
+                                    <span>
+                                        {formatPriceFrom(
+                                            draft.price[0],
+                                            currency,
+                                            locale
+                                        )}
+                                    </span>
+                                    <span>
+                                        {formatPriceFrom(
+                                            draft.price[1],
+                                            currency,
+                                            locale
+                                        )}
+                                    </span>
                                 </div>
                             </Section>
 

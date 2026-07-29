@@ -76,6 +76,14 @@ async function bootstrap() {
     ],
     // Let OTAs read the echoed capability set + negotiated content locale.
     exposedHeaders: ['Octo-Capabilities', 'Content-Language'],
+    // Cache the preflight. Every browser call here is cross-origin and sends
+    // Content-Type: application/json, so each one is non-simple and preflights.
+    // Without this the checkout pays a DOUBLE round trip on every step -
+    // reserve -> contact PATCH -> payment intent becomes 6 requests instead of
+    // 3 before the card form can even render. Browsers clamp this themselves
+    // (Chrome 2h, Safari 10min), so the practical ceiling is the browser's,
+    // and a change to `allowedHeaders`/`methods` propagates within that window.
+    maxAge: 86_400,
   });
 
   // ── Global pipes & filters ──────────────────────────────────────────────────

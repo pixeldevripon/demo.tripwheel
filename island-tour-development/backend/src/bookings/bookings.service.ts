@@ -156,6 +156,18 @@ const BOOKING_LIST_INCLUDE = {
 } as const;
 
 const DEFAULT_HOLD_MINUTES = 30;
+/**
+ * Absolute ceiling on how long a booking may stay ON_HOLD, measured from
+ * `createdAt` and independent of how many times `extend()` is called.
+ *
+ * A hold claims real inventory - and a PRIVATE + UNIT charter claims the WHOLE
+ * departure - so an unbounded extend loop is a free, unauthenticated way to
+ * keep a departure off sale forever. `extend()` is `@Public()` by necessity
+ * (pre-payment there is no session to prove ownership with; the raw booking id
+ * IS the short-lived secret), so a per-call check cannot help. This ceiling is
+ * what actually bounds it: 4x the default hold, far beyond any real checkout.
+ */
+const MAX_HOLD_LIFETIME_MINUTES = 120;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
 const QUOTE_TTL_MINUTES = 15;
 
@@ -398,14 +410,17 @@ export class BookingsService {
     pricing: BookingPricing;
   }> {
     const sourceCurrency = ctx.tour.defaultCurrency;
-    const sourceRate = await this.fx.getRate(sourceCurrency, bookingCurrency);
-    const eurRate = await this.fx.getRate(bookingCurrency, Currency.EUR);
-
-    // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
-    const effectiveRate = await this.tiers.effectiveCommissionRate(
-      ctx.tourId,
-      now,
-    );
+    // All three depend only on values already in hand (the tour's currency, the
+    // booking currency, the tour id) - none consumes another's result - so they
+    // overlap instead of serializing. This runs on EVERY quote as well as every
+    // reserve, i.e. every time the booking widget refreshes a price, so the two
+    // round trips saved here are paid back on every stepper tick.
+    const [sourceRate, eurRate, effectiveRate] = await Promise.all([
+      this.fx.getRate(sourceCurrency, bookingCurrency),
+      this.fx.getRate(bookingCurrency, Currency.EUR),
+      // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
+      this.tiers.effectiveCommissionRate(ctx.tourId, now),
+    ]);
     const effectiveTier = new Prisma.Decimal(effectiveRate)
       .mul(100)
       .toDecimalPlaces(2);
@@ -480,6 +495,22 @@ export class BookingsService {
       include: { unitItems: true },
     });
     if (prior) return mapBookingPublic(prior);
+
+    // Per-DEPARTURE cap on NEW holds (the idempotent replay above never reaches
+    // it, so a retried Continue is free). Reserve is `@Public` and its only
+    // other bound is the per-IP throttle, which a multi-IP caller sidesteps and
+    // a trusted first-party origin is exempt from - so this is what actually
+    // bounds hold churn against one departure. Capacity already caps how many
+    // seats can be held at once; this stops the rapid create/expire/re-create
+    // loop that would keep a popular departure looking sold out.
+    // 60/min is far above any real pattern (a departure sees a handful of
+    // reserves per minute even at peak), so it cannot reject a real traveller.
+    this.targetLimiter.consume(
+      'reserve',
+      dto.departureId,
+      [{ max: 60, windowMs: 60_000 }],
+      'This departure is receiving too many booking attempts. Please wait a moment and try again.',
+    );
 
     const ctx = await this.loadContext(dto);
     this.validateRestrictions(ctx);
@@ -608,7 +639,13 @@ export class BookingsService {
           tourStartDateTime: localStart,
           tourEndDateTime,
           tourTimeZone: ctx.tour.timeZone,
-          island: ctx.tour.destination?.slug ?? 'Curaçao',
+          // Denormalized destination SLUG - it builds the TYP deep link
+          // (`/{island}/thank-you/{publicRef}`) and the page 404s on any
+          // mismatch, so the fallback must be slug-shaped too. `destination`
+          // is a required relation that `loadContext` always selects, so this
+          // only guards the impossible case; it used to read 'Curaçao', a
+          // display NAME, which would have 404'd that booking's TYP forever.
+          island: ctx.tour.destination?.slug ?? 'curacao',
           utcExpiresAt: operatorFull
             ? null
             : new Date(
@@ -2786,16 +2823,39 @@ export class BookingsService {
   // ════════════════════════════════════════════════════════════════════════
 
   async extend(id: string, dto: ExtendBookingDto) {
+    // Per-BOOKING cap on top of the per-IP throttle. The global tier (3000/hr)
+    // is nowhere near tight enough to stop one call every 25 minutes forever,
+    // and a multi-IP caller sidesteps per-IP limits entirely.
+    this.targetLimiter.consume(
+      'extend',
+      id,
+      [{ max: 6, windowMs: 60 * 60 * 1000 }],
+      'This booking has been extended too many times. Please complete it or start a new one.',
+    );
     const booking = await this.loadOr404(id);
     if (booking.status !== BookingStatus.ON_HOLD) {
       throw new ConflictException('Only an on-hold booking can be extended');
     }
+
+    // The hold may never outlive MAX_HOLD_LIFETIME_MINUTES from creation, no
+    // matter how many times it is extended - otherwise the seats (or the whole
+    // departure, for a PRIVATE charter) are locked indefinitely for free.
+    const ceilingMs =
+      booking.createdAt.getTime() + MAX_HOLD_LIFETIME_MINUTES * 60_000;
+    if (Date.now() >= ceilingMs) {
+      throw new ConflictException(
+        'This booking has been held too long and can no longer be extended',
+      );
+    }
+    const requestedMs =
+      Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000;
+
     const updated = await this.prisma.booking.update({
       where: { id: booking.id },
       data: {
-        utcExpiresAt: new Date(
-          Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
-        ),
+        // Clamped: an extension can shorten the gap to the ceiling but never
+        // push past it.
+        utcExpiresAt: new Date(Math.min(requestedMs, ceilingMs)),
       },
       include: { unitItems: true },
     });
@@ -2820,8 +2880,20 @@ export class BookingsService {
     // the /bookings pair login). ON_HOLD stays open: checkout sets the initial
     // contact pre-payment, when the raw id is a short-lived secret held only
     // by the reserving client (security review 2026-07-20).
+    // Pickup and notes demand the SAME proof as contact. The block below
+    // deliberately re-snapshots the pickup address and window onto the booking
+    // (guide §17), so an unproven edit tells a paying traveler the wrong place
+    // and the wrong time - and `id` rides in the PATCH URL path, which reaches
+    // server logs, APM traces and Referer headers far more readily than a
+    // header-only credential. ON_HOLD stays open either way: pre-payment the
+    // raw id is a short-lived secret held only by the reserving client, and
+    // checkout sets both contact and pickup then.
+    const touchesItinerary =
+      dto.pickupLocationId !== undefined ||
+      dto.pickupRequested !== undefined ||
+      dto.notes !== undefined;
     if (
-      dto.contact &&
+      (dto.contact || touchesItinerary) &&
       booking.status === BookingStatus.CONFIRMED &&
       !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
         id: booking.id,
@@ -2829,7 +2901,9 @@ export class BookingsService {
       })
     ) {
       throw new UnauthorizedException(
-        'Verify with your email and booking reference to change contact details',
+        dto.contact
+          ? 'Verify with your email and booking reference to change contact details'
+          : 'Verify with your email and booking reference to change pickup details',
       );
     }
     // A post-reserve pickup change must move the SNAPSHOT with it (guide §17) - the
@@ -4145,35 +4219,52 @@ export class BookingsService {
   }
 
   private async loadContext(dto: PricingInput) {
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: dto.tourId },
-      select: {
-        operatorId: true,
-        timeZone: true,
-        bookingCutoffMinutes: true,
-        defaultCurrency: true,
-        paymentModel: true,
-        onArrivalPayment: true,
-        depositPct: true,
-        commissionTier: true,
-        minPartySize: true,
-        maxPartySize: true,
-        durationMinutesFrom: true,
-        minAgeYears: true,
-        // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
-        // pickupRequired makes a pickup choice mandatory at reserve.
-        pickupModel: true,
-        pickupRequired: true,
-        // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
-        pricingModel: true,
-        wholeUnitType: true,
-        basePrice: true,
-        unitIncludedGuests: true,
-        extraPersonPrice: true,
-        bookingType: true,
-        destination: { select: { slug: true } },
-      },
-    });
+    // The departure lookup keys off `dto` alone, so it overlaps the tour read
+    // rather than waiting behind it. The guards below stay in their original
+    // order, so the error precedence a caller sees is unchanged (missing tour,
+    // then unsupported payment model, then invalid departure) - only the two
+    // round trips are collapsed into one.
+    const [tour, departure] = await Promise.all([
+      this.prisma.tour.findUnique({
+        where: { id: dto.tourId },
+        select: {
+          operatorId: true,
+          timeZone: true,
+          bookingCutoffMinutes: true,
+          defaultCurrency: true,
+          paymentModel: true,
+          onArrivalPayment: true,
+          depositPct: true,
+          commissionTier: true,
+          minPartySize: true,
+          maxPartySize: true,
+          durationMinutesFrom: true,
+          minAgeYears: true,
+          // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
+          // pickupRequired makes a pickup choice mandatory at reserve.
+          pickupModel: true,
+          pickupRequired: true,
+          // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
+          pricingModel: true,
+          wholeUnitType: true,
+          basePrice: true,
+          unitIncludedGuests: true,
+          extraPersonPrice: true,
+          bookingType: true,
+          destination: { select: { slug: true } },
+        },
+      }),
+      this.prisma.departure.findFirst({
+        where: { id: dto.departureId, tourId: dto.tourId },
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+        },
+      }),
+    ]);
     if (!tour) throw new NotFoundException('Tour not found');
 
     // OPERATOR_FULL was dropped for v1 (founder, 2026-07-15): it takes no payment and
@@ -4185,16 +4276,6 @@ export class BookingsService {
       );
     }
 
-    const departure = await this.prisma.departure.findFirst({
-      where: { id: dto.departureId, tourId: dto.tourId },
-      select: {
-        id: true,
-        date: true,
-        startTime: true,
-        capacity: true,
-        bookedCount: true,
-      },
-    });
     if (!departure)
       throw new UnprocessableEntityException('Invalid departureId');
 

@@ -21,6 +21,10 @@ const DISALLOW = [
     '/*/cancel',
     '/*/review',
     '/*/bookings',
+    // The traveller account area. It already serves `robots: index:false`, so
+    // this is crawl-budget hygiene rather than an indexing fix - but every
+    // other private family is listed here and this one was the odd one out.
+    '/*/traveller',
     '/*/wishlist',
     '/*/search',
     '/*/manage-cookies',

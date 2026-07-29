@@ -5,6 +5,7 @@
  */
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -45,7 +46,11 @@ function mockPrisma() {
       // read has a value in tests that don't set departures explicitly.
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      // updateDeparture writes through a guarded updateMany (optimistic lock on
+      // bookedCount); default to "claimed" so tests opt in to the race.
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   };
 }
@@ -379,23 +384,27 @@ describe('AvailabilityService', () => {
   });
 
   describe('updateDeparture', () => {
-    it('preserves booked seats, re-derives status, and flags manuallyEdited', async () => {
-      prisma.departure.findUnique.mockResolvedValue(
-        departureRow({ capacity: 10, bookedCount: 7 }),
-      );
+    /** Arrange the happy-path reads for a departure edit. */
+    const arrangeUpdate = (over: Record<string, unknown> = {}) => {
+      const row = departureRow({ capacity: 10, bookedCount: 7, ...over });
+      prisma.departure.findUnique.mockResolvedValue(row);
+      prisma.departure.findUniqueOrThrow.mockResolvedValue(row);
       prisma.tour.findUnique.mockResolvedValue(TOUR);
       prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      prisma.departure.update.mockImplementation(({ data }) =>
-        departureRow({ ...data }),
-      );
+      return row;
+    };
+
+    it('preserves booked seats, re-derives status, and flags manuallyEdited', async () => {
+      arrangeUpdate();
 
       await svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', {
         capacity: 12,
       });
 
-      expect(prisma.departure.update).toHaveBeenCalledWith(
+      expect(prisma.departure.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'd1' },
+          // Guarded on the booked count read a moment ago - see the service.
+          where: { id: 'd1', bookedCount: 7 },
           data: expect.objectContaining({
             capacity: 12,
             status: 'OPEN',
@@ -403,6 +412,33 @@ describe('AvailabilityService', () => {
           }),
         }),
       );
+    });
+
+    it('refuses to set capacity below the seats already booked', async () => {
+      arrangeUpdate({ capacity: 10, bookedCount: 8 });
+
+      await expect(
+        svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', { capacity: 2 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.departure.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('allows shrinking capacity down to exactly the booked count', async () => {
+      arrangeUpdate({ capacity: 10, bookedCount: 8 });
+
+      await svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', {
+        capacity: 8,
+      });
+      expect(prisma.departure.updateMany).toHaveBeenCalled();
+    });
+
+    it('fails loudly when a booking lands mid-edit (optimistic lock miss)', async () => {
+      arrangeUpdate();
+      prisma.departure.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        svc.updateDeparture('u1', Role.TOUR_OPERATOR, 'd1', { capacity: 12 }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 

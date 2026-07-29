@@ -19,13 +19,16 @@ export function SearchPagination({ pageCount }: { pageCount: number }) {
 
     const nav = useSearchNavOptional();
 
-    const go = (next: number) => {
+    const hrefFor = (next: number) => {
         const sp = new URLSearchParams(params.toString());
         if (next <= 1) sp.delete('page');
         else sp.set('page', String(next));
         const qs = sp.toString();
-        const href = qs ? `${pathname}?${qs}` : pathname;
-        
+        return qs ? `${pathname}?${qs}` : pathname;
+    };
+
+    const go = (next: number) => {
+        const href = hrefFor(next);
         if (nav) {
             nav.startNav(() => router.push(href));
         } else {
@@ -33,5 +36,12 @@ export function SearchPagination({ pageCount }: { pageCount: number }) {
         }
     };
 
-    return <Pagination page={page} pageCount={pageCount} onPageChange={go} />;
+    return (
+        <Pagination
+            page={page}
+            pageCount={pageCount}
+            onPageChange={go}
+            hrefFor={hrefFor}
+        />
+    );
 }

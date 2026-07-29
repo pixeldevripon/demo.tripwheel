@@ -172,6 +172,11 @@ export function BookingCalendar() {
                     width={24}
                     height={24}
                     className='size-6 shrink-0'
+                    // Card chrome, always visible above the fold - it must not
+                    // queue behind the page's ~190 lazy images. `eager` (not
+                    // `priority`) loads it immediately WITHOUT adding a
+                    // preload link that would compete with the gallery LCP.
+                    loading='eager'
                 />
             </motion.button>
 

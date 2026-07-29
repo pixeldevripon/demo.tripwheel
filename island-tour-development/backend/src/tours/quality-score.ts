@@ -41,7 +41,25 @@ export interface CompletenessInput {
   imageCount: number;
   /** EN (base-locale) translation row - the canonical content. */
   hasOverview: boolean;
-  hasDescription: boolean;
+  /**
+   * The SEO summary line (`shortDescription`).
+   *
+   * This slot used to read the separate `description` translation field, which
+   * was removed from the product - nothing on the public site rendered it, so
+   * operators wrote body copy no traveller could read.
+   *
+   * It is `shortDescription` rather than a length test on the overview. A
+   * length test was tried and rejected: seeded overviews run 180-233 chars
+   * with a median of 201, so ANY threshold in that band splits the catalogue
+   * on noise - 199 fails, 201 passes, and neither means anything. The overview
+   * is a short pitch by design; it was never a second body of copy, so it
+   * cannot stand in for one.
+   *
+   * `shortDescription` is a real, separately-authored field that no other
+   * check counts, which keeps this at ten checks. Dropping to nine would
+   * re-weight the rest, which §7.2 forbids.
+   */
+  hasShortDescription: boolean;
   highlightCount: number;
   inclusionCount: number;
   exclusionCount: number;
@@ -57,7 +75,7 @@ export function listingCompleteness(input: CompletenessInput): number {
   const checks: boolean[] = [
     input.imageCount >= 4, // gallery: hero + >=3 (E.3 image spec)
     input.hasOverview,
-    input.hasDescription,
+    input.hasShortDescription,
     input.highlightCount >= 3, // master: highlights <3 counts as incomplete
     input.inclusionCount >= 1,
     input.exclusionCount >= 1,

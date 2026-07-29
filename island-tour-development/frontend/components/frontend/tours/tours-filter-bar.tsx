@@ -1,6 +1,7 @@
 'use client';
 
 import { useToursNav } from '@/components/frontend/tours/tours-browser';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import {
     countActiveFilters,
     EMPTY_FILTERS,
@@ -103,6 +104,9 @@ interface ToursFilterBarProps {
     activeFilters: TourFilters;
     /** Effective price ceiling (per destination/category); slider + URL max. */
     priceMax?: number;
+    /** Display currency + locale for the filter modal's price-bound labels. */
+    currency: Currency;
+    locale: Locale;
     /**
      * Active dynamic attribute filters (from the URL). No modal UI sets these, but
      * the toolbar preserves them across navigations so URL/deep-link attribute
@@ -142,6 +146,8 @@ export function ToursFilterBar({
     sort,
     activeFilters,
     priceMax = PRICE_MAX,
+    currency,
+    locale,
     attributes = {},
 }: ToursFilterBarProps) {
     const router = useRouter();
@@ -521,6 +527,8 @@ export function ToursFilterBar({
                             dict={filterDict}
                             hasReviews={hasReviews}
                             priceMax={priceMax}
+                            currency={currency}
+                            locale={locale}
                             value={activeFilters}
                             onApply={f => {
                                 applyState({

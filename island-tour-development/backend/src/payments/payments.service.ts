@@ -1129,8 +1129,15 @@ function assertAllowedRedirect(url: string): string {
   } catch {
     throw new BadRequestException('Invalid return URL');
   }
+  // Fails CLOSED, matching the CORS origin callback in main.ts. The guard used
+  // to be `allowed.length > 0 && !allowed.includes(...)`, which silently
+  // skipped the check entirely whenever the allow-list came back empty -
+  // `parseCorsOrigins` only defaults when CORS_ORIGINS is UNDEFINED, so an
+  // explicit `CORS_ORIGINS=''` in an env file turned this into an open
+  // redirect: reserving a booking is public, so anyone could then pass their
+  // own `returnUrl` and have Mollie deliver the traveller to it after paying.
   const allowed = parseCorsOrigins(process.env.CORS_ORIGINS);
-  if (allowed.length > 0 && !allowed.includes(parsed.origin)) {
+  if (!allowed.includes(parsed.origin)) {
     throw new BadRequestException('Return URL origin is not allowed');
   }
   return parsed.toString();

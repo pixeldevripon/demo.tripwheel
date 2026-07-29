@@ -446,18 +446,35 @@ export async function TourDetailContent({
                     <div className='flex flex-col gap-10 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-x-6 lg:gap-y-10'>
                         {/* Gallery (left column, top row) */}
                         <div className='lg:col-start-1 lg:row-start-1'>
-                            <MountReveal delay={0.1}>
+                            {/* Deliberately NOT wrapped in <MountReveal>. The
+                                gallery hero is this page's LCP element, and
+                                Chrome times LCP at the element's FINAL rendered
+                                state - so a 0.1s-delayed 0.6s opacity fade-in
+                                pushed the LCP timestamp back by up to ~0.7s on
+                                the most revenue-critical page on the site. The
+                                siblings below still animate; the entrance reads
+                                the same without the hero fading in. */}
                             <TourGallery
                                 images={galleryImages}
                                 title={title}
                                 meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
-                            </MountReveal>
                         </div>
 
                         {/* Booking card - right rail, sticky across the whole page
                             scroll (spans both left-column rows). */}
+                        {/* The viewport cap lives on the CARD, not here (see
+                            tour-booking-card.tsx). Capping this rail instead
+                            and flexing the card inside it looks tidier - the
+                            notices then sit inside the cap too - but it makes
+                            the card and the notices compete for the same
+                            height: on a 720px screen the notices won, the card
+                            was crushed past its own contents, and the CTA
+                            printed straight over them. The notices are static
+                            copy and come back into view when the sticky rail
+                            releases at the end of the page; the card is the
+                            thing that must always be whole. */}
                         <div className='lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24'>
                             {/* Live tour pricing / party bands / start times.
                                 Real availability (remaining spots, sold-out) still

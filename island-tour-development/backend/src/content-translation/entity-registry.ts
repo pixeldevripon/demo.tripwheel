@@ -126,7 +126,6 @@ const arr = (
 const TOUR_FIELDS = [
   'title',
   'overview',
-  'description',
   'shortDescription',
   'whatToBring',
   'knowBeforeYouGo',
@@ -244,7 +243,6 @@ export class EntityRegistry {
         const data = {
           title: str(f, 'title'),
           overview: str(f, 'overview'),
-          description: str(f, 'description'),
           shortDescription: str(f, 'shortDescription'),
           whatToBring: arr(f, 'whatToBring'),
           knowBeforeYouGo: arr(f, 'knowBeforeYouGo'),

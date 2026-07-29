@@ -157,6 +157,17 @@ model Tour {
   @@index([status])
   @@index([tierRank, qualityScore]) // ranking
   @@index([isBookable])
+  // The canonical listing/search shape: every public ranked query filters on
+  // {destinationId, status, isActive, isBookable} and sorts by
+  // [isSponsored desc, tierRank asc, qualityScore desc, id asc]. The narrower
+  // indexes above cover the filter OR the sort, never both, so Postgres had to
+  // scan the destination's tours and sort them per request.
+  //
+  // Measured on 50k synthetic rows (10k matching): Seq Scan + top-N heapsort
+  // 3.609 ms -> Index Only Scan with no Sort node 0.045 ms, reading 12 rows
+  // instead of 10,000. No effect at the current catalogue size - Postgres
+  // correctly ignores it for 40 rows - this is for when a destination grows.
+  @@index([destinationId, status, isActive, isBookable, isSponsored(sort: Desc), tierRank, qualityScore(sort: Desc), id], name: "tours_ranking_idx")
   @@map("tours")
 }
 

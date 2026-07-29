@@ -617,19 +617,44 @@ export class AvailabilityService {
     const now = localNow(clock.timeZone);
 
     const capacity = dto.capacity ?? existing.capacity;
+    // Capacity may never drop below the seats already sold. The nightly
+    // materializer refuses to resize any departure with bookedCount > 0
+    // (availability-materializer.service.ts); without the same floor here the
+    // manual edit path can write capacity 2 onto a departure with 8 booked,
+    // leaving a permanently oversold row that every downstream bookability
+    // calculation then reasons about incorrectly.
+    if (capacity < existing.bookedCount) {
+      throw new BadRequestException(
+        `Capacity cannot be lower than the ${existing.bookedCount} seat(s) already booked`,
+      );
+    }
     // A manual status wins; otherwise re-derive from the (preserved) booked count.
     const status =
       dto.status ?? storedStatusForFill(capacity, existing.bookedCount);
     const soldOut = status === DepartureStatus.SOLD_OUT;
 
-    const row = await this.prisma.departure.update({
-      where: { id },
+    // Optimistic lock on the booked count. `existing` was read several awaits
+    // ago (assertTourAccess + tourClock), so a reserve can have landed in the
+    // gap - and both the floor check above and `storedStatusForFill` above
+    // reason about that stale number. Guarding the write on it means a booking
+    // that slipped in makes this edit fail loudly instead of silently
+    // overwriting the seats it just sold.
+    const claimed = await this.prisma.departure.updateMany({
+      where: { id, bookedCount: existing.bookedCount },
       data: {
         capacity,
         status,
         ...(soldOut && existing.soldOutAt == null && { soldOutAt: new Date() }),
         manuallyEdited: true, // protect from re-materialization (master §3)
       },
+    });
+    if (claimed.count === 0) {
+      throw new ConflictException(
+        'This departure was booked while you were editing it. Reload and try again.',
+      );
+    }
+    const row = await this.prisma.departure.findUniqueOrThrow({
+      where: { id },
     });
     this.logger.log(`Departure ${id} manually edited`);
     // A cancel / sold-out / reopen can flip the tour's bookability - refresh the flag.

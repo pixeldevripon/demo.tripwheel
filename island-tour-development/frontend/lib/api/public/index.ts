@@ -7,6 +7,7 @@
  */
 export * from './categories';
 export * from './collections';
+export * from './custom-scripts';
 export * from './destinations';
 export * from './featured-experiences';
 export * from './filters';

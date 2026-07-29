@@ -16,12 +16,25 @@
     button {
         cursor: pointer;
     }
+    /*
+     * SF Pro on the document itself, from the literal stack rather than the
+     * `font-sans` utility.
+     *
+     * `@apply font-sans` compiles to `font-family: var(--font-sans)`, and
+     * `--font-sans` lives in `@theme inline`, which inlines values into
+     * utilities WITHOUT emitting the property - so the variable resolved to
+     * nothing and the document fell back to the browser's default serif.
+     * `.frontend-root` hid this (it sets its own `--it-font-*`), so only
+     * content outside that scope showed it - most visibly the booking
+     * calendar, which portals to document.body.
+     */
     body {
-        @apply antialiased font-sans bg-background text-foreground;
+        @apply antialiased bg-background text-foreground;
+        font-family: var(--it-base-sans);
         letter-spacing: var(--tracking-normal);
     }
     html {
-        @apply font-sans;
+        font-family: var(--it-base-sans);
     }
 }
 
@@ -178,6 +191,32 @@
     --warning-foreground: oklch(0.99 0.01 70);
     --info: oklch(0.659 0.162 248.812);
     --info-foreground: oklch(0.99 0.01 248);
+
+    /*
+     * Base font stacks (SF Pro system), under their OWN names.
+     *
+     * They cannot be declared as `--font-sans` directly: `@theme inline` below
+     * emits `--font-sans: var(--font-sans)` into `:root`, which is
+     * self-referential and therefore resolves to nothing - and it wins, being
+     * later in the cascade. `html`/`body` then compute to the browser's default
+     * SERIF.
+     *
+     * They must live HERE, in `:root`, and not in the `.dark` block: content
+     * inside `.frontend-root` sets its own `--it-font-*` and is unaffected
+     * either way, so a light-mode page looked fine until something rendered
+     * OUTSIDE that scope - the booking calendar and the policy modals, which
+     * portal to document.body and inherit straight from <body>.
+     *
+     * This used to resolve by accident: `var(--font-sans)` picked up the
+     * property next/font injected on <html>. Removing the unused webfonts
+     * removed that definition with them.
+     */
+    --it-base-sans:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
+        Arial, sans-serif;
+    --it-base-display:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
+        Arial, sans-serif;
 }
 
 /* ─── Dark mode ───────────────────────────────── */
@@ -232,10 +271,20 @@
 }
 
 @theme inline {
-    --font-dm-sans: var(--font-dm-sans);
-    --font-general-sans: var(--font-general-sans);
-    --font-heading: var(--font-heading);
-    --font-sans: var(--font-sans);
+    /*
+     * Sans/display resolve to the SF Pro SYSTEM stack - the same families
+     * `frontend-tokens.css` sets on `.frontend-root`, which every route group
+     * wraps its tree in. These used to point at webfonts (Noto Sans, Playfair
+     * Display, DM Sans, GeneralSans) that `.frontend-root` overrode before they
+     * could ever paint, so the app preloaded ~225 KB of woff2 per request for
+     * nothing. Kept as real stacks rather than deleted so `font-sans` /
+     * `font-heading` still resolve wherever they are applied.
+     *
+     * `--font-mono` stays a webfont: `font-mono` is genuinely painted on the
+     * traveller booking references.
+     */
+    --font-sans: var(--it-base-sans);
+    --font-heading: var(--it-base-display);
     --font-mono: var(--font-jetbrains-mono);
 
     --radius: var(--radius);

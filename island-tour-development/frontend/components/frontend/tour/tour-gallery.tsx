@@ -99,7 +99,15 @@ export function TourGallery({
                             src={images[slide]}
                             alt={title}
                             fill
-                            sizes='100vw'
+                            // Both gallery layouts render in the DOM (CSS picks
+                            // one), and both start from images[0]. Matching
+                            // `sizes` here and on the desktop hero tile makes
+                            // them resolve to the SAME srcset candidate at any
+                            // given viewport, so the one preload below serves
+                            // whichever layout is actually visible. With a bare
+                            // `100vw` the desktop tile wanted a different (much
+                            // smaller) candidate and the preload was wasted.
+                            sizes='(min-width: 1024px) 396px, 100vw'
                             className='object-cover'
                             priority
                         />
@@ -199,8 +207,13 @@ export function TourGallery({
                             src={hero}
                             alt={title}
                             fill
-                            sizes='396px'
+                            // Must match the mobile hero's `sizes` - see there.
+                            sizes='(min-width: 1024px) 396px, 100vw'
                             className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                            // This is the LCP element on desktop. Same URL as
+                            // the mobile hero at any viewport, so the browser
+                            // dedupes the two preloads into one fetch.
+                            priority
                         />
                     )}
                 </motion.button>

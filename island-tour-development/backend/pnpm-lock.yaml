@@ -68,6 +68,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      htmlparser2:
+        specifier: ^8.0.2
+        version: 8.0.2
       libphonenumber-js:
         specifier: ^1.13.9
         version: 1.13.9

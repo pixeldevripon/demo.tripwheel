@@ -29,7 +29,15 @@ export default async function globalSetup() {
 
   const response = await ctx.post('http://localhost:5050/api/auth/sign-in/email', {
     data: { email, password },
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // Every sign-in caller must name its door (auth/login-surfaces.ts). The
+      // session hook rejects a missing/unknown value with 403 "Sign-in surface
+      // not recognized", which was failing globalSetup - and with it the ENTIRE
+      // suite - since the four-door enforcement shipped. ADMIN may use any
+      // surface; 'admin' is the one this seeded account belongs to.
+      'x-login-surface': 'admin',
+    },
   });
 
   if (!response.ok()) {

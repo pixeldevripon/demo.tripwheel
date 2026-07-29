@@ -57,13 +57,23 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
     }[kind];
 
     return (
-        <div className='flex items-start gap-1 rounded-[16px] bg-it-surface p-4'>
+        // `shrink-0`: the strip below scrolls as a whole when the rail is
+        // squeezed, so an individual notice must keep its own height rather
+        // than squashing its two lines of text.
+        <div className='flex shrink-0 items-start gap-1 rounded-[16px] bg-it-surface p-4'>
             <Image
                 src={icon.src}
                 alt=''
                 width={icon.size}
                 height={icon.size}
                 className='size-6 shrink-0'
+                // Booking-card chrome: these sit beside the CTA in the sticky
+                // rail and are on screen for the whole scroll, so waiting in
+                // the lazy queue behind the page's ~190 images left the notices
+                // rendering as text with a blank gap where the glyph belongs.
+                // `eager`, not `priority` - no preload link, so nothing
+                // competes with the gallery LCP.
+                loading='eager'
             />
             <div className='flex flex-col gap-1'>
                 <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
@@ -82,10 +92,17 @@ export function BookingNotices() {
     const { data } = useBooking();
     if (data.notices.length === 0) return null;
     return (
-        <>
+        // `shrink-0`, and deliberately NOT a scroll container. Inside the
+        // capped sticky rail the card is the only thing that scrolls: it holds
+        // the interaction, so it takes the whole squeeze (down to its own
+        // floor). These notices are static reassurance copy - giving them a
+        // second scrollbar to reach the last line reads as broken, and clipping
+        // them mid-sentence reads worse. They keep their full height and simply
+        // sit where they land.
+        <div className='flex shrink-0 flex-col gap-4'>
             {data.notices.map(kind => (
                 <BookingNotice key={kind} kind={kind} />
             ))}
-        </>
+        </div>
     );
 }

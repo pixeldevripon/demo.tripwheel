@@ -14,6 +14,9 @@
 > `technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md`
 > Instagram feed (auto-sync flow, dashboard access token, sync cadence, token refresh, mirroring, code map):
 > `technical-doc/02-architecture/INSTAGRAM-FEED.md`
+> Custom scripts (admin-pasted vendor snippets on every public page; the allowlist,
+> what is deliberately NOT validated, where each tag actually lands):
+> `technical-doc/02-architecture/CUSTOM-SCRIPTS.md`
 > Settlement & payouts (v1/v2 money flow, settlements ledger):
 > `technical-doc/02-architecture/SETTLEMENT-AND-PAYOUTS.md` (visual:
 > `technical-doc/02-architecture/settlement-payout-flow.html`) · Event-driven & queues (BullMQ,

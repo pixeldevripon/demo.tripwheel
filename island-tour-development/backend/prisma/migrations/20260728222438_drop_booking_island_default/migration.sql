@@ -1,0 +1,22 @@
+-- `bookings.island` is the denormalized destination SLUG. It builds the
+-- thank-you deep link `/{island}/thank-you/{publicRef}`, and that page 404s
+-- whenever the value does not equal the `[destination]` URL segment - so there
+-- is no value that is safe to guess.
+--
+-- The column defaulted to 'Curaçao', a display NAME rather than a slug, so any
+-- insert that omitted the field silently produced a booking whose thank-you page
+-- was unreachable forever - for the traveller AND for the link in their
+-- confirmation email. 312 such rows existed (written by a demo-seed path that
+-- did not set it); they were repaired by `scripts/backfill-booking-island.ts`
+-- and all three insert sites now supply the slug.
+--
+-- Dropping the default makes a future omission a loud NOT NULL violation here
+-- instead of a silent 404 found by a customer. The column stays NOT NULL and no
+-- row data changes; on PostgreSQL this is a metadata-only change with no table
+-- rewrite, so it is safe to deploy against a live bookings table.
+--
+-- Before deploying, run `pnpm booking:island:backfill --dry` against the target
+-- environment to confirm it holds no rows this default was masking.
+
+-- AlterTable
+ALTER TABLE "bookings" ALTER COLUMN "island" DROP DEFAULT;

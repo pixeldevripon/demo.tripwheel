@@ -692,3 +692,17 @@ enum OperatorVerificationStatus {
   VERIFIED
   REJECTED
 }
+
+// ── Custom scripts ────────────────────────────────────────────────────────────
+
+// Where an admin-pasted vendor snippet is injected into the public page.
+//   HEAD     - inside <head>. Only for snippets that MUST run before first
+//              paint (consent managers, anti-flicker A/B wrappers). Everything
+//              here delays the page for every visitor.
+//   BODY_END - the last thing in <body>. The default and the right answer for
+//              analytics, chat widgets and pixels: they run after the content
+//              is already on screen.
+enum CustomScriptPosition {
+  HEAD
+  BODY_END
+}

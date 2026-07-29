@@ -70,15 +70,18 @@ export function DepartureTimes() {
     return (
         <Collapse
             open={selectedDate != null && (slotsLoading || slots.length > 0)}>
-            {/* pt-2 = the stack gap, kept INSIDE the collapse so it animates
-                with the height tween (an outer flex gap would snap in). */}
+            {/* pt-2 / pb-2 = the stack gaps, kept INSIDE the collapse so they
+                animate with the height tween (an outer sibling margin would
+                snap in). The bottom one rides on top of the selector stack's
+                own 8px, so the chips get real air between them and the party
+                panel instead of the two blocks reading as one. */}
             {slotsLoading ? (
                 <motion.div
                     key='loading'
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={swapFade}
-                    className='grid grid-cols-3 gap-2 pt-2'>
+                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
                     {[0, 1, 2].map(i => (
                         <div
                             key={i}
@@ -96,7 +99,7 @@ export function DepartureTimes() {
                     animate={{ opacity: 1 }}
                     transition={swapFade}
                     style={{ x: shakeOffset }}
-                    className='grid grid-cols-3 gap-2 pt-2'>
+                    className='grid grid-cols-3 gap-2 pb-2 pt-2'>
                     {slots.map(slot => {
                         const isSelected = selectedTime === slot.time;
                         const soldOut = slot.status === 'sold_out';
@@ -129,12 +132,19 @@ export function DepartureTimes() {
                                 onClick={() => selectTime(slot.time)}
                                 whileTap={soldOut ? undefined : { scale: 0.97 }}
                                 transition={springPop}
-                                className={`flex flex-col items-center gap-[3px] rounded-[8px] border bg-it-white px-4 py-2 transition-colors duration-300 ${chipBorder} ${
+                                // `px-2`, not `px-4`: the chip is a grid item,
+                                // so the cell decides its width and the padding
+                                // only decides how early the label wraps. At
+                                // px-4 the 3 columns lost enough room to the
+                                // scroll region's scrollbar to break "12:00 PM"
+                                // across two lines. Nothing moves visually -
+                                // the label is centred in the same box.
+                                className={`flex flex-col items-center gap-[3px] rounded-[8px] border bg-it-white px-2 py-2 transition-colors duration-300 ${chipBorder} ${
                                     soldOut
                                         ? 'cursor-not-allowed opacity-60'
                                         : 'cursor-pointer'
                                 }`}>
-                                <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span className='whitespace-nowrap font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {formatTime(slot.time, locale)}
                                 </span>
                                 {note && (
