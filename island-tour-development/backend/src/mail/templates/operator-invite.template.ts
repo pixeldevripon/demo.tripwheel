@@ -1,4 +1,4 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 
 export interface OperatorInviteTemplateProps {
   inviteUrl: string;
@@ -21,12 +21,12 @@ export function operatorInviteTemplate({
     title: "You're invited as a tour operator.",
     greeting: name ? `Hi ${escapeHtml(name)},` : 'Hello,',
     paragraphs: [
-      'An Island Tours administrator has created a tour operator account for you. Set your password to get started, then log in to complete your onboarding.',
-      'The link expires in <b style="color:#1F2937">1 hour</b>.',
+      'An Island Tours administrator created a tour operator account for you. Set your password to get started, then sign in to finish your onboarding.',
+      `The link expires in <span style="${EMAIL_EMPHASIS}">1 hour</span>.`,
     ],
     ctaLabel: 'Set your password',
     ctaUrl: inviteUrl,
     footnote:
-      'Link expired? Open the operator portal login and choose "Forgot password?" to request a fresh one.',
+      'Link expired? Open the operator login and choose "Forgot password?" for a fresh one.',
   });
 }

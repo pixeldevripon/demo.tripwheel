@@ -1,4 +1,4 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 
 export interface PasswordChangeConfirmationTemplateProps {
   confirmUrl: string;
@@ -26,13 +26,12 @@ export function passwordChangeConfirmationTemplate({
     title: 'Confirm your new password.',
     greeting: name ? `Hi ${escapeHtml(name)},` : undefined,
     paragraphs: [
-      'We received a request to change the password on your Island Tours account.',
-      '<b style="color:#1F2937">Your password has not changed yet.</b> It only changes once you confirm below, and you will be signed out everywhere when it does.',
-      `The link expires in <b style="color:#1F2937">${escapeHtml(expiresInLabel)}</b>.`,
+      `<span style="${EMAIL_EMPHASIS}">Your password has not changed yet.</span> It changes only once you confirm below, and you'll be signed out everywhere when it does.`,
+      `The link expires in <span style="${EMAIL_EMPHASIS}">${escapeHtml(expiresInLabel)}</span>.`,
     ],
     ctaLabel: 'Confirm password change',
     ctaUrl: confirmUrl,
     footnote:
-      "Didn't request this? Ignore this email - your current password keeps working and nothing changes. Someone may know your password though, so sign in and change it yourself if you are unsure.",
+      "Didn't request this? Ignore this email - your current password keeps working. Someone may know it though, so sign in and change it yourself if you're unsure.",
   });
 }
