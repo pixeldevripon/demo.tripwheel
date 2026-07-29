@@ -5,7 +5,7 @@ describe('quality-score (master §7.2)', () => {
     const full = {
       imageCount: 5,
       hasOverview: true,
-      hasDescription: true,
+      hasShortDescription: true,
       highlightCount: 3,
       inclusionCount: 2,
       exclusionCount: 1,
@@ -21,7 +21,7 @@ describe('quality-score (master §7.2)', () => {
         listingCompleteness({
           imageCount: 0,
           hasOverview: false,
-          hasDescription: false,
+          hasShortDescription: false,
           highlightCount: 0,
           inclusionCount: 0,
           exclusionCount: 0,
@@ -40,6 +40,23 @@ describe('quality-score (master §7.2)', () => {
       // Below-threshold counts fail their check outright.
       expect(listingCompleteness({ ...full, highlightCount: 2 })).toBe(0.9);
       expect(listingCompleteness({ ...full, imageCount: 3 })).toBe(0.9);
+    });
+
+    // The `description` -> `shortDescription` swap (the old field was removed
+    // from the product) must not change the arithmetic: still ten checks,
+    // still equally weighted, and the new one behaves like every other.
+    it('keeps ten equally weighted checks after the shortDescription swap', () => {
+      expect(listingCompleteness(full)).toBe(1);
+      expect(listingCompleteness({ ...full, hasShortDescription: false })).toBe(
+        0.9,
+      );
+      expect(
+        listingCompleteness({
+          ...full,
+          hasShortDescription: false,
+          hasOverview: false,
+        }),
+      ).toBe(0.8);
     });
   });
 
