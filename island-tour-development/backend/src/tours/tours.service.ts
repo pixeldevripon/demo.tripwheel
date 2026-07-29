@@ -46,6 +46,8 @@ import {
   WholeUnitType,
 } from '@prisma/client';
 import { FxRatesService } from '@/fx/fx-rates.service';
+import { MailService } from '@/mail/mail.service';
+import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import {
   AdminToursQueryDto,
   CreateTourDto,
@@ -72,6 +74,7 @@ export class ToursService {
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
     private readonly fx: FxRatesService,
+    private readonly mail: MailService,
   ) {}
 
   /**
@@ -2938,6 +2941,7 @@ export class ToursService {
       select: this.tourSelect,
     });
     this.logger.log(`User ${userId} submitted tour ${id} for review`);
+    this.notifyReviewSubmitted(id);
     return this.flattenTour(updated);
   }
 
@@ -2961,6 +2965,9 @@ export class ToursService {
       select: this.tourSelect,
     });
     this.logger.log(`Admin ${adminId} approved tour ${id}`);
+    // APPROVED is not LIVE: publishing is a separate admin action, so the copy
+    // must not congratulate the operator on a page nobody can visit yet.
+    this.notifyApproved(id, note?.trim() || undefined);
     return this.flattenTour(updated);
   }
 
@@ -2984,7 +2991,148 @@ export class ToursService {
       select: this.tourSelect,
     });
     this.logger.log(`Admin ${adminId} rejected tour ${id}`);
+    this.notifyChangesRequested(id, note.trim());
     return this.flattenTour(updated);
+  }
+
+  /**
+   * The two halves of the review round trip, as email.
+   *
+   * Both are fire-and-forget: a submission that entered the queue and a verdict
+   * that is already on the row must not be rolled back because Resend is down.
+   * A failure is logged and the dashboard remains the system of record.
+   *
+   * Both load their own recipient rather than widening `tourSelect`. That
+   * select feeds every PUBLIC tour payload - putting an operator's contact
+   * email in it would publish it to travellers.
+   */
+  private notifyReviewSubmitted(tourId: string): void {
+    // ADMIN_EMAIL is the same reviewer mailbox the cancellation flow uses.
+    // Unlike that flow this does NOT fail the action when it is unset: the
+    // tour is in the queue either way, and refusing the submission would
+    // punish the operator for our configuration.
+    const to = process.env.ADMIN_EMAIL;
+    if (!to) {
+      this.logger.error(
+        `ADMIN_EMAIL is not configured - tour ${tourId} entered the review queue with nobody notified`,
+      );
+      return;
+    }
+
+    void this.prisma.tour
+      .findUnique({
+        where: { id: tourId },
+        select: {
+          name: true,
+          destination: { select: { name: true } },
+          operator: {
+            select: {
+              companyInfo: { select: { companyName: true } },
+              user: { select: { name: true } },
+            },
+          },
+        },
+      })
+      .then((tour) => {
+        if (!tour) return;
+        return this.mail.sendTourSubmittedForReviewEmail(to, {
+          tourName: tour.name,
+          operatorName:
+            tour.operator?.companyInfo?.companyName ??
+            tour.operator?.user?.name ??
+            'An operator',
+          destinationName: tour.destination?.name ?? 'the Caribbean',
+          reviewUrl: this.tourReviewUrl(tourId),
+        });
+      })
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Review-submitted email failed for tour ${tourId}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
+  }
+
+  private notifyChangesRequested(tourId: string, note: string): void {
+    this.notifyOperator(tourId, 'Changes-requested', (target) =>
+      this.mail.sendTourChangesRequestedEmail(target.to, {
+        tourName: target.tourName,
+        note,
+        editUrl: this.tourReviewUrl(tourId),
+        name: target.name,
+      }),
+    );
+  }
+
+  private notifyApproved(tourId: string, note?: string): void {
+    this.notifyOperator(tourId, 'Approved', (target) =>
+      this.mail.sendTourApprovedEmail(target.to, {
+        tourName: target.tourName,
+        note,
+        tourUrl: this.tourReviewUrl(tourId),
+        name: target.name,
+      }),
+    );
+  }
+
+  /**
+   * Resolve the operator's mailbox for a verdict email and send it, off the
+   * request path.
+   *
+   * Shared by both verdicts because both answer the same question - "who at
+   * this operator hears about their tour?" - and a second copy of that answer
+   * would be one more place for the contactEmail fallback to drift.
+   */
+  private notifyOperator(
+    tourId: string,
+    label: string,
+    send: (target: {
+      to: string;
+      tourName: string;
+      name?: string;
+    }) => Promise<void>,
+  ): void {
+    void this.prisma.tour
+      .findUnique({
+        where: { id: tourId },
+        select: {
+          name: true,
+          operator: {
+            select: {
+              contactEmail: true,
+              user: { select: { name: true, email: true } },
+            },
+          },
+        },
+      })
+      .then((tour) => {
+        // The operator's own contact address first, the owner account's login
+        // second - a company that routes tour admin to a shared inbox has said
+        // so by filling in `contactEmail`.
+        const to = tour?.operator?.contactEmail ?? tour?.operator?.user?.email;
+        if (!tour || !to) {
+          this.logger.error(
+            `Tour ${tourId}: ${label.toLowerCase()} verdict has no operator email to reach - it lands only in the dashboard`,
+          );
+          return;
+        }
+        return send({
+          to,
+          tourName: tour.name,
+          name: tour.operator?.user?.name ?? undefined,
+        });
+      })
+      .catch((err: unknown) =>
+        this.logger.error(
+          `${label} email failed for tour ${tourId}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
+  }
+
+  /** The wizard's review screen - where both audiences need to land. */
+  private tourReviewUrl(tourId: string): string {
+    return `${dashboardAppBase()}/trips/${tourId}/edit?step=review`;
   }
 
   async publish(id: string, userId: string, userRole: Role) {
