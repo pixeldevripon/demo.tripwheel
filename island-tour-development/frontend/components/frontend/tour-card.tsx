@@ -145,6 +145,19 @@ export interface TourCardProps {
      * text (no layout shift).
      */
     highlighted?: boolean;
+    /**
+     * Eager-load this card's first image as an LCP candidate. POSITION-BASED,
+     * like `tinted`/`highlighted`: only the grid knows which cards are above
+     * the fold, so only the grid may set it - and only for its first ROW.
+     *
+     * Defaults to false deliberately. This used to be hardcoded on, so every
+     * card on every surface emitted `<link rel=preload fetchpriority=high>` -
+     * 12 competing preloads on a listing page, plus below-fold related-tour
+     * grids on the tour and thank-you pages. That does not make the real LCP
+     * element arrive sooner; it makes it arrive later, by splitting the early
+     * connection budget across images nobody is looking at yet.
+     */
+    priority?: boolean;
 }
 
 /**
@@ -165,6 +178,7 @@ function DefaultTourCard({
     wishlistVariant = 'heart',
     tinted = false,
     highlighted = false,
+    priority = false,
 }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
@@ -215,7 +229,7 @@ function DefaultTourCard({
                     images={tour.images}
                     alt={tour.title}
                     sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
-                    priority
+                    priority={priority}
                 />
                 {/* Badge (top-left) + Wishlist button (top-right) */}
                 <div className='absolute inset-x-4 top-4 flex items-start justify-between gap-2 z-10'>

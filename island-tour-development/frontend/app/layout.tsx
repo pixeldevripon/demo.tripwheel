@@ -10,42 +10,25 @@ import { getSiteUrl } from '@/lib/seo/site-url';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import {
-    DM_Sans,
-    JetBrains_Mono,
-    Noto_Sans,
-    Playfair_Display,
-} from 'next/font/google';
-import localFont from 'next/font/local';
+import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const dmSans = DM_Sans({
-    variable: '--font-dm-sans',
-    subsets: ['latin'],
-    weight: ['400', '500', '600', '700'],
-});
-
-const generalSans = localFont({
-    variable: '--font-general-sans',
-    src: [
-        {
-            path: './fonts/GeneralSans-Variable.woff2',
-            style: 'normal',
-        },
-        {
-            path: './fonts/GeneralSans-VariableItalic.woff2',
-            style: 'italic',
-        },
-    ],
-});
-
-const playfairDisplayHeading = Playfair_Display({
-    subsets: ['latin'],
-    variable: '--font-heading',
-});
-
-const notoSans = Noto_Sans({ subsets: ['latin'], variable: '--font-sans' });
-
+/**
+ * The ONLY webfont this app loads.
+ *
+ * Every route group wraps its tree in `.frontend-root` - `(frontend)`,
+ * `(login)`, and the three root error/not-found screens - and that scope sets
+ * the family to the SF Pro SYSTEM stack (`frontend-tokens.css`
+ * `--it-font-display` / `--it-font-body`). So the sans/display webfonts that
+ * used to load here (DM Sans, Playfair Display, Noto Sans, GeneralSans) were
+ * never painted anywhere: 6 preloaded woff2 files, ~225 KB, competing with the
+ * LCP image for early bandwidth on every single request.
+ *
+ * JetBrains Mono stays because it IS painted - `font-mono` renders the booking
+ * references in the traveller account area (`traveller-booking-card.tsx`,
+ * `traveller-payments-list.tsx`). Everything else falls back to the system
+ * stacks mapped in `globals.css`.
+ */
 const jetbrainsMono = JetBrains_Mono({
     variable: '--font-jetbrains-mono',
     subsets: ['latin'],
@@ -111,9 +94,18 @@ export async function generateMetadata(): Promise<Metadata> {
         },
         twitter: {
             card: seo.twitterImage ? 'summary_large_image' : 'summary',
-            title: seo.twitterTitle ?? seo.ogTitle ?? title,
-            description:
-                seo.twitterDescription ?? seo.ogDescription ?? description,
+            // Title/description are set ONLY when the admin authored a
+            // Twitter-specific value. They used to fall back to the sitewide
+            // `ogTitle ?? title`, which silently shadowed every page: Next
+            // merges `twitter` shallowly and no page sets a `twitter` key, so
+            // a shared tour link showed the generic site copy while og:title
+            // correctly showed the tour. Omitting them lets Next derive
+            // twitter:title/description from each page's own metadata, and an
+            // explicit admin value still wins where one exists.
+            ...(seo.twitterTitle ? { title: seo.twitterTitle } : {}),
+            ...(seo.twitterDescription
+                ? { description: seo.twitterDescription }
+                : {}),
             ...(twitterHandle
                 ? { site: twitterHandle, creator: twitterHandle }
                 : {}),
@@ -147,11 +139,7 @@ export default function RootLayout({
             className={cn(
                 'h-full antialiased',
                 jetbrainsMono.variable,
-                dmSans.variable,
-                generalSans.variable,
-                'font-sans',
-                notoSans.variable,
-                playfairDisplayHeading.variable
+                'font-sans'
             )}>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>
                 <QueryProvider>

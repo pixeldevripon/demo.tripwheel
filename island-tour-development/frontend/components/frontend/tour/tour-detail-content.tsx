@@ -446,14 +446,20 @@ export async function TourDetailContent({
                     <div className='flex flex-col gap-10 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-x-6 lg:gap-y-10'>
                         {/* Gallery (left column, top row) */}
                         <div className='lg:col-start-1 lg:row-start-1'>
-                            <MountReveal delay={0.1}>
+                            {/* Deliberately NOT wrapped in <MountReveal>. The
+                                gallery hero is this page's LCP element, and
+                                Chrome times LCP at the element's FINAL rendered
+                                state - so a 0.1s-delayed 0.6s opacity fade-in
+                                pushed the LCP timestamp back by up to ~0.7s on
+                                the most revenue-critical page on the site. The
+                                siblings below still animate; the entrance reads
+                                the same without the hero fading in. */}
                             <TourGallery
                                 images={galleryImages}
                                 title={title}
                                 meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
-                            </MountReveal>
                         </div>
 
                         {/* Booking card - right rail, sticky across the whole page

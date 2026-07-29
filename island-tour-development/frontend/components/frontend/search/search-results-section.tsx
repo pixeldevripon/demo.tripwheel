@@ -120,11 +120,13 @@ export async function SearchResultsSection({
                 ) : (
                     <Reveal className='flex flex-col gap-12 sm:gap-18'>
                         <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
-                            {listings.map(tour => (
+                            {listings.map((tour, i) => (
                                 <TourCard
                                     key={tour.id}
                                     tour={tour}
                                     dict={cardDict}
+                                    // First ROW only (4 at lg) - see TourCardProps.
+                                    priority={i < 4}
                                 />
                             ))}
                         </div>

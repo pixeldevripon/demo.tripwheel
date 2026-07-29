@@ -100,6 +100,10 @@ export function ToursListing({
                             // First card of the list renders pre-highlighted
                             // (static hover treatment - top placement marker).
                             highlighted={page === 1 && i === 0}
+                            // First ROW only (4 at lg, the widest layout) - the
+                            // LCP candidate lives here. Preloading the whole
+                            // page of cards just delays it.
+                            priority={i < 4}
                         />
                     </MountReveal>
                 ))}

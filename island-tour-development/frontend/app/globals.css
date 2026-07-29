@@ -232,10 +232,24 @@
 }
 
 @theme inline {
-    --font-dm-sans: var(--font-dm-sans);
-    --font-general-sans: var(--font-general-sans);
-    --font-heading: var(--font-heading);
-    --font-sans: var(--font-sans);
+    /*
+     * Sans/display resolve to the SF Pro SYSTEM stack - the same families
+     * `frontend-tokens.css` sets on `.frontend-root`, which every route group
+     * wraps its tree in. These used to point at webfonts (Noto Sans, Playfair
+     * Display, DM Sans, GeneralSans) that `.frontend-root` overrode before they
+     * could ever paint, so the app preloaded ~225 KB of woff2 per request for
+     * nothing. Kept as real stacks rather than deleted so `font-sans` /
+     * `font-heading` still resolve wherever they are applied.
+     *
+     * `--font-mono` stays a webfont: `font-mono` is genuinely painted on the
+     * traveller booking references.
+     */
+    --font-sans:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
+        Arial, sans-serif;
+    --font-heading:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
+        Arial, sans-serif;
     --font-mono: var(--font-jetbrains-mono);
 
     --radius: var(--radius);
