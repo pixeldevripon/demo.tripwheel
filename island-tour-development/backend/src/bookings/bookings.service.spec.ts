@@ -158,6 +158,10 @@ function fakeBooking(over: Record<string, unknown> = {}) {
     userId: null,
     status: BookingStatus.ON_HOLD,
     freesale: false,
+    // Prisma always returns this; `extend()` measures the absolute hold
+    // ceiling from it, so the fixture must carry a realistic (just-created)
+    // value or every extend test would read a missing date.
+    createdAt: new Date(),
     utcExpiresAt: new Date('2030-06-05T08:00:00.000Z'),
     utcConfirmedAt: null,
     localDate: new Date('2030-06-05T00:00:00.000Z'),
@@ -1994,6 +1998,34 @@ describe('BookingsService', () => {
         ConflictException,
       );
     });
+
+    it('refuses to extend past the absolute hold ceiling', async () => {
+      // A hold locks real inventory (a PRIVATE charter locks the WHOLE
+      // departure) and `extend` is @Public() with no ownership proof, so the
+      // ceiling - not the call count - is what stops an indefinite lock.
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ createdAt: new Date(Date.now() - 121 * 60_000) }),
+      );
+      await expect(
+        svc.extend('b1', { expirationMinutes: 30 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('clamps the new expiry to the ceiling instead of overshooting it', async () => {
+      // 110 minutes in, asking for another 30: only 10 remain before the
+      // 120-minute ceiling, so the expiry must land at the ceiling, not past.
+      const createdAt = new Date(Date.now() - 110 * 60_000);
+      m.booking.findUnique.mockResolvedValue(fakeBooking({ createdAt }));
+      m.booking.update.mockResolvedValue(fakeBooking());
+      await svc.extend('b1', { expirationMinutes: 30 });
+      const arg = m.booking.update.mock.calls[0][0] as {
+        data: { utcExpiresAt: Date };
+      };
+      expect(arg.data.utcExpiresAt.getTime()).toBe(
+        createdAt.getTime() + 120 * 60_000,
+      );
+    });
   });
 
   describe('expireStaleHolds', () => {
@@ -3161,9 +3193,44 @@ describe('BookingsService', () => {
       expect(m.booking.update).toHaveBeenCalled();
     });
 
-    it('leaves non-contact updates (notes/pickup) ungated on CONFIRMED', async () => {
+    it('gates pickup/notes on CONFIRMED too - the snapshot moves with them', async () => {
+      // `update()` re-snapshots the pickup address and window onto the booking,
+      // so an unproven edit sends a paying traveler to the wrong place at the
+      // wrong time. The booking id is not a secret here: it rides in the PATCH
+      // URL path (server logs, APM traces, Referer headers).
       m.booking.findUnique.mockResolvedValue(
-        fakeBooking({ status: BookingStatus.CONFIRMED }),
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      await expect(
+        svc.update('b1', { notes: 'gate 4' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(
+        svc.update('b1', { pickupLocationId: 'pl2' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(m.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('allows pickup/notes on CONFIRMED with a session that owns the booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({
+          status: BookingStatus.CONFIRMED,
+          contactEmail: 'guest@example.test',
+        }),
+      );
+      await svc.update(
+        'b1',
+        { notes: 'gate 4' },
+        issueTravelerSession('guest@example.test'),
+      );
+      expect(m.booking.update).toHaveBeenCalled();
+    });
+
+    it('leaves pickup/notes ungated while ON_HOLD (checkout sets them pre-payment)', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        fakeBooking({ status: BookingStatus.ON_HOLD }),
       );
       await svc.update('b1', { notes: 'gate 4' });
       expect(m.booking.update).toHaveBeenCalled();

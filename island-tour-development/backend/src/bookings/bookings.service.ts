@@ -156,6 +156,18 @@ const BOOKING_LIST_INCLUDE = {
 } as const;
 
 const DEFAULT_HOLD_MINUTES = 30;
+/**
+ * Absolute ceiling on how long a booking may stay ON_HOLD, measured from
+ * `createdAt` and independent of how many times `extend()` is called.
+ *
+ * A hold claims real inventory - and a PRIVATE + UNIT charter claims the WHOLE
+ * departure - so an unbounded extend loop is a free, unauthenticated way to
+ * keep a departure off sale forever. `extend()` is `@Public()` by necessity
+ * (pre-payment there is no session to prove ownership with; the raw booking id
+ * IS the short-lived secret), so a per-call check cannot help. This ceiling is
+ * what actually bounds it: 4x the default hold, far beyond any real checkout.
+ */
+const MAX_HOLD_LIFETIME_MINUTES = 120;
 /** Quote validity window (guide §20.4: 10-15 min is enough). */
 const QUOTE_TTL_MINUTES = 15;
 
@@ -2808,16 +2820,39 @@ export class BookingsService {
   // ════════════════════════════════════════════════════════════════════════
 
   async extend(id: string, dto: ExtendBookingDto) {
+    // Per-BOOKING cap on top of the per-IP throttle. The global tier (3000/hr)
+    // is nowhere near tight enough to stop one call every 25 minutes forever,
+    // and a multi-IP caller sidesteps per-IP limits entirely.
+    this.targetLimiter.consume(
+      'extend',
+      id,
+      [{ max: 6, windowMs: 60 * 60 * 1000 }],
+      'This booking has been extended too many times. Please complete it or start a new one.',
+    );
     const booking = await this.loadOr404(id);
     if (booking.status !== BookingStatus.ON_HOLD) {
       throw new ConflictException('Only an on-hold booking can be extended');
     }
+
+    // The hold may never outlive MAX_HOLD_LIFETIME_MINUTES from creation, no
+    // matter how many times it is extended - otherwise the seats (or the whole
+    // departure, for a PRIVATE charter) are locked indefinitely for free.
+    const ceilingMs =
+      booking.createdAt.getTime() + MAX_HOLD_LIFETIME_MINUTES * 60_000;
+    if (Date.now() >= ceilingMs) {
+      throw new ConflictException(
+        'This booking has been held too long and can no longer be extended',
+      );
+    }
+    const requestedMs =
+      Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000;
+
     const updated = await this.prisma.booking.update({
       where: { id: booking.id },
       data: {
-        utcExpiresAt: new Date(
-          Date.now() + (dto.expirationMinutes ?? DEFAULT_HOLD_MINUTES) * 60_000,
-        ),
+        // Clamped: an extension can shorten the gap to the ceiling but never
+        // push past it.
+        utcExpiresAt: new Date(Math.min(requestedMs, ceilingMs)),
       },
       include: { unitItems: true },
     });
@@ -2842,8 +2877,20 @@ export class BookingsService {
     // the /bookings pair login). ON_HOLD stays open: checkout sets the initial
     // contact pre-payment, when the raw id is a short-lived secret held only
     // by the reserving client (security review 2026-07-20).
+    // Pickup and notes demand the SAME proof as contact. The block below
+    // deliberately re-snapshots the pickup address and window onto the booking
+    // (guide §17), so an unproven edit tells a paying traveler the wrong place
+    // and the wrong time - and `id` rides in the PATCH URL path, which reaches
+    // server logs, APM traces and Referer headers far more readily than a
+    // header-only credential. ON_HOLD stays open either way: pre-payment the
+    // raw id is a short-lived secret held only by the reserving client, and
+    // checkout sets both contact and pickup then.
+    const touchesItinerary =
+      dto.pickupLocationId !== undefined ||
+      dto.pickupRequested !== undefined ||
+      dto.notes !== undefined;
     if (
-      dto.contact &&
+      (dto.contact || touchesItinerary) &&
       booking.status === BookingStatus.CONFIRMED &&
       !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
         id: booking.id,
@@ -2851,7 +2898,9 @@ export class BookingsService {
       })
     ) {
       throw new UnauthorizedException(
-        'Verify with your email and booking reference to change contact details',
+        dto.contact
+          ? 'Verify with your email and booking reference to change contact details'
+          : 'Verify with your email and booking reference to change pickup details',
       );
     }
     // A post-reserve pickup change must move the SNAPSHOT with it (guide §17) - the

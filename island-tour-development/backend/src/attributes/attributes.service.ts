@@ -219,6 +219,13 @@ export class AttributesService {
         destinationId: destination.id,
         status: TourStatus.LIVE,
         isActive: true,
+        // Bookability gate (master §7.2), the SAME predicate every ranked
+        // result set applies (ToursService.findAll / .search / .suggest /
+        // .findPublicByIds). Without it the facets are computed over a
+        // SUPERSET of what the listing can return, so the panel can offer a
+        // price range or an attribute value drawn from a tour the grid will
+        // never show - and the shopper lands on an empty result set.
+        isBookable: true,
         ...(category && { categories: { some: { categoryId: category.id } } }),
       },
       // `basePrice` for the price range; the derived-attribute columns power the
