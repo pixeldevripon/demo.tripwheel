@@ -172,7 +172,8 @@ export interface PublicTourDetail {
   // Pickup / party / booking window
   pickupModel: PickupModel;
   pickupRequired: boolean;
-  maxPartySize: number | null;
+  /** Required since 20260729190000 - never null. */
+  maxPartySize: number;
   minPartySize: number;
   bookingCutoffMinutes: number;
   cancellationHours: number;

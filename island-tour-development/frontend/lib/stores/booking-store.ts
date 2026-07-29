@@ -49,6 +49,38 @@ export interface CalendarDayState {
     remaining: number | null;
 }
 
+/**
+ * The all-sold-out dead end (AVAILABILITY-AND-DEPARTURES.md §8) opens when a tour
+ * has no open departure in the next 30 days - the same horizon the nightly job
+ * uses for `isBookable`, so the widget and the ranking engine agree on what "sold
+ * out" means.
+ */
+export const DEAD_END_HORIZON_DAYS = 30;
+
+/**
+ * Whether `days` holds at least one available date within `horizonDays` of today
+ * (inclusive). Compares `yyyy-MM-dd` keys as strings - they sort lexicographically
+ * and the calendar map is already keyed that way, so no per-day Date parsing.
+ */
+function hasOpenDayWithin(
+    days: Record<string, CalendarDayState>,
+    horizonDays: number
+): boolean {
+    const now = new Date();
+    const key = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+            d.getDate()
+        ).padStart(2, '0')}`;
+    const from = key(now);
+    const to = key(
+        new Date(now.getFullYear(), now.getMonth(), now.getDate() + horizonDays)
+    );
+    for (const [date, state] of Object.entries(days)) {
+        if (state.available && date >= from && date <= to) return true;
+    }
+    return false;
+}
+
 /** A single band row for the price breakdown (band + its chosen count). */
 export type BookingLineItem = { band: BookingBand; count: number };
 
@@ -114,6 +146,11 @@ export interface BookingState {
      *  (live mode only - stays null in demo/design mode). */
     calendarDays: Record<string, CalendarDayState> | null;
     calendarLoading: boolean;
+    /** True when the last calendar fetch FAILED. The sync hook fails open to an
+     *  empty map so a transient error never blanks the calendar - but an empty
+     *  map is also exactly what a genuinely sold-out tour returns, so the dead
+     *  end has to be able to tell the two apart. */
+    calendarError: boolean;
     /** Real bookable slots for `selectedDate`; null until fetched for the current
      *  date (live mode only). */
     daySlots: BookingSlot[] | null;
@@ -159,8 +196,12 @@ export interface BookingActions {
     pickDate: (date: Date) => void;
     selectTime: (time: string) => void;
     handleCtaClick: () => void;
-    /** Set by the availability sync once the calendar range resolves. */
-    setCalendarDays: (days: Record<string, CalendarDayState>) => void;
+    /** Set by the availability sync once the calendar range resolves. Pass
+     *  `failed` when the fetch errored and the map is the fail-open fallback. */
+    setCalendarDays: (
+        days: Record<string, CalendarDayState>,
+        failed?: boolean
+    ) => void;
     setCalendarLoading: (loading: boolean) => void;
     /** Set by the availability sync once slots for the picked date resolve. */
     setDaySlots: (slots: BookingSlot[]) => void;
@@ -242,6 +283,20 @@ export function deriveBooking(s: BookingStore) {
     // set; otherwise the static demo slots and an always-open calendar.
     const isLive = s.tourId != null;
     const slots = effectiveSlotsOf(s);
+
+    // All-sold-out dead end (AVAILABILITY-AND-DEPARTURES.md §8): the widget shows
+    // alternatives instead of a calendar with nothing in it.
+    //
+    // Three deliberate guards, each of which would otherwise produce a false
+    // positive: demo/design mode has no backend at all; a still-loading calendar
+    // is `null`, not empty; and a FAILED fetch fills the map with `{}` on purpose
+    // (fail open), which is byte-identical to a genuinely sold-out tour. Only a
+    // successful load that came back with no open day inside the horizon counts.
+    const availabilityDeadEnd =
+        isLive &&
+        !s.calendarError &&
+        s.calendarDays != null &&
+        !hasOpenDayWithin(s.calendarDays, DEAD_END_HORIZON_DAYS);
 
     // Readiness (price summary shown, CTA = the reserve action). In LIVE mode the
     // backend already pre-verified availability (the calendar only offers open
@@ -460,6 +515,7 @@ export function deriveBooking(s: BookingStore) {
         slotsLoading: s.slotsLoading,
         calendarDays: s.calendarDays,
         calendarLoading: s.calendarLoading,
+        availabilityDeadEnd,
         // Server-authoritative quote for the current selection + its load state
         // (the summary can show a subtle refresh; the CTA carries `quote.quoteId`
         // to checkout). `usingQuote` is true when the summary reflects the quote.
@@ -522,6 +578,7 @@ export function createBookingStore(init: BookingInit) {
         policyModal: null,
         calendarDays: null,
         calendarLoading: false,
+        calendarError: false,
         daySlots: null,
         slotsLoading: false,
         quote: null,
@@ -721,8 +778,12 @@ export function createBookingStore(init: BookingInit) {
             });
         },
 
-        setCalendarDays: days =>
-            set({ calendarDays: days, calendarLoading: false }),
+        setCalendarDays: (days, failed = false) =>
+            set({
+                calendarDays: days,
+                calendarLoading: false,
+                calendarError: failed,
+            }),
         setCalendarLoading: loading => set({ calendarLoading: loading }),
         setDaySlots: slots => set({ daySlots: slots, slotsLoading: false }),
         setSlotsLoading: loading => set({ slotsLoading: loading }),

@@ -1204,6 +1204,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
     slug: 'westpoint-snorkel-and-beach-hop',
+    maxPartySize: 24,
     name: 'West Point Snorkel & Beach Hop',
     primaryCategory: 'snorkeling',
     extraCategories: ['boat-tours'],
@@ -1268,6 +1269,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
     slug: 'spanish-water-mangrove-day-trip',
+    maxPartySize: 20,
     name: 'Spanish Water Mangrove Day Trip',
     primaryCategory: 'day-trips',
     extraCategories: ['boat-tours'],
@@ -1298,6 +1300,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'curacao-dive-crew',
     destinationSlug: 'curacao',
     slug: 'discover-scuba-diving-for-beginners',
+    maxPartySize: 6,
     name: 'Discover Scuba Diving for Beginners',
     primaryCategory: 'scuba-diving',
     overview:
@@ -1327,6 +1330,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'curacao-dive-crew',
     destinationSlug: 'curacao',
     slug: 'two-tank-certified-reef-dive',
+    maxPartySize: 8,
     name: 'Two-Tank Certified Reef Dive',
     primaryCategory: 'scuba-diving',
     overview:
@@ -1356,6 +1360,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'curacao-dive-crew',
     destinationSlug: 'curacao',
     slug: 'tugboat-and-coral-garden-snorkel',
+    maxPartySize: 18,
     name: 'Tugboat & Coral Garden Snorkel',
     primaryCategory: 'snorkeling',
     extraCategories: ['scuba-diving'],
@@ -1387,6 +1392,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'curacao-dive-crew',
     destinationSlug: 'curacao',
     slug: 'night-dive-at-directors-bay',
+    maxPartySize: 8,
     name: "Night Dive at Director's Bay",
     primaryCategory: 'scuba-diving',
     overview:
@@ -1416,6 +1422,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'curacao-dive-crew',
     destinationSlug: 'curacao',
     slug: 'turtle-bay-guided-snorkel',
+    maxPartySize: 16,
     name: 'Turtle Bay Guided Snorkel',
     primaryCategory: 'snorkeling',
     overview:
@@ -1442,6 +1449,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'island-roots-tours',
     destinationSlug: 'curacao',
     slug: 'willemstad-old-town-walking-tour',
+    maxPartySize: 16,
     name: 'Willemstad Old Town Walking Tour',
     primaryCategory: 'cultural-tours',
     overview:
@@ -1469,6 +1477,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'island-roots-tours',
     destinationSlug: 'curacao',
     slug: 'curacao-street-food-and-market-tour',
+    maxPartySize: 12,
     name: 'Curaçao Street Food & Market Tour',
     primaryCategory: 'food-tours',
     extraCategories: ['cultural-tours'],
@@ -1494,6 +1503,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'island-roots-tours',
     destinationSlug: 'curacao',
     slug: 'island-highlights-sightseeing-drive',
+    maxPartySize: 14,
     name: 'Island Highlights Sightseeing Drive',
     primaryCategory: 'sightseeing-tours',
     overview:
@@ -1517,6 +1527,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'island-roots-tours',
     destinationSlug: 'curacao',
     slug: 'rum-and-chocolate-tasting-experience',
+    maxPartySize: 12,
     name: 'Rum & Chocolate Tasting Experience',
     primaryCategory: 'food-tours',
     overview:
@@ -1541,6 +1552,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'island-roots-tours',
     destinationSlug: 'curacao',
     slug: 'hato-caves-and-north-coast-culture-tour',
+    maxPartySize: 14,
     name: 'Hato Caves & North Coast Culture Tour',
     primaryCategory: 'cultural-tours',
     extraCategories: ['sightseeing-tours'],
@@ -1596,6 +1608,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'aruba-adventures-co',
     destinationSlug: 'aruba',
     slug: 'arikok-national-park-jeep-safari',
+    maxPartySize: 6,
     name: 'Arikok National Park Jeep Safari',
     primaryCategory: 'off-road-tours',
     extraCategories: ['adventure-tours'],
@@ -1628,6 +1641,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'aruba-adventures-co',
     destinationSlug: 'aruba',
     slug: 'natural-pool-cliff-jump-and-hike',
+    maxPartySize: 10,
     name: 'Natural Pool Cliff Jump & Hike',
     primaryCategory: 'adventure-tours',
     overview:
@@ -1653,6 +1667,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'aruba-adventures-co',
     destinationSlug: 'aruba',
     slug: 'aruba-coastline-kayak-and-snorkel',
+    maxPartySize: 12,
     name: 'Aruba Coastline Kayak & Snorkel',
     primaryCategory: 'water-sports',
     extraCategories: ['adventure-tours'],
@@ -1679,6 +1694,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'aruba-adventures-co',
     destinationSlug: 'aruba',
     slug: 'sunset-buggy-tour-to-california-lighthouse',
+    maxPartySize: 8,
     name: 'Sunset Buggy Tour to California Lighthouse',
     primaryCategory: 'off-road-tours',
     overview:
@@ -1712,6 +1728,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'dushi-watersports',
     destinationSlug: 'aruba',
     slug: 'palm-beach-jet-ski-safari',
+    maxPartySize: 4,
     name: 'Palm Beach Jet Ski Safari',
     primaryCategory: 'jet-ski',
     overview:
@@ -1737,6 +1754,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'dushi-watersports',
     destinationSlug: 'aruba',
     slug: 'tandem-parasailing-over-palm-beach',
+    maxPartySize: 6,
     name: 'Tandem Parasailing over Palm Beach',
     primaryCategory: 'parasailing',
     overview:
@@ -1762,6 +1780,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'dushi-watersports',
     destinationSlug: 'aruba',
     slug: 'flyboard-lesson-for-beginners',
+    maxPartySize: 4,
     name: 'Flyboard Lesson for Beginners',
     primaryCategory: 'water-sports',
     overview:
@@ -1787,6 +1806,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'dushi-watersports',
     destinationSlug: 'aruba',
     slug: 'banana-boat-and-tube-ride',
+    maxPartySize: 10,
     name: 'Banana Boat & Tube Ride',
     primaryCategory: 'water-sports',
     overview:
@@ -1812,6 +1832,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'dushi-watersports',
     destinationSlug: 'aruba',
     slug: 'private-jet-ski-island-tour',
+    maxPartySize: 4,
     name: 'Private Jet Ski Island Tour',
     primaryCategory: 'jet-ski',
     overview:
@@ -1867,6 +1888,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'sxm-sailing-and-sun',
     destinationSlug: 'sint-maarten',
     slug: 'maho-beach-and-island-loop-boat-tour',
+    maxPartySize: 30,
     name: 'Maho Beach & Island Loop Boat Tour',
     primaryCategory: 'boat-tours',
     extraCategories: ['sightseeing-tours'],
@@ -1895,6 +1917,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'sxm-sailing-and-sun',
     destinationSlug: 'sint-maarten',
     slug: 'pinel-island-snorkel-and-sail',
+    maxPartySize: 26,
     name: 'Pinel Island Snorkel & Sail',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling'],
@@ -1929,6 +1952,7 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
     operatorKey: 'sxm-sailing-and-sun',
     destinationSlug: 'sint-maarten',
     slug: 'dutch-and-french-side-sightseeing-tour',
+    maxPartySize: 16,
     name: 'Dutch & French Side Sightseeing Tour',
     primaryCategory: 'sightseeing-tours',
     overview:

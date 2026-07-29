@@ -123,7 +123,7 @@ export class TourResponseDto {
   @ApiProperty({ enum: PickupModel }) pickupModel!: PickupModel;
   @ApiProperty({ example: false, description: 'OCTO option.pickupRequired' })
   pickupRequired!: boolean;
-  @ApiPropertyOptional({ example: 20 }) maxPartySize!: number | null;
+  @ApiProperty({ example: 20 }) maxPartySize!: number;
   @ApiProperty({ example: 1 }) minPartySize!: number;
   @ApiProperty({ example: 120 }) bookingCutoffMinutes!: number;
   @ApiProperty({
@@ -330,6 +330,20 @@ export class PaginatedToursResponseDto {
   @ApiProperty({ example: 1 }) page!: number;
   @ApiProperty({ example: 20 }) limit!: number;
   @ApiProperty({ type: [TourResponseDto] }) data!: TourResponseDto[];
+}
+
+/**
+ * One card in the all-sold-out dead-end recovery block
+ * (AVAILABILITY-AND-DEPARTURES.md §8). A normal listing card plus the date that
+ * earned it a place - it is offered precisely because it still has room.
+ */
+export class TourAlternativeResponseDto extends TourResponseDto {
+  @ApiProperty({
+    example: '2026-08-02',
+    description:
+      'Earliest live-bookable departure date (yyyy-MM-dd) inside the 7-day window.',
+  })
+  nextAvailableDate!: string | null;
 }
 
 export class TourUpdateResponseDto {
@@ -778,6 +792,27 @@ export class TourBySlugQueryDto {
   currency?: Currency;
 }
 
+/**
+ * Query for `GET /tours/:id/alternatives` - the all-sold-out dead-end recovery
+ * (AVAILABILITY-AND-DEPARTURES.md §8). Locale localizes the card titles; currency
+ * adds the converted `money` object, exactly as on a listing card.
+ */
+export class TourAlternativesQueryDto {
+  @ApiPropertyOptional({ enum: Locale, default: 'en' })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      'Shopper display currency; adds the converted `money` object to each card (guide §20.9).',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
+}
+
 export class MyToursQueryDto {
   @ApiPropertyOptional({
     example: 'catamaran',
@@ -1008,11 +1043,14 @@ export class CreateTourDto {
   @IsBoolean()
   pickupRequired?: boolean;
 
-  @ApiPropertyOptional({ example: 20 })
-  @IsOptional()
+  @ApiProperty({
+    example: 20,
+    description:
+      'Maximum travelers per booking. ALSO the default capacity every schedule falls back on when it has no capacityOverride, which is why it is required: without it a schedule materialises nothing and the tour never lists.',
+  })
   @IsInt()
   @Min(1)
-  maxPartySize?: number;
+  maxPartySize!: number;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

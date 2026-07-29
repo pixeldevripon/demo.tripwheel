@@ -23,21 +23,35 @@ const dictionaries = {
 /** Shape of a dictionary - inferred from the English (canonical) file. */
 export type Dictionary = Awaited<ReturnType<(typeof dictionaries)['en']>>;
 
-// Cache key bump: editing this file busts the 'use cache' entries in dev so newly
-// added dictionary keys (e.g. `search`, `wishlist`, `allTours.emptyState`,
-// `checkout.pickupSelect/pickupPricePP`, `checkout.hostedCheckoutTitle`,
-// `booking.showExtras/addOnsTitle/perBookingShort/instantConfirmation*`,
-// `traveller.*`, `nav.myAccount`)
-// are picked up without a restart.
-export const getDictionary = async (locale: Locale): Promise<Dictionary> => {
+/**
+ * BUMP THIS when you add or change a key in any `dictionaries/*.json`.
+ *
+ * The dynamic `import()` target below is not tracked as a `'use cache'`
+ * dependency, so editing a dictionary JSON does not invalidate the cached entry
+ * and the new key silently arrives as `undefined` in dev - which crashes the
+ * first component that does `dict.someKey.replace(...)`, and reads as a bug in
+ * that component rather than a stale cache.
+ *
+ * This used to be a comment saying "editing this file busts the entries". It
+ * does not: the value is a cache ARGUMENT now, which is what `'use cache'`
+ * actually keys on, so changing this string is guaranteed to bust every locale.
+ * Any string works; the date + what was added is just a useful audit trail.
+ */
+const DICTIONARY_VERSION = '2026-07-29-booking-dead-end-headline-2';
+
+export const getDictionary = (locale: Locale): Promise<Dictionary> =>
+    loadDictionary(locale, DICTIONARY_VERSION);
+
+async function loadDictionary(
+    locale: Locale,
+    // Part of the cache key ONLY - deliberately unread. See DICTIONARY_VERSION.
+    _version: string,
+): Promise<Dictionary> {
     'use cache';
-    // Translation JSON is static per locale - cache indefinitely (locale is the key).
-    // Keeps the dictionary out of the request-time "uncached data" path so the
-    // layout/footer prerender without a Suspense boundary (Cache Components).
-    //
-    // Note: the dynamic import() target is not tracked as a cache dependency, so
-    // editing a dictionary JSON file does NOT bust this entry in dev - restart the
-    // dev server (or edit this file) to pick up new keys.
+    // Translation JSON is static per locale - cache indefinitely (locale +
+    // version are the key). Keeps the dictionary out of the request-time
+    // "uncached data" path so the layout/footer prerender without a Suspense
+    // boundary (Cache Components).
     cacheLife('max');
     return (dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE])();
-};
+}

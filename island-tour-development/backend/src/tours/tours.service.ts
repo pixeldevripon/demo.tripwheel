@@ -8,6 +8,7 @@ import {
 } from '@/common/utils/slug-registry.util';
 import { generateSlug } from '@/common/utils/slug.util';
 import { mergeTranslation } from '@/common/utils/translation.util';
+import { dateKey } from '@/common/utils/timezone.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -49,6 +50,7 @@ import {
   AdminToursQueryDto,
   CreateTourDto,
   MyToursQueryDto,
+  TourAlternativesQueryDto,
   TourBySlugQueryDto,
   TourQueryDto,
   TourSort,
@@ -544,6 +546,175 @@ export class ToursService {
     // commercial internals before this leaves the server.
     result.forEach((t) => this.neutralizeForPublic(t));
     return result;
+  }
+
+  /**
+   * All-sold-out recovery (AVAILABILITY-AND-DEPARTURES.md §8): the 2-3 tours the
+   * booking widget offers instead of a blank calendar when the tour the traveler
+   * is looking at has no open departure in the next 30 days.
+   *
+   * The spec's shape - "2-3 same-category tours that have an open departure within
+   * 7 days" - is met by walking three progressively wider candidate rings, always
+   * inside the SAME destination (an alternative on another island is not an
+   * alternative to someone already booking flights):
+   *
+   *   1. the source tour's PRIMARY category  ← "same-category" in the strict sense
+   *   2. its other categories                ← still same-category, just not primary
+   *   3. anything else in the destination    ← last resort, so the dead end is
+   *                                            never a blank block
+   *
+   * Each ring is fetched in the canonical ranking order and filtered down to tours
+   * with a live-bookable departure inside the 7-day window; the walk stops as soon
+   * as {@link ALTERNATIVES_MAX} are found, so ring 2/3 usually cost nothing. Which
+   * ring a card came from is deliberately NOT exposed - the traveler sees three
+   * tours that have room, not a relevance ladder.
+   *
+   * Returns `[]` (never throws) when the destination has nothing bookable this
+   * week; the widget then falls back to its plain "no availability" state.
+   */
+  async findDeadEndAlternatives(
+    tourId: string,
+    query: TourAlternativesQueryDto,
+  ) {
+    const { locale = Locale.en, currency } = query;
+
+    // The source tour is deliberately NOT gated on isBookable / LIVE: a tour in
+    // the dead end is by definition the one whose availability ran out, and its
+    // detail page is still reachable (findBySlug gates on LIVE + isActive only).
+    const source = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: {
+        id: true,
+        destinationId: true,
+        categories: { select: { categoryId: true, isPrimary: true } },
+      },
+    });
+    if (!source) throw new NotFoundException(`Tour ${tourId} not found`);
+
+    const primaryCategoryId =
+      source.categories.find((c) => c.isPrimary)?.categoryId ??
+      source.categories[0]?.categoryId ??
+      null;
+    const otherCategoryIds = source.categories
+      .map((c) => c.categoryId)
+      .filter((id) => id !== primaryCategoryId);
+
+    // Same bookability gate as every other ranked result set (master §7.2) - an
+    // alternative that is itself excluded from listings is not an alternative.
+    const baseWhere: Prisma.TourWhereInput = {
+      destinationId: source.destinationId,
+      status: TourStatus.LIVE,
+      isActive: true,
+      isBookable: true,
+    };
+
+    const rings: Prisma.TourWhereInput[] = [];
+    if (primaryCategoryId)
+      rings.push({ categories: { some: { categoryId: primaryCategoryId } } });
+    if (otherCategoryIds.length > 0)
+      rings.push({
+        categories: { some: { categoryId: { in: otherCategoryIds } } },
+      });
+    // The destination-wide ring always exists, so a tour with no categories at
+    // all (data that should not happen, but does not deserve a blank block)
+    // still recovers.
+    rings.push({});
+
+    const fromKey = dateKey(new Date());
+    const toKey = dateKey(
+      new Date(
+        Date.now() + ToursService.ALTERNATIVES_HORIZON_DAYS * 86_400_000,
+      ),
+    );
+
+    const picked: Awaited<ReturnType<ToursService['loadAlternativeCards']>> =
+      [];
+    const seen = new Set<string>([source.id]);
+
+    for (const ring of rings) {
+      if (picked.length >= ToursService.ALTERNATIVES_MAX) break;
+      const candidates = await this.prisma.tour.findMany({
+        where: { ...baseWhere, ...ring, id: { notIn: [...seen] } },
+        select: { id: true },
+        orderBy: this.buildOrderBy(TourSort.recommended),
+        // Over-fetch relative to MAX: most candidates will fail the 7-day
+        // window, and a ring that yields nothing must not silently truncate a
+        // tour that WAS available just below the cut.
+        take: ToursService.ALTERNATIVES_CANDIDATE_POOL,
+      });
+      if (candidates.length === 0) continue;
+      candidates.forEach((c) => seen.add(c.id));
+
+      const nextDates = await this.availability.nextBookableDateByTour(
+        candidates.map((c) => c.id),
+        fromKey,
+        toKey,
+      );
+      // `candidates` is already in canonical rank order; keep it.
+      const withRoom = candidates
+        .filter((c) => nextDates.has(c.id))
+        .slice(0, ToursService.ALTERNATIVES_MAX - picked.length);
+      if (withRoom.length === 0) continue;
+
+      picked.push(
+        ...(await this.loadAlternativeCards(
+          withRoom.map((c) => c.id),
+          nextDates,
+          locale,
+        )),
+      );
+    }
+
+    // §3.6 "max 1 per category" cap on the Most popular badge, same as search().
+    this.applyMostPopularCap(picked);
+    await this.attachMoney(picked, currency);
+    // Cards leave through a @Public() route - strip the review workflow and the
+    // commercial internals, exactly as every other public read does. Last, after
+    // the badge + cap have consumed `tierRank`.
+    picked.forEach((t) => this.neutralizeForPublic(t));
+    return picked;
+  }
+
+  /** Dead-end alternatives must have room "within 7 days" (§8). */
+  private static readonly ALTERNATIVES_HORIZON_DAYS = 7;
+  /** "2-3 same-category tours" (§8) - three is the ceiling. */
+  private static readonly ALTERNATIVES_MAX = 3;
+  /** Per-ring candidates ranked before the 7-day availability filter. */
+  private static readonly ALTERNATIVES_CANDIDATE_POOL = 24;
+
+  /**
+   * Hydrates ranked alternative ids into listing-card shape (the same `SearchHit`
+   * the grids render), preserving the order of `ids`, and stamps each card with
+   * the `nextAvailableDate` that earned it a place.
+   */
+  private async loadAlternativeCards(
+    ids: string[],
+    nextDates: Map<string, string>,
+    locale: Locale,
+  ) {
+    const rows = await this.prisma.tour.findMany({
+      where: { id: { in: ids } },
+      select: {
+        ...this.tourSelect,
+        destination: { select: { slug: true } },
+        translations: { where: { locale }, select: { title: true } },
+        images: this.cardImagesArgs,
+      },
+    });
+    const byId = new Map(
+      rows.map((t) => [
+        t.id,
+        {
+          ...this.flattenSearchHit(t),
+          badge: this.deriveTourBadge(t),
+          /** `yyyy-MM-dd` of the departure that qualified this alternative. */
+          nextAvailableDate: nextDates.get(t.id) ?? null,
+        },
+      ]),
+    );
+    return ids
+      .map((id) => byId.get(id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t));
   }
 
   /**
@@ -2170,7 +2341,7 @@ export class ToursService {
             durationMinutesTo: dto.durationMinutesTo ?? null,
             pickupModel: dto.pickupModel,
             pickupRequired: dto.pickupRequired ?? false,
-            maxPartySize: dto.maxPartySize ?? null,
+            maxPartySize: dto.maxPartySize,
             minPartySize: dto.minPartySize ?? 1,
             bookingCutoffMinutes: dto.bookingCutoffMinutes ?? 120,
             // Master rule #20 / §6.2 - free-cancellation window, enum-bound, default 48.

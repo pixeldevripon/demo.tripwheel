@@ -7,6 +7,7 @@ import { useBookingQuote } from '@/hooks/tours/use-booking-quote';
 import { useBookingSelectionPersistence } from '@/hooks/tours/use-booking-selection-persistence';
 import type { Currency } from '@/lib/constants/locales';
 import type { TourBookingData, TourBookingDict } from '@/lib/tours/booking';
+import { AvailabilityDeadEnd } from './availability-dead-end';
 import { BookingAddOns } from './booking-add-ons';
 import { BookingCalendar } from './booking-calendar';
 import { BookingCta } from './booking-cta';
@@ -25,7 +26,13 @@ export type { PolicyModalDict, TourBookingDict } from '@/lib/tours/booking';
  * lines) to the shared `policyModal` state.
  */
 function TourBookingCardLayout() {
-    const { dict, policyModal, setPolicyModal, fillPolicy } = useBooking();
+    const {
+        dict,
+        policyModal,
+        setPolicyModal,
+        fillPolicy,
+        availabilityDeadEnd,
+    } = useBooking();
     // Loads the month calendar + per-date slots from the backend (no-op in demo).
     useAvailabilitySync();
     // Fetches the server-authoritative quote for the live selection (no-op in demo).
@@ -87,25 +94,42 @@ function TourBookingCardLayout() {
                     children keep their height, so the region overflows and the
                     scrollbar is what resolves it. */}
                 <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 space-y-2 px-4 pt-4 lg:min-h-[min(220px,25vh)]'>
-                    {/* Calendar + slots share one block: the slots' top gap
-                        lives INSIDE their collapse (pt-2), so it animates with
-                        the height tween instead of a sibling margin snapping in
-                        the moment the block mounts. */}
-                    <div>
-                        <BookingCalendar />
-                        <DepartureTimes />
-                    </div>
-                    <PartySelector />
-                    <SpectatorsPanel />
-                    {/* Optional extras (master E.3) - after the party, before
-                        the pinned CTA; hidden when the tour has none. */}
-                    <BookingAddOns />
+                    {availabilityDeadEnd ? (
+                        /* All-sold-out recovery (AVAILABILITY-AND-DEPARTURES.md
+                           §8). The whole selector stack is replaced, not just
+                           the calendar: with no open departure in 30 days a date
+                           field, time chips, party steppers and a Continue
+                           button are all dead controls, and leaving them there
+                           is what makes a blank calendar feel broken. */
+                        <AvailabilityDeadEnd />
+                    ) : (
+                        <>
+                            {/* Calendar + slots share one block: the slots' top
+                                gap lives INSIDE their collapse (pt-2), so it
+                                animates with the height tween instead of a
+                                sibling margin snapping in the moment the block
+                                mounts. */}
+                            <div>
+                                <BookingCalendar />
+                                <DepartureTimes />
+                            </div>
+                            <PartySelector />
+                            <SpectatorsPanel />
+                            {/* Optional extras (master E.3) - after the party,
+                                before the pinned CTA; hidden when the tour has
+                                none. */}
+                            <BookingAddOns />
+                        </>
+                    )}
                 </div>
 
-                {/* CTA + trust lines — pinned footer, always reachable */}
-                <div className='shrink-0 px-4 pb-4 pt-6'>
-                    <BookingCta />
-                </div>
+                {/* CTA + trust lines — pinned footer, always reachable. Gone in
+                    the dead end: there is nothing to continue to. */}
+                {!availabilityDeadEnd && (
+                    <div className='shrink-0 px-4 pb-4 pt-6'>
+                        <BookingCta />
+                    </div>
+                )}
             </div>
 
             {/* Earned notices (sell-out / most popular / sponsored) — flow

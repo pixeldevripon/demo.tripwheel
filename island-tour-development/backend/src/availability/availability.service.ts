@@ -100,7 +100,7 @@ export class AvailabilityService {
   ): Promise<ScheduleResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     await this.assertStartTimeInSlotSet(dto.tourId, dto.startTime);
-    await this.assertResolvableCapacity(dto.tourId, dto.capacityOverride);
+    this.assertResolvableCapacity();
     assertDateRangeOrder(
       dto.validFrom,
       dto.validUntil,
@@ -221,10 +221,7 @@ export class AvailabilityService {
     );
     // The effective override after this edit (unchanged fields keep their value).
     if (dto.capacityOverride !== undefined) {
-      await this.assertResolvableCapacity(
-        existing.tourId,
-        dto.capacityOverride,
-      );
+      this.assertResolvableCapacity();
     }
     let row;
     try {
@@ -302,7 +299,7 @@ export class AvailabilityService {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     this.assertExceptionShape(dto.type, dto.startTime, dto.capacity);
     if (dto.type === AvailabilityExceptionType.ADD_SLOT)
-      await this.assertResolvableCapacity(dto.tourId, dto.capacity);
+      this.assertResolvableCapacity();
     const row = await this.prisma.availabilityException.create({
       data: {
         tourId: dto.tourId,
@@ -365,7 +362,7 @@ export class AvailabilityService {
       effectiveCapacity,
     );
     if (effectiveType === AvailabilityExceptionType.ADD_SLOT)
-      await this.assertResolvableCapacity(existing.tourId, effectiveCapacity);
+      this.assertResolvableCapacity();
     const row = await this.prisma.availabilityException.update({
       where: { id },
       data: {
@@ -729,6 +726,92 @@ export class AvailabilityService {
   }
 
   /**
+   * The earliest LIVE-bookable departure DATE (`yyyy-MM-dd`) for each of `tourIds`
+   * within `[fromKey, toKey]` inclusive. Tours with no bookable departure in the
+   * window are simply absent from the map - so the caller can use `.has()` as the
+   * "still has room" test and the value as display copy ("Next: 8 Aug").
+   *
+   * Bookability is the same rule the public calendar and reserve apply
+   * ({@link liveDepartureStatus} + {@link isDepartureBookable}), not a coarse
+   * `status = OPEN` check: a sold-out or past-cutoff row must not count. Each tour
+   * carries its OWN clock, so `now` is resolved per time zone rather than once.
+   *
+   * Backs the all-sold-out dead end (AVAILABILITY-AND-DEPARTURES.md §8), whose
+   * alternatives must have room "within 7 days". Bounded by design - the caller
+   * passes an already-capped candidate set - and one query for all of them.
+   */
+  async nextBookableDateByTour(
+    tourIds: string[],
+    fromKey: string,
+    toKey: string,
+  ): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (tourIds.length === 0) return result;
+    assertDateRangeOrder(fromKey, toKey, 'dateFrom', 'dateTo');
+
+    const [tours, rows] = await Promise.all([
+      this.prisma.tour.findMany({
+        where: { id: { in: tourIds } },
+        select: { id: true, timeZone: true, bookingCutoffMinutes: true },
+      }),
+      this.prisma.departure.findMany({
+        where: {
+          tourId: { in: tourIds },
+          status: DepartureStatus.OPEN,
+          date: { gte: dayDate(fromKey), lte: dayDate(toKey) },
+        },
+        select: {
+          tourId: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+          status: true,
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      }),
+    ]);
+
+    const clocks = new Map(
+      tours.map((t) => [
+        t.id,
+        {
+          timeZone: t.timeZone,
+          bookingCutoffMinutes: t.bookingCutoffMinutes,
+        } satisfies TourClock,
+      ]),
+    );
+    // One `now` per DISTINCT time zone, not per row.
+    const nowByZone = new Map<string, Date>();
+
+    // Rows arrive date-ascending, so the first bookable row per tour is also the
+    // earliest - anything already recorded wins and is skipped.
+    for (const r of rows) {
+      if (result.has(r.tourId)) continue;
+      const clock = clocks.get(r.tourId);
+      if (!clock) continue;
+      let now = nowByZone.get(clock.timeZone);
+      if (!now) {
+        now = localNow(clock.timeZone);
+        nowByZone.set(clock.timeZone, now);
+      }
+      const start = combineDateTime(r.date, r.startTime);
+      const live = liveDepartureStatus({
+        status: r.status,
+        capacity: r.capacity,
+        bookedCount: r.bookedCount,
+        cutoffPassed: cutoffReached(
+          start.getTime(),
+          now.getTime(),
+          clock.bookingCutoffMinutes,
+        ),
+      });
+      if (isDepartureBookable(live)) result.set(r.tourId, dateKey(r.date));
+    }
+    return result;
+  }
+
+  /**
    * Whether the tour has >=1 OPEN, non-cutoff departure within {@link BOOKABLE_HORIZON_DAYS}
    * (master §6). Feeds the nightly `isBookable` flag (ranking/search) - Phase 9.
    */
@@ -878,27 +961,19 @@ export class AvailabilityService {
   }
 
   /**
-   * A schedule only materialises into departures if a capacity can be resolved:
-   * its own `capacityOverride`, else the tour's `maxPartySize` default. When both
-   * are absent the materialiser silently skips every slot and the tour never lists
-   * - so reject the write up-front and tell the operator exactly how to fix it
-   * (master §3: capacity is per-departure, defaulting from the tour).
+   * Capacity ALWAYS resolves now: a schedule uses its own `capacityOverride`,
+   * else the tour's `maxPartySize`, which is NOT NULL as of the
+   * `20260729190000_max_party_size_required` migration.
+   *
+   * This used to be a real guard. `maxPartySize` was nullable, and when both it
+   * and the override were absent the materialiser skipped every slot in silence
+   * - the tour simply never listed, and the only explanation was a readiness
+   * check that could pass for two different reasons. Kept as a no-op call site
+   * marker rather than deleted so the four callers still read as "capacity is
+   * checked here" if the column is ever loosened again.
    */
-  private async assertResolvableCapacity(
-    tourId: string,
-    capacityOverride: number | null | undefined,
-  ): Promise<void> {
-    if (capacityOverride != null) return; // its own capacity always resolves
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: tourId },
-      select: { maxPartySize: true },
-    });
-    if (!tour) throw new NotFoundException('Tour not found');
-    if (tour.maxPartySize == null) {
-      throw new BadRequestException(
-        "This schedule has no capacity to sell. Set a capacity override for it, or set the tour's Max Party Size on the Details tab (used as the default capacity). Without one, no bookable departures are created and the tour will not list.",
-      );
-    }
+  private assertResolvableCapacity(): void {
+    // Intentionally empty - see above.
   }
 
   /**

@@ -143,6 +143,8 @@ const baseCreateDto: CreateTourDto = {
   categoryIds: ['cat-1'],
   pricingModel: PricingModel.PER_PERSON,
   pickupModel: PickupModel.NONE,
+  // Required since 20260729190000: it is the default departure capacity.
+  maxPartySize: 20,
 };
 
 describe('ToursService', () => {
@@ -152,6 +154,7 @@ describe('ToursService', () => {
   let availability: {
     computeIsBookable: jest.Mock;
     resyncTourAvailability: jest.Mock;
+    nextBookableDateByTour: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -159,6 +162,9 @@ describe('ToursService', () => {
     availability = {
       computeIsBookable: jest.fn().mockResolvedValue(true),
       resyncTourAvailability: jest.fn().mockResolvedValue(undefined),
+      // Dead-end alternatives: default to "nothing has room" so a test must
+      // opt IN to availability rather than inherit it.
+      nextBookableDateByTour: jest.fn().mockResolvedValue(new Map()),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -1984,6 +1990,136 @@ describe('ToursService', () => {
         null, // capped, open tier -> no badge
         'new', // other badges untouched
       ]);
+    });
+  });
+
+  // ── All-sold-out dead-end alternatives (AVAILABILITY-AND-DEPARTURES.md §8) ────
+
+  describe('findDeadEndAlternatives', () => {
+    /** A ranked candidate row as the ring query returns it (ids only). */
+    const ids = (...v: string[]) => v.map((id) => ({ id }));
+
+    /** A hydrated card row, as `loadAlternativeCards` selects it. */
+    function card(id: string, overrides: Record<string, unknown> = {}) {
+      return makeTour({
+        id,
+        name: `Tour ${id}`,
+        slug: id,
+        status: TourStatus.LIVE,
+        destination: { slug: 'curacao' },
+        images: [],
+        translations: [],
+        defaultCurrency: 'USD',
+        tierRank: 5,
+        likelyToSellOut: false,
+        likelyToSellOutOverride: null,
+        ...overrides,
+      });
+    }
+
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue({
+        id: 'tour-1',
+        destinationId: 'dest-1',
+        categories: [
+          { categoryId: 'cat-primary', isPrimary: true },
+          { categoryId: 'cat-other', isPrimary: false },
+        ],
+      });
+    });
+
+    it('404s when the source tour does not exist', async () => {
+      prisma.tour.findUnique.mockResolvedValue(null);
+      await expect(
+        service.findDeadEndAlternatives('nope', {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('stops at the primary-category ring when it fills all 3 slots', async () => {
+      prisma.tour.findMany.mockResolvedValueOnce(ids('a', 'b', 'c', 'd'));
+      availability.nextBookableDateByTour.mockResolvedValueOnce(
+        new Map([
+          ['a', '2026-08-01'],
+          ['b', '2026-08-02'],
+          ['c', '2026-08-03'],
+          ['d', '2026-08-04'],
+        ]),
+      );
+      prisma.tour.findMany.mockResolvedValueOnce([
+        card('a'),
+        card('b'),
+        card('c'),
+      ]);
+
+      const out = await service.findDeadEndAlternatives('tour-1', {});
+
+      expect(out.map((t) => t.id)).toEqual(['a', 'b', 'c']);
+      // Ring 2 / ring 3 never ran: 1 candidate query + 1 hydrate query only.
+      expect(prisma.tour.findMany).toHaveBeenCalledTimes(2);
+      expect(out[0].nextAvailableDate).toBe('2026-08-01');
+    });
+
+    it('widens past a ring whose candidates all lack a departure this week', async () => {
+      // Ring 1 (primary category) returns candidates, none with room.
+      prisma.tour.findMany.mockResolvedValueOnce(ids('x', 'y'));
+      availability.nextBookableDateByTour.mockResolvedValueOnce(new Map());
+      // Ring 2 (other categories) has one.
+      prisma.tour.findMany.mockResolvedValueOnce(ids('z'));
+      availability.nextBookableDateByTour.mockResolvedValueOnce(
+        new Map([['z', '2026-08-05']]),
+      );
+      prisma.tour.findMany.mockResolvedValueOnce([card('z')]);
+      // Ring 3 (destination-wide) - nothing left.
+      prisma.tour.findMany.mockResolvedValueOnce([]);
+
+      const out = await service.findDeadEndAlternatives('tour-1', {});
+      expect(out.map((t) => t.id)).toEqual(['z']);
+    });
+
+    it('never offers the source tour or a tour a wider ring already picked', async () => {
+      prisma.tour.findMany.mockResolvedValueOnce(ids('a'));
+      availability.nextBookableDateByTour.mockResolvedValueOnce(
+        new Map([['a', '2026-08-01']]),
+      );
+      prisma.tour.findMany.mockResolvedValueOnce([card('a')]);
+      prisma.tour.findMany.mockResolvedValueOnce([]);
+      prisma.tour.findMany.mockResolvedValueOnce([]);
+
+      await service.findDeadEndAlternatives('tour-1', {});
+
+      // Every candidate query excludes the source tour, and later rings also
+      // exclude what earlier rings already saw.
+      const excluded = prisma.tour.findMany.mock.calls
+        .map((c: any[]) => c[0]?.where?.id?.notIn)
+        .filter(Boolean);
+      expect(excluded[0]).toEqual(['tour-1']);
+      expect(excluded[1]).toEqual(expect.arrayContaining(['tour-1', 'a']));
+    });
+
+    it('returns [] rather than throwing when the destination has nothing bookable', async () => {
+      prisma.tour.findMany.mockResolvedValue([]);
+      await expect(
+        service.findDeadEndAlternatives('tour-1', {}),
+      ).resolves.toEqual([]);
+    });
+
+    it('strips the commercial internals from every card', async () => {
+      prisma.tour.findMany.mockResolvedValueOnce(ids('a'));
+      availability.nextBookableDateByTour.mockResolvedValueOnce(
+        new Map([['a', '2026-08-01']]),
+      );
+      prisma.tour.findMany.mockResolvedValueOnce([
+        card('a', { tierRank: 1, commissionTier: '30.0', qualityScore: 88 }),
+      ]);
+      prisma.tour.findMany.mockResolvedValueOnce([]);
+      prisma.tour.findMany.mockResolvedValueOnce([]);
+
+      const [only] = await service.findDeadEndAlternatives('tour-1', {});
+      expect(only.tierRank).toBeNull();
+      expect(only.commissionTier).toBeNull();
+      expect(only.qualityScore).toBeNull();
+      // The badge is derived BEFORE neutralization, so it survives.
+      expect(only.badge).toBe('sponsored');
     });
   });
 });

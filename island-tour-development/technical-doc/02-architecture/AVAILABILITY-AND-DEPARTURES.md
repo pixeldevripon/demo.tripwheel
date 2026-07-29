@@ -202,11 +202,43 @@ The portal also surfaces an `availability_confirmed_at` **freshness nudge** for 
 
 When a tour has **no open departure in the next 30 days** (the all-sold-out dead end), the widget does not present a blank calendar. It recovers with:
 
-- A locked headline: **"These trips still have room this week"**.
+- A locked headline: **"These trips still have departures this week"** (product decision 2026-07-29;
+  was "These trips still have room this week" — the promise is now explicitly about a *departure*,
+  which is what the rows below it actually prove).
 - **2–3 same-category tours** that have an open departure **within 7 days** (alternatives).
 - A **silent** GA4 `availability_dead_end` event for monitoring.
 
 **`notify-me` is v2** (conflict log 77). The v1 dead end recovers through alternatives only — there is no `availability_notifications` table at launch.
+
+### 8.1 How it is built (shipped 2026-07-29)
+
+| Concern | Where |
+|---|---|
+| Detection (no open day in 30 days) | `frontend/lib/stores/booking-store.ts` → `availabilityDeadEnd` (+ `DEAD_END_HORIZON_DAYS`) |
+| Alternatives query | `backend` `GET /tours/:id/alternatives` → `ToursService.findDeadEndAlternatives` |
+| "Still has room within 7 days" | `AvailabilityService.nextBookableDateByTour(tourIds, from, to)` |
+| Recovery UI | `frontend/components/frontend/tour/tour-booking-card/availability-dead-end.tsx` |
+| Locked copy (7 locales) | dictionary key `tour.booking.deadEndTitle` (+ `deadEndSubtitle` / `deadEndNext` / `deadEndNoAlternatives`) |
+| Silent GA4 event | `frontend/lib/tracking/availability-dead-end.ts` |
+
+Three details the spec implies but does not spell out:
+
+1. **Detection must distinguish "sold out" from "the fetch failed."** The widget's calendar
+   read fails OPEN — an errored fetch writes an empty day map so a network blip never blanks a
+   working calendar. An empty map is byte-identical to a genuinely sold-out tour, so the store
+   carries a `calendarError` flag and the dead end fires only on a *successful* empty load.
+2. **"Same-category" is a preference, not a hard filter.** The backend walks three widening
+   rings inside the same destination — primary category → the tour's other categories →
+   destination-wide — and stops as soon as it has 3. A strict same-category filter would leave
+   the block empty exactly when a small category sells out together, which is the common case.
+   Which ring a card came from is not exposed.
+3. **The whole selector stack is replaced, not just the calendar.** With no departure in 30
+   days the time chips, party steppers and Continue button are dead controls; leaving them
+   mounted is what makes a blank calendar read as broken.
+
+When the destination has nothing bookable that week the endpoint returns `[]` (200, never 404)
+and the widget shows the headline plus `deadEndNoAlternatives` — the dead-end event still fires,
+with `alternative_count: 0`, which is the case worth monitoring.
 
 ---
 

@@ -25,7 +25,12 @@ function day(date: string) {
 
 function mockPrisma() {
   return {
-    tour: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+    tour: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
     operator: { findUnique: jest.fn(), create: jest.fn() },
     availabilitySchedule: {
       create: jest.fn(),
@@ -173,15 +178,10 @@ describe('AvailabilityService', () => {
   describe('resolvable-capacity guard', () => {
     const noOverride = { ...createDto, capacityOverride: undefined };
 
-    it('rejects a create with no override when the tour has no maxPartySize', async () => {
-      // TOUR has no maxPartySize (undefined -> null), so capacity is unresolvable.
-      prisma.tour.findUnique.mockResolvedValue(TOUR);
-      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
-      await expect(
-        svc.createSchedule('u1', Role.TOUR_OPERATOR, noOverride),
-      ).rejects.toThrow(BadRequestException);
-      expect(prisma.availabilitySchedule.create).not.toHaveBeenCalled();
-    });
+    // The "tour has no maxPartySize" case is GONE, not untested: the column is
+    // NOT NULL as of 20260729190000, so capacity always resolves and the guard
+    // it used to trip has nothing left to reject. What remains worth asserting
+    // is that a schedule still saves with no override of its own.
 
     it('allows a create with no override when the tour has a maxPartySize default', async () => {
       prisma.tour.findUnique.mockResolvedValue({ ...TOUR, maxPartySize: 20 });
@@ -548,17 +548,9 @@ describe('AvailabilityService', () => {
       ).rejects.toThrow(/set_capacity requires a capacity/);
     });
 
-    it('rejects add_slot with no resolvable capacity (tour has no default)', async () => {
-      prisma.tour.findUnique.mockResolvedValue({ ...TOUR, maxPartySize: null });
-      await expect(
-        svc.createException('u1', Role.TOUR_OPERATOR, {
-          tourId: 't1',
-          date: '2030-06-10',
-          type: 'ADD_SLOT',
-          startTime: '15:00',
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
+    // Removed with the resolvable-capacity guard: an ADD_SLOT exception can no
+    // longer be capacity-less, because the tour default it falls back on is
+    // NOT NULL (migration 20260729190000).
   });
 
   // gap #14: reversed local-date ranges must be rejected, not silently return [].
@@ -585,6 +577,78 @@ describe('AvailabilityService', () => {
           to: '2030-07-01',
         }),
       ).rejects.toThrow(/to must be on or after from/);
+    });
+  });
+
+  // ── nextBookableDateByTour (backs the §8 dead-end alternatives) ──────────────
+
+  describe('nextBookableDateByTour', () => {
+    const clocks = [
+      { id: 't1', timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
+      { id: 't2', timeZone: 'America/Curacao', bookingCutoffMinutes: 120 },
+    ];
+
+    it('short-circuits on an empty id list without touching the database', async () => {
+      const out = await svc.nextBookableDateByTour(
+        [],
+        '2030-06-01',
+        '2030-06-08',
+      );
+      expect(out.size).toBe(0);
+      expect(prisma.departure.findMany).not.toHaveBeenCalled();
+      expect(prisma.tour.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns the EARLIEST bookable date per tour', async () => {
+      prisma.tour.findMany.mockResolvedValue(clocks);
+      prisma.departure.findMany.mockResolvedValue([
+        departureRow({ tourId: 't1', date: day('2030-06-03') }),
+        departureRow({ tourId: 't1', date: day('2030-06-05') }),
+        departureRow({ tourId: 't2', date: day('2030-06-04') }),
+      ]);
+
+      const out = await svc.nextBookableDateByTour(
+        ['t1', 't2'],
+        '2030-06-01',
+        '2030-06-08',
+      );
+      expect(out.get('t1')).toBe('2030-06-03');
+      expect(out.get('t2')).toBe('2030-06-04');
+    });
+
+    it('omits a tour whose only departures are full - OPEN status is not enough', async () => {
+      prisma.tour.findMany.mockResolvedValue(clocks);
+      prisma.departure.findMany.mockResolvedValue([
+        // Status still OPEN in storage, but every seat is taken.
+        departureRow({ tourId: 't1', capacity: 10, bookedCount: 10 }),
+      ]);
+
+      const out = await svc.nextBookableDateByTour(
+        ['t1'],
+        '2030-06-01',
+        '2030-06-08',
+      );
+      expect(out.has('t1')).toBe(false);
+    });
+
+    it('omits a tour whose departures are all in the past (cutoff reached)', async () => {
+      prisma.tour.findMany.mockResolvedValue(clocks);
+      prisma.departure.findMany.mockResolvedValue([
+        departureRow({ tourId: 't1', date: day('2020-01-01') }),
+      ]);
+
+      const out = await svc.nextBookableDateByTour(
+        ['t1'],
+        '2020-01-01',
+        '2020-01-08',
+      );
+      expect(out.has('t1')).toBe(false);
+    });
+
+    it('rejects an inverted window', async () => {
+      await expect(
+        svc.nextBookableDateByTour(['t1'], '2030-06-08', '2030-06-01'),
+      ).rejects.toThrow(/dateTo must be on or after dateFrom/);
     });
   });
 });

@@ -46,6 +46,15 @@ export type TourBookingDict = {
     calendarNoDepartures: string;
     /** Calendar hover hint for a day whose departures are all closed (e.g. an exception). */
     calendarClosed: string;
+    /** All-sold-out dead end (AVAILABILITY-AND-DEPARTURES.md §8) - LOCKED headline.
+     *  The spec fixes this wording: it is a promise about the rows beneath it. */
+    deadEndTitle: string;
+    /** Sub-line explaining why the calendar is gone. */
+    deadEndSubtitle: string;
+    /** Per-row next-departure line, e.g. "Next: {date}". */
+    deadEndNext: string;
+    /** Shown when the destination has nothing bookable this week either. */
+    deadEndNoAlternatives: string;
     /** "Only {count} left" */
     onlyLeft: string;
     /** "{count} Travelers" */
