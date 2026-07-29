@@ -13,11 +13,13 @@
  *    invents a requirement the backend does not have. Every other step is
  *    walk-through: an operator can pass it empty and fix it from Review.
  *
- * 2. `isComplete` is a RAIL SIGNAL, not a gate. It is derived from the same
+ * 2. Completeness is a RAIL SIGNAL, not a gate - see `isStepComplete` at the
+ *    bottom of this file. It is derived from the same
  *    fields `lib/trips/readiness.ts` reads, so the dot on step 6 and the
  *    publish check on step 9 can never disagree.
  */
 
+import { getListingChecks, getPublishChecks } from '@/lib/trips/readiness';
 import type { TripListItem } from '@/types/trip';
 
 export type WizardStepId =
@@ -42,8 +44,6 @@ export interface WizardStepDef {
      * fail. See rule 1 in the file header.
      */
     blocking?: boolean;
-    /** Rail-only completeness signal. Never blocks. See rule 2. */
-    isComplete?: (trip: TripListItem) => boolean;
 }
 
 export const WIZARD_STEPS: readonly WizardStepDef[] = [
@@ -52,8 +52,6 @@ export const WIZARD_STEPS: readonly WizardStepDef[] = [
         label: 'Basics',
         title: 'Basics',
         blocking: true,
-        // The draft cannot exist without these, so any loaded trip has them.
-        isComplete: () => true,
     },
     {
         id: 'pricing',
@@ -61,40 +59,35 @@ export const WIZARD_STEPS: readonly WizardStepDef[] = [
         title: 'Pricing',
         // Only UNIT tours have required fields here (existing superRefine).
         blocking: true,
-        isComplete: trip => trip.priceFrom != null || trip.basePrice != null,
     },
     {
         id: 'rules',
         label: 'Booking rules',
         title: 'Capacity and booking rules',
         // Asked BEFORE Schedule on purpose: maxPartySize is the default seat
-        // count every schedule falls back on (07 §2.2 a).
-        isComplete: trip => trip.maxPartySize != null,
+        // count every schedule falls back on (07 §2.2 a) - and it is REQUIRED,
+        // so this step can refuse Continue like basics and pricing.
+        blocking: true,
     },
     {
         id: 'schedule',
         label: 'Schedule',
         title: 'Schedule and availability',
-        isComplete: trip => trip.isBookable,
     },
     {
         id: 'location',
         label: 'Location',
         title: 'Location and route',
-        isComplete: trip =>
-            trip.meetingPointLat != null && trip.meetingPointLng != null,
     },
     {
         id: 'media',
         label: 'Media',
         title: 'Photos',
-        isComplete: trip => (trip.imageCount ?? 0) >= 5 && !!trip.heroImage,
     },
     {
         id: 'content',
         label: 'Description',
         title: 'Description and content',
-        isComplete: trip => (trip.highlightCount ?? 0) >= 3,
     },
     {
         id: 'reach',
@@ -103,13 +96,7 @@ export const WIZARD_STEPS: readonly WizardStepDef[] = [
         // True by construction - the backend defaults every tour to
         // `tier_key='standard'`, so a loaded tour always has one.
         //
-        // It is stated rather than omitted on purpose. Leaving `isComplete`
-        // off left step 8 permanently hollow next to eight ticks, which reads
-        // as a stuck step rather than as "nothing required here". Hubs and
-        // attributes were the alternative signal and both are genuinely
-        // optional - keying the tick to them would leave it empty for most
-        // tours, which is the same lie in reverse.
-        isComplete: trip => !!trip.tierKey,
+        // Nothing on this step is required - see `isStepComplete`.
     },
     {
         id: 'review',
@@ -213,4 +200,56 @@ export function resolveStepParam(
     if (!raw) return fallback;
     if (isStepId(raw)) return raw;
     return TAB_TO_STEP[raw] ?? fallback;
+}
+
+// ── Step completeness ────────────────────────────────────────────────────────
+
+/**
+ * Which step OWNS each readiness check.
+ *
+ * Deliberately not `check.tab`: that field is a "where do I go to fix this"
+ * hint and the capacity check swaps its own tab depending on whether a tour
+ * has a party maximum, so keying ownership to it would let one check drift
+ * between two steps.
+ */
+const CHECK_STEP: Record<string, WizardStepId> = {
+    images: 'media',
+    hero: 'media',
+    highlights: 'content',
+    overview: 'content',
+    price: 'pricing',
+    bookable: 'schedule',
+};
+
+/**
+ * Is this step done?
+ *
+ * ONE definition, derived from `readiness.ts`, so the tick on the rail and the
+ * checklist on Review can never disagree. A step is complete when no readiness
+ * check it owns is failing - and a step that owns no checks is complete as
+ * soon as the draft exists, because there is nothing on it that must be filled.
+ *
+ * The hand-written predicates this replaced invented requirements the platform
+ * does not have. `rules` demanded `maxPartySize`, which is OPTIONAL - the
+ * capacity check has always accepted per-schedule overrides instead
+ * (`maxPartySize != null || isBookable`), so a live, fully bookable tour sat
+ * on step 3 with a hollow circle forever. `location` demanded meeting-point
+ * coordinates, which nothing requires at all.
+ */
+export function isStepComplete(
+    step: WizardStepId,
+    trip: TripListItem,
+    hasEnOverview: boolean,
+): boolean {
+    // Publishing IS the completion of the review step - there is nothing to
+    // fill in on it, only a decision to take.
+    if (step === REVIEW_STEP) return trip.firstPublishedAt != null;
+
+    const checks = [
+        ...getPublishChecks(trip, hasEnOverview),
+        ...getListingChecks(trip),
+    ];
+    return checks
+        .filter(c => CHECK_STEP[c.key] === step)
+        .every(c => c.passed);
 }

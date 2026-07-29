@@ -4,9 +4,9 @@ import {
     Coins01Icon,
     CreditCardIcon,
     DashboardSquare01Icon,
+    File02Icon,
     FilterHorizontalIcon,
     Globe02Icon,
-    File02Icon,
     Home01Icon,
     Image02Icon,
     Layers01Icon,
@@ -18,7 +18,6 @@ import {
     Store01Icon,
     Tag01Icon,
     TranslateIcon,
-    UserCircleIcon,
     UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 
@@ -110,10 +109,7 @@ const dashboardNav: NavGroup[] = [
                 title: 'Media',
                 url: 'media',
                 icon: Image02Icon,
-                permissions: [
-                    Permission.UPLOAD_MEDIA,
-                    Permission.MANAGE_MEDIA,
-                ],
+                permissions: [Permission.UPLOAD_MEDIA, Permission.MANAGE_MEDIA],
             },
             {
                 // The single largest operator workload finally has a home
@@ -232,21 +228,23 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.MANAGE_STAFF, Permission.MANAGE_TEAM],
             },
             {
-                // ADMIN-ONLY since 2026-07-28. Operators used to reach this
-                // for "Your Business" (EDIT_OPERATOR_PROFILE), which now
-                // lives on /profile, and for Payments
-                // (MANAGE_OPERATOR_PAYMENTS), which is still parked - so the
-                // page had nothing left for them and the link was a dead end.
-                // Restore MANAGE_OPERATOR_PAYMENTS here when payments ships.
+                // Admin-only between 2026-07-28 and 2026-07-29: "Your Business"
+                // (EDIT_OPERATOR_PROFILE) had moved to /profile and Payments
+                // (MANAGE_OPERATOR_PAYMENTS) was parked, so the page had
+                // nothing left for operators and the link was a dead end.
+                // iCal sync (MANAGE_AVAILABILITY) gave it operator content
+                // again, so operators are back. Restore
+                // MANAGE_OPERATOR_PAYMENTS here too when payments ships.
                 title: 'Settings',
                 url: 'settings',
                 icon: Settings02Icon,
                 permissions: [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
+                    Permission.MANAGE_AVAILABILITY,
                 ],
             },
-/*             {
+            /*             {
                 title: 'Your Profile',
                 url: 'profile',
                 icon: UserCircleIcon,
@@ -271,3 +269,4 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+

@@ -260,7 +260,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
                     <div className='space-y-6 py-6'>
                         <Field>
                             <Label>
-                                Name{' '}
+                                Tour title{' '}
                                 <span aria-hidden className='text-danger-fg'>
                                     *
                                 </span>

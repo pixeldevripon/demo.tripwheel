@@ -139,7 +139,6 @@ export function WizardProvider({
     const [visited, setVisited] = useState<Set<WizardStepId>>(
         () => new Set([step]),
     );
-    const [sections, setSections] = useState<Record<string, boolean>>({});
     const [stepError, setStepError] = useState<string | null>(null);
     // Keyed `step::key`: a step may host more than one independent form (the
     // content step owns both the English copy and the advanced trip settings).
@@ -212,21 +211,51 @@ export function WizardProvider({
         [mode, visited],
     );
 
+    /**
+     * Accordion state: which ONE section is open, per step.
+     *
+     * Not a per-section boolean. That model could only close siblings it had
+     * already seen, and the step's default-open section has no entry until
+     * someone toggles it - so opening a second section left the first one
+     * standing, which is the bug this replaced. Recording the single open id
+     * makes "everything else is closed" the definition rather than a sweep.
+     *
+     * `undefined` for a step means untouched, so each section falls back to its
+     * own `defaultOpen`. `null` means the operator explicitly closed the last
+     * open one - distinct from untouched, otherwise the default would spring
+     * back the moment you collapsed it.
+     */
+    const [openSection, setOpenSection] = useState<
+        Record<string, string | null>
+    >({});
+
     const isSectionOpen = useCallback(
-        (sectionId: string, defaultOpen: boolean) =>
-            sections[sectionId] ?? defaultOpen,
-        [sections],
+        (sectionId: string, defaultOpen: boolean) => {
+            const stepKey = sectionId.split(':')[0];
+            const current = openSection[stepKey];
+            if (current === undefined) return defaultOpen;
+            return current === sectionId;
+        },
+        [openSection],
     );
 
     const setSectionOpen = useCallback((sectionId: string, open: boolean) => {
-        setSections(prev =>
-            prev[sectionId] === open ? prev : { ...prev, [sectionId]: open },
-        );
+        const stepKey = sectionId.split(':')[0];
+        setOpenSection(prev => ({
+            ...prev,
+            [stepKey]: open ? sectionId : null,
+        }));
     }, []);
 
     const revealSection = useCallback((sectionId: string) => {
-        setSections(prev =>
-            prev[sectionId] === true ? prev : { ...prev, [sectionId]: true },
+        // Validation force-open takes the slot outright, so a step with two
+        // failing sections does not end up with both hanging open - the first
+        // is where `focusFirstInvalid` is sending the operator anyway.
+        const stepKey = sectionId.split(':')[0];
+        setOpenSection(prev =>
+            prev[stepKey] === sectionId
+                ? prev
+                : { ...prev, [stepKey]: sectionId },
         );
     }, []);
 

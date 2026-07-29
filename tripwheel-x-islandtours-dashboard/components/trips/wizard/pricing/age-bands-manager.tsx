@@ -46,6 +46,7 @@ import {
 } from '@/hooks/trips/use-trips';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import type {
     AgeBandType,
     BandParticipation,
@@ -330,7 +331,11 @@ function AgeBandRow({
                         className='size-3.5 shrink-0 fill-rating text-rating'
                     />
                 )}
-                <span className='min-w-0 truncate text-sm font-medium text-content'>
+                <span
+                    className={cn(
+                        'min-w-0 truncate text-sm font-medium transition-colors duration-fast',
+                        editing ? 'text-primary' : 'text-content'
+                    )}>
                     {band.label}
                 </span>
                 {/* ONE chip, not three. Type, age range and participation were
