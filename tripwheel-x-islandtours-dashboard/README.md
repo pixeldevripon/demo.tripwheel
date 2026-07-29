@@ -17,11 +17,11 @@ read and write is an API call.
 
 ### Ports
 
-| Port | App |
-|---|---|
-| 5050 | backend (NestJS) |
+| Port | App                               |
+| ---- | --------------------------------- |
+| 5050 | backend (NestJS)                  |
 | 3000 | public site (`island-tours` repo) |
-| 3001 | **this dashboard** |
+| 3001 | **this dashboard**                |
 
 3001 is pinned in `pnpm dev`, not incidental. 3000 belongs to the public site -
 it is what this app POSTs cache revalidations to (`REVALIDATE_TARGET_URL`), so
@@ -65,11 +65,11 @@ Authoritative validation happens one hop later in the dashboard layout.
 
 ## Origins
 
-| | Interim (in force) | Target |
-|---|---|---|
-| Dashboard | `dashboard.islandtours.esenc.cloud` | `dashboard.tripwheel.io` |
-| Backend | `api.islandtours.esenc.cloud` | `api.tripwheel.io` |
-| Public site | `islandtours.esenc.cloud` | `island.tours` |
+|             | Interim (in force)                  | Target                   |
+| ----------- | ----------------------------------- | ------------------------ |
+| Dashboard   | `dashboard.islandtours.esenc.cloud` | `dashboard.tripwheel.io` |
+| Backend     | `api.islandtours.esenc.cloud`       | `api.tripwheel.io`       |
+| Public site | `islandtours.esenc.cloud`           | `island.tours`           |
 
 ## Deploy
 
@@ -80,15 +80,15 @@ Vercel, same as the public site. There is **no Dockerfile and no
 Set every var from `.env.production.example` in the Vercel project. Three of them
 are shared secrets, and each fails in its own quiet way if it drifts:
 
-| Var | If it is wrong |
-|---|---|
+| Var                   | If it is wrong                                                                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `INTERNAL_API_SECRET` | must match the backend. Mismatch = SSR requests lose their throttle exemption, a 429 reads as "no session", and logged-in users bounce to `/portal`. |
-| `COOKIE_DOMAIN` | must match the backend's cookie domain (`.islandtours.esenc.cloud`). Mismatch = login loop. |
-| `REVALIDATE_SECRET` | must match the **public** repo's value. Mismatch = every revalidation 401s and the public site serves stale pages. |
+| `COOKIE_DOMAIN`       | must match the backend's cookie domain (`.islandtours.esenc.cloud`). Mismatch = login loop.                                                          |
+| `REVALIDATE_SECRET`   | must match the **public** repo's value. Mismatch = every revalidation 401s and the public site serves stale pages.                                   |
 
 Also required, on the **backend**: add this app's origin to `CORS_ORIGINS`. It
 feeds both CORS and Better Auth `trustedOrigins`, so a miss blocks API calls
-*and* rejects sign-in.
+_and_ rejects sign-in.
 
 `NEXT_PUBLIC_*` vars are inlined at build time, not read at runtime - changing one
 in Vercel needs a redeploy, not a restart.
@@ -104,3 +104,5 @@ in Vercel needs a redeploy, not a restart.
 
 `technical-doc/dashboard-extraction/` in the island-tours monorepo. Read `02`
 (extraction) and `02B` (cache revalidation) first; they carry the risk.
+update
+
