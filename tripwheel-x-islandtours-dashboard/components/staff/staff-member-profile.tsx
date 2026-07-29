@@ -1,6 +1,5 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import {
     Alert02Icon,
     Cancel01Icon,
@@ -11,6 +10,7 @@ import {
     ToggleOffIcon,
     ToggleOnIcon,
 } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -181,7 +181,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
         }
         rename(
             { userId: member.user.id, name: trimmedName },
-            { onSuccess: () => setNameDraft(null) },
+            { onSuccess: () => setNameDraft(null) }
         );
     }
 
@@ -192,7 +192,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
             {/* Identity + actions */}
             <div className='mb-6 flex flex-wrap items-start justify-between gap-4'>
                 <div className='flex min-w-0 items-center gap-4'>
-                    <span className='flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xl font-semibold uppercase'>
+                    <span className='flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xl font-medium uppercase'>
                         {member.user.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -212,11 +212,9 @@ export function StaffMemberProfile({ id }: { id: string }) {
                                     autoFocus
                                     disabled={renamePending}
                                     aria-label='Member name'
-                                    className='h-9 w-64 text-lg font-semibold'
-                                    onChange={(e) =>
-                                        setNameDraft(e.target.value)
-                                    }
-                                    onKeyDown={(e) => {
+                                    className='h-9 w-64 text-lg font-medium'
+                                    onChange={e => setNameDraft(e.target.value)}
+                                    onKeyDown={e => {
                                         if (e.key === 'Enter') saveName();
                                         if (e.key === 'Escape')
                                             setNameDraft(null);
@@ -242,7 +240,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
                             </div>
                         ) : (
                             <div className='flex flex-wrap items-center gap-2'>
-                                <h1 className='truncate text-2xl font-semibold'>
+                                <h1 className='truncate text-2xl font-medium'>
                                     {member.user.name}
                                 </h1>
                                 <StatusBadge
@@ -362,7 +360,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
                                         : 'Invited'
                                 }
                                 value={formatDate(
-                                    member.activatedAt ?? member.invitedAt,
+                                    member.activatedAt ?? member.invitedAt
                                 )}
                             />
                         </dl>
@@ -373,7 +371,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
                     <CardHeader>
                         <CardTitle>
                             Permissions
-                            <span className='ml-2 text-xs font-normal text-muted-foreground'>
+                            <span className='ml-2 text-xs font-light text-muted-foreground'>
                                 {accessReadOnly
                                     ? 'Full access'
                                     : `${member.effectivePermissions.length} granted`}
@@ -401,7 +399,7 @@ export function StaffMemberProfile({ id }: { id: string }) {
                                         disabled={editor.isPending}
                                         onClick={() =>
                                             editor.save(() =>
-                                                setEditingAccess(false),
+                                                setEditingAccess(false)
                                             )
                                         }>
                                         {editor.isPending
@@ -479,10 +477,11 @@ export function StaffMemberProfile({ id }: { id: string }) {
                                 setRemoveOpen(false);
                                 router.push('/users');
                             },
-                        },
+                        }
                     )
                 }
             />
         </div>
     );
 }
+

@@ -1,12 +1,47 @@
 'use client';
 
+/**
+ * Photos - the cover, and the order everything else is seen in.
+ *
+ * The old screen was one uniform grid with six hover-only buttons per tile, a
+ * row of scolding badges, and a focal point entered as two numbers between 0
+ * and 1. It treated the two things this step actually decides as if they were
+ * the same thing. They are not, and the backend has never conflated them:
+ *
+ * - `isHero` picks the ONE image used on the tour card, in search results and
+ *   on social shares. It is a flag, not a position.
+ * - `displayOrder` is the sequence a traveller swipes through on the tour page.
+ *   The public query is `orderBy: { displayOrder: 'asc' }` over ALL images,
+ *   hero included - the cover is not implicitly first.
+ *
+ * So the screen is two regions. A cover panel that shows the one image doing
+ * the selling, and a gallery that shows the sequence and lets you drag it into
+ * shape. Nothing about the payloads moved: the cover button still PATCHes
+ * `{ isHero: true }`, and a drag PATCHes `{ displayOrder }` on the rows that
+ * actually shifted - the same endpoint the two arrow buttons used to hit.
+ *
+ * Drag is not the only way to reorder. It is a mouse gesture with no keyboard
+ * equivalent, so every tile keeps a pair of move buttons that reach the same
+ * code path.
+ */
+
+import {
+    ArrowLeft02Icon,
+    ArrowRight02Icon,
+    Delete02Icon,
+    ImageAdd02Icon,
+    Move02Icon,
+    PencilEdit02Icon,
+    PlusSignIcon,
+    StarIcon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ArrowDown02Icon, ArrowUp02Icon, Delete02Icon, Image02Icon, PencilEdit02Icon, PlusSignIcon, StarIcon } from '@hugeicons/core-free-icons';
+import { motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import MediaSelector from '@/components/common/media-selector';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -25,24 +60,30 @@ import {
     useRemoveImage,
     useUpdateImage,
 } from '@/hooks/trips/use-trips';
+import { springPop } from '@/lib/motion';
+import { cn } from '@/lib/utils';
 import type { MediaItem } from '@/types/media';
 import type {
     TourImage,
     TripListItem,
     UpdateTourImagePayload,
 } from '@/types/trip';
-import { useState } from 'react';
-import { toast } from 'sonner';
+
+const MAX_IMAGES = 24;
 
 interface TripImagesTabProps {
     trip: TripListItem;
 }
 
-// Clamp a raw focal-point string to the 0..1 range the backend expects.
-function clampFocal(raw: string): number {
-    const n = Number.parseFloat(raw);
+/** Clamp a focal coordinate to the 0..1 range the backend expects. */
+function clampFocal(n: number): number {
     if (Number.isNaN(n)) return 0.5;
     return Math.min(1, Math.max(0, n));
+}
+
+/** Focal point as a CSS `object-position`, so a crop preview is free. */
+function focalPosition(x: number | null, y: number | null): string {
+    return `${clampFocal(x ?? 0.5) * 100}% ${clampFocal(y ?? 0.5) * 100}%`;
 }
 
 export function TripImagesTab({ trip }: TripImagesTabProps) {
@@ -50,25 +91,50 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
     const { mutate: addImage, isPending: isAdding } = useAddImage();
     const { mutate: updateImage, isPending: isUpdating } = useUpdateImage();
     const { mutate: removeImage } = useRemoveImage();
+
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectorOpen, setSelectorOpen] = useState(false);
     const [editing, setEditing] = useState<TourImage | null>(null);
+    // The tile being dragged. Held here rather than read back off
+    // `dataTransfer`, which browsers deliberately blank during `dragenter` -
+    // exactly the moment the drop target needs to know what is moving.
+    const [dragId, setDragId] = useState<string | null>(null);
 
-    const count = images?.length ?? 0;
-    const hasHero = images?.some(img => img.isHero) ?? false;
-
-    // Stable display order: the reorder controls act on this sorted view.
-    const ordered = [...(images ?? [])].sort(
-        (a, b) => a.displayOrder - b.displayOrder
+    const serverOrdered = useMemo(
+        () => [...(images ?? [])].sort((a, b) => a.displayOrder - b.displayOrder),
+        [images],
     );
 
+    // Optimistic order held while a drag is in flight, so tiles move under the
+    // cursor instead of snapping back and forth as each PATCH resolves. Cleared
+    // whenever the server's own order changes - by then it says the same thing.
+    const [draftOrder, setDraftOrder] = useState<string[] | null>(null);
+    const serverKey = serverOrdered.map(i => i.id).join(',');
+    useEffect(() => {
+        setDraftOrder(null);
+    }, [serverKey]);
+
+    const ordered = useMemo(() => {
+        if (!draftOrder) return serverOrdered;
+        const byId = new Map(serverOrdered.map(i => [i.id, i]));
+        const picked = draftOrder
+            .map(id => byId.get(id))
+            .filter((i): i is TourImage => !!i);
+        // Anything added while dragging still has to render.
+        const seen = new Set(picked.map(i => i.id));
+        return [...picked, ...serverOrdered.filter(i => !seen.has(i.id))];
+    }, [draftOrder, serverOrdered]);
+
+    const count = ordered.length;
+    const cover = ordered.find(img => img.isHero) ?? null;
+
     function handleMediaSelect(items: MediaItem[]) {
-        const remaining = 24 - count;
+        const remaining = MAX_IMAGES - count;
         const toAdd = items.slice(0, remaining);
 
         if (items.length > remaining) {
             toast.warning(
-                `Only ${remaining} image slots remaining. Added the first ${remaining}.`
+                `Only ${remaining} image slots remaining. Added the first ${remaining}.`,
             );
         }
 
@@ -81,40 +147,39 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                         width: item.width ?? 1920,
                         height: item.height ?? 1080,
                         altText: item.altText || item.fileName || undefined,
-                        isHero: count === 0 && index === 0,
+                        // Claim the cover whenever the tour has none - not just
+                        // when it has no photos at all. Adding from the empty
+                        // cover panel used to land the photo in the gallery and
+                        // leave the panel still asking for a cover, because the
+                        // old test was `count === 0`: delete the cover, add a
+                        // replacement, and nothing became the cover.
+                        isHero: !cover && index === 0,
                         displayOrder: count + index,
                     },
                 },
                 {
-                    onSuccess: () => {
-                        if (index === 0)
-                            toast.success(
-                                `${toAdd.length} image${toAdd.length > 1 ? 's' : ''} added.`
-                            );
-                    },
                     onError: err =>
                         toast.error(
                             err instanceof Error
                                 ? err.message
-                                : 'Failed to add image.'
+                                : 'Failed to add image.',
                         ),
-                }
+                },
             );
         });
     }
 
-    function handleSetHero(imageId: string) {
+    function handleSetCover(imageId: string) {
         updateImage(
             { tripId: trip.id, imageId, payload: { isHero: true } },
             {
-                onSuccess: () => toast.success('Hero image updated.'),
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to set hero.'
+                            : 'Failed to set the cover photo.',
                     ),
-            }
+            },
         );
     }
 
@@ -123,60 +188,69 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
         removeImage(
             { tripId: trip.id, imageId },
             {
-                onSuccess: () => {
-                    toast.success('Image removed.');
-                    setDeletingId(null);
-                },
+                onSuccess: () => setDeletingId(null),
                 onError: err => {
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to remove image.'
+                            : 'Failed to remove image.',
                     );
                     setDeletingId(null);
                 },
-            }
+            },
         );
     }
 
-    // Swap displayOrder with the neighbour in the given direction.
-    function handleMove(index: number, direction: 'up' | 'down') {
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= ordered.length) return;
+    /** Preview a move locally. Nothing is written until the drag ends. */
+    function previewMove(toId: string) {
+        if (!dragId) return;
+        const ids = ordered.map(i => i.id);
+        const from = ids.indexOf(dragId);
+        const to = ids.indexOf(toId);
+        if (from < 0 || to < 0 || from === to) return;
+        const next = [...ids];
+        next.splice(to, 0, next.splice(from, 1)[0]);
+        setDraftOrder(next);
+    }
 
-        const current = ordered[index];
-        const neighbour = ordered[targetIndex];
+    /**
+     * Write the order out, one PATCH per row that actually moved.
+     *
+     * There is no bulk-reorder endpoint, so this normalises to 0..n-1 and skips
+     * every row already sitting on its number. Dragging one tile one place
+     * costs the same two writes the old arrow buttons cost.
+     */
+    function commitOrder(list: TourImage[]) {
+        list.forEach((img, index) => {
+            if (img.displayOrder === index) return;
+            updateImage(
+                {
+                    tripId: trip.id,
+                    imageId: img.id,
+                    payload: { displayOrder: index },
+                },
+                {
+                    onError: err => {
+                        setDraftOrder(null);
+                        toast.error(
+                            err instanceof Error
+                                ? err.message
+                                : 'Failed to reorder images.',
+                        );
+                    },
+                },
+            );
+        });
+    }
 
-        updateImage(
-            {
-                tripId: trip.id,
-                imageId: current.id,
-                payload: { displayOrder: neighbour.displayOrder },
-            },
-            {
-                onError: err =>
-                    toast.error(
-                        err instanceof Error
-                            ? err.message
-                            : 'Failed to reorder image.'
-                    ),
-            }
-        );
-        updateImage(
-            {
-                tripId: trip.id,
-                imageId: neighbour.id,
-                payload: { displayOrder: current.displayOrder },
-            },
-            {
-                onError: err =>
-                    toast.error(
-                        err instanceof Error
-                            ? err.message
-                            : 'Failed to reorder image.'
-                    ),
-            }
-        );
+    /** Keyboard/button equivalent of a one-place drag. */
+    function handleNudge(index: number, direction: -1 | 1) {
+        const target = index + direction;
+        if (target < 0 || target >= ordered.length) return;
+        const next = [...ordered];
+        next.splice(target, 0, next.splice(index, 1)[0]);
+        setDraftOrder(next.map(i => i.id));
+        commitOrder(next);
     }
 
     function handleSaveEdit(payload: UpdateTourImagePayload) {
@@ -184,98 +258,98 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
         updateImage(
             { tripId: trip.id, imageId: editing.id, payload },
             {
-                onSuccess: () => {
-                    toast.success('Image details updated.');
-                    setEditing(null);
-                },
+                onSuccess: () => setEditing(null),
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to update image.'
+                            : 'Failed to update image.',
                     ),
-            }
+            },
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className='space-y-8'>
+                <Skeleton className='aspect-[21/9] w-full rounded-xl' />
+                <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} className='aspect-[4/3] w-full rounded-lg' />
+                    ))}
+                </div>
+            </div>
         );
     }
 
     return (
-        <Card>
-            <CardHeader className='border-b pb-4'>
-                <div className='flex flex-wrap items-center justify-between gap-3'>
-                    <div className='flex flex-wrap items-center gap-3'>
-                        <CardTitle className='font-sans text-base'>
-                            Images
-                        </CardTitle>
-                    <Badge variant='secondary'>{count}/24 images</Badge>
-                    {count < 5 && (
-                        <Badge variant='destructive'>
-                            Need at least 5 to publish
-                        </Badge>
-                    )}
-                    {!hasHero && count > 0 && (
-                        <Badge
-                            variant='outline'
-                            className='border-warning-border text-warning-fg'>
-                            No hero image set
-                        </Badge>
-                    )}
+        <div className='space-y-8'>
+            <CoverPanel
+                cover={cover}
+                hasImages={count > 0}
+                onEdit={() => cover && setEditing(cover)}
+                onPick={() => setSelectorOpen(true)}
+            />
+
+            {count > 0 && (
+                <section>
+                    <header className='mb-3 flex flex-wrap items-end justify-between gap-3'>
+                        <div>
+                            <h3 className='text-sm font-semibold text-content'>
+                                Gallery order
+                            </h3>
+                            <p className='mt-0.5 text-xs text-content-muted'>
+                                The sequence travellers swipe through on your
+                                tour page. Drag a photo to move it.
+                            </p>
+                        </div>
+                        <span className='text-xs tabular-nums text-content-muted'>
+                            {count} of {MAX_IMAGES}
+                        </span>
+                    </header>
+
+                    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'>
+                        {ordered.map((img, index) => (
+                            <ImageTile
+                                key={img.id}
+                                img={img}
+                                index={index}
+                                total={count}
+                                isDeleting={deletingId === img.id}
+                                isBusy={isUpdating}
+                                isDragging={dragId === img.id}
+                                onDragBegin={setDragId}
+                                onDragOverTile={previewMove}
+                                onDragFinish={() => {
+                                    setDragId(null);
+                                    commitOrder(ordered);
+                                }}
+                                onNudge={handleNudge}
+                                onSetCover={handleSetCover}
+                                onDelete={handleDelete}
+                                onEdit={() => setEditing(img)}
+                            />
+                        ))}
+                        {count < MAX_IMAGES && (
+                            <AddTile
+                                disabled={isAdding}
+                                onClick={() => setSelectorOpen(true)}
+                            />
+                        )}
                     </div>
-                    <Button
-                        size='sm'
-                        onClick={() => setSelectorOpen(true)}
-                        disabled={isAdding || count >= 24}>
-                        <HugeiconsIcon icon={PlusSignIcon} className='size-3.5' />
-                        Select from Gallery
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent className='pt-6'>
-            {/* Image grid */}
-            {isLoading ? (
-                <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton
-                            key={i}
-                            className='aspect-video w-full rounded-md'
-                        />
-                    ))}
-                </div>
-            ) : ordered.length > 0 ? (
-                <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
-                    {ordered.map((img, index) => (
-                        <ImageCard
-                            key={img.id}
-                            img={img}
-                            index={index}
-                            total={ordered.length}
-                            isUpdating={isUpdating}
-                            isDeleting={deletingId === img.id}
-                            onSetHero={handleSetHero}
-                            onDelete={handleDelete}
-                            onMove={handleMove}
-                            onEdit={() => setEditing(img)}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className='flex flex-col items-center gap-2 py-16 text-muted-foreground border border-dashed border-foreground/15'>
-                    <HugeiconsIcon icon={Image02Icon} className='size-10 opacity-30' />
-                    <p className='text-sm'>No images yet.</p>
-                    <Button
-                        size='sm'
-                        variant='outline'
-                        onClick={() => setSelectorOpen(true)}>
-                        Select from Gallery
-                    </Button>
-                </div>
+                </section>
             )}
 
+            {/* `kind='image'` matters: the library holds video and audio too,
+                and a tour image row is rendered with <img>. A picked reel
+                saved fine and then displayed as a broken frame. */}
             <MediaSelector
                 open={selectorOpen}
                 onOpenChange={setSelectorOpen}
                 onMediaSelect={handleMediaSelect}
                 multiple
-                maxFiles={24 - count}
+                kind='image'
+                maxFiles={MAX_IMAGES - count}
             />
 
             <ImageEditDialog
@@ -286,121 +360,327 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                 }}
                 onSave={handleSaveEdit}
             />
-            </CardContent>
-        </Card>
-    );
-}
-
-// ── Image card ──────────────────────────────────────────────────────────────
-
-interface ImageCardProps {
-    img: TourImage;
-    index: number;
-    total: number;
-    isUpdating: boolean;
-    isDeleting: boolean;
-    onSetHero: (imageId: string) => void;
-    onDelete: (imageId: string) => void;
-    onMove: (index: number, direction: 'up' | 'down') => void;
-    onEdit: () => void;
-}
-
-function ImageCard({
-    img,
-    index,
-    total,
-    isUpdating,
-    isDeleting,
-    onSetHero,
-    onDelete,
-    onMove,
-    onEdit,
-}: ImageCardProps) {
-    return (
-        <div className='relative group ring-1 ring-foreground/10 overflow-hidden rounded-md'>
-            <div className='aspect-video bg-muted'>
-                <img
-                    src={img.url}
-                    alt={img.altText ?? 'Trip image'}
-                    className='size-full object-cover'
-                />
-            </div>
-            <div className='p-2 space-y-1'>
-                <div className='flex items-center justify-between gap-2'>
-                    {img.isHero ? (
-                        <div className='flex items-center gap-1'>
-                            <HugeiconsIcon icon={StarIcon} className='size-3 text-warning-solid' />
-                            <span className='text-xs text-warning-fg font-medium'>
-                                Hero
-                            </span>
-                        </div>
-                    ) : (
-                        <span className='text-xs text-muted-foreground'>
-                            #{index + 1}
-                        </span>
-                    )}
-                    {img.altText && (
-                        <span className='text-xs text-muted-foreground truncate'>
-                            {img.altText}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {/* Reorder controls (bottom-left on hover) */}
-            <div className='absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                <Button
-                    size='icon-sm'
-                    variant='secondary'
-                    onClick={() => onMove(index, 'up')}
-                    disabled={isUpdating || index === 0}
-                    title='Move earlier'>
-                    <HugeiconsIcon icon={ArrowUp02Icon} className='size-3' />
-                </Button>
-                <Button
-                    size='icon-sm'
-                    variant='secondary'
-                    onClick={() => onMove(index, 'down')}
-                    disabled={isUpdating || index === total - 1}
-                    title='Move later'>
-                    <HugeiconsIcon icon={ArrowDown02Icon} className='size-3' />
-                </Button>
-            </div>
-
-            {/* Edit / hero / delete (top-right on hover) */}
-            <div className='absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                <Button
-                    size='icon-sm'
-                    variant='secondary'
-                    onClick={onEdit}
-                    disabled={isUpdating}
-                    title='Edit alt text and focal point'>
-                    <HugeiconsIcon icon={PencilEdit02Icon} className='size-3' />
-                </Button>
-                {!img.isHero && (
-                    <Button
-                        size='icon-sm'
-                        variant='secondary'
-                        onClick={() => onSetHero(img.id)}
-                        disabled={isUpdating}
-                        title='Set as hero'>
-                        <HugeiconsIcon icon={StarIcon} className='size-3' />
-                    </Button>
-                )}
-                <Button
-                    size='icon-sm'
-                    variant='destructive'
-                    onClick={() => onDelete(img.id)}
-                    disabled={isDeleting}
-                    title='Remove image'>
-                    <HugeiconsIcon icon={Delete02Icon} className='size-3' />
-                </Button>
-            </div>
         </div>
     );
 }
 
-// ── Edit dialog (alt text + focal point) ──────────────────────────────────────
+// ── Cover panel ─────────────────────────────────────────────────────────────
+
+/**
+ * The cover gets a panel of its own because it does a different job from every
+ * other photo, and because "which one is the cover" was previously a 10px word
+ * on one tile among twenty.
+ */
+function CoverPanel({
+    cover,
+    hasImages,
+    onEdit,
+    onPick,
+}: {
+    cover: TourImage | null;
+    hasImages: boolean;
+    onEdit: () => void;
+    onPick: () => void;
+}) {
+    return (
+        <section>
+            <header className='mb-3 mt-3'>
+                <h3 className='text-sm font-semibold text-content'>
+                    Cover photo
+                </h3>
+                <p className='mt-0.5 text-xs text-content-muted'>
+                    The one image that sells the tour - it is what travellers
+                    see on the listing card, in search results and when your
+                    page is shared.
+                </p>
+            </header>
+
+            {cover ? (
+                /* Side by side, not full bleed. A 21:9 band the width of the
+                   step turned a portrait photo into a face filling the screen -
+                   the panel was previewing a crop nothing on the site actually
+                   uses. 3:2 at a third of the width is the listing card's real
+                   shape, and small enough to read as a preview. */
+                <div className='flex flex-col gap-4 sm:flex-row sm:items-start'>
+                    <div className='w-full shrink-0 overflow-hidden rounded-lg border border-line bg-surface-sunken sm:w-64'>
+                        <div className='aspect-[3/2]'>
+                            <img
+                                src={cover.url}
+                                alt={cover.altText ?? ''}
+                                className='size-full object-cover'
+                                // 03 §8.3 exception: a focal point is a continuous
+                                // 0..1 pair, and Tailwind's object-position scale is
+                                // nine fixed keywords - there is no class for it.
+                                // eslint-disable-next-line no-restricted-syntax
+                                style={{
+                                    objectPosition: focalPosition(
+                                        cover.focalX,
+                                        cover.focalY,
+                                    ),
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div className='min-w-0 flex-1 space-y-3'>
+                        {cover.altText ? (
+                            <p className='text-sm text-content'>
+                                {cover.altText}
+                            </p>
+                        ) : (
+                            <p className='text-sm text-warning-fg'>
+                                No alt text yet - add one so search engines and
+                                screen readers can read it.
+                            </p>
+                        )}
+                        <p className='text-xs text-content-muted'>
+                            Pick any photo below with the star button to make it
+                            the cover.
+                        </p>
+                        <Button size='sm' variant='outline' onClick={onEdit}>
+                            <HugeiconsIcon
+                                icon={PencilEdit02Icon}
+                                className='size-3.5'
+                            />
+                            Edit cover
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <EmptyDrop
+                    title={
+                        hasImages
+                            ? 'No cover chosen yet'
+                            : 'Add your first photos'
+                    }
+                    hint={
+                        hasImages
+                            ? 'Use the star button on any photo below, or add a new one here - it becomes the cover.'
+                            : 'Choose them from the media library. The first one becomes your cover.'
+                    }
+                    actionLabel='Select from gallery'
+                    onAction={onPick}
+                />
+            )}
+        </section>
+    );
+}
+
+function EmptyDrop({
+    title,
+    hint,
+    actionLabel,
+    onAction,
+}: {
+    title: string;
+    hint: string;
+    actionLabel: string;
+    onAction: () => void;
+}) {
+    return (
+        <div className='flex flex-col items-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface-sunken/40 px-6 py-16 text-center'>
+            <HugeiconsIcon
+                icon={ImageAdd02Icon}
+                className='size-8 text-content-subtle'
+            />
+            <p className='text-sm font-medium text-content'>{title}</p>
+            <p className='max-w-80 text-xs text-content-muted'>{hint}</p>
+            <Button size='sm' className='mt-2' onClick={onAction}>
+                <HugeiconsIcon icon={PlusSignIcon} className='size-3.5' />
+                {actionLabel}
+            </Button>
+        </div>
+    );
+}
+
+// ── Gallery tiles ───────────────────────────────────────────────────────────
+
+function AddTile({
+    disabled,
+    onClick,
+}: {
+    disabled: boolean;
+    onClick: () => void;
+}) {
+    const reduceMotion = useReducedMotion();
+    return (
+        <motion.button
+            type='button'
+            onClick={onClick}
+            disabled={disabled}
+            whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+            transition={springPop}
+            className='flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-line-strong bg-surface-sunken/40 text-content-muted transition-colors duration-fast hover:border-primary hover:text-content disabled:opacity-60'>
+            <HugeiconsIcon icon={PlusSignIcon} className='size-5' />
+            <span className='text-xs font-medium'>Add photos</span>
+        </motion.button>
+    );
+}
+
+interface ImageTileProps {
+    img: TourImage;
+    index: number;
+    total: number;
+    isDeleting: boolean;
+    isBusy: boolean;
+    isDragging: boolean;
+    onDragBegin: (imageId: string) => void;
+    onDragOverTile: (toId: string) => void;
+    onDragFinish: () => void;
+    onNudge: (index: number, direction: -1 | 1) => void;
+    onSetCover: (imageId: string) => void;
+    onDelete: (imageId: string) => void;
+    onEdit: () => void;
+}
+
+function ImageTile({
+    img,
+    index,
+    total,
+    isDeleting,
+    isBusy,
+    isDragging,
+    onDragBegin,
+    onDragOverTile,
+    onDragFinish,
+    onNudge,
+    onSetCover,
+    onDelete,
+    onEdit,
+}: ImageTileProps) {
+    return (
+        <div
+            draggable
+            onDragStart={e => {
+                // Firefox refuses to start a drag with no payload attached, and
+                // the id is unreadable during `dragenter` anyway (browsers
+                // withhold it), so the source is tracked in React state instead.
+                e.dataTransfer.setData('text/plain', img.id);
+                e.dataTransfer.effectAllowed = 'move';
+                onDragBegin(img.id);
+            }}
+            onDragEnd={onDragFinish}
+            onDragOver={e => e.preventDefault()}
+            onDragEnter={() => onDragOverTile(img.id)}
+            className={cn(
+                'group relative overflow-hidden rounded-lg border border-line bg-surface-sunken transition-opacity duration-fast',
+                isDragging && 'opacity-40',
+                isDeleting && 'pointer-events-none opacity-50',
+            )}>
+            <div className='aspect-[4/3]'>
+                <img
+                    src={img.url}
+                    alt={img.altText ?? ''}
+                    draggable={false}
+                    className='size-full object-cover'
+                    // 03 §8.3 exception: continuous focal point, see CoverPanel.
+                    // eslint-disable-next-line no-restricted-syntax
+                    style={{
+                        objectPosition: focalPosition(img.focalX, img.focalY),
+                    }}
+                />
+            </div>
+
+            {/* Position + cover state stay visible. They are what the grid is
+                for, so hiding them behind hover made the grid say nothing. */}
+            <div className='pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-linear-to-b from-black/45 to-transparent p-2'>
+                <span className='rounded-full bg-black/45 px-2 py-0.5 text-xs font-medium tabular-nums text-white'>
+                    {index + 1}
+                </span>
+                {img.isHero && (
+                    <span className='inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-xs font-medium text-content'>
+                        <HugeiconsIcon
+                            icon={StarIcon}
+                            className='size-3 text-warning-solid'
+                        />
+                        Cover
+                    </span>
+                )}
+            </div>
+
+            {/* Actions on hover / keyboard focus. `focus-within` matters: the
+                buttons are reachable by Tab, and an invisible focused button is
+                a trap. */}
+            <div className='absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-linear-to-t from-black/55 to-transparent p-2 opacity-0 transition-opacity duration-fast group-hover:opacity-100 group-focus-within:opacity-100'>
+                <div className='flex gap-1'>
+                    <TileButton
+                        label='Move earlier'
+                        icon={ArrowLeft02Icon}
+                        disabled={isBusy || index === 0}
+                        onClick={() => onNudge(index, -1)}
+                    />
+                    <TileButton
+                        label='Move later'
+                        icon={ArrowRight02Icon}
+                        disabled={isBusy || index === total - 1}
+                        onClick={() => onNudge(index, 1)}
+                    />
+                </div>
+                <div className='flex gap-1'>
+                    {!img.isHero && (
+                        <TileButton
+                            label='Make cover'
+                            icon={StarIcon}
+                            disabled={isBusy}
+                            onClick={() => onSetCover(img.id)}
+                        />
+                    )}
+                    <TileButton
+                        label='Edit alt text and focal point'
+                        icon={PencilEdit02Icon}
+                        disabled={isBusy}
+                        onClick={onEdit}
+                    />
+                    <TileButton
+                        label='Remove photo'
+                        icon={Delete02Icon}
+                        danger
+                        disabled={isDeleting}
+                        onClick={() => onDelete(img.id)}
+                    />
+                </div>
+            </div>
+
+            {/* Drag affordance - the cursor alone never announced this. */}
+            <span className='pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white opacity-0 transition-opacity duration-fast group-hover:opacity-100'>
+                <HugeiconsIcon icon={Move02Icon} className='size-4' />
+            </span>
+        </div>
+    );
+}
+
+function TileButton({
+    label,
+    icon,
+    onClick,
+    disabled,
+    danger,
+}: {
+    label: string;
+    icon: typeof StarIcon;
+    onClick: () => void;
+    disabled?: boolean;
+    danger?: boolean;
+}) {
+    const reduceMotion = useReducedMotion();
+    return (
+        <motion.button
+            type='button'
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            whileTap={reduceMotion ? undefined : { scale: 0.9 }}
+            transition={springPop}
+            className={cn(
+                'grid size-6 place-items-center rounded-md bg-white/95 text-content transition-colors duration-fast disabled:opacity-40',
+                danger ? 'hover:bg-danger-solid hover:text-white' : 'hover:bg-white',
+            )}>
+            <HugeiconsIcon icon={icon} className='size-3.5' />
+        </motion.button>
+    );
+}
+
+// ── Edit dialog: alt text + focal point ─────────────────────────────────────
 
 interface ImageEditDialogProps {
     image: TourImage | null;
@@ -416,89 +696,54 @@ function ImageEditDialog({
     onSave,
 }: ImageEditDialogProps) {
     const [altText, setAltText] = useState('');
-    const [focalX, setFocalX] = useState('0.5');
-    const [focalY, setFocalY] = useState('0.5');
-    // Re-seed the local form whenever a different image is opened.
+    const [focal, setFocal] = useState({ x: 0.5, y: 0.5 });
     const [seededId, setSeededId] = useState<string | null>(null);
 
     if (image && image.id !== seededId) {
         setSeededId(image.id);
         setAltText(image.altText ?? '');
-        setFocalX(String(image.focalX ?? 0.5));
-        setFocalY(String(image.focalY ?? 0.5));
+        setFocal({
+            x: clampFocal(image.focalX ?? 0.5),
+            y: clampFocal(image.focalY ?? 0.5),
+        });
     }
 
     function handleSubmit() {
         onSave({
             altText: altText.trim() === '' ? undefined : altText.trim(),
-            focalX: clampFocal(focalX),
-            focalY: clampFocal(focalY),
+            focalX: focal.x,
+            focalY: focal.y,
         });
     }
 
     return (
         <Dialog open={image !== null} onOpenChange={onOpenChange}>
-            <DialogContent className='sm:max-w-md'>
+            <DialogContent className='sm:max-w-lg'>
                 <DialogHeader>
-                    <DialogTitle className=' '>
-                        Edit Image
-                    </DialogTitle>
+                    <DialogTitle>Edit photo</DialogTitle>
                     <DialogDescription>
-                        Update the alt text and focal point. The focal point (0
-                        to 1) keeps the most important part of the image in view
-                        when it is cropped.
+                        Click the photo to choose the part that must stay in
+                        frame when it is cropped.
                     </DialogDescription>
                 </DialogHeader>
 
                 {image && (
                     <div className='space-y-4'>
-                        <div className='aspect-video bg-muted overflow-hidden'>
-                            <img
-                                src={image.url}
-                                alt={altText || 'Trip image'}
-                                className='size-full object-cover'
-                            />
-                        </div>
+                        <FocalPicker
+                            url={image.url}
+                            alt={altText}
+                            focal={focal}
+                            onChange={setFocal}
+                        />
 
                         <Field>
-                            <Label>
-                                Alt Text
-                            </Label>
+                            <Label>Alt text</Label>
                             <Input
                                 value={altText}
                                 onChange={e => setAltText(e.target.value)}
-                                placeholder='Describe the image for accessibility'
+                                placeholder='Snorkellers above a reef at Playa Kalki'
                             />
                         </Field>
-
-                        <div className='grid grid-cols-2 gap-3'>
-                            <Field>
-                                <Label>
-                                    Focal X
-                                </Label>
-                                <Input
-                                    type='number'
-                                    min={0}
-                                    max={1}
-                                    step={0.1}
-                                    value={focalX}
-                                    onChange={e => setFocalX(e.target.value)}
-                                />
-                            </Field>
-                            <Field>
-                                <Label>
-                                    Focal Y
-                                </Label>
-                                <Input
-                                    type='number'
-                                    min={0}
-                                    max={1}
-                                    step={0.1}
-                                    value={focalY}
-                                    onChange={e => setFocalY(e.target.value)}
-                                />
-                            </Field>
-                        </div>
                     </div>
                 )}
 
@@ -510,14 +755,134 @@ function ImageEditDialog({
                         disabled={isSaving}>
                         Cancel
                     </Button>
-                    <Button
-                        size='sm'
-                        onClick={handleSubmit}
-                        disabled={isSaving}>
-                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    <Button size='sm' onClick={handleSubmit} disabled={isSaving}>
+                        {isSaving ? 'Saving...' : 'Save changes'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/**
+ * Focal point by pointing at it.
+ *
+ * Writes the same two 0..1 floats the number inputs did - this is presentation
+ * only. What it adds is the answer to the question those inputs could not
+ * answer: what does 0.3 / 0.7 actually look like once the card crops it. The
+ * two previews are the shapes the public site really uses, a wide listing card
+ * and a square thumbnail.
+ */
+function FocalPicker({
+    url,
+    alt,
+    focal,
+    onChange,
+}: {
+    url: string;
+    alt: string;
+    focal: { x: number; y: number };
+    onChange: (next: { x: number; y: number }) => void;
+}) {
+    const frame = useRef<HTMLDivElement>(null);
+    const [dragging, setDragging] = useState(false);
+
+    function pick(clientX: number, clientY: number) {
+        const box = frame.current?.getBoundingClientRect();
+        if (!box || box.width === 0 || box.height === 0) return;
+        onChange({
+            x: clampFocal((clientX - box.left) / box.width),
+            y: clampFocal((clientY - box.top) / box.height),
+        });
+    }
+
+    return (
+        <div className='space-y-3'>
+            <div
+                ref={frame}
+                onPointerDown={e => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setDragging(true);
+                    pick(e.clientX, e.clientY);
+                }}
+                onPointerMove={e => {
+                    if (dragging) pick(e.clientX, e.clientY);
+                }}
+                onPointerUp={e => {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                    setDragging(false);
+                }}
+                className='relative aspect-video cursor-crosshair touch-none overflow-hidden rounded-lg bg-surface-sunken select-none'>
+                <img
+                    src={url}
+                    alt={alt}
+                    draggable={false}
+                    className='size-full object-cover'
+                />
+                <span
+                    aria-hidden
+                    className='pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md ring-1 ring-black/30'
+                    // 03 §8.3 exception: the ring tracks a continuous pointer position.
+                    // eslint-disable-next-line no-restricted-syntax
+                    style={{
+                        left: `${focal.x * 100}%`,
+                        top: `${focal.y * 100}%`,
+                    }}
+                />
+            </div>
+
+            <div className='flex items-center gap-3'>
+                <CropPreview
+                    url={url}
+                    focal={focal}
+                    label='Listing card'
+                    className='aspect-[3/2] w-32'
+                />
+                <CropPreview
+                    url={url}
+                    focal={focal}
+                    label='Thumbnail'
+                    className='aspect-square w-16'
+                />
+                <p className='text-xs text-content-muted'>
+                    Drag the ring to keep the important part in frame.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function CropPreview({
+    url,
+    focal,
+    label,
+    className,
+}: {
+    url: string;
+    focal: { x: number; y: number };
+    label: string;
+    className?: string;
+}) {
+    return (
+        <div className='shrink-0'>
+            <div
+                className={cn(
+                    'overflow-hidden rounded-md bg-surface-sunken',
+                    className,
+                )}>
+                <img
+                    src={url}
+                    alt=''
+                    draggable={false}
+                    className='size-full object-cover'
+                    // 03 §8.3 exception: continuous focal point, see CoverPanel.
+                    // eslint-disable-next-line no-restricted-syntax
+                    style={{ objectPosition: focalPosition(focal.x, focal.y) }}
+                />
+            </div>
+            <p className='mt-1 text-center text-xs text-content-subtle'>
+                {label}
+            </p>
+        </div>
     );
 }

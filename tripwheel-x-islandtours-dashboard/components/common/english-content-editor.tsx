@@ -59,10 +59,13 @@ import {
     DESTINATION_FIELDS,
     HOMEPAGE_FIELDS,
     HUB_FIELDS,
-    TOUR_FIELDS,
     type TranslatableEntityType,
     type TranslatableFieldDef,
 } from '@/lib/translatable-schema';
+import {
+    buildTourCopyPayload,
+    TOUR_COPY_FIELDS,
+} from '@/lib/trips/tour-copy';
 
 function toFormValue(v: unknown): string {
     if (Array.isArray(v)) return v.join('\n');
@@ -168,15 +171,6 @@ function EnglishContentForm({
 
 /* ── Per-entity wrappers (fixed hook order) ──────────────────────────────── */
 
-const LINES_FIELDS = new Set(
-    TOUR_FIELDS.filter(f => f.kind === 'lines').map(f => f.name),
-);
-
-/** Tour body copy; SEO meta stays in the SEO tab (its own per-locale panel). */
-const TOUR_EN_FIELDS = TOUR_FIELDS.filter(
-    f => f.name !== 'metaTitle' && f.name !== 'metaDescription',
-);
-
 const saveToasts = {
     onSuccess: () => toast.success('English content saved.'),
     onError: (err: unknown) =>
@@ -190,27 +184,22 @@ function TourEnglishContent({ id }: { id: string }) {
     const upsert = useUpsertTripTranslation();
     return (
         <EnglishContentForm
-            fields={TOUR_EN_FIELDS}
+            fields={TOUR_COPY_FIELDS}
             record={data as never}
             isLoading={isLoading}
             isSaving={upsert.isPending}
-            onSave={values => {
-                const payload: Record<string, unknown> = {};
-                for (const f of TOUR_EN_FIELDS) {
-                    const raw = (values[f.name] ?? '').trim();
-                    if (LINES_FIELDS.has(f.name)) {
-                        payload[f.name] = raw
-                            ? raw.split('\n').map(l => l.trim()).filter(Boolean)
-                            : [];
-                    } else {
-                        payload[f.name] = raw || null;
-                    }
-                }
+            // Shared with the wizard's grouped content step so both writers
+            // produce byte-identical bodies (lib/trips/tour-copy.ts).
+            onSave={values =>
                 upsert.mutate(
-                    { tripId: id, locale: 'en', payload } as never,
+                    {
+                        tripId: id,
+                        locale: 'en',
+                        payload: buildTourCopyPayload(values),
+                    } as never,
                     saveToasts,
-                );
-            }}
+                )
+            }
         />
     );
 }

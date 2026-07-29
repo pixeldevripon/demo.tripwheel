@@ -24,8 +24,6 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { CollapsibleCard } from '@/components/common/collapsible-card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { WorkspaceSkeleton } from './workspace-skeleton';
 import {
     useFaqGroups,
     useUpsertFaqTranslation,
@@ -42,6 +40,7 @@ import type { FaqGroup } from '@/types/faq';
 import { FieldPair } from './field-pair';
 import { SectionAiTranslateButton } from './section-ai-translate-button';
 import { WorkspaceShell } from './workspace-shell';
+import { WorkspaceSkeleton } from './workspace-skeleton';
 
 /** One extra per-item translatable row (rationales, picks, sections, …). */
 export interface ExtraSectionRow {
@@ -61,7 +60,7 @@ export interface ExtraSection {
     rows: ExtraSectionRow[];
     /** Persist ALL changed rows of this section in one operation. */
     save: (
-        changes: Array<{ itemId: string; fieldKey: string; value: string }>,
+        changes: Array<{ itemId: string; fieldKey: string; value: string }>
     ) => Promise<unknown>;
 }
 
@@ -143,7 +142,7 @@ export function ContentWorkspace({
 }: ContentWorkspaceProps) {
     const { data: faqGroups, isLoading: faqLoading } = useFaqGroups(
         faqBasePath,
-        id,
+        id
     );
     const upsertFaq = useUpsertFaqTranslation(faqBasePath, id);
 
@@ -183,7 +182,14 @@ export function ContentWorkspace({
         return d;
         // extraSections identity churns per render; row data is what matters.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fields, target, pageTarget, faqRows, locale, JSON.stringify(extraSections.map(s => s.rows))]);
+    }, [
+        fields,
+        target,
+        pageTarget,
+        faqRows,
+        locale,
+        JSON.stringify(extraSections.map(s => s.rows)),
+    ]);
 
     const {
         register,
@@ -239,7 +245,7 @@ export function ContentWorkspace({
         toast.info(
             copied
                 ? `${copied} field${copied === 1 ? '' : 's'} copied from English - review before saving.`
-                : 'Nothing to copy - every empty field is empty in English too.',
+                : 'Nothing to copy - every empty field is empty in English too.'
         );
     }
 
@@ -256,7 +262,9 @@ export function ContentWorkspace({
             updates++;
         } catch (err) {
             toast.error(
-                err instanceof Error ? err.message : 'Failed to save translation.',
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to save translation.'
             );
             return;
         }
@@ -354,16 +362,16 @@ export function ContentWorkspace({
 
         if (failures.length > 0) {
             toast.error(
-                `Saved with ${failures.length} failure${failures.length === 1 ? '' : 's'}: ${failures.slice(0, 3).join(', ')}${failures.length > 3 ? '…' : ''}`,
+                `Saved with ${failures.length} failure${failures.length === 1 ? '' : 's'}: ${failures.slice(0, 3).join(', ')}${failures.length > 3 ? '…' : ''}`
             );
         } else {
             toast.success(
-                `${LOCALE_LABELS[locale]} translation saved (${updates} update${updates === 1 ? '' : 's'}).`,
+                `${LOCALE_LABELS[locale]} translation saved (${updates} update${updates === 1 ? '' : 's'}).`
             );
         }
         if (refusedEnClear.length > 0) {
             toast.warning(
-                `${refusedEnClear.length} FAQ${refusedEnClear.length === 1 ? '' : 's'} skipped - English is the source every locale falls back to and cannot be left blank. Delete the FAQ instead: ${refusedEnClear.slice(0, 2).join(', ')}${refusedEnClear.length > 2 ? '…' : ''}`,
+                `${refusedEnClear.length} FAQ${refusedEnClear.length === 1 ? '' : 's'} skipped - English is the source every locale falls back to and cannot be left blank. Delete the FAQ instead: ${refusedEnClear.slice(0, 2).join(', ')}${refusedEnClear.length > 2 ? '…' : ''}`
             );
         }
     }
@@ -422,36 +430,39 @@ export function ContentWorkspace({
                 </CollapsibleCard>
 
                 {onSavePageContent ? (
-                <CollapsibleCard
-                    title='About & SEO (page content)'
-                    defaultOpen
-                    actions={
-                        <SectionAiTranslateButton
-                            locale={locale}
-                            fields={PAGE_CONTENT_FIELDS.map(f => ({
-                                name: pcKey(f.name),
-                                source: toFormValue(pageSource?.[f.name]),
-                            }))}
-                            onFill={fillField}
-                        />
-                    }>
-                    <div>
-                        {PAGE_CONTENT_FIELDS.map(f => {
-                            const src = toFormValue(pageSource?.[f.name]);
-                            return (
-                                <FieldPair
-                                    key={pcKey(f.name)}
-                                    field={{ ...f, name: pcKey(f.name) }}
-                                    source={src}
-                                    register={register}
-                                    targetLabel={LOCALE_LABELS[locale]}
-                                    sourceHidden={sourceHidden}
-                                    onAiTranslate={aiFillFor(pcKey(f.name), src)}
-                                />
-                            );
-                        })}
-                    </div>
-                </CollapsibleCard>
+                    <CollapsibleCard
+                        title='About & SEO (page content)'
+                        defaultOpen
+                        actions={
+                            <SectionAiTranslateButton
+                                locale={locale}
+                                fields={PAGE_CONTENT_FIELDS.map(f => ({
+                                    name: pcKey(f.name),
+                                    source: toFormValue(pageSource?.[f.name]),
+                                }))}
+                                onFill={fillField}
+                            />
+                        }>
+                        <div>
+                            {PAGE_CONTENT_FIELDS.map(f => {
+                                const src = toFormValue(pageSource?.[f.name]);
+                                return (
+                                    <FieldPair
+                                        key={pcKey(f.name)}
+                                        field={{ ...f, name: pcKey(f.name) }}
+                                        source={src}
+                                        register={register}
+                                        targetLabel={LOCALE_LABELS[locale]}
+                                        sourceHidden={sourceHidden}
+                                        onAiTranslate={aiFillFor(
+                                            pcKey(f.name),
+                                            src
+                                        )}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </CollapsibleCard>
                 ) : null}
 
                 {extraSections.map(sec =>
@@ -461,7 +472,7 @@ export function ContentWorkspace({
                             title={
                                 <>
                                     {sec.label}
-                                    <span className='ml-2 text-xs font-normal text-content-muted'>
+                                    <span className='ml-2 text-xs font-light text-content-muted'>
                                         {sec.rows.length} item
                                         {sec.rows.length === 1 ? '' : 's'}
                                     </span>
@@ -474,7 +485,7 @@ export function ContentWorkspace({
                                         name: xsKey(
                                             sec.key,
                                             row.itemId,
-                                            row.fieldKey,
+                                            row.fieldKey
                                         ),
                                         source: row.source,
                                     }))}
@@ -484,9 +495,17 @@ export function ContentWorkspace({
                             <div>
                                 {sec.rows.map(row => (
                                     <FieldPair
-                                        key={xsKey(sec.key, row.itemId, row.fieldKey)}
+                                        key={xsKey(
+                                            sec.key,
+                                            row.itemId,
+                                            row.fieldKey
+                                        )}
                                         field={{
-                                            name: xsKey(sec.key, row.itemId, row.fieldKey),
+                                            name: xsKey(
+                                                sec.key,
+                                                row.itemId,
+                                                row.fieldKey
+                                            ),
                                             label: row.label,
                                             kind: row.kind,
                                             rows: 3,
@@ -496,14 +515,18 @@ export function ContentWorkspace({
                                         targetLabel={LOCALE_LABELS[locale]}
                                         sourceHidden={sourceHidden}
                                         onAiTranslate={aiFillFor(
-                                            xsKey(sec.key, row.itemId, row.fieldKey),
-                                            row.source,
+                                            xsKey(
+                                                sec.key,
+                                                row.itemId,
+                                                row.fieldKey
+                                            ),
+                                            row.source
                                         )}
                                     />
                                 ))}
                             </div>
                         </CollapsibleCard>
-                    ),
+                    )
                 )}
 
                 {faqRows.length > 0 && (
@@ -511,7 +534,7 @@ export function ContentWorkspace({
                         title={
                             <>
                                 FAQs
-                                <span className='ml-2 text-xs font-normal text-content-muted'>
+                                <span className='ml-2 text-xs font-light text-content-muted'>
                                     {faqRows.length} question
                                     {faqRows.length === 1 ? '' : 's'}
                                 </span>
@@ -538,12 +561,15 @@ export function ContentWorkspace({
                                 <div
                                     key={row.groupId}
                                     className='border-b border-line py-2 last:border-0'>
-                                    <p className='mt-2 text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                                    <p className='mt-2 text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                                         FAQ {i + 1}
                                     </p>
                                     <FieldPair
                                         field={{
-                                            name: faqKey(row.groupId, 'question'),
+                                            name: faqKey(
+                                                row.groupId,
+                                                'question'
+                                            ),
                                             label: 'Question',
                                             kind: 'input',
                                         }}
@@ -553,7 +579,7 @@ export function ContentWorkspace({
                                         sourceHidden={sourceHidden}
                                         onAiTranslate={aiFillFor(
                                             faqKey(row.groupId, 'question'),
-                                            row.base.question,
+                                            row.base.question
                                         )}
                                     />
                                     <FieldPair
@@ -569,7 +595,7 @@ export function ContentWorkspace({
                                         sourceHidden={sourceHidden}
                                         onAiTranslate={aiFillFor(
                                             faqKey(row.groupId, 'answer'),
-                                            row.base.answer,
+                                            row.base.answer
                                         )}
                                     />
                                 </div>
@@ -581,3 +607,4 @@ export function ContentWorkspace({
         </WorkspaceShell>
     );
 }
+

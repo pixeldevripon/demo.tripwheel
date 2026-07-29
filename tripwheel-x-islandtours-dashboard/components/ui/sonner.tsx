@@ -1,48 +1,89 @@
-"use client"
+'use client';
 
+import {
+    Alert02Icon,
+    CancelCircleIcon,
+    CheckmarkCircle02Icon,
+    InformationCircleIcon,
+    Loading03Icon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Alert02Icon, CancelCircleIcon, CheckmarkCircle02Icon, InformationCircleIcon, Loading03Icon } from '@hugeicons/core-free-icons';
 
-import { useTheme } from "next-themes"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useTheme } from 'next-themes';
+import { Toaster as Sonner, type ToasterProps } from 'sonner';
+
+/**
+ * 16px at stroke 2 - the weight is what makes it readable, not the size.
+ *
+ * It was 20px, sized to a 14px title. The title is 13px now, and 20px next to
+ * it read as a badge with a sentence attached. At stroke 2 a 16px glyph is
+ * still unmistakable at a glance, which was the original point; the default
+ * hairline at 16px is what looked like a scratch, not the size.
+ *
+ * These carry the ONLY semantic colour on a toast (`.cn-toast [data-icon]` in
+ * globals.css). `richColors` is deliberately NOT enabled: it tints the entire
+ * toast, turning any multi-line message into a block of solid colour, and it
+ * draws its own coloured left border on top of the surface.
+ */
+const ICON_CLASS = 'size-4';
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+    const { theme = 'system' } = useTheme();
 
-  return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      // TOP-right, not the library default of bottom-right: every long
-      // dashboard form has a sticky action bar (Save / Copy from English) in
-      // the bottom-right corner, and a toast landed straight on top of Save -
-      // blocking the click for as long as it was on screen.
-      position="top-right"
-      className="toaster group [--normal-bg:var(--popover)] [--normal-text:var(--popover-foreground)] [--normal-border:var(--border)] [--border-radius:var(--radius)]"
-      icons={{
-        success: (
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-4" />
-        ),
-        info: (
-          <HugeiconsIcon icon={InformationCircleIcon} className="size-4" />
-        ),
-        warning: (
-          <HugeiconsIcon icon={Alert02Icon} className="size-4" />
-        ),
-        error: (
-          <HugeiconsIcon icon={CancelCircleIcon} className="size-4" />
-        ),
-        loading: (
-          <HugeiconsIcon icon={Loading03Icon} className="size-4 animate-spin" />
-        ),
-      }}
-      toastOptions={{
-        classNames: {
-          toast: "cn-toast",
-        },
-      }}
-      {...props}
-    />
-  )
-}
+    return (
+        <Sonner
+            theme={theme as ToasterProps['theme']}
+            // TOP-right, not the library default of bottom-right: every long
+            // dashboard form has a sticky action bar (Save / Copy from English) in
+            // the bottom-right corner, and a toast landed straight on top of Save -
+            // blocking the click for as long as it was on screen.
+            position='top-right'
+            // No `text-sm!` here: it forced 14px onto the whole toast and beat
+            // the per-element sizes in `.cn-toast [data-title] / [data-description]`,
+            // so the type scale could only ever be set from one of the two
+            // places. globals.css owns it.
+            className='toaster group [--normal-bg:var(--popover)] [--normal-text:var(--popover-foreground)]'
+            icons={{
+                success: (
+                    <HugeiconsIcon
+                        icon={CheckmarkCircle02Icon}
+                        strokeWidth={2}
+                        className={ICON_CLASS}
+                    />
+                ),
+                info: (
+                    <HugeiconsIcon
+                        icon={InformationCircleIcon}
+                        strokeWidth={2}
+                        className={ICON_CLASS}
+                    />
+                ),
+                warning: (
+                    <HugeiconsIcon
+                        icon={Alert02Icon}
+                        strokeWidth={2}
+                        className={ICON_CLASS}
+                    />
+                ),
+                error: (
+                    <HugeiconsIcon
+                        icon={CancelCircleIcon}
+                        strokeWidth={2}
+                        className={ICON_CLASS}
+                    />
+                ),
+                loading: (
+                    <HugeiconsIcon
+                        icon={Loading03Icon}
+                        strokeWidth={2}
+                        className={`${ICON_CLASS} animate-spin`}
+                    />
+                ),
+            }}
+            toastOptions={{ classNames: { toast: 'cn-toast' } }}
+            {...props}
+        />
+    );
+};
 
-export { Toaster }
+export { Toaster };

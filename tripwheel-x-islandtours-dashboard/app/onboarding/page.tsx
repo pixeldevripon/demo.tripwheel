@@ -41,7 +41,7 @@ export default function OnboardingPage() {
         <div className='min-h-screen w-full flex flex-col items-center justify-center p-4 md:p-8'>
             <div className='w-full max-w-3xl space-y-8 relative z-10'>
                 <div className='text-center space-y-3'>
-                    <h1 className='text-4xl font-bold tracking-tight text-white'>
+                    <h1 className='text-4xl font-medium tracking-tight text-white'>
                         Welcome to Island Tours
                     </h1>
                     <p className='text-n-400 text-lg'>

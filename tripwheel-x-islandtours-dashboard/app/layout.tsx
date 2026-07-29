@@ -4,18 +4,24 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { DM_Sans, Geist, IBM_Plex_Mono } from 'next/font/google';
+import { Geist, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
  * Root layout for the dashboard app.
  *
- * Fonts per the Devripon preset (user decision 2026-07-17): DM Sans is the
- * HEADING face (h1-h6 in globals.css + CardTitle via font-heading), Geist
- * the UI/body face, IBM Plex Mono carries code, refs, IDs and money.
+ * ONE text face: Geist, for headings and body alike. IBM Plex Mono still
+ * carries code, refs, IDs and money.
+ *
+ * DM Sans was the heading face (user decision 2026-07-17) and has been
+ * dropped: two sans-serifs of similar weight and width sat side by side in
+ * every header - breadcrumb in Geist, page title in DM Sans - which read as
+ * an inconsistency rather than as a hierarchy. Size, weight and tracking do
+ * that job on their own, and the second webfont is one fewer network request.
+ *
+ * `--font-heading` is kept as an ALIAS of the sans stack (globals.css) so the
+ * h1-h6 rules and the handful of `font-heading` utilities keep resolving.
  */
-
-const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-heading' });
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -42,8 +48,7 @@ export default function RootLayout({
                 'h-full antialiased',
                 ibmPlexMono.variable,
                 geist.variable,
-                'font-sans',
-                dmSans.variable
+                'font-sans'
             )}>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>
                 <QueryProvider>
@@ -54,7 +59,13 @@ export default function RootLayout({
                         disableTransitionOnChange>
                         <TooltipProvider delayDuration={300}>
                             {children}
-                            <Toaster richColors />
+                            {/* No `richColors`: it tints the entire toast in
+                                the semantic colour, which turns any message
+                                longer than a few words into a wall of red.
+                                `.cn-toast` in globals.css keeps the surface
+                                neutral and spends the colour on the rail and
+                                the icon instead. */}
+                            <Toaster />
                         </TooltipProvider>
                     </ThemeProvider>
                 </QueryProvider>

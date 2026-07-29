@@ -26,7 +26,10 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRole } from '@/contexts/role-context';
-import { useCategories, useCategoryTranslations } from '@/hooks/categories/use-categories';
+import {
+    useCategories,
+    useCategoryTranslations,
+} from '@/hooks/categories/use-categories';
 import {
     useCollectionsByDestination,
     useCollectionTranslations,
@@ -38,9 +41,17 @@ import {
 } from '@/hooks/destinations/use-destinations';
 import { useHomePageTranslations } from '@/hooks/home-page/use-home-page';
 import { useHubs, useHubTranslations } from '@/hooks/hubs/use-hubs';
+import {
+    useAdminTrips,
+    useMyTrips,
+    useTripTranslations,
+} from '@/hooks/trips/use-trips';
 import { HOME_ID } from '@/lib/api/home-page';
-import { useAdminTrips, useMyTrips, useTripTranslations } from '@/hooks/trips/use-trips';
-import { ALL_LOCALES, localeFlag, LOCALE_LABELS } from '@/lib/constants/locales';
+import {
+    ALL_LOCALES,
+    LOCALE_LABELS,
+    localeFlag,
+} from '@/lib/constants/locales';
 import {
     ENTITY_FIELDS,
     ENTITY_TYPE_LABELS,
@@ -102,7 +113,15 @@ function MatrixRow({
     );
 }
 
-function TourRow({ id, name, subtitle }: { id: string; name: string; subtitle?: string | null }) {
+function TourRow({
+    id,
+    name,
+    subtitle,
+}: {
+    id: string;
+    name: string;
+    subtitle?: string | null;
+}) {
     const { data, isLoading } = useTripTranslations(id);
     return (
         <MatrixRow
@@ -137,19 +156,39 @@ function HomepageRow() {
 function DestinationRow({ id, name }: { id: string; name: string }) {
     const { data, isLoading } = useDestinationTranslations(id);
     return (
-        <MatrixRow type='destination' id={id} name={name} records={data as never} isLoading={isLoading} />
+        <MatrixRow
+            type='destination'
+            id={id}
+            name={name}
+            records={data as never}
+            isLoading={isLoading}
+        />
     );
 }
 
 function HubRow({ id, name }: { id: string; name: string }) {
     const { data, isLoading } = useHubTranslations(id);
-    return <MatrixRow type='hub' id={id} name={name} records={data as never} isLoading={isLoading} />;
+    return (
+        <MatrixRow
+            type='hub'
+            id={id}
+            name={name}
+            records={data as never}
+            isLoading={isLoading}
+        />
+    );
 }
 
 function CategoryRow({ id, name }: { id: string; name: string }) {
     const { data, isLoading } = useCategoryTranslations(id);
     return (
-        <MatrixRow type='category' id={id} name={name} records={data as never} isLoading={isLoading} />
+        <MatrixRow
+            type='category'
+            id={id}
+            name={name}
+            records={data as never}
+            isLoading={isLoading}
+        />
     );
 }
 
@@ -177,7 +216,15 @@ function CollectionRow({
 
 /* ── Per-type bodies (fixed hook order inside each) ─────────────────────── */
 
-function ToursBody({ search, page, onTotal }: { search: string; page: number; onTotal: (t: number) => void }) {
+function ToursBody({
+    search,
+    page,
+    onTotal,
+}: {
+    search: string;
+    page: number;
+    onTotal: (t: number) => void;
+}) {
     const { can } = useRole();
     const isAdmin = can('MANAGE_OPERATORS');
     const params = { search: search || undefined, page, limit: PAGE_LIMIT };
@@ -191,15 +238,28 @@ function ToursBody({ search, page, onTotal }: { search: string; page: number; on
     return (
         <>
             {(q.data?.data ?? []).map(t => (
-                <TourRow key={t.id} id={t.id} name={t.name} subtitle={t.destinationName ?? null} />
+                <TourRow
+                    key={t.id}
+                    id={t.id}
+                    name={t.name}
+                    subtitle={t.destinationName ?? null}
+                />
             ))}
             {q.isLoading && <SkeletonRows />}
-            {!q.isLoading && (q.data?.data ?? []).length === 0 && <EmptyRow label='No tours found.' />}
+            {!q.isLoading && (q.data?.data ?? []).length === 0 && (
+                <EmptyRow label='No tours found.' />
+            )}
         </>
     );
 }
 
-function DestinationsBody({ page, onTotal }: { page: number; onTotal: (t: number) => void }) {
+function DestinationsBody({
+    page,
+    onTotal,
+}: {
+    page: number;
+    onTotal: (t: number) => void;
+}) {
     const q = useDestinations({ page, limit: PAGE_LIMIT });
     const total = q.data?.total;
     useEffect(() => {
@@ -211,12 +271,20 @@ function DestinationsBody({ page, onTotal }: { page: number; onTotal: (t: number
                 <DestinationRow key={d.id} id={d.id} name={d.name} />
             ))}
             {q.isLoading && <SkeletonRows />}
-            {!q.isLoading && (q.data?.data ?? []).length === 0 && <EmptyRow label='No destinations found.' />}
+            {!q.isLoading && (q.data?.data ?? []).length === 0 && (
+                <EmptyRow label='No destinations found.' />
+            )}
         </>
     );
 }
 
-function HubsBody({ page, onTotal }: { page: number; onTotal: (t: number) => void }) {
+function HubsBody({
+    page,
+    onTotal,
+}: {
+    page: number;
+    onTotal: (t: number) => void;
+}) {
     const q = useHubs({ page, limit: PAGE_LIMIT });
     const total = q.data?.total;
     useEffect(() => {
@@ -228,12 +296,20 @@ function HubsBody({ page, onTotal }: { page: number; onTotal: (t: number) => voi
                 <HubRow key={h.id} id={h.id} name={h.name} />
             ))}
             {q.isLoading && <SkeletonRows />}
-            {!q.isLoading && (q.data?.data ?? []).length === 0 && <EmptyRow label='No hubs found.' />}
+            {!q.isLoading && (q.data?.data ?? []).length === 0 && (
+                <EmptyRow label='No hubs found.' />
+            )}
         </>
     );
 }
 
-function CategoriesBody({ page, onTotal }: { page: number; onTotal: (t: number) => void }) {
+function CategoriesBody({
+    page,
+    onTotal,
+}: {
+    page: number;
+    onTotal: (t: number) => void;
+}) {
     const q = useCategories({ page, limit: PAGE_LIMIT });
     const total = q.data?.total;
     useEffect(() => {
@@ -245,7 +321,9 @@ function CategoriesBody({ page, onTotal }: { page: number; onTotal: (t: number) 
                 <CategoryRow key={c.id} id={c.id} name={c.name} />
             ))}
             {q.isLoading && <SkeletonRows />}
-            {!q.isLoading && (q.data?.data ?? []).length === 0 && <EmptyRow label='No categories found.' />}
+            {!q.isLoading && (q.data?.data ?? []).length === 0 && (
+                <EmptyRow label='No categories found.' />
+            )}
         </>
     );
 }
@@ -292,7 +370,10 @@ function SkeletonRows() {
                         <div className='h-4 w-48 animate-pulse rounded bg-surface-inset' />
                     </td>
                     {ALL_LOCALES.map(l => (
-                        <td key={l} className='px-2 py-3 text-center' aria-label='Loading'>
+                        <td
+                            key={l}
+                            className='px-2 py-3 text-center'
+                            aria-label='Loading'>
                             <div className='mx-auto size-5 animate-pulse rounded-full bg-surface-inset' />
                         </td>
                     ))}
@@ -322,7 +403,8 @@ export function TranslationMatrix() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
-    const [destinationSlug, setDestinationSlug] = useState<string>(ALL_DESTINATIONS);
+    const [destinationSlug, setDestinationSlug] =
+        useState<string>(ALL_DESTINATIONS);
 
     // Only the entity types this session may WRITE. An operator holds none of the
     // Curate permissions, so Destinations / Hubs / Categories / Collections /
@@ -330,7 +412,7 @@ export function TranslationMatrix() {
     // sidebar already applies to those modules.
     const { canAny } = useRole();
     const allowedTypes = TRANSLATABLE_ENTITY_TYPES.filter(t =>
-        canAny(TRANSLATABLE_ENTITY_PERMISSIONS[t]),
+        canAny(TRANSLATABLE_ENTITY_PERMISSIONS[t])
     );
 
     // 'tour' is the initial state and is not guaranteed to be permitted, so fall
@@ -414,13 +496,13 @@ export function TranslationMatrix() {
                     <table className='w-full caption-bottom text-sm'>
                         <thead>
                             <tr className='border-b border-line bg-surface-sunken/60'>
-                                <th className='px-4 py-2.5 text-left text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                                <th className='px-4 py-2.5 text-left text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                                     {ENTITY_TYPE_LABELS[type].replace(/s$/, '')}
                                 </th>
                                 {ALL_LOCALES.map(locale => (
                                     <th
                                         key={locale}
-                                        className='px-2 py-2.5 text-center text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+                                        className='px-2 py-2.5 text-center text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                                         <span className='inline-flex items-center gap-1'>
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
@@ -437,17 +519,31 @@ export function TranslationMatrix() {
                         </thead>
                         <tbody>
                             {type === 'tour' && (
-                                <ToursBody search={search} page={page} onTotal={setTotal} />
+                                <ToursBody
+                                    search={search}
+                                    page={page}
+                                    onTotal={setTotal}
+                                />
                             )}
                             {type === 'destination' && (
-                                <DestinationsBody page={page} onTotal={setTotal} />
+                                <DestinationsBody
+                                    page={page}
+                                    onTotal={setTotal}
+                                />
                             )}
-                            {type === 'hub' && <HubsBody page={page} onTotal={setTotal} />}
+                            {type === 'hub' && (
+                                <HubsBody page={page} onTotal={setTotal} />
+                            )}
                             {type === 'category' && (
-                                <CategoriesBody page={page} onTotal={setTotal} />
+                                <CategoriesBody
+                                    page={page}
+                                    onTotal={setTotal}
+                                />
                             )}
                             {type === 'collection' && (
-                                <CollectionsBody destinationSlug={destinationSlug} />
+                                <CollectionsBody
+                                    destinationSlug={destinationSlug}
+                                />
                             )}
                             {type === 'homepage' && <HomepageRow />}
                         </tbody>
@@ -456,7 +552,8 @@ export function TranslationMatrix() {
                 {paginated && total > PAGE_LIMIT && (
                     <div className='flex items-center justify-between border-t border-line px-4 py-2'>
                         <p className='text-xs text-content-muted'>
-                            Page {page} of {Math.max(1, Math.ceil(total / PAGE_LIMIT))}
+                            Page {page} of{' '}
+                            {Math.max(1, Math.ceil(total / PAGE_LIMIT))}
                         </p>
                         <div className='flex gap-2'>
                             <Button
@@ -487,3 +584,4 @@ export function TranslationMatrix() {
         </div>
     );
 }
+

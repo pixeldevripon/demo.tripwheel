@@ -1,14 +1,22 @@
 'use client';
 
-import { useUploadStore } from '@/lib/stores/use-upload-store';
 import { Button } from '@/components/ui/button';
-import { formatDate, formatFileSize } from '@/lib/utils';
-import { CloudUploadIcon, Delete01Icon, File02Icon, LinkSquare01Icon, Loading03Icon, MusicNote01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
-import Image from 'next/image';
-import type { MediaItem } from '@/types/media';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getMediaKind } from '@/lib/media/media-kind';
+import { useUploadStore } from '@/lib/stores/use-upload-store';
+import { formatDate, formatFileSize } from '@/lib/utils';
+import type { MediaItem } from '@/types/media';
+import {
+    CloudUploadIcon,
+    Delete01Icon,
+    File02Icon,
+    LinkSquare01Icon,
+    Loading03Icon,
+    MusicNote01Icon,
+    Tick02Icon,
+} from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
 
 /** 64px thumbnail that adapts to the media kind. */
 function ListThumb({ item }: { item: MediaItem }) {
@@ -28,7 +36,11 @@ function ListThumb({ item }: { item: MediaItem }) {
     if (kind === 'audio') {
         return (
             <div className='w-full h-full bg-muted rounded-md flex items-center justify-center'>
-                <HugeiconsIcon icon={MusicNote01Icon} size={24} className='text-primary' />
+                <HugeiconsIcon
+                    icon={MusicNote01Icon}
+                    size={24}
+                    className='text-primary'
+                />
             </div>
         );
     }
@@ -45,7 +57,11 @@ function ListThumb({ item }: { item: MediaItem }) {
     if (kind === 'file') {
         return (
             <div className='w-full h-full bg-muted rounded-md flex items-center justify-center'>
-                <HugeiconsIcon icon={File02Icon} size={24} className='text-primary' />
+                <HugeiconsIcon
+                    icon={File02Icon}
+                    size={24}
+                    className='text-primary'
+                />
             </div>
         );
     }
@@ -111,7 +127,8 @@ const MediaListUi = ({
                             }}
                         />
                         <div className='shrink-0 w-12 h-12 mr-4 relative rounded-md overflow-hidden bg-muted/40 flex items-center justify-center border border-border/50'>
-                            {fileObj.file.type.startsWith('image/') && previewUrls[fileObj.id] ? (
+                            {fileObj.file.type.startsWith('image/') &&
+                            previewUrls[fileObj.id] ? (
                                 <Image
                                     src={previewUrls[fileObj.id]}
                                     alt='preview'
@@ -119,13 +136,26 @@ const MediaListUi = ({
                                     className='object-cover opacity-60 grayscale blur-[0.5px]'
                                 />
                             ) : (
-                                <HugeiconsIcon icon={Delete01Icon} className='text-muted-foreground' />
+                                <HugeiconsIcon
+                                    icon={Delete01Icon}
+                                    className='text-muted-foreground'
+                                />
                             )}
                             <motion.div
-                                animate={{ y: [0, -3, 0], opacity: [0.6, 1, 0.6] }}
-                                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                                animate={{
+                                    y: [0, -3, 0],
+                                    opacity: [0.6, 1, 0.6],
+                                }}
+                                transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: 'easeInOut',
+                                }}
                                 className='absolute z-10 text-primary'>
-                                <HugeiconsIcon icon={CloudUploadIcon} size={24} />
+                                <HugeiconsIcon
+                                    icon={CloudUploadIcon}
+                                    size={24}
+                                />
                             </motion.div>
                         </div>
 
@@ -134,16 +164,25 @@ const MediaListUi = ({
                                 <h4 className='font-medium text-foreground truncate text-sm'>
                                     {fileObj.file.name}
                                 </h4>
-                                <span className='text-xs font-bold text-primary tabular-nums'>
-                                    {Math.round(uploadProgress[fileObj.id] || 0)}%
+                                <span className='text-xs font-medium text-primary tabular-nums'>
+                                    {Math.round(
+                                        uploadProgress[fileObj.id] || 0
+                                    )}
+                                    %
                                 </span>
                             </div>
                             <div className='h-1 w-full bg-muted rounded-full overflow-hidden'>
                                 <motion.div
                                     className='h-full bg-primary'
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${uploadProgress[fileObj.id] || 0}%` }}
-                                    transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                                    animate={{
+                                        width: `${uploadProgress[fileObj.id] || 0}%`,
+                                    }}
+                                    transition={{
+                                        type: 'spring',
+                                        bounce: 0,
+                                        duration: 0.3,
+                                    }}
                                 />
                             </div>
                         </div>
@@ -151,7 +190,9 @@ const MediaListUi = ({
                 ))}
 
                 {filteredItems.map(item => {
-                    const isSelected = bulkSelectedItems.some(s => s.id === item.id || s.url === item.url);
+                    const isSelected = bulkSelectedItems.some(
+                        s => s.id === item.id || s.url === item.url
+                    );
                     const isBeingDeleted =
                         (itemToDelete === 'bulk' && isDeleting && isSelected) ||
                         (itemToDelete === item.id && isDeleting);
@@ -163,14 +204,18 @@ const MediaListUi = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             onClick={() => {
-                                if (selectMode && !isDeleting) handleItemSelection(item);
+                                if (selectMode && !isDeleting)
+                                    handleItemSelection(item);
                                 else if (!isDeleting) handleEditItem(item);
                             }}
                             className={`flex items-center px-4 py-3 border-b border-border transition-all duration-200 relative last:border-b-0 ${isBeingDeleted ? 'opacity-50 bg-destructive/5 cursor-not-allowed' : isSelected && selectMode ? 'bg-primary/5 ring-1 ring-primary/20 hover:bg-primary/8' : 'hover:bg-accent/30 cursor-pointer'} ${isDeleting ? 'pointer-events-none' : ''}`}>
                             {isBeingDeleted && (
                                 <div className='absolute inset-0 flex items-center justify-center bg-destructive/10 rounded-lg backdrop-blur-sm'>
                                     <div className='text-destructive font-medium text-sm flex items-center'>
-                                        <HugeiconsIcon icon={Loading03Icon} className='h-4 w-4 mr-2 animate-spin' />
+                                        <HugeiconsIcon
+                                            icon={Loading03Icon}
+                                            className='h-4 w-4 mr-2 animate-spin'
+                                        />
                                         Deleting...
                                     </div>
                                 </div>
@@ -180,24 +225,42 @@ const MediaListUi = ({
                                 <div className='shrink-0 mr-4'>
                                     <div
                                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all duration-200 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary hover:bg-accent/20'}`}
-                                        onClick={e => { e.stopPropagation(); if (!isDeleting) handleItemSelection(item); }}>
-                                        {isSelected && <HugeiconsIcon icon={Tick02Icon} className='h-4 w-4' />}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            if (!isDeleting)
+                                                handleItemSelection(item);
+                                        }}>
+                                        {isSelected && (
+                                            <HugeiconsIcon
+                                                icon={Tick02Icon}
+                                                className='h-4 w-4'
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             )}
 
                             <div
                                 className='shrink-0 w-16 h-16 mr-4 cursor-pointer'
-                                onClick={e => { e.stopPropagation(); if (!isDeleting) handleItemClick(item); }}>
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    if (!isDeleting) handleItemClick(item);
+                                }}>
                                 <ListThumb item={item} />
                             </div>
 
                             <div className='flex-grow min-w-0'>
                                 <h4 className='font-medium text-foreground truncate text-sm'>
-                                    {item.fileName || item.originalName || item.publicId}
+                                    {item.fileName ||
+                                        item.originalName ||
+                                        item.publicId}
                                 </h4>
                                 <p className='text-xs text-muted-foreground'>
-                                    {(item.size ?? item.bytes) ? formatFileSize((item.size ?? item.bytes)!) + ' • ' : ''}
+                                    {(item.size ?? item.bytes)
+                                        ? formatFileSize(
+                                              (item.size ?? item.bytes)!
+                                          ) + ' • '
+                                        : ''}
                                     {formatDate(item.uploadedAt, 'medium')}
                                 </p>
                             </div>
@@ -207,16 +270,25 @@ const MediaListUi = ({
                                     <Button
                                         variant='outline'
                                         size='sm'
-                                        onClick={e => { e.stopPropagation(); handleDeleteItem(item.id); }}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            handleDeleteItem(item.id);
+                                        }}
                                         className='h-8 px-2.5 text-xs text-destructive hover:text-destructive'>
                                         <HugeiconsIcon icon={Delete01Icon} />
                                     </Button>
                                     <Button
                                         variant='outline'
                                         size='sm'
-                                        onClick={e => { e.stopPropagation(); window.open(item.url, '_blank'); }}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            window.open(item.url, '_blank');
+                                        }}
                                         className='h-8 px-2.5 text-xs'>
-                                        <HugeiconsIcon icon={LinkSquare01Icon} className='h-3.5 w-3.5' />
+                                        <HugeiconsIcon
+                                            icon={LinkSquare01Icon}
+                                            className='h-3.5 w-3.5'
+                                        />
                                     </Button>
                                 </div>
                             )}
@@ -229,3 +301,4 @@ const MediaListUi = ({
 };
 
 export default MediaListUi;
+

@@ -1,12 +1,12 @@
 'use client';
 
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import {
     InputOTP,
     InputOTPGroup,
     InputOTPSeparator,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 
 /**
  * Operator 2FA numeric code entry, built on the shadcn `InputOTP` component
@@ -17,7 +17,7 @@ import {
  * (a backup code is a variable-length string, not a fixed digit grid).
  */
 const slotClass =
-    'size-10 text-base font-semibold text-it-ink border-it-border data-[active=true]:border-it-primary data-[active=true]:ring-it-primary/30';
+    'size-10 text-base font-medium text-it-ink border-it-border data-[active=true]:border-it-primary data-[active=true]:ring-it-primary/30';
 
 export function OtpField({
     value,
@@ -48,3 +48,4 @@ export function OtpField({
         </InputOTP>
     );
 }
+

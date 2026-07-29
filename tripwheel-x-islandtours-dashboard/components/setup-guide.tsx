@@ -47,7 +47,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
     return (
         <div className='w-full'>
             <div className='mb-6'>
-                <h1 className='text-lg font-semibold text-foreground mb-2'>
+                <h1 className='text-lg font-medium text-foreground mb-2'>
                     Welcome
                     {loggedInUser?.name ? ` ${loggedInUser.name}` : ''}, your
                     new site is almost ready
@@ -73,7 +73,7 @@ export const SetupGuide = ({ loggedInUser }: SetupGuideProps) => {
                                 className='flex items-start gap-4'>
                                 {/* Step Number with Connector */}
                                 <div className='shrink-0 flex flex-col items-center'>
-                                    <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-semibold text-primary border border-primary/20'>
+                                    <div className='w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium text-primary border border-primary/20'>
                                         {step.number}
                                     </div>
                                     {index < setupSteps.length - 1 && (

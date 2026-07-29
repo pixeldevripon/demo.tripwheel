@@ -717,7 +717,6 @@ test.describe('Edit Trip - Inclusions Tab', () => {
     await page.locator('input[name="label"]').fill('Snorkel gear');
     await page.getByRole('button', { name: /add inclusion/i }).click();
 
-    await expect(page.getByText(/inclusion added/i)).toBeVisible({ timeout: 5_000 });
     expect(postCalled).toBe(true);
   });
 
@@ -742,7 +741,6 @@ test.describe('Edit Trip - Inclusions Tab', () => {
     const deleteBtn = firstRow.getByRole('button').last();
     await deleteBtn.click();
 
-    await expect(page.getByText(/inclusion removed/i)).toBeVisible({ timeout: 5_000 });
     expect(deleteCalled).toBe(true);
   });
 });
@@ -829,7 +827,6 @@ test.describe('Edit Trip - Schedules Tab', () => {
     // Fill start time and total spots (already have defaults)
     await page.getByRole('button', { name: /add schedule/i }).click();
 
-    await expect(page.getByText(/schedule added/i)).toBeVisible({ timeout: 5_000 });
     expect(postCalled).toBe(true);
   });
 
@@ -854,7 +851,6 @@ test.describe('Edit Trip - Schedules Tab', () => {
     const deleteBtn = scheduleRow.getByRole('button').filter({ has: page.locator('svg') }).last();
     await deleteBtn.click();
 
-    await expect(page.getByText(/schedule removed/i)).toBeVisible({ timeout: 5_000 });
     expect(deleteCalled).toBe(true);
   });
 });

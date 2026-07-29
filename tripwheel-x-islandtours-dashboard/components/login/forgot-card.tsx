@@ -1,7 +1,7 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowLeft02Icon, Mail01Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
@@ -56,7 +56,9 @@ export function ForgotCard({
             // enumeration-sensitive ones - just show the success note anyway.
             const msg = authError.message?.toLowerCase() ?? '';
             if (msg.includes('rate') || msg.includes('too many')) {
-                setError('Too many requests. Please wait a moment and try again.');
+                setError(
+                    'Too many requests. Please wait a moment and try again.'
+                );
                 return;
             }
         }
@@ -68,15 +70,21 @@ export function ForgotCard({
         <div className='w-full rounded-[16px] border border-it-border bg-it-white px-8 pb-6 pt-8 shadow-it-md'>
             <Link
                 href={backHref}
-                className='mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-it-text-muted transition-colors hover:text-it-ink'>
-                <HugeiconsIcon icon={ArrowLeft02Icon} className='size-3.5' strokeWidth={1.5} />
+                className='mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-it-text-muted transition-colors hover:text-it-ink'>
+                <HugeiconsIcon
+                    icon={ArrowLeft02Icon}
+                    className='size-3.5'
+                    strokeWidth={1.5}
+                />
                 Back to login
             </Link>
 
-            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                 Forgot your password?
             </h1>
-            <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>{description}</p>
+            <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
+                {description}
+            </p>
 
             {!sent ? (
                 <form onSubmit={handleSubmit}>
@@ -107,10 +115,15 @@ export function ForgotCard({
                 </form>
             ) : (
                 <div className='flex gap-2 rounded-[10px] bg-it-surface px-3 py-2.5 text-sm text-it-text-muted'>
-                    <HugeiconsIcon icon={Mail01Icon} className='mt-0.5 size-4 shrink-0' strokeWidth={1.5} />
+                    <HugeiconsIcon
+                        icon={Mail01Icon}
+                        className='mt-0.5 size-4 shrink-0'
+                        strokeWidth={1.5}
+                    />
                     {sentNote}
                 </div>
             )}
         </div>
     );
 }
+

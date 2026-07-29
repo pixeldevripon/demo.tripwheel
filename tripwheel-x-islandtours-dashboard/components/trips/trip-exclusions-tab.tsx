@@ -1,5 +1,25 @@
 'use client';
 
+/**
+ * Exclusions: a label, plus the two fields that actually reach a traveller.
+ *
+ * The icon picker is gone (2026-07-29). The public tour page renders a
+ * hardcoded `/icons/exclude-cross.svg` beside EVERY exclusion
+ * (`tour-detail-content.tsx:601`), and the mapping above it keeps `label`,
+ * `type` and `priceText` only. Nothing else reads the icon either - not the
+ * JSON-LD, not the confirmation email, and not the OCTO serializer, which does
+ * not even SELECT it. Its one display was this file's own row badge, printing
+ * the raw string "x".
+ *
+ * `type` and `priceText` stay because they ARE read: `exclusionSuffix()` builds
+ * the "$15 per person" / "pay on the day" tail from them. That is also why this
+ * list keeps its add panel while inclusions and highlights compose inline -
+ * three questions do not fit on a bullet.
+ *
+ * The column stays, `@default("x")`, filled by the create path's
+ * `dto.icon ?? 'x'`. No migration, nothing nulled.
+ */
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -27,17 +47,6 @@ import {
 import type { ExclusionType, TourExclusion } from '@/types/trip';
 import { EditableListSection } from './editable-list-section';
 
-const ICON_OPTIONS = [
-    { value: 'x', label: 'Cross' },
-    { value: 'ban', label: 'Not allowed' },
-    { value: 'drink', label: 'Drink' },
-    { value: 'food', label: 'Food' },
-    { value: 'transport', label: 'Transport' },
-    { value: 'gear', label: 'Gear' },
-    { value: 'ticket', label: 'Ticket' },
-    { value: 'money', label: 'Fees / Gratuities' },
-];
-
 const EXCLUSION_TYPE_OPTIONS = [
     { value: 'UNAVAILABLE', label: 'Not provided' },
     { value: 'NOT_PERMITTED', label: 'Not permitted' },
@@ -47,7 +56,6 @@ const EXCLUSION_TYPE_OPTIONS = [
 
 const addExclusionSchema = z.object({
     label: z.string().min(2, 'At least 2 characters').max(100),
-    icon: z.string().optional(),
     type: z
         .enum(['UNAVAILABLE', 'NOT_PERMITTED', 'PAID_ADVANCE', 'PAID_ONSITE'])
         .optional()
@@ -90,25 +98,24 @@ function ExclusionHandlingEditor({
                 },
             },
             {
-                onSuccess: () => toast.success('Handling saved.'),
                 onError: err =>
                     toast.error(
-                        err instanceof Error ? err.message : 'Failed to save.',
+                        err instanceof Error ? err.message : 'Failed to save.'
                     ),
-            },
+            }
         );
     }
 
     return (
         <div className='space-y-3'>
-            <p className='text-2xs font-semibold tracking-caps uppercase text-content-subtle'>
+            <p className='text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                 Handling
             </p>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                 <Field>
                     <Label>
                         Type{' '}
-                        <span className='font-normal text-content-muted'>
+                        <span className='font-light text-content-muted'>
                             (optional)
                         </span>
                     </Label>
@@ -150,10 +157,12 @@ function ExclusionHandlingEditor({
 }
 
 interface TripExclusionsTabProps {
+    /** Drop the Card chrome - the wizard section header names this list. */
+    bare?: boolean;
     tripId: string;
 }
 
-export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
+export function TripExclusionsTab({ tripId, bare }: TripExclusionsTabProps) {
     const { data: exclusions, isLoading } = useExclusions(tripId);
     const { mutate: addExclusion, isPending: isAdding } = useAddExclusion();
     const { mutate: removeExclusion, isPending: isRemoving } =
@@ -168,7 +177,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
         formState: { errors },
     } = useForm<AddExclusionFormValues>({
         resolver: zodResolver(addExclusionSchema),
-        defaultValues: { label: '', icon: 'x', type: '', priceText: '' },
+        defaultValues: { label: '', type: '', priceText: '' },
     });
 
     const typeValue = watch('type');
@@ -181,7 +190,6 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
                 tripId,
                 payload: {
                     label: values.label,
-                    icon: values.icon || 'x',
                     type: values.type || undefined,
                     priceText:
                         (values.type === 'PAID_ADVANCE' ||
@@ -196,21 +204,21 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             },
             {
                 onSuccess: () => {
-                    toast.success('Exclusion added.');
-                    reset({ label: '', icon: 'x', type: '', priceText: '' });
+                    reset({ label: '', type: '', priceText: '' });
                 },
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to add exclusion.',
+                            : 'Failed to add exclusion.'
                     ),
-            },
+            }
         );
     }
 
     return (
         <EditableListSection
+            bare={bare}
             title='Exclusions'
             items={exclusions}
             isLoading={isLoading}
@@ -218,13 +226,10 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
             renderSummary={exc => {
                 const en = exc.translations.find(t => t.locale === 'en');
                 const typeLabel = EXCLUSION_TYPE_OPTIONS.find(
-                    o => o.value === exc.type,
+                    o => o.value === exc.type
                 )?.label;
                 return (
                     <span className='flex min-w-0 items-center gap-2'>
-                        <Badge variant='secondary' className='shrink-0 text-xs'>
-                            {exc.icon}
-                        </Badge>
                         <span className='truncate'>
                             {en?.label ?? '(no EN translation)'}
                         </span>
@@ -246,20 +251,19 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
                 removeExclusion(
                     { tripId, exclusionId: exc.id },
                     {
-                        onSuccess: () => toast.success('Exclusion removed.'),
                         onError: err =>
                             toast.error(
                                 err instanceof Error
                                     ? err.message
-                                    : 'Failed to remove.',
+                                    : 'Failed to remove.'
                             ),
-                    },
+                    }
                 )
             }
             isDeleting={isRemoving}
             emptyText='No exclusions yet.'
             addForm={{
-                heading: 'Add Exclusion',
+                heading: 'Add exclusion',
                 children: (
                     <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
                         <Field>
@@ -273,30 +277,9 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
                         </Field>
                         <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
                             <Field>
-                                <Label>Icon</Label>
-                                <Select
-                                    defaultValue='x'
-                                    onValueChange={val =>
-                                        setValue('icon', val)
-                                    }>
-                                    <SelectTrigger className='w-full'>
-                                        <SelectValue placeholder='Select icon...' />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ICON_OPTIONS.map(opt => (
-                                            <SelectItem
-                                                key={opt.value}
-                                                value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </Field>
-                            <Field>
                                 <Label>
                                     Type{' '}
-                                    <span className='font-normal text-content-muted'>
+                                    <span className='font-light text-content-muted'>
                                         (optional)
                                     </span>
                                 </Label>
@@ -305,7 +288,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
                                     onValueChange={val =>
                                         setValue(
                                             'type',
-                                            val as AddExclusionFormValues['type'],
+                                            val as AddExclusionFormValues['type']
                                         )
                                     }>
                                     <SelectTrigger className='w-full'>
@@ -334,7 +317,7 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
                         )}
                         <div className='flex justify-end'>
                             <Button type='submit' size='sm' disabled={isAdding}>
-                                {isAdding ? 'Adding...' : 'Add Exclusion'}
+                                {isAdding ? 'Adding...' : 'Add exclusion'}
                             </Button>
                         </div>
                     </form>
@@ -343,3 +326,4 @@ export function TripExclusionsTab({ tripId }: TripExclusionsTabProps) {
         />
     );
 }
+

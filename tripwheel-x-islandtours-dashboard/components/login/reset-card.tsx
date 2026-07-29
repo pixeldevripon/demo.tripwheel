@@ -1,13 +1,19 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import { AlertCircleIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
 import { authClient } from '@/lib/auth-client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { ErrorNote, Field, inputClass, primaryBtn, SuccessBlock } from './login-ui';
+import {
+    ErrorNote,
+    Field,
+    inputClass,
+    primaryBtn,
+    SuccessBlock,
+} from './login-ui';
 
 export interface ResetCardProps {
     /** This surface's own routes - keeps every link inside the same door. */
@@ -55,15 +61,21 @@ export function ResetCard({
         return (
             <div className={`${cardClass} text-center`}>
                 <div className='mx-auto mb-3 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
-                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
+                    <HugeiconsIcon
+                        icon={AlertCircleIcon}
+                        className='size-6 text-danger-fg'
+                        strokeWidth={1.75}
+                    />
                 </div>
-                <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+                <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                     Invalid reset link
                 </h1>
                 <p className='mx-auto mt-2 max-w-80 text-sm text-it-text-muted'>
                     This link is invalid or has already been used.
                 </p>
-                <Link href={forgotHref} className={`${buttonClass} mt-4 no-underline`}>
+                <Link
+                    href={forgotHref}
+                    className={`${buttonClass} mt-4 no-underline`}>
                     Request a new link
                 </Link>
             </div>
@@ -86,7 +98,11 @@ export function ResetCard({
         if (authError) {
             // Token expired mid-session -> redirect to expired state
             const msg = authError.message?.toLowerCase() ?? '';
-            if (msg.includes('expired') || msg.includes('invalid') || msg.includes('not found')) {
+            if (
+                msg.includes('expired') ||
+                msg.includes('invalid') ||
+                msg.includes('not found')
+            ) {
                 router.replace(`${resetHref}?state=expired`);
                 return;
             }
@@ -101,15 +117,22 @@ export function ResetCard({
         return (
             <div className={`${cardClass} text-center`}>
                 <div className='mx-auto mb-3 flex size-13 items-center justify-center rounded-full bg-danger-subtle'>
-                    <HugeiconsIcon icon={AlertCircleIcon} className='size-6 text-danger-fg' strokeWidth={1.75} />
+                    <HugeiconsIcon
+                        icon={AlertCircleIcon}
+                        className='size-6 text-danger-fg'
+                        strokeWidth={1.75}
+                    />
                 </div>
-                <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+                <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                     This link has expired
                 </h1>
                 <p className='mx-auto mt-2 max-w-80 text-sm text-it-text-muted'>
-                    Reset links are valid for 60 minutes. Request a new one from the login page.
+                    Reset links are valid for 60 minutes. Request a new one from
+                    the login page.
                 </p>
-                <Link href={forgotHref} className={`${buttonClass} mt-4 no-underline`}>
+                <Link
+                    href={forgotHref}
+                    className={`${buttonClass} mt-4 no-underline`}>
                     Request a new link
                 </Link>
             </div>
@@ -131,7 +154,7 @@ export function ResetCard({
 
     return (
         <div className={cardClass}>
-            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                 Set a new password
             </h1>
             <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
@@ -155,8 +178,8 @@ export function ResetCard({
                         <button
                             type='button'
                             aria-live='polite'
-                            onClick={() => setShowPw((v) => !v)}
-                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
+                            onClick={() => setShowPw(v => !v)}
+                            className='absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-it-text-muted transition-colors hover:bg-it-surface hover:text-it-ink'>
                             {showPw ? 'Hide' : 'Show'}
                         </button>
                     </div>
@@ -177,3 +200,4 @@ export function ResetCard({
         </div>
     );
 }
+

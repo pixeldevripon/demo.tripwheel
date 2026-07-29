@@ -1,15 +1,9 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { StatusBadge } from '@/components/common/status-badge';
-import { Button } from '@/components/ui/button';
-import { Field, FieldError } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     useAddHighlight,
     useHighlights,
@@ -27,10 +21,12 @@ const addHighlightSchema = z.object({
 type AddHighlightFormValues = z.infer<typeof addHighlightSchema>;
 
 interface TripHighlightsTabProps {
+    /** Drop the Card chrome - the wizard section header names this list. */
+    bare?: boolean;
     tripId: string;
 }
 
-export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
+export function TripHighlightsTab({ tripId, bare }: TripHighlightsTabProps) {
     const { data: highlights, isLoading } = useHighlights(tripId);
     const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
     const { mutate: removeHighlight, isPending: isRemoving } =
@@ -38,32 +34,27 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
 
     const count = highlights?.length ?? 0;
 
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors },
-    } = useForm<AddHighlightFormValues>({
-        resolver: zodResolver(addHighlightSchema),
-        defaultValues: { text: '' },
-    });
-
-    function onAdd(values: AddHighlightFormValues) {
+    /**
+     * Same schema, no form. `EditableListSection` composes the row inline now,
+     * so this validates the one string and either rejects it with a message or
+     * fires the identical mutation the panel form fired.
+     */
+    function onAdd(text: string): string | null {
+        const parsed = addHighlightSchema.safeParse({ text });
+        if (!parsed.success) {
+            return parsed.error.issues[0]?.message ?? 'Invalid highlight.';
+        }
         addHighlight(
             {
                 tripId,
                 payload: {
-                    text: values.text,
+                    text: parsed.data.text,
                     // The old form appended at the end via a hidden field -
                     // preserved so ordering behavior is unchanged.
                     displayOrder: count,
                 },
             },
             {
-                onSuccess: () => {
-                    toast.success('Highlight added.');
-                    reset({ text: '' });
-                },
                 onError: err =>
                     toast.error(
                         err instanceof Error
@@ -72,10 +63,12 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
                     ),
             },
         );
+        return null;
     }
 
     return (
         <EditableListSection
+            bare={bare}
             title='Highlights'
             items={highlights}
             isLoading={isLoading}
@@ -94,14 +87,12 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
             }
             renderSummary={h => {
                 const en = h.translations.find(t => t.locale === 'en');
+                // No "#0" prefix. It printed the raw `displayOrder`, so the
+                // first highlight read "#0" - which looks like a bug - and
+                // beside a bullet an index says nothing the position does not.
                 return (
-                    <span className='flex min-w-0 items-center gap-2'>
-                        <span className='shrink-0 text-xs text-content-subtle'>
-                            #{h.displayOrder}
-                        </span>
-                        <span className='truncate'>
-                            {en?.text ?? '(no EN translation)'}
-                        </span>
+                    <span className='truncate'>
+                        {en?.text ?? '(no EN translation)'}
                     </span>
                 );
             }}
@@ -109,7 +100,6 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
                 removeHighlight(
                     { tripId, highlightId: h.id },
                     {
-                        onSuccess: () => toast.success('Highlight removed.'),
                         onError: err =>
                             toast.error(
                                 err instanceof Error
@@ -121,29 +111,12 @@ export function TripHighlightsTab({ tripId }: TripHighlightsTabProps) {
             }
             isDeleting={isRemoving}
             emptyText='No highlights yet.'
-            addForm={{
-                heading: 'Add Highlight',
-                children: (
-                    <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
-                        <Field>
-                            <Label>Highlight (English)</Label>
-                            <Input
-                                {...register('text')}
-                                placeholder='Snorkel with sea turtles at the reef'
-                                aria-invalid={!!errors.text}
-                            />
-                            <FieldError>{errors.text?.message}</FieldError>
-                        </Field>
-                        <div className='flex justify-end'>
-                            <Button
-                                type='submit'
-                                size='sm'
-                                disabled={isAdding || count >= 6}>
-                                {isAdding ? 'Adding...' : 'Add Highlight'}
-                            </Button>
-                        </div>
-                    </form>
-                ),
+            quickAdd={{
+                addLabel: 'Add highlight',
+                placeholder: 'Snorkel with sea turtles at the reef',
+                ariaLabel: 'New highlight (English)',
+                disabled: isAdding || count >= 6,
+                onAdd,
             }}
         />
     );

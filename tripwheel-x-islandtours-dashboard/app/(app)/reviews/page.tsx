@@ -11,13 +11,13 @@ export default function ReviewsPage() {
         <div>
             <div className='mb-6 flex items-center justify-between'>
                 <div>
-                    <h1 className='font-heading text-2xl font-semibold '>
+                    <h1 className='font-heading text-2xl font-medium '>
                         Reviews
                     </h1>
                     <p className='mt-1 text-sm text-muted-foreground'>
                         Every review comes from a confirmed booking. Publish the
-                        good and the bad - reviews are removed only on documented
-                        policy grounds, never for being negative.
+                        good and the bad - reviews are removed only on
+                        documented policy grounds, never for being negative.
                     </p>
                 </div>
             </div>
@@ -25,3 +25,4 @@ export default function ReviewsPage() {
         </div>
     );
 }
+

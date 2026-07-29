@@ -6,10 +6,7 @@ import {
     useSettlementSummary,
     useSettlements,
 } from '@/hooks/settlements/use-settlements';
-import type {
-    SettlementStatus,
-    SettlementsQueryParams,
-} from '@/types/booking';
+import type { SettlementStatus, SettlementsQueryParams } from '@/types/booking';
 import { SettlementsTable } from './settlements-table';
 
 /**
@@ -61,7 +58,7 @@ export function SettlementsListView() {
                                 ? 'Payout due to operators'
                                 : 'Due to you from Island Tours'}
                         </p>
-                        <p className='text-lg font-semibold tabular-nums'>
+                        <p className='text-lg font-medium tabular-nums'>
                             &euro;{summary.owedPending}
                         </p>
                         <p className='text-xs text-muted-foreground'>
@@ -73,7 +70,7 @@ export function SettlementsListView() {
                         <p className='text-xs text-muted-foreground'>
                             {isAdmin ? 'Paid out' : 'Paid to you'}
                         </p>
-                        <p className='text-lg font-semibold tabular-nums'>
+                        <p className='text-lg font-medium tabular-nums'>
                             &euro;{summary.released}
                         </p>
                         <p className='text-xs text-muted-foreground'>
@@ -100,3 +97,4 @@ export function SettlementsListView() {
         </div>
     );
 }
+

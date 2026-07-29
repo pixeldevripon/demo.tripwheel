@@ -147,23 +147,25 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
           {/* Navigation - hidden for archived trips */}
           {!isArchived && (
             <>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=details`)}>
+              {/* `?step=` is the canonical param now. Old `?tab=` links
+                  still resolve through TAB_TO_STEP, so bookmarks survive. */}
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?step=review`)}>
                 <HugeiconsIcon icon={PencilEdit02Icon} />
                 Edit Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=images`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?step=media`)}>
                 <HugeiconsIcon icon={Image02Icon} />
                 Images
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=inclusions`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?step=content`)}>
                 <HugeiconsIcon icon={File02Icon} />
                 Content
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=pricing`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?step=pricing`)}>
                 <HugeiconsIcon icon={Tag01Icon} />
                 Pricing
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?tab=schedules`)}>
+              <DropdownMenuItem onClick={() => router.push(`/trips/${trip.id}/edit?step=schedule`)}>
                 <HugeiconsIcon icon={Calendar03Icon} />
                 Schedules
               </DropdownMenuItem>

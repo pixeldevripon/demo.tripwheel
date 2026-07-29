@@ -1,6 +1,7 @@
 'use client';
 
 import { IconTile, type IconTileVariant } from '@/components/common/icon-tile';
+import { ReviewAnalytics } from '@/components/reviews/review-analytics';
 import { Badge } from '@/components/ui/badge';
 import {
     Card,
@@ -19,7 +20,6 @@ import {
     type ChartConfig,
 } from '@/components/ui/chart';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ReviewAnalytics } from '@/components/reviews/review-analytics';
 import {
     Tooltip,
     TooltipContent,
@@ -144,7 +144,7 @@ function RangeControl({
             router.push(
                 value === 'all'
                     ? pathname
-                    : `${pathname}?${RANGE_PARAM}=${value}`,
+                    : `${pathname}?${RANGE_PARAM}=${value}`
             );
         });
     };
@@ -153,7 +153,7 @@ function RangeControl({
         <div
             className={cn(
                 'flex items-center gap-2 transition-opacity',
-                isPending && 'opacity-60',
+                isPending && 'opacity-60'
             )}>
             {/* The active window, stated. Hidden on narrow panes where the
                 select's own value already names the period and the row is
@@ -172,7 +172,7 @@ function RangeControl({
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent align='end'>
-                    {RANGE_PRESETS.map((p) => (
+                    {RANGE_PRESETS.map(p => (
                         <SelectItem key={p.id} value={p.id} className='text-xs'>
                             {p.label}
                         </SelectItem>
@@ -300,16 +300,16 @@ function getStatusColor(status: string) {
  */
 function buildStatusSlices(
     byStatus: Record<string, number>,
-    spec: { key: string; label: string; fill: string; alwaysShow?: boolean }[],
+    spec: { key: string; label: string; fill: string; alwaysShow?: boolean }[]
 ): StatusSlice[] {
     return spec
-        .map((s) => ({
+        .map(s => ({
             name: s.label,
             value: byStatus?.[s.key] ?? 0,
             fill: s.fill,
             alwaysShow: s.alwaysShow ?? false,
         }))
-        .filter((s) => s.alwaysShow || s.value > 0)
+        .filter(s => s.alwaysShow || s.value > 0)
         .map(({ name, value, fill }) => ({ name, value, fill }));
 }
 
@@ -320,7 +320,7 @@ function buildStatusSlices(
  */
 function sliceChartConfig(slices: StatusSlice[]): ChartConfig {
     return Object.fromEntries(
-        slices.map((s) => [s.name, { label: s.name, color: s.fill }]),
+        slices.map(s => [s.name, { label: s.name, color: s.fill }])
     );
 }
 
@@ -401,7 +401,7 @@ function TrendBadge({ growth }: { growth: Growth }) {
         <span
             className={cn(
                 'flex shrink-0 items-center gap-0.5 text-2xs font-medium tabular-nums',
-                isUp ? 'text-success-fg' : 'text-danger-fg',
+                isUp ? 'text-success-fg' : 'text-danger-fg'
             )}>
             <HugeiconsIcon
                 icon={isUp ? TradeUpIcon : TradeDownIcon}
@@ -440,7 +440,7 @@ function TrendFootnote({
         <div
             className={cn(
                 'flex gap-2 text-sm leading-none font-medium',
-                isUp ? 'text-success-fg' : 'text-danger-fg',
+                isUp ? 'text-success-fg' : 'text-danger-fg'
             )}>
             {growth.label} from {previousLabel}
             <HugeiconsIcon
@@ -483,7 +483,7 @@ function StatusDonut({
                     nameKey='name'
                     innerRadius={60}
                     strokeWidth={5}>
-                    {data.map((entry) => (
+                    {data.map(entry => (
                         <Cell key={entry.name} fill={entry.fill} />
                     ))}
                 </Pie>
@@ -514,7 +514,7 @@ function ChartEmpty({
         <div
             className={cn(
                 'flex w-full flex-col items-center justify-center text-center',
-                className,
+                className
             )}>
             {icon && (
                 <HugeiconsIcon
@@ -607,7 +607,7 @@ function ActivityRow({
                     <p
                         className={cn(
                             'truncate pr-2 text-sm font-medium',
-                            titleClassName,
+                            titleClassName
                         )}>
                         {title}
                     </p>
@@ -737,7 +737,9 @@ function StatisticsContent({
 
     // What the growth figures are measured against, in words. With no range set
     // the comparison is still month over month, so the copy has to say so.
-    const previousLabel = range.isAllTime ? 'last month' : 'the previous period';
+    const previousLabel = range.isAllTime
+        ? 'last month'
+        : 'the previous period';
     /** Names the comparison window itself, for row labels like "New ...". */
     const activeWindowLabel = range.isAllTime ? 'this month' : 'in range';
 
@@ -750,11 +752,11 @@ function StatisticsContent({
 
     const paymentRowTotal = Object.values(payments.byStatus ?? {}).reduce(
         (sum, n) => sum + n,
-        0,
+        0
     );
     const paymentSuccessRate = ratio(
         payments.byStatus?.['SUCCEEDED'] ?? 0,
-        paymentRowTotal,
+        paymentRowTotal
     );
 
     // ─── Trend series ────────────────────────────────────────────────────
@@ -763,7 +765,7 @@ function StatisticsContent({
     // charted rather than dropped. `earned` is bucketed by RECOGNITION date
     // (tour completion) while `gmv` and `bookings` are bucketed by booking
     // date - the two answer different questions and must not be conflated.
-    const trendData = trend.points.map((point) => ({
+    const trendData = trend.points.map(point => ({
         label: point.label,
         earned: point.earnedEur,
         gmv: point.gmvEur,
@@ -781,8 +783,8 @@ function StatisticsContent({
     // The empty-state guards matter: without them a dataset of nothing but zero
     // buckets renders as a flat line pinned to the axis, which looks like real
     // (bad) performance rather than "no data yet".
-    const hasEarningsTrend = trendData.some((p) => p.earned > 0 || p.gmv > 0);
-    const hasBookingTrend = trendData.some((p) => p.bookings > 0);
+    const hasEarningsTrend = trendData.some(p => p.earned > 0 || p.gmv > 0);
+    const hasBookingTrend = trendData.some(p => p.bookings > 0);
 
     const earningsChartConfig: ChartConfig = {
         gmv: { label: 'Booking value (GMV)', color: 'var(--chart-3)' },
@@ -869,7 +871,7 @@ function StatisticsContent({
     ]);
 
     const paymentModelChartConfig = sliceChartConfig(paymentModelData);
-    const hasPaymentModelData = paymentModelData.some((d) => d.value > 0);
+    const hasPaymentModelData = paymentModelData.some(d => d.value > 0);
 
     // ─── Status distributions ────────────────────────────────────────────
     const bookingStatusData = buildStatusSlices(bookings.byStatus, [
@@ -950,12 +952,12 @@ function StatisticsContent({
         .map(({ name, value }) => ({ name, value }));
     const paymentStatusConfig = categoryBarConfig(
         'Payment rows',
-        'var(--chart-1)',
+        'var(--chart-1)'
     );
 
-    const hasBookingStatusData = bookingStatusData.some((d) => d.value > 0);
-    const hasTripStatusData = tripStatusData.some((d) => d.value > 0);
-    const hasPaymentStatusData = paymentStatusData.some((d) => d.value > 0);
+    const hasBookingStatusData = bookingStatusData.some(d => d.value > 0);
+    const hasTripStatusData = tripStatusData.some(d => d.value > 0);
+    const hasPaymentStatusData = paymentStatusData.some(d => d.value > 0);
 
     // ─── Growth ──────────────────────────────────────────────────────────
     // Every pair compares the selected window against the equal-length one
@@ -964,22 +966,22 @@ function StatisticsContent({
     // `earnedInRangeEur` rather than anything merely booked.
     const earningsGrowth = calculateGrowth(
         revenue.earnedInRangeEur,
-        revenue.earnedInPreviousRangeEur,
+        revenue.earnedInPreviousRangeEur
     );
 
     const bookingsGrowth = calculateGrowth(
         bookings.inRange,
-        bookings.inPreviousRange,
+        bookings.inPreviousRange
     );
 
     const customerGrowth = calculateGrowth(
         customers.newInRange,
-        customers.newInPreviousRange,
+        customers.newInPreviousRange
     );
 
     const tripsGrowth = calculateGrowth(
         trips.createdInRange,
-        trips.createdInPreviousRange,
+        trips.createdInPreviousRange
     );
 
     // ─── Shared caveats ──────────────────────────────────────────────────
@@ -1150,36 +1152,29 @@ function StatisticsContent({
     // The operator/destination/tier leaderboards compare operators against one
     // another, so the backend returns them empty for an operator caller. The
     // length guards below are what keeps them off an operator's screen.
-    const topTourRows: BreakdownRow[] = breakdowns.topTours.map((t) => ({
+    const topTourRows: BreakdownRow[] = breakdowns.topTours.map(t => ({
         id: t.id,
         name: t.name,
         count: t.bookings,
         eur: t.earnedEur,
     }));
 
-    const topOperatorRows: BreakdownRow[] = breakdowns.topOperators.map(
-        (o) => ({
-            id: o.id,
-            name: o.name,
-            count: o.bookings,
-            eur: o.earnedEur,
-        }),
-    );
+    const topOperatorRows: BreakdownRow[] = breakdowns.topOperators.map(o => ({
+        id: o.id,
+        name: o.name,
+        count: o.bookings,
+        eur: o.earnedEur,
+    }));
 
     // Destinations and tiers are leaderboards too, so they use the SAME row
     // shape and the same text renderer as tours and operators. Four cards, one
     // consistent reading, and the exact amounts stay legible instead of being
     // estimated off an axis.
     const destinationRows: BreakdownRow[] = breakdowns.topDestinations.map(
-        (d) => ({
-            id: d.id,
-            name: d.name,
-            count: d.bookings,
-            eur: d.gmvEur,
-        }),
+        d => ({ id: d.id, name: d.name, count: d.bookings, eur: d.gmvEur })
     );
 
-    const tierRows: BreakdownRow[] = breakdowns.byTier.map((t) => ({
+    const tierRows: BreakdownRow[] = breakdowns.byTier.map(t => ({
         id: t.tier,
         name: humanizeStatus(t.tier),
         count: t.bookings,
@@ -1275,7 +1270,7 @@ function StatisticsContent({
                         of which read as broken. Two clean rows of four on any
                         desktop pane, two columns below @5xl. */}
                     <div className='grid grid-cols-2 gap-3 *:min-w-0 sm:gap-4 @5xl/main:grid-cols-4'>
-                        {statCards.map((stat) => (
+                        {statCards.map(stat => (
                             /*
                              * Card anatomy, top to bottom: LABEL first (with
                              * its caveat and any "current" qualifier), then the
@@ -1303,7 +1298,7 @@ function StatisticsContent({
                                         a size at two-up on a phone, where a
                                         full money figure would otherwise
                                         truncate to nothing useful. */}
-                                    <CardTitle className='truncate text-xl font-semibold tracking-tight sm:text-2xl'>
+                                    <CardTitle className='truncate text-xl font-medium tracking-tight sm:text-2xl'>
                                         {stat.eur !== undefined
                                             ? money(stat.eur)
                                             : stat.value}
@@ -1481,12 +1476,10 @@ function StatisticsContent({
                                                         tickLine={false}
                                                         axisLine={false}
                                                         width={56}
-                                                        tickFormatter={(
-                                                            value,
-                                                        ) =>
+                                                        tickFormatter={value =>
                                                             formatCompactMoney(
                                                                 Number(value),
-                                                                currency,
+                                                                currency
                                                             )
                                                         }
                                                     />
@@ -1497,7 +1490,7 @@ function StatisticsContent({
                                                                 indicator='line'
                                                                 formatter={(
                                                                     value,
-                                                                    name,
+                                                                    name
                                                                 ) => (
                                                                     <div className='flex w-full items-center justify-between gap-4'>
                                                                         <span className='text-muted-foreground'>
@@ -1511,8 +1504,8 @@ function StatisticsContent({
                                                                         <span className='font-medium tabular-nums'>
                                                                             {money(
                                                                                 Number(
-                                                                                    value,
-                                                                                ),
+                                                                                    value
+                                                                                )
                                                                             )}
                                                                         </span>
                                                                     </div>
@@ -1709,11 +1702,11 @@ function StatisticsContent({
                                                 </ChartContainer>
 
                                                 <div className='grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border pt-6 sm:grid-cols-4'>
-                                                    {funnelRates.map((rate) => (
+                                                    {funnelRates.map(rate => (
                                                         <div key={rate.key}>
-                                                            <p className='text-base font-semibold'>
+                                                            <p className='text-base font-medium'>
                                                                 {formatRate(
-                                                                    rate.value,
+                                                                    rate.value
                                                                 )}
                                                             </p>
                                                             <p className='mt-1 flex items-center gap-1 text-2xs text-muted-foreground'>
@@ -1731,23 +1724,16 @@ function StatisticsContent({
                                                 </div>
 
                                                 <div className='grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border pt-6 sm:grid-cols-4'>
-                                                    {funnelCounts.map(
-                                                        (count) => (
-                                                            <div
-                                                                key={count.key}>
-                                                                <p className='text-base font-semibold'>
-                                                                    {
-                                                                        count.value
-                                                                    }
-                                                                </p>
-                                                                <p className='mt-1 text-2xs text-muted-foreground'>
-                                                                    {
-                                                                        count.label
-                                                                    }
-                                                                </p>
-                                                            </div>
-                                                        ),
-                                                    )}
+                                                    {funnelCounts.map(count => (
+                                                        <div key={count.key}>
+                                                            <p className='text-base font-medium'>
+                                                                {count.value}
+                                                            </p>
+                                                            <p className='mt-1 text-2xs text-muted-foreground'>
+                                                                {count.label}
+                                                            </p>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </>
                                         ) : (
@@ -2007,7 +1993,7 @@ function StatisticsContent({
                                             <span className='text-sm text-muted-foreground'>
                                                 Total bookers
                                             </span>
-                                            <span className='font-semibold tabular-nums'>
+                                            <span className='font-medium tabular-nums'>
                                                 {customers.total}
                                             </span>
                                         </div>
@@ -2015,7 +2001,7 @@ function StatisticsContent({
                                             <span className='text-sm text-muted-foreground'>
                                                 Repeat bookers
                                             </span>
-                                            <span className='font-semibold tabular-nums'>
+                                            <span className='font-medium tabular-nums'>
                                                 {customers.repeat}
                                             </span>
                                         </div>
@@ -2023,7 +2009,7 @@ function StatisticsContent({
                                             <span className='text-sm text-muted-foreground'>
                                                 Active {activeWindowLabel}
                                             </span>
-                                            <span className='font-semibold tabular-nums'>
+                                            <span className='font-medium tabular-nums'>
                                                 {customers.activeInRange}
                                             </span>
                                         </div>
@@ -2031,7 +2017,7 @@ function StatisticsContent({
                                             <span className='text-sm text-muted-foreground'>
                                                 New {activeWindowLabel}
                                             </span>
-                                            <span className='font-semibold tabular-nums'>
+                                            <span className='font-medium tabular-nums'>
                                                 {customers.newInRange}
                                             </span>
                                         </div>
@@ -2039,9 +2025,9 @@ function StatisticsContent({
                                             <span className='text-sm text-muted-foreground'>
                                                 Repeat rate
                                             </span>
-                                            <span className='font-semibold tabular-nums'>
+                                            <span className='font-medium tabular-nums'>
                                                 {formatRate(
-                                                    customers.repeatRate,
+                                                    customers.repeatRate
                                                 )}
                                             </span>
                                         </div>
@@ -2056,7 +2042,7 @@ function StatisticsContent({
                                                         current
                                                     </span>
                                                 </span>
-                                                <span className='font-semibold tabular-nums'>
+                                                <span className='font-medium tabular-nums'>
                                                     {customers.registered}
                                                 </span>
                                             </div>
@@ -2101,7 +2087,7 @@ function StatisticsContent({
                                             />
                                             <CardContent>
                                                 {renderBreakdown(
-                                                    topOperatorRows,
+                                                    topOperatorRows
                                                 )}
                                             </CardContent>
                                         </Card>
@@ -2117,7 +2103,7 @@ function StatisticsContent({
                                             />
                                             <CardContent>
                                                 {renderBreakdown(
-                                                    destinationRows,
+                                                    destinationRows
                                                 )}
                                             </CardContent>
                                         </Card>
@@ -2203,7 +2189,7 @@ function StatisticsContent({
                                                         <>
                                                             <span className='tabular-nums'>
                                                                 {money(
-                                                                    booking.totalEur,
+                                                                    booking.totalEur
                                                                 )}
                                                             </span>
                                                             {fx && (
@@ -2212,7 +2198,7 @@ function StatisticsContent({
                                                                     {formatMoney(
                                                                         booking.totalEur *
                                                                             fx.rate,
-                                                                        fx.quote,
+                                                                        fx.quote
                                                                     )}
                                                                 </span>
                                                             )}
@@ -2247,7 +2233,7 @@ function StatisticsContent({
                                                     icon={MoneyBagIcon}
                                                     variant='success'
                                                     title={money(
-                                                        payment.amountEur,
+                                                        payment.amountEur
                                                     )}
                                                     titleClassName='tabular-nums'
                                                     date={payment.createdAt}
@@ -2255,7 +2241,7 @@ function StatisticsContent({
                                                         <>
                                                             <span>
                                                                 {humanizeStatus(
-                                                                    payment.kind,
+                                                                    payment.kind
                                                                 )}
                                                             </span>
                                                             <span>•</span>
@@ -2284,7 +2270,7 @@ function StatisticsContent({
                                                 ? recentCancellations
                                                 : recentCancellations.slice(
                                                       0,
-                                                      4,
+                                                      4
                                                   )
                                             ).map((cancellation, idx) => (
                                                 <ActivityRow
@@ -2301,7 +2287,7 @@ function StatisticsContent({
                                                         <>
                                                             <span className='tabular-nums'>
                                                                 {money(
-                                                                    cancellation.totalEur,
+                                                                    cancellation.totalEur
                                                                 )}
                                                             </span>
                                                             <span>•</span>
@@ -2344,7 +2330,7 @@ function StatisticsContent({
                                                     icon={Coins01Icon}
                                                     variant='warning'
                                                     title={money(
-                                                        refund.amountEur,
+                                                        refund.amountEur
                                                     )}
                                                     titleClassName='tabular-nums'
                                                     date={refund.createdAt}
@@ -2415,7 +2401,7 @@ function StatisticsContent({
                                         <button
                                             onClick={() =>
                                                 setShowAllActivity(
-                                                    !showAllActivity,
+                                                    !showAllActivity
                                                 )
                                             }
                                             className='flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80'>
@@ -2457,3 +2443,4 @@ function StatisticsContent({
         </div>
     );
 }
+

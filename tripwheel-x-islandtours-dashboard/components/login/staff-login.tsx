@@ -13,7 +13,7 @@ import AuthForm from './auth-form';
 export function StaffLogin() {
     return (
         <div className='w-full rounded-[16px] bg-it-white px-8 pb-6 pt-8 shadow-2xl shadow-black/40'>
-            <h1 className='m-0 font-it-display text-xl font-semibold text-it-heading'>
+            <h1 className='m-0 font-it-display text-xl font-medium text-it-heading'>
                 Sign in
             </h1>
             <p className='mb-6 mt-1.5 text-sm text-it-text-muted'>
@@ -28,3 +28,4 @@ export function StaffLogin() {
         </div>
     );
 }
+

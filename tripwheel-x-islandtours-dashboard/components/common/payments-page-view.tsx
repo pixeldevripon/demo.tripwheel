@@ -10,7 +10,7 @@ export function PaymentsPageView() {
         <div>
             <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
                 <div>
-                    <h1 className='text-2xl font-semibold'>Payments</h1>
+                    <h1 className='text-2xl font-medium'>Payments</h1>
                     <p className='text-sm text-muted-foreground mt-1'>
                         Platform charges per booking (deposits, full payments,
                         refunds) with their provider status. Operators see
@@ -22,3 +22,4 @@ export function PaymentsPageView() {
         </div>
     );
 }
+

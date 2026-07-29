@@ -16,16 +16,16 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { CollapsibleCard } from '@/components/common/collapsible-card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { WorkspaceSkeleton } from './workspace-skeleton';
+import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
+import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
 import {
-    useExclusions,
     useDeleteExclusionTranslation,
     useDeleteFeatureTranslation,
     useDeleteHighlightTranslation,
     useDeleteInclusionTranslation,
     useDeleteLocationTranslation,
     useDeletePickupLocationTranslation,
+    useExclusions,
     useFeatures,
     useHighlights,
     useInclusions,
@@ -41,8 +41,6 @@ import {
     useUpsertPickupLocationTranslation,
     useUpsertTripTranslation,
 } from '@/hooks/trips/use-trips';
-import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
-import { useInlineTranslate } from '@/hooks/translations/use-inline-translate';
 import { LOCALE_LABELS, type Locale } from '@/lib/constants/locales';
 import {
     fieldFilled,
@@ -52,9 +50,10 @@ import {
 import { FieldPair } from './field-pair';
 import { SectionAiTranslateButton } from './section-ai-translate-button';
 import { WorkspaceShell } from './workspace-shell';
+import { WorkspaceSkeleton } from './workspace-skeleton';
 
 const LINES_FIELDS = new Set(
-    TOUR_FIELDS.filter(f => f.kind === 'lines').map(f => f.name),
+    TOUR_FIELDS.filter(f => f.kind === 'lines').map(f => f.name)
 );
 
 function toFormValue(v: unknown): string {
@@ -126,7 +125,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
     type SubOps = {
         upsert: (
             itemId: string,
-            payload: Record<string, string | undefined>,
+            payload: Record<string, string | undefined>
         ) => Promise<unknown>;
         remove: (itemId: string) => Promise<unknown>;
         /** Human label prefix used in the per-item failure toast. */
@@ -136,34 +135,58 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         highlights: {
             upsert: (highlightId, payload) =>
                 upsertHighlight.mutateAsync({
-                    tripId: id, highlightId, locale, payload,
+                    tripId: id,
+                    highlightId,
+                    locale,
+                    payload,
                 } as never),
             remove: highlightId =>
-                deleteHighlight.mutateAsync({ tripId: id, highlightId, locale }),
+                deleteHighlight.mutateAsync({
+                    tripId: id,
+                    highlightId,
+                    locale,
+                }),
             noun: 'Highlight',
         },
         inclusions: {
             upsert: (inclusionId, payload) =>
                 upsertInclusion.mutateAsync({
-                    tripId: id, inclusionId, locale, payload,
+                    tripId: id,
+                    inclusionId,
+                    locale,
+                    payload,
                 } as never),
             remove: inclusionId =>
-                deleteInclusion.mutateAsync({ tripId: id, inclusionId, locale }),
+                deleteInclusion.mutateAsync({
+                    tripId: id,
+                    inclusionId,
+                    locale,
+                }),
             noun: 'Inclusion',
         },
         exclusions: {
             upsert: (exclusionId, payload) =>
                 upsertExclusion.mutateAsync({
-                    tripId: id, exclusionId, locale, payload,
+                    tripId: id,
+                    exclusionId,
+                    locale,
+                    payload,
                 } as never),
             remove: exclusionId =>
-                deleteExclusion.mutateAsync({ tripId: id, exclusionId, locale }),
+                deleteExclusion.mutateAsync({
+                    tripId: id,
+                    exclusionId,
+                    locale,
+                }),
             noun: 'Exclusion',
         },
         features: {
             upsert: (featureId, payload) =>
                 upsertFeature.mutateAsync({
-                    tripId: id, featureId, locale, payload,
+                    tripId: id,
+                    featureId,
+                    locale,
+                    payload,
                 } as never),
             remove: featureId =>
                 deleteFeature.mutateAsync({ tripId: id, featureId, locale }),
@@ -172,7 +195,10 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         locations: {
             upsert: (locationId, payload) =>
                 upsertLocation.mutateAsync({
-                    tripId: id, locationId, locale, payload,
+                    tripId: id,
+                    locationId,
+                    locale,
+                    payload,
                 } as never),
             remove: locationId =>
                 deleteLocation.mutateAsync({ tripId: id, locationId, locale }),
@@ -181,10 +207,17 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         pickups: {
             upsert: (pickupLocationId, payload) =>
                 upsertPickup.mutateAsync({
-                    tripId: id, pickupLocationId, locale, payload,
+                    tripId: id,
+                    pickupLocationId,
+                    locale,
+                    payload,
                 } as never),
             remove: pickupLocationId =>
-                deletePickup.mutateAsync({ tripId: id, pickupLocationId, locale }),
+                deletePickup.mutateAsync({
+                    tripId: id,
+                    pickupLocationId,
+                    locale,
+                }),
             noun: 'Pickup',
         },
     };
@@ -219,7 +252,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                     base[f.name] = toFormValue(
                         enT?.[f.name] ??
                             item[f.name] ??
-                            (f.name === 'title' ? item.name : undefined),
+                            (f.name === 'title' ? item.name : undefined)
                     );
                     existing[f.name] = toFormValue(t?.[f.name]);
                 }
@@ -239,7 +272,8 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
 
     const defaults = useMemo(() => {
         const d: Record<string, string> = {};
-        for (const f of TOUR_FIELDS) d[f.name] = toFormValue(target?.[f.name as keyof typeof target]);
+        for (const f of TOUR_FIELDS)
+            d[f.name] = toFormValue(target?.[f.name as keyof typeof target]);
         // Sub-entities render on EVERY locale, EN included (founder 2026-07-27:
         // one console, everything visible) - on the EN tab their values ARE
         // the source, editable here exactly like in the editor tabs.
@@ -305,7 +339,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         toast.info(
             copied
                 ? `${copied} field${copied === 1 ? '' : 's'} copied from English - review before saving.`
-                : 'Nothing to copy.',
+                : 'Nothing to copy.'
         );
     }
 
@@ -321,7 +355,10 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
             const raw = (v[f.name] ?? '').trim();
             if (LINES_FIELDS.has(f.name)) {
                 payload[f.name] = raw
-                    ? raw.split('\n').map(l => l.trim()).filter(Boolean)
+                    ? raw
+                          .split('\n')
+                          .map(l => l.trim())
+                          .filter(Boolean)
                     : [];
             } else {
                 payload[f.name] = raw || null;
@@ -347,7 +384,8 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                 const valueOf = (field: string) =>
                     (v[itemKey(sub.key, item.id, field)] ?? '').trim();
                 const changed = sub.fields.some(
-                    f => valueOf(f.name) !== (item.existing[f.name] ?? '').trim(),
+                    f =>
+                        valueOf(f.name) !== (item.existing[f.name] ?? '').trim()
                 );
                 if (!changed) continue;
 
@@ -365,10 +403,16 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
         }
 
         try {
-            await upsertCore.mutateAsync({ tripId: id, locale, payload } as never);
+            await upsertCore.mutateAsync({
+                tripId: id,
+                locale,
+                payload,
+            } as never);
         } catch (err) {
             toast.error(
-                err instanceof Error ? err.message : 'Failed to save translation.',
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to save translation.'
             );
             return;
         }
@@ -385,16 +429,16 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
 
         if (failed.length === 0) {
             toast.success(
-                `${LOCALE_LABELS[locale]} translation saved (${jobs.length + 1} updates).`,
+                `${LOCALE_LABELS[locale]} translation saved (${jobs.length + 1} updates).`
             );
         } else {
             toast.error(
-                `Saved with ${failed.length} failure${failed.length === 1 ? '' : 's'}: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`,
+                `Saved with ${failed.length} failure${failed.length === 1 ? '' : 's'}: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`
             );
         }
         if (refusedEnClear.length > 0) {
             toast.warning(
-                `${refusedEnClear.length} English item${refusedEnClear.length === 1 ? '' : 's'} left unchanged - English is the source every translation falls back to. Delete the item in the tour editor instead.`,
+                `${refusedEnClear.length} English item${refusedEnClear.length === 1 ? '' : 's'} left unchanged - English is the source every translation falls back to. Delete the item in the tour editor instead.`
             );
         }
     }
@@ -428,7 +472,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                             fields={TOUR_FIELDS.map(f => ({
                                 name: f.name,
                                 source: toFormValue(
-                                    source?.[f.name as keyof typeof source],
+                                    source?.[f.name as keyof typeof source]
                                 ),
                             }))}
                             onFill={fillField}
@@ -437,7 +481,7 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                     <div>
                         {TOUR_FIELDS.map(f => {
                             const src = toFormValue(
-                                source?.[f.name as keyof typeof source],
+                                source?.[f.name as keyof typeof source]
                             );
                             return (
                                 <FieldPair
@@ -455,64 +499,79 @@ export function TourWorkspace({ id, locale }: { id: string; locale: Locale }) {
                 </CollapsibleCard>
 
                 {TOUR_SUB_ENTITIES.map(sub => {
-                        const items = subData[sub.key] ?? [];
-                        if (items.length === 0) return null;
-                        return (
-                            <CollapsibleCard
-                                key={sub.key}
-                                title={
-                                    <>
-                                        {sub.label}
-                                        <span className='ml-2 text-xs font-normal text-content-muted'>
-                                            {items.length} item
-                                            {items.length === 1 ? '' : 's'}
-                                        </span>
-                                    </>
-                                }
-                                actions={
-                                    <SectionAiTranslateButton
-                                        locale={locale}
-                                        fields={items.flatMap(item =>
-                                            sub.fields.map(f => ({
+                    const items = subData[sub.key] ?? [];
+                    if (items.length === 0) return null;
+                    return (
+                        <CollapsibleCard
+                            key={sub.key}
+                            title={
+                                <>
+                                    {sub.label}
+                                    <span className='ml-2 text-xs font-light text-content-muted'>
+                                        {items.length} item
+                                        {items.length === 1 ? '' : 's'}
+                                    </span>
+                                </>
+                            }
+                            actions={
+                                <SectionAiTranslateButton
+                                    locale={locale}
+                                    fields={items.flatMap(item =>
+                                        sub.fields.map(f => ({
+                                            name: itemKey(
+                                                sub.key,
+                                                item.id,
+                                                f.name
+                                            ),
+                                            source: item.base[f.name],
+                                        }))
+                                    )}
+                                    onFill={fillField}
+                                />
+                            }>
+                            <div>
+                                {items.map(item =>
+                                    sub.fields.map(f => (
+                                        <FieldPair
+                                            key={itemKey(
+                                                sub.key,
+                                                item.id,
+                                                f.name
+                                            )}
+                                            field={{
                                                 name: itemKey(
                                                     sub.key,
                                                     item.id,
-                                                    f.name,
+                                                    f.name
                                                 ),
-                                                source: item.base[f.name],
-                                            })),
-                                        )}
-                                        onFill={fillField}
-                                    />
-                                }>
-                                <div>
-                                    {items.map(item =>
-                                        sub.fields.map(f => (
-                                            <FieldPair
-                                                key={itemKey(sub.key, item.id, f.name)}
-                                                field={{
-                                                    name: itemKey(sub.key, item.id, f.name),
-                                                    label: sub.fields.length > 1
+                                                label:
+                                                    sub.fields.length > 1
                                                         ? `${item.base[sub.fields[0].name] || sub.label} - ${f.label}`
-                                                        : item.base[f.name] || sub.label,
-                                                    kind: 'input',
-                                                }}
-                                                source={item.base[f.name]}
-                                                register={register}
-                                                targetLabel={LOCALE_LABELS[locale]}
-                                                sourceHidden={locale === 'en'}
-                                                onAiTranslate={aiFillFor(
-                                                    itemKey(sub.key, item.id, f.name),
-                                                    item.base[f.name],
-                                                )}
-                                            />
-                                        )),
-                                    )}
-                                </div>
-                            </CollapsibleCard>
-                        );
-                    })}
+                                                        : item.base[f.name] ||
+                                                          sub.label,
+                                                kind: 'input',
+                                            }}
+                                            source={item.base[f.name]}
+                                            register={register}
+                                            targetLabel={LOCALE_LABELS[locale]}
+                                            sourceHidden={locale === 'en'}
+                                            onAiTranslate={aiFillFor(
+                                                itemKey(
+                                                    sub.key,
+                                                    item.id,
+                                                    f.name
+                                                ),
+                                                item.base[f.name]
+                                            )}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </CollapsibleCard>
+                    );
+                })}
             </div>
         </WorkspaceShell>
     );
 }
+

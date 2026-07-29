@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import type { PermissionKey } from '@/lib/config/rbac';
+import { cn } from '@/lib/utils';
 import type { PermissionCatalogGroup } from '@/types/staff';
+import { useMemo } from 'react';
 
 interface PermissionMatrixProps {
     /** Grouped catalog from GET /staff/permission-catalog (ceiling applied). */
@@ -56,12 +56,12 @@ export function PermissionMatrix({
 
     return (
         <div className='space-y-4'>
-            {groups.map((group) => {
+            {groups.map(group => {
                 const togglable = group.permissions.filter(
-                    (p) => !locked.has(p.key),
+                    p => !locked.has(p.key)
                 );
-                const checkedCount = togglable.filter((p) =>
-                    selected.has(p.key),
+                const checkedCount = togglable.filter(p =>
+                    selected.has(p.key)
                 ).length;
                 const groupState: boolean | 'indeterminate' =
                     togglable.length > 0 && checkedCount === togglable.length
@@ -77,37 +77,37 @@ export function PermissionMatrix({
                         <label
                             className={cn(
                                 'flex items-center gap-2.5 border-b border-line px-4 py-2.5',
-                                !disabled && 'cursor-pointer',
+                                !disabled && 'cursor-pointer'
                             )}>
                             <Checkbox
                                 checked={groupState}
                                 disabled={disabled || togglable.length === 0}
-                                onCheckedChange={(v) =>
+                                onCheckedChange={v =>
                                     toggleGroup(group, v === true)
                                 }
                             />
-                            <span className='text-sm font-semibold'>
+                            <span className='text-sm font-medium'>
                                 {group.group}
                             </span>
                             <span className='ml-auto text-xs text-muted-foreground'>
                                 {checkedCount +
-                                    group.permissions.filter((p) =>
-                                        locked.has(p.key),
+                                    group.permissions.filter(p =>
+                                        locked.has(p.key)
                                     ).length}
                                 /{group.permissions.length}
                             </span>
                         </label>
                         <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 p-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3'>
-                            {group.permissions.map((permission) => {
+                            {group.permissions.map(permission => {
                                 const isLocked = locked.has(permission.key);
                                 return (
                                     <Label
                                         key={permission.key}
                                         className={cn(
-                                            'flex items-center gap-2 text-sm font-normal',
+                                            'flex items-center gap-2 text-sm font-light',
                                             isLocked || disabled
                                                 ? 'text-muted-foreground'
-                                                : 'cursor-pointer',
+                                                : 'cursor-pointer'
                                         )}
                                         title={
                                             isLocked
@@ -120,10 +120,10 @@ export function PermissionMatrix({
                                                 selected.has(permission.key)
                                             }
                                             disabled={isLocked || disabled}
-                                            onCheckedChange={(v) =>
+                                            onCheckedChange={v =>
                                                 toggle(
                                                     permission.key,
-                                                    v === true,
+                                                    v === true
                                                 )
                                             }
                                         />
@@ -140,3 +140,4 @@ export function PermissionMatrix({
         </div>
     );
 }
+

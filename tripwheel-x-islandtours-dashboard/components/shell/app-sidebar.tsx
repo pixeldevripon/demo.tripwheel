@@ -3,15 +3,12 @@
 import * as React from 'react';
 import { useMemo } from 'react';
 
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuItem,
@@ -51,7 +48,7 @@ export function AppSidebar({
         const permissions = resolvePermissions(
             userRole,
             userPermissions,
-            ROLE_PERMISSIONS as Record<string, string[]>,
+            ROLE_PERMISSIONS as Record<string, string[]>
         );
         // Shared with the command palette so the two cannot drift.
         return navGroupsForRole(navData, permissions);
@@ -91,12 +88,12 @@ export function AppSidebar({
                 <NavMain groups={filteredNav} />
             </SidebarContent>
 
-    {/*         <SidebarFooter className='border-t border-sidebar-line p-2'>
+            {/*         <SidebarFooter className='border-t border-sidebar-line p-2'>
                 <Link
                     href='/profile'
                     title='Your profile'
                     className='group/identity flex items-center gap-3 rounded-lg border border-transparent p-2 transition-colors duration-fast hover:border-sidebar-line hover:bg-sidebar-accent/60'>
-                    <span className='relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary-subtle text-sm font-semibold text-primary-subtle-content'>
+                    <span className='relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary-subtle text-sm font-medium text-primary-subtle-content'>
                         {userImage ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -109,10 +106,10 @@ export function AppSidebar({
                         )}
                     </span>
                     <span className='min-w-0 flex-1 group-data-[collapsible=icon]:hidden'>
-                        <span className='block truncate text-sm font-semibold text-sidebar-foreground'>
+                        <span className='block truncate text-sm font-medium text-sidebar-foreground'>
                             {userName ?? 'User'}
                         </span>
-                        <span className='block text-2xs font-semibold tracking-caps uppercase text-sidebar-content/70'>
+                        <span className='block text-2xs font-medium tracking-caps uppercase text-sidebar-content/70'>
                             {userRole?.replace(/_/g, ' ') ?? ''}
                         </span>
                     </span>
@@ -125,5 +122,4 @@ export function AppSidebar({
         </Sidebar>
     );
 }
-
 

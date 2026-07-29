@@ -1,6 +1,5 @@
 'use client';
 
-import { HugeiconsIcon } from '@hugeicons/react';
 import {
     Delete02Icon,
     MoreHorizontalIcon,
@@ -8,9 +7,10 @@ import {
     PlusSignIcon,
     Shield01Icon,
 } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 
-import { useMemo, useState } from 'react';
-import { type ColumnDef } from '@tanstack/react-table';
+import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
+import { StatusBadge } from '@/components/common/status-badge';
 import { DataTable } from '@/components/data-table/data-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,14 +20,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { StatusBadge } from '@/components/common/status-badge';
-import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
 import {
     useDeleteDesignation,
     useDesignations,
     usePermissionCatalog,
 } from '@/hooks/staff/use-staff';
 import type { StaffDesignation, StaffScope } from '@/types/staff';
+import { type ColumnDef } from '@tanstack/react-table';
+import { useMemo, useState } from 'react';
 import { DesignationEditSheet } from './designation-edit-sheet';
 import { DesignationSheet } from './designation-sheet';
 
@@ -76,7 +76,7 @@ function buildDesignationColumns({
             header: 'Permissions',
             cell: ({ row }) => (
                 <span className='text-xs text-muted-foreground'>
-                    <span className='font-semibold text-content'>
+                    <span className='font-medium text-content'>
                         {row.original.permissions.length}
                     </span>
                     /{totalGrantable || '?'}
@@ -89,7 +89,7 @@ function buildDesignationColumns({
             header: 'Members',
             cell: ({ row }) => (
                 <span className='text-xs text-muted-foreground'>
-                    <span className='font-semibold text-content'>
+                    <span className='font-medium text-content'>
                         {row.original.memberCount}
                     </span>{' '}
                     member{row.original.memberCount === 1 ? '' : 's'}
@@ -104,14 +104,13 @@ function buildDesignationColumns({
                 const designation = row.original;
                 return (
                     // Rows open the detail sheet; keep menu clicks out of that.
-                    <div onClick={(e) => e.stopPropagation()}>
+                    <div onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant='ghost'
                                     size='icon'
-                                    className='size-8'
-                                >
+                                    className='size-8'>
                                     <HugeiconsIcon icon={MoreHorizontalIcon} />
                                     <span className='sr-only'>
                                         Designation actions
@@ -120,8 +119,7 @@ function buildDesignationColumns({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align='end'>
                                 <DropdownMenuItem
-                                    onClick={() => onEdit(designation)}
-                                >
+                                    onClick={() => onEdit(designation)}>
                                     <HugeiconsIcon icon={PencilEdit02Icon} />
                                     Edit
                                 </DropdownMenuItem>
@@ -135,8 +133,7 @@ function buildDesignationColumns({
                                             }
                                             onClick={() =>
                                                 onDelete(designation)
-                                            }
-                                        >
+                                            }>
                                             <HugeiconsIcon
                                                 icon={Delete02Icon}
                                             />
@@ -189,13 +186,13 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
         () =>
             buildDesignationColumns({
                 totalGrantable,
-                onEdit: (designation) => {
+                onEdit: designation => {
                     setEditing(designation);
                     setDialogOpen(true);
                 },
                 onDelete: setRemoving,
             }),
-        [totalGrantable],
+        [totalGrantable]
     );
 
     return (
@@ -217,7 +214,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
                 isLoading={isLoading}
                 skeletonRows={3}
                 onRowClick={(d: StaffDesignation) =>
-                    setViewIndex(rows.findIndex((r) => r.id === d.id))
+                    setViewIndex(rows.findIndex(r => r.id === d.id))
                 }
                 empty={{
                     icon: Shield01Icon,
@@ -236,7 +233,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
             <DesignationSheet
                 scope={scope}
                 designation={viewing}
-                onOpenChange={(open) => {
+                onOpenChange={open => {
                     if (!open) setViewIndex(null);
                 }}
                 onPrev={
@@ -265,7 +262,7 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
 
             <ForceDeleteDialog
                 open={removing !== null}
-                onOpenChange={(open) => {
+                onOpenChange={open => {
                     if (!open) setRemoving(null);
                 }}
                 title='Delete designation'
@@ -277,10 +274,11 @@ export function DesignationsTab({ scope }: { scope: StaffScope }) {
                     if (!removing) return;
                     deleteDesignation(
                         { id: removing.id },
-                        { onSuccess: () => setRemoving(null) },
+                        { onSuccess: () => setRemoving(null) }
                     );
                 }}
             />
         </div>
     );
 }
+

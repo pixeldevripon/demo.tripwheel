@@ -1,6 +1,7 @@
 'use client';
 
 import { EntityTabs } from '@/components/common/entity-tabs';
+import { CustomScriptsForm } from './custom-scripts-form';
 import { InstagramForm } from './instagram-form';
 import { IntegrationsForm } from './integrations-form';
 import { PaymentsForm } from './payments-form';
@@ -39,6 +40,13 @@ import { SocialMediaForm } from './social-media-form';
  * up, so leaving it would have made the new tab unreachable by URL. Legacy
  * `?tab=reviews` links still land on the platform-reviews form they were
  * written for - it just has a tab of its own now.
+ *
+ * `scripts` sits directly after SEO rather than folded into it. It emits into
+ * the same place SEO does (the public head and body), so that is its nearest
+ * neighbour and where an admin already goes looking for the GTM field - but it
+ * is the one surface here that executes ARBITRARY THIRD-PARTY CODE on every
+ * page including checkout, and a thing you audit should not be a card you have
+ * to scroll to find.
  */
 export function AdminSettings() {
   return (
@@ -63,6 +71,11 @@ export function AdminSettings() {
           ),
         },
         { value: 'seo', label: 'SEO', content: <SeoForm /> },
+        {
+          value: 'scripts',
+          label: 'Scripts',
+          content: <CustomScriptsForm />,
+        },
         { value: 'instagram', label: 'Instagram', content: <InstagramForm /> },
         { value: 'payments', label: 'Payments', content: <PaymentsForm /> },
         {

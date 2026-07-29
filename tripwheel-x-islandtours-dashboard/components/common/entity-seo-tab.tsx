@@ -28,12 +28,7 @@ import { z } from 'zod';
 
 import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,7 +138,7 @@ function SerpPreview({
 }) {
     return (
         <div className='space-y-1 rounded-md border border-line bg-surface-sunken/60 px-4 py-3'>
-            <p className='text-xs font-semibold text-content-muted'>
+            <p className='text-xs font-medium text-content-muted'>
                 Search preview
             </p>
             <p className='truncate text-sm text-success-fg'>
@@ -170,10 +165,15 @@ interface EntitySeoViewProps {
     /** EN overview fallback from the entity record itself. */
     overviewFallback: string;
     config: SeoConfig;
-    content: { metaTitle: string | null; metaDescription: string | null } | undefined;
+    content:
+        | { metaTitle: string | null; metaDescription: string | null }
+        | undefined;
     contentLoading: boolean;
     translation: { name?: string | null; overview?: string | null } | undefined;
-    onSaveMeta: (v: { metaTitle: string | null; metaDescription: string | null }) => void;
+    onSaveMeta: (v: {
+        metaTitle: string | null;
+        metaDescription: string | null;
+    }) => void;
     metaSaving: boolean;
     onSaveOg: (ogImage: string | null) => void;
     ogSaving: boolean;
@@ -215,11 +215,11 @@ function EntitySeoView({
 
     const suggestedTitle = truncate(
         collapse(config.suggestTitle(localizedName)),
-        META_TITLE_MAX,
+        META_TITLE_MAX
     );
     const suggestedDescription = truncate(
         collapse(localizedOverview),
-        META_DESC_MAX,
+        META_DESC_MAX
     );
 
     useEffect(() => {
@@ -243,14 +243,14 @@ function EntitySeoView({
         <div className='space-y-6'>
             <Card>
                 <CardHeader className='border-b pb-4'>
-                    <CardTitle className='text-lg font-semibold'>
+                    <CardTitle className='text-lg font-medium'>
                         Search Engine Listing
                     </CardTitle>
                 </CardHeader>
                 <CardContent className='pt-6'>
                     <div className='mb-6 space-y-0.5 rounded-md bg-surface-sunken px-3 py-2 text-xs text-content-muted'>
                         <p>
-                            <span className='font-semibold text-content'>
+                            <span className='font-medium text-content'>
                                 Meta title and description are per-locale.
                             </span>{' '}
                             {config.metaSourceNote ??
@@ -272,7 +272,7 @@ function EntitySeoView({
                                 onSaveMeta({
                                     metaTitle: v.metaTitle || null,
                                     metaDescription: v.metaDescription || null,
-                                }),
+                                })
                             )}
                             className='space-y-6'>
                             <SerpPreview
@@ -286,7 +286,10 @@ function EntitySeoView({
                             <Field>
                                 <div className='flex items-center justify-between'>
                                     <Label>Meta Title</Label>
-                                    <CharCount value={metaTitle} max={META_TITLE_MAX} />
+                                    <CharCount
+                                        value={metaTitle}
+                                        max={META_TITLE_MAX}
+                                    />
                                 </div>
                                 <Input
                                     {...register('metaTitle')}
@@ -301,15 +304,19 @@ function EntitySeoView({
                                     <button
                                         type='button'
                                         onClick={() =>
-                                            setValue('metaTitle', suggestedTitle, {
-                                                shouldDirty: true,
-                                            })
+                                            setValue(
+                                                'metaTitle',
+                                                suggestedTitle,
+                                                { shouldDirty: true }
+                                            )
                                         }
-                                        className='shrink-0 text-xs font-semibold text-primary hover:underline'>
+                                        className='shrink-0 text-xs font-medium text-primary hover:underline'>
                                         Regenerate
                                     </button>
                                 </div>
-                                <FieldError>{errors.metaTitle?.message}</FieldError>
+                                <FieldError>
+                                    {errors.metaTitle?.message}
+                                </FieldError>
                             </Field>
 
                             <Field>
@@ -337,10 +344,10 @@ function EntitySeoView({
                                             setValue(
                                                 'metaDescription',
                                                 suggestedDescription,
-                                                { shouldDirty: true },
+                                                { shouldDirty: true }
                                             )
                                         }
-                                        className='shrink-0 text-xs font-semibold text-primary hover:underline'>
+                                        className='shrink-0 text-xs font-medium text-primary hover:underline'>
                                         Regenerate
                                     </button>
                                 </div>
@@ -350,7 +357,10 @@ function EntitySeoView({
                             </Field>
 
                             <div className='flex justify-end pt-2'>
-                                <Button type='submit' size='sm' disabled={metaSaving}>
+                                <Button
+                                    type='submit'
+                                    size='sm'
+                                    disabled={metaSaving}>
                                     {metaSaving ? 'Saving...' : 'Save SEO'}
                                 </Button>
                             </div>
@@ -372,14 +382,14 @@ function EntitySeoView({
 
             <Card>
                 <CardHeader className='border-b pb-4'>
-                    <CardTitle className='text-lg font-semibold'>
+                    <CardTitle className='text-lg font-medium'>
                         Social Sharing
                     </CardTitle>
                 </CardHeader>
                 <CardContent className='pt-6'>
                     <form
                         onSubmit={socialForm.handleSubmit(v =>
-                            onSaveOg(v.ogImage || null),
+                            onSaveOg(v.ogImage || null)
                         )}
                         className='space-y-6'>
                         <Field>
@@ -390,7 +400,9 @@ function EntitySeoView({
                                 render={({ field }) => (
                                     <ImageSelectorField
                                         value={field.value || null}
-                                        onChange={url => field.onChange(url ?? '')}
+                                        onChange={url =>
+                                            field.onChange(url ?? '')
+                                        }
                                     />
                                 )}
                             />
@@ -421,9 +433,19 @@ const saveToasts = (label: string) => ({
         toast.error(err instanceof Error ? err.message : 'Failed to save.'),
 });
 
-export function DestinationSeoTab({ destination }: { destination: DestinationDetail }) {
-    const { data: content, isLoading } = useDestinationPageContent(destination.id, 'en');
-    const { data: translation } = useDestinationTranslationByLocale(destination.id, 'en');
+export function DestinationSeoTab({
+    destination,
+}: {
+    destination: DestinationDetail;
+}) {
+    const { data: content, isLoading } = useDestinationPageContent(
+        destination.id,
+        'en'
+    );
+    const { data: translation } = useDestinationTranslationByLocale(
+        destination.id,
+        'en'
+    );
     const upsert = useUpsertDestinationPageContent();
     const update = useUpdateDestination();
 
@@ -447,14 +469,14 @@ export function DestinationSeoTab({ destination }: { destination: DestinationDet
             onSaveMeta={v =>
                 upsert.mutate(
                     { id: destination.id, locale: 'en', payload: v },
-                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`),
+                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`)
                 )
             }
             metaSaving={upsert.isPending}
             onSaveOg={ogImage =>
                 update.mutate(
                     { id: destination.id, payload: { ogImage } },
-                    saveToasts('Social share image saved.'),
+                    saveToasts('Social share image saved.')
                 )
             }
             ogSaving={update.isPending}
@@ -463,8 +485,14 @@ export function DestinationSeoTab({ destination }: { destination: DestinationDet
 }
 
 export function CategorySeoTab({ category }: { category: CategoryDetail }) {
-    const { data: content, isLoading } = useCategoryPageContent(category.id, 'en');
-    const { data: translation } = useCategoryTranslationByLocale(category.id, 'en');
+    const { data: content, isLoading } = useCategoryPageContent(
+        category.id,
+        'en'
+    );
+    const { data: translation } = useCategoryTranslationByLocale(
+        category.id,
+        'en'
+    );
     const upsert = useUpsertCategoryPageContent();
     const update = useUpdateCategory();
 
@@ -488,14 +516,14 @@ export function CategorySeoTab({ category }: { category: CategoryDetail }) {
             onSaveMeta={v =>
                 upsert.mutate(
                     { id: category.id, locale: 'en', payload: v },
-                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`),
+                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`)
                 )
             }
             metaSaving={upsert.isPending}
             onSaveOg={ogImage =>
                 update.mutate(
                     { id: category.id, payload: { ogImage } },
-                    saveToasts('Social share image saved.'),
+                    saveToasts('Social share image saved.')
                 )
             }
             ogSaving={update.isPending}
@@ -529,14 +557,14 @@ export function HubSeoTab({ hub }: { hub: HubDetail }) {
             onSaveMeta={v =>
                 upsert.mutate(
                     { id: hub.id, locale: 'en', payload: v },
-                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`),
+                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`)
                 )
             }
             metaSaving={upsert.isPending}
             onSaveOg={ogImage =>
                 update.mutate(
                     { id: hub.id, payload: { ogImage } },
-                    saveToasts('Social share image saved.'),
+                    saveToasts('Social share image saved.')
                 )
             }
             ogSaving={update.isPending}
@@ -579,7 +607,9 @@ export function HomepageSeoTab({ content }: { content: HomePageContent }) {
                 crumb: () => 'islandtours.com',
                 suggestTitle: n =>
                     siteSeo?.metaTitle ||
-                    (siteInfo?.siteTagline ? `${n} - ${siteInfo.siteTagline}` : n),
+                    (siteInfo?.siteTagline
+                        ? `${n} - ${siteInfo.siteTagline}`
+                        : n),
                 fallbackTitle: n => siteSeo?.metaTitle || n,
                 nameNoun: 'site-wide defaults in Settings',
                 metaSourceNote:
@@ -593,12 +623,15 @@ export function HomepageSeoTab({ content }: { content: HomePageContent }) {
             onSaveMeta={v =>
                 upsert.mutate(
                     { locale: 'en', payload: { fields: v } },
-                    saveToasts('Homepage SEO saved.'),
+                    saveToasts('Homepage SEO saved.')
                 )
             }
             metaSaving={upsert.isPending}
             onSaveOg={ogImage =>
-                update.mutate({ ogImage }, saveToasts('Social share image saved.'))
+                update.mutate(
+                    { ogImage },
+                    saveToasts('Social share image saved.')
+                )
             }
             ogSaving={update.isPending}
         />
@@ -606,8 +639,14 @@ export function HomepageSeoTab({ content }: { content: HomePageContent }) {
 }
 
 export function CollectionSeoTab({ collection }: { collection: Collection }) {
-    const { data: content, isLoading } = useCollectionPageContent(collection.id, 'en');
-    const { data: translation } = useCollectionTranslationByLocale(collection.id, 'en');
+    const { data: content, isLoading } = useCollectionPageContent(
+        collection.id,
+        'en'
+    );
+    const { data: translation } = useCollectionTranslationByLocale(
+        collection.id,
+        'en'
+    );
     const upsert = useUpsertCollectionPageContent();
     const update = useUpdateCollection();
 
@@ -633,17 +672,18 @@ export function CollectionSeoTab({ collection }: { collection: Collection }) {
             onSaveMeta={v =>
                 upsert.mutate(
                     { id: collection.id, locale: 'en', payload: v },
-                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`),
+                    saveToasts(`${LOCALE_LABELS.en} SEO saved.`)
                 )
             }
             metaSaving={upsert.isPending}
             onSaveOg={ogImage =>
                 update.mutate(
                     { id: collection.id, payload: { ogImage } },
-                    saveToasts('Social share image saved.'),
+                    saveToasts('Social share image saved.')
                 )
             }
             ogSaving={update.isPending}
         />
     );
 }
+

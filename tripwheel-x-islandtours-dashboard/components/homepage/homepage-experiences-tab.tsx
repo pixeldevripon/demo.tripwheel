@@ -1,15 +1,15 @@
 'use client';
 
 import {
-  Alert02Icon,
-  ArrowDown02Icon,
-  ArrowUp02Icon,
-  Cancel01Icon,
-  Image02Icon,
-  ImageAdd02Icon,
-  PencilEdit02Icon,
-  PlayIcon,
-  PlusSignIcon,
+    Alert02Icon,
+    ArrowDown02Icon,
+    ArrowUp02Icon,
+    Cancel01Icon,
+    Image02Icon,
+    ImageAdd02Icon,
+    PencilEdit02Icon,
+    PlayIcon,
+    PlusSignIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { useEffect, useState } from 'react';
@@ -19,59 +19,56 @@ import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { StatusBadge } from '@/components/common/status-badge';
 import { VideoSelectorField } from '@/components/common/video-selector-field';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Field, FieldDescription } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import {
-  useCreateFeaturedExperience,
-  useDeleteFeaturedExperience,
-  useFeaturedExperiences,
-  useReorderFeaturedExperiences,
-  useUpdateFeaturedExperience,
+    useCreateFeaturedExperience,
+    useDeleteFeaturedExperience,
+    useFeaturedExperiences,
+    useReorderFeaturedExperiences,
+    useUpdateFeaturedExperience,
 } from '@/hooks/home-page/use-home-page';
 import { useHubs } from '@/hooks/hubs/use-hubs';
 import {
-  MIN_CURATED_EXPERIENCES,
-  RECOMMENDED_MAX_EXPERIENCES,
+    MIN_CURATED_EXPERIENCES,
+    RECOMMENDED_MAX_EXPERIENCES,
 } from '@/lib/home-page/defaults';
-import type {
-  FeaturedEntityType,
-  FeaturedExperience,
-} from '@/types/home-page';
+import type { FeaturedEntityType, FeaturedExperience } from '@/types/home-page';
 
 /**
  * Top Island Experiences - the only homepage tab that is curation rather than
@@ -81,7 +78,7 @@ import type {
  * with the rest of the page's words; this tab is only the deck.
  */
 export function HomepageExperiencesTab() {
-  return <ExperiencesCurationCard />;
+    return <ExperiencesCurationCard />;
 }
 
 /**
@@ -104,233 +101,249 @@ export function HomepageExperiencesTab() {
  *    on the homepage.
  */
 function ExperiencesCurationCard() {
-  const { data: experiences = [], isLoading } = useFeaturedExperiences();
-  const create = useCreateFeaturedExperience();
-  const update = useUpdateFeaturedExperience();
-  const reorder = useReorderFeaturedExperiences();
-  const remove = useDeleteFeaturedExperience();
+    const { data: experiences = [], isLoading } = useFeaturedExperiences();
+    const create = useCreateFeaturedExperience();
+    const update = useUpdateFeaturedExperience();
+    const reorder = useReorderFeaturedExperiences();
+    const remove = useDeleteFeaturedExperience();
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [editing, setEditing] = useState<FeaturedExperience | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<FeaturedExperience | null>(
-    null,
-  );
+    const [addOpen, setAddOpen] = useState(false);
+    const [editing, setEditing] = useState<FeaturedExperience | null>(null);
+    const [pendingDelete, setPendingDelete] =
+        useState<FeaturedExperience | null>(null);
 
-  // The grid order IS the carousel order; the arrows act on this sorted view.
-  const ordered = [...experiences].sort(
-    (a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id),
-  );
-  /*
-   * Cards that can actually REACH the homepage, not just rows switched on.
-   * The site drops a card whose target was deleted or that has no photo at
-   * all, and the "needs 3 to count" rule is applied to what survives - so
-   * counting raw active rows would report 3 live while the site quietly showed
-   * its bundled deck. The one gate this cannot see is "has a live tour", which
-   * only the backend knows; the picker copy says so.
-   */
-  const showingCount = ordered.filter(
-    e => e.isActive && e.entityName !== null && (e.posterUrl || e.entityImage),
-  ).length;
-  const isBusy = update.isPending || reorder.isPending;
-
-  function handleMove(index: number, direction: 'up' | 'down') {
-    const target = direction === 'up' ? index - 1 : index + 1;
-    if (target < 0 || target >= ordered.length) return;
-
-    const next = [...ordered];
-    [next[index], next[target]] = [next[target], next[index]];
-
-    reorder.mutate(next, {
-      onError: err =>
-        toast.error(
-          err instanceof Error ? err.message : 'Failed to reorder the cards.',
-        ),
-    });
-  }
-
-
-  function handleSaveMedia(payload: {
-    posterUrl: string | null;
-    videoUrl: string | null;
-    isLink: boolean;
-  }) {
-    if (!editing) return;
-    update.mutate(
-      { id: editing.id, payload },
-      {
-        onSuccess: () => {
-          toast.success('Card updated.');
-          setEditing(null);
-        },
-        onError: err =>
-          toast.error(
-            err instanceof Error ? err.message : 'Failed to save the media.',
-          ),
-      },
+    // The grid order IS the carousel order; the arrows act on this sorted view.
+    const ordered = [...experiences].sort(
+        (a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id)
     );
-  }
+    /*
+     * Cards that can actually REACH the homepage, not just rows switched on.
+     * The site drops a card whose target was deleted or that has no photo at
+     * all, and the "needs 3 to count" rule is applied to what survives - so
+     * counting raw active rows would report 3 live while the site quietly showed
+     * its bundled deck. The one gate this cannot see is "has a live tour", which
+     * only the backend knows; the picker copy says so.
+     */
+    const showingCount = ordered.filter(
+        e =>
+            e.isActive &&
+            e.entityName !== null &&
+            (e.posterUrl || e.entityImage)
+    ).length;
+    const isBusy = update.isPending || reorder.isPending;
 
-  return (
-    <Card>
-      <CardHeader className='border-b pb-4'>
-        <div className='flex flex-wrap items-start justify-between gap-3'>
-          <div>
-            <div className='flex flex-wrap items-center gap-3'>
-              <CardTitle className='text-lg font-semibold'>
-                Featured Cards
-              </CardTitle>
-              {!isLoading && ordered.length > 0 && (
-                <Badge variant='secondary'>
-                  {showingCount} showing of {ordered.length}
-                </Badge>
-              )}
-            </div>
-            <CardDescription>
-              Categories and hubs only - individual tours are never featured
-              here. Each card links to that page and takes its title from it, so
-              the two can never disagree.
-            </CardDescription>
-          </div>
-          <Button
-            size='sm'
-            onClick={() => setAddOpen(true)}
-            disabled={create.isPending}>
-            <HugeiconsIcon icon={PlusSignIcon} className='size-3.5' />
-            Feature a page
-          </Button>
-        </div>
-      </CardHeader>
+    function handleMove(index: number, direction: 'up' | 'down') {
+        const target = direction === 'up' ? index - 1 : index + 1;
+        if (target < 0 || target >= ordered.length) return;
 
-      <CardContent className='space-y-6 pt-6'>
-        {isLoading ? (
-          <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className='aspect-[3/4] w-full rounded-md' />
-            ))}
-          </div>
-        ) : (
-          <>
-            <CurationNotice count={showingCount} />
+        const next = [...ordered];
+        [next[index], next[target]] = [next[target], next[index]];
 
-            {ordered.length === 0 ? (
-              <div className='flex flex-col items-center gap-2 rounded-md border border-dashed border-line py-16 text-content-muted'>
-                <HugeiconsIcon
-                  icon={Image02Icon}
-                  className='size-10 opacity-30'
-                />
-                <p className='text-sm'>
-                  Nothing featured yet - the homepage is showing its built-in
-                  cards.
-                </p>
-                <Button
-                  size='sm'
-                  variant='outline'
-                  onClick={() => setAddOpen(true)}>
-                  Feature a page
-                </Button>
-              </div>
-            ) : (
-              <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
-                {ordered.map((exp, index) => (
-                  <ExperienceCard
-                    key={exp.id}
-                    experience={exp}
-                    index={index}
-                    total={ordered.length}
-                    disabled={isBusy}
-                    onMove={handleMove}
-                    onEdit={() => setEditing(exp)}
-                    onDelete={() => setPendingDelete(exp)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-
-      <AddExperienceDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        isPending={create.isPending}
-        onAdd={(entityType, entityId) =>
-          create.mutate(
-            { entityType, entityId, displayOrder: ordered.length },
-            {
-              onSuccess: () => {
-                toast.success('Added to the homepage.');
-                setAddOpen(false);
-              },
-              // 409 when this entity is already featured at the same scope -
-              // surfaced rather than silently duplicating.
-              onError: err =>
+        reorder.mutate(next, {
+            onError: err =>
                 toast.error(
-                  err instanceof Error ? err.message : 'Could not feature that.',
+                    err instanceof Error
+                        ? err.message
+                        : 'Failed to reorder the cards.'
                 ),
-            },
-          )
-        }
-      />
+        });
+    }
 
-      <CardMediaDialog
-        experience={editing}
-        isSaving={update.isPending}
-        onOpenChange={open => !open && setEditing(null)}
-        onSave={handleSaveMedia}
-      />
+    function handleSaveMedia(payload: {
+        posterUrl: string | null;
+        videoUrl: string | null;
+        isLink: boolean;
+    }) {
+        if (!editing) return;
+        update.mutate(
+            { id: editing.id, payload },
+            {
+                onSuccess: () => {
+                    toast.success('Card updated.');
+                    setEditing(null);
+                },
+                onError: err =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to save the media.'
+                    ),
+            }
+        );
+    }
 
-      <AlertDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={open => !open && setPendingDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this card?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDelete?.entityName ?? 'This card'} stops appearing on the
-              homepage. The category or hub itself is not affected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingDelete) remove.mutate(pendingDelete.id);
-                setPendingDelete(null);
-              }}>
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
-  );
+    return (
+        <Card>
+            <CardHeader className='border-b pb-4'>
+                <div className='flex flex-wrap items-start justify-between gap-3'>
+                    <div>
+                        <div className='flex flex-wrap items-center gap-3'>
+                            <CardTitle className='text-lg font-medium'>
+                                Featured Cards
+                            </CardTitle>
+                            {!isLoading && ordered.length > 0 && (
+                                <Badge variant='secondary'>
+                                    {showingCount} showing of {ordered.length}
+                                </Badge>
+                            )}
+                        </div>
+                        <CardDescription>
+                            Categories and hubs only - individual tours are
+                            never featured here. Each card links to that page
+                            and takes its title from it, so the two can never
+                            disagree.
+                        </CardDescription>
+                    </div>
+                    <Button
+                        size='sm'
+                        onClick={() => setAddOpen(true)}
+                        disabled={create.isPending}>
+                        <HugeiconsIcon
+                            icon={PlusSignIcon}
+                            className='size-3.5'
+                        />
+                        Feature a page
+                    </Button>
+                </div>
+            </CardHeader>
+
+            <CardContent className='space-y-6 pt-6'>
+                {isLoading ? (
+                    <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <Skeleton
+                                key={i}
+                                className='aspect-[3/4] w-full rounded-md'
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <>
+                        <CurationNotice count={showingCount} />
+
+                        {ordered.length === 0 ? (
+                            <div className='flex flex-col items-center gap-2 rounded-md border border-dashed border-line py-16 text-content-muted'>
+                                <HugeiconsIcon
+                                    icon={Image02Icon}
+                                    className='size-10 opacity-30'
+                                />
+                                <p className='text-sm'>
+                                    Nothing featured yet - the homepage is
+                                    showing its built-in cards.
+                                </p>
+                                <Button
+                                    size='sm'
+                                    variant='outline'
+                                    onClick={() => setAddOpen(true)}>
+                                    Feature a page
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className='grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4'>
+                                {ordered.map((exp, index) => (
+                                    <ExperienceCard
+                                        key={exp.id}
+                                        experience={exp}
+                                        index={index}
+                                        total={ordered.length}
+                                        disabled={isBusy}
+                                        onMove={handleMove}
+                                        onEdit={() => setEditing(exp)}
+                                        onDelete={() => setPendingDelete(exp)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </CardContent>
+
+            <AddExperienceDialog
+                open={addOpen}
+                onOpenChange={setAddOpen}
+                isPending={create.isPending}
+                onAdd={(entityType, entityId) =>
+                    create.mutate(
+                        { entityType, entityId, displayOrder: ordered.length },
+                        {
+                            onSuccess: () => {
+                                toast.success('Added to the homepage.');
+                                setAddOpen(false);
+                            },
+                            // 409 when this entity is already featured at the same scope -
+                            // surfaced rather than silently duplicating.
+                            onError: err =>
+                                toast.error(
+                                    err instanceof Error
+                                        ? err.message
+                                        : 'Could not feature that.'
+                                ),
+                        }
+                    )
+                }
+            />
+
+            <CardMediaDialog
+                experience={editing}
+                isSaving={update.isPending}
+                onOpenChange={open => !open && setEditing(null)}
+                onSave={handleSaveMedia}
+            />
+
+            <AlertDialog
+                open={Boolean(pendingDelete)}
+                onOpenChange={open => !open && setPendingDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this card?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {pendingDelete?.entityName ?? 'This card'} stops
+                            appearing on the homepage. The category or hub
+                            itself is not affected.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Keep it</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (pendingDelete)
+                                    remove.mutate(pendingDelete.id);
+                                setPendingDelete(null);
+                            }}>
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </Card>
+    );
 }
 
 /** States plainly what the current card count means for the live homepage. */
 function CurationNotice({ count }: { count: number }) {
-  if (count === 0) return null;
+    if (count === 0) return null;
 
-  if (count < MIN_CURATED_EXPERIENCES) {
-    return (
-      <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
-        The homepage needs at least {MIN_CURATED_EXPERIENCES} live cards before
-        it uses your selection - below that it keeps its built-in deck, so these{' '}
-        {count} are not showing yet.
-      </p>
-    );
-  }
+    if (count < MIN_CURATED_EXPERIENCES) {
+        return (
+            <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
+                The homepage needs at least {MIN_CURATED_EXPERIENCES} live cards
+                before it uses your selection - below that it keeps its built-in
+                deck, so these {count} are not showing yet.
+            </p>
+        );
+    }
 
-  if (count > RECOMMENDED_MAX_EXPERIENCES) {
-    return (
-      <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
-        {count} active cards. The carousel is designed around{' '}
-        {RECOMMENDED_MAX_EXPERIENCES} - beyond that the dot row crowds and only
-        the first eight ever render.
-      </p>
-    );
-  }
+    if (count > RECOMMENDED_MAX_EXPERIENCES) {
+        return (
+            <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
+                {count} active cards. The carousel is designed around{' '}
+                {RECOMMENDED_MAX_EXPERIENCES} - beyond that the dot row crowds
+                and only the first eight ever render.
+            </p>
+        );
+    }
 
-  return null;
+    return null;
 }
 
 /**
@@ -339,138 +352,144 @@ function CurationNotice({ count }: { count: number }) {
  * (and on focus, so they are reachable from the keyboard).
  */
 function ExperienceCard({
-  experience,
-  index,
-  total,
-  disabled,
-  onMove,
-  onEdit,
-  onDelete,
+    experience,
+    index,
+    total,
+    disabled,
+    onMove,
+    onEdit,
+    onDelete,
 }: {
-  experience: FeaturedExperience;
-  index: number;
-  total: number;
-  disabled: boolean;
-  onMove: (index: number, direction: 'up' | 'down') => void;
-  onEdit: () => void;
-  onDelete: () => void;
+    experience: FeaturedExperience;
+    index: number;
+    total: number;
+    disabled: boolean;
+    onMove: (index: number, direction: 'up' | 'down') => void;
+    onEdit: () => void;
+    onDelete: () => void;
 }) {
-  const missing = experience.entityName === null;
-  // Only the card's OWN poster is previewed here - see the placeholder below.
-  const poster = experience.posterUrl;
+    const missing = experience.entityName === null;
+    // Only the card's OWN poster is previewed here - see the placeholder below.
+    const poster = experience.posterUrl;
 
-  return (
-    <div className='group relative overflow-hidden rounded-md border border-line bg-surface-raised focus-within:ring-2 focus-within:ring-ring/30'>
-      <div className='relative aspect-[3/4] bg-surface-inset'>
-        {/*
-         * The whole surface opens the media dialog - the poster IS the thing
-         * you click a card to change. It is a sibling of the control buttons,
-         * never their parent: a button inside a button is invalid and the
-         * inner one stops working.
-         */}
-        <button
-          type='button'
-          onClick={onEdit}
-          disabled={disabled}
-          aria-label={`Poster and video for ${experience.entityName ?? 'this card'}`}
-          className='absolute inset-0 cursor-pointer disabled:cursor-not-allowed'>
-          {poster ? (
-            // Cloudinary URLs on an admin-only screen: next/image would buy
-            // nothing here and its config is the public site's concern.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={poster}
-              alt=''
-              className={
-                experience.isActive
-                  ? 'size-full object-cover'
-                  : 'size-full object-cover opacity-40 grayscale'
-              }
-            />
-          ) : (
-            /*
-             * No poster of its own. The card DOES render (it inherits the
-             * linked page's photo), but showing that photo here would say
-             * "this card is done" - so the slot asks for the media it is
-             * missing instead, and says what the site is doing meanwhile.
-             */
-            <span className='flex size-full flex-col items-center justify-center gap-2 border border-dashed border-line p-3 text-center transition-colors hover:border-primary/60 hover:bg-primary/2'>
-              <span className='flex size-10 items-center justify-center rounded-full bg-muted'>
-                <HugeiconsIcon
-                  icon={ImageAdd02Icon}
-                  className='size-5 text-content-muted'
-                />
-              </span>
-              <span className='text-xs font-semibold'>
-                Add poster and video
-              </span>
-              <span
-                className={
-                  experience.entityImage
-                    ? 'text-xs text-content-muted'
-                    : 'text-xs font-medium text-danger-fg'
-                }>
-                {experience.entityImage
-                  ? 'Using the linked page’s photo for now'
-                  : 'Not showing - this page has no photo either'}
-              </span>
-            </span>
-          )}
-        </button>
+    return (
+        <div className='group relative overflow-hidden rounded-md border border-line bg-surface-raised focus-within:ring-2 focus-within:ring-ring/30'>
+            <div className='relative aspect-[3/4] bg-surface-inset'>
+                {/*
+                 * The whole surface opens the media dialog - the poster IS the thing
+                 * you click a card to change. It is a sibling of the control buttons,
+                 * never their parent: a button inside a button is invalid and the
+                 * inner one stops working.
+                 */}
+                <button
+                    type='button'
+                    onClick={onEdit}
+                    disabled={disabled}
+                    aria-label={`Poster and video for ${experience.entityName ?? 'this card'}`}
+                    className='absolute inset-0 cursor-pointer disabled:cursor-not-allowed'>
+                    {poster ? (
+                        // Cloudinary URLs on an admin-only screen: next/image would buy
+                        // nothing here and its config is the public site's concern.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                            src={poster}
+                            alt=''
+                            className={
+                                experience.isActive
+                                    ? 'size-full object-cover'
+                                    : 'size-full object-cover opacity-40 grayscale'
+                            }
+                        />
+                    ) : (
+                        /*
+                         * No poster of its own. The card DOES render (it inherits the
+                         * linked page's photo), but showing that photo here would say
+                         * "this card is done" - so the slot asks for the media it is
+                         * missing instead, and says what the site is doing meanwhile.
+                         */
+                        <span className='flex size-full flex-col items-center justify-center gap-2 border border-dashed border-line p-3 text-center transition-colors hover:border-primary/60 hover:bg-primary/2'>
+                            <span className='flex size-10 items-center justify-center rounded-full bg-muted'>
+                                <HugeiconsIcon
+                                    icon={ImageAdd02Icon}
+                                    className='size-5 text-content-muted'
+                                />
+                            </span>
+                            <span className='text-xs font-medium'>
+                                Add poster and video
+                            </span>
+                            <span
+                                className={
+                                    experience.entityImage
+                                        ? 'text-xs text-content-muted'
+                                        : 'text-xs font-medium text-danger-fg'
+                                }>
+                                {experience.entityImage
+                                    ? 'Using the linked page’s photo for now'
+                                    : 'Not showing - this page has no photo either'}
+                            </span>
+                        </span>
+                    )}
+                </button>
 
-        {/* Position, always visible: the number IS the carousel order. */}
-        <span className='pointer-events-none absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums'>
-          {index + 1}
-        </span>
+                {/* Position, always visible: the number IS the carousel order. */}
+                <span className='pointer-events-none absolute left-2 top-2 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 tabular-nums'>
+                    {index + 1}
+                </span>
 
-        {experience.videoUrl && (
-          // Fades on hover: the action buttons take this corner.
-          <span className='pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 transition-opacity group-focus-within:opacity-0 group-hover:opacity-0'>
-            <HugeiconsIcon icon={PlayIcon} className='size-3' />
-            Video
-          </span>
-        )}
+                {experience.videoUrl && (
+                    // Fades on hover: the action buttons take this corner.
+                    <span className='pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-n-1000/70 px-2 py-0.5 text-2xs font-medium text-n-0 transition-opacity group-focus-within:opacity-0 group-hover:opacity-0'>
+                        <HugeiconsIcon icon={PlayIcon} className='size-3' />
+                        Video
+                    </span>
+                )}
 
-        {!experience.isActive && (
-          <span className='pointer-events-none absolute inset-x-2 bottom-2 rounded-md bg-n-1000/70 px-2 py-1 text-center text-2xs font-medium text-n-0'>
-            Hidden from the homepage
-          </span>
-        )}
+                {!experience.isActive && (
+                    <span className='pointer-events-none absolute inset-x-2 bottom-2 rounded-md bg-n-1000/70 px-2 py-1 text-center text-2xs font-medium text-n-0'>
+                        Hidden from the homepage
+                    </span>
+                )}
 
-        {/* Reorder (bottom-left on hover), matching the tour-images tab. */}
-        <div className='absolute bottom-2 left-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
-          <Button
-            size='icon-sm'
-            variant='secondary'
-            onClick={() => onMove(index, 'up')}
-            disabled={disabled || index === 0}
-            title='Move earlier'>
-            <HugeiconsIcon icon={ArrowUp02Icon} className='size-3' />
-          </Button>
-          <Button
-            size='icon-sm'
-            variant='secondary'
-            onClick={() => onMove(index, 'down')}
-            disabled={disabled || index === total - 1}
-            title='Move later'>
-            <HugeiconsIcon icon={ArrowDown02Icon} className='size-3' />
-          </Button>
-        </div>
+                {/* Reorder (bottom-left on hover), matching the tour-images tab. */}
+                <div className='absolute bottom-2 left-2 z-10 flex gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
+                    <Button
+                        size='icon-sm'
+                        variant='secondary'
+                        onClick={() => onMove(index, 'up')}
+                        disabled={disabled || index === 0}
+                        title='Move earlier'>
+                        <HugeiconsIcon
+                            icon={ArrowUp02Icon}
+                            className='size-3'
+                        />
+                    </Button>
+                    <Button
+                        size='icon-sm'
+                        variant='secondary'
+                        onClick={() => onMove(index, 'down')}
+                        disabled={disabled || index === total - 1}
+                        title='Move later'>
+                        <HugeiconsIcon
+                            icon={ArrowDown02Icon}
+                            className='size-3'
+                        />
+                    </Button>
+                </div>
 
-        {/* Remove: always visible, not hover-revealed - the same corner control
+                {/* Remove: always visible, not hover-revealed - the same corner control
             every other media field in this dashboard uses (ImageSelectorField,
             the Instagram tiles), so removing a card works the way removing a
             picked image already does. */}
-        <button
-          type='button'
-          onClick={onDelete}
-          title='Remove card'
-          className='absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center bg-black/60 text-white transition-colors hover:bg-destructive'>
-          <HugeiconsIcon icon={Cancel01Icon} className='size-3' />
-          <span className='sr-only'>Remove card</span>
-        </button>
+                <button
+                    type='button'
+                    onClick={onDelete}
+                    title='Remove card'
+                    className='absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center bg-black/60 text-white transition-colors hover:bg-destructive'>
+                    <HugeiconsIcon icon={Cancel01Icon} className='size-3' />
+                    <span className='sr-only'>Remove card</span>
+                </button>
 
-        {/* Edit affordance: centred, revealed on hover, with no chip or surface
+                {/* Edit affordance: centred, revealed on hover, with no chip or surface
             of its own - the icon sits straight on the image so the card reads as
             one target rather than a photo with a button parked on it.
             `pointer-events-none` on purpose: the whole card is ALREADY the edit
@@ -478,39 +497,43 @@ function ExperienceCard({
             click, and a second nested button would be invalid markup anyway.
             Only over a real poster - the empty slot has its own "Add poster and
             video" prompt, which says more than a pencil would. */}
-        {poster && (
-          <span className='pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-white opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
-            <HugeiconsIcon
-              icon={PencilEdit02Icon}
-              className='size-7 drop-shadow-lg'
-            />
-          </span>
-        )}
-      </div>
+                {poster && (
+                    <span className='pointer-events-none absolute inset-0 z-10 flex items-center justify-center text-white opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100'>
+                        <HugeiconsIcon
+                            icon={PencilEdit02Icon}
+                            className='size-7 drop-shadow-lg'
+                        />
+                    </span>
+                )}
+            </div>
 
-      <div className='space-y-1.5 p-3'>
-        <p className='truncate text-sm font-medium'>
-          {experience.entityName ?? 'Deleted item'}
-        </p>
-        <div className='flex flex-wrap items-center gap-1.5'>
-          <StatusBadge variant='neutral'>
-            {experience.entityType === 'HUB' ? 'Hub' : 'Category'}
-          </StatusBadge>
-          {missing && <StatusBadge variant='danger'>Target deleted</StatusBadge>}
+            <div className='space-y-1.5 p-3'>
+                <p className='truncate text-sm font-medium'>
+                    {experience.entityName ?? 'Deleted item'}
+                </p>
+                <div className='flex flex-wrap items-center gap-1.5'>
+                    <StatusBadge variant='neutral'>
+                        {experience.entityType === 'HUB' ? 'Hub' : 'Category'}
+                    </StatusBadge>
+                    {missing && (
+                        <StatusBadge variant='danger'>
+                            Target deleted
+                        </StatusBadge>
+                    )}
+                </div>
+                {missing && (
+                    <p className='flex items-start gap-1.5 text-xs text-danger-fg'>
+                        <HugeiconsIcon
+                            icon={Alert02Icon}
+                            className='mt-px size-3 shrink-0'
+                        />
+                        The category or hub this pointed at no longer exists, so
+                        the homepage skips it. Remove this card.
+                    </p>
+                )}
+            </div>
         </div>
-        {missing && (
-          <p className='flex items-start gap-1.5 text-xs text-danger-fg'>
-            <HugeiconsIcon
-              icon={Alert02Icon}
-              className='mt-px size-3 shrink-0'
-            />
-            The category or hub this pointed at no longer exists, so the homepage
-            skips it. Remove this card.
-          </p>
-        )}
-      </div>
-    </div>
-  );
+    );
 }
 
 /**
@@ -522,110 +545,118 @@ function ExperienceCard({
  * and confusing.
  */
 function CardMediaDialog({
-  experience,
-  isSaving,
-  onOpenChange,
-  onSave,
+    experience,
+    isSaving,
+    onOpenChange,
+    onSave,
 }: {
-  experience: FeaturedExperience | null;
-  isSaving: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (payload: {
-    posterUrl: string | null;
-    videoUrl: string | null;
-    isLink: boolean;
-  }) => void;
+    experience: FeaturedExperience | null;
+    isSaving: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSave: (payload: {
+        posterUrl: string | null;
+        videoUrl: string | null;
+        isLink: boolean;
+    }) => void;
 }) {
-  const [posterUrl, setPosterUrl] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isLink, setIsLink] = useState(true);
+    const [posterUrl, setPosterUrl] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [isLink, setIsLink] = useState(true);
 
-  useEffect(() => {
-    setPosterUrl(experience?.posterUrl ?? null);
-    setVideoUrl(experience?.videoUrl ?? null);
-    setIsLink(experience?.isLink ?? true);
-  }, [experience]);
+    useEffect(() => {
+        setPosterUrl(experience?.posterUrl ?? null);
+        setVideoUrl(experience?.videoUrl ?? null);
+        setIsLink(experience?.isLink ?? true);
+    }, [experience]);
 
-  const fallback = experience?.entityImage ?? null;
+    const fallback = experience?.entityImage ?? null;
 
-  return (
-    <Dialog open={Boolean(experience)} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
-        <DialogHeader>
-          <DialogTitle>
-            {experience?.entityName ?? 'Card'}
-          </DialogTitle>
-          <DialogDescription>
-            The photo, video and link for this card only. None of it changes the
-            category or hub page itself.
-          </DialogDescription>
-        </DialogHeader>
+    return (
+        <Dialog open={Boolean(experience)} onOpenChange={onOpenChange}>
+            <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
+                <DialogHeader>
+                    <DialogTitle>
+                        {experience?.entityName ?? 'Card'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        The photo, video and link for this card only. None of it
+                        changes the category or hub page itself.
+                    </DialogDescription>
+                </DialogHeader>
 
-        <div className='space-y-6 py-2'>
-          <Field>
-            <Label>Poster</Label>
-            <FieldDescription>
-              The still shown on the card, and the frame the video holds before
-              it plays. Portrait crops work best - the slot is taller than it is
-              wide.
-              {!posterUrl &&
-                (fallback
-                  ? ' Empty, so this card is using the photo from the page it links to.'
-                  : ' Empty, and that page has no photo either, so the site is using its bundled card art.')}
-            </FieldDescription>
-            <ImageSelectorField value={posterUrl} onChange={setPosterUrl} />
-          </Field>
+                <div className='space-y-6 py-2'>
+                    <Field>
+                        <Label>Poster</Label>
+                        <FieldDescription>
+                            The still shown on the card, and the frame the video
+                            holds before it plays. Portrait crops work best -
+                            the slot is taller than it is wide.
+                            {!posterUrl &&
+                                (fallback
+                                    ? ' Empty, so this card is using the photo from the page it links to.'
+                                    : ' Empty, and that page has no photo either, so the site is using its bundled card art.')}
+                        </FieldDescription>
+                        <ImageSelectorField
+                            value={posterUrl}
+                            onChange={setPosterUrl}
+                        />
+                    </Field>
 
-          <Field>
-            <Label>Video</Label>
-            <FieldDescription>
-              Plays when this card is the centred slide. Optional - without one
-              the card just shows its poster.
-            </FieldDescription>
-            <VideoSelectorField value={videoUrl} onChange={setVideoUrl} />
-          </Field>
+                    <Field>
+                        <Label>Video</Label>
+                        <FieldDescription>
+                            Plays when this card is the centred slide. Optional
+                            - without one the card just shows its poster.
+                        </FieldDescription>
+                        <VideoSelectorField
+                            value={videoUrl}
+                            onChange={setVideoUrl}
+                        />
+                    </Field>
 
-          <Field>
-            <Label>Link</Label>
-            <FieldDescription>
-              Whether the card opens the page it names. Not the same as removing
-              it: a non-clickable card still shows, with its title.
-            </FieldDescription>
-            <Select
-              value={isLink ? 'link' : 'static'}
-              onValueChange={v => setIsLink(v === 'link')}>
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='link'>
-                  Clickable - opens {experience?.entityName ?? 'the page'}
-                </SelectItem>
-                <SelectItem value='static'>
-                  Name only - not clickable
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
+                    <Field>
+                        <Label>Link</Label>
+                        <FieldDescription>
+                            Whether the card opens the page it names. Not the
+                            same as removing it: a non-clickable card still
+                            shows, with its title.
+                        </FieldDescription>
+                        <Select
+                            value={isLink ? 'link' : 'static'}
+                            onValueChange={v => setIsLink(v === 'link')}>
+                            <SelectTrigger className='w-full'>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value='link'>
+                                    Clickable - opens{' '}
+                                    {experience?.entityName ?? 'the page'}
+                                </SelectItem>
+                                <SelectItem value='static'>
+                                    Name only - not clickable
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </Field>
+                </div>
 
-        <DialogFooter>
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type='button'
-            disabled={isSaving}
-            onClick={() => onSave({ posterUrl, videoUrl, isLink })}>
-            {isSaving ? 'Saving...' : 'Save card'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+                <DialogFooter>
+                    <Button
+                        type='button'
+                        variant='outline'
+                        onClick={() => onOpenChange(false)}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type='button'
+                        disabled={isSaving}
+                        onClick={() => onSave({ posterUrl, videoUrl, isLink })}>
+                        {isSaving ? 'Saving...' : 'Save card'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 /**
@@ -635,100 +666,106 @@ function CardMediaDialog({
  * adding is occasional, and the form was competing with the deck for attention.
  */
 function AddExperienceDialog({
-  open,
-  onOpenChange,
-  isPending,
-  onAdd,
+    open,
+    onOpenChange,
+    isPending,
+    onAdd,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isPending: boolean;
-  onAdd: (entityType: FeaturedEntityType, entityId: string) => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    isPending: boolean;
+    onAdd: (entityType: FeaturedEntityType, entityId: string) => void;
 }) {
-  const [entityType, setEntityType] = useState<FeaturedEntityType>('CATEGORY');
-  const [entityId, setEntityId] = useState('');
+    const [entityType, setEntityType] =
+        useState<FeaturedEntityType>('CATEGORY');
+    const [entityId, setEntityId] = useState('');
 
-  const { data: categories = [] } = useActiveCategories();
-  const { data: hubsPage } = useHubs({ limit: 100 });
-  const hubs = hubsPage?.data ?? [];
+    const { data: categories = [] } = useActiveCategories();
+    const { data: hubsPage } = useHubs({ limit: 100 });
+    const hubs = hubsPage?.data ?? [];
 
-  const options =
-    entityType === 'CATEGORY'
-      ? categories.map(c => ({ id: c.id, name: c.name }))
-      : hubs.map(h => ({ id: h.id, name: h.name }));
+    const options =
+        entityType === 'CATEGORY'
+            ? categories.map(c => ({ id: c.id, name: c.name }))
+            : hubs.map(h => ({ id: h.id, name: h.name }));
 
-  useEffect(() => {
-    if (!open) setEntityId('');
-  }, [open]);
+    useEffect(() => {
+        if (!open) setEntityId('');
+    }, [open]);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-lg'>
-        <DialogHeader>
-          <DialogTitle>Feature a page</DialogTitle>
-          <DialogDescription>
-            The card takes its title and link from the page you choose. Add its
-            poster and video afterwards.
-          </DialogDescription>
-        </DialogHeader>
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className='sm:max-w-lg'>
+                <DialogHeader>
+                    <DialogTitle>Feature a page</DialogTitle>
+                    <DialogDescription>
+                        The card takes its title and link from the page you
+                        choose. Add its poster and video afterwards.
+                    </DialogDescription>
+                </DialogHeader>
 
-        <div className='space-y-6 py-2'>
-          <Field>
-            <Label>Type</Label>
-            <Select
-              value={entityType}
-              onValueChange={v => {
-                setEntityType(v as FeaturedEntityType);
-                setEntityId('');
-              }}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='CATEGORY'>Category</SelectItem>
-                <SelectItem value='HUB'>Hub</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
+                <div className='space-y-6 py-2'>
+                    <Field>
+                        <Label>Type</Label>
+                        <Select
+                            value={entityType}
+                            onValueChange={v => {
+                                setEntityType(v as FeaturedEntityType);
+                                setEntityId('');
+                            }}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value='CATEGORY'>
+                                    Category
+                                </SelectItem>
+                                <SelectItem value='HUB'>Hub</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </Field>
 
-          <Field>
-            <Label>{entityType === 'CATEGORY' ? 'Category' : 'Hub'}</Label>
-            <Select value={entityId} onValueChange={setEntityId}>
-              <SelectTrigger>
-                <SelectValue placeholder='Choose one' />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map(o => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              A card only appears once its target has at least one live tour.
-              Hubs are held to that too, even though a hub page itself opens
-              without one - a featured experience with nothing bookable is a dead
-              end.
-            </FieldDescription>
-          </Field>
-        </div>
+                    <Field>
+                        <Label>
+                            {entityType === 'CATEGORY' ? 'Category' : 'Hub'}
+                        </Label>
+                        <Select value={entityId} onValueChange={setEntityId}>
+                            <SelectTrigger>
+                                <SelectValue placeholder='Choose one' />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {options.map(o => (
+                                    <SelectItem key={o.id} value={o.id}>
+                                        {o.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FieldDescription>
+                            A card only appears once its target has at least one
+                            live tour. Hubs are held to that too, even though a
+                            hub page itself opens without one - a featured
+                            experience with nothing bookable is a dead end.
+                        </FieldDescription>
+                    </Field>
+                </div>
 
-        <DialogFooter>
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type='button'
-            disabled={!entityId || isPending}
-            onClick={() => onAdd(entityType, entityId)}>
-            {isPending ? 'Adding...' : 'Add card'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+                <DialogFooter>
+                    <Button
+                        type='button'
+                        variant='outline'
+                        onClick={() => onOpenChange(false)}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type='button'
+                        disabled={!entityId || isPending}
+                        onClick={() => onAdd(entityType, entityId)}>
+                        {isPending ? 'Adding...' : 'Add card'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }
+

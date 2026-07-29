@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 
 /** Mirrors the Webflow-style profile layout: left rail + flat sections. */
 export function ProfileSkeleton() {

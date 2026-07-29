@@ -1,12 +1,12 @@
 'use client';
 
+import MediaGalleryManager from '@/components/media/media-gallery-manager';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import MediaGalleryManager from '@/components/media/media-gallery-manager';
 import type { MediaItem, MediaTypeFilter } from '@/types/media';
 
 const KIND_TITLE: Record<MediaTypeFilter, string> = {
@@ -44,9 +44,9 @@ export default function MediaSelector({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className='max-w-none sm:max-w-none w-[calc(100vw-2rem)] lg:w-[calc(100vw-2rem-2*var(--overlay-center-offset,0px))] h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden bg-background rounded-lg'>
+            <DialogContent className='max-w-none sm:max-w-none w-[calc(100vw-2rem)] h-[92dvh] flex flex-col p-0 gap-0 overflow-hidden bg-background rounded-lg'>
                 <DialogHeader className='px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between'>
-                    <DialogTitle className='text-lg font-bold'>
+                    <DialogTitle className='text-lg font-medium'>
                         {KIND_TITLE[kind ?? 'all']}
                     </DialogTitle>
                 </DialogHeader>
@@ -64,3 +64,4 @@ export default function MediaSelector({
         </Dialog>
     );
 }
+

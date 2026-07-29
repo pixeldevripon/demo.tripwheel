@@ -39,12 +39,28 @@ const priceField = z
     .optional()
     .or(z.literal(''));
 
+/**
+ * A zone asks for what the traveller is told, in the order they are told it.
+ *
+ * `latitude` / `longitude` are gone. A zone's coordinates are read by nothing:
+ * the tour page shows the title, window and directions as text, and the
+ * confirmation email's map link is built from the snapshotted `pickupAddress`
+ * string, not a pin (`booking-email.context.ts` -> `mapsUrl(null, null,
+ * booking.pickupAddress)`). Two number fields and a map pin per zone bought an
+ * operator nothing.
+ *
+ * What moved up is what actually reaches a traveller: `address` is the pickup
+ * line AND the map link in their confirmation, and `minutesPrior` is both the
+ * "be ready N minutes before" line and the fallback pickup time when no window
+ * is set. Both used to sit below the coordinates.
+ *
+ * The columns stay - the update endpoint keys off `'field' in dto`, so
+ * omitting latitude/longitude leaves any stored pin untouched.
+ */
 const addPickupSchema = z.object({
     name: z.string().min(2, 'At least 2 characters').max(160),
-    directions: z.string().max(500).optional().or(z.literal('')),
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
     address: z.string().max(240).optional().or(z.literal('')),
+    directions: z.string().max(500).optional().or(z.literal('')),
     price: priceField,
     minutesPrior: z.string().optional(),
     windowStart: timeField,
@@ -54,10 +70,8 @@ type AddPickupFormValues = z.infer<typeof addPickupSchema>;
 
 const editPickupSchema = z.object({
     name: z.string().min(2, 'At least 2 characters').max(160),
-    directions: z.string().max(500).optional().or(z.literal('')),
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
     address: z.string().max(240).optional().or(z.literal('')),
+    directions: z.string().max(500).optional().or(z.literal('')),
     price: priceField,
     minutesPrior: z.string().optional(),
     windowStart: timeField,
@@ -106,10 +120,8 @@ function PickupDetailsEditor({
         resolver: zodResolver(editPickupSchema),
         defaultValues: {
             name: pickup.name,
-            directions: enTranslation?.directions ?? '',
-            latitude: pickup.latitude != null ? String(pickup.latitude) : '',
-            longitude: pickup.longitude != null ? String(pickup.longitude) : '',
             address: pickup.address ?? '',
+            directions: enTranslation?.directions ?? '',
             price: pickup.price ?? '',
             minutesPrior:
                 pickup.minutesPrior != null ? String(pickup.minutesPrior) : '',
@@ -123,10 +135,10 @@ function PickupDetailsEditor({
     const isActive = watch('isActive');
 
     function onSaveDetails(values: EditPickupFormValues) {
+        // No latitude/longitude keys: absent means "leave the stored pin
+        // alone", where null would erase it.
         const payload: UpdatePickupLocationPayload = {
             name: values.name,
-            latitude: numOrNull(values.latitude),
-            longitude: numOrNull(values.longitude),
             address: strOrNull(values.address),
             minutesPrior: numOrNull(values.minutesPrior),
             windowStart: strOrNull(values.windowStart),
@@ -140,7 +152,6 @@ function PickupDetailsEditor({
         updatePickup(
             { tripId, pickupLocationId: pickup.id, payload },
             {
-                onSuccess: () => toast.success('Pickup saved.'),
                 onError: err =>
                     toast.error(
                         err instanceof Error ? err.message : 'Failed to save.',
@@ -180,6 +191,18 @@ function PickupDetailsEditor({
                 <FieldError>{errors.name?.message}</FieldError>
             </Field>
             <Field>
+                <Label>Address</Label>
+                <Input
+                    {...register('address')}
+                    placeholder='Hotel / street address'
+                />
+                <FieldDescription>
+                    Used for the &ldquo;open in maps&rdquo; link on the
+                    traveller&rsquo;s confirmation. If left empty, the zone name
+                    is used instead.
+                </FieldDescription>
+            </Field>
+            <Field>
                 <Label>Directions (English)</Label>
                 <Input
                     {...register('directions')}
@@ -189,13 +212,6 @@ function PickupDetailsEditor({
                     Shown to travellers with their pickup details; translated
                     per language in the Translation Console.
                 </FieldDescription>
-            </Field>
-            <Field>
-                <Label>Address</Label>
-                <Input
-                    {...register('address')}
-                    placeholder='Hotel / street address'
-                />
             </Field>
             {isPaidPickup && (
                 <Field>
@@ -213,31 +229,9 @@ function PickupDetailsEditor({
                     <FieldError>{errors.price?.message}</FieldError>
                 </Field>
             )}
-            <div className='grid grid-cols-2 gap-3'>
-                <Field>
-                    <Label>Latitude</Label>
-                    <Input {...register('latitude')} placeholder='12.1091' />
-                </Field>
-                <Field>
-                    <Label>Longitude</Label>
-                    <Input {...register('longitude')} placeholder='-68.9316' />
-                </Field>
-            </div>
             <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
                 <Field>
-                    <Label>Mins Prior</Label>
-                    <Input
-                        {...register('minutesPrior')}
-                        type='number'
-                        min={0}
-                        placeholder='30'
-                    />
-                    <FieldDescription>
-                        Minutes before departure travelers are picked up here.
-                    </FieldDescription>
-                </Field>
-                <Field>
-                    <Label>Window Start</Label>
+                    <Label>Window start</Label>
                     <Input
                         {...register('windowStart')}
                         type='time'
@@ -248,7 +242,7 @@ function PickupDetailsEditor({
                     </FieldDescription>
                 </Field>
                 <Field>
-                    <Label>Window End</Label>
+                    <Label>Window end</Label>
                     <Input
                         {...register('windowEnd')}
                         type='time'
@@ -256,6 +250,19 @@ function PickupDetailsEditor({
                     />
                     <FieldDescription>
                         Latest the pickup may arrive.
+                    </FieldDescription>
+                </Field>
+                <Field>
+                    <Label>Mins prior</Label>
+                    <Input
+                        {...register('minutesPrior')}
+                        type='number'
+                        min={0}
+                        placeholder='30'
+                    />
+                    <FieldDescription>
+                        Drives &ldquo;be ready N minutes before pickup&rdquo;,
+                        and stands in as the pickup time when no window is set.
                     </FieldDescription>
                 </Field>
             </div>
@@ -291,13 +298,22 @@ interface TripPickupLocationsTabProps {
     pickupModel: PickupModel;
     /** Tour currency the zone prices are entered in. */
     currency: Currency;
+    /** Drop the Card chrome - the wizard section header names this list. */
+    bare?: boolean;
 }
 
+/**
+ * Only the FIRST zone appears on the public tour page - `tour-detail-content`
+ * reads `pickupLocations[0]` for its "Hotel pickup" block. The rest are real,
+ * but they surface at checkout, in the pickup dropdown. Worth saying out loud:
+ * an operator who adds five zones and then checks their live page otherwise
+ * concludes four of them failed to save.
+ */
 const MODEL_DESCRIPTION: Record<PickupModel, string> = {
     INCLUDED:
-        'Hotel / meeting points where travelers can be collected, with pickup windows. Pickup is included in the tour price, so zones here are free to select.',
+        'Hotel / meeting points where travelers can be collected, with pickup windows. Pickup is included in the tour price, so zones here are free to select. Travelers choose their zone at checkout; the tour page previews the first one.',
     PAID_ADDON:
-        'Pickup zones travelers can buy at checkout. Each zone carries a per-person price ("Pickup location (From X p.p.)" in the tour currency); free zones are allowed too.',
+        'Pickup zones travelers can buy at checkout. Each zone carries a per-person price ("Pickup location (From X p.p.)" in the tour currency); free zones are allowed too. Travelers choose their zone at checkout; the tour page previews the first one.',
     NONE: 'Pickup is disabled for this tour (Pickup model on the Details tab is "None"), so these locations are NOT offered at checkout. Switch the model to Included or Paid add-on to use them.',
 };
 
@@ -305,6 +321,7 @@ export function TripPickupLocationsTab({
     tripId,
     pickupModel,
     currency,
+    bare,
 }: TripPickupLocationsTabProps) {
     const isPaidPickup = pickupModel === 'PAID_ADDON';
     const { data: pickups, isLoading } = usePickupLocations(tripId);
@@ -321,10 +338,8 @@ export function TripPickupLocationsTab({
         resolver: zodResolver(addPickupSchema),
         defaultValues: {
             name: '',
-            directions: '',
-            latitude: '',
-            longitude: '',
             address: '',
+            directions: '',
             price: '',
             minutesPrior: '',
             windowStart: '',
@@ -335,10 +350,8 @@ export function TripPickupLocationsTab({
     function onAdd(values: AddPickupFormValues) {
         const payload: CreatePickupLocationPayload = {
             name: values.name,
-            directions: values.directions || undefined,
-            latitude: numOrUndef(values.latitude),
-            longitude: numOrUndef(values.longitude),
             address: values.address || undefined,
+            directions: values.directions || undefined,
             price: isPaidPickup ? values.price || undefined : undefined,
             minutesPrior: numOrUndef(values.minutesPrior),
             windowStart: values.windowStart || undefined,
@@ -351,7 +364,6 @@ export function TripPickupLocationsTab({
             { tripId, payload },
             {
                 onSuccess: () => {
-                    toast.success('Pickup location added.');
                     reset();
                 },
                 onError: err =>
@@ -366,6 +378,7 @@ export function TripPickupLocationsTab({
 
     return (
         <EditableListSection
+            bare={bare}
             title='Pickup Locations'
             description={MODEL_DESCRIPTION[pickupModel]}
             items={pickups}
@@ -409,7 +422,6 @@ export function TripPickupLocationsTab({
                 removePickup(
                     { tripId, pickupLocationId: p.id },
                     {
-                        onSuccess: () => toast.success('Pickup removed.'),
                         onError: err =>
                             toast.error(
                                 err instanceof Error
@@ -422,7 +434,7 @@ export function TripPickupLocationsTab({
             isDeleting={isRemoving}
             emptyText='No pickup locations yet.'
             addForm={{
-                heading: 'Add Pickup Location',
+                heading: 'Add pickup location',
                 children: (
                     <form onSubmit={handleSubmit(onAdd)} className='space-y-3'>
                         <Field>
@@ -435,17 +447,22 @@ export function TripPickupLocationsTab({
                             <FieldError>{errors.name?.message}</FieldError>
                         </Field>
                         <Field>
-                            <Label>Directions (English)</Label>
-                            <Input
-                                {...register('directions')}
-                                placeholder='Wait near the concierge desk.'
-                            />
-                        </Field>
-                        <Field>
                             <Label>Address</Label>
                             <Input
                                 {...register('address')}
                                 placeholder='Street address'
+                            />
+                            <FieldDescription>
+                                Used for the &ldquo;open in maps&rdquo; link on
+                                the traveller&rsquo;s confirmation. If left
+                                empty, the zone name is used instead.
+                            </FieldDescription>
+                        </Field>
+                        <Field>
+                            <Label>Directions (English)</Label>
+                            <Input
+                                {...register('directions')}
+                                placeholder='Wait near the concierge desk.'
                             />
                         </Field>
                         {isPaidPickup && (
@@ -465,34 +482,9 @@ export function TripPickupLocationsTab({
                                 <FieldError>{errors.price?.message}</FieldError>
                             </Field>
                         )}
-                        <div className='grid grid-cols-2 gap-3'>
-                            <Field>
-                                <Label>Latitude</Label>
-                                <Input
-                                    {...register('latitude')}
-                                    placeholder='12.1091'
-                                />
-                            </Field>
-                            <Field>
-                                <Label>Longitude</Label>
-                                <Input
-                                    {...register('longitude')}
-                                    placeholder='-68.9316'
-                                />
-                            </Field>
-                        </div>
                         <div className='grid grid-cols-1 gap-3 sm:grid-cols-3'>
                             <Field>
-                                <Label>Mins Prior</Label>
-                                <Input
-                                    {...register('minutesPrior')}
-                                    type='number'
-                                    min={0}
-                                    placeholder='30'
-                                />
-                            </Field>
-                            <Field>
-                                <Label>Window Start</Label>
+                                <Label>Window start</Label>
                                 <Input
                                     {...register('windowStart')}
                                     type='time'
@@ -500,17 +492,26 @@ export function TripPickupLocationsTab({
                                 />
                             </Field>
                             <Field>
-                                <Label>Window End</Label>
+                                <Label>Window end</Label>
                                 <Input
                                     {...register('windowEnd')}
                                     type='time'
                                     aria-invalid={!!errors.windowEnd}
                                 />
                             </Field>
+                            <Field>
+                                <Label>Mins prior</Label>
+                                <Input
+                                    {...register('minutesPrior')}
+                                    type='number'
+                                    min={0}
+                                    placeholder='30'
+                                />
+                            </Field>
                         </div>
                         <div className='flex justify-end'>
                             <Button type='submit' size='sm' disabled={isAdding}>
-                                {isAdding ? 'Adding...' : 'Add Pickup'}
+                                {isAdding ? 'Adding...' : 'Add pickup'}
                             </Button>
                         </div>
                     </form>

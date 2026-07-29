@@ -10,12 +10,16 @@ interface NoMediaUiProps {
     isDeleting?: boolean;
 }
 
-const NoMediaUi = ({ searchTerm, setIsFormOpen, isDeleting }: NoMediaUiProps) => {
+const NoMediaUi = ({
+    searchTerm,
+    setIsFormOpen,
+    isDeleting,
+}: NoMediaUiProps) => {
     return (
         <div className='min-h-[60vh] mx-auto flex justify-center items-center p-6'>
             <div className='text-center flex justify-center items-center'>
                 <div>
-                    <h3 className='text-lg font-semibold mb-2 text-foreground'>
+                    <h3 className='text-lg font-medium mb-2 text-foreground'>
                         No media found
                     </h3>
                     <p className='text-muted-foreground mb-6'>
@@ -28,7 +32,11 @@ const NoMediaUi = ({ searchTerm, setIsFormOpen, isDeleting }: NoMediaUiProps) =>
                             variant='outline'
                             onClick={() => setIsFormOpen(true)}
                             disabled={isDeleting}>
-                            <HugeiconsIcon icon={Upload02Icon} size={16} className='mr-2' />
+                            <HugeiconsIcon
+                                icon={Upload02Icon}
+                                size={16}
+                                className='mr-2'
+                            />
                             Upload Media
                         </Button>
                     )}
@@ -39,3 +47,4 @@ const NoMediaUi = ({ searchTerm, setIsFormOpen, isDeleting }: NoMediaUiProps) =>
 };
 
 export default NoMediaUi;
+
