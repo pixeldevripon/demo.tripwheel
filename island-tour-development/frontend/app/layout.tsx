@@ -129,16 +129,26 @@ function extractTwitterHandle(url: string | null): string | null {
 }
 
 /**
- * The admin-managed custom scripts (Settings > SEO > Custom Scripts) mount HERE,
- * in the ROOT layout, for two reasons that are easy to undo by accident:
+ * The admin-managed custom scripts (Settings > Scripts) mount HERE, in the ROOT
+ * layout, and the explicit `<head>` below is deliberate.
  *
- *  - `next/script`'s `beforeInteractive` strategy - what a HEAD snippet needs to
- *    run before any Next.js module - only works from the root layout.
- *  - This layout renders once per document and is not re-rendered on soft
- *    navigation, so each snippet executes exactly once, which is what every
- *    analytics vendor assumes.
+ * React only hoists SOME tags into the head on its own (`<meta>`, `<link>`,
+ * async `<script src>`). An inline `<script>` or a `<style>` is not hoisted, so
+ * without a real `<head>` element a snippet saved as "Header" landed at the top
+ * of `<body>` instead. That still executed before any content, but "Header"
+ * should mean the head, and a vendor whose install page says "paste this in
+ * <head>" should get exactly that. Verified: with this `<head>`, an inline
+ * script and a `<style>` both render inside it, and `<title>`, `og:*` and the
+ * meta description from `generateMetadata` are all still emitted correctly.
  *
- * Moving either block into a route group breaks both properties silently.
+ * The Next docs say not to hand-write `<head>` for METADATA - that is what the
+ * Metadata API above is for, and nothing here bypasses it. This element carries
+ * only admin-pasted vendor markup, which the Metadata API has no concept of.
+ *
+ * Both blocks must stay in the ROOT layout: it renders once per document and is
+ * not re-rendered on soft navigation, so each snippet executes exactly once,
+ * which is what every analytics vendor assumes. Moving either into a route group
+ * breaks that silently.
  */
 export default function RootLayout({
     children,
@@ -154,8 +164,10 @@ export default function RootLayout({
                 jetbrainsMono.variable,
                 'font-sans'
             )}>
-            <body suppressHydrationWarning className='min-h-full flex flex-col'>
+            <head>
                 <CustomScripts position='head' />
+            </head>
+            <body suppressHydrationWarning className='min-h-full flex flex-col'>
                 <QueryProvider>
                     <ThemeProvider
                         attribute='class'

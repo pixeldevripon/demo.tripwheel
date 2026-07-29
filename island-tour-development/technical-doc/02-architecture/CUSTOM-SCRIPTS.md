@@ -142,11 +142,32 @@ assumes.
 **Where each tag actually lands** (measured against the rendered document, not
 assumed):
 
-| Tag | Saved as `HEAD` | Saved as `BODY_END` |
+| Tag | Saved as `HEAD` ("Header") | Saved as `BODY_END` ("Footer") |
 |---|---|---|
-| `<meta>`, `<link>` | inside `<head>` (React 19 hoists them) | inside `<head>` |
-| `<script>` | top of `<body>`, executes before any content and before hydration | end of `<body>` |
+| `<meta>`, `<link>` | inside `<head>` | inside `<head>` |
+| `<script async src>` | inside `<head>` | inside `<head>` |
+| `<script>` inline | inside `<head>` | end of `<body>` |
+| `<style>` | inside `<head>` | end of `<body>` |
 | `<noscript>` | refused by validation | end of `<body>` |
+
+All five allowlisted tags render; the table is measured, not assumed.
+
+**"Header" really is the head.** The root layout renders an explicit `<head>`
+element for this block. React only hoists SOME tags on its own (`<meta>`,
+`<link>`, async `<script src>`); an inline `<script>` or a `<style>` is not
+hoisted, so without a real `<head>` those fell to the top of `<body>` - which
+executed early enough, but is not what a vendor means when their install page
+says "paste this in `<head>`".
+
+The Next docs advise against hand-writing `<head>` for METADATA; that is what
+`generateMetadata` is for and nothing here bypasses it. This element carries only
+admin-pasted vendor markup, which the Metadata API has no concept of. Verified
+together: an inline script and a `<style>` render inside `<head>` while `<title>`,
+`og:*` and the meta description are all still emitted correctly.
+
+`<noscript>` stays refused in `HEAD`, and matters MORE now that this really is
+the head - a browser closes `<head>` the moment it meets one, detaching every tag
+after it.
 
 The dashboard labels the two positions **Header** and **Footer** - the words
 every vendor's install page uses, so an admin does not have to translate the docs

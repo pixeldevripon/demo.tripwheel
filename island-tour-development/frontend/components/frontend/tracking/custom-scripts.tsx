@@ -59,15 +59,23 @@ import {
  * Verified against the rendered document, because the answer is not what the
  * position name suggests:
  *
- * - `<meta>` and `<link>` land INSIDE `<head>` wherever they are saved. React 19
- *   hoists them out of the tree, which is what verification tokens and
- *   `preconnect` hints need.
- * - An inline `<script>` at HEAD lands at the TOP OF `<body>`, not inside
- *   `<head>`. App Router has no supported way to author raw `<head>` children,
- *   and it does not matter: it still executes before any page content and before
- *   hydration, which is the whole guarantee. Do not "fix" this by hand-writing a
- *   `<head>` element in the root layout - the Next docs rule that out, and the
- *   Metadata API owns that element.
+ *   tag              | saved "Header"  | saved "Footer"
+ *   -----------------|-----------------|----------------
+ *   <meta> <link>    | <head>          | <head>
+ *   <script async>   | <head>          | <head>
+ *   <script> inline  | <head>          | end of <body>
+ *   <style>          | <head>          | end of <body>
+ *   <noscript>       | refused on save | end of <body>
+ *
+ * "Header" really is the head. The root layout renders an explicit `<head>` for
+ * this block - see the comment there for why that is safe alongside the Metadata
+ * API. Without it, only the tags React hoists on its own (`<meta>`, `<link>`,
+ * async `<script src>`) reached the head; an inline `<script>` or a `<style>`
+ * fell to the top of `<body>`.
+ *
+ * `<noscript>` stays refused in Header, and matters MORE now that this really is
+ * the head: a browser closes `<head>` the moment it meets one, detaching every
+ * tag after it.
  *
  * `beforeInteractive` only works from the root layout, which is where this
  * component is mounted. Do not move it into a route group.
