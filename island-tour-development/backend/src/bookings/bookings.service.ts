@@ -410,14 +410,17 @@ export class BookingsService {
     pricing: BookingPricing;
   }> {
     const sourceCurrency = ctx.tour.defaultCurrency;
-    const sourceRate = await this.fx.getRate(sourceCurrency, bookingCurrency);
-    const eurRate = await this.fx.getRate(bookingCurrency, Currency.EUR);
-
-    // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
-    const effectiveRate = await this.tiers.effectiveCommissionRate(
-      ctx.tourId,
-      now,
-    );
+    // All three depend only on values already in hand (the tour's currency, the
+    // booking currency, the tour id) - none consumes another's result - so they
+    // overlap instead of serializing. This runs on EVERY quote as well as every
+    // reserve, i.e. every time the booking widget refreshes a price, so the two
+    // round trips saved here are paid back on every stepper tick.
+    const [sourceRate, eurRate, effectiveRate] = await Promise.all([
+      this.fx.getRate(sourceCurrency, bookingCurrency),
+      this.fx.getRate(bookingCurrency, Currency.EUR),
+      // Effective commission (tier + any ACTIVE Spotlight), as a percentage.
+      this.tiers.effectiveCommissionRate(ctx.tourId, now),
+    ]);
     const effectiveTier = new Prisma.Decimal(effectiveRate)
       .mul(100)
       .toDecimalPlaces(2);
@@ -4216,35 +4219,52 @@ export class BookingsService {
   }
 
   private async loadContext(dto: PricingInput) {
-    const tour = await this.prisma.tour.findUnique({
-      where: { id: dto.tourId },
-      select: {
-        operatorId: true,
-        timeZone: true,
-        bookingCutoffMinutes: true,
-        defaultCurrency: true,
-        paymentModel: true,
-        onArrivalPayment: true,
-        depositPct: true,
-        commissionTier: true,
-        minPartySize: true,
-        maxPartySize: true,
-        durationMinutesFrom: true,
-        minAgeYears: true,
-        // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
-        // pickupRequired makes a pickup choice mandatory at reserve.
-        pickupModel: true,
-        pickupRequired: true,
-        // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
-        pricingModel: true,
-        wholeUnitType: true,
-        basePrice: true,
-        unitIncludedGuests: true,
-        extraPersonPrice: true,
-        bookingType: true,
-        destination: { select: { slug: true } },
-      },
-    });
+    // The departure lookup keys off `dto` alone, so it overlaps the tour read
+    // rather than waiting behind it. The guards below stay in their original
+    // order, so the error precedence a caller sees is unchanged (missing tour,
+    // then unsupported payment model, then invalid departure) - only the two
+    // round trips are collapsed into one.
+    const [tour, departure] = await Promise.all([
+      this.prisma.tour.findUnique({
+        where: { id: dto.tourId },
+        select: {
+          operatorId: true,
+          timeZone: true,
+          bookingCutoffMinutes: true,
+          defaultCurrency: true,
+          paymentModel: true,
+          onArrivalPayment: true,
+          depositPct: true,
+          commissionTier: true,
+          minPartySize: true,
+          maxPartySize: true,
+          durationMinutesFrom: true,
+          minAgeYears: true,
+          // Pickup (master 5.8): PAID_ADDON prices the selected zone per person;
+          // pickupRequired makes a pickup choice mandatory at reserve.
+          pickupModel: true,
+          pickupRequired: true,
+          // UNIT (whole-unit / charter) pricing + exclusivity (checklist §1.3-1.4)
+          pricingModel: true,
+          wholeUnitType: true,
+          basePrice: true,
+          unitIncludedGuests: true,
+          extraPersonPrice: true,
+          bookingType: true,
+          destination: { select: { slug: true } },
+        },
+      }),
+      this.prisma.departure.findFirst({
+        where: { id: dto.departureId, tourId: dto.tourId },
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+        },
+      }),
+    ]);
     if (!tour) throw new NotFoundException('Tour not found');
 
     // OPERATOR_FULL was dropped for v1 (founder, 2026-07-15): it takes no payment and
@@ -4256,16 +4276,6 @@ export class BookingsService {
       );
     }
 
-    const departure = await this.prisma.departure.findFirst({
-      where: { id: dto.departureId, tourId: dto.tourId },
-      select: {
-        id: true,
-        date: true,
-        startTime: true,
-        capacity: true,
-        bookedCount: true,
-      },
-    });
     if (!departure)
       throw new UnprocessableEntityException('Invalid departureId');
 
