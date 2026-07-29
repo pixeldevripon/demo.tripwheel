@@ -215,6 +215,14 @@ First publish ──► one-time 90-day PROVISIONAL window
 ```
 
 - **One-time 90-day provisional window** from first publish: during it, **any tier may be held** with no eligibility check. It does not reset.
+  - The window is measured from `tours.firstPublishedAt`, stamped **once** by
+    `ToursService.publish` and never moved by a later pause/republish (that is
+    `publishedAt`, which tracks the current spell). A null reads as "still
+    provisional", so the column must be written on the first publish or the
+    tour is exempt from demotion forever. Fixed 2026-07-29 - publish previously
+    wrote `publishedAt` only, and migration
+    `20260729210000_backfill_first_published_at` backfills the tours that
+    shipped with a null.
 - **After the window**, a **nightly check** enforces the bar. On failure: **notify → 30-day grace → automatic demotion** to the highest tier the tour still qualifies for.
 - **Existing bookings keep their snapshotted commission** through any demotion (§3). Demotion only changes future bookings' rate and the tour's `tier_rank`.
 

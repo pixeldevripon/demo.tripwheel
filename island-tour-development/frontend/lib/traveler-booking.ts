@@ -50,6 +50,7 @@ export function saveTravelerBooking(record: {
         path: travelerBookingPath(record.destinationSlug, record.publicRef),
     };
     document.cookie = `${TRAVELER_BOOKING_COOKIE}=${encodeURIComponent(JSON.stringify(value))};path=/;max-age=${COOKIE_MAX_AGE};samesite=lax`;
+    emitTravellerIdentityChange();
 }
 
 /** The saved search record, or null when none / malformed. */
@@ -79,12 +80,34 @@ export function readTravelerBooking(): TravelerBooking | null {
     }
 }
 
+/**
+ * Drop the two client-readable cookies. Does NOT touch the HttpOnly session -
+ * signing out goes through `signOutTraveller`, which awaits that round trip.
+ */
 export function clearTravelerBooking(): void {
     document.cookie = `${TRAVELER_BOOKING_COOKIE}=;path=/;max-age=0;samesite=lax`;
     document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=;path=/;max-age=0;samesite=lax`;
-    // Also drop the HttpOnly session cookie (fire-and-forget: the token
-    // expires in 24h anyway, so a lost delete is not a security hole).
-    void fetch('/api/traveler-session', { method: 'DELETE' }).catch(() => {});
+    emitTravellerIdentityChange();
+}
+
+/**
+ * Sign out for real: forget the display cookies, then wait for the server to
+ * drop the HttpOnly session.
+ *
+ * The await is the whole point. The DELETE used to be fire-and-forget, so a
+ * caller that navigated or refreshed straight after could race it - the next
+ * server render still saw a live session and re-rendered the traveller signed
+ * in, which read as "log out did nothing". Clearing the readable cookies first
+ * lets the navbar flip immediately while the request is in flight.
+ */
+export async function signOutTraveller(): Promise<void> {
+    clearTravelerBooking();
+    try {
+        await fetch('/api/traveler-session', { method: 'DELETE' });
+    } catch {
+        // Non-fatal: the token expires in 24h on its own. The traveller is
+        // already signed out everywhere this browser can see.
+    }
 }
 
 // ── Account-area identity (the OTP door) ────────────────────────────────────
@@ -103,6 +126,7 @@ const TRAVELLER_ACCOUNT_MAX_AGE = 60 * 60 * 24;
 /** Remember who signed in at the account door (display identity only). */
 export function saveTravellerAccount(email: string): void {
     document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=${encodeURIComponent(email)};path=/;max-age=${TRAVELLER_ACCOUNT_MAX_AGE};samesite=lax`;
+    emitTravellerIdentityChange();
 }
 
 /** The signed-in account email, or null when absent / not email-shaped. */
@@ -114,6 +138,100 @@ export function readTravellerAccount(): string | null {
     // The cookie is client-writable, so trust only an email-shaped value.
     const email = decodeURIComponent(row.slice(row.indexOf('=') + 1));
     return email.includes('@') && email.length <= 320 ? email : null;
+}
+
+// ── The identity as a subscribable store ────────────────────────────────────
+// Cookies fire no events, so anything rendering the traveller identity used to
+// read it once in a mount effect and then go stale for the life of the tab: the
+// account door wrote its cookie and called `router.refresh()`, which re-runs the
+// SERVER tree but keeps mounted client components exactly as they are - so the
+// navbar still showed the signed-out state until a full browser reload.
+//
+// Every writer above notifies this store instead, and consumers subscribe
+// through `useTravellerIdentity`. Focus and visibility changes re-read too, so a
+// tab that was signed out in another tab catches up when you come back to it.
+
+/** Everything the chrome needs to know about who is signed in. */
+export interface TravellerIdentity {
+    /** The account-door email, else the looked-up booking's, else null. */
+    email: string | null;
+    /** The saved `/bookings` lookup, when that is how they signed in. */
+    booking: TravelerBooking | null;
+}
+
+/** Signed out - also the server snapshot, since SSR has no cookies to read. */
+export const EMPTY_TRAVELLER_IDENTITY: TravellerIdentity = Object.freeze({
+    email: null,
+    booking: null,
+});
+
+const identityListeners = new Set<() => void>();
+
+/** The raw cookie pair the cached snapshot was built from. */
+let identityKey: string | null = null;
+let identitySnapshot: TravellerIdentity = EMPTY_TRAVELLER_IDENTITY;
+
+function rawCookie(name: string): string {
+    return (
+        document.cookie
+            .split('; ')
+            .find(c => c.startsWith(`${name}=`))
+            ?.slice(name.length + 1) ?? ''
+    );
+}
+
+/**
+ * The current identity, as a REFERENTIALLY STABLE value.
+ *
+ * `useSyncExternalStore` re-renders whenever `getSnapshot` returns a new
+ * reference, so parsing the cookies afresh on every call would loop forever.
+ * The cheap raw-cookie string is the cache key; the parse only re-runs when the
+ * cookies genuinely changed.
+ */
+export function getTravellerIdentity(): TravellerIdentity {
+    const key = `${rawCookie(TRAVELLER_ACCOUNT_COOKIE)}|${rawCookie(TRAVELER_BOOKING_COOKIE)}`;
+    if (key === identityKey) return identitySnapshot;
+    identityKey = key;
+    const booking = readTravelerBooking();
+    identitySnapshot = {
+        email: readTravellerAccount() ?? booking?.email ?? null,
+        booking,
+    };
+    return identitySnapshot;
+}
+
+/** The SSR/hydration snapshot - always signed out, never a new reference. */
+export function getServerTravellerIdentity(): TravellerIdentity {
+    return EMPTY_TRAVELLER_IDENTITY;
+}
+
+/** Re-read the cookies and tell every subscriber. */
+export function emitTravellerIdentityChange(): void {
+    // Force the next getSnapshot to re-parse rather than trust its cache.
+    identityKey = null;
+    for (const listener of identityListeners) listener();
+}
+
+/** Subscribe to identity changes. Returns the unsubscribe. */
+export function subscribeTravellerIdentity(onChange: () => void): () => void {
+    identityListeners.add(onChange);
+    if (identityListeners.size === 1) {
+        window.addEventListener('focus', emitTravellerIdentityChange);
+        document.addEventListener(
+            'visibilitychange',
+            emitTravellerIdentityChange,
+        );
+    }
+    return () => {
+        identityListeners.delete(onChange);
+        if (identityListeners.size === 0) {
+            window.removeEventListener('focus', emitTravellerIdentityChange);
+            document.removeEventListener(
+                'visibilitychange',
+                emitTravellerIdentityChange,
+            );
+        }
+    };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 
 export interface ChangeEmailConfirmationTemplateProps {
   confirmUrl: string;
@@ -25,13 +25,12 @@ export function changeEmailConfirmationTemplate({
     title: 'Confirm your email change.',
     greeting: name ? `Hi ${escapeHtml(name)},` : undefined,
     paragraphs: [
-      `We received a request to change your Island Tours sign-in email to <b style="color:#1F2937">${escapeHtml(newEmail)}</b>.`,
-      'If this was you, confirm below. We will then send a verification link to the new address, and your email only changes after that link is opened.',
-      'The link expires in <b style="color:#1F2937">1 hour</b>.',
+      `You asked to move your sign-in email to <span style="${EMAIL_EMPHASIS}">${escapeHtml(newEmail)}</span>.`,
+      `Approve below and we'll send a verification link there. Your email changes only once that link is opened. This one expires in <span style="${EMAIL_EMPHASIS}">1 hour</span>.`,
     ],
     ctaLabel: 'Approve email change',
     ctaUrl: confirmUrl,
     footnote:
-      "Didn't request this? Ignore this email and your sign-in email stays unchanged. If you suspect someone else has access to your account, reset your password.",
+      "Didn't request this? Ignore this email and nothing changes. If you think someone else has your password, reset it.",
   });
 }

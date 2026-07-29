@@ -354,6 +354,7 @@ describe('BookingsService', () => {
       sendOperatorBookingReceivedEmail: jest.fn().mockResolvedValue(undefined),
       sendCancellationRequestEmail: jest.fn().mockResolvedValue(undefined),
       sendBookingNoticeEmail: jest.fn().mockResolvedValue(undefined),
+      sendTravellerLoginCodeEmail: jest.fn().mockResolvedValue(undefined),
     };
     tracking = { fireBookingComplete: jest.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -3580,17 +3581,11 @@ describe('BookingsService', () => {
       };
     }
 
+    // The sign-in code email needs the address and nothing else, so the lookup
+    // selects exactly that. Stored casing differs from the caller's input on
+    // purpose - the mail must go to the stored value.
     function bookingForCodeEmail() {
-      return {
-        displayRef: 'IT-2030-AAAA',
-        // Stored casing differs from the caller's input on purpose.
-        contactEmail: 'Guest@Example.TEST',
-        customerLocale: null,
-        localDate: day('2030-06-05'),
-        tourStartDateTime: null,
-        startTime: '09:00',
-        tour: { name: 'Klein Curacao' },
-      };
+      return { contactEmail: 'Guest@Example.TEST' };
     }
 
     describe('requestTravellerLoginCode', () => {
@@ -3602,7 +3597,7 @@ describe('BookingsService', () => {
         ).resolves.toEqual({ sent: true });
 
         expect(m.travelerLoginCode.create).not.toHaveBeenCalled();
-        expect(mail.sendBookingNoticeEmail).not.toHaveBeenCalled();
+        expect(mail.sendTravellerLoginCodeEmail).not.toHaveBeenCalled();
       });
 
       it('caps per target email (1/min, 5/day) before touching the database', async () => {
@@ -3632,14 +3627,15 @@ describe('BookingsService', () => {
 
         // The mailed code must hash to exactly what was stored, and must not
         // be recoverable from the row.
-        const [to, subject, ctx] = mail.sendBookingNoticeEmail.mock.calls[0];
-        const code = /\b(\d{6})\b/.exec(ctx.noticeParagraphs.join(' '))![1];
+        const [to, code, expiresInLabel] =
+          mail.sendTravellerLoginCodeEmail.mock.calls[0];
+        expect(code).toMatch(/^\d{6}$/);
         expect(hashLoginCode(EMAIL, code)).toBe(row.codeHash);
         expect(row.codeHash).not.toContain(code);
         // Recipient is the STORED address, never the caller's casing/input.
         expect(to).toBe('Guest@Example.TEST');
-        expect(subject).toContain('login code');
-        expect(ctx.ctaUrl).toMatch(/\/traveller$/);
+        // The window the traveller is told about must be the one enforced.
+        expect(expiresInLabel).toBe('10 minutes');
       });
 
       it('invalidates any previous unconsumed code for that email', async () => {

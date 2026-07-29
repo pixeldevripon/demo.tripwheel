@@ -9,8 +9,8 @@
         "language": "Langue",
         "categories": "Catégories",
         "search": "Rechercher",
-        "myBookings": "Mes réservations",
-        "myAccount": "Mon compte"
+        "myBookings": "Réservations",
+        "myAccount": "Comptes"
     },
     "footer": {
         "tagline": "Créé par des insulaires.",

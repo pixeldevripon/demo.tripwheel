@@ -1,4 +1,4 @@
-import { authEmailShell } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS } from './auth-email-shell';
 
 export interface PasswordResetTemplateProps {
   resetUrl: string;
@@ -18,12 +18,11 @@ export function passwordResetTemplate({
     siteLogoUrl,
     title: 'Reset your password.',
     paragraphs: [
-      'We received a request to reset your Island Tours password.',
-      'The link expires in <b style="color:#1F2937">1 hour</b>.',
+      `Set a new Island Tours password below. The link expires in <span style="${EMAIL_EMPHASIS}">1 hour</span>.`,
     ],
     ctaLabel: 'Reset password',
     ctaUrl: resetUrl,
     footnote:
-      "Didn't request this? You can safely ignore this email - your password stays unchanged.",
+      "Didn't request this? Ignore this email - your password stays unchanged.",
   });
 }

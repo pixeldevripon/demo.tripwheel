@@ -7,6 +7,7 @@ import { emailSafeLogoUrl } from './email-logo.util';
 import {
   changeEmailConfirmationTemplate,
   emailVerificationTemplate,
+  travellerLoginCodeTemplate,
   hatAddedSubject,
   hatAddedTemplate,
   type HatAddedTemplateProps,
@@ -158,6 +159,29 @@ export class MailService {
     await this.sendMail({
       to,
       subject: 'Reset your Island Tours password',
+      html,
+      text,
+    });
+  }
+
+  // ── Traveller account-area sign-in code ──────────────────────────────────────
+  async sendTravellerLoginCodeEmail(
+    to: string,
+    code: string,
+    expiresInLabel: string,
+  ): Promise<void> {
+    const siteLogoUrl = await this.getSiteLogo();
+    const { html, text } = travellerLoginCodeTemplate({
+      code,
+      expiresInLabel,
+      siteLogoUrl,
+    });
+    await this.sendMail({
+      to,
+      // The code is NOT in the subject on purpose: subjects show on lock
+      // screens and in notification banners, where anyone holding the phone
+      // can read it without unlocking.
+      subject: 'Your Island Tours sign-in code',
       html,
       text,
     });

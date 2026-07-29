@@ -1043,14 +1043,15 @@ export class CreateTourDto {
   @IsBoolean()
   pickupRequired?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 20,
     description:
-      'Maximum travelers per booking. ALSO the default capacity every schedule falls back on when it has no capacityOverride, which is why it is required: without it a schedule materialises nothing and the tour never lists.',
+      'Maximum travelers per booking. ALSO the default capacity every schedule falls back on when it has no capacityOverride. The column is NOT NULL: omitting it here creates the tour with the schema default (10), which the operator confirms on the booking-rules step before publishing. It is optional ON CREATE only because create mints a bare draft from four fields - a required capacity would block the draft on a question the wizard asks two steps later.',
   })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  maxPartySize!: number;
+  maxPartySize?: number;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

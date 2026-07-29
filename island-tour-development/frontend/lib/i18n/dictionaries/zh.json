@@ -9,8 +9,8 @@
         "language": "语言",
         "categories": "分类",
         "search": "搜索",
-        "myBookings": "我的预订",
-        "myAccount": "我的账户"
+        "myBookings": "预订",
+        "myAccount": "账户"
     },
     "footer": {
         "tagline": "由岛民打造。",

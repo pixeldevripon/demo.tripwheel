@@ -11,7 +11,7 @@
  */
 
 export interface AuthEmailShellProps {
-  /** <title>, preheader, and the 22px/800 headline. */
+  /** <title>, preheader, and the headline. */
   title: string;
   /** Dashboard-managed logo URL; text-logo fallback when absent. */
   siteLogoUrl?: string | null;
@@ -19,11 +19,26 @@ export interface AuthEmailShellProps {
   greeting?: string;
   /** Body copy lines (developer-authored; may contain inline markup). */
   paragraphs: string[];
-  ctaLabel: string;
-  ctaUrl: string;
+  /**
+   * A one-time code, shown as the centrepiece instead of buried in a sentence.
+   * When present the CTA becomes optional - the code IS the payload.
+   */
+  code?: string;
+  /** Label under the code, e.g. "Expires in 10 minutes". */
+  codeNote?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
   /** Muted line under the link fallback (e.g. "didn't request this?"). */
   footnote?: string;
 }
+
+/**
+ * The type scale. Bigger and lighter than the old 14px/800 setting: these are
+ * short, one-decision emails, and at this size they read as a sentence rather
+ * than as dense UI chrome. `emphasis` is what template copy should use for
+ * inline bolding - 600 against a 400 body, never the browser's 700 <b>.
+ */
+export const EMAIL_EMPHASIS = 'font-weight:600;color:#1F2937';
 
 /** Escapes HTML-significant characters so user data cannot inject markup. */
 export function escapeHtml(value: string): string {
@@ -40,6 +55,8 @@ export function authEmailShell({
   siteLogoUrl,
   greeting,
   paragraphs,
+  code,
+  codeNote,
   ctaLabel,
   ctaUrl,
   footnote,
@@ -49,17 +66,35 @@ export function authEmailShell({
     ? `<img src="${siteLogoUrl}" height="48" alt="Island Tours" style="display:block;border:0;height:48px;width:auto">`
     : `<span style="font-family:'Plus Jakarta Sans',Arial,sans-serif;font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#1F2937">ISLAND <span style="color:#E8611A">TOURS</span></span>`;
 
+  const line = (content: string) =>
+    `<div style="font-size:17px;font-weight:400;color:#4B5563;line-height:1.65;margin-bottom:14px">${content}</div>`;
+
   const bodyBlocks = [
-    ...(greeting
-      ? [
-          `<div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">${greeting}</div>`,
-        ]
-      : []),
-    ...paragraphs.map(
-      (p) =>
-        `<div style="font-size:14px;color:#4B5563;line-height:1.5;margin-bottom:12px">${p}</div>`,
-    ),
+    ...(greeting ? [line(greeting)] : []),
+    ...paragraphs.map(line),
   ].join('\n          ');
+
+  // The code, when there is one. No tinted panel and no border: emphasis in
+  // this family is TYPE - size, weight and ink - so the code simply becomes the
+  // biggest thing on the page. Plain text rather than an image so it survives
+  // image blocking and can still be copied.
+  const codeBlock = code
+    ? `
+          <div style="font-size:36px;font-weight:600;letter-spacing:.14em;line-height:1.2;color:#1F2937;margin:2px 0 10px">${escapeHtml(code)}</div>
+          ${codeNote ? `<div style="font-size:15px;font-weight:400;color:#9aa3b2;margin-bottom:16px">${escapeHtml(codeNote)}</div>` : ''}`
+    : '';
+
+  // The CTA is optional: a code email already carries its payload, so the
+  // button (and its "if the button doesn't work" fallback) would be noise.
+  const ctaBlock =
+    ctaLabel && ctaUrl
+      ? `
+          <a href="${ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:16px;font-weight:500;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:13px 24px;margin-top:4px">${ctaLabel}</a>
+
+          <div style="font-size:14px;font-weight:400;color:#9aa3b2;margin-top:18px;line-height:1.65">If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${ctaUrl}" style="color:#4B5563;word-break:break-all">${ctaUrl}</a>
+          </div>`
+      : '';
 
   const html = `
 <!DOCTYPE html>
@@ -72,12 +107,8 @@ export function authEmailShell({
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
   <title>${title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
     /* Lock the palette to the light design. Clients that honor color-scheme
        (Apple Mail, iOS) stop inverting the card and logo in dark mode; Gmail
        ignores it - the logo itself ships with a baked-in white chip for that. */
@@ -104,32 +135,26 @@ export function authEmailShell({
         </td></tr>
 
         <!-- Headline -->
-        <tr><td class="it-cell" style="padding:26px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
-          <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#1F2937">${title}</div>
+        <tr><td class="it-cell" style="padding:30px 28px 6px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="font-size:28px;font-weight:500;letter-spacing:-.02em;line-height:1.25;color:#1F2937">${title}</div>
         </td></tr>
 
         <!-- Body -->
-        <tr><td class="it-cell" style="padding:16px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
-          ${bodyBlocks}
-
-          <a href="${ctaUrl}" style="display:inline-block;font-family:'Plus Jakarta Sans',Arial,sans-serif;font-size:14px;font-weight:700;color:#fff;background:#E8611A;text-decoration:none;border-radius:10px;padding:11px 20px;margin-top:4px">${ctaLabel}</a>
-
-          <div style="font-size:12.5px;color:#9aa3b2;margin-top:16px;line-height:1.6">If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${ctaUrl}" style="color:#4B5563;word-break:break-all">${ctaUrl}</a>
-          </div>
+        <tr><td class="it-cell" style="padding:18px 28px 4px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          ${bodyBlocks}${codeBlock}${ctaBlock}
           ${
             footnote
-              ? `\n          <div style="font-size:12.5px;color:#9aa3b2;margin-top:12px;line-height:1.6">${footnote}</div>`
+              ? `\n          <div style="font-size:14px;font-weight:400;color:#9aa3b2;margin-top:14px;line-height:1.65">${footnote}</div>`
               : ''
           }
         </td></tr>
 
         <!-- Sign-off -->
-        <tr><td class="it-cell" style="padding:24px 28px 24px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
-          <div style="border-top:1px solid #E8EAED;padding-top:18px">
-            <div style="font-size:13px;font-weight:800;color:#1F2937">Island Tours. Built by Islanders.</div>
-            <div style="font-size:12.5px;color:#9aa3b2;margin-top:4px">www.island.tours</div>
-            <div style="font-size:11.5px;color:#b6bcc7;margin-top:10px;line-height:1.6">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional account email.</div>
+        <tr><td class="it-cell" style="padding:26px 28px 26px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="border-top:1px solid #E8EAED;padding-top:20px">
+            <div style="font-size:15px;font-weight:600;color:#1F2937">Island Tours. Built by Islanders.</div>
+            <div style="font-size:14px;font-weight:400;color:#9aa3b2;margin-top:5px">www.island.tours</div>
+            <div style="font-size:13px;font-weight:400;color:#b6bcc7;margin-top:12px;line-height:1.65">ITG B.V. (Island Tours Group) · KvK Curaçao 169950<br>Caracasbaaiweg 366, Willemstad, Curaçao<br>This is a transactional account email.</div>
           </div>
         </td></tr>
 
@@ -156,8 +181,8 @@ export function authEmailShell({
     '',
     ...(greeting ? [toText(greeting), ''] : []),
     ...paragraphs.map(toText),
-    '',
-    `${ctaLabel}: ${ctaUrl}`,
+    ...(code ? ['', code, ...(codeNote ? [codeNote] : [])] : []),
+    ...(ctaLabel && ctaUrl ? ['', `${ctaLabel}: ${ctaUrl}`] : []),
     ...(footnote ? ['', toText(footnote)] : []),
     '',
     'Island Tours. Built by Islanders.',

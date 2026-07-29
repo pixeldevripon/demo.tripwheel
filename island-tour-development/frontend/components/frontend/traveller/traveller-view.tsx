@@ -13,7 +13,6 @@ import type {
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade, swapFade } from '@/lib/motion';
-import { clearTravelerBooking } from '@/lib/traveler-booking';
 
 import { MountReveal } from '../mount-reveal';
 import { Pagination } from '../pagination';
@@ -55,7 +54,6 @@ export function TravellerView({
 }) {
     const router = useRouter();
     const [tab, setTab] = useState<TravellerTab>(activeTab);
-    const [signingOut, setSigningOut] = useState(false);
 
     // Pagination navigates, which re-renders this component with a new
     // activeTab - keep the local tab in step with the URL it came from.
@@ -79,13 +77,10 @@ export function TravellerView({
         });
     }
 
-    function signOut() {
-        if (signingOut) return;
-        setSigningOut(true);
-        // Drops the HttpOnly session cookie AND the display-only client cookies.
-        clearTravelerBooking();
-        router.refresh();
-    }
+    // Signing out lives in the navbar account menu (the one place it appears on
+    // every page). This view had an unreferenced `signOut` helper that no
+    // control ever called, and it cleared the display cookies without awaiting
+    // the session delete - exactly the race the navbar now avoids.
 
     const tabs: { key: TravellerTab; label: string; count: number }[] = [
         { key: 'bookings', label: dict.tabBookings, count: bookings.total },

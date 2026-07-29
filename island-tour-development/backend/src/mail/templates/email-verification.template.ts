@@ -33,13 +33,12 @@ export function emailVerificationTemplate({
       title: 'Confirm your new email address.',
       greeting,
       paragraphs: [
-        'You asked to move your Island Tours sign-in email to this address, and the request was approved from your current inbox. Confirm below to complete the change.',
-        'Until you confirm, you keep signing in with your current email.',
+        'Your current inbox approved moving your Island Tours sign-in email here. Confirm below to finish the change - until you do, keep signing in with your current email.',
       ],
       ctaLabel: 'Confirm new email',
       ctaUrl: verifyUrl,
       footnote:
-        "Didn't request this change? You can safely ignore this email - your sign-in email stays as it is.",
+        "Didn't request this? Ignore this email - your sign-in email stays as it is.",
     });
   }
 
@@ -48,11 +47,10 @@ export function emailVerificationTemplate({
     title: 'Verify your email address.',
     greeting,
     paragraphs: [
-      'Confirm this is your email address to secure your Island Tours account and finish signing in.',
+      'Confirm this is your address to secure your Island Tours account and finish signing in.',
     ],
     ctaLabel: 'Verify email address',
     ctaUrl: verifyUrl,
-    footnote:
-      "Didn't create an Island Tours account? You can safely ignore this email.",
+    footnote: "Didn't create an Island Tours account? Ignore this email.",
   });
 }

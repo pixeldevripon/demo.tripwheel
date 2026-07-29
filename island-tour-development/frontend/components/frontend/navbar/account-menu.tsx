@@ -1,31 +1,72 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Ticket, UserRound } from 'lucide-react';
+import { Loader2, LogOut, Ticket, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useRef, useState } from 'react';
 
+import { useTravellerIdentity } from '@/hooks/use-traveller-identity';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
-import { crossFade } from '@/lib/motion';
-import {
-    clearTravelerBooking,
-    readTravelerBooking,
-    readTravellerAccount,
-    type TravelerBooking,
-} from '@/lib/traveler-booking';
+import { signOutTraveller } from '@/lib/traveler-booking';
 
-import { iconPress } from './lib/navbar.constants';
+import {
+    dropdownItemMotion,
+    dropdownMotion,
+    iconPress,
+} from './lib/navbar.constants';
 import type { NavDict } from './lib/navbar.types';
 import { useClickOutside } from './lib/use-click-outside';
 
 /**
+ * The path with its locale prefix removed, so every route test below can be
+ * written once. The thank-you route is served LOCALE-LESS through the proxy
+ * rewrite, so both shapes have to fall out of this the same way.
+ */
+function stripLocale(pathname: string, locale: Locale): string {
+    if (pathname === `/${locale}`) return '/';
+    return pathname.startsWith(`/${locale}/`)
+        ? pathname.slice(locale.length + 1)
+        : pathname;
+}
+
+/** The account area - what the "Accounts" item points at. */
+const ACCOUNT_PATH = /^\/traveller(\/|$)/;
+
+/**
+ * Everything that is "a booking": the lookup door, a booking's own thank-you
+ * page, and its cancellation page. The menu item is one entry, so all three
+ * light it up - a traveller reading their confirmation is inside Bookings.
+ */
+const BOOKINGS_PATH = /^\/(bookings(\/|$)|cancel\/|[a-z0-9-]+\/thank-you\/)/;
+
+/**
+ * Pages that only exist for a signed-in traveller. Signing out on one of these
+ * has to move the traveller off it - otherwise "log out" leaves them staring at
+ * their own bookings until something else triggers a navigation. Everywhere
+ * else, signing out is a chrome change and the page they were reading stays.
+ */
+function isAccountGated(path: string): boolean {
+    return ACCOUNT_PATH.test(path) || BOOKINGS_PATH.test(path);
+}
+
+/** Active row: primary ink and medium weight, matching the locale menu. */
+const ROW =
+    'flex w-full items-center gap-2.5 px-5 py-3 text-sm no-underline transition-colors duration-200 hover:bg-it-surface';
+const ROW_ACTIVE = 'text-it-primary font-medium';
+const ROW_IDLE = 'text-it-ink';
+
+/**
  * Account entry in the navbar - a traveller surface driven ONLY by the
- * `it.travelerBooking` cookie (no Better Auth session on the public site).
- * With no cookie it links to /bookings (the email + booking-ref lookup);
- * after a successful lookup it opens a small menu showing the email the
- * traveller searched with, a deep-link to their booking's thank-you page,
- * and a log-out that simply clears the cookie.
+ * `it.travelerBooking` / `it.travellerAccount` cookies (no Better Auth session
+ * on the public site). With no cookie it links to /traveller (the account
+ * door); signed in it opens a small menu showing the email, the account area,
+ * the booking lookup, and a log-out.
+ *
+ * The identity comes from a subscribed store rather than a mount effect, so it
+ * is correct on the first render after hydration AND updates the moment the
+ * traveller signs in or out anywhere else in the session.
  */
 export function AccountMenu({
     locale,
@@ -34,33 +75,44 @@ export function AccountMenu({
     locale: Locale;
     dict: NavDict;
 }) {
+    const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
-    useClickOutside(ref, () => setOpen(false), open);
+
+    // Stable identity, or the click-outside effect would tear down and re-attach
+    // its document listener on every single render of the header.
+    const close = useCallback(() => setOpen(false), []);
+    useClickOutside(ref, close, open);
+
     const bookingsHref = localizeHref(locale, '/bookings');
     const accountHref = localizeHref(locale, '/traveller');
 
-    // Read after mount (SSR has no document); the SSR pass renders the plain
-    // lookup link, which is also the no-cookie state.
-    //
+    const path = stripLocale(pathname, locale);
+    const accountActive = ACCOUNT_PATH.test(path);
+    const bookingsActive = BOOKINGS_PATH.test(path);
+
     // TWO ways to be signed in, and the menu must recognise both: a `/bookings`
     // pair lookup (which saves a booking record) or the account door's OTP
     // login (which saves only the email). Neither cookie authorizes anything -
     // the real credential is HttpOnly and unreadable here.
-    const [booking, setBooking] = useState<TravelerBooking | null>(null);
-    const [accountEmail, setAccountEmail] = useState<string | null>(null);
-    useEffect(() => {
-        setBooking(readTravelerBooking());
-        setAccountEmail(readTravellerAccount());
-    }, []);
+    const { email: identityEmail } = useTravellerIdentity();
 
-    const identityEmail = accountEmail ?? booking?.email ?? null;
-
-    function handleLogout() {
-        clearTravelerBooking();
-        setBooking(null);
-        setAccountEmail(null);
+    async function handleLogout() {
+        if (signingOut) return;
+        setSigningOut(true);
+        // Awaited, so the HttpOnly session is gone BEFORE anything re-renders
+        // from the server - a fire-and-forget delete used to race the refresh
+        // and hand back a still-signed-in page.
+        await signOutTraveller();
         setOpen(false);
+        setSigningOut(false);
+        if (isAccountGated(path)) {
+            router.replace(localizeHref(locale, '/'));
+        } else {
+            router.refresh();
+        }
     }
 
     const profileIcon = (
@@ -99,15 +151,19 @@ export function AccountMenu({
 
             <AnimatePresence>
                 {open && (
+                    /* The shared navbar dropdown motion, same as the locale and
+                       category menus: a spring open and a short clean fade out.
+                       The hand-rolled cross-fade this replaced took ~330ms to
+                       dismiss against ~40ms to open, which is what made the
+                       menu feel heavy. */
                     <motion.div
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={crossFade}
+                        {...dropdownMotion}
                         className='absolute top-[calc(100%+18px)] right-0 w-64 origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
-                        {/* The email the traveller looked their booking up
-                            with - the only identity the public site has. */}
-                        <div className='flex items-center gap-3 px-5 py-4'>
+                        {/* The email the traveller signed in with - the only
+                            identity the public site has. */}
+                        <motion.div
+                            {...dropdownItemMotion}
+                            className='flex items-center gap-3 px-5 py-4'>
                             <span className='flex size-9 shrink-0 items-center justify-center rounded-it-full bg-it-surface text-sm font-semibold uppercase text-it-ink'>
                                 {identityEmail.trim().charAt(0)}
                             </span>
@@ -119,52 +175,80 @@ export function AccountMenu({
                                     {dict.account}
                                 </span>
                             </span>
-                        </div>
+                        </motion.div>
 
                         {/* The account area: every booking and payment, behind
-                            its own emailed-code sign-in. */}
-                        <div className='border-t border-it-border'>
+                            its own emailed-code sign-in. `prefetch={false}` on
+                            both links - these are per-traveller pages that
+                            cannot be cached and are never worth speculatively
+                            fetching just because a menu opened. */}
+                        <motion.div
+                            {...dropdownItemMotion}
+                            className='border-t border-it-border'>
                             <Link
                                 href={accountHref}
-                                onClick={() => setOpen(false)}
-                                className='flex w-full items-center gap-2.5 px-5 py-3 text-sm text-it-ink no-underline transition-colors duration-200 hover:bg-it-surface'>
+                                prefetch={false}
+                                onClick={close}
+                                aria-current={accountActive ? 'page' : undefined}
+                                className={`${ROW} ${accountActive ? ROW_ACTIVE : ROW_IDLE}`}>
                                 <UserRound
                                     size={16}
                                     strokeWidth={1.5}
-                                    className='shrink-0 text-it-ink-muted'
+                                    className={`shrink-0 ${accountActive ? 'text-it-primary' : 'text-it-ink-muted'}`}
                                 />
                                 {dict.myAccount}
                             </Link>
-                        </div>
+                        </motion.div>
 
                         {/* The lookup page - it prefills itself from the
                             cookie's saved search data. */}
-                        <div className='border-t border-it-border'>
+                        <motion.div
+                            {...dropdownItemMotion}
+                            className='border-t border-it-border'>
                             <Link
                                 href={bookingsHref}
-                                onClick={() => setOpen(false)}
-                                className='flex w-full items-center gap-2.5 px-5 py-3 text-sm text-it-ink no-underline transition-colors duration-200 hover:bg-it-surface'>
+                                prefetch={false}
+                                onClick={close}
+                                aria-current={
+                                    bookingsActive ? 'page' : undefined
+                                }
+                                className={`${ROW} ${bookingsActive ? ROW_ACTIVE : ROW_IDLE}`}>
                                 <Ticket
                                     size={16}
                                     strokeWidth={1.5}
-                                    className='shrink-0 text-it-ink-muted'
+                                    className={`shrink-0 ${bookingsActive ? 'text-it-primary' : 'text-it-ink-muted'}`}
                                 />
                                 {dict.myBookings}
                             </Link>
-                        </div>
+                        </motion.div>
 
-                        <div className='border-t border-it-border'>
+                        <motion.div
+                            {...dropdownItemMotion}
+                            className='border-t border-it-border'>
                             <button
-                                onClick={handleLogout}
-                                className='flex w-full items-center gap-2.5 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors duration-200 hover:bg-it-surface text-it-ink'>
-                                <LogOut
-                                    size={16}
-                                    strokeWidth={1.5}
-                                    className='shrink-0 text-it-ink-muted'
-                                />
+                                onClick={() => void handleLogout()}
+                                disabled={signingOut}
+                                aria-busy={signingOut}
+                                className={`${ROW} ${ROW_IDLE} cursor-pointer border-none bg-transparent text-left disabled:cursor-wait disabled:opacity-60`}>
+                                {/* Signing out is a network round trip. Without
+                                    a pending state the row looks inert for the
+                                    whole of it and travellers click again. */}
+                                {signingOut ? (
+                                    <Loader2
+                                        size={16}
+                                        strokeWidth={1.5}
+                                        className='shrink-0 animate-spin text-it-ink-muted'
+                                    />
+                                ) : (
+                                    <LogOut
+                                        size={16}
+                                        strokeWidth={1.5}
+                                        className='shrink-0 text-it-ink-muted'
+                                    />
+                                )}
                                 {dict.logout}
                             </button>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

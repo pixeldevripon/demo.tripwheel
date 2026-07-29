@@ -79,11 +79,22 @@ export const dropdownMotion = {
     },
 } as const;
 
-/** Per-item cascade inside a `dropdownMotion` panel (inherits open/closed). */
+/**
+ * Per-item cascade inside a `dropdownMotion` panel (inherits open/closed).
+ *
+ * `closed` carries its OWN transition on purpose. `AnimatePresence` holds the
+ * panel in the DOM until every descendant has finished exiting, and without a
+ * transition here the items fell back to framer's default spring - roughly
+ * 800ms to settle `y`, against the panel's own 180ms. The whole menu sat there
+ * fading long after the click, which is exactly the lag the panel's fast close
+ * was meant to avoid. Shorter than the panel's, so items are gone first.
+ */
+const dropdownItemExit = { duration: 0.12, ease: [0.4, 0, 0.2, 1] } as const;
+
 export const dropdownItemMotion = {
     variants: {
         open: { opacity: 1, y: 0, transition: springPop },
-        closed: { opacity: 0, y: -6 },
+        closed: { opacity: 0, y: -6, transition: dropdownItemExit },
     },
 } as const;
 
@@ -116,6 +127,6 @@ export const dropdownUpMotion = {
 export const dropdownUpItemMotion = {
     variants: {
         open: { opacity: 1, y: 0, transition: springPop },
-        closed: { opacity: 0, y: 6 },
+        closed: { opacity: 0, y: 6, transition: dropdownItemExit },
     },
 } as const;

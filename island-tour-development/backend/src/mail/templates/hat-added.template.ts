@@ -1,4 +1,4 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 
 export interface HatAddedTemplateProps {
   /** Which identity was attached to the existing account. */
@@ -48,11 +48,11 @@ export function hatAddedTemplate({
 }: HatAddedTemplateProps) {
   const inviter = escapeHtml(inviterName(variant, companyName));
   const asRole = roleLabel
-    ? ` as <b style="color:#1F2937">${escapeHtml(roleLabel)}</b>`
+    ? ` as <span style="${EMAIL_EMPHASIS}">${escapeHtml(roleLabel)}</span>`
     : '';
   const what =
     variant === 'operator'
-      ? `Your email now also holds a <b style="color:#1F2937">tour operator</b> account with ${inviter}.`
+      ? `Your email now also holds a <span style="${EMAIL_EMPHASIS}">tour operator</span> account with ${inviter}.`
       : `${inviter} added you to their team${asRole}.`;
 
   return authEmailShell({
@@ -61,7 +61,7 @@ export function hatAddedTemplate({
     greeting: name ? `Hi ${escapeHtml(name)},` : undefined,
     paragraphs: [
       what,
-      'You already have an Island Tours account with this email, so there is no new password to set - sign in with your existing email and password.',
+      'There is no new password to set - sign in with the email and password you already use.',
     ],
     ctaLabel: 'Sign in',
     ctaUrl: loginUrl,

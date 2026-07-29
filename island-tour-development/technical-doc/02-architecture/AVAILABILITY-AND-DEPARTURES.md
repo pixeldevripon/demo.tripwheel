@@ -98,7 +98,7 @@ A nightly job projects schedules + exceptions into `departures` for a **rolling 
 For each tour, for each date in the window:
 
 1. Resolve the active `availability_schedules` rows for that weekday whose `valid_from`/`valid_until` cover the date and whose `status = active`.
-2. For each resulting `(date, start_time)`, resolve capacity in priority order: **exception → schedule `capacity_override` → tour default** (`max_party_size`).
+2. For each resulting `(date, start_time)`, resolve capacity in priority order: **exception → schedule `capacity_override` → tour default** (`max_party_size`). The last link is **NOT NULL** (`20260729190000_max_party_size_required`, default 10), so capacity **always** resolves - the old "no default and no override, so the slot is skipped and the tour silently never lists" branch cannot occur, and neither the schedule form nor the readiness checklist asks about it any more.
 3. Apply exceptions: `add_slot` adds a departure; `close_date`/`close_slot` set `status = closed`; `set_capacity` overrides capacity.
 4. Upsert the `departures` row keyed by `(tour_id, date, start_time)`, stamping `source = schedule` or `source = exception`.
 

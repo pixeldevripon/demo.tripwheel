@@ -3293,18 +3293,13 @@ export class BookingsService {
         this.logger.error('Traveller login code cleanup failed', err);
       });
 
+    // Existence + the address to send to, nothing more. The sign-in code email
+    // says nothing about any particular booking, so the tour name, dates and
+    // reference this used to load were all read straight into the bin.
     const booking = await this.prisma.booking.findFirst({
       where: { contactEmail: { equals: email, mode: 'insensitive' } },
       orderBy: { createdAt: 'desc' },
-      select: {
-        displayRef: true,
-        contactEmail: true,
-        customerLocale: true,
-        localDate: true,
-        tourStartDateTime: true,
-        startTime: true,
-        tour: { select: { name: true } },
-      },
+      select: { contactEmail: true },
     });
     if (!booking) {
       this.logger.log('Traveller login code requested for an unknown email');
@@ -3328,37 +3323,15 @@ export class BookingsService {
       },
     });
 
-    const site = await this.prisma.siteInfo.findFirst({
-      select: { logo: true },
-    });
-    const base = islandToursBase();
-    const locale = toLocale(booking.customerLocale);
-    const ctx: EmailTemplateContext = {
-      emailIconBase: emailIconBase(),
-      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
-      bookingRef: booking.displayRef,
-      tourName: booking.tour?.name ?? 'Your tour',
-      startTime: booking.startTime ?? '',
-      dateLong: formatDateLong(
-        booking.tourStartDateTime ?? booking.localDate,
-        locale,
-      ),
-      noticeTitle: 'Your login code.',
-      noticeParagraphs: [
-        `Your code is ${code}.`,
-        'It is valid for 10 minutes and can be used once.',
-        'If you did not ask to sign in, you can ignore this email - nobody can reach your bookings without this code.',
-      ],
-      ctaUrl: `${base}/traveller`,
-      ctaLabel: 'Open your bookings',
-    };
-
+    // A credential email, so it goes out on the AUTH shell rather than the
+    // booking-notice one: this message is about signing in, and the notice
+    // shell wrapped the code in a tour name and departure date that have
+    // nothing to do with it. The dedicated template leads with the code.
     void this.mail
-      .sendBookingNoticeEmail(
+      .sendTravellerLoginCodeEmail(
         booking.contactEmail ?? email,
-        'Your Island Tours login code',
-        ctx,
-        buildNoticeText(ctx),
+        code,
+        `${BookingsService.LOGIN_CODE_TTL_MS / 60_000} minutes`,
       )
       .catch((err: Error) => {
         this.logger.error('Traveller login code email failed', err);

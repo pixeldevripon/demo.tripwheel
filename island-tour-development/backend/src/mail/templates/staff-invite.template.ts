@@ -1,4 +1,4 @@
-import { authEmailShell, escapeHtml } from './auth-email-shell';
+import { authEmailShell, EMAIL_EMPHASIS, escapeHtml } from './auth-email-shell';
 
 export interface StaffInviteTemplateProps {
   inviteUrl: string;
@@ -28,7 +28,7 @@ export function staffInviteTemplate({
   companyName,
 }: StaffInviteTemplateProps) {
   const asRole = roleLabel
-    ? ` as <b style="color:#1F2937">${escapeHtml(roleLabel)}</b>`
+    ? ` as <span style="${EMAIL_EMPHASIS}">${escapeHtml(roleLabel)}</span>`
     : '';
 
   const title =
@@ -40,8 +40,8 @@ export function staffInviteTemplate({
 
   const intro =
     variant === 'platform'
-      ? `An Island Tours administrator has invited you to the Island Tours team${asRole}. Set your password to get started, then log in to the staff dashboard.`
-      : `${companyName ? escapeHtml(companyName) : 'Your team'} has invited you to their team on Island Tours${asRole}. Set your password to get started, then log in to the team dashboard.`;
+      ? `An Island Tours administrator invited you to the Island Tours team${asRole}. Set your password to get started, then sign in to the staff dashboard.`
+      : `${companyName ? escapeHtml(companyName) : 'Your team'} invited you to their team on Island Tours${asRole}. Set your password to get started, then sign in to the team dashboard.`;
 
   return authEmailShell({
     siteLogoUrl,
@@ -49,13 +49,13 @@ export function staffInviteTemplate({
     greeting: name ? `Hi ${escapeHtml(name)},` : 'Hello,',
     paragraphs: [
       intro,
-      'The link expires in <b style="color:#1F2937">1 hour</b>.',
+      `The link expires in <span style="${EMAIL_EMPHASIS}">1 hour</span>.`,
     ],
     ctaLabel: 'Set your password',
     ctaUrl: inviteUrl,
     footnote:
       variant === 'platform'
-        ? 'Link expired? Ask an administrator to resend your invite, or open the login page and choose "Forgot password?".'
-        : 'Link expired? Ask the account owner to resend your invite, or open the portal login and choose "Forgot password?".',
+        ? 'Link expired? Ask an administrator to resend it, or choose "Forgot password?" on the login page.'
+        : 'Link expired? Ask the account owner to resend it, or choose "Forgot password?" on the portal login.',
   });
 }

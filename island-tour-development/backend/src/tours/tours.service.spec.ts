@@ -123,6 +123,7 @@ function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
     isSponsored: false,
     isActive: true,
     publishedAt: null,
+    firstPublishedAt: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-06-01'),
     categories: [{ categoryId: 'cat-1', isPrimary: true }],
@@ -137,14 +138,15 @@ function makeTour(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+// Deliberately the MINIMUM body: the creation wizard mints a draft from four
+// answers and asks everything else later, so anything this fixture carries that
+// the wizard does not send is a requirement no create call can satisfy.
 const baseCreateDto: CreateTourDto = {
   name: 'Sunset Catamaran Cruise',
   destinationId: 'dest-1',
   categoryIds: ['cat-1'],
   pricingModel: PricingModel.PER_PERSON,
   pickupModel: PickupModel.NONE,
-  // Required since 20260729190000: it is the default departure capacity.
-  maxPartySize: 20,
 };
 
 describe('ToursService', () => {
@@ -592,6 +594,122 @@ describe('ToursService', () => {
           }),
         }),
       );
+    });
+  });
+
+  // ── Party size / meeting point (cross-field guards) ───────────────────────────
+
+  describe('cross-field guards', () => {
+    beforeEach(() => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.destination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        slug: 'curacao',
+        isActive: true,
+        timezone: 'America/Curacao',
+      });
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      prisma.tour.findFirst.mockResolvedValue(null);
+      prisma.slugRegistry.findUnique.mockResolvedValue(null);
+      prisma.tour.create.mockResolvedValue(makeTour());
+      prisma.slugRegistry.create.mockResolvedValue({});
+    });
+
+    // The column is NOT NULL, but requiring it in the CREATE body broke the
+    // only caller that mints a row: the wizard's first step asks four questions
+    // and asks for capacity two steps later.
+    it('creates without a maxPartySize, leaving the schema default to write it', async () => {
+      await service.create(baseCreateDto, 'user-1', Role.TOUR_OPERATOR);
+
+      const data = prisma.tour.create.mock.calls[0][0].data as {
+        maxPartySize?: number;
+      };
+      expect(data.maxPartySize).toBeUndefined();
+    });
+
+    it('rejects a create whose minimum exceeds the (defaulted) maximum', async () => {
+      await expect(
+        service.create(
+          { ...baseCreateDto, minPartySize: 12 },
+          'user-1',
+          Role.TOUR_OPERATOR,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // Either end can arrive on its own, so the guard compares against the
+    // STORED value - not just against a sibling in the same body.
+    it('rejects a maximum sent below the stored minimum', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ minPartySize: 8, maxPartySize: 20 }),
+      );
+
+      await expect(
+        service.update('tour-1', { maxPartySize: 4 }, 'admin', Role.ADMIN),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a minimum sent above the stored maximum', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ minPartySize: 1, maxPartySize: 6 }),
+      );
+
+      await expect(
+        service.update('tour-1', { minPartySize: 10 }, 'admin', Role.ADMIN),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // Half a meeting point cannot be plotted anywhere, so it is data no reader
+    // can use. The wizard guards it too; this is the other side of the wire.
+    it('rejects a latitude sent without a longitude', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ meetingPointLat: null, meetingPointLng: null }),
+      );
+
+      await expect(
+        service.update(
+          'tour-1',
+          { meetingPointLat: 12.1 },
+          'admin',
+          Role.ADMIN,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts a longitude alone when the tour already has a latitude', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ meetingPointLat: 12.1, meetingPointLng: null }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(makeTour());
+
+      await expect(
+        service.update(
+          'tour-1',
+          { meetingPointLng: -68.9 },
+          'admin',
+          Role.ADMIN,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('accepts a widening pair sent together', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ minPartySize: 1, maxPartySize: 6 }),
+      );
+      prisma.tour.update.mockResolvedValue({});
+      prisma.tour.findUniqueOrThrow.mockResolvedValue(
+        makeTour({ minPartySize: 10, maxPartySize: 30 }),
+      );
+
+      await expect(
+        service.update(
+          'tour-1',
+          { minPartySize: 10, maxPartySize: 30 },
+          'admin',
+          Role.ADMIN,
+        ),
+      ).resolves.toBeDefined();
     });
   });
 
@@ -1106,7 +1224,7 @@ describe('ToursService', () => {
   });
 
   describe('publish', () => {
-    const ready = () =>
+    const ready = (overrides: Record<string, unknown> = {}) =>
       makeTour({
         images: [
           { id: 'i1', isHero: true },
@@ -1117,6 +1235,7 @@ describe('ToursService', () => {
         ],
         highlights: [{ id: 'h1' }, { id: 'h2' }, { id: 'h3' }],
         translations: [{ overview: 'A lovely cruise overview.' }],
+        ...overrides,
       });
 
     it('publishes a ready DRAFT tour and flattens the result', async () => {
@@ -1136,6 +1255,9 @@ describe('ToursService', () => {
           data: {
             status: TourStatus.LIVE,
             publishedAt: expect.any(Date),
+            // Nothing wrote this before: the tier engine read the resulting
+            // null as "still provisional" and never demoted the tour.
+            firstPublishedAt: expect.any(Date),
             isBookable: true,
             // LIVE implies APPROVED (conflict #1) - publish stamps it.
             approvalStatus: TourApprovalStatus.APPROVED,
@@ -1144,6 +1266,26 @@ describe('ToursService', () => {
       );
       expect(availability.computeIsBookable).toHaveBeenCalledWith('tour-1');
       expect(result.categoryIds).toEqual(['cat-1']);
+    });
+
+    it('keeps the original firstPublishedAt when a tour is published again', async () => {
+      const original = new Date('2025-03-01T00:00:00.000Z');
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+      prisma.tour.findUnique.mockResolvedValue(
+        ready({ firstPublishedAt: original }),
+      );
+      prisma.tour.update.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+
+      await service.publish('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+      const data = prisma.tour.update.mock.calls[0][0].data as {
+        firstPublishedAt: Date;
+        publishedAt: Date;
+      };
+      expect(data.firstPublishedAt).toBe(original);
+      expect(data.publishedAt).not.toBe(original);
     });
 
     it('collects all readiness errors', async () => {
