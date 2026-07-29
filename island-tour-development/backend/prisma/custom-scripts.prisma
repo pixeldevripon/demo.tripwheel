@@ -1,0 +1,59 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom scripts - admin-pasted vendor snippets injected into every public page
+// (dashboard: Settings > Scripts).
+//
+// ONE ROW PER SNIPPET, deliberately. The obvious shape is two big text fields on
+// SiteSEO ("header scripts" / "footer scripts"), and it is the wrong one: every
+// edit becomes a diff against every other vendor's code in the same box, one
+// broken snippet takes the others down with it, and there is no way to switch a
+// single tool off to test whether it is the thing slowing the site down. A row
+// per snippet gives each one a name, an on/off switch and an order.
+//
+// THIS IS EXECUTABLE CODE ON EVERY PUBLIC PAGE. `code` is stored VERBATIM: an
+// admin pastes a vendor's exact snippet, and silently rewriting it would break
+// subresource-integrity hashes and make vendor support impossible. The safety
+// sits on the write path instead - MANAGE_SETTINGS (admin only), plus the
+// structural allowlist in `common/utils/custom-scripts.util.ts`, which refuses
+// <base>/<object>/<form>/loose text/unclosed tags before anything is stored.
+// Read that file for why the script BODY is not, and cannot be, validated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One vendor snippet. Rendered on every public page in `displayOrder`, within
+/// its `position`, for as long as `isActive` is true.
+model CustomScript {
+  id String @id @default(uuid())
+
+  /// What this snippet IS, in the admin's words ("Hotjar", "Meta domain
+  /// verification"). Required: an unnamed <script> block is unmaintainable the
+  /// moment a second one exists, which is the whole reason this is a table.
+  name String
+
+  /// Optional note for whoever inherits this list - why it was added, who owns
+  /// the account, when it can be removed.
+  description String?
+
+  /// HEAD renders inside <head>; BODY_END renders as the last thing in <body>.
+  /// The default is BODY_END because that is the right answer for anything that
+  /// does not have to run before first paint, and most snippets do not.
+  position CustomScriptPosition @default(BODY_END)
+
+  /// The raw markup, exactly as pasted. Text, not VarChar: a single vendor
+  /// snippet routinely passes 255 chars. The per-field ceiling is a DTO rule
+  /// (CUSTOM_SCRIPTS_MAX_LENGTH), so tightening it later needs no migration.
+  code String @db.Text
+
+  /// Off hides the snippet from every page without deleting it - the first
+  /// thing to reach for when isolating which tool broke something.
+  isActive Boolean @default(true)
+
+  /// Order within a position. Snippets are not independent: a consent manager
+  /// has to run before the tags it gates, so the admin owns the order.
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The public render reads exactly this: active rows, by position, in order.
+  @@index([isActive, position, displayOrder])
+  @@map("custom_scripts")
+}

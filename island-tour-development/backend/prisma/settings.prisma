@@ -72,6 +72,11 @@ model SiteSEO {
   autoGenerateSitemap String? @default("")
   robotsTxt           String? @default("")
 
+  // Custom header/footer scripts are NOT here. They are one row each in
+  // `CustomScript` (custom-scripts.prisma) so an admin adds, names, reorders
+  // and switches off each snippet independently - two merged text blobs made
+  // every edit a diff against everyone else's vendor code.
+
   @@map("site_seo")
 }
 

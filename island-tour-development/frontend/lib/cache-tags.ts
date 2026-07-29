@@ -96,6 +96,14 @@ export const COARSE_CACHE_TAGS = [
     // it did not, which is why toggling the section off left it rendering for a
     // full cacheLife('days'). Following the URL instead of the data is the bug.
     'instagram',
+    // Admin-pasted vendor snippets injected into every public page (Settings >
+    // Scripts). Its own tag rather than `site-info`: that tag
+    // carries the footer and every NeedHelp surface, and this one has to bust
+    // the ROOT LAYOUT, which is the most expensive thing on the site to
+    // regenerate. Switching a snippet off has to take effect at once - an admin
+    // toggling one is usually mid-incident, isolating which vendor broke the
+    // page, and "wait out cacheLife('days')" is not an answer then.
+    'custom-scripts',
     // Admin-managed homepage content (hero copy/image, editorial CTA, section
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.

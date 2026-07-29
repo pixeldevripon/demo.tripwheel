@@ -1,3 +1,4 @@
+import { CustomScripts } from '@/components/frontend/tracking/custom-scripts';
 import QueryProvider from '@/components/providers/query-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -127,6 +128,18 @@ function extractTwitterHandle(url: string | null): string | null {
     }
 }
 
+/**
+ * The admin-managed custom scripts (Settings > SEO > Custom Scripts) mount HERE,
+ * in the ROOT layout, for two reasons that are easy to undo by accident:
+ *
+ *  - `next/script`'s `beforeInteractive` strategy - what a HEAD snippet needs to
+ *    run before any Next.js module - only works from the root layout.
+ *  - This layout renders once per document and is not re-rendered on soft
+ *    navigation, so each snippet executes exactly once, which is what every
+ *    analytics vendor assumes.
+ *
+ * Moving either block into a route group breaks both properties silently.
+ */
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -142,6 +155,7 @@ export default function RootLayout({
                 'font-sans'
             )}>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>
+                <CustomScripts position='head' />
                 <QueryProvider>
                     <ThemeProvider
                         attribute='class'
@@ -154,6 +168,7 @@ export default function RootLayout({
                         </TooltipProvider>
                     </ThemeProvider>
                 </QueryProvider>
+                <CustomScripts position='bodyEnd' />
             </body>
         </html>
     );
