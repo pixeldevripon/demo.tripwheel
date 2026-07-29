@@ -234,6 +234,20 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('instagram');
       break;
 
+    // Custom scripts (Settings > SEO > Custom Scripts). Covers create, edit,
+    // toggle, reorder and delete - `/custom-scripts` and `/custom-scripts/:id`
+    // alike, since every one of them changes what the public payload returns.
+    //
+    // This is the highest-stakes bust in this file. These rows render into the
+    // ROOT LAYOUT of every page, and an admin toggling one off is usually
+    // mid-incident, isolating which vendor broke the site - "wait out
+    // cacheLife('days')" is not an answer then. It is deliberately NOT folded
+    // into `site-info`: that tag carries the footer and every NeedHelp surface,
+    // and this one regenerates the most expensive thing on the site.
+    case 'custom-scripts':
+      tags.push('custom-scripts');
+      break;
+
     default:
       break; // operator-settings, wishlist, read-only lookups, ...
   }
