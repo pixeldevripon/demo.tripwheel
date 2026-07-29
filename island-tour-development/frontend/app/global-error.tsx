@@ -1,5 +1,9 @@
 'use client';
 
+import {
+    ErrorDebugPanel,
+    errorDebugEnabled,
+} from '@/components/frontend/status/error-debug-panel';
 import { getStatusCopy } from '@/lib/i18n/status-copy';
 
 import './globals.css';
@@ -18,6 +22,7 @@ import './globals.css';
  * is a full navigation to `/` that lets the proxy re-resolve their language.
  */
 export default function GlobalError({
+    error,
     unstable_retry,
 }: {
     error: Error & { digest?: string };
@@ -71,6 +76,15 @@ export default function GlobalError({
                                 {copy.secondaryCta}
                             </a>
                         </div>
+
+                        {/* TEMPORARY (2026-07-29) - see error-debug-panel.tsx.
+                            Self-contained, so it cannot fail for the same
+                            reason the root layout just did. */}
+                        {errorDebugEnabled && (
+                            <div className='mt-14 flex w-full flex-col items-center border-t border-it-border-subtle pt-10'>
+                                <ErrorDebugPanel error={error} />
+                            </div>
+                        )}
                     </div>
                 </div>
             </body>

@@ -7,6 +7,10 @@ import { useEffect } from 'react';
 
 import { MotionLink } from '@/components/frontend/motion-link';
 import {
+    ErrorDebugPanel,
+    errorDebugEnabled,
+} from '@/components/frontend/status/error-debug-panel';
+import {
     StatusScreen,
     statusPrimaryClass,
     statusSecondaryClass,
@@ -25,6 +29,12 @@ import { springPop } from '@/lib/motion';
  * `error.digest`. The digest still goes to the console here and is already in
  * the server log under the same value, so an outage stays traceable without
  * putting a support code in front of someone who just wants to book a tour.
+ *
+ * TEMPORARY EXCEPTION (2026-07-29): with `NEXT_PUBLIC_ERROR_DEBUG=1` the screen
+ * also renders <ErrorDebugPanel> under the actions, which DOES put the message
+ * and stack on the page. That flag exists to chase the intermittent production
+ * failure on the tour / checkout / payment pages and must be unset again - along
+ * with the panel and its endpoint - once the cause is fixed.
  */
 export function ErrorScreen({
     error,
@@ -84,6 +94,11 @@ export function ErrorScreen({
                         {copy.secondaryCta}
                     </MotionLink>
                 </>
+            }
+            footer={
+                errorDebugEnabled ? (
+                    <ErrorDebugPanel error={error} />
+                ) : undefined
             }
         />
     );
