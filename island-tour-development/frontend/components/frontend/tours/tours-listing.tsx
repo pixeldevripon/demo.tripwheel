@@ -1,7 +1,7 @@
 'use client';
 
 import { useToursNavOptional } from '@/components/frontend/tours/tours-browser';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { MountReveal } from '../mount-reveal';
 import { Pagination } from '../pagination';
@@ -45,26 +45,39 @@ export function ToursListing({
 }) {
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const nav = useToursNavOptional();
     const [localPage, setLocalPage] = useState(1);
 
     const isUrlDriven = currentPage !== undefined;
     const page = currentPage ?? localPage;
 
+    /**
+     * Preserve the current filter query and only swap `page` (page 1 drops the
+     * param to keep the URL canonical).
+     *
+     * Reads `useSearchParams()` rather than `window.location.search` so the URL
+     * also resolves during SSR - the pagination renders these as real `href`s,
+     * and a value only available in the browser would have emitted anchors with
+     * nothing in them for a crawler to follow.
+     */
+    function hrefForPage(next: number): string {
+        const params = new URLSearchParams(searchParams.toString());
+        if (next <= 1) params.delete('page');
+        else params.set('page', String(next));
+        const qs = params.toString();
+        return qs ? `${pathname}?${qs}` : pathname;
+    }
+
     function goToPage(next: number) {
         if (!isUrlDriven) {
             setLocalPage(next);
             return;
         }
-        // Preserve the current filter query and only swap `page` (page 1 drops
-        // the param to keep the URL canonical). Route through the shared nav
-        // transition when present so the grid dims non-blockingly instead of
-        // freezing; fall back to a plain push outside a <ToursBrowser>.
-        const params = new URLSearchParams(window.location.search);
-        if (next <= 1) params.delete('page');
-        else params.set('page', String(next));
-        const qs = params.toString();
-        const href = qs ? `${pathname}?${qs}` : pathname;
+        // Route through the shared nav transition when present so the grid dims
+        // non-blockingly instead of freezing; fall back to a plain push outside
+        // a <ToursBrowser>.
+        const href = hrefForPage(next);
         if (nav) {
             nav.startNav(() => router.push(href));
         } else {
@@ -114,6 +127,9 @@ export function ToursListing({
                 page={page}
                 pageCount={pageCount}
                 onPageChange={goToPage}
+                // Only the URL-driven mode has a real URL to point at; the
+                // local-state grid stays on buttons.
+                hrefFor={isUrlDriven ? hrefForPage : undefined}
             />
         </Reveal>
     );
