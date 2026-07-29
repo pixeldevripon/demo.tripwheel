@@ -529,6 +529,13 @@
         overflow-y: auto;
         overscroll-behavior: contain;
 
+        /* Reserve the (3px) gutter whether or not the panel currently
+         * overflows, so the content width is the same in both states. Without
+         * it the booking card's departure grid lost the width the scrollbar
+         * took the moment the selectors grew past the fold, and "12:00 PM"
+         * broke across two lines. */
+        scrollbar-gutter: stable;
+
         /* Firefox */
         scrollbar-width: thin;
         scrollbar-color: transparent transparent;
@@ -568,10 +575,19 @@
      * panel scrolls nothing. Restoring the defaults hands the gesture back to the
      * document. Modals that scroll at every width just use .it-modal-scroll alone.
      * ----------------------------------------------------------------------- */
+    .it-modal-scroll-lg-only {
+        /* An inline panel, not an overlay: chaining is always correct here, at
+         * EVERY width. `contain` is right for a modal, which is the only thing
+         * on screen, but on a page panel it ends the scroll dead under the
+         * finger the moment the panel bottoms out - worst on a touch tablet
+         * (>= lg, where the panel really does scroll), where the traveller then
+         * has to lift off and find somewhere else on the page to drag from. */
+        overscroll-behavior: auto;
+    }
+
     @media (max-width: 1023px) {
         .it-modal-scroll-lg-only {
             overflow: visible;
-            overscroll-behavior: auto;
         }
     }
 

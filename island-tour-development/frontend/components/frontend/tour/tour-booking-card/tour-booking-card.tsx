@@ -37,11 +37,23 @@ function TourBookingCardLayout() {
     return (
         <div className='flex flex-col gap-4'>
             {/* Main booking card — a viewport-capped flex column (mirrors the
-                tours filter modal): the price header and CTA stay pinned while the
-                middle selector stack scrolls with the thin hover scrollbar, so the
-                sticky rail never pushes the CTA below the fold on short screens.
-                The cap applies only where the card is sticky (lg+); on mobile it
-                flows naturally with no inner scroll. */}
+                tours filter modal): the price header and the CTA stay pinned,
+                and EVERYTHING the traveller fills in between them - date,
+                departure slots, party, spectators, extras - lives in one scroll
+                region with the thin hover scrollbar. One region, not two: a
+                pinned date/slot block above a second scroller made the party
+                rows slide under the chips and cost the selectors the height
+                they need. The cap applies only where the card is sticky (lg+);
+                on mobile it flows naturally with no inner scroll.
+
+                The cap sits HERE and not on the sticky rail: with it on the
+                rail, the card and the notices below it competed for one
+                viewport, and on a 720px screen the notices (which cannot
+                scroll or shrink) crushed the card past its own contents until
+                the CTA spilled out and printed over them. Capping the card
+                alone means the card is always whole and the notices simply
+                take whatever is left, coming back into view when the rail
+                releases at the end of the page. */}
             <div className='flex flex-col rounded-[16px] bg-it-surface lg:max-h-[calc(100vh-7rem)]'>
                 {/* Price header — never scrolls */}
                 <div className='shrink-0'>
@@ -50,15 +62,34 @@ function TourBookingCardLayout() {
 
                 {/* Selectors — the only scroll region (thin hover scrollbar);
                     min-h-0 + flex-1 lets overflow trigger inside the flex column.
-                    The calendar popover opens at the top, so it clears the fold.
+                    The calendar popover is portalled to the body, so it is not
+                    clipped by this container.
                     `it-modal-scroll-lg-only` drops the scroll container below lg,
                     where the card is uncapped: an overflow:auto box that never
                     overflows still swallows touch drags via overscroll-contain,
-                    which made this whole block a dead zone on mobile. */}
-                <div className='it-modal-scroll it-modal-scroll-lg-only flex min-h-0 flex-1 flex-col gap-2 px-4 pt-4'>
-                    {/* Calendar + slots share one flex cell: the slots' top gap
+                    which made this whole block a dead zone on mobile.
+
+                    The `min-h` floor keeps this usable on a short screen, where
+                    the card's cap leaves little between the pinned header and
+                    the pinned CTA - without it the region collapsed to a sliver
+                    and the traveller saw a price and a button with nothing
+                    operable in between. It yields to `25vh` rather than sitting
+                    at a flat 220px so that it can never demand more than the
+                    cap allows: a floor taller than the cap would push the CTA
+                    out through the bottom of the card and over the notices.
+
+                    Deliberately a BLOCK inside (`space-y-2`, not `flex-col` +
+                    `gap-2`): as flex items in a height-constrained column the
+                    panels shrank to fit instead of overflowing, and since
+                    <Collapse> clips with overflow-hidden, the spectators panel
+                    lost everything below its title - reachable by no amount of
+                    scrolling, because there was no overflow to scroll. Block
+                    children keep their height, so the region overflows and the
+                    scrollbar is what resolves it. */}
+                <div className='it-modal-scroll it-modal-scroll-lg-only min-h-0 flex-1 space-y-2 px-4 pt-4 lg:min-h-[min(220px,25vh)]'>
+                    {/* Calendar + slots share one block: the slots' top gap
                         lives INSIDE their collapse (pt-2), so it animates with
-                        the height tween instead of the parent gap snapping in
+                        the height tween instead of a sibling margin snapping in
                         the moment the block mounts. */}
                     <div>
                         <BookingCalendar />
