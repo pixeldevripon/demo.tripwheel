@@ -236,7 +236,7 @@
 - [ ] All-sold-out recovery path (surfacing/recovering a tour whose every departure is sold out)
 - [ ] `CHECK (booked_count <= capacity)` database constraint as a negative-inventory backstop
 - [ ] Concurrency/load test suite firing 50/100/500 simultaneous reservations at 1-seat and N-seat departures, asserting exactly `capacity` succeed and the counter never goes negative
-- [ ] iCal export feed of departures for operators, and optional iCal import writing `availability_exceptions` (never mutating capacity directly) with `ical_sync_logs`
+- [~] iCal export feed of departures for operators, and optional iCal import writing `availability_exceptions` (never mutating capacity directly) with `ical_sync_logs` — **EXPORT SHIPPED 2026-07-29**: `calendar_feeds` table + `backend/src/calendar-feeds/` + shared RFC 5545 writer `src/common/ics/ics.util.ts` (the traveller booking `.ics` now shares it). Two tokenized, rotatable, revocable feeds per operator — `BOOKINGS` (needs `VIEW_BOOKINGS`; traveller name + pax + ref, deliberately no email/phone/pickup address) and `DEPARTURES` (needs `MANAGE_AVAILABILITY`; fill counts, no traveller data). `@Public()` `GET /calendar-feeds/:token/calendar.ics` with ETag/`If-None-Match` 304 (DTSTAMP pinned to the data mtime, or the feed never caches); cancellations published as `STATUS:CANCELLED` rather than dropped; windows −30d/+364d bookings and −30d/+90d departures (a year of departures measured 6,039 events / 2.1 MB). Operator UI = dashboard Settings → Calendar sync. **IMPORT + `ical_sync_logs` still open** — design notes and the DTEND/RRULE/SSRF traps in `02-architecture/AVAILABILITY-AND-DEPARTURES.md` §9a
 
 ### Bookings
 

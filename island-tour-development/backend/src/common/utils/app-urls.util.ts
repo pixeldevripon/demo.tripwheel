@@ -21,6 +21,20 @@ export function islandToursBase(): string {
 }
 
 /**
+ * This API's own public origin - for URLs that third parties fetch back FROM us
+ * (PSP webhooks, subscribable calendar feeds), which must therefore be reachable
+ * from the internet rather than from inside the cluster. PUBLIC_API_URL wins;
+ * BETTER_AUTH_URL is the same origin in every normal deployment.
+ */
+export function publicApiBase(): string {
+  return clean(
+    process.env.PUBLIC_API_URL ??
+      process.env.BETTER_AUTH_URL ??
+      'http://localhost:5050',
+  );
+}
+
+/**
  * Operator dashboard app ROOT (PORTAL_URL minus its /portal path) - operator
  * email links like /dashboard/bookings.
  */

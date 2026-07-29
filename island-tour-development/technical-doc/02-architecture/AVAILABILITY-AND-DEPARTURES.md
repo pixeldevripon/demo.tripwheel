@@ -222,6 +222,110 @@ API adapters are not required for launch; the platform runs fully on schedules +
 
 ---
 
+## 9a. Calendar export (iCal / RFC 5545) — BUILT 2026-07-29
+
+> Delivers the export half of `APPLICATION-FEATURES-AND-TASKS.md` **Phase 8 "iCal
+> (secondary)"** and honours its non-negotiable **(5)**: *"export a feed for operators
+> and optionally import external blocked dates, but availability decisions are made on
+> our inventory."* The `departures` table remains the single source of truth —
+> **not iCal, not the operator's external calendar** (non-negotiable 1).
+
+Operators subscribe a tokenised URL in Google / Apple / Outlook Calendar and see their
+schedule beside everything else. **Export only.** Nothing in this feature writes
+availability — a subscription is projected *from* the platform, never *into* it.
+
+### Shape
+
+| Piece | Where |
+|---|---|
+| `calendar_feeds` table (`CalendarFeedKind` = `bookings` \| `departures`) | `backend/prisma/calendar-feeds.prisma` |
+| Module (management + public render) | `backend/src/calendar-feeds/` |
+| Shared RFC 5545 writer | `backend/src/common/ics/ics.util.ts` |
+| Operator UI ("Calendar sync", Settings) | dashboard `components/settings/calendar-feeds-form.tsx` |
+
+Routes: `GET/POST /calendar-feeds`, `POST /calendar-feeds/:id/rotate`,
+`DELETE /calendar-feeds/:id` (all `MANAGE_AVAILABILITY`), plus the subscribable
+`GET /calendar-feeds/:token/calendar.ics` (`@Public()`).
+
+### The decisions worth not re-litigating
+
+1. **The token is the whole authentication.** Calendar clients cannot carry a session
+   cookie. 32 random bytes, rotatable and revocable; a revoked row is **kept** so its
+   token can never be minted for a different operator. Unknown, malformed and revoked
+   tokens all answer a flat `404` so the response is not an oracle.
+2. **Two kinds, two permission bars.** `DEPARTURES` costs `MANAGE_AVAILABILITY`;
+   `BOOKINGS` additionally costs `VIEW_BOOKINGS`, because minting that URL hands
+   traveller names to any link-holder. The route requires the lower bar and the
+   service enforces the higher one per kind.
+3. **Deliberately narrow payload.** The bookings feed carries the traveller's name,
+   party size and our reference — and **not** their email, phone or pickup address.
+   A leaked subscribe URL should cost an operator their schedule, not their customers'
+   contact details. (Same reasoning as the traveller `.ics`, which omits the pickup
+   address.)
+4. **Cancellations are published, not dropped.** A cancelled booking or departure is
+   emitted as `STATUS:CANCELLED`. A subscriber that has already seen an event keeps it
+   forever if it merely stops appearing, so the operator would go on seeing a tour that
+   is not happening.
+5. **`DTSTAMP` is pinned to the data's mtime, not "now".** Otherwise every poll renders
+   a different body, every ETag differs, and no client ever gets a `304`. The route
+   supports `If-None-Match` and this is what makes it work.
+6. **Different horizons per kind, for size.** Bookings run `-30d … +364d` (sparse, a
+   few KB). Departures are the cross product of tour × date × start time — a real
+   operator's year measured **6,039 events / 2.1 MB**, past what clients subscribe to
+   gracefully — so departures run `-30d … +90d` (measured 1,850 events / 657 KB), which
+   is also exactly the materializer's `DEFAULT_HORIZON_DAYS`.
+7. **Local wall-clock is converted to a real UTC instant** via `localWallClockToUtc`
+   and the tour's / booking's timezone snapshot. Departures store wall-clock; a
+   calendar needs the absolute moment.
+
+### Subscribing (the operator-facing steps)
+
+These also ship in-product as a collapsible guide under the feed URL
+(`components/settings/calendar-feed-instructions.tsx`) — that component is the copy
+of record; keep the two in step. **Menu paths verified against each vendor's own
+documentation on 2026-07-29** and re-check there before editing, never from memory.
+
+| App | Steps |
+|---|---|
+| **Google Calendar** (computer only — not the mobile app) | Left sidebar → **+** next to *Other calendars* → **From URL** → paste → **Add calendar** |
+| **Apple Calendar** (Mac) | **File → New Calendar Subscription** → paste → **Subscribe** → set **Auto-refresh** → **OK** |
+| **Apple Calendar** (iPhone/iPad) | Settings → **Apps → Calendar** (older iOS: Calendar directly) → **Calendar Accounts → Add Account → Other → Add Subscribed Calendar** → paste into *Server* |
+| **Outlook** (outlook.com / M365 web) | Calendar → **Add calendar** → **Subscribe from web** → paste → **Import** |
+
+Refresh behaviour differs per vendor and **we do not control it**. We publish an
+`REFRESH-INTERVAL` / `X-PUBLISHED-TTL` hint of `PT1H`, but it is only a hint: Apple is
+the only one that exposes the interval to the user, Google re-reads on its own
+schedule, and Microsoft's own docs say Outlook can take **more than 24 hours**. The
+dashboard copy therefore promises no interval — an unkeepable promise here converts
+directly into "the calendar is broken" support load.
+
+### Not built: inbound iCal (the other half of Phase 8)
+
+Importing an external calendar (Airbnb / Booking.com / a personal Google calendar) to
+**block** dates is still open, along with the `ical_sync_logs` table the Phase 1 data
+model lists for it. When it is built:
+
+- It belongs in `availability_exceptions` (`close_date` / `close_slot` carrying an
+  `ical` provenance + the external UID), **not** in `departures`. `source = api` rows
+  are `isFullyManaged` and permanently frozen against the materializer (§9 rule 3),
+  which is the wrong semantics for a poll-based blocker. Routing through exceptions
+  also satisfies "never mutating capacity directly" and reuses §7's stop-sell path,
+  including its handling of already-booked departures.
+- **All-day `DTEND` is exclusive** (`0601 → 0605` means the 1st through the **4th**).
+  This is the single most common iCal integration bug.
+- `RRULE` will appear in Google feeds. Use a parser (`ical.js` / `node-ical` + `rrule`)
+  — writing iCal is easy, reading it is not; `src/common/ics/ics.util.ts` is a writer
+  and must not grow into a parser.
+- An operator-supplied URL fetched by our server is textbook **SSRF**: https-only,
+  reject loopback/private/link-local/metadata ranges, re-validate on every redirect,
+  timeout and size-cap.
+- State the caveat to operators up front, as Phase 0 requires ("document iCal's
+  limitations — not real-time, no atomic capacity"): iCal is **polled, not pushed**, so
+  a sale on another channel can be resold here during the lag. The atomic claim (§5)
+  cannot see a channel it learns about hours late. Real-time belongs to OCTO push.
+
+---
+
 ## 10. Current code state
 
 > **Update (2026-07-15):** the three-table model + materializer + nightly rolling job described above are now **built** (`backend/prisma/availability.prisma`, `backend/src/availability/`, `backend/src/workers/nightly-jobs.service.ts`). The gap table below reflects the **original** analysis when only `TourSchedule` existed; treat the "Action: Build" rows as done except where noted elsewhere (e.g. quality-score/tier-eligibility TODOs in the nightly job, and API adapters which remain a later phase).

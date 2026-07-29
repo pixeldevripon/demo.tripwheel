@@ -209,6 +209,7 @@ prisma/
 ├── attributes.prisma      AttributeDefinition, TourAttribute
 ├── slug-registry.prisma   SlugRegistry (+ redirects table — to add)
 ├── availability.prisma    availability_schedules, availability_exceptions, departures  ← to add
+├── calendar-feeds.prisma  CalendarFeed — tokenized read-only iCal export (bookings / departures)
 ├── bookings.prisma        Booking (E.8 expansion: refs, multi-currency, commission, payment_model) ← expand
 ├── reviews.prisma         Review (E.7 expansion) ← expand
 ├── wishlist.prisma        Wishlist
