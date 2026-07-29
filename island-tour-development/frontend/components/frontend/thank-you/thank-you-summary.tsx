@@ -1,5 +1,7 @@
 import { Reveal } from '@/components/frontend/reveal';
+import { formatMoney } from '@/lib/currency/current';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
+import type { Locale } from '@/lib/constants/locales';
 import type { ThankYouBooking } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
@@ -61,15 +63,22 @@ function PctChip({ tone, children }: { tone: 'paid' | 'unpaid'; children: ReactN
 export function ThankYouSummary({
     booking,
     dict,
+    locale,
     cancelHref,
 }: {
     booking: ThankYouBooking;
     dict: ThankYouDict;
+    /** Drives currency grouping/decimals - see `money` below. */
+    locale: Locale;
     /** Management view only: renders a "Need to cancel?" link by the free-cancel row. */
     cancelHref?: string;
 }) {
     const { payment } = booking;
-    const money = (n: number) => `${payment.currencySymbol}${n}`;
+    // The canonical formatter (guide §21.1), same as checkout. Concatenating
+    // `currencySymbol + n` skipped thousands grouping and fixed decimals, so a
+    // 1750 total rendered as "$1750" on the page a customer sees right after
+    // paying - while every other surface showed "$1,750.00".
+    const money = (n: number) => formatMoney(n, payment.currency, locale);
     // Identity rows (pickup, operator contact, guest lead) come back empty/null
     // on the unverified payload; each is rendered only when it has a value, so
     // the shared-link view shows non-identifying tour facts only.

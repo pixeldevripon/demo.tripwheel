@@ -1,6 +1,7 @@
 import { CancelRequestCard } from '@/components/frontend/cancel/cancel-request-card';
 import { MountReveal } from '@/components/frontend/mount-reveal';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
+import { formatMoney } from '@/lib/currency/current';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { DEMO_PUBLIC_REF, getThankYouBooking } from '@/lib/thank-you/thank-you';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
@@ -154,7 +155,10 @@ async function CancelBody({
         paid > 0
             ? cd.refund.replace(
                   '{amount}',
-                  `${booking.payment.currencySymbol}${paid}`,
+                  // Canonical formatter, same as checkout and the TYP. Raw
+                  // `symbol + number` dropped grouping and decimals, so a
+                  // refund of 1750 read as "$1750".
+                  formatMoney(paid, booking.payment.currency, locale),
               )
             : null;
 

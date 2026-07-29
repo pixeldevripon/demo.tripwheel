@@ -163,6 +163,7 @@ async function ThankYouBody({
             <ThankYouSummary
                 booking={booking}
                 dict={dict.thankYou}
+                locale={locale}
                 // Same server verdict the header button uses. This link used
                 // to check only the mode, so it stayed visible on an already-
                 // requested or cancelled booking while the header button had

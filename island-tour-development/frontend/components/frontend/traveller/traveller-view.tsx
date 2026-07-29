@@ -61,6 +61,24 @@ export function TravellerView({
     // activeTab - keep the local tab in step with the URL it came from.
     useEffect(() => setTab(activeTab), [activeTab]);
 
+    /**
+     * Switch tab AND write it to the URL.
+     *
+     * `traveller/page.tsx` reads `searchParams.tab` server-side, so a tab held
+     * only in local state was lost on refresh, on Back, and on any shared or
+     * bookmarked link - the page silently reopened on Bookings. Pagination
+     * already wrote `?tab=`; the tab buttons themselves did not.
+     *
+     * `scroll: false` matches pagination: the tab strip stays where it is.
+     */
+    function selectTab(next: TravellerTab) {
+        if (next === tab) return;
+        setTab(next); // optimistic - the strip highlights before the nav lands
+        router.push(`${localizeHref(locale, '/traveller')}?tab=${next}`, {
+            scroll: false,
+        });
+    }
+
     function signOut() {
         if (signingOut) return;
         setSigningOut(true);
@@ -127,7 +145,7 @@ export function TravellerView({
                                 id={`traveller-tab-${t.key}`}
                                 aria-selected={tab === t.key}
                                 aria-controls='traveller-tabpanel'
-                                onClick={() => setTab(t.key)}
+                                onClick={() => selectTab(t.key)}
                                 className={`relative -mb-px cursor-pointer border-none bg-transparent px-0 pb-3.5 text-[16px] font-medium tracking-[-0.012em] transition-colors ${
                                     tab === t.key
                                         ? 'text-it-heading'

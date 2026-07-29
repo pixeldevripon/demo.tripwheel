@@ -189,6 +189,18 @@ export function computeCheckoutTotals(
         pickupPrice?: number | null;
     }
 ): CheckoutTotals {
+    // OPERATOR_FULL takes no money up front - the operator collects the whole
+    // amount directly - so nothing is due today and the entire total rides the
+    // balance. This mirrors `deriveBooking` in `lib/stores/booking-store.ts`,
+    // which is the canonical split; the two must never disagree, because
+    // whichever renders first is what the traveller reads as "pay now".
+    //
+    // Unreachable today (the widget disables booking for this model and the
+    // backend rejects it at quote/reserve), but this is the third independent
+    // implementation of the same money split - it has to agree by construction,
+    // not by the accident of an upstream guard.
+    const isOperatorFull = data.paymentModel === 'OPERATOR_FULL';
+
     const effective = { ...counts };
     const hasAny = Object.values(effective).some(n => n > 0);
     if (!hasAny) {
@@ -236,7 +248,9 @@ export function computeCheckoutTotals(
         // Deposit % on the TOUR price only; extras ride the balance in full.
         const payToday = data.requiresDeposit
             ? Math.round(charterTotal * data.depositPct) / 100
-            : total;
+            : isOperatorFull
+              ? 0
+              : total;
         return {
             lineItems,
             partySize: guests,
@@ -259,7 +273,9 @@ export function computeCheckoutTotals(
     // Deposit % on the TOUR price only; extras ride the balance in full.
     const payToday = data.requiresDeposit
         ? Math.round(tourTotal * data.depositPct) / 100
-        : total;
+        : isOperatorFull
+          ? 0
+          : total;
 
     return {
         lineItems,

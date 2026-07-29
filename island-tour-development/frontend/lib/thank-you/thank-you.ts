@@ -26,6 +26,13 @@ const SUPPORT_EMAIL = 'reservations@island.tours';
 
 export interface ThankYouPayment {
     currencySymbol: string;
+    /**
+     * The booking's own currency code. Carried alongside the symbol so the TYP
+     * and cancel pages can run amounts through `formatMoney` (grouping +
+     * fixed decimals) instead of concatenating `symbol + number`, which
+     * rendered a 1750.00 total as "$1750".
+     */
+    currency: Currency;
     total: number;
     /** Deposit already collected by Island Tours; 0 = nothing paid online. */
     depositPaid: number;
@@ -362,6 +369,9 @@ export async function getThankYouBooking(
         supportEmail: SUPPORT_EMAIL,
         payment: {
             currencySymbol: currencySymbol(typ.currency),
+            // The TYP DTO types this as a bare string; the backend only ever
+            // snapshots a real currency code onto the booking (guide §20.10).
+            currency: typ.currency as Currency,
             total,
             depositPaid,
             depositPct,
