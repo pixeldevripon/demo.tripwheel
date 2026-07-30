@@ -1435,7 +1435,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 #### B.6.10 Flags & timestamps (all present)
 
-- `isSponsored`, `isActive`, `publishedAt`, `createdAt`, `updatedAt`.
+- `isSponsored`, `isActive`, `publishedAt`, `createdAt`, `updatedAt`..
 
 #### B.6.11 All child tables
 
