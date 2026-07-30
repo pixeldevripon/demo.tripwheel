@@ -33,13 +33,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             theme={theme as ToasterProps['theme']}
-            // TOP-CENTER at full width - the status ribbon (2026-07-30, user
-            // call; see `.cn-toast` in globals.css). Top rather than bottom for
-            // the same reason as the old top-right card: every long dashboard
-            // form has a sticky Save bar at the bottom and a toast must never
-            // sit on it. Ribbon width spans the viewport minus a gutter,
-            // capped so ultrawide monitors don't get a 3000px banner.
-            position='top-center'
+            // The status ribbon anchors here (2026-07-30, user call; see
+            // `.cn-toast` in globals.css - alignment CSS follows this prop via
+            // data-x-position, so any of the six values Just Works). Prefer a
+            // TOP position: every long dashboard form has a sticky Save bar at
+            // the bottom and a toast must never sit on it. Width hugs content
+            // (350px floor) inside a viewport-wide lane.
+            position='top-right'
             offset={12}
             gap={8}
             closeButton
@@ -92,3 +92,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
+

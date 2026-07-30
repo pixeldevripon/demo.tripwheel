@@ -651,13 +651,15 @@
 }
 
 /* Geometry: the li is position:absolute (sonner stacks via --y transforms),
- * so left/right 0 + margin auto centres a fit-content box inside the lane.
- * Short toasts hold a 350px floor; long messages widen until the lane ends. */
+ * stretched left/right 0 across the lane with a fit-content box inside it.
+ * The MARGINS decide alignment and must follow the Toaster's `position` prop
+ * (sonner stamps data-x-position on the li) - a bare `margin-inline: auto`
+ * here once force-centred every position, which read as "position not
+ * working". Short toasts hold a 350px floor; long ones widen to the lane. */
 .cn-toast[data-sonner-toast][data-styled='true'] {
     display: flex;
     left: 0;
     right: 0;
-    margin-inline: auto;
     width: fit-content;
     min-width: min(350px, 100%);
     max-width: 100%;
@@ -670,6 +672,17 @@
     border-radius: var(--radius-lg);
     background: var(--surface-overlay);
     box-shadow: var(--elevation-lg);
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='center'] {
+    margin-inline: auto;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='right'] {
+    margin-left: auto;
+    margin-right: 0;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='left'] {
+    margin-left: 0;
+    margin-right: auto;
 }
 
 /* The wash: severity colour entering from the left, gone by a third of the
