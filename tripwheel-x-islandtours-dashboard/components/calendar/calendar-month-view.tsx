@@ -141,7 +141,11 @@ function MonthCell({
                     className={cn(
                         'flex size-6 items-center justify-center rounded-full text-xs font-medium transition-colors duration-normal hover:bg-muted',
                         isToday && 'bg-primary text-primary-foreground hover:bg-primary/90',
-                        !inMonth && 'text-muted-foreground/60',
+                        // Never dim TODAY's bubble - the muted text class
+                        // would override the bubble's white number and leave
+                        // an unreadable solid dot when today sits in an
+                        // adjacent month's grid.
+                        !inMonth && !isToday && 'text-muted-foreground/60',
                     )}>
                     {dayNumber}
                 </button>
