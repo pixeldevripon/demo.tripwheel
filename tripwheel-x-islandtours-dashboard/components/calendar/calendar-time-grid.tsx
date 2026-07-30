@@ -219,11 +219,11 @@ export function CalendarTimeGrid({
             {/* One scrollport for header + grid: the sticky header row scrolls
                 horizontally never (no x overflow) and vertically stays pinned,
                 so columns always line up with their headers. Height tracks the
-                viewport; the thin themed scrollbar stays visible inside the
-                rounded frame. */}
+                viewport; the scrollbar is hidden (user call) - wheel/touch
+                scrolling still works. */}
             <div
                 ref={scrollRef}
-                className='max-h-[calc(100dvh-270px)] min-h-80 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border'>
+                className='max-h-[calc(100dvh-270px)] min-h-80 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 <div className='sticky top-0 z-20 flex border-b border-border/50 bg-background'>
                     <div className='flex w-12 shrink-0 items-center justify-center sm:w-14'>
                         <span className='text-2xs text-muted-foreground'>

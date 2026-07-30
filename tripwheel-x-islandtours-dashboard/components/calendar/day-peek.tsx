@@ -53,7 +53,7 @@ export function DayPeek({
                         {departures.length === 1 ? 'departure' : 'departures'}
                     </p>
                 </div>
-                <div className='flex max-h-80 flex-col gap-1 overflow-y-auto p-2'>
+                <div className='flex max-h-80 flex-col gap-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                     {departures.map((dep) => (
                         <DepartureChip
                             key={dep.id}
