@@ -44,21 +44,24 @@ export function CalendarMonthView({
     const anchorMonth = getMonth(keyToDate(anchor));
     return (
         // Same frame language as the week/day time grid: white surface,
-        // hairline borders - never a tinted header band or a dark lattice.
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-background'>
-            <div className='grid grid-cols-7 border-b border-border/50'>
+        // hairline borders, and the SAME h-11 header bar - never a tinted
+        // band or a dark lattice. (No date numbers here: a month column
+        // spans six dates, unlike a week column.)
+        <div className='flex h-full flex-col overflow-hidden rounded-lg border border-border/70 bg-background'>
+            <div className='grid shrink-0 grid-cols-7 border-b border-border/50'>
                 {WEEKDAYS.map((d) => (
                     <div
                         key={d}
-                        className='border-l border-border/50 py-2.5 text-center text-2xs font-medium uppercase tracking-wider text-muted-foreground first:border-l-0'>
+                        className='flex h-11 items-center justify-center border-l border-border/50 text-2xs font-medium uppercase tracking-wider text-muted-foreground first:border-l-0'>
                         {d}
                     </div>
                 ))}
             </div>
-            {/* The six auto-rows-fr weeks stretch to fill the viewport (the
-                calc mirrors the time grid's), with the per-cell min-h as the
-                floor on short screens. */}
-            <div className='grid min-h-[calc(100dvh-310px)] grid-cols-7 auto-rows-fr'>
+            {/* The six auto-rows-fr weeks split the frame height evenly; on
+                short screens the per-cell min-h wins and the grid scrolls
+                inside (scrollbar hidden, like every calendar scrollport). */}
+            <div className='min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+            <div className='grid h-full min-h-[36rem] grid-cols-7 auto-rows-fr'>
                 {days.map((day) => (
                     <MonthCell
                         key={day.date}
@@ -73,6 +76,7 @@ export function CalendarMonthView({
                         onOpenDay={onOpenDay}
                     />
                 ))}
+            </div>
             </div>
         </div>
     );

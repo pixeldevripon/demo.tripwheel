@@ -7,6 +7,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewDeparture, OverviewTour } from '@/types/trip';
 import { AddEventForm } from './add-event-popover';
@@ -131,8 +132,10 @@ export function CalendarTimeGrid({
     canShape: boolean;
     onOpenDay: (date: string) => void;
 }) {
-    // A lone day column has room for more side-by-side chips than a week's.
-    const maxLanes = days.length === 1 ? 6 : 3;
+    // A lone day column has room for more side-by-side chips than a week's;
+    // narrow screens cap harder so chips never turn into slivers.
+    const isMobile = useIsMobile();
+    const maxLanes = days.length === 1 ? (isMobile ? 2 : 6) : isMobile ? 1 : 3;
 
     // The visible hour span hugs the data but never collapses below 08-19,
     // so an empty week still looks like a working day.
@@ -215,15 +218,15 @@ export function CalendarTimeGrid({
         nowTop !== null && nowTop >= 0 && days.some((d) => d.date === today);
 
     return (
-        <div className='overflow-hidden rounded-lg border border-border/70 bg-background'>
+        <div className='flex h-full flex-col overflow-hidden rounded-lg border border-border/70 bg-background'>
             {/* One scrollport for header + grid: the sticky header row scrolls
                 horizontally never (no x overflow) and vertically stays pinned,
-                so columns always line up with their headers. Height tracks the
-                viewport; the scrollbar is hidden (user call) - wheel/touch
-                scrolling still works. */}
+                so columns always line up with their headers. The frame height
+                comes from the shared view wrapper; the scrollbar is hidden
+                (user call) - wheel/touch scrolling still works. */}
             <div
                 ref={scrollRef}
-                className='max-h-[calc(100dvh-270px)] min-h-80 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className='min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 <div className='sticky top-0 z-20 flex border-b border-border/50 bg-background'>
                     <div className='flex w-12 shrink-0 items-center justify-center sm:w-14'>
                         <span className='text-2xs text-muted-foreground'>
@@ -238,7 +241,7 @@ export function CalendarTimeGrid({
                                 key={day.date}
                                 type='button'
                                 onClick={() => onOpenDay(day.date)}
-                                className='flex min-w-0 flex-1 items-center justify-center gap-1.5 border-l border-border/50 py-2.5 transition-colors duration-normal hover:bg-muted/50'>
+                                className='flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 border-l border-border/50 transition-colors duration-normal hover:bg-muted/50'>
                                 <span className='text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
                                     {format(d, 'EEE')}
                                 </span>

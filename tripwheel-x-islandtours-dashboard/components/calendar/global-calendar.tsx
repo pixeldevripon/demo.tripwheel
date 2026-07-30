@@ -287,6 +287,10 @@ export function GlobalCalendar() {
                 </aside>
 
                 <div className='min-w-0 flex-1'>
+                    {/* ONE frame height for every view (and the skeleton), so
+                        switching Day/Week/Month never shifts the layout - the
+                        views fill it and scroll inside themselves. */}
+                    <div className='h-[calc(100dvh-270px)] min-h-[26rem]'>
                     {isLoading ? (
                         <CalendarSkeleton view={view} />
                     ) : (
@@ -296,6 +300,7 @@ export function GlobalCalendar() {
                         <AnimatePresence mode='wait' initial={false}>
                             <motion.div
                                 key={view}
+                                className='h-full'
                                 initial={reduceMotion ? false : { opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={reduceMotion ? undefined : { opacity: 0 }}
@@ -326,6 +331,7 @@ export function GlobalCalendar() {
                             </motion.div>
                         </AnimatePresence>
                     )}
+                    </div>
                     <p className='mt-2 text-xs text-muted-foreground'>
                         All times are local to each tour&apos;s island. Counts
                         show Island Tours bookings only - closing never touches
@@ -340,10 +346,12 @@ export function GlobalCalendar() {
 function CalendarSkeleton({ view }: { view: CalendarView }) {
     if (view === 'month') {
         return (
-            <div className='overflow-hidden rounded-lg border border-border/70'>
-                <div className='grid grid-cols-7 gap-px bg-border/70'>
+            <div className='h-full overflow-hidden rounded-lg border border-border/70 bg-background'>
+                <div className='grid h-full grid-cols-7 auto-rows-fr'>
                     {Array.from({ length: 42 }, (_, i) => (
-                        <div key={i} className='min-h-24 bg-background p-2 md:min-h-28'>
+                        <div
+                            key={i}
+                            className='min-h-16 border-l border-t border-border/40 p-2 first:border-l-0 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0'>
                             <Skeleton className='size-6 rounded-full' />
                             {i % 3 === 0 && (
                                 <Skeleton className='mt-2 h-4 w-full rounded-sm' />
@@ -355,9 +363,11 @@ function CalendarSkeleton({ view }: { view: CalendarView }) {
         );
     }
     return (
-        <div className='flex flex-col gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70'>
-            {Array.from({ length: 8 }, (_, i) => (
-                <div key={i} className='flex h-14 items-center gap-4 bg-background px-4'>
+        <div className='flex h-full flex-col overflow-hidden rounded-lg border border-border/70 bg-background'>
+            {Array.from({ length: 10 }, (_, i) => (
+                <div
+                    key={i}
+                    className='flex h-20 shrink-0 items-center gap-4 border-t border-border/40 px-4 first:border-t-0'>
                     <Skeleton className='h-3 w-10' />
                     {i % 2 === 0 && <Skeleton className='h-8 w-40 rounded-md' />}
                 </div>
