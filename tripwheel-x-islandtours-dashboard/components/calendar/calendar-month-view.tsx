@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlusSignIcon } from '@hugeicons/core-free-icons';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -53,6 +53,18 @@ export function CalendarMonthView({
     onOpenDay: (date: string) => void;
 }) {
     const anchorMonth = getMonth(keyToDate(anchor));
+    // On height-limited screens (the 1600x900 laptop class) three chips push
+    // the six rows past the frame and force an inner scroll; two chips + the
+    // "+N more" line fit exactly. Taller screens keep three.
+    const [shortViewport, setShortViewport] = useState(false);
+    useEffect(() => {
+        const mql = window.matchMedia('(max-height: 960px)');
+        const update = () => setShortViewport(mql.matches);
+        update();
+        mql.addEventListener('change', update);
+        return () => mql.removeEventListener('change', update);
+    }, []);
+    const maxChips = shortViewport ? 2 : MAX_CHIPS;
     return (
         // Same frame language as the week/day time grid: white surface,
         // hairline borders, and the SAME h-11 header bar - never a tinted
@@ -68,11 +80,12 @@ export function CalendarMonthView({
                     </div>
                 ))}
             </div>
-            {/* The six auto-rows-fr weeks split the frame height evenly; on
-                short screens the per-cell min-h wins and the grid scrolls
-                inside (scrollbar hidden, like every calendar scrollport). */}
+            {/* min-h-full, never h-full: the frame is a FLOOR the six fr rows
+                stretch to, but when the cells' own min heights exceed it
+                (900px-tall screens) the grid must GROW and scroll - a hard
+                height made the rows compress and the cells overlap. */}
             <div className='min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-            <div className='grid h-full min-h-[36rem] grid-cols-7 auto-rows-fr'>
+            <div className='grid min-h-full grid-cols-7 auto-rows-fr'>
                 {days.map((day) => (
                     <MonthCell
                         key={day.date}
@@ -81,6 +94,7 @@ export function CalendarMonthView({
                         isToday={day.date === today}
                         isSelected={day.date === selectedDate}
                         isPast={day.date < today}
+                        maxChips={maxChips}
                         tours={tours}
                         operatorNameById={operatorNameById}
                         isAdmin={isAdmin}
@@ -100,6 +114,7 @@ function MonthCell({
     isToday,
     isSelected,
     isPast,
+    maxChips,
     tours,
     operatorNameById,
     isAdmin,
@@ -111,6 +126,7 @@ function MonthCell({
     isToday: boolean;
     isSelected: boolean;
     isPast: boolean;
+    maxChips: number;
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
@@ -119,7 +135,7 @@ function MonthCell({
 }) {
     const reduceMotion = useReducedMotion();
     const dayNumber = Number(day.date.slice(8, 10));
-    const overflow = day.departures.length - MAX_CHIPS;
+    const overflow = day.departures.length - maxChips;
     // Click-anywhere day peek: the cell itself is the popover ANCHOR (never a
     // Radix trigger - chips/buttons inside would toggle it too); our own
     // click handler opens it and ignores clicks on interactive children.
@@ -137,7 +153,10 @@ function MonthCell({
                 // and first row lean on the frame/header borders instead).
                 // hover:bg-accent (n-200) - the muted token is a 94%-light
                 // grey that never reads as a highlight.
-                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-accent md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
+                // min-h-24 everywhere (never 28): the row minimum must stay
+                // under a 900px viewport's row share or the grid overflows
+                // into an inner scroll on the primary laptop resolution.
+                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-accent md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
                 day.departures.length > 0 && 'cursor-pointer',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
@@ -185,7 +204,7 @@ function MonthCell({
 
             {/* Desktop: real chips. */}
             <div className='hidden min-w-0 flex-col gap-0.5 md:flex'>
-                {day.departures.slice(0, MAX_CHIPS).map((dep) => (
+                {day.departures.slice(0, maxChips).map((dep) => (
                     <DepartureChip
                         key={dep.id}
                         dep={dep}
