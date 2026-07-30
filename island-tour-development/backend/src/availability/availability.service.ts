@@ -68,6 +68,10 @@ import type {
   ManageCalendarDayStatus,
   ManageCalendarQueryDto,
   MaterializeDto,
+  AvailabilityOverviewResponseDto,
+  OverviewDayDto,
+  OverviewDepartureDto,
+  OverviewQueryDto,
   ScheduleResponseDto,
   UpdateDepartureDto,
   UpdateExceptionDto,
@@ -75,6 +79,10 @@ import type {
 } from './dto/availability.dto';
 
 const MS_PER_DAY = 86_400_000;
+
+// Fallback clock for responses with no tour to borrow a timezone from.
+// Every launch island (Curaçao, Aruba, Sint Maarten) runs UTC-4.
+const PLATFORM_HOME_TIMEZONE = 'America/Curacao';
 
 // 0 = Monday … 6 = Sunday (matches AvailabilitySchedule.weekday). Used for
 // human-readable conflict messages.
@@ -532,6 +540,109 @@ export class AvailabilityService {
   }
 
   /**
+   * Departures + their stopping closures for a tour set over [fromDate,
+   * toDate] - the shared read behind agenda() and overview(). A departure's
+   * closure resolves slot-first (its own CLOSE_SLOT row beats the day-wide
+   * CLOSE_DATE). Nothing prevents two racing staff writing duplicate closure
+   * rows (no unique constraint on tour/date/time/type), so rows load
+   * oldest-first and the FIRST wins - every surface deterministically
+   * reports the same closure for the same departure.
+   */
+  private async departuresWithClosures(
+    tourIds: string[],
+    fromDate: Date,
+    toDate: Date,
+  ) {
+    const [departures, closures] = await Promise.all([
+      this.prisma.departure.findMany({
+        where: {
+          tourId: { in: tourIds },
+          date: { gte: fromDate, lte: toDate },
+        },
+        select: {
+          id: true,
+          tourId: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+          status: true,
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      }),
+      this.prisma.availabilityException.findMany({
+        where: {
+          tourId: { in: tourIds },
+          date: { gte: fromDate, lte: toDate },
+          type: {
+            in: [
+              AvailabilityExceptionType.CLOSE_DATE,
+              AvailabilityExceptionType.CLOSE_SLOT,
+            ],
+          },
+        },
+        select: {
+          id: true,
+          tourId: true,
+          date: true,
+          startTime: true,
+          type: true,
+          note: true,
+          createdBy: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+    const actorNames = await this.exceptionActorNames(closures);
+    type ClosureRow = (typeof closures)[number];
+    const slotClosures = new Map<string, ClosureRow>();
+    const dayClosures = new Map<string, ClosureRow>();
+    for (const c of closures) {
+      const date = dateKey(c.date);
+      if (
+        c.type === AvailabilityExceptionType.CLOSE_SLOT &&
+        c.startTime !== null
+      ) {
+        const key = `${c.tourId}|${date}|${timeOfDay(c.startTime)}`;
+        if (!slotClosures.has(key)) slotClosures.set(key, c);
+      } else if (c.type === AvailabilityExceptionType.CLOSE_DATE) {
+        const key = `${c.tourId}|${date}`;
+        if (!dayClosures.has(key)) dayClosures.set(key, c);
+      }
+    }
+    const closureFor = (tourId: string, date: string, startTime: string) => {
+      const row =
+        slotClosures.get(`${tourId}|${date}|${startTime}`) ??
+        dayClosures.get(`${tourId}|${date}`);
+      return row
+        ? {
+            id: row.id,
+            createdAt: row.createdAt.toISOString(),
+            createdByName: row.createdBy
+              ? (actorNames.get(row.createdBy) ?? null)
+              : null,
+            note: row.note,
+          }
+        : null;
+    };
+    return { departures, closureFor };
+  }
+
+  /** The STALEST availability_confirmed_at - the freshness card reports the
+   *  weakest link, not the average. Null when any tour was never confirmed. */
+  private stalestConfirm(
+    tours: { availabilityConfirmedAt: Date | null }[],
+  ): string | null {
+    const stamps = tours.map((t) => t.availabilityConfirmedAt);
+    return stamps.some((s) => s == null)
+      ? null
+      : new Date(
+          Math.min(...stamps.map((s) => (s as Date).getTime())),
+        ).toISOString();
+  }
+
+  /**
    * The cross-tour daily agenda: every departure across the operator's tours
    * in one chronological list, so a three-tour operator never opens three
    * tour editors to run one stormy morning. Read-only composition - closing a
@@ -568,7 +679,134 @@ export class AvailabilityService {
     const toDate = new Date(fromDate.getTime() + (dayCount - 1) * MS_PER_DAY);
     const tourIds = tours.map((t) => t.id);
 
-    // The widest new read in the module (cross-tour × days) - project it.
+    // The widest read in the module (cross-tour × days) - shared with
+    // overview(), which spans operators for admins.
+    const { departures, closureFor } = await this.departuresWithClosures(
+      tourIds,
+      fromDate,
+      toDate,
+    );
+
+    const byDay = new Map<string, AgendaDepartureDto[]>();
+    for (const row of departures) {
+      const tour = tourById.get(row.tourId);
+      if (!tour) continue;
+      const now = localNow(tour.timeZone);
+      const date = dateKey(row.date);
+      const startTime = timeOfDay(row.startTime);
+      const start = combineDateTime(row.date, row.startTime);
+      const cutoffPassed =
+        now.getTime() >= start.getTime() - tour.bookingCutoffMinutes * 60_000;
+      const list = byDay.get(date) ?? [];
+      list.push({
+        id: row.id,
+        tourId: row.tourId,
+        tourName: tour.name,
+        pricingModel: tour.pricingModel,
+        date,
+        startTime,
+        bookedCount: row.bookedCount,
+        capacity: row.capacity,
+        status: liveDepartureStatus({
+          status: row.status,
+          capacity: row.capacity,
+          bookedCount: row.bookedCount,
+          cutoffPassed,
+        }),
+        cutoffPassed,
+        closure: closureFor(row.tourId, date, startTime),
+      });
+      byDay.set(date, list);
+    }
+    // Every requested day present, even empty - the agenda renders "nothing
+    // runs today" as information, not as a missing row.
+    const days: AgendaDayDto[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const date = dateKey(new Date(fromDate.getTime() + i * MS_PER_DAY));
+      days.push({ date, departures: byDay.get(date) ?? [] });
+    }
+    return {
+      days,
+      tours: tours.map((t) => ({ id: t.id, name: t.name })),
+      lastConfirmedAt: this.stalestConfirm(tours),
+    };
+  }
+
+  /**
+   * The global calendar grid: every departure across the scoped tours for
+   * [from, from+days), day-bucketed. Operators (and their staff) are pinned to
+   * their own operator; ADMIN reads platform-wide and may narrow with
+   * operatorId/tourId. Read-only composition - every action the grid offers
+   * is an existing per-tour write (exceptions / schedules / departures), all
+   * of which admins pass via assertTourAccess.
+   */
+  async overview(
+    userId: string,
+    role: Role,
+    query: OverviewQueryDto,
+  ): Promise<AvailabilityOverviewResponseDto> {
+    // The empty branch has no tour to borrow a clock from, so it anchors on
+    // the launch region's zone (every live island runs UTC-4) - `today` must
+    // stay island-local even with nothing to show, or the 20:00-24:00 island
+    // window reports tomorrow.
+    const empty: AvailabilityOverviewResponseDto = {
+      today: dateKey(localNow(PLATFORM_HOME_TIMEZONE)),
+      days: [],
+      tours: [],
+      lastConfirmedAt: null,
+    };
+    let tourWhere: Prisma.TourWhereInput;
+    if (role === Role.ADMIN) {
+      tourWhere = {
+        isActive: true,
+        ...(query.operatorId ? { operatorId: query.operatorId } : {}),
+      };
+    } else {
+      // Same non-provisioning resolution as the agenda; the operatorId param
+      // is deliberately ignored so a non-admin can never widen their scope.
+      const operatorId = await this.operatorContext(userId);
+      if (!operatorId) return empty;
+      tourWhere = { operatorId, isActive: true };
+    }
+    if (query.tourId) tourWhere.id = query.tourId;
+
+    const tours = await this.prisma.tour.findMany({
+      where: tourWhere,
+      select: {
+        id: true,
+        name: true,
+        operatorId: true,
+        timeZone: true,
+        bookingCutoffMinutes: true,
+        pricingModel: true,
+        maxPartySize: true,
+        startTimes: true,
+        availabilityConfirmedAt: true,
+        operator: {
+          select: {
+            companyInfo: { select: { companyName: true } },
+            user: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+      // Ceiling on the admin platform-wide fan-out (departures × 62 days ride
+      // on this list). Far above launch scale; past it, narrow by operator.
+      take: 500,
+    });
+    if (tours.length === 0) return empty;
+    const tourById = new Map(tours.map((t) => [t.id, t]));
+
+    // Same anchoring convention as the agenda: the first tour's clock supplies
+    // "today" (one region in practice - every launch island runs UTC-4).
+    // Returned separately so the client never infers today from days[0].
+    const today = dateKey(localNow(tours[0].timeZone));
+    const from = query.from ?? today;
+    const dayCount = query.days ?? 42;
+    const fromDate = dayDate(from);
+    const toDate = new Date(fromDate.getTime() + (dayCount - 1) * MS_PER_DAY);
+    const tourIds = tours.map((t) => t.id);
+
     const [departures, closures] = await Promise.all([
       this.prisma.departure.findMany({
         where: {
@@ -610,24 +848,26 @@ export class AvailabilityService {
       }),
     ]);
     const actorNames = await this.exceptionActorNames(closures);
-    // The closure that stops a given departure: its slot-level row first,
-    // else the whole-day row.
+    // Platform-wide the closure list can be much larger than one operator's,
+    // so the agenda's linear scan becomes two keyed maps.
+    type ClosureRow = (typeof closures)[number];
+    const slotClosures = new Map<string, ClosureRow>();
+    const dayClosures = new Map<string, ClosureRow>();
+    for (const c of closures) {
+      const date = dateKey(c.date);
+      if (
+        c.type === AvailabilityExceptionType.CLOSE_SLOT &&
+        c.startTime !== null
+      ) {
+        slotClosures.set(`${c.tourId}|${date}|${timeOfDay(c.startTime)}`, c);
+      } else if (c.type === AvailabilityExceptionType.CLOSE_DATE) {
+        dayClosures.set(`${c.tourId}|${date}`, c);
+      }
+    }
     const closureFor = (tourId: string, date: string, startTime: string) => {
       const row =
-        closures.find(
-          (c) =>
-            c.tourId === tourId &&
-            dateKey(c.date) === date &&
-            c.type === AvailabilityExceptionType.CLOSE_SLOT &&
-            c.startTime !== null &&
-            timeOfDay(c.startTime) === startTime,
-        ) ??
-        closures.find(
-          (c) =>
-            c.tourId === tourId &&
-            dateKey(c.date) === date &&
-            c.type === AvailabilityExceptionType.CLOSE_DATE,
-        );
+        slotClosures.get(`${tourId}|${date}|${startTime}`) ??
+        dayClosures.get(`${tourId}|${date}`);
       return row
         ? {
             id: row.id,
@@ -640,7 +880,7 @@ export class AvailabilityService {
         : null;
     };
 
-    const byDay = new Map<string, AgendaDepartureDto[]>();
+    const byDay = new Map<string, OverviewDepartureDto[]>();
     for (const row of departures) {
       const tour = tourById.get(row.tourId);
       if (!tour) continue;
@@ -654,6 +894,7 @@ export class AvailabilityService {
       list.push({
         id: row.id,
         tourId: row.tourId,
+        operatorId: tour.operatorId,
         tourName: tour.name,
         pricingModel: tour.pricingModel,
         date,
@@ -671,15 +912,11 @@ export class AvailabilityService {
       });
       byDay.set(date, list);
     }
-    // Every requested day present, even empty - the agenda renders "nothing
-    // runs today" as information, not as a missing row.
-    const days: AgendaDayDto[] = [];
+    const days: OverviewDayDto[] = [];
     for (let i = 0; i < dayCount; i++) {
       const date = dateKey(new Date(fromDate.getTime() + i * MS_PER_DAY));
       days.push({ date, departures: byDay.get(date) ?? [] });
     }
-    // The stalest confirm across tours - the freshness card reports the
-    // weakest link, not the average.
     const stamps = tours.map((t) => t.availabilityConfirmedAt);
     const lastConfirmedAt = stamps.some((s) => s == null)
       ? null
@@ -687,8 +924,19 @@ export class AvailabilityService {
           Math.min(...stamps.map((s) => (s as Date).getTime())),
         ).toISOString();
     return {
+      today,
       days,
-      tours: tours.map((t) => ({ id: t.id, name: t.name })),
+      tours: tours.map((t) => ({
+        id: t.id,
+        name: t.name,
+        operatorId: t.operatorId,
+        operatorName:
+          t.operator.companyInfo?.companyName ?? t.operator.user.name,
+        timeZone: t.timeZone,
+        pricingModel: t.pricingModel,
+        maxPartySize: t.maxPartySize,
+        startTimes: t.startTimes,
+      })),
       lastConfirmedAt,
     };
   }

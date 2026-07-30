@@ -33,6 +33,7 @@ import {
   ListSchedulesQueryDto,
   ManageCalendarQueryDto,
   MaterializeDto,
+  OverviewQueryDto,
   ReopenRangeDto,
   UpdateDepartureDto,
   UpdateExceptionDto,
@@ -55,6 +56,7 @@ import {
   ApiListSchedulesDocs,
   ApiManageCalendarDocs,
   ApiMaterializeDocs,
+  ApiOverviewDocs,
   ApiReopenRangeDocs,
   ApiUpdateDepartureDocs,
   ApiUpdateExceptionDocs,
@@ -112,6 +114,18 @@ export class AvailabilityController {
     @Body() dto: CloseAgendaDayDto,
   ) {
     return this.availability.closeAgendaDay(user.id, user.role, dto);
+  }
+
+  // ── Global calendar (admin platform-wide, operator own-scope) ───────────────
+
+  @Get('overview')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiOverviewDocs()
+  overview(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: OverviewQueryDto,
+  ) {
+    return this.availability.overview(user.id, user.role, query);
   }
 
   // ── Operator status line ────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import {
 } from '@/common/dto/error-responses.dto';
 import {
   AgendaResponseDto,
+  AvailabilityOverviewResponseDto,
   AvailabilitySummaryDto,
   CalendarDayResponseDto,
   CloseAgendaDayResultDto,
@@ -125,6 +126,21 @@ export const ApiAgendaDocs = () =>
         'operator, all tours, one list.',
     }),
     ApiOkResponse({ type: AgendaResponseDto }),
+    authErrors(),
+  );
+
+export const ApiOverviewDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Global calendar overview (admin + operator)',
+      description:
+        'Every departure across the scoped tours for [from, from+days), ' +
+        'day-bucketed, with live status, stopping closures and the tour ' +
+        'metadata the calendar´s add-schedule popover needs (startTimes, ' +
+        'maxPartySize). Operators are pinned to their own tours; ADMIN reads ' +
+        'platform-wide with optional operatorId/tourId narrowing.',
+    }),
+    ApiOkResponse({ type: AvailabilityOverviewResponseDto }),
     authErrors(),
   );
 

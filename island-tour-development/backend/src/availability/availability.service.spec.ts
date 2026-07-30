@@ -33,6 +33,8 @@ function mockPrisma() {
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     operator: { findUnique: jest.fn(), create: jest.fn() },
+    // operatorContext's staff fallback - default "no seat".
+    staffMember: { findUnique: jest.fn().mockResolvedValue(null) },
     // Audit-name resolution ("Closed by Maria") - default no matches.
     user: { findMany: jest.fn().mockResolvedValue([]) },
     availabilitySchedule: {
@@ -805,6 +807,122 @@ describe('AvailabilityService', () => {
         '2030-06-05',
         '2030-06-05',
       );
+    });
+  });
+
+  // Global calendar overview: admin platform-wide, operator pinned to self.
+  describe('overview', () => {
+    const OV_TOUR = {
+      id: 't1',
+      name: 'Catamaran',
+      operatorId: 'op1',
+      timeZone: 'America/Curacao',
+      bookingCutoffMinutes: 60,
+      pricingModel: 'PER_PERSON',
+      maxPartySize: 12,
+      startTimes: ['09:00', '13:00'],
+      availabilityConfirmedAt: new Date('2030-06-01T10:00:00Z'),
+      operator: {
+        companyInfo: { companyName: 'Blue Bay Sailing' },
+        user: { name: 'Owner Account' },
+      },
+    };
+
+    it('pins a non-admin to their own operator and ignores operatorId', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.tour.findMany.mockResolvedValue([OV_TOUR]);
+      prisma.departure.findMany.mockResolvedValueOnce([departureRow()]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([]);
+
+      const res = await svc.overview('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-05',
+        days: 2,
+        operatorId: 'op-EVIL',
+      });
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { operatorId: 'op1', isActive: true },
+        }),
+      );
+      expect(res.days.map((d) => d.date)).toEqual(['2030-06-05', '2030-06-06']);
+      expect(res.days[0].departures[0]).toMatchObject({
+        id: 'd1',
+        operatorId: 'op1',
+        tourName: 'Catamaran',
+      });
+      expect(res.tours[0]).toMatchObject({
+        operatorName: 'Blue Bay Sailing',
+        maxPartySize: 12,
+        startTimes: ['09:00', '13:00'],
+      });
+    });
+
+    it('reads platform-wide for ADMIN and honours operatorId/tourId narrowing', async () => {
+      prisma.tour.findMany.mockResolvedValue([OV_TOUR]);
+      prisma.departure.findMany.mockResolvedValueOnce([]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([]);
+
+      await svc.overview('admin', Role.ADMIN, {
+        operatorId: 'op7',
+        tourId: 't9',
+      });
+      // No operatorContext lookup - the admin path never resolves a seat.
+      expect(prisma.operator.findUnique).not.toHaveBeenCalled();
+      expect(prisma.tour.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { isActive: true, operatorId: 'op7', id: 't9' },
+        }),
+      );
+    });
+
+    it('returns an honest empty for a caller with no operator context', async () => {
+      prisma.operator.findUnique.mockResolvedValue(null);
+      const res = await svc.overview('u1', Role.TOUR_OPERATOR, {});
+      expect(res).toMatchObject({ days: [], tours: [], lastConfirmedAt: null });
+      expect(prisma.tour.findMany).not.toHaveBeenCalled();
+    });
+
+    it('reports today independently of the requested window and prefers slot closures', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.tour.findMany.mockResolvedValue([
+        { ...OV_TOUR, operator: { companyInfo: null, user: { name: 'Ann' } } },
+      ]);
+      prisma.departure.findMany.mockResolvedValueOnce([departureRow()]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        {
+          id: 'x-day',
+          tourId: 't1',
+          date: day('2030-06-05'),
+          startTime: null,
+          type: 'CLOSE_DATE',
+          note: null,
+          createdBy: null,
+          createdAt: new Date('2030-06-04T08:00:00Z'),
+        },
+        {
+          id: 'x-slot',
+          tourId: 't1',
+          date: day('2030-06-05'),
+          startTime: time('09:00'),
+          type: 'CLOSE_SLOT',
+          note: 'Engine',
+          createdBy: null,
+          createdAt: new Date('2030-06-04T09:00:00Z'),
+        },
+      ]);
+
+      const res = await svc.overview('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-05',
+        days: 1,
+      });
+      // `today` is the island's real today, not the window start.
+      expect(res.today).not.toBe('2030-06-05');
+      expect(res.days[0].departures[0].closure).toMatchObject({
+        id: 'x-slot',
+        note: 'Engine',
+      });
+      // companyInfo null falls back to the owner account's name.
+      expect(res.tours[0].operatorName).toBe('Ann');
     });
   });
 

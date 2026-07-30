@@ -305,6 +305,106 @@ export class AgendaResponseDto {
   lastConfirmedAt!: string | null;
 }
 
+// ── Global calendar overview (admin + operator, one full-width grid) ─────────
+
+export class OverviewQueryDto {
+  @ApiPropertyOptional({
+    example: '2026-08-01',
+    description: 'First day (tour-local). Defaults to the island´s today.',
+  })
+  @IsOptional()
+  @IsLocalDate()
+  from?: string;
+
+  @ApiPropertyOptional({
+    example: 42,
+    description: 'Days to return (default 42 - a six-week month grid, max 62).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(62)
+  days?: number;
+
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description: 'Narrow to one tour.',
+  })
+  @IsOptional()
+  @IsString()
+  tourId?: string;
+
+  @ApiPropertyOptional({
+    example: 'operator-uuid',
+    description:
+      'Narrow to one operator. Honoured for ADMIN only - every other caller ' +
+      'is pinned to their own operator and the param is ignored.',
+  })
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
+}
+
+export class OverviewTourDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: 'Sunset Champagne Sail' }) name!: string;
+  @ApiProperty() operatorId!: string;
+  @ApiProperty({
+    example: 'Blue Bay Sailing',
+    description: 'Company name, falling back to the owner account´s name.',
+  })
+  operatorName!: string;
+  @ApiProperty({ example: 'America/Curacao' }) timeZone!: string;
+  @ApiProperty({ enum: ['PER_PERSON', 'UNIT'] })
+  pricingModel!: string;
+  @ApiProperty({
+    example: 10,
+    description: 'Default departure capacity (no schedule override).',
+  })
+  maxPartySize!: number;
+  @ApiProperty({
+    type: [String],
+    example: ['09:00', '14:00'],
+    description:
+      'The tour´s slot set - a new weekly schedule´s startTime must be one ' +
+      'of these.',
+  })
+  startTimes!: string[];
+}
+
+export class OverviewDepartureDto extends AgendaDepartureDto {
+  @ApiProperty({
+    description: 'The tour´s operator - admin grids group/filter by it.',
+  })
+  operatorId!: string;
+}
+
+export class OverviewDayDto {
+  @ApiProperty({ example: '2026-08-01' }) date!: string;
+  @ApiProperty({ type: [OverviewDepartureDto] })
+  departures!: OverviewDepartureDto[];
+}
+
+export class AvailabilityOverviewResponseDto {
+  @ApiProperty({
+    example: '2026-07-30',
+    description:
+      'The island´s current date, regardless of the requested window - so ' +
+      'the client never has to infer "today" from days[0].',
+  })
+  today!: string;
+  @ApiProperty({ type: [OverviewDayDto] }) days!: OverviewDayDto[];
+  @ApiProperty({ type: [OverviewTourDto] }) tours!: OverviewTourDto[];
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The STALEST availability_confirmed_at across the scoped tours; null ' +
+      'when any tour was never confirmed.',
+  })
+  lastConfirmedAt!: string | null;
+}
+
 export class CloseAgendaDayDto {
   @ApiProperty({ example: '2026-07-30' })
   @IsLocalDate()

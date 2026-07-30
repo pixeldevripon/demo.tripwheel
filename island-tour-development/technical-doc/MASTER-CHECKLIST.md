@@ -236,6 +236,7 @@
 - [x] `GET /availability/manage-calendar` operator month grid (per-day status/booked totals/exceptions + `scheduled` pattern flag) powering the dashboard's one-tap Availability calendar on the trip Schedules tab — close/reopen day, close/reopen slot, add departure, all via the existing exception mutations (2026-07-28; capacity controls removed from the day panel 2026-07-30 per the availability review's decided choice #5 — capacity is set-once, `set_capacity` stays in the model/API for support use)
 - [x] **Portal availability review alignment (2026-07-30, `island-tours-portal-availability-review.md` F1–F17):** close-vs-cancel copy corrected everywhere (closing keeps bookings — the popover previously claimed the opposite); `SET_CAPACITY` clamped at `bookedCount` on create AND update (was a silent materializer no-op); operator vocabulary purge (no "exception"/"materialised"/"recurring schedule"/"cap" renders; Weekly schedule / Calendar / Date changes) + "All times are local to {island}"; sold-out is a first-class visual state (info-violet, distinct from closed, self-explaining popover line); `GET /availability/summary` status line + 30-day delisting warning banner on the schedule step; calendar capped at 12 months with a shadcn date-jump that opens the picked day; exception audit trail exposed (`createdAt`+`createdByName` via a user-name join) + the Date Changes register (wired `useExceptions`); weekday tabs replaced with grouped pattern rows (weekday chips toggle the underlying rows, pause/remove fan out per rule, gap hint); consequence dialogs on tour-pause and rule pause/remove; pricing-model-aware copy (unit charters never see seat math, acceptance #9); `POST exceptions/close-range` + `reopen-range` bulk blackout with one-unit Undo (F8); `POST /availability/confirm` freshness stamp + stamp-on-visit (F14)
 - [x] **Surface B — cross-tour daily agenda (F4, matrix v1.6):** `GET /availability/agenda` (all tours, chronological, live status, closure audit line, stalest `availabilityConfirmedAt`) + `POST /availability/agenda/close-day` ("Close all of today", per-tour CLOSE_DATE fan-out, returns the exact Undo set) + dashboard `/availability` nav section (freshness card, tour filter chips for multi-tour only, one-tap Close/Reopen rows linking to the tour's schedule step, thumb-first)
+- [x] **Global availability calendar (2026-07-30):** `GET /availability/overview` (day-bucketed departures + closures + scoped tours + explicit island `today`; operator pinned via `operatorContext`, **ADMIN platform-wide** with `operatorId`/`tourId` narrowing - the only cross-operator availability read) + dashboard `/calendar` nav item: full-width Month/Week/Day grid (mini-calendar sidebar, Today, view persistence), departure chips with the management card (close/reopen `CLOSE_SLOT`, capacity edit via `PATCH departures/:id`, bookings + timetable deep links), click-empty add popover (one-off `ADD_SLOT` departure or weekly schedule), STOP_SELL seats see close/reopen only
 - [x] **Stop-sell permission split (matrix v1.7, review §5.1):** new `STOP_SELL` enum value (migration `20260730120000`) + `@RequireAnyPermission` OR-decorator in the permissions guard; close/reopen/agenda/confirm routes accept `MANAGE_AVAILABILITY` OR `STOP_SELL`, timetable/capacity/departure routes stay `MANAGE_AVAILABILITY`; the service re-checks `ADD_SLOT`/`SET_CAPACITY` writes (`assertCanShapeInventory`) so a stop-sell-only seat can close and reopen but never shape inventory; grantable in staff designations, mirrored in the dashboard rbac + nav
 - [~] A newly created schedule only materializes 90 days ahead and depends on the 3 AM cron to reach the full 12-month horizon — a sharp edge documented in the booking checklist. Mitigated for EXCEPTIONS (2026-07-28): every exception mutation also reconciles the exception's own day (`syncTourAvailability(tourId, date)`), so a beyond-horizon add/close/capacity change is visible immediately; schedules themselves still rely on the cron
 - [x] All-sold-out recovery path (surfacing/recovering a tour whose every departure is sold out) — `GET /tours/:id/alternatives` + `AvailabilityService.nextBookableDateByTour` behind the widget's `availabilityDeadEnd` state (2026-07-29, AVAILABILITY-AND-DEPARTURES.md §8.1)
@@ -815,7 +816,7 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Booking summary card with payment status
 - [x] "What happens next" step cards
 - [x] Cross-sell upsell section fed by `getThankYouRelatedTours`
-- [x] Apartment promo block
+- [x] Apartment promo block - **dynamic since 2026-07-30** (`Hotels` module; see the Hotels section below). Was a hardcoded `APARTMENT_PROMO` constant in `lib/thank-you/thank-you.ts`
 - [x] Support card
 - [x] Resend-confirmation-email action (`POST /bookings/typ/:ref/resend`)
 - [x] ICS / add-to-calendar and next-steps blocks
@@ -1510,6 +1511,25 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Rich-text editor — TipTap v3.29 adapted port (`components/pages/rich-text-editor.tsx`): shadcn/hugeicons toolbar, tables wired, SCSS scoped under `.it-page-editor`, content area = `.it-page-prose` mirror of the public legal typography (live WYSIWYG preview)
 - [x] Page CRUD + slug (auto-gen + `slugTouched`, rename→301 note) + publish state + English content wiring (`{fields}` translation payload); other locales are schema-ready, deferred by the English-only decision
 - [x] Both user decisions resolved 2026-07-26 (fall-through routing; adapted TipTap port) — see `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
+
+## Hotels (thank-you page promo)
+
+Island Tours' own places to stay, advertised on the thank-you page after a
+traveller books. Built 2026-07-30, replacing the hardcoded `APARTMENT_PROMO`
+constant on the public site.
+
+- [x] `Hotel` + `HotelTranslation` models (`prisma/hotel.prisma`), tables `hotels` / `hotel_translations`
+- [x] Migrations: `20260730130000_hotel_promo` (create + pre-seed), `20260730140000_hotels_list` (singleton -> protected list, re-key to uuid), `20260730150000_hotel_seed_labels` (fill the eyebrow / button labels)
+- [x] **A LIST that feeds ONE card.** The page renders a single promo, so the public read serves the first *enabled and complete* hotel by `displayOrder`; an incomplete row is SKIPPED rather than ending the search, or a half-filled draft at order 0 would silently suppress the good hotel behind it
+- [x] **Seed protection** - the shipped row carries `isSeeded`, and `DELETE` on it answers 403, exactly like a seeded destination. The promo therefore always has one occupant; it can only be emptied deliberately, by switching hotels off
+- [x] **The render gate**: image + English title + booking link. Missing any one of them and that hotel is not promotable. Unlike the homepage there is no "null falls back to bundled copy" rule here - we ship no default hotel, and inventing one would advertise a place that does not exist
+- [x] Backend `src/hotels/` - `GET /hotels/public` (`@Public()`) + full CRUD and per-locale copy behind `MANAGE_EDITORIAL`; 41 unit tests
+- [x] Public loader `lib/api/public/hotel.ts` (`'use cache'`, `cacheLife('days')`, `cacheTag('hotels')`), gated on one `enabled` flag; `getThankYouBooking` no longer carries the promo
+- [x] Cache tag `hotels` added to `lib/cache-tags.ts` in BOTH repos (byte-identical) + `case 'hotels'` in the dashboard's `cache-revalidation.ts`. Verified end to end: a dashboard save changes the RENDERED thank-you page within seconds
+- [x] Dashboard `Pages > Hotels` - list (photo / name / status / sleeps / per-night), create, edit with Details + Content tabs, Delete disabled with a reason on the seeded row, "View listing" row action opening the external booking site
+- [x] Registered in the Translation Console (`hotel` entity type) + the AI pipeline (`entity-registry.collectHotel`, nightly sweep, `POST /hotels/:id/translations/:locale/generate`), so all 7 locales are reachable
+- [x] The palm emoji moved OUT of the seven i18n dictionaries and INTO the card component - it is chrome, identical in every language, and an admin types a plain label
+- [ ] No on-site preview of the promoted hotel - the card renders on a thank-you page reachable only with a real booking reference, so the only external link an admin gets is the booking site itself
 
 ## Featured experiences
 
