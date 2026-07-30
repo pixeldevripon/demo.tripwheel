@@ -484,6 +484,49 @@ export interface AgendaResponse {
   lastConfirmedAt: string | null;
 }
 
+// ── Global calendar overview: one grid, admin platform-wide ─────────────────
+// Operators (and their staff) are pinned to their own tours; ADMIN reads every
+// operator and may narrow with operatorId/tourId. Same departure shape as the
+// agenda plus the operatorId the admin grid groups/filters by.
+
+export interface OverviewDeparture extends AgendaDeparture {
+  operatorId: string;
+}
+
+export interface OverviewDay {
+  date: string;
+  departures: OverviewDeparture[];
+}
+
+// Tour metadata the calendar's management popovers need: startTimes constrain
+// a new weekly schedule's startTime, maxPartySize is the default capacity.
+export interface OverviewTour {
+  id: string;
+  name: string;
+  operatorId: string;
+  operatorName: string;
+  timeZone: string;
+  pricingModel: PricingModel;
+  maxPartySize: number;
+  startTimes: string[];
+}
+
+export interface AvailabilityOverviewResponse {
+  // The island's real today, independent of the requested window - never
+  // infer today from days[0].
+  today: string;
+  days: OverviewDay[];
+  tours: OverviewTour[];
+  lastConfirmedAt: string | null;
+}
+
+export interface AvailabilityOverviewParams {
+  from?: string; // 'YYYY-MM-DD', defaults to the island's today
+  days?: number; // default 42 (six-week grid), max 62
+  tourId?: string;
+  operatorId?: string; // honoured for ADMIN only
+}
+
 // open = every in-service slot sellable · partial = some slot closed/overridden ·
 // closed = whole day stop-sold · no_service = no departures (see `scheduled`).
 export type ManageCalendarDayStatus = 'open' | 'partial' | 'closed' | 'no_service';

@@ -4,7 +4,11 @@
  * without importing another hook domain). hooks/trips re-exports it, so
  * existing `tripKeys` imports from there keep working.
  */
-import type { AdminTripsQueryParams, MyTripsQueryParams } from '@/types/trip';
+import type {
+  AdminTripsQueryParams,
+  AvailabilityOverviewParams,
+  MyTripsQueryParams,
+} from '@/types/trip';
 
 export const tripKeys = {
   all: ['trips'] as const,
@@ -37,4 +41,9 @@ export const tripKeys = {
   agendaAll: () => [...tripKeys.all, 'agenda'] as const,
   agenda: (from: string | undefined, days: number) =>
     [...tripKeys.agendaAll(), from ?? 'today', days] as const,
+  // Global calendar overview (keyed by window + filters). Every availability
+  // mutation invalidates the prefix - the grid spans ALL tours.
+  overviewAll: () => [...tripKeys.all, 'overview'] as const,
+  overview: (params: AvailabilityOverviewParams) =>
+    [...tripKeys.overviewAll(), params] as const,
 };

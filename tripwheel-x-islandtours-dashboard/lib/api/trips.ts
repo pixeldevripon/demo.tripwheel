@@ -13,8 +13,12 @@ import type {
   CreateTourSchedulePayload,
   CreateTourExceptionPayload,
   AgendaResponse,
+  AvailabilityOverviewParams,
+  AvailabilityOverviewResponse,
   AvailabilitySummary,
+  DepartureStatus,
   ManageCalendarDay,
+  TourDeparture,
   CreateTripPayload,
   MyTripsQueryParams,
   PaginatedTrips,
@@ -541,6 +545,26 @@ export const tripsApi = {
 
   removeException(exceptionId: string): Promise<void> {
     return apiFetch<void>(`/availability/exceptions/${exceptionId}`, { method: 'DELETE' });
+  },
+
+  // Global calendar overview: every departure across the scoped tours,
+  // day-bucketed. Operators are pinned to themselves; admins read platform-wide.
+  getOverview(params: AvailabilityOverviewParams = {}): Promise<AvailabilityOverviewResponse> {
+    return apiFetch<AvailabilityOverviewResponse>(
+      `/availability/overview${buildQuery({ ...params })}`
+    );
+  },
+
+  // Per-departure edit (capacity / manual status). The backend refuses a
+  // capacity below bookedCount and 409s on a concurrent booking race.
+  updateDeparture(
+    departureId: string,
+    payload: { capacity?: number; status?: DepartureStatus }
+  ): Promise<TourDeparture> {
+    return apiFetch<TourDeparture>(`/availability/departures/${departureId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
 
   // Daily agenda (Surface B): every departure across the operator's tours.

@@ -18,6 +18,8 @@ import type {
   CreateTourSchedulePayload,
   CreateTourExceptionPayload,
   CreateTripPayload,
+  AvailabilityOverviewParams,
+  DepartureStatus,
   MyTripsQueryParams,
   UpdateTourAddOnPayload,
   UpdateTourAgeBandPayload,
@@ -897,6 +899,7 @@ export function useCreateSchedule() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
       // Schedule changes re-materialise departures and can flip isBookable, which
       // drives the "not yet listed" banner - refresh the trip detail too.
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
@@ -920,6 +923,7 @@ export function useUpdateSchedule() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
@@ -935,6 +939,7 @@ export function useRemoveSchedule() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
@@ -953,6 +958,45 @@ export function useCreateException() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
+    },
+  });
+}
+
+// Global calendar overview: one grid across every scoped tour (admin
+// platform-wide). Window + filters live in the key; the previous window stays
+// on screen while the next loads (same pattern as the agenda).
+export function useAvailabilityOverview(params: AvailabilityOverviewParams) {
+  return useQuery({
+    queryKey: tripKeys.overview(params),
+    queryFn: () => tripsApi.getOverview(params),
+    placeholderData: (prev) => prev,
+    // Paging back to a window inside a minute is instant; mutations still
+    // land immediately because every availability write invalidates
+    // overviewAll(). Keeps the grid from feeling like a fetch-per-click.
+    staleTime: 60_000,
+  });
+}
+
+// Per-departure edit (capacity / manual status) from the calendar. The backend
+// clamps capacity at bookedCount and 409s on a concurrent booking race.
+export function useUpdateDeparture() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      departureId,
+      payload,
+    }: {
+      tripId: string;
+      departureId: string;
+      payload: { capacity?: number; status?: DepartureStatus };
+    }) => tripsApi.updateDeparture(departureId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
     },
   });
 }
@@ -1002,6 +1046,7 @@ export function useCloseRange() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
     },
   });
 }
@@ -1017,6 +1062,7 @@ export function useReopenRange() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
     },
   });
 }
@@ -1032,6 +1078,7 @@ export function useRemoveException() {
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
     },
   });
 }
