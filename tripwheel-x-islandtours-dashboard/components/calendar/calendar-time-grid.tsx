@@ -322,9 +322,11 @@ export function CalendarTimeGrid({
                                 key={day.date}
                                 onClick={(e) => handleColumnClick(e, day, dayIndex)}
                                 className={cn(
-                                    'relative min-w-0 flex-1 border-l border-border/50',
+                                    'relative min-w-0 flex-1 border-l border-border/50 transition-colors duration-normal',
                                     isPastDay && 'bg-muted/20',
-                                    canShape && !isPastDay && 'cursor-pointer',
+                                    canShape &&
+                                        !isPastDay &&
+                                        'cursor-pointer hover:bg-muted/40',
                                 )}>
                                 {/* The picked column's wash glides with the
                                     header ring (week view only - a day view
