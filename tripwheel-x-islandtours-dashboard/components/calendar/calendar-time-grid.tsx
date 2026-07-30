@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewDeparture, OverviewTour } from '@/types/trip';
 import { AddEventForm } from './add-event-popover';
 import { gmtLabel, keyToDate } from './calendar-utils';
+import { DayPeek } from './day-peek';
 import { DepartureChip } from './departure-chip';
 
 // Keep in lockstep with the classes below: hour rows are h-14 (56px), chips
@@ -24,6 +25,14 @@ interface Positioned {
     lanes: number;
 }
 
+/** A same-time cluster's hidden tail, rendered as one "+N" chip. */
+interface OverflowGroup {
+    key: string;
+    top: number;
+    lanes: number;
+    deps: OverviewDeparture[];
+}
+
 function minutesOf(dep: OverviewDeparture): number {
     const [h, m] = dep.startTime.split(':').map(Number);
     return h * 60 + m;
@@ -32,20 +41,44 @@ function minutesOf(dep: OverviewDeparture): number {
 /**
  * Greedy lane assignment so same-time departures sit side by side. Lanes are
  * counted PER OVERLAP CLUSTER, not per day - a lone 15:00 departure renders
- * full-width even when the 09:00 rush needed three lanes. A chip occupies one
- * visual hour for overlap purposes.
+ * full-width even when the 09:00 rush needed three lanes. Clusters denser
+ * than `maxLanes` keep the first lanes as chips and fold the rest into a
+ * "+N" group - a platform-wide 07:00 rush must never shred the column into
+ * sliver-wide chips. A chip occupies one visual hour for overlap purposes.
  */
-function layoutDay(deps: OverviewDeparture[], startHour: number): Positioned[] {
+function layoutDay(
+    deps: OverviewDeparture[],
+    startHour: number,
+    maxLanes: number,
+): { chips: Positioned[]; overflows: OverflowGroup[] } {
     const sorted = [...deps].sort(
         (a, b) => minutesOf(a) - minutesOf(b) || a.tourName.localeCompare(b.tourName),
     );
-    const out: Positioned[] = [];
-    let cluster: Omit<Positioned, 'lanes'>[] = [];
+    const chips: Positioned[] = [];
+    const overflows: OverflowGroup[] = [];
+    let cluster: (Omit<Positioned, 'lanes'> & { start: number })[] = [];
     let laneEnds: number[] = [];
     let clusterEnd = -1;
     const flush = () => {
-        const lanes = laneEnds.length;
-        out.push(...cluster.map((c) => ({ ...c, lanes })));
+        if (cluster.length === 0) return;
+        const lanes = Math.min(laneEnds.length, maxLanes);
+        // With overflow, the last lane belongs to the "+N" chip.
+        const laneCutoff =
+            laneEnds.length > maxLanes ? maxLanes - 1 : maxLanes;
+        const hidden = cluster.filter((c) => c.lane >= laneCutoff);
+        for (const c of cluster) {
+            if (c.lane < laneCutoff) {
+                chips.push({ dep: c.dep, lane: c.lane, top: c.top, lanes });
+            }
+        }
+        if (hidden.length > 0) {
+            overflows.push({
+                key: `${hidden[0].dep.id}-overflow`,
+                top: Math.min(...hidden.map((c) => c.top)),
+                lanes,
+                deps: hidden.map((c) => c.dep),
+            });
+        }
         cluster = [];
         laneEnds = [];
         clusterEnd = -1;
@@ -63,17 +96,20 @@ function layoutDay(deps: OverviewDeparture[], startHour: number): Positioned[] {
         cluster.push({
             dep,
             lane,
+            start,
             top: ((start - startHour * 60) / 60) * HOUR_PX,
         });
     }
     flush();
-    return out;
+    return { chips, overflows };
 }
 
 /**
  * The Week/Day time grid: one column per day, departures positioned by start
  * time, click on empty space to add a departure/schedule at that hour. Week
- * and Day are the same component - a day is a one-column week.
+ * and Day are the same component - a day is a one-column week. The day
+ * header lives INSIDE the scrollport as a sticky row, so header and body
+ * columns share one width and the scrollbar never misaligns them.
  */
 export function CalendarTimeGrid({
     days,
@@ -95,6 +131,9 @@ export function CalendarTimeGrid({
     canShape: boolean;
     onOpenDay: (date: string) => void;
 }) {
+    // A lone day column has room for more side-by-side chips than a week's.
+    const maxLanes = days.length === 1 ? 6 : 3;
+
     // The visible hour span hugs the data but never collapses below 08-19,
     // so an empty week still looks like a working day.
     const [startHour, endHour] = useMemo(() => {
@@ -177,41 +216,44 @@ export function CalendarTimeGrid({
 
     return (
         <div className='overflow-hidden rounded-lg border border-border/70 bg-background'>
-            {/* Day headers (outside the scrollport so they never leave). */}
-            <div className='flex'>
-                <div className='flex w-12 shrink-0 items-center justify-center sm:w-14'>
-                    <span className='text-2xs text-muted-foreground'>
-                        {gmtLabel(timeZone)}
-                    </span>
-                </div>
-                {days.map((day) => {
-                    const d = keyToDate(day.date);
-                    const isToday = day.date === today;
-                    return (
-                        <button
-                            key={day.date}
-                            type='button'
-                            onClick={() => onOpenDay(day.date)}
-                            className='flex min-w-0 flex-1 items-center justify-center gap-1.5 border-l border-border/50 py-2.5 transition-colors duration-normal hover:bg-muted/50'>
-                            <span className='text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
-                                {format(d, 'EEE')}
-                            </span>
-                            <span
-                                className={cn(
-                                    'flex size-6 items-center justify-center rounded-full text-sm font-medium',
-                                    isToday &&
-                                        'bg-foreground text-background',
-                                )}>
-                                {format(d, 'd')}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
-
+            {/* One scrollport for header + grid: the sticky header row scrolls
+                horizontally never (no x overflow) and vertically stays pinned,
+                so columns always line up with their headers. Height tracks the
+                viewport; the thin themed scrollbar stays visible inside the
+                rounded frame. */}
             <div
                 ref={scrollRef}
-                className='max-h-[62vh] overflow-y-auto overscroll-contain border-t border-border/50'>
+                className='max-h-[calc(100dvh-270px)] min-h-80 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border'>
+                <div className='sticky top-0 z-20 flex border-b border-border/50 bg-background'>
+                    <div className='flex w-12 shrink-0 items-center justify-center sm:w-14'>
+                        <span className='text-2xs text-muted-foreground'>
+                            {gmtLabel(timeZone)}
+                        </span>
+                    </div>
+                    {days.map((day) => {
+                        const d = keyToDate(day.date);
+                        const isToday = day.date === today;
+                        return (
+                            <button
+                                key={day.date}
+                                type='button'
+                                onClick={() => onOpenDay(day.date)}
+                                className='flex min-w-0 flex-1 items-center justify-center gap-1.5 border-l border-border/50 py-2.5 transition-colors duration-normal hover:bg-muted/50'>
+                                <span className='text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
+                                    {format(d, 'EEE')}
+                                </span>
+                                <span
+                                    className={cn(
+                                        'flex size-6 items-center justify-center rounded-full text-sm font-medium',
+                                        isToday && 'bg-foreground text-background',
+                                    )}>
+                                    {format(d, 'd')}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
                 <div className='relative flex'>
                     {/* Hour gutter. */}
                     <div className='relative w-12 shrink-0 sm:w-14'>
@@ -243,7 +285,11 @@ export function CalendarTimeGrid({
                     )}
 
                     {days.map((day, dayIndex) => {
-                        const positioned = layoutDay(day.departures, startHour);
+                        const { chips, overflows } = layoutDay(
+                            day.departures,
+                            startHour,
+                            maxLanes,
+                        );
                         const isPastDay = day.date < today;
                         return (
                             <div
@@ -264,10 +310,10 @@ export function CalendarTimeGrid({
                                 {/* 03 §8.3: runtime geometry travels through
                                     CSS custom properties; the spread keeps a
                                     literal `style` attribute out of the JSX. */}
-                                {positioned.map(({ dep, top, lane, lanes }) => (
+                                {chips.map(({ dep, top, lane, lanes }) => (
                                     <div
                                         key={dep.id}
-                                        className='absolute h-12 px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        className='absolute h-12 overflow-hidden px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
                                         {...{
                                             style: {
                                                 '--dep-top': `${top + 1}px`,
@@ -286,6 +332,34 @@ export function CalendarTimeGrid({
                                                     : undefined
                                             }
                                         />
+                                    </div>
+                                ))}
+
+                                {/* Dense clusters fold their tail into a "+N"
+                                    chip in the last lane - same peek card as
+                                    the month view's "+N more". */}
+                                {overflows.map((group) => (
+                                    <div
+                                        key={group.key}
+                                        className='absolute h-12 px-0.5 top-(--dep-top) left-(--dep-left) w-(--dep-w)'
+                                        {...{
+                                            style: {
+                                                '--dep-top': `${group.top + 1}px`,
+                                                '--dep-left': `${((group.lanes - 1) / group.lanes) * 100}%`,
+                                                '--dep-w': `${100 / group.lanes}%`,
+                                            } as React.CSSProperties,
+                                        }}>
+                                        <DayPeek
+                                            date={day.date}
+                                            departures={group.deps}
+                                            operatorNameById={operatorNameById}
+                                            isAdmin={isAdmin}>
+                                            <button
+                                                type='button'
+                                                className='flex h-full w-full items-center justify-center rounded-lg bg-muted/70 text-xs font-medium text-muted-foreground transition-colors duration-normal hover:bg-muted'>
+                                                +{group.deps.length}
+                                            </button>
+                                        </DayPeek>
                                     </div>
                                 ))}
 

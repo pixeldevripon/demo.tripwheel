@@ -158,8 +158,9 @@ export function GlobalCalendar() {
         <div className='flex flex-col gap-4'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-                {/* Fixed width so long month names never shove the controls. */}
-                <div className='relative h-8 w-56 overflow-hidden sm:w-64'>
+                {/* Fixed width so label swaps never shove the controls -
+                    sized for the longest week range ("Sep 28 - Oct 4, 2026"). */}
+                <div className='relative h-8 w-64 overflow-hidden sm:w-80'>
                     <AnimatePresence mode='wait' initial={false}>
                         <motion.span
                             key={label}
@@ -167,7 +168,7 @@ export function GlobalCalendar() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
                             transition={swapFade}
-                            className='absolute inset-0 truncate text-2xl font-semibold leading-8'>
+                            className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl'>
                             {label}
                         </motion.span>
                     </AnimatePresence>
