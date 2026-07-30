@@ -15,11 +15,33 @@ import {
     storeTravelerSession,
 } from '@/lib/traveler-booking';
 
-import { ErrorNote, Field, inputClass, primaryBtn, quietLink } from '../login/login-ui';
+import {
+    ErrorNote,
+    Field,
+    FieldError,
+    inputClass,
+    inputErrorClass,
+    primaryBtn,
+    quietLink,
+} from '../login/login-ui';
 import { TravellerOtpField } from './traveller-otp-field';
 
 /** Matches the backend's per-target cap of one code per minute. */
 const RESEND_COOLDOWN_S = 60;
+
+/**
+ * Deliberately shape-only: one `@`, something either side, and a dotted domain
+ * with a 2+ character last label. Nothing stricter is worth doing here.
+ *
+ * The real check is whether a code arrives in that inbox, and the backend
+ * intentionally does not say whether an address is known (that would turn this
+ * form into an account-enumeration oracle). So this catches the honest typo -
+ * a missing `@`, a trailing `.`, `gmail.con` is NOT catchable and must not be
+ * guessed at - and nothing else pretends to.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const EMAIL_ERROR_ID = 'traveller-email-error';
 
 /**
  * The account-area door: email in, one-time code back, history session out.
@@ -41,8 +63,10 @@ export function TravellerLoginCard({
     const [code, setCode] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [emailError, setEmailError] = useState<string | null>(null);
     const [cooldown, setCooldown] = useState(0);
     const codeRef = useRef<HTMLDivElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
 
     // Tick the resend cooldown down to zero.
     useEffect(() => {
@@ -53,10 +77,27 @@ export function TravellerLoginCard({
 
     async function sendCode(e?: React.FormEvent) {
         e?.preventDefault();
-        if (busy || !email.trim()) return;
+        if (busy) return;
+
+        // Validate BEFORE the request. The form is `noValidate` so the browser's
+        // own bubble never fires - it is unstyled and only ever in the browser's
+        // language, which is wrong on a site that runs in 7. That means the check
+        // has to happen here or not at all, and it used to be `!email.trim()`,
+        // which let anything with a character in it ask for a code.
+        //
+        // Also guards the Resend button, which calls this with no event.
+        const value = email.trim();
+        if (!EMAIL_SHAPE.test(value)) {
+            setEmailError(dict.emailInvalid);
+            setError(null);
+            emailRef.current?.focus();
+            return;
+        }
+
         setBusy(true);
         setError(null);
-        const result = await requestTravellerCodeClient(email.trim());
+        setEmailError(null);
+        const result = await requestTravellerCodeClient(value);
         setBusy(false);
         if (result === 'throttled') {
             setError(dict.throttledError);
@@ -109,16 +150,33 @@ export function TravellerLoginCard({
                             {error && <ErrorNote>{error}</ErrorNote>}
                             <Field label={dict.emailLabel} htmlFor='traveller-email'>
                                 <input
+                                    ref={emailRef}
                                     id='traveller-email'
                                     type='email'
                                     name='email'
                                     autoComplete='email'
                                     required
+                                    aria-invalid={emailError ? true : undefined}
+                                    aria-describedby={
+                                        emailError ? EMAIL_ERROR_ID : undefined
+                                    }
                                     value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    className={inputClass}
+                                    onChange={e => {
+                                        setEmail(e.target.value);
+                                        // Clear on the first keystroke of a fix.
+                                        // Re-validating as they type would flash
+                                        // the error back on every character of a
+                                        // half-typed address.
+                                        if (emailError) setEmailError(null);
+                                    }}
+                                    className={`${inputClass} ${emailError ? inputErrorClass : ''}`}
                                     placeholder={dict.emailPlaceholder}
                                 />
+                                {emailError && (
+                                    <FieldError id={EMAIL_ERROR_ID}>
+                                        {emailError}
+                                    </FieldError>
+                                )}
                             </Field>
                             <motion.button
                                 type='submit'
