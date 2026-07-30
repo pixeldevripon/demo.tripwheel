@@ -1,5 +1,6 @@
 import {
     Calendar03Icon,
+    CalendarCheckIn01Icon,
     CalendarRemove01Icon,
     Coins01Icon,
     CreditCardIcon,
@@ -49,6 +50,19 @@ const dashboardNav: NavGroup[] = [
                 url: '',
                 icon: DashboardSquare01Icon,
                 permissions: [Permission.VIEW_ANALYTICS],
+            },
+            {
+                // THE daily habit (matrix v1.6, availability review §3.3):
+                // every departure across all the operator's tours, one list,
+                // one-tap close. Setup stays under Tours.
+                title: 'Availability',
+                url: 'availability',
+                icon: CalendarCheckIn01Icon,
+                // ANY-of: a stop-sell-only dock seat sees the agenda too.
+                permissions: [
+                    Permission.MANAGE_AVAILABILITY,
+                    Permission.STOP_SELL,
+                ],
             },
             {
                 title: 'Bookings',

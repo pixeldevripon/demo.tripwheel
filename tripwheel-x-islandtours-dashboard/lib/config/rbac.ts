@@ -10,6 +10,9 @@ export const Permission = {
   MANAGE_EDITORIAL: 'MANAGE_EDITORIAL',
   // Schedules, exceptions, departures - and the calendar export feeds built on them.
   MANAGE_AVAILABILITY: 'MANAGE_AVAILABILITY',
+  // Matrix v1.7 stop-sell split: close/reopen only (the dock-staff grant) -
+  // no timetable or capacity edits.
+  STOP_SELL: 'STOP_SELL',
   MANAGE_OPERATORS: 'MANAGE_OPERATORS',
   CREATE_CONTENT: 'CREATE_CONTENT',
   VIEW_CONTENT: 'VIEW_CONTENT',
@@ -163,6 +166,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'MANAGE_TRIPS',
     'MANAGE_EDITORIAL',
     'MANAGE_AVAILABILITY',
+    'STOP_SELL',
     'CREATE_CONTENT',
     'VIEW_CONTENT',
     'EDIT_CONTENT',
@@ -375,6 +379,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     // Conflict #1: NO MANAGE_TRIPS - publishing is always Island Tours'.
     // Operators submit-for-review + pause/archive via EDIT_TRIP routes.
     'MANAGE_AVAILABILITY',
+    'STOP_SELL',
     'VIEW_CATEGORIES',
   ],
 

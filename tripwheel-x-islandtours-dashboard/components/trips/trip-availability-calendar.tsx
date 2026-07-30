@@ -1,35 +1,54 @@
 'use client';
 
 import {
+    ArrowDown01Icon,
     ArrowLeft01Icon,
     ArrowRight01Icon,
     Cancel01Icon,
     Loading03Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import Link from 'next/link';
 
+import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Popover,
     PopoverAnchor,
     PopoverContent,
+    PopoverTrigger,
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+    useCloseRange,
     useCreateException,
     useManageCalendar,
     useRemoveException,
+    useReopenRange,
 } from '@/hooks/trips/use-trips';
 import { cn } from '@/lib/utils';
 import type {
     ManageCalendarDay,
     ManageCalendarDayStatus,
+    PricingModel,
     TourDeparture,
 } from '@/types/trip';
 import { addMonths, format, startOfMonth } from 'date-fns';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -50,6 +69,8 @@ interface TripAvailabilityCalendarProps {
     /** The tour's declared start times - offered as one-tap chips when adding
       an extra departure (typing stays possible for a brand-new time). */
     declaredStartTimes: string[];
+    /** F10: unit-priced charters get Open/Sold out labels, never seat math. */
+    pricingModel?: PricingModel;
     /** Drop the Card chrome - the wizard section header names this calendar. */
     bare?: boolean;
 }
@@ -57,19 +78,39 @@ interface TripAvailabilityCalendarProps {
 /**
  * One-tap availability layer over the schedules/exceptions system: a month
  * grid where the daily operational actions (close a day, close a slot, add a
- * departure, change capacity, reopen) are each one or two taps, instead of the
- * multi-step Date Exceptions form kept below for planned work. Every action is
- * an ordinary exception write - no new mutation surface. Days with booked
- * seats require a confirming tap before a close (it cancels their departures).
+ * departure, change capacity, reopen) are each one or two taps.
+ *
+ * **Closing is not cancelling.** A close writes a CLOSE_DATE / CLOSE_SLOT
+ * exception, the materializer marks the departure CLOSED, and that stops NEW
+ * sales only - booked departures keep their capacity, their booked count and
+ * every existing booking (`availability-materializer.service.ts`: "CLOSED only
+ * stops NEW sales; existing bookings stay"). Cancelling a departure that has
+ * bookings is the separate refund-or-rebook flow, admin-executed in v1, and
+ * deliberately has no self-serve control here.
+ *
+ * That distinction is the whole reason this surface exists: an operator who
+ * fears close = cancel will not stop-sell, and the platform then sells seats
+ * that do not exist. So the panel states the guarantee instead of warning
+ * about a consequence that never happens.
  */
 export function TripAvailabilityCalendar({
     tripId,
     timeZone,
     maxPartySize,
     declaredStartTimes,
+    pricingModel = 'PER_PERSON',
     bare = false,
 }: TripAvailabilityCalendarProps) {
-    const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()));
+    const isUnit = pricingModel === 'UNIT';
+    // Initial month from the ISLAND's clock, not the browser's: an operator
+    // ahead of the tour's timezone opening this near their local midnight
+    // would otherwise land one month past the island's actual today.
+    const [monthDate, setMonthDate] = useState(() => {
+        const islandToday = new Intl.DateTimeFormat('en-CA', {
+            timeZone,
+        }).format(new Date());
+        return new Date(`${islandToday.slice(0, 7)}-01T00:00:00`);
+    });
     const month = format(monthDate, 'yyyy-MM');
     const {
         data: days,
@@ -77,6 +118,74 @@ export function TripAvailabilityCalendar({
         isFetching,
     } = useManageCalendar(tripId, month);
     const [openDate, setOpenDate] = useState<string | null>(null);
+    const [jumpOpen, setJumpOpen] = useState(false);
+    // F8 bulk blackout: a two-week haul-out is one dialog, not fourteen taps.
+    const [rangeOpen, setRangeOpen] = useState(false);
+    const [rangeFrom, setRangeFrom] = useState('');
+    const [rangeTo, setRangeTo] = useState('');
+    const [rangeNote, setRangeNote] = useState('');
+    const [rangeError, setRangeError] = useState<string | null>(null);
+    const { mutate: closeRange, isPending: isClosingRange } = useCloseRange();
+    const { mutate: reopenRange } = useReopenRange();
+
+    function submitRange() {
+        if (!rangeFrom || !rangeTo) {
+            setRangeError('Pick both a first and a last day.');
+            return;
+        }
+        if (rangeTo < rangeFrom) {
+            setRangeError('The last day cannot be before the first.');
+            return;
+        }
+        setRangeError(null);
+        const from = rangeFrom;
+        const to = rangeTo;
+        closeRange(
+            {
+                tripId,
+                payload: { from, to, note: rangeNote.trim() || undefined },
+            },
+            {
+                onSuccess: ({ closed }) => {
+                    setRangeOpen(false);
+                    setRangeFrom('');
+                    setRangeTo('');
+                    setRangeNote('');
+                    toast.success(
+                        closed > 0
+                            ? `Closed ${closed} day${closed === 1 ? '' : 's'}. New sales stopped; existing bookings are kept.`
+                            : 'Those days were already closed.',
+                        closed > 0
+                            ? {
+                                  // The one-unit Undo (reopen-range over the
+                                  // same bounds) - the cheapest safety net a
+                                  // bulk action can have.
+                                  action: {
+                                      label: 'Undo',
+                                      onClick: () =>
+                                          reopenRange(
+                                              { tripId, payload: { from, to } },
+                                              {
+                                                  onSuccess: ({ reopened }) =>
+                                                      toast.success(
+                                                          `Reopened ${reopened} day${reopened === 1 ? '' : 's'}.`
+                                                      ),
+                                              }
+                                          ),
+                                  },
+                              }
+                            : undefined
+                    );
+                },
+                onError: err =>
+                    setRangeError(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to close the range.'
+                    ),
+            }
+        );
+    }
 
     // 'en-CA' renders YYYY-MM-DD directly; computed in the TOUR's zone so an
     // operator in Europe can still close the island's "today" after midnight CET.
@@ -84,6 +193,11 @@ export function TripAvailabilityCalendar({
         new Date()
     );
     const canGoPrev = month > todayKey.slice(0, 7);
+    // The nightly job materializes ~364 days ahead (master E.9: "12 rolling
+    // months"), so departures genuinely stop there. Cap paging at that horizon
+    // instead of letting month 13+ render an inexplicably empty grid.
+    const maxMonth = todayKey.slice(0, 7).replace(/^\d{4}/, y => String(+y + 1));
+    const canGoNext = month < maxMonth;
 
     // Monday-first offset of the month's first day (getDay(): 0=Sunday).
     const leadingBlanks = (monthDate.getDay() + 6) % 7;
@@ -99,8 +213,13 @@ export function TripAvailabilityCalendar({
     const monthDays = (days ?? []).filter(d => d.date.startsWith(month));
     const trailingBlanks = (7 - ((leadingBlanks + daysInMonth) % 7)) % 7;
 
+    // Jump-to-date bounds: the island's today through the ~364-day horizon the
+    // nightly job materializes. Outside that window there is nothing to manage.
+    const jumpFrom = new Date(`${todayKey}T00:00:00`);
+    const jumpTo = addMonths(new Date(`${todayKey.slice(0, 7)}-01T00:00:00`), 13);
+
     const monthNav = (
-        <div className='flex items-center'>
+        <div className='flex items-center gap-1'>
             <Button
                 size='icon-sm'
                 variant='ghost'
@@ -109,19 +228,69 @@ export function TripAvailabilityCalendar({
                 aria-label='Previous month'>
                 <HugeiconsIcon icon={ArrowLeft01Icon} className='size-4' />
             </Button>
-            <span className='min-w-32 text-center text-sm font-medium tabular-nums'>
-                {format(monthDate, 'MMMM yyyy')}
-                {isFetching && !isLoading && (
-                    <HugeiconsIcon
-                        icon={Loading03Icon}
-                        className='ml-1.5 inline size-3 animate-spin text-muted-foreground'
+            {/* The month label IS the jump control (design-system popover, not
+                a native month input): tap it, pick any of the 13 months the
+                calendar covers. Next August is one tap, not twelve clicks. */}
+            <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+                <PopoverTrigger asChild>
+                    {/* Styled like the Select triggers beside it (border,
+                        surface, chevron) so it READS as a control - a bare
+                        text label hid the jump feature entirely. */}
+                    <button
+                        type='button'
+                        aria-label='Jump to month'
+                        className='flex h-8 min-w-36 items-center justify-between gap-1.5 rounded-md border border-input bg-surface-raised px-2.5 text-sm font-medium tabular-nums shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-line-strong focus-visible:border-focus-ring focus-visible:ring-[3px] focus-visible:ring-focus-ring/25'>
+                        <span>
+                            {format(monthDate, 'MMMM yyyy')}
+                            {isFetching && !isLoading && (
+                                <HugeiconsIcon
+                                    icon={Loading03Icon}
+                                    className='ml-1.5 inline size-3 animate-spin text-muted-foreground'
+                                />
+                            )}
+                        </span>
+                        <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            className='size-3.5 shrink-0 text-muted-foreground'
+                        />
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent align='center' className='w-auto p-0'>
+                    {/* Pick a DATE, not just a month (the reference mockup's
+                        "Go"): the grid jumps to that month AND the day card
+                        opens on the chosen date - one motion from "Aug 28 is
+                        full" to acting on Aug 28. */}
+                    <Calendar
+                        mode='single'
+                        selected={
+                            openDate
+                                ? new Date(`${openDate}T00:00:00`)
+                                : undefined
+                        }
+                        onSelect={date => {
+                            if (!date) return;
+                            setMonthDate(startOfMonth(date));
+                            setOpenDate(format(date, 'yyyy-MM-dd'));
+                            setJumpOpen(false);
+                        }}
+                        defaultMonth={monthDate}
+                        disabled={{ before: jumpFrom, after: jumpTo }}
+                        captionLayout='dropdown'
+                        autoFocus
                     />
-                )}
-            </span>
+                    <p className='px-3 pb-2 text-2xs text-muted-foreground'>
+                        The calendar covers 12 months ahead.
+                    </p>
+                </PopoverContent>
+            </Popover>
             <Button
                 size='icon-sm'
                 variant='ghost'
                 onClick={() => setMonthDate(m => addMonths(m, 1))}
+                disabled={!canGoNext}
+                title={
+                    canGoNext ? undefined : 'The calendar covers 12 months ahead.'
+                }
                 aria-label='Next month'>
                 <HugeiconsIcon icon={ArrowRight01Icon} className='size-4' />
             </Button>
@@ -130,7 +299,18 @@ export function TripAvailabilityCalendar({
 
     const body = (
         <div className='space-y-3'>
-            {bare && <div className='flex justify-end'>{monthNav}</div>}
+            {bare && (
+                <div className='flex flex-wrap items-center justify-end gap-2'>
+                    <Button
+                        size='sm'
+                        variant='outline'
+                        className='h-8'
+                        onClick={() => setRangeOpen(true)}>
+                        Close a range
+                    </Button>
+                    {monthNav}
+                </div>
+            )}
             {isLoading ? (
                 <Skeleton className='h-96 w-full rounded-lg' />
             ) : (
@@ -173,6 +353,7 @@ export function TripAvailabilityCalendar({
                                           declaredStartTimes={
                                               declaredStartTimes
                                           }
+                                          isUnit={isUnit}
                                       />
                                   ))
                                 : /* Streaming a fresh month: quiet numbered placeholders keep
@@ -204,6 +385,10 @@ export function TripAvailabilityCalendar({
                             open departure
                         </span>
                         <span className='flex items-center gap-1.5'>
+                            <span className='size-2 rounded-full bg-info-solid' />
+                            sold out
+                        </span>
+                        <span className='flex items-center gap-1.5'>
                             <span className='size-2.5 rounded-sm bg-warning-subtle ring-1 ring-warning-border' />
                             partially closed
                         </span>
@@ -220,6 +405,74 @@ export function TripAvailabilityCalendar({
                     </div>
                 </>
             )}
+
+            {/* F8: bulk blackout dialog. Writes one CLOSE_DATE per day in the
+                range server-side; the toast's Undo reopens the same bounds. */}
+            <Dialog open={rangeOpen} onOpenChange={setRangeOpen}>
+                <DialogContent className='sm:max-w-md'>
+                    <DialogHeader>
+                        <DialogTitle>Close a range of dates</DialogTitle>
+                        <DialogDescription>
+                            Stops new sales on every departure between the two
+                            days, inclusive. Existing bookings are kept.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className='grid grid-cols-2 gap-3'>
+                        <Field>
+                            <Label>First closed day</Label>
+                            <DatePickerField
+                                value={rangeFrom}
+                                onChange={v => {
+                                    setRangeFrom(v);
+                                    setRangeError(null);
+                                }}
+                            />
+                        </Field>
+                        <Field>
+                            <Label>Last closed day</Label>
+                            <DatePickerField
+                                value={rangeTo}
+                                onChange={v => {
+                                    setRangeTo(v);
+                                    setRangeError(null);
+                                }}
+                            />
+                        </Field>
+                    </div>
+                    <Field>
+                        <Label>Reason (optional)</Label>
+                        <Input
+                            value={rangeNote}
+                            onChange={e => setRangeNote(e.target.value)}
+                            placeholder='e.g. Maintenance haul-out'
+                            maxLength={500}
+                        />
+                    </Field>
+                    {rangeError && (
+                        <p className='text-xs text-destructive'>{rangeError}</p>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant='ghost'
+                            onClick={() => setRangeOpen(false)}
+                            disabled={isClosingRange}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant='destructive'
+                            onClick={submitRange}
+                            disabled={isClosingRange}>
+                            {isClosingRange && (
+                                <HugeiconsIcon
+                                    icon={Loading03Icon}
+                                    className='size-4 animate-spin'
+                                />
+                            )}
+                            Close these days
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 
@@ -234,11 +487,20 @@ export function TripAvailabilityCalendar({
                             Availability
                         </CardTitle>
                         <p className='text-sm text-muted-foreground mt-1'>
-                            Tap a day to close it, reopen it, adjust capacity or
-                            add a departure.
+                            Tap a day to close it, reopen it or add an extra
+                            departure.
                         </p>
                     </div>
-                    {monthNav}
+                    <div className='flex flex-wrap items-center gap-2'>
+                        <Button
+                            size='sm'
+                            variant='outline'
+                            className='h-8'
+                            onClick={() => setRangeOpen(true)}>
+                            Close a range
+                        </Button>
+                        {monthNav}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className='pt-6'>{body}</CardContent>
@@ -257,6 +519,7 @@ interface DayCellProps {
     onOpenChange: (open: boolean) => void;
     maxPartySize: number;
     declaredStartTimes: string[];
+    isUnit: boolean;
 }
 
 function DayCell({
@@ -268,8 +531,16 @@ function DayCell({
     onOpenChange,
     maxPartySize,
     declaredStartTimes,
+    isUnit,
 }: DayCellProps) {
     const dayNum = Number(day.date.slice(8, 10));
+    // Every departure filled by bookings - the automatic, celebratory state
+    // (§3.5), deliberately distinct from a manual close. Day-level only when the
+    // whole day is full; a half-full day already reads from its dots.
+    const allSoldOut =
+        day.status !== 'closed' &&
+        day.departures.length > 0 &&
+        day.departures.every(d => d.status === 'SOLD_OUT');
     // `scheduled` keeps not-yet-materialized pattern days actionable, so an
     // operator can pre-close a date months out before the nightly sync fills it.
     const actionable =
@@ -334,10 +605,19 @@ function DayCell({
                                 Partial
                             </span>
                         )}
+                        {!isPast && allSoldOut && (
+                            <span className='text-2xs font-medium uppercase leading-none text-info-fg'>
+                                Sold out
+                            </span>
+                        )}
                     </span>
                     <span className='flex w-full items-end justify-between gap-1'>
                         {day.departures.length > 0 ? (
                             <span className='flex items-center gap-0.5'>
+                                {/* Sold out gets its own color (F17): it flips back by
+                                    itself on a cancellation, a manual close only by
+                                    hand. Painting both green hid the difference - and
+                                    hid the good news. */}
                                 {day.departures.slice(0, 3).map(d => (
                                     <span
                                         key={d.id}
@@ -345,10 +625,11 @@ function DayCell({
                                             'size-1.5 rounded-full',
                                             isPast
                                                 ? 'bg-foreground/20'
-                                                : d.status === 'OPEN' ||
-                                                    d.status === 'SOLD_OUT'
-                                                  ? 'bg-success-solid'
-                                                  : 'bg-destructive/50'
+                                                : d.status === 'SOLD_OUT'
+                                                  ? 'bg-info-solid'
+                                                  : d.status === 'OPEN'
+                                                    ? 'bg-success-solid'
+                                                    : 'bg-destructive/50'
                                         )}
                                     />
                                 ))}
@@ -385,7 +666,13 @@ function DayCell({
                                         ? 'text-muted-foreground/60'
                                         : 'bg-primary-subtle text-primary-subtle-content'
                                 )}>
-                                {day.bookedTotal} booked
+                                {/* Unit charters: guests, never seat math (F10). */}
+                                {day.bookedTotal}{' '}
+                                {isUnit
+                                    ? day.bookedTotal === 1
+                                        ? 'guest'
+                                        : 'guests'
+                                    : 'booked'}
                             </span>
                         )}
                     </span>
@@ -397,6 +684,7 @@ function DayCell({
                     day={day}
                     maxPartySize={maxPartySize}
                     declaredStartTimes={declaredStartTimes}
+                    isUnit={isUnit}
                     onClose={() => onOpenChange(false)}
                 />
             )}
@@ -406,18 +694,25 @@ function DayCell({
 
 // ── Day popover: every exception type, one or two taps ───────────────────────
 
+/**
+ * No `set-capacity` panel, deliberately (review §3.2c and decided choice #5,
+ * July 29): capacity is a set-once tour property, and operators manage channels
+ * by closing departures rather than by editing numbers day to day. A SET_CAPACITY
+ * row remains reachable through the timetable flow and the API for support and
+ * allotment-style use, and any that exist still show here with a remove control -
+ * this surface just stops minting new ones.
+ */
 type PanelState =
     | { kind: 'none' }
     | { kind: 'close-day' }
-    | { kind: 'add-slot' }
-    | { kind: 'day-capacity' }
-    | { kind: 'slot-capacity'; startTime: string };
+    | { kind: 'add-slot' };
 
 interface DayPopoverProps {
     tripId: string;
     day: ManageCalendarDay;
     maxPartySize: number;
     declaredStartTimes: string[];
+    isUnit: boolean;
     onClose: () => void;
 }
 
@@ -426,6 +721,7 @@ function DayPopover({
     day,
     maxPartySize,
     declaredStartTimes,
+    isUnit,
     onClose,
 }: DayPopoverProps) {
     const { mutate: createException, isPending: isWriting } =
@@ -454,10 +750,7 @@ function DayPopover({
     // an admin, the plain exceptions form). Drop a panel its anchor no longer
     // supports so a stale draft can never submit against vanished state
     // (render-time reference-guarded reset, per repo convention).
-    const panelStale =
-        (closeDateException && panel.kind !== 'none') ||
-        (panel.kind === 'slot-capacity' &&
-            !day.departures.some(d => d.startTime === panel.startTime));
+    const panelStale = !!closeDateException && panel.kind !== 'none';
     if (panelStale) {
         setPanel({ kind: 'none' });
         setError(null);
@@ -524,56 +817,40 @@ function DayPopover({
             );
             return;
         }
+        // add-slot, the only remaining panel that carries a number.
         const cap = capDraft.trim() ? Number(capDraft) : undefined;
-        if (cap !== undefined && (!Number.isInteger(cap) || cap < 0)) {
+        if (cap !== undefined && !Number.isInteger(cap)) {
             setError('Capacity must be a whole number.');
             return;
         }
-        if (panel.kind === 'add-slot') {
-            if (!HHMM.test(timeDraft.trim())) {
-                setError('Time must be HH:MM, e.g. 14:30.');
-                return;
-            }
-            // A 0-seat extra departure would materialize permanently sold out.
-            if (cap !== undefined && cap < 1) {
-                setError('An extra departure needs at least 1 seat.');
-                return;
-            }
-            write(
-                {
-                    date: day.date,
-                    type: 'ADD_SLOT',
-                    startTime: timeDraft.trim(),
-                    capacity: cap,
-                    note: note.trim() || undefined,
-                },
-                `Added a ${timeDraft.trim()} departure.`
-            );
+        if (!HHMM.test(timeDraft.trim())) {
+            setError('Time must be HH:MM, e.g. 14:30.');
             return;
         }
-        // day-capacity / slot-capacity
-        if (cap === undefined) {
-            setError('Enter the new capacity.');
+        // A 0-seat extra departure would materialize permanently sold out.
+        if (cap !== undefined && cap < 1) {
+            setError('An extra departure needs at least 1 seat.');
             return;
         }
-        const startTime =
-            panel.kind === 'slot-capacity' ? panel.startTime : undefined;
         write(
             {
                 date: day.date,
-                type: 'SET_CAPACITY',
-                startTime,
+                type: 'ADD_SLOT',
+                startTime: timeDraft.trim(),
                 capacity: cap,
                 note: note.trim() || undefined,
             },
-            startTime
-                ? `Capacity for ${startTime} set to ${cap}.`
-                : `Day capacity set to ${cap}.`
+            `Added a ${timeDraft.trim()} departure.`
         );
     }
 
-    const needsBookedConfirm =
-        panel.kind === 'close-day' && day.bookedTotal > 0;
+    // The guarantee, not a warning. Shown on the close panel whether or not the
+    // day has bookings: the operator who needs to read it most is the one who
+    // has not yet dared to close a day that does.
+    const closeReassurance =
+        day.bookedTotal > 0
+            ? `${day.bookedTotal} booked guest${day.bookedTotal === 1 ? '' : 's'} keep their booking${day.bookedTotal === 1 ? '' : 's'}. Closing only stops new sales.`
+            : 'This only stops new sales. Existing bookings are always kept.';
 
     return (
         <PopoverContent align='start' sideOffset={6} className='w-80 p-0'>
@@ -640,6 +917,7 @@ function DayPopover({
                         <SlotRow
                             key={d.id}
                             departure={d}
+                            isUnit={isUnit}
                             dayClosed={!!closeDateException}
                             closeException={slotException(
                                 'CLOSE_SLOT',
@@ -666,17 +944,20 @@ function DayPopover({
                                     `Reopened the ${d.startTime} departure.`
                                 )
                             }
-                            onEditCapacity={() =>
-                                openPanel({
-                                    kind: 'slot-capacity',
-                                    startTime: d.startTime,
-                                })
-                            }
                             onRemoveCapacity={id =>
                                 reopen(id, 'Capacity override removed.')
                             }
                         />
                     ))}
+                    {/* §3.2c: sold out explains itself, so nobody "fixes" it.
+                        It is the automatic state - a cancellation or a support
+                        capacity raise reopens it without anyone's help. */}
+                    {day.departures.some(d => d.status === 'SOLD_OUT') && (
+                        <p className='pt-0.5 text-xs text-muted-foreground'>
+                            Sold out from bookings. Reopens automatically if a
+                            spot frees up. No action needed.
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -689,6 +970,20 @@ function DayPopover({
                                 {closeDateException.note}
                             </p>
                         )}
+                        {/* Manual close wins: no nightly job, republish or (later)
+                            API sync ever reopens this silently. Saying so is what
+                            makes the one-tap trustworthy - and the who/when line
+                            is the §6.5 audit surface. */}
+                        <p className='text-xs text-muted-foreground'>
+                            Closed by{' '}
+                            {closeDateException.createdByName ?? 'your team'} ·{' '}
+                            {format(
+                                new Date(closeDateException.createdAt),
+                                'MMM d, HH:mm'
+                            )}
+                            . Nothing reopens it automatically, only you or your
+                            team can.
+                        </p>
                         <Button
                             size='sm'
                             className='w-full'
@@ -709,30 +1004,41 @@ function DayPopover({
                         </Button>
                     </>
                 ) : panel.kind === 'none' ? (
-                    <div className='grid grid-cols-2 gap-2'>
-                        <Button
-                            size='sm'
-                            variant='outline'
-                            disabled={busy}
-                            onClick={() => openPanel({ kind: 'add-slot' })}>
-                            Add departure
-                        </Button>
-                        <Button
-                            size='sm'
-                            variant='outline'
-                            disabled={busy}
-                            onClick={() => openPanel({ kind: 'day-capacity' })}>
-                            Day capacity
-                        </Button>
-                        <Button
-                            size='sm'
-                            variant='destructive'
-                            className='col-span-2'
-                            disabled={busy}
-                            onClick={() => openPanel({ kind: 'close-day' })}>
-                            Close entire day
-                        </Button>
-                    </div>
+                    <>
+                        <div className='grid grid-cols-2 gap-2'>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                disabled={busy}
+                                onClick={() => openPanel({ kind: 'add-slot' })}>
+                                Add departure
+                            </Button>
+                            <Button
+                                size='sm'
+                                variant='destructive'
+                                disabled={busy}
+                                onClick={() => openPanel({ kind: 'close-day' })}>
+                                Close entire day
+                            </Button>
+                        </div>
+                        {/* The other half of "close is not cancel": if the departure
+                            genuinely will not run, the operator needs somewhere to
+                            go. That somewhere is the booking's own report action
+                            (Island Tours executes the refund or rebook), never a
+                            self-serve cancel button here. */}
+                        {day.bookedTotal > 0 && (
+                            <p className='text-xs text-muted-foreground'>
+                                Closing keeps every booking. If a departure truly
+                                will not run, report it on the{' '}
+                                <Link
+                                    href='/bookings'
+                                    className='underline underline-offset-2 hover:text-foreground'>
+                                    booking
+                                </Link>{' '}
+                                so Island Tours can refund or rebook the guests.
+                            </p>
+                        )}
+                    </>
                 ) : (
                     <div className='space-y-2'>
                         {panel.kind === 'add-slot' && (
@@ -779,33 +1085,28 @@ function DayPopover({
                                         inputMode='numeric'
                                         className='h-8 w-24 text-xs tabular-nums'
                                     />
-                                    <Input
-                                        value={capDraft}
-                                        onChange={e =>
-                                            setCapDraft(e.target.value)
-                                        }
-                                        type='number'
-                                        min={1}
-                                        placeholder={`Seats (${maxPartySize})`}
-                                        className='h-8 flex-1 text-xs'
-                                    />
+                                    {/* No seat input on a private charter - the
+                                        extra departure IS the second boat (F10). */}
+                                    {!isUnit && (
+                                        <Input
+                                            value={capDraft}
+                                            onChange={e =>
+                                                setCapDraft(e.target.value)
+                                            }
+                                            type='number'
+                                            min={1}
+                                            placeholder={`Seats (${maxPartySize})`}
+                                            className='h-8 flex-1 text-xs'
+                                        />
+                                    )}
                                 </div>
+                                {isUnit && (
+                                    <p className='text-xs text-muted-foreground'>
+                                        Runs as its own private charter: one
+                                        booking, up to {maxPartySize} guests.
+                                    </p>
+                                )}
                             </>
-                        )}
-                        {(panel.kind === 'day-capacity' ||
-                            panel.kind === 'slot-capacity') && (
-                            <Input
-                                value={capDraft}
-                                onChange={e => setCapDraft(e.target.value)}
-                                type='number'
-                                min={0}
-                                placeholder={
-                                    panel.kind === 'slot-capacity'
-                                        ? `New capacity for ${panel.startTime}`
-                                        : 'New capacity for every slot this day'
-                                }
-                                className='h-8 text-xs'
-                            />
                         )}
                         <Input
                             value={note}
@@ -814,11 +1115,9 @@ function DayPopover({
                             maxLength={500}
                             className='h-8 text-xs'
                         />
-                        {needsBookedConfirm && (
-                            <p className='text-xs text-destructive'>
-                                {day.bookedTotal} booked seat
-                                {day.bookedTotal === 1 ? '' : 's'} will be
-                                cancelled. Guests must be notified.
+                        {panel.kind === 'close-day' && (
+                            <p className='text-xs text-muted-foreground'>
+                                {closeReassurance}
                             </p>
                         )}
                         {error && (
@@ -849,13 +1148,7 @@ function DayPopover({
                                         className='size-4 animate-spin'
                                     />
                                 )}
-                                {panel.kind === 'close-day'
-                                    ? needsBookedConfirm
-                                        ? 'Confirm close'
-                                        : 'Close day'
-                                    : panel.kind === 'add-slot'
-                                      ? 'Add'
-                                      : 'Apply'}
+                                {panel.kind === 'close-day' ? 'Close day' : 'Add'}
                             </Button>
                         </div>
                     </div>
@@ -869,25 +1162,26 @@ function DayPopover({
 
 interface SlotRowProps {
     departure: TourDeparture;
+    /** F10: private charters show Open/Booked states, never seat fractions. */
+    isUnit: boolean;
     dayClosed: boolean;
     closeException?: { id: string };
     capacityException?: { id: string; capacity: number | null };
     busy: boolean;
     onCloseSlot: () => void;
     onReopenSlot: (exceptionId: string) => void;
-    onEditCapacity: () => void;
     onRemoveCapacity: (exceptionId: string) => void;
 }
 
 function SlotRow({
     departure: d,
+    isUnit,
     dayClosed,
     closeException,
     capacityException,
     busy,
     onCloseSlot,
     onReopenSlot,
-    onEditCapacity,
     onRemoveCapacity,
 }: SlotRowProps) {
     const stopped = d.status === 'CLOSED' || d.status === 'CANCELLED';
@@ -903,10 +1197,24 @@ function SlotRow({
                     {d.startTime}
                 </span>
                 <span className='truncate text-xs text-muted-foreground'>
-                    {d.bookedCount}/{d.capacity}
-                    {d.status === 'SOLD_OUT' && ' · sold out'}
+                    {/* One booking takes a private charter's whole departure -
+                        a 2/12 fraction would read as "10 seats left" (F10). */}
+                    {isUnit
+                        ? d.status === 'OPEN'
+                            ? 'Open'
+                            : d.bookedCount > 0
+                              ? `${d.bookedCount} guest${d.bookedCount === 1 ? '' : 's'}`
+                              : ''
+                        : `${d.bookedCount}/${d.capacity}`}
                     {stopped && !closeException && ' · closed'}
                 </span>
+                {d.status === 'SOLD_OUT' && (
+                    <span className='rounded-sm bg-info-subtle px-1 py-px text-2xs font-medium text-info-fg'>
+                        Sold out
+                        {d.soldOutAt &&
+                            ` ${format(new Date(d.soldOutAt), 'HH:mm')}`}
+                    </span>
+                )}
                 {capacityException && (
                     <button
                         type='button'
@@ -914,7 +1222,7 @@ function SlotRow({
                         onClick={() => onRemoveCapacity(capacityException.id)}
                         title='Remove capacity override'
                         className='inline-flex items-center gap-0.5 rounded-sm bg-warning-subtle px-1 py-px text-2xs font-medium text-warning-fg hover:opacity-80'>
-                        cap {capacityException.capacity}
+                        capacity {capacityException.capacity}
                         <HugeiconsIcon
                             icon={Cancel01Icon}
                             className='size-2.5'
@@ -934,26 +1242,14 @@ function SlotRow({
                     </Button>
                 ) : (
                     !stopped && (
-                        <span className='flex shrink-0 items-center'>
-                            {!capacityException && (
-                                <Button
-                                    size='sm'
-                                    variant='ghost'
-                                    className='h-7 px-2 text-xs text-muted-foreground'
-                                    disabled={busy}
-                                    onClick={onEditCapacity}>
-                                    Capacity
-                                </Button>
-                            )}
-                            <Button
-                                size='sm'
-                                variant='ghost'
-                                className='h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10'
-                                disabled={busy}
-                                onClick={onCloseSlot}>
-                                Close
-                            </Button>
-                        </span>
+                        <Button
+                            size='sm'
+                            variant='ghost'
+                            className='h-7 shrink-0 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10'
+                            disabled={busy}
+                            onClick={onCloseSlot}>
+                            Close
+                        </Button>
                     )
                 ))}
         </div>

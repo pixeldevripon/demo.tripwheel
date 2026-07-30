@@ -37,6 +37,16 @@ import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/status-badge';
 import { TRIP_STATUS } from '@/components/common/status-maps';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -109,6 +119,8 @@ export function StepReview({ trip }: StepReviewProps) {
     const [rejectOpen, setRejectOpen] = useState(false);
     const [rejectNote, setRejectNote] = useState('');
     const [archiveOpen, setArchiveOpen] = useState(false);
+    // F7: pause states its consequences before acting.
+    const [pauseOpen, setPauseOpen] = useState(false);
 
     const publishChecks = getPublishChecks(
         trip,
@@ -293,10 +305,10 @@ export function StepReview({ trip }: StepReviewProps) {
                             trip.isBookable &&
                             (schedules?.length ?? 0) === 0 && (
                                 <p className='mt-3 text-xs text-warning-fg'>
-                                    No recurring schedules. The departures still
-                                    on sale are the last ones - once they pass,
+                                    No weekly schedule. The departures still on
+                                    sale are the last ones - once they pass,
                                     this tour stops appearing in listings. Add a
-                                    weekly rule to keep it selling.
+                                    weekly departure time to keep it selling.
                                 </p>
                             )}
                     </div>
@@ -573,24 +585,61 @@ export function StepReview({ trip }: StepReviewProps) {
                             <Button
                                 variant='outline'
                                 disabled={isPausing}
-                                onClick={() =>
-                                    pauseTrip(trip.id, {
-                                        onSuccess: () =>
-                                            toast.success('Trip paused.'),
-                                        onError: err =>
-                                            toast.error(
-                                                err instanceof Error
-                                                    ? err.message
-                                                    : 'Failed to pause.'
-                                            ),
-                                    })
-                                }>
+                                onClick={() => setPauseOpen(true)}>
                                 <HugeiconsIcon
                                     icon={PauseIcon}
                                     className='size-3.5'
                                 />
                                 Pause
                             </Button>
+                            <AlertDialog
+                                open={pauseOpen}
+                                onOpenChange={setPauseOpen}>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Pause this tour?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            The tour leaves the public site
+                                            immediately and nothing can be
+                                            booked while it is paused. Existing
+                                            bookings are kept and stay valid -
+                                            contact booked guests yourself if
+                                            their departure will not run.
+                                            Unpausing puts the tour back
+                                            exactly as it was. To stop selling
+                                            only specific dates, close them on
+                                            the calendar in the Schedule step
+                                            instead.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>
+                                            Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => {
+                                                setPauseOpen(false);
+                                                pauseTrip(trip.id, {
+                                                    onSuccess: () =>
+                                                        toast.success(
+                                                            'Trip paused.'
+                                                        ),
+                                                    onError: err =>
+                                                        toast.error(
+                                                            err instanceof
+                                                                Error
+                                                                ? err.message
+                                                                : 'Failed to pause.'
+                                                        ),
+                                                });
+                                            }}>
+                                            Pause tour
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             <Button
                                 variant='outline'
                                 onClick={() => setArchiveOpen(true)}>

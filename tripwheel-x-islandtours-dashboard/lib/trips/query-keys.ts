@@ -30,4 +30,11 @@ export const tripKeys = {
   manageCalendarAll: (tripId: string) => [...tripKeys.all, 'manage-calendar', tripId] as const,
   manageCalendar: (tripId: string, month: string) =>
     [...tripKeys.manageCalendarAll(tripId), month] as const,
+  // F13 status line (next departure + 30-day open count).
+  availabilitySummary: (tripId: string) =>
+    [...tripKeys.all, 'availability-summary', tripId] as const,
+  // Surface B: the cross-tour daily agenda (keyed by window).
+  agendaAll: () => [...tripKeys.all, 'agenda'] as const,
+  agenda: (from: string | undefined, days: number) =>
+    [...tripKeys.agendaAll(), from ?? 'today', days] as const,
 };

@@ -28,16 +28,25 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { format } from 'date-fns';
+
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSchedules, useUpdateTrip } from '@/hooks/trips/use-trips';
+import {
+    useAvailabilitySummary,
+    useConfirmAvailability,
+    useExceptions,
+    useSchedules,
+    useUpdateTrip,
+} from '@/hooks/trips/use-trips';
 import {
     numberOrNull,
     tripToUpdatePayload,
 } from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
 import { TripAvailabilityCalendar } from '../../trip-availability-calendar';
+import { TripDateChanges } from '../../trip-date-changes';
 import {
     RecurringSchedulesSection,
     StartTimesSection,
@@ -129,6 +138,18 @@ export function StepSchedule({ trip }: StepScheduleProps) {
     // Failures render in place, above the step, instead of as a toast.
     const { setStepError } = useWizard();
     const { data: schedules } = useSchedules(trip.id);
+    const { data: summary } = useAvailabilitySummary(trip.id);
+    // Same query the register itself renders from - deduped by react-query,
+    // read here only for the collapsed-section summary.
+    const { data: exceptions } = useExceptions(trip.id);
+
+    // F14 / dev spec §6.4: opening this surface IS a review of the calendar,
+    // so the visit stamps availability_confirmed_at. Fire-and-forget - a
+    // failed stamp must never disturb the step.
+    const { mutate: confirmAvailability } = useConfirmAvailability();
+    useEffect(() => {
+        confirmAvailability(trip.id);
+    }, [trip.id, confirmAvailability]);
 
     const {
         register,
@@ -193,10 +214,63 @@ export function StepSchedule({ trip }: StepScheduleProps) {
     const scheduleCount = schedules?.length ?? 0;
     const activeDays = new Set((schedules ?? []).map(s => s.weekday)).size;
 
+    // E.9: all times are tour-local (the island's clock, no DST on the ABC
+    // islands). One quiet line so an operator editing from Europe never has to
+    // wonder whose 09:00 this is. Destination name first; the IANA city is the
+    // fallback for the brief window before the join resolves.
+    const localPlace =
+        trip.destinationName ??
+        trip.timeZone.split('/').pop()?.replace(/_/g, ' ') ??
+        trip.timeZone;
+
+    // §3.2a status line: one read answering "is this tour selling?". The
+    // warning variant is the F13 fix - a LIVE tour with an empty 30-day
+    // horizon is out of every ranked listing (§7.2), and before this line the
+    // operator's first hint was the revenue graph. Drafts skip the warning:
+    // they have no listing to lose, and the readiness checklist owns that
+    // conversation.
+    const horizonEmpty = summary != null && summary.openInNext30Days === 0;
+    const statusLine =
+        summary?.nextDeparture != null ? (
+            <p className='text-xs text-muted-foreground'>
+                Next departure:{' '}
+                <span className='font-medium text-foreground'>
+                    {format(
+                        new Date(
+                            `${summary.nextDeparture.date}T00:00:00`,
+                        ),
+                        'EEE MMM d',
+                    )}
+                    , {summary.nextDeparture.startTime}
+                </span>{' '}
+                · {summary.openInNext30Days} open departure
+                {summary.openInNext30Days === 1 ? '' : 's'} in the next 30
+                days. All times are local to {localPlace}.
+            </p>
+        ) : (
+            <p className='text-xs text-muted-foreground'>
+                All times are local to {localPlace}.
+            </p>
+        );
+
     return (
         <>
             <WizardStepHeader step='schedule' />
             <WizardStepBody>
+                {statusLine}
+                {horizonEmpty && trip.status === 'LIVE' && (
+                    <div className='rounded-md border border-warning-border bg-warning-subtle px-3 py-2.5'>
+                        <p className='text-xs text-warning-fg'>
+                            <span className='font-medium'>
+                                No open departures in the next 30 days.
+                            </span>{' '}
+                            This tour is hidden from ranked listings until a
+                            date opens (it stays reachable by direct link).
+                            Add a weekly departure time or reopen a closed
+                            date below to bring it back.
+                        </p>
+                    </div>
+                )}
                 <WizardSection
                     id='duration'
                     title='Duration'
@@ -249,7 +323,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                 <WizardSection
                     id='start-times'
                     title='Departure times'
-                    description='Weekly schedules and date exceptions can only use times declared here.'
+                    description='The weekly schedule and one-off date changes can only use times declared here.'
                     summary={
                         declaredTimes.length
                             ? declaredTimes.slice(0, 3).join(', ') +
@@ -268,8 +342,8 @@ export function StepSchedule({ trip }: StepScheduleProps) {
 
                 <WizardSection
                     id='weekly'
-                    title='Weekly pattern'
-                    description='Departures are generated from these rules.'
+                    title='Weekly schedule'
+                    description='The departure times this tour repeats every week. The calendar below shows the result.'
                     summary={
                         scheduleCount
                             ? `${scheduleCount} rule${scheduleCount === 1 ? '' : 's'} across ${activeDays} day${activeDays === 1 ? '' : 's'}`
@@ -280,19 +354,37 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                         tripId={trip.id}
                         maxPartySize={trip.maxPartySize}
                         declaredStartTimes={trip.startTimes ?? []}
+                        pricingModel={trip.pricingModel}
                     />
                 </WizardSection>
 
                 <WizardSection
                     id='calendar'
-                    title='Calendar and exceptions'
-                    description='Tap a day to close it, reopen it, adjust capacity or add a departure.'>
+                    title='Calendar'
+                    description='Every departure as travellers can book it. Tap a day to close it, reopen it or add an extra departure.'>
                     <TripAvailabilityCalendar
                         bare
                         tripId={trip.id}
                         timeZone={trip.timeZone}
                         maxPartySize={trip.maxPartySize}
                         declaredStartTimes={trip.startTimes ?? []}
+                        pricingModel={trip.pricingModel}
+                    />
+                </WizardSection>
+
+                <WizardSection
+                    id='date-changes'
+                    title='Date changes'
+                    description='One-off changes to specific dates. The weekly schedule itself stays untouched.'
+                    summary={
+                        exceptions?.length
+                            ? `${exceptions.length} change${exceptions.length === 1 ? '' : 's'}`
+                            : 'Empty'
+                    }
+                    muted>
+                    <TripDateChanges
+                        tripId={trip.id}
+                        timeZone={trip.timeZone}
                     />
                 </WizardSection>
             </WizardStepBody>

@@ -181,6 +181,15 @@ export function useExceptions(tripId: string) {
   });
 }
 
+// F13 status line: "is this tour selling?" - next departure + 30-day count.
+export function useAvailabilitySummary(tripId: string) {
+  return useQuery({
+    queryKey: tripKeys.availabilitySummary(tripId),
+    queryFn: () => tripsApi.getAvailabilitySummary(tripId),
+    enabled: !!tripId,
+  });
+}
+
 // Operator month grid (one-tap availability calendar). Month = 'YYYY-MM'.
 export function useManageCalendar(tripId: string, month: string) {
   return useQuery({
@@ -886,6 +895,8 @@ export function useCreateSchedule() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
       // Schedule changes re-materialise departures and can flip isBookable, which
       // drives the "not yet listed" banner - refresh the trip detail too.
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
@@ -907,6 +918,8 @@ export function useUpdateSchedule() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
@@ -920,6 +933,8 @@ export function useRemoveSchedule() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
     },
   });
@@ -936,6 +951,72 @@ export function useCreateException() {
       queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+    },
+  });
+}
+
+// Surface B: the cross-tour daily agenda.
+export function useAgenda(from: string | undefined, days: number) {
+  return useQuery({
+    queryKey: tripKeys.agenda(from, days),
+    queryFn: () => tripsApi.getAgenda({ from, days }),
+    // Day paging keeps the previous window on screen while the next loads.
+    placeholderData: (prev) => prev,
+  });
+}
+
+// "Close all of today" (the weather-day action) - the returned tourIds are the
+// exact Undo set (reopenRange over the same date, per tour).
+export function useCloseAgendaDay() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { date: string; tourId?: string; note?: string }) =>
+      tripsApi.closeAgendaDay(payload),
+    onSuccess: () => {
+      // Cross-tour blast radius: agenda + every per-tour surface.
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+    },
+  });
+}
+
+// Freshness confirm (F14): stamps availability_confirmed_at. Fire-and-forget
+// callers (stamp-on-visit) simply ignore the result.
+export function useConfirmAvailability() {
+  return useMutation({
+    mutationFn: (tripId?: string) => tripsApi.confirmAvailability(tripId),
+  });
+}
+
+// Bulk blackout + its one-unit Undo (F8). Same cache blast radius as any
+// exception write: register, detail (isBookable), month grid, status line.
+export function useCloseRange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: { from: string; to: string; note?: string } }) =>
+      tripsApi.closeRange(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
+    },
+  });
+}
+
+export function useReopenRange() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tripId, payload }: { tripId: string; payload: { from: string; to: string } }) =>
+      tripsApi.reopenRange(tripId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
     },
   });
 }
@@ -949,6 +1030,8 @@ export function useRemoveException() {
       queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
       queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
+      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
     },
   });
 }

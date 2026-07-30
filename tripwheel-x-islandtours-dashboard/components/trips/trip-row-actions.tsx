@@ -14,6 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   usePublishTrip,
@@ -46,6 +56,8 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  // F7: pause states its consequences before acting (what stops, what is kept).
+  const [pauseOpen, setPauseOpen] = useState(false);
   const { can, role } = useRole();
 
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -109,6 +121,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   }
 
   function handlePause() {
+    setPauseOpen(false);
     pauseTrip(trip.id, {
       onSuccess: () => toast.success(`"${trip.name}" paused.`),
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to pause.'),
@@ -228,7 +241,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 </DropdownMenuItem>
               )}
               {trip.status === 'LIVE' && (
-                <DropdownMenuItem onClick={handlePause} disabled={isLifecyclePending}>
+                <DropdownMenuItem onClick={() => setPauseOpen(true)} disabled={isLifecyclePending}>
                   <HugeiconsIcon icon={PauseIcon} />
                   Pause
                 </DropdownMenuItem>
@@ -264,7 +277,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
             <>
               {!isArchived && <DropdownMenuSeparator />}
               {trip.status === 'LIVE' && (
-                <DropdownMenuItem onClick={handlePause} disabled={isLifecyclePending}>
+                <DropdownMenuItem onClick={() => setPauseOpen(true)} disabled={isLifecyclePending}>
                   <HugeiconsIcon icon={PauseIcon} />
                   Pause
                 </DropdownMenuItem>
@@ -362,6 +375,32 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
       />
+
+      {/* F7: pause states its consequences instead of acting on a bare click.
+          This build's pause is a status gate - the tour leaves the public site
+          whole, nothing is sellable while paused, and no departure or booking
+          is touched. */}
+      <AlertDialog open={pauseOpen} onOpenChange={setPauseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pause &ldquo;{trip.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The tour leaves the public site immediately and nothing can be
+              booked while it is paused. Existing bookings are kept and stay
+              valid - contact booked guests yourself if their departure will
+              not run. Unpausing puts the tour back exactly as it was. To stop
+              selling only specific dates, close them on the tour&apos;s
+              calendar instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePause}>
+              Pause tour
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
