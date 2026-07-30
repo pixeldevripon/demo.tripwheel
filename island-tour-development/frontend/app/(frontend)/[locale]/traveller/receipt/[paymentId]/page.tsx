@@ -188,18 +188,22 @@ async function ReceiptBody({
                             </tr>
                         </thead>
                         <tbody>
-                            {receipt.party.map(line => (
+                            {/* Index keys on purpose: labels are NOT unique
+                                (two bands can share "Adult (18+)"), and the
+                                list is a static server render - never
+                                reordered client-side. */}
+                            {receipt.party.map((line, i) => (
                                 <ItemRow
-                                    key={`party-${line.label}`}
+                                    key={`party-${i}`}
                                     name={line.label}
                                     qty={line.quantity}
                                     unit={fmt(line.unitPrice)}
                                     amount={fmt(line.lineTotal)}
                                 />
                             ))}
-                            {receipt.addOns.map(addOn => (
+                            {receipt.addOns.map((addOn, i) => (
                                 <ItemRow
-                                    key={`addon-${addOn.name}`}
+                                    key={`addon-${i}`}
                                     name={addOn.name}
                                     qty={addOn.quantity}
                                     unit={fmt(addOn.unitPrice)}

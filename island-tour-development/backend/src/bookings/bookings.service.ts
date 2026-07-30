@@ -3405,14 +3405,18 @@ export class BookingsService {
       { label: string; quantity: number; unitPrice: string; lineTotal: number }
     >();
     for (const item of p.booking.unitItems) {
-      const key = item.ageBandId ?? '';
+      const bandId = item.ageBandId ?? '';
+      // Grouped by band AND unit price: mixed prices inside one band (or two
+      // bands sharing a label) must stay separate lines, or qty x unit price
+      // stops equalling the line amount - the one arithmetic a reader checks.
+      const key = `${bandId}|${item.priceRetail.toString()}`;
       const existing = partyLines.get(key);
       if (existing) {
         existing.quantity += 1;
         existing.lineTotal += Number(item.priceRetail);
       } else {
         partyLines.set(key, {
-          label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guest',
+          label: bandId ? (bandLabels.get(bandId) ?? 'Traveler') : 'Guest',
           quantity: 1,
           unitPrice: item.priceRetail.toString(),
           lineTotal: Number(item.priceRetail),
