@@ -661,25 +661,87 @@
     align-items: flex-start;
     gap: 0.75rem;
     overflow: hidden;
-    padding: 0.875rem 1rem;
+    /* Wider right padding reserves the edge for the pinned dismiss button. */
+    padding: 0.875rem 3rem 0.875rem 1rem;
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--surface-overlay);
     box-shadow: var(--elevation-lg);
 }
 
-/* The wash: severity colour entering from the left, gone by a third of the
- * ribbon. Sits UNDER the content; the chip gives it something to anchor to. */
+/* The splash (user direction 2026-07-30: "water drop and splash style" - on a
+ * Caribbean tours brand, the weather metaphor IS the brand): the severity
+ * colour lands at the chip like a drop hitting water - one soft pool bleeding
+ * right, then a trail of ever-smaller droplets thrown off ahead of it. All
+ * one paint layer, under the content. */
 .cn-toast::before {
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(
-        90deg,
-        var(--cn-toast-wash, transparent),
-        transparent 28%
-    );
+    background:
+        /* the pool around the point of impact */
+        radial-gradient(
+            14rem 200% at 0% 50%,
+            var(--cn-toast-wash, transparent),
+            transparent 70%
+        ),
+        /* splash droplets, scattering and shrinking to the right */
+        radial-gradient(
+            circle 0.6rem at 15rem 26%,
+            var(--cn-toast-wash, transparent) 0 99%,
+            transparent 100%
+        ),
+        radial-gradient(
+            circle 0.4rem at 18.5rem 68%,
+            var(--cn-toast-wash, transparent) 0 99%,
+            transparent 100%
+        ),
+        radial-gradient(
+            circle 0.25rem at 21.5rem 38%,
+            var(--cn-toast-wash, transparent) 0 99%,
+            transparent 100%
+        ),
+        radial-gradient(
+            circle 0.15rem at 23.5rem 58%,
+            var(--cn-toast-wash, transparent) 0 99%,
+            transparent 100%
+        );
+}
+
+/* The ripple: one ring expanding out of the chip when the toast lands, then
+ * gone - the "drop just hit" moment. Runs once; its transform is its own, so
+ * it never fights sonner's positioning transforms on the toast itself. */
+.cn-toast::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 1.875rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin: -1.25rem 0 0 -1.25rem;
+    pointer-events: none;
+    border: 2px solid var(--cn-toast-accent, var(--line));
+    border-radius: 9999px;
+    opacity: 0;
+    animation: cn-toast-ripple 0.9s ease-out 0.05s 1;
+}
+
+@keyframes cn-toast-ripple {
+    0% {
+        transform: scale(0.3);
+        opacity: 0.55;
+    }
+    100% {
+        transform: scale(2.2);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cn-toast::after {
+        animation: none;
+    }
 }
 
 .cn-toast[data-type='error'] {
@@ -699,18 +761,18 @@
     --cn-toast-accent: var(--primary);
 }
 
-/* Icon chip: a 28px tile carrying the severity colour on its own wash - the
- * one solid semantic mark on the ribbon. Loading/plain toasts fall back to a
- * quiet neutral tile. */
+/* Icon chip: the DROP itself - a teardrop (round everywhere, one pinched
+ * corner trailing up-left, where a falling drop just detached) carrying the
+ * severity colour. Loading/plain toasts fall back to a quiet neutral drop. */
 .cn-toast [data-icon] {
     position: relative;
     display: grid;
     place-items: center;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.875rem;
+    height: 1.875rem;
     margin: 0;
     flex-shrink: 0;
-    border-radius: var(--radius-md);
+    border-radius: 0.25rem 9999px 9999px 9999px;
     background: var(--cn-toast-wash, var(--surface-inset));
     color: var(--cn-toast-accent, var(--content-subtle));
 }
@@ -753,29 +815,24 @@
     font-weight: 500;
 }
 
-/* Sonner's close button defaults to a floating disc half-outside the corner;
- * on a ribbon it becomes an inline dismiss at the far right. */
+/* Sonner absolutely positions its close button as a disc hanging off the
+ * TOP-LEFT corner (inline start vars + its own transform), which is why the
+ * flex-order approach lost. Pin it to the right edge, vertically centred -
+ * the !importants beat sonner's own positioning, not our own code. */
 .cn-toast [data-close-button] {
-    position: static;
-    order: 99;
-    margin-left: auto;
-    align-self: center;
-    flex-shrink: 0;
-    width: 1.5rem;
-    height: 1.5rem;
+    position: absolute;
+    left: auto !important;
+    right: 0.75rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 1.625rem;
+    height: 1.625rem;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 9999px;
     background: transparent;
     color: var(--content-subtle);
-    transform: none;
 }
 .cn-toast [data-close-button]:hover {
     background: var(--surface-inset);
     color: var(--content);
-}
-/* When an action button is present it owns the right edge; the close slot
- * follows it instead of stacking a second margin-auto gap. */
-.cn-toast [data-button] ~ [data-close-button],
-.cn-toast:has([data-button]) [data-close-button] {
-    margin-left: 0.25rem;
 }
