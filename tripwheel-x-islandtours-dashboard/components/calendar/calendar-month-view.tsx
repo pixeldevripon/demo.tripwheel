@@ -10,7 +10,7 @@ import {
     PopoverAnchor,
     PopoverContent,
 } from '@/components/ui/popover';
-import { springPop } from '@/lib/motion';
+import { crossFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewTour } from '@/types/trip';
 import { AddEventPopover } from './add-event-popover';
@@ -167,7 +167,7 @@ function MonthCell({
                 <motion.div
                     layoutId='calendar-selected-cell'
                     aria-hidden
-                    transition={reduceMotion ? { duration: 0 } : springPop}
+                    transition={reduceMotion ? { duration: 0 } : crossFade}
                     className='pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-primary/60'
                 />
             )}

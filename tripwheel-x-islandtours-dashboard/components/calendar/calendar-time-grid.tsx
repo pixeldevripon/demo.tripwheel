@@ -11,7 +11,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewDeparture, OverviewTour } from '@/types/trip';
-import { springPop } from '@/lib/motion';
+import { crossFade } from '@/lib/motion';
 import { AddEventForm } from './add-event-popover';
 import { gmtLabel, keyToDate } from './calendar-utils';
 import { DayPeek } from './day-peek';
@@ -275,7 +275,7 @@ export function CalendarTimeGrid({
                                             transition={
                                                 reduceMotion
                                                     ? { duration: 0 }
-                                                    : springPop
+                                                    : crossFade
                                             }
                                             className='pointer-events-none absolute inset-0 rounded-full ring-2 ring-inset ring-primary/60'
                                         />
@@ -347,7 +347,7 @@ export function CalendarTimeGrid({
                                             transition={
                                                 reduceMotion
                                                     ? { duration: 0 }
-                                                    : springPop
+                                                    : crossFade
                                             }
                                             className='pointer-events-none absolute inset-0 border-x border-primary/25 bg-primary-subtle/50'
                                         />
