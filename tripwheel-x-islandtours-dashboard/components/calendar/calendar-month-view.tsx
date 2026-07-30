@@ -119,7 +119,9 @@ function MonthCell({
             className={cn(
                 // Hairline cell borders matching the time grid (first column
                 // and first row lean on the frame/header borders instead).
-                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-muted/50 md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
+                // Full-strength muted on hover - the token is a 94%-light
+                // grey, so any fractional opacity of it is invisible.
+                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-muted md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
             )}>
