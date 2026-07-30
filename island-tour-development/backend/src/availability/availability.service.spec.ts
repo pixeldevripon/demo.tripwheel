@@ -24,14 +24,17 @@ function day(date: string) {
 }
 
 function mockPrisma() {
-  return {
+  const p = {
     tour: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     operator: { findUnique: jest.fn(), create: jest.fn() },
+    // Audit-name resolution ("Closed by Maria") - default no matches.
+    user: { findMany: jest.fn().mockResolvedValue([]) },
     availabilitySchedule: {
       create: jest.fn(),
       findUnique: jest.fn(),
@@ -41,10 +44,12 @@ function mockPrisma() {
     },
     availabilityException: {
       create: jest.fn(),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
       findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     departure: {
       // Default [] so the post-mutation refreshIsBookable() -> computeIsBookable()
@@ -58,6 +63,11 @@ function mockPrisma() {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   };
+  // Interactive-transaction passthrough: the callback runs against the same
+  // mock, which is exactly what the duplicate-guard tests need to observe.
+  return Object.assign(p, {
+    $transaction: jest.fn((fn: (tx: typeof p) => Promise<unknown>) => fn(p)),
+  });
 }
 
 function departureRow(over: Record<string, unknown> = {}) {
@@ -102,16 +112,25 @@ describe('AvailabilityService', () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let materializer: { materializeTour: jest.Mock };
   let notifications: { emitAvailabilityUpdate: jest.Mock };
+  let staffPermissions: { hasPermissions: jest.Mock };
   let svc: AvailabilityService;
 
   beforeEach(() => {
     prisma = mockPrisma();
     materializer = { materializeTour: jest.fn() };
     notifications = { emitAvailabilityUpdate: jest.fn() };
+    staffPermissions = {
+      hasPermissions: jest
+        .fn()
+        .mockResolvedValue({ granted: true, missing: [] }),
+    };
     svc = new AvailabilityService(
       prisma as never,
       materializer as never,
       notifications as never,
+      { notify: jest.fn() } as never,
+      // Default: full grant. The stop-sell split tests override this.
+      staffPermissions as never,
     );
   });
 
@@ -278,6 +297,7 @@ describe('AvailabilityService', () => {
       capacity: null,
       note: null,
       createdBy: null,
+      createdAt: new Date('2030-06-01T12:00:00.000Z'),
       ...over,
     });
     /** Schedule weekday index (0=Monday) for a YYYY-MM-DD key. */
@@ -472,6 +492,7 @@ describe('AvailabilityService', () => {
         capacity: null,
         note: null,
         createdBy: 'u1',
+        createdAt: new Date('2030-06-01T12:00:00.000Z'),
         ...over,
       };
     }
@@ -551,6 +572,399 @@ describe('AvailabilityService', () => {
     // Removed with the resolvable-capacity guard: an ADD_SLOT exception can no
     // longer be capacity-less, because the tour default it falls back on is
     // NOT NULL (migration 20260729190000).
+
+    // E.9 floor (F2): a SET_CAPACITY below a departure's bookedCount used to be
+    // stored and then silently ignored by the materializer (it never resizes a
+    // booked departure). The write itself must refuse, so the portal can never
+    // claim a capacity it did not get.
+    describe('SET_CAPACITY clamps at bookedCount', () => {
+      it('rejects a slot capacity below the seats already booked', async () => {
+        prisma.departure.findMany.mockResolvedValueOnce([
+          departureRow({ bookedCount: 8 }),
+        ]);
+        await expect(
+          svc.createException('u1', Role.TOUR_OPERATOR, {
+            tourId: 't1',
+            date: '2030-06-05',
+            type: 'SET_CAPACITY',
+            startTime: '09:00',
+            capacity: 5,
+          }),
+        ).rejects.toThrow(/8 seat\(s\) already booked/);
+        expect(prisma.availabilityException.create).not.toHaveBeenCalled();
+      });
+
+      it('checks every departure on the date for a whole-day capacity', async () => {
+        prisma.departure.findMany.mockResolvedValueOnce([
+          departureRow({ bookedCount: 2 }),
+          departureRow({
+            id: 'd2',
+            startTime: time('14:00'),
+            bookedCount: 9,
+          }),
+        ]);
+        await expect(
+          svc.createException('u1', Role.TOUR_OPERATOR, {
+            tourId: 't1',
+            date: '2030-06-05',
+            type: 'SET_CAPACITY',
+            capacity: 5,
+          }),
+        ).rejects.toThrow(/9 seat\(s\) already booked on the 14:00 departure/);
+      });
+
+      it('accepts a capacity at exactly the booked count', async () => {
+        prisma.departure.findMany.mockResolvedValueOnce([
+          departureRow({ bookedCount: 5 }),
+        ]);
+        prisma.availabilityException.create.mockResolvedValue(
+          exceptionRow({ type: 'SET_CAPACITY', capacity: 5 }),
+        );
+        await svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-05',
+          type: 'SET_CAPACITY',
+          startTime: '09:00',
+          capacity: 5,
+        });
+        expect(prisma.availabilityException.create).toHaveBeenCalled();
+      });
+
+      // Matrix v1.7 stop-sell split: the narrow seat may close/reopen but
+      // never shape inventory - the SERVICE enforces the type half.
+      it('rejects ADD_SLOT / SET_CAPACITY from a stop-sell-only seat', async () => {
+        staffPermissions.hasPermissions.mockResolvedValue({
+          granted: false,
+          missing: ['MANAGE_AVAILABILITY'],
+        });
+        await expect(
+          svc.createException('u1', Role.TOUR_OPERATOR, {
+            tourId: 't1',
+            date: '2030-06-05',
+            type: 'ADD_SLOT',
+            startTime: '18:00',
+          }),
+        ).rejects.toThrow(/close and reopen only/);
+        // Closing stays allowed for the same seat.
+        prisma.availabilityException.create.mockResolvedValue(
+          exceptionRow({ type: 'CLOSE_DATE' }),
+        );
+        await svc.createException('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          date: '2030-06-05',
+          type: 'CLOSE_DATE',
+        });
+        expect(prisma.availabilityException.create).toHaveBeenCalled();
+      });
+
+      // Security review 2026-07-30: the split cuts BOTH ways. Deleting an
+      // ADD_SLOT/SET_CAPACITY row shapes inventory just as much as writing
+      // one, so the delete path re-checks the same permission.
+      it('rejects DELETING an inventory-shaping exception from a stop-sell-only seat', async () => {
+        staffPermissions.hasPermissions.mockResolvedValue({
+          granted: false,
+          missing: ['MANAGE_AVAILABILITY'],
+        });
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-05'),
+          type: 'SET_CAPACITY',
+        });
+        await expect(
+          svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1'),
+        ).rejects.toThrow(/close and reopen only/);
+        expect(prisma.availabilityException.delete).not.toHaveBeenCalled();
+        // Reopening a closure stays allowed for the same seat.
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-05'),
+          type: 'CLOSE_DATE',
+        });
+        await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+        expect(prisma.availabilityException.delete).toHaveBeenCalled();
+      });
+
+      it('applies the merged-shape floor on updateException too', async () => {
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-05'),
+          type: 'SET_CAPACITY',
+          startTime: time('09:00'),
+          capacity: 12,
+        });
+        prisma.departure.findMany.mockResolvedValueOnce([
+          departureRow({ bookedCount: 6 }),
+        ]);
+        await expect(
+          svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+            capacity: 3,
+          }),
+        ).rejects.toThrow(/6 seat\(s\) already booked/);
+        expect(prisma.availabilityException.update).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  // F4 Surface B: the cross-tour agenda composes every tour into one list and
+  // "close all of today" fans out one CLOSE_DATE per open tour.
+  describe('agenda', () => {
+    const TOUR_A = {
+      id: 't1',
+      name: 'Catamaran',
+      timeZone: 'America/Curacao',
+      bookingCutoffMinutes: 60,
+      pricingModel: 'PER_PERSON',
+      availabilityConfirmedAt: new Date('2030-06-01T10:00:00Z'),
+    };
+    const TOUR_B = {
+      id: 't2',
+      name: 'Buggy',
+      timeZone: 'America/Curacao',
+      bookingCutoffMinutes: 60,
+      pricingModel: 'UNIT',
+      availabilityConfirmedAt: new Date('2030-06-02T10:00:00Z'),
+    };
+
+    beforeEach(() => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+    });
+
+    it('merges tours chronologically with closures and the stalest stamp', async () => {
+      prisma.tour.findMany.mockResolvedValue([TOUR_A, TOUR_B]);
+      prisma.departure.findMany.mockResolvedValueOnce([
+        departureRow({ id: 'a', tourId: 't2', startTime: time('07:00') }),
+        departureRow({ id: 'b', tourId: 't1', startTime: time('09:00') }),
+      ]);
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        {
+          id: 'x1',
+          tourId: 't1',
+          date: day('2030-06-05'),
+          startTime: null,
+          type: 'CLOSE_DATE',
+          capacity: null,
+          note: 'Weather',
+          createdBy: 'u1',
+          createdAt: new Date('2030-06-04T08:00:00Z'),
+        },
+      ]);
+      prisma.user.findMany.mockResolvedValueOnce([{ id: 'u1', name: 'Maria' }]);
+
+      const res = await svc.agenda('u1', Role.TOUR_OPERATOR, {
+        from: '2030-06-05',
+        days: 2,
+      });
+      // Every requested day present, even when empty.
+      expect(res.days.map((d) => d.date)).toEqual(['2030-06-05', '2030-06-06']);
+      const rows = res.days[0].departures;
+      expect(rows.map((r) => r.tourName)).toEqual(['Buggy', 'Catamaran']);
+      // t1's whole-day closure attaches with its audit line; t2 has none.
+      expect(rows[1].closure).toMatchObject({
+        id: 'x1',
+        createdByName: 'Maria',
+        note: 'Weather',
+      });
+      expect(rows[0].closure).toBeNull();
+      // Freshness card reports the WEAKEST link.
+      expect(res.lastConfirmedAt).toBe('2030-06-01T10:00:00.000Z');
+    });
+
+    it('closeAgendaDay writes one CLOSE_DATE per open tour and skips closed ones', async () => {
+      prisma.tour.findMany.mockResolvedValue([
+        { id: 't1' },
+        { id: 't2' },
+        { id: 't3' },
+      ]);
+      prisma.departure.findMany.mockResolvedValueOnce([
+        { tourId: 't1' },
+        { tourId: 't2' },
+      ]); // t3 runs nothing that day
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { tourId: 't2' }, // already closed
+      ]);
+      prisma.availabilityException.createMany = jest
+        .fn()
+        .mockResolvedValue({ count: 1 });
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+
+      const res = await svc.closeAgendaDay('u1', Role.TOUR_OPERATOR, {
+        date: '2030-06-05',
+        note: 'Weather',
+      });
+      expect(res).toEqual({ closed: 1, tourIds: ['t1'] });
+      const args = prisma.availabilityException.createMany.mock.calls[0][0];
+      expect(args.data).toHaveLength(1);
+      expect(args.data[0]).toMatchObject({
+        tourId: 't1',
+        type: 'CLOSE_DATE',
+        note: 'Weather',
+        createdBy: 'u1',
+      });
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't1',
+        '2030-06-05',
+        '2030-06-05',
+      );
+    });
+  });
+
+  // F14 freshness confirm: one tour with tourId, the whole operator without.
+  describe('confirmAvailability', () => {
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.tour.updateMany = jest.fn().mockResolvedValue({ count: 3 });
+    });
+
+    it('stamps a single tour when tourId is given', async () => {
+      const res = await svc.confirmAvailability('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+      });
+      expect(res.confirmed).toBe(1);
+      expect(prisma.tour.update).toHaveBeenCalledWith({
+        where: { id: 't1' },
+        data: {
+          availabilityConfirmedAt: expect.any(Date) as Date,
+        },
+      });
+    });
+
+    it('stamps every active tour of the operator without a tourId', async () => {
+      const res = await svc.confirmAvailability('u1', Role.TOUR_OPERATOR, {});
+      expect(res.confirmed).toBe(3);
+      expect(prisma.tour.updateMany).toHaveBeenCalledWith({
+        where: { operatorId: 'op1', isActive: true },
+        data: {
+          availabilityConfirmedAt: expect.any(Date) as Date,
+        },
+      });
+    });
+  });
+
+  // F8 bulk blackout: a range is one action, idempotent over overlaps, and its
+  // Undo (reopen-range) drops the whole thing as one unit.
+  describe('closeRange / reopenRange', () => {
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+      prisma.availabilityException.createMany = jest
+        .fn()
+        .mockResolvedValue({ count: 0 });
+      prisma.availabilityException.deleteMany = jest
+        .fn()
+        .mockResolvedValue({ count: 3 });
+    });
+
+    it('writes one CLOSE_DATE per day, skipping already-closed dates', async () => {
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { date: day('2030-06-11') }, // already closed - must be skipped
+      ]);
+      const res = await svc.closeRange('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res.closed).toBe(2);
+      const args = prisma.availabilityException.createMany.mock.calls[0][0];
+      expect(
+        args.data.map((r: { date: Date }) => r.date.toISOString().slice(0, 10)),
+      ).toEqual(['2030-06-10', '2030-06-12']);
+      expect(args.data[0]).toMatchObject({
+        type: 'CLOSE_DATE',
+        startTime: null,
+        createdBy: 'u1',
+      });
+      // Range projected + listing gate refreshed immediately.
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't1',
+        '2030-06-10',
+        '2030-06-12',
+      );
+      expect(prisma.tour.update).toHaveBeenCalled();
+    });
+
+    it('rejects a reversed range', async () => {
+      await expect(
+        svc.closeRange('u1', Role.TOUR_OPERATOR, {
+          tourId: 't1',
+          from: '2030-06-12',
+          to: '2030-06-10',
+        }),
+      ).rejects.toThrow();
+      expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing when every date is already closed', async () => {
+      prisma.availabilityException.findMany.mockResolvedValueOnce([
+        { date: day('2030-06-10') },
+      ]);
+      const res = await svc.closeRange('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        from: '2030-06-10',
+        to: '2030-06-10',
+      });
+      expect(res.closed).toBe(0);
+      expect(prisma.availabilityException.createMany).not.toHaveBeenCalled();
+      expect(materializer.materializeTour).not.toHaveBeenCalled();
+    });
+
+    it('reopenRange deletes every whole-day closure in the bounds', async () => {
+      const res = await svc.reopenRange('u1', Role.TOUR_OPERATOR, {
+        tourId: 't1',
+        from: '2030-06-10',
+        to: '2030-06-12',
+      });
+      expect(res.reopened).toBe(3);
+      expect(prisma.availabilityException.deleteMany).toHaveBeenCalledWith({
+        where: {
+          tourId: 't1',
+          type: 'CLOSE_DATE',
+          date: {
+            gte: day('2030-06-10'),
+            lte: day('2030-06-12'),
+          },
+        },
+      });
+      expect(materializer.materializeTour).toHaveBeenCalledWith(
+        't1',
+        '2030-06-10',
+        '2030-06-12',
+      );
+    });
+  });
+
+  // F13 status line: the number the operator sees must be exactly the number
+  // the §7.2 listing gate counts - same bookability rules, same horizon.
+  describe('availabilitySummary', () => {
+    beforeEach(() => {
+      prisma.tour.findUnique.mockResolvedValue(TOUR);
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op1' });
+    });
+
+    it('counts only bookable departures and returns the soonest as next', async () => {
+      prisma.departure.findMany.mockResolvedValueOnce([
+        // Sold out - not bookable, must not count.
+        departureRow({ date: day('2030-06-04'), bookedCount: 10 }),
+        departureRow({ id: 'd2', date: day('2030-06-05'), bookedCount: 2 }),
+        departureRow({
+          id: 'd3',
+          date: day('2030-06-06'),
+          startTime: time('14:00'),
+        }),
+      ]);
+      const res = await svc.availabilitySummary('u1', Role.TOUR_OPERATOR, 't1');
+      expect(res.openInNext30Days).toBe(2);
+      expect(res.nextDeparture).toEqual({
+        date: '2030-06-05',
+        startTime: '09:00',
+      });
+    });
+
+    it('returns the F13 warning state when nothing is bookable', async () => {
+      prisma.departure.findMany.mockResolvedValueOnce([]);
+      const res = await svc.availabilitySummary('u1', Role.TOUR_OPERATOR, 't1');
+      expect(res).toEqual({ openInNext30Days: 0, nextDeparture: null });
+    });
   });
 
   // gap #14: reversed local-date ranges must be rejected, not silently return [].

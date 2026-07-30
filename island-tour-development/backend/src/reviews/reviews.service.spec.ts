@@ -98,7 +98,15 @@ describe('ReviewsService', () => {
     // LD32 collaborators. `enqueue` is a no-op here: these tests are about
     // moderation, and a real queue would make them depend on Redis.
     translation = { enqueue: jest.fn().mockResolvedValue(undefined) } as any;
-    svc = new ReviewsService(prisma, translation, {} as any);
+    // Fire-and-forget bell - stubbed so moderation tests stay about moderation.
+    svc = new ReviewsService(
+      prisma,
+      translation,
+      {} as any,
+      {
+        notify: jest.fn(),
+      } as any,
+    );
   });
 
   describe('create (booking-gated)', () => {

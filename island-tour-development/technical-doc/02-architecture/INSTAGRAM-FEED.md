@@ -269,8 +269,27 @@ Code: [`instagram-token.service.ts`](../../backend/src/instagram/instagram-token
 ## 8. Public rendering
 
 `GET /instagram/public/feed` (public, no auth) returns only rendered-tile fields.
-`enabled` folds together the admin kill switch (`SiteInfo.enableInstagram`) and
-"nothing to show" — either way the frontend renders no section.
+`enabled` folds together **three** reasons to render nothing, because they mean
+the same thing to the frontend:
+
+| `enabled: false` when | Why |
+|---|---|
+| the admin kill switch is off (`SiteInfo.enableInstagram`) | explicit "not on this site" |
+| **no access token is configured** (`InstagramAccount.configAccessToken`) | the integration is not set up, so there is no feed to be honest about |
+| there is nothing to show (0 active tiles) | a handle row over an empty grid looks broken |
+
+The token gate tests **presence of the stored value**, not `safeDecrypt` — a
+rotated `ENCRYPTION_KEY` leaves a token that no longer decrypts, and the honest
+signal for that is a sync failing visibly in the dashboard, not a public section
+silently disappearing for a reason nobody would connect to the key. The token
+case is resolved server-side and the public payload never carries a hint of a
+credential; the frontend must not try to re-derive it.
+
+Note the consequence: hand-curated (`source = MANUAL`) tiles are hidden too when
+no token is saved. That is deliberate — the grid presents itself as a live
+Instagram feed under a handle, and without a token the platform can neither
+verify it still owns that handle nor keep the tiles current. The token field in
+the dashboard says so.
 
 - **Two layouts**, chosen in the dashboard (default **`GALLERY`**):
   - `GRID` — curated band, rounded cards, **6 tiles**.

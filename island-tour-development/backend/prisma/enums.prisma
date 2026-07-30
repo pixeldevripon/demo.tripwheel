@@ -116,6 +116,11 @@ enum Permission {
 
   // Availability (OCTO)
   MANAGE_AVAILABILITY
+  // Stop-sell only (access matrix v1.7, availability review §5.1): close and
+  // reopen departures on the daily agenda / calendar. Protective, undoable,
+  // audit-logged - so ANY seat incl. dock staff can hold it, while timetable
+  // and capacity edits stay behind MANAGE_AVAILABILITY.
+  STOP_SELL
 
   // Bookings
   VIEW_BOOKINGS
@@ -705,4 +710,56 @@ enum OperatorVerificationStatus {
 enum CustomScriptPosition {
   HEAD
   BODY_END
+}
+
+// ── Dashboard inbox (inbox.prisma) ────────────────────────────────────────────
+//
+// Distinct from `NotificationType` above, which belongs to the OCTO webhook
+// system. These two never mix: one is a human reading a bell, the other is an
+// OTA's server receiving JSON.
+
+/// A notification's home in the dashboard. One value per nav section, because
+/// this IS what drives the per-section badge counts - adding a value without a
+/// matching section leaves a count nothing can display.
+enum InboxCategory {
+  TOURS
+  BOOKINGS
+  CANCELLATIONS
+  PAYMENTS
+  REVIEWS
+  SETTLEMENTS
+  PROMOTION
+  TEAM
+  SYSTEM
+}
+
+/// The specific thing that happened. Named `<subject>_<past-tense verb>` so the
+/// list reads as a log. Each value is mapped to its audience, its required
+/// permission and its link in `src/inbox/inbox-events.ts` - that map is the
+/// single place a new event has to be registered.
+enum InboxEvent {
+  // Tours
+  TOUR_SUBMITTED_FOR_REVIEW
+  TOUR_APPROVED
+  TOUR_CHANGES_REQUESTED
+  TOUR_PUBLISHED
+  TOUR_UNLISTED_NO_DEPARTURES
+  // Commercial
+  SPOTLIGHT_REQUESTED
+  SPOTLIGHT_APPROVED
+  SPOTLIGHT_REJECTED
+  TIER_DEMOTED
+  // Bookings
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLATION_REQUESTED
+  BOOKING_OPERATOR_REPORTED_CANCELLATION
+  BOOKING_OPERATOR_REPORTED_NON_PAYMENT
+  BOOKING_CANCELLED
+  // Reviews
+  REVIEW_SUBMITTED
+  REVIEW_PUBLISHED
+  // Money
+  SETTLEMENT_STATEMENT_READY
+  // Team
+  TEAM_SEAT_INVITED
 }

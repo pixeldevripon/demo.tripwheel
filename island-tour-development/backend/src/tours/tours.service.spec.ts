@@ -32,6 +32,7 @@ import {
 import { CreateTourDto, UpdateTourDto } from './dto/tour.dto';
 import { AvailabilityService } from '@/availability/availability.service';
 import { FxRatesService } from '@/fx/fx-rates.service';
+import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
 import { ToursService } from './tours.service';
 
@@ -186,6 +187,7 @@ describe('ToursService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: AvailabilityService, useValue: availability },
         { provide: MailService, useValue: mail },
+        { provide: InboxService, useValue: { notify: jest.fn() } },
         {
           provide: FxRatesService,
           // No conversion in unit tests (no ?currency) -> money falls back to source.

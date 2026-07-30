@@ -40,6 +40,7 @@ import { PaymentsModule } from '@/payments/payments.module';
 import { SettlementsModule } from '@/settlements/settlements.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
+import { InboxModule } from '@/inbox/inbox.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { WishlistModule } from '@/wishlist/wishlist.module';
 import { WorkersModule } from '@/workers/workers.module';
@@ -91,6 +92,9 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     SettlementsModule,
     TrackingModule,
     ReviewsModule,
+    // The dashboard bell. NOT NotificationsModule below, which is the OCTO
+    // webhook system - the two share a word and nothing else.
+    InboxModule,
     NotificationsModule,
     WishlistModule,
     WorkersModule,

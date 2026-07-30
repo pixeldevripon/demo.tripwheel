@@ -12,27 +12,28 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  type Booking,
   BookingStatus,
+  type BookingUnitItem,
   CancellationRefund,
   CancelledBy,
   Currency,
   DepartureStatus,
+  InboxEvent,
   Locale,
   PaymentKind,
   PaymentModel,
   PaymentProvider,
   PaymentStatus,
+  Permission,
   PickupModel,
   PricingModel,
   Prisma,
   Role,
   SettlementStatus,
-  Permission,
   TourBookingType,
   TourStatus,
   WholeUnitType,
-  type Booking,
-  type BookingUnitItem,
 } from '@prisma/client';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { settlementMethodFor } from '@/settlements/dto/settlement.dto';
@@ -57,6 +58,7 @@ import { CustomerProvisioningService } from '@/customers/customer-provisioning.s
 import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
 import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
+import { InboxService } from '@/inbox/inbox.service';
 import { NotificationsService } from '@/notifications/notifications.service';
 import {
   dashboardAppBase,
@@ -102,6 +104,7 @@ import {
   durationLabel,
   emailIconBase,
   formatDateLong,
+  pickTourLocation,
   preferLocale,
   toLocale,
   type RelatedTourInput,
@@ -389,6 +392,7 @@ export class BookingsService {
     private readonly stripe: StripeService,
     private readonly mollie: MollieService,
     private readonly staffPermissions: StaffPermissionsService,
+    private readonly inbox: InboxService,
   ) {}
 
   /**
@@ -570,6 +574,12 @@ export class BookingsService {
 
     const operatorFull = ctx.tour.paymentModel === PaymentModel.OPERATOR_FULL;
 
+    // Allocated OUTSIDE the transaction: a 5-char code can collide, and a
+    // P2002 inside the txn would abort the whole seat claim. The pre-check
+    // makes a race practically impossible (two identical codes minted in the
+    // same instant); the @unique column stays the final arbiter.
+    const displayRef = await this.allocateDisplayRef(localStart);
+
     const created = await this.prisma.$transaction(async (tx) => {
       // Fresh capacity read inside the txn - the guard threshold below is a literal,
       // so re-reading here keeps it correct against a concurrent capacity edit.
@@ -630,7 +640,7 @@ export class BookingsService {
           departureId: dto.departureId,
           operatorId: ctx.tour.operatorId,
           userId: userId ?? null,
-          displayRef: makeDisplayRef(id, localStart),
+          displayRef,
           status,
           paymentModel: ctx.tour.paymentModel,
           currency: bookingCurrency,
@@ -1369,6 +1379,20 @@ export class BookingsService {
       return;
     }
     await this.sendOperatorNotification(booking, { rethrow: true });
+    // The bell, alongside the email. Hooked HERE rather than at confirm time
+    // because this job is already the once-per-booking operator touchpoint and
+    // is guarded by `utcOperatorNoticeSentAt`; the inbox dedupeKey makes it
+    // idempotent a second time over.
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_CONFIRMED,
+      operatorId: booking.operatorId,
+      title: `New booking ${booking.displayRef}`,
+      body: `${dateKey(booking.localDate)}${booking.startTime ? ` at ${booking.startTime}` : ''}`,
+      url: `/bookings?ref=${booking.displayRef}`,
+      entityType: 'booking',
+      entityId: booking.id,
+      // No actor: the traveller who booked has no dashboard account to exclude.
+    });
     await this.prisma.booking.updateMany({
       where: { id: bookingId, utcOperatorNoticeSentAt: null },
       data: { utcOperatorNoticeSentAt: new Date() },
@@ -1723,12 +1747,8 @@ export class BookingsService {
       booking.tourId,
     );
 
-    const pickLocation = (type: string): string | null => {
-      const loc = tour.locations.find((l) => l.types.includes(type));
-      if (!loc) return null;
-      const title = preferLocale(loc.translations, locale)?.title ?? null;
-      return title ?? loc.streetAddress ?? null;
-    };
+    const pickLocation = (type: string): string | null =>
+      pickTourLocation(tour.locations, type, locale);
 
     const translation = preferLocale(tour.translations, locale);
     const meetingPoint =
@@ -1895,6 +1915,17 @@ export class BookingsService {
         'Only a confirmed booking has a confirmation email to resend',
       );
     }
+    // A pending cancellation request leaves `status` CONFIRMED, but re-sending
+    // "You're booked!" while the traveller is waiting on a cancellation reads
+    // as the platform ignoring the request (user-reported bug 2026-07-30).
+    if (
+      booking.utcCancellationRequestedAt !== null &&
+      booking.utcCancelledAt === null
+    ) {
+      throw new ConflictException(
+        'A cancellation request is pending on this booking',
+      );
+    }
     if (!booking.contactEmail) {
       throw new UnprocessableEntityException(
         'This booking has no contact email on file',
@@ -2019,6 +2050,17 @@ export class BookingsService {
     // it") + operator heads-up. These are best-effort - the request itself has
     // already reached the admin, so a dead mailbox here must not fail it.
     await this.sendCancellationRequestNotices(booking, reason?.trim() || null);
+
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_CANCELLATION_REQUESTED,
+      operatorId: booking.operatorId,
+      title: `Cancellation requested: ${booking.displayRef}`,
+      body: reason?.trim() || 'No reason given.',
+      url: `/bookings?ref=${booking.displayRef}`,
+      entityType: 'booking',
+      entityId: booking.id,
+      // The traveller is not a dashboard user, so there is no actor to exclude.
+    });
 
     this.logger.log(`Cancellation requested for ${booking.displayRef}`);
     return { requested: true };
@@ -2525,6 +2567,18 @@ export class BookingsService {
     // inventory housekeeping, not something to email anyone about.
     if (!heldOnly) {
       await this.sendCancellationConfirmedNotices(updated, refund);
+      // Same condition as the emails, for the same reason: releasing an
+      // abandoned checkout hold is inventory housekeeping, not news.
+      this.inbox.notify({
+        event: InboxEvent.BOOKING_CANCELLED,
+        operatorId: updated.operatorId,
+        title: `Booking ${updated.displayRef} was cancelled`,
+        body: `Seats are back in inventory.${refund === CancellationRefund.FULL ? ' The traveller is being refunded in full.' : ''}`,
+        url: `/bookings?ref=${updated.displayRef}`,
+        entityType: 'booking',
+        entityId: updated.id,
+        actorUserId: actor?.id ?? null,
+      });
     }
     // Seats released back to inventory + booking status changed.
     this.emitBookingEvents(updated, { availability: !!booking.departureId });
@@ -2589,6 +2643,16 @@ export class BookingsService {
       where: { id: booking.id },
       data: { utcNonPaymentReportedAt: new Date() },
       include: { unitItems: true },
+    });
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_OPERATOR_REPORTED_NON_PAYMENT,
+      operatorId: updated.operatorId,
+      title: `Non-payment reported: ${updated.displayRef}`,
+      body: 'The operator says the balance was never paid. Confirm before any forfeit - the money move is ours.',
+      url: `/bookings?ref=${updated.displayRef}`,
+      entityType: 'booking',
+      entityId: updated.id,
+      actorUserId: actor.id,
     });
     this.logger.log(
       `Non-payment reported for booking ${updated.displayRef} (awaiting admin confirmation)`,
@@ -2778,6 +2842,17 @@ export class BookingsService {
       dashboardUrl: `${dashboardAppBase()}/bookings`,
       source: 'operator',
       reporterName: operator?.companyInfo?.companyName ?? 'The operator',
+    });
+
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_OPERATOR_REPORTED_CANCELLATION,
+      operatorId: updated.operatorId,
+      title: `Operator cancelled ${updated.displayRef}`,
+      body: `${operator?.companyInfo?.companyName ?? 'The operator'} reports they must cancel. A full refund is ours to execute.`,
+      url: `/bookings?ref=${updated.displayRef}`,
+      entityType: 'booking',
+      entityId: updated.id,
+      actorUserId: actor.id,
     });
 
     this.logger.warn(
@@ -3244,6 +3319,85 @@ export class BookingsService {
     return { sent: true };
   }
 
+  /**
+   * One payment as a RECEIPT payload (review 9a - account area "invoices").
+   *
+   * Deliberately a receipt, not a tax invoice: no VAT breakdown exists on the
+   * platform's data model, so calling it an invoice would overclaim. Scoped by
+   * the HISTORY session like every account read; carries the payer NAME (the
+   * one traveller payload that does - a receipt without a name is useless as
+   * proof of payment, and the caller IS that person).
+   */
+  async getTravellerReceipt(paymentId: string, sessionToken?: string) {
+    const email = this.requireTravellerEmail(sessionToken);
+    const p = await this.prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        booking: { contactEmail: { equals: email, mode: 'insensitive' } },
+      },
+      select: {
+        id: true,
+        kind: true,
+        status: true,
+        amount: true,
+        currency: true,
+        createdAt: true,
+        methodType: true,
+        booking: {
+          select: {
+            displayRef: true,
+            publicRef: true,
+            localDate: true,
+            startTime: true,
+            contactFullName: true,
+            contactFirstName: true,
+            contactLastName: true,
+            paymentMethodBrand: true,
+            paymentMethodLast4: true,
+            tour: {
+              select: {
+                name: true,
+                destination: { select: { name: true, slug: true } },
+              },
+            },
+            operator: {
+              select: { companyInfo: { select: { companyName: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!p) throw new NotFoundException('Payment not found');
+
+    const payerName =
+      p.booking.contactFullName ??
+      ([p.booking.contactFirstName, p.booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        null);
+
+    return {
+      id: p.id,
+      kind: p.kind,
+      status: p.status,
+      amount: p.amount.toString(),
+      currency: p.currency,
+      createdAt: p.createdAt.toISOString(),
+      methodType: p.methodType,
+      methodBrand: p.booking.paymentMethodBrand,
+      methodLast4: p.booking.paymentMethodLast4,
+      payerName,
+      bookingDisplayRef: p.booking.displayRef,
+      bookingPublicRef: p.booking.publicRef,
+      bookingLocalDate: dateKey(p.booking.localDate),
+      startTime: p.booking.startTime,
+      tourName: p.booking.tour?.name ?? null,
+      destinationName: p.booking.tour?.destination?.name ?? null,
+      destinationSlug: p.booking.tour?.destination?.slug ?? null,
+      operatorName: p.booking.operator?.companyInfo?.companyName ?? null,
+    };
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // Traveller account area (/{locale}/traveller) - OTP login + history reads
   // ════════════════════════════════════════════════════════════════════════
@@ -3417,6 +3571,9 @@ export class BookingsService {
     const email = this.requireTravellerEmail(sessionToken);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
+    // Meeting-point text is CONTENT, not UI copy, so it localizes like the
+    // confirmation email does: preferred locale first, English fallback.
+    const locale = query.locale ?? Locale.en;
     const where: Prisma.BookingWhereInput = {
       contactEmail: { equals: email, mode: 'insensitive' },
     };
@@ -3427,11 +3584,55 @@ export class BookingsService {
         where,
         include: {
           ...BOOKING_LIST_INCLUDE,
+          // The account card renders the confirmation email's logistics block
+          // (meeting point / pickup, be-ready buffer, duration), so it selects
+          // the same tour facts the email context does - one source of truth
+          // for "where do I show up".
           tour: {
             select: {
               name: true,
+              slug: true,
               cancellationHours: true,
-              destination: { select: { slug: true } },
+              durationMinutesFrom: true,
+              checkInMinutesBefore: true,
+              meetingPointLat: true,
+              meetingPointLng: true,
+              destination: { select: { slug: true, name: true } },
+              images: {
+                where: { isHero: true },
+                select: { url: true },
+                take: 1,
+              },
+              translations: {
+                where: { locale: { in: [locale, Locale.en] } },
+                select: { locale: true, meetingPointText: true },
+              },
+              locations: {
+                select: {
+                  types: true,
+                  streetAddress: true,
+                  translations: {
+                    where: { locale: { in: [locale, Locale.en] } },
+                    select: { locale: true, title: true },
+                  },
+                },
+              },
+            },
+          },
+          // The per-booking support row (review 5.8): operator first, WhatsApp
+          // fallback. Same fallback chain as the TYP and the email - OCTO
+          // supplier contact wins, company profile fills in.
+          operator: {
+            select: {
+              contactEmail: true,
+              contactPhone: true,
+              companyInfo: {
+                select: {
+                  companyName: true,
+                  companyEmail: true,
+                  companyPhone: true,
+                },
+              },
             },
           },
         },
@@ -3446,7 +3647,7 @@ export class BookingsService {
       page,
       limit,
       data: rows.map((row) => ({
-        ...mapTravellerBookingItem(row),
+        ...mapTravellerBookingItem(row, locale),
         review: this.reviewStateForRow(row),
       })),
     };
@@ -3480,46 +3681,102 @@ export class BookingsService {
       booking: { contactEmail: { equals: email, mode: 'insensitive' } },
     };
 
-    const [total, rows] = await Promise.all([
-      this.prisma.payment.count({ where }),
-      this.prisma.payment.findMany({
-        where,
-        select: {
-          id: true,
-          kind: true,
-          status: true,
-          provider: true,
-          methodType: true,
-          amount: true,
-          currency: true,
-          createdAt: true,
-          booking: {
-            select: {
-              displayRef: true,
-              publicRef: true,
-              localDate: true,
-              tour: {
-                select: { name: true, destination: { select: { slug: true } } },
+    // Ledger subtotal chips (review 5.7): per-currency, NEVER cross-currency
+    // sums. Same two-status charge rule as summarizeBookings (a settled refund
+    // flips both legs to REFUNDED); an in-flight refund is PROCESSING - the
+    // "on its way" bucket, kept separate so the chip shows progress.
+    const sumByCurrency = (
+      rows: { currency: string; _sum: { amount: Prisma.Decimal | null } }[],
+    ) =>
+      rows
+        .filter((r) => r._sum.amount && !r._sum.amount.isZero())
+        .map((r) => ({
+          currency: r.currency,
+          amount: (r._sum.amount ?? new Prisma.Decimal(0)).toString(),
+        }));
+
+    const [total, paidBy, refundedBy, refundPendingBy, rows] =
+      await Promise.all([
+        this.prisma.payment.count({ where }),
+        this.prisma.payment.groupBy({
+          by: ['currency'],
+          where: {
+            ...where,
+            kind: { not: PaymentKind.REFUND },
+            status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED] },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.groupBy({
+          by: ['currency'],
+          where: {
+            ...where,
+            kind: PaymentKind.REFUND,
+            status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED] },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.groupBy({
+          by: ['currency'],
+          where: {
+            ...where,
+            kind: PaymentKind.REFUND,
+            status: PaymentStatus.PROCESSING,
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.findMany({
+          where,
+          select: {
+            id: true,
+            kind: true,
+            status: true,
+            provider: true,
+            methodType: true,
+            amount: true,
+            currency: true,
+            createdAt: true,
+            booking: {
+              select: {
+                displayRef: true,
+                publicRef: true,
+                localDate: true,
+                // Card recognition (review F14): brand + last4 beat a generic
+                // "card" at preventing "what is this charge?" chargebacks.
+                paymentMethodBrand: true,
+                paymentMethodLast4: true,
+                tour: {
+                  select: {
+                    name: true,
+                    destination: { select: { slug: true } },
+                  },
+                },
               },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+      ]);
 
     return {
       total,
       page,
       limit,
+      totals: {
+        paid: sumByCurrency(paidBy),
+        refunded: sumByCurrency(refundedBy),
+        refundPending: sumByCurrency(refundPendingBy),
+      },
       data: rows.map((p) => ({
         id: p.id,
         kind: p.kind,
         status: p.status,
         provider: p.provider,
         methodType: p.methodType,
+        methodBrand: p.booking.paymentMethodBrand,
+        methodLast4: p.booking.paymentMethodLast4,
         amount: p.amount.toString(),
         currency: p.currency,
         createdAt: p.createdAt.toISOString(),
@@ -3530,6 +3787,374 @@ export class BookingsService {
         bookingLocalDate: dateKey(p.booking.localDate),
       })),
     };
+  }
+
+  // ── Self-service date change (review 10.4, promoted from V2 2026-07-30) ──
+  //
+  // DIRECT swap, not a request queue: inside the free-cancellation window the
+  // traveller can already cancel for a FULL refund and rebook, so moving the
+  // booking grants nothing they don't have - it just removes the ops loop.
+  // Outside the window the endpoints refuse, same judgement rule as
+  // cancellation (wall-clock start minus cancellation_hours).
+
+  /** Everything the date-change guards need to say yes or no. */
+  private static readonly DATE_CHANGE_SELECT = {
+    id: true,
+    publicRef: true,
+    displayRef: true,
+    contactEmail: true,
+    contactFullName: true,
+    contactFirstName: true,
+    contactLastName: true,
+    customerLocale: true,
+    status: true,
+    tourId: true,
+    departureId: true,
+    operatorId: true,
+    island: true,
+    exclusiveDeparture: true,
+    localDate: true,
+    startTime: true,
+    tourStartDateTime: true,
+    utcCancellationRequestedAt: true,
+    utcCancelledAt: true,
+    unitItems: { select: { id: true } },
+    tour: {
+      select: {
+        name: true,
+        cancellationHours: true,
+        durationMinutesFrom: true,
+      },
+    },
+  } satisfies Prisma.BookingSelect;
+
+  /**
+   * Shared guard: the caller owns the booking (traveler HMAC session), the
+   * booking is CONFIRMED with no pending cancellation request, and the free
+   * window is still open. Throws the precise refusal otherwise.
+   */
+  private assertDateChangeAllowed(
+    booking: Prisma.BookingGetPayload<{
+      select: typeof BookingsService.DATE_CHANGE_SELECT;
+    }>,
+    sessionToken?: string | null,
+  ): void {
+    if (
+      !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+        id: booking.id,
+        contactEmail: booking.contactEmail,
+      })
+    ) {
+      throw new UnauthorizedException(
+        'Verify with your email and booking reference to change the date',
+      );
+    }
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new ConflictException('Only a confirmed booking can change date');
+    }
+    if (
+      booking.utcCancellationRequestedAt !== null &&
+      booking.utcCancelledAt === null
+    ) {
+      throw new ConflictException(
+        'A cancellation request is pending on this booking',
+      );
+    }
+    // Same wall-clock judgement as cancellation eligibility: start minus
+    // cancellation_hours, compared as the platform-wide Z-labelled convention.
+    const start =
+      booking.tourStartDateTime ??
+      new Date(
+        `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,
+      );
+    const hoursUntil = (start.getTime() - Date.now()) / 3_600_000;
+    if (hoursUntil < booking.tour.cancellationHours) {
+      throw new ConflictException(
+        'The free-change window has closed for this booking',
+      );
+    }
+  }
+
+  /**
+   * GET typ/:publicRef/date-change-options - the next OPEN departures of the
+   * SAME tour with room for this party (whole-unit free for exclusive
+   * charters). Purpose-built so the account card renders a plain select
+   * instead of the whole booking-widget calendar.
+   */
+  async getDateChangeOptions(publicRef: string, sessionToken?: string | null) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: BookingsService.DATE_CHANGE_SELECT,
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    this.assertDateChangeAllowed(booking, sessionToken);
+
+    const seats = booking.unitItems.length;
+    const departures = await this.prisma.departure.findMany({
+      where: {
+        tourId: booking.tourId,
+        id: { not: booking.departureId ?? undefined },
+        status: DepartureStatus.OPEN,
+        // Future dates only - a same-day move cuts into the operator's
+        // no-show handling and the arrival buffer.
+        date: { gt: new Date() },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      take: 60,
+      select: {
+        id: true,
+        date: true,
+        startTime: true,
+        capacity: true,
+        bookedCount: true,
+      },
+    });
+
+    return {
+      options: departures
+        .filter((d) =>
+          booking.exclusiveDeparture
+            ? d.bookedCount === 0
+            : d.capacity - d.bookedCount >= seats,
+        )
+        .slice(0, 30)
+        .map((d) => ({
+          departureId: d.id,
+          date: dateKey(d.date),
+          startTime: timeOfDay(d.startTime),
+          seatsLeft: d.capacity - d.bookedCount,
+        })),
+    };
+  }
+
+  /**
+   * POST typ/:publicRef/date-change - atomically move the booking to another
+   * departure of the same tour: guarded claim on the new one (the same
+   * overbooking backstop reserve uses), release on the old one, snapshot
+   * times updated. Prices and commission are untouched - same tour, and
+   * snapshots are never retroactive (rule #21 family).
+   */
+  async changeDate(
+    publicRef: string,
+    departureId: string,
+    sessionToken?: string | null,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: BookingsService.DATE_CHANGE_SELECT,
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    this.assertDateChangeAllowed(booking, sessionToken);
+
+    // Flip-flop guard: three moves a day is a traveller planning; more is a
+    // script (and an inventory nuisance for the operator).
+    this.targetLimiter.consume('date-change', publicRef, [
+      { max: 3, windowMs: 24 * 60 * 60 * 1000 },
+    ]);
+
+    if (departureId === booking.departureId) {
+      throw new ConflictException('The booking is already on that departure');
+    }
+    const seats = booking.unitItems.length;
+    const oldDate = booking.tourStartDateTime ?? booking.localDate;
+    const oldDepartureId = booking.departureId;
+
+    const moved = await this.prisma.$transaction(async (tx) => {
+      // Fresh read INSIDE the txn, same reason as reserve: the capacity
+      // threshold below re-evaluates against current state under concurrency.
+      const dep = await tx.departure.findUnique({
+        where: { id: departureId },
+        select: {
+          id: true,
+          tourId: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          status: true,
+        },
+      });
+      if (!dep || dep.tourId !== booking.tourId) {
+        throw new NotFoundException('Departure not found for this tour');
+      }
+
+      const claim = booking.exclusiveDeparture
+        ? await tx.departure.updateMany({
+            where: {
+              id: departureId,
+              status: DepartureStatus.OPEN,
+              bookedCount: 0,
+            },
+            data: { bookedCount: dep.capacity },
+          })
+        : await tx.departure.updateMany({
+            where: {
+              id: departureId,
+              status: DepartureStatus.OPEN,
+              bookedCount: { lte: dep.capacity - seats },
+            },
+            data: { bookedCount: { increment: seats } },
+          });
+      if (claim.count === 0) {
+        throw new UnprocessableEntityException(
+          'That departure is no longer available',
+        );
+      }
+      await this.recomputeStoredStatus(tx, departureId);
+      if (oldDepartureId) {
+        await this.releaseSeats(
+          tx,
+          oldDepartureId,
+          seats,
+          booking.exclusiveDeparture,
+        );
+      }
+
+      const localStart = combineDateTime(dep.date, dep.startTime);
+      return tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          departureId,
+          localDate: dep.date,
+          startTime: timeOfDay(dep.startTime),
+          tourStartDateTime: localStart,
+          tourEndDateTime:
+            booking.tour.durationMinutesFrom != null
+              ? new Date(
+                  localStart.getTime() +
+                    booking.tour.durationMinutesFrom * 60_000,
+                )
+              : null,
+        },
+        select: {
+          publicRef: true,
+          displayRef: true,
+          tourId: true,
+          operatorId: true,
+          localDate: true,
+          startTime: true,
+          tourStartDateTime: true,
+        },
+      });
+    });
+
+    this.logger.log(
+      `Booking ${booking.displayRef} moved to ${dateKey(moved.localDate)} ${moved.startTime ?? ''} (self-service date change)`,
+    );
+
+    // Inventory changed on BOTH days - the availability webhook keys on
+    // (tourId, localDate), so emit one event per affected day.
+    this.emitBookingEvents({
+      tourId: moved.tourId,
+      localDate: booking.localDate,
+      operatorId: moved.operatorId,
+      publicRef: moved.publicRef,
+    });
+    this.emitBookingEvents({
+      tourId: moved.tourId,
+      localDate: moved.localDate,
+      operatorId: moved.operatorId,
+      publicRef: moved.publicRef,
+    });
+
+    // Best-effort notices AFTER the move is committed: a dead mailbox must
+    // never read as a failed date change.
+    void this.sendDateChangeNotices(booking, oldDate, moved).catch(
+      (err: Error) =>
+        this.logger.error(
+          `Date-change notices failed for ${booking.displayRef}`,
+          err,
+        ),
+    );
+
+    return {
+      changed: true,
+      localDate: dateKey(moved.localDate),
+      startTime: moved.startTime,
+    };
+  }
+
+  /** Traveller confirmation + operator heads-up on the shared notice shell. */
+  private async sendDateChangeNotices(
+    booking: Prisma.BookingGetPayload<{
+      select: typeof BookingsService.DATE_CHANGE_SELECT;
+    }>,
+    oldDate: Date,
+    moved: {
+      localDate: Date;
+      startTime: string | null;
+      tourStartDateTime: Date | null;
+      publicRef: string;
+    },
+  ): Promise<void> {
+    const [operator, site] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true } },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+    ]);
+
+    const tourName = booking.tour?.name ?? 'Your tour';
+    const newDate = moved.tourStartDateTime ?? moved.localDate;
+    const shared = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
+      bookingRef: booking.displayRef,
+      tourName,
+      startTime: moved.startTime ?? '',
+    };
+
+    if (booking.contactEmail) {
+      const locale = toLocale(booking.customerLocale);
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(newDate, locale),
+        noticeTitle: 'Your trip has a new date.',
+        noticeParagraphs: [
+          `Done - ${tourName} now departs ${formatDateLong(newDate, locale)} at ${moved.startTime ?? ''}. This email is your updated confirmation; the reference stays the same.`,
+          `Your previous date (${formatDateLong(oldDate, locale)}) is released. Payments and the free-cancellation window follow the new date automatically.`,
+        ],
+        ctaUrl: `${islandToursBase()}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaLabel: 'View your booking',
+      };
+      await this.mail.sendBookingNoticeEmail(
+        booking.contactEmail,
+        `New date for your trip - ${booking.displayRef}`,
+        ctx,
+        buildNoticeText(ctx),
+      );
+    }
+
+    const operatorEmail =
+      operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+    if (operatorEmail) {
+      const guestName =
+        booking.contactFullName ??
+        ([booking.contactFirstName, booking.contactLastName]
+          .filter(Boolean)
+          .join(' ') ||
+          'The traveller');
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(newDate, Locale.en),
+        noticeTitle: 'Booking moved to a new date.',
+        noticeParagraphs: [
+          `${guestName} moved booking ${booking.displayRef} for ${tourName} from ${formatDateLong(oldDate, Locale.en)} to ${formatDateLong(newDate, Locale.en)} at ${moved.startTime ?? ''}.`,
+          'Seats were released on the old departure and claimed on the new one automatically. No action needed.',
+        ],
+        ctaUrl: `${dashboardAppBase()}/bookings`,
+        ctaLabel: 'View booking in your dashboard',
+      };
+      await this.mail.sendBookingNoticeEmail(
+        operatorEmail,
+        `Booking moved - ${booking.displayRef}: ${tourName}`,
+        ctx,
+        buildNoticeText(ctx),
+      );
+    }
   }
 
   /**
@@ -4162,6 +4787,24 @@ export class BookingsService {
 
   // ── internals ──────────────────────────────────────────────────────────────
 
+  /**
+   * A free E.8 display reference (IT-{year}-XXXXX). 30^5 combinations, so a
+   * clash with an existing row is unlikely but real at scale - regenerate on
+   * hit rather than widening the format. Five misses in a row means ~24M
+   * bookings in one trip year; treat that as an operational error.
+   */
+  private async allocateDisplayRef(localStart: Date): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = makeDisplayRef(localStart);
+      const clash = await this.prisma.booking.findUnique({
+        where: { displayRef: candidate },
+        select: { id: true },
+      });
+      if (!clash) return candidate;
+    }
+    throw new ConflictException('Could not allocate a booking reference');
+  }
+
   private async loadOr404(id: string): Promise<BookingWithItems> {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
@@ -4723,9 +5366,23 @@ export class BookingsService {
 function dec(value: Prisma.Decimal | null): string | null {
   return value ? value.toString() : null;
 }
-function makeDisplayRef(id: string, localStart: Date): string {
+/**
+ * E.8 display_ref alphabet (review F11): Crockford-style, so a reference read
+ * over the phone or typed at check-in can't be tripped by 0/O, 1/I/L or U/V.
+ * The ref is a login + check-in credential (LD4), not just a label.
+ */
+const DISPLAY_REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+const DISPLAY_REF_LENGTH = 5;
+
+/** IT-{tripYear}-XXXXX, crypto-random. Uniqueness is the CALLER's job
+ * (`allocateDisplayRef` pre-checks against the @unique column). */
+function makeDisplayRef(localStart: Date): string {
   const year = dateKey(localStart).slice(0, 4);
-  return `IT-${year}-${id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  let code = '';
+  for (let i = 0; i < DISPLAY_REF_LENGTH; i++) {
+    code += DISPLAY_REF_ALPHABET[randomInt(DISPLAY_REF_ALPHABET.length)];
+  }
+  return `IT-${year}-${code}`;
 }
 function actorToCancelledBy(role?: Role): CancelledBy {
   if (role === Role.ADMIN) return CancelledBy.ADMIN;
@@ -4901,9 +5558,30 @@ function mapTravellerBookingItem(
   b: BookingWithItems & {
     tour: {
       name: string;
+      slug: string;
       cancellationHours: number;
-      destination: { slug: string } | null;
+      durationMinutesFrom: number | null;
+      checkInMinutesBefore: number | null;
+      meetingPointLat: number | null;
+      meetingPointLng: number | null;
+      destination: { slug: string; name: string } | null;
+      images: { url: string }[];
+      translations: { locale: Locale; meetingPointText: string | null }[];
+      locations: {
+        types: string[];
+        streetAddress: string | null;
+        translations: { locale: Locale; title: string | null }[];
+      }[];
     };
+    operator: {
+      contactEmail: string | null;
+      contactPhone: string | null;
+      companyInfo: {
+        companyName: string | null;
+        companyEmail: string | null;
+        companyPhone: string | null;
+      } | null;
+    } | null;
     payments: {
       kind: PaymentKind;
       status: PaymentStatus;
@@ -4914,6 +5592,7 @@ function mapTravellerBookingItem(
       paymentModel: PaymentModel;
     } | null;
   },
+  locale: Locale,
 ) {
   const {
     settlementStatus: _settlementStatus,
@@ -4927,11 +5606,50 @@ function mapTravellerBookingItem(
     operatorCancellationReason: _operatorCancellationReason,
     ...traveller
   } = mapBookingListItem(b);
+
+  // Same priority the confirmation email uses (assembleConfirmationContext):
+  // the START location's localized title, else the tour's meeting-point text.
+  // The two surfaces must name the same place - shared helper, not a copy.
+  const meetingPoint =
+    pickTourLocation(b.tour.locations, 'START', locale) ??
+    preferLocale(b.tour.translations, locale)?.meetingPointText ??
+    null;
+
   return {
     ...traveller,
     commissionRate: null,
     commissionAmount: null,
     destinationSlug: b.tour.destination?.slug ?? null,
+    destinationName: b.tour.destination?.name ?? null,
+    tourSlug: b.tour.slug,
+    tourImageUrl: b.tour.images[0]?.url ?? null,
+    durationMinutesFrom: b.tour.durationMinutesFrom,
+    // "Be there N minutes early" (master 4.4): the pickup point's own lead
+    // time when this booking has a pickup, else the tour's check-in buffer.
+    // The `?? 15` floor matches the confirmation email (arrivalBufferMin) -
+    // the account card and the email must give the same instruction.
+    arrivalBufferMinutes:
+      (b.pickupRequested && b.pickupAddress
+        ? b.pickupMinutesPrior
+        : b.tour.checkInMinutesBefore) ?? 15,
+    meetingPoint,
+    meetingPointLat: b.tour.meetingPointLat,
+    meetingPointLng: b.tour.meetingPointLng,
+    onArrivalPayment: b.onArrivalPayment,
+    // Support row (review 5.8): the operator NAME + direct contacts. This list
+    // is self-scoped by the HISTORY session - the same proof the TYP requires
+    // before it reveals these fields to a verified viewer.
+    operator: {
+      name: b.operator?.companyInfo?.companyName ?? null,
+      email:
+        b.operator?.contactEmail ??
+        b.operator?.companyInfo?.companyEmail ??
+        null,
+      phone:
+        b.operator?.contactPhone ??
+        b.operator?.companyInfo?.companyPhone ??
+        null,
+    },
   };
 }
 

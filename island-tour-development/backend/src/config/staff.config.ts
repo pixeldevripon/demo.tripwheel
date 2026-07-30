@@ -136,6 +136,9 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogGroup[] = [
       { key: Permission.DELETE_TRIP, label: 'Delete tours' },
       { key: Permission.MANAGE_TRIPS, label: 'Manage all tours' },
       { key: Permission.MANAGE_AVAILABILITY, label: 'Manage availability' },
+      // Matrix v1.7: the dock-staff grant - close/reopen departures only,
+      // no timetable or capacity edits.
+      { key: Permission.STOP_SELL, label: 'Stop-sell (close/reopen days)' },
       { key: Permission.MANAGE_EDITORIAL, label: 'Editorial curation' },
     ],
   },

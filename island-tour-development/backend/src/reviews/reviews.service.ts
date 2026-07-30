@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   BookingStatus,
+  InboxEvent,
   Locale,
   Prisma,
   ReviewFlagStatus,
@@ -18,6 +19,7 @@ import {
 } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
+import { InboxService } from '@/inbox/inbox.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { dateKey, localNow } from '@/common/utils/timezone.util';
@@ -72,6 +74,7 @@ export class ReviewsService {
     private readonly translation: ReviewTranslationService,
     @InjectQueue(REVIEW_TRANSLATION_QUEUE)
     private readonly translationQueue: Queue,
+    private readonly inbox: InboxService,
   ) {}
 
   // ════════════════════════════════════════════════════════════════════════
@@ -170,6 +173,18 @@ export class ReviewsService {
       },
     });
 
+    this.inbox.notify({
+      event: InboxEvent.REVIEW_SUBMITTED,
+      operatorId: booking.operatorId,
+      title: flagged
+        ? `Review flagged for moderation (${dto.rating}/5)`
+        : `New review awaiting moderation (${dto.rating}/5)`,
+      body: flagged ? 'Auto-flagged for banned language.' : undefined,
+      url: '/reviews',
+      entityType: 'review',
+      entityId: review.id,
+      // The traveller is not a dashboard user; nothing to exclude.
+    });
     this.logger.log(
       `Review ${review.id} created for tour ${booking.tourId} (PENDING${flagged ? ', flagged: banned word' : ''})`,
     );
@@ -444,6 +459,18 @@ export class ReviewsService {
       await this.translation.enqueue(this.translationQueue, id);
     }
 
+    if (dto.status === ReviewModerationStatus.APPROVED) {
+      this.inbox.notify({
+        event: InboxEvent.REVIEW_PUBLISHED,
+        operatorId: review.operatorId,
+        title: `A ${updated.rating}-star review is now live`,
+        body: 'You can post one public response to it.',
+        url: '/reviews',
+        entityType: 'review',
+        entityId: id,
+        actorUserId: adminId,
+      });
+    }
     this.logger.log(
       `Review ${id} moderated ${review.moderationStatus} → ${dto.status} by ${adminId}`,
     );

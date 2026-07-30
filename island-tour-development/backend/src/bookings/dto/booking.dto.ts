@@ -27,6 +27,8 @@ import {
   CancelledBy,
   CancellationRefund,
   Currency,
+  Locale,
+  OnArrivalPayment,
   PaymentKind,
   PaymentModel,
   PaymentProvider,
@@ -215,6 +217,35 @@ export class RequestCancellationDto {
 
 export class RequestCancellationResponseDto {
   @ApiProperty({ example: true }) requested!: boolean;
+}
+
+// ── Self-service date change (review 10.4, direct swap inside the free window) ──
+
+export class ChangeBookingDateDto {
+  @ApiProperty({ description: 'Target departure id (same tour, OPEN, future)' })
+  @IsUUID()
+  departureId!: string;
+}
+
+/** One switchable departure for the account card's date picker. */
+export class DateChangeOptionDto {
+  @ApiProperty() departureId!: string;
+  @ApiProperty({ example: '2026-08-14' }) date!: string;
+  @ApiPropertyOptional({ nullable: true, example: '07:00' })
+  startTime!: string | null;
+  @ApiProperty({ example: 6 }) seatsLeft!: number;
+}
+
+export class DateChangeOptionsResponseDto {
+  @ApiProperty({ type: [DateChangeOptionDto] })
+  options!: DateChangeOptionDto[];
+}
+
+export class ChangeBookingDateResponseDto {
+  @ApiProperty({ example: true }) changed!: boolean;
+  @ApiProperty({ example: '2026-08-14' }) localDate!: string;
+  @ApiPropertyOptional({ nullable: true, example: '07:00' })
+  startTime!: string | null;
 }
 
 /** One currency bucket of a customer's net spend (payments minus refunds). */
@@ -785,6 +816,16 @@ export class TravellerListQueryDto {
   @Min(1)
   @Max(50)
   limit?: number;
+
+  @ApiPropertyOptional({
+    enum: Locale,
+    description:
+      'Preferred locale for CONTENT fields (meeting-point text). UI copy is ' +
+      'client-side; English is the fallback like every content endpoint.',
+  })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale;
 }
 
 /**
@@ -866,6 +907,63 @@ export class TravellerBookingItemDto extends BookingResponseDto {
       '(`/{destinationSlug}/thank-you/{publicRef}`).',
   })
   destinationSlug!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Curaçao',
+    description: 'Destination display name for the card meta row.',
+  })
+  destinationName!: string | null;
+  @ApiProperty({
+    example: 'klein-curacao-day-trip',
+    description:
+      'Tour slug for the canonical page link (`/{destinationSlug}/{tourSlug}/`).',
+  })
+  tourSlug!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Tour hero image URL (card thumbnail).',
+  })
+  tourImageUrl!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 480 })
+  durationMinutesFrom!: number | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 30,
+    description:
+      'Master 4.4 arrival buffer: the pickup lead time when this booking has ' +
+      "a pickup, else the tour's check-in buffer.",
+  })
+  arrivalBufferMinutes!: number | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'Caracasbaai jetty',
+    description:
+      "Locale-preferred meeting point (same source chain as the confirmation email). Null when the booking's pickup replaces it or none is set.",
+  })
+  meetingPoint!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 12.0714 })
+  meetingPointLat!: number | null;
+  @ApiPropertyOptional({ nullable: true, example: -68.8622 })
+  meetingPointLng!: number | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: OnArrivalPayment,
+    description:
+      'How the on-arrival balance is collected (card or cash / cash only). ' +
+      'Null on other payment models.',
+  })
+  onArrivalPayment!: OnArrivalPayment | null;
+  @ApiProperty({
+    description:
+      'Support row contact (review 5.8): the operator name plus direct ' +
+      'contacts. Safe here because this list is self-scoped by the HISTORY ' +
+      'session - the same proof the TYP requires before revealing them.',
+  })
+  operator!: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
   @ApiProperty({
     type: ThankYouReviewStateDto,
     description:
@@ -895,6 +993,14 @@ export class TravellerPaymentItemDto {
   @ApiProperty({ enum: PaymentProvider }) provider!: PaymentProvider;
   @ApiPropertyOptional({ nullable: true, example: 'card' })
   methodType!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: 'visa',
+    description: "Card brand from the booking's payment-method snapshot (F14).",
+  })
+  methodBrand!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '4242' })
+  methodLast4!: string | null;
   @ApiProperty({ example: '47.99', description: 'Exact decimal string' })
   amount!: string;
   @ApiProperty({ enum: ['USD', 'EUR'] }) currency!: string;
@@ -908,12 +1014,72 @@ export class TravellerPaymentItemDto {
   @ApiProperty({ example: '2026-07-04' }) bookingLocalDate!: string;
 }
 
+/** One per-currency ledger subtotal - never summed across currencies. */
+export class TravellerLedgerBucketDto {
+  @ApiProperty({ example: 'USD' }) currency!: string;
+  @ApiProperty({ example: '1917.88', description: 'Exact decimal string' })
+  amount!: string;
+}
+
+/**
+ * Ledger subtotal chips (review 5.7): what actually reached Island Tours,
+ * what came back, and what is still in flight ("on its way"). Per currency.
+ */
+export class TravellerLedgerTotalsDto {
+  @ApiProperty({ type: [TravellerLedgerBucketDto] })
+  paid!: TravellerLedgerBucketDto[];
+  @ApiProperty({ type: [TravellerLedgerBucketDto] })
+  refunded!: TravellerLedgerBucketDto[];
+  @ApiProperty({ type: [TravellerLedgerBucketDto] })
+  refundPending!: TravellerLedgerBucketDto[];
+}
+
 export class TravellerPaymentsResponseDto {
   @ApiProperty({ example: 9 }) total!: number;
   @ApiProperty({ example: 1 }) page!: number;
   @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ type: TravellerLedgerTotalsDto })
+  totals!: TravellerLedgerTotalsDto;
   @ApiProperty({ type: [TravellerPaymentItemDto] })
   data!: TravellerPaymentItemDto[];
+}
+
+/**
+ * One payment as a RECEIPT (review 9a). A receipt, deliberately not a tax
+ * invoice - the platform holds no VAT breakdown, and overclaiming "invoice"
+ * on a document travellers file with employers/insurers would be worse than
+ * a modest receipt. The only traveller payload carrying the payer NAME (the
+ * caller IS that person; a nameless receipt proves nothing).
+ */
+export class TravellerReceiptDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: PaymentKind }) kind!: PaymentKind;
+  @ApiProperty({ enum: PaymentStatus }) status!: PaymentStatus;
+  @ApiProperty({ example: '47.99', description: 'Exact decimal string' })
+  amount!: string;
+  @ApiProperty({ enum: ['USD', 'EUR'] }) currency!: string;
+  @ApiProperty() createdAt!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'card' })
+  methodType!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'visa' })
+  methodBrand!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: '4242' })
+  methodLast4!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Jane Doe' })
+  payerName!: string | null;
+  @ApiProperty({ example: 'IT-2026-K3M9P' }) bookingDisplayRef!: string;
+  @ApiProperty() bookingPublicRef!: string;
+  @ApiProperty({ example: '2026-07-04' }) bookingLocalDate!: string;
+  @ApiPropertyOptional({ nullable: true, example: '07:00' })
+  startTime!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Klein Curacao Day Trip' })
+  tourName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Curaçao' })
+  destinationName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'curacao' })
+  destinationSlug!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Miss Ann Boat Trips' })
+  operatorName!: string | null;
 }
 
 /** One priced row of a quote breakdown (participants, an add-on, or a priced pickup). */

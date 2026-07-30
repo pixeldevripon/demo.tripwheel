@@ -86,10 +86,14 @@ function spotlightRow(over: Record<string, unknown> = {}) {
 describe('TiersService', () => {
   let prisma: ReturnType<typeof mockPrisma>;
   let svc: TiersService;
+  // The bell is fire-and-forget everywhere; these tests assert the domain
+  // result, so a stub is enough.
+  let inbox: { notify: jest.Mock };
 
   beforeEach(() => {
     prisma = mockPrisma();
-    svc = new TiersService(prisma as never);
+    inbox = { notify: jest.fn() };
+    svc = new TiersService(prisma as never, inbox as never);
   });
 
   // ── eligibility gate ──────────────────────────────────────────────────────

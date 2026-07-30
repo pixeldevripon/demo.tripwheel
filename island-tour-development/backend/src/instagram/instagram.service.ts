@@ -98,9 +98,10 @@ export class InstagramService {
   /**
    * Everything the grid renders, in one call.
    *
-   * `enabled` folds together the admin kill switch and "there is nothing to
-   * show", because both mean the same thing to the frontend: render no section
-   * at all. A handle row above an empty grid is worse than no section.
+   * `enabled` folds together the admin kill switch, a missing access token, and
+   * "there is nothing to show", because all three mean the same thing to the
+   * frontend: render no section at all. A handle row above an empty grid is
+   * worse than no section.
    *
    * @param destinationSlug pass on a destination page to also pick up tiles
    *        pinned to it; omit for brand-wide tiles only.
@@ -116,7 +117,12 @@ export class InstagramService {
       }),
       this.prisma.instagramAccount.findUnique({
         where: { id: ACCOUNT_ID },
-        select: { username: true, profileUrl: true, layout: true },
+        select: {
+          username: true,
+          profileUrl: true,
+          layout: true,
+          configAccessToken: true,
+        },
       }),
     ]);
 
@@ -129,6 +135,21 @@ export class InstagramService {
     // is the right answer. Same reading as getPublicSiteInfo; the two used to
     // disagree.
     if (siteInfo && !siteInfo.enableInstagram) {
+      return { enabled: false, username, profileUrl, layout, posts: [] };
+    }
+
+    // No access token means the integration is not set up, so the section goes.
+    // The token is the ONE thing an admin must supply for this feature to be a
+    // real Instagram feed; without it the grid can only ever be whatever tiles
+    // were hand-added, presented under a handle the platform cannot verify it
+    // still owns and cannot keep current. That is worse than showing nothing.
+    //
+    // Presence of the stored value, deliberately not `safeDecrypt` (the check
+    // `InstagramConfigService.resolve` makes): a rotated ENCRYPTION_KEY leaves a
+    // token that no longer decrypts, and the honest signal for that is a sync
+    // that fails loudly in the dashboard - not a public section that silently
+    // disappears for a reason nobody would connect to the key.
+    if (!account?.configAccessToken) {
       return { enabled: false, username, profileUrl, layout, posts: [] };
     }
 

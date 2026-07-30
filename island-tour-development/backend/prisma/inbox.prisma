@@ -1,0 +1,70 @@
+// ── In-app notification inbox ────────────────────────────────────────────────
+//
+// NOT to be confused with `notifications.prisma` / the `Notification*` family,
+// which is the OCTO WEBHOOK system: machine-to-machine HTTP delivery to OTA
+// partners, with subscriptions, signing secrets and delivery retries. This file
+// is the human-facing dashboard inbox - the bell, the badges and the digest.
+// The two share nothing but a word, which is exactly why this one is called
+// "inbox" everywhere in code.
+//
+// Fan-out is ON WRITE: an event resolves to its recipients once and inserts one
+// row per person. Computing visibility at read time was the alternative and is
+// worse here - per-user read state needs a row anyway, the badge stops being an
+// indexed COUNT, and a later permission change would silently rewrite history.
+// Freezing the audience at event time is also the correct behaviour: a seat
+// added next month should not inherit last month's alerts.
+
+model InboxNotification {
+  id String @id @default(uuid())
+
+  /// The resolved recipient. Audiences ("platform staff who can manage tours")
+  /// are turned into user rows by the fan-out, never stored as a rule.
+  userId String
+
+  /// Owning operator, for tenancy and audit. NULL for platform-scope rows.
+  operatorId String?
+
+  /// Maps 1:1 onto a dashboard nav section, so one summary query feeds the bell
+  /// AND every sidebar badge - they cannot disagree about the same count.
+  category InboxCategory
+
+  /// The specific thing that happened.
+  event InboxEvent
+
+  title String
+  body  String?
+
+  /// What the notification is ABOUT - lets a future "already handled" sweep
+  /// find rows without parsing the url.
+  entityType String?
+  entityId   String?
+
+  /// Where clicking lands, relative to the dashboard root (e.g.
+  /// `/trips/abc/edit?step=review`). Relative so the row survives a domain
+  /// change and cannot be used to bounce a user off-site.
+  url String
+
+  /// Who caused it. NULL for system/scheduled events (the nightly jobs).
+  /// A notification is never written for the actor's own action.
+  actorUserId String?
+
+  readAt DateTime?
+
+  /// `${event}:${entityId}` by default. With the unique index below this is
+  /// what makes delivery idempotent: a retried job re-inserts and hits the
+  /// constraint instead of duplicating the row (queues doc §5.1).
+  dedupeKey String
+
+  createdAt DateTime @default(now())
+
+  user     User      @relation("InboxRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor    User?     @relation("InboxActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  operator Operator? @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  // The badge: count unread for one user.
+  @@index([userId, readAt])
+  // The list: one user's newest first.
+  @@index([userId, createdAt])
+  @@map("inbox_notifications")
+}

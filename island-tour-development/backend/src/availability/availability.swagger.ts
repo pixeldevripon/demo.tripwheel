@@ -14,7 +14,13 @@ import {
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import {
+  AgendaResponseDto,
+  AvailabilitySummaryDto,
   CalendarDayResponseDto,
+  CloseAgendaDayResultDto,
+  CloseRangeResultDto,
+  ConfirmAvailabilityResultDto,
+  ReopenRangeResultDto,
   DepartureResponseDto,
   ExceptionResponseDto,
   ManageCalendarDayDto,
@@ -104,6 +110,90 @@ export const ApiManageCalendarDocs = () =>
         'reopening deletes that exception.',
     }),
     ApiOkResponse({ type: ManageCalendarDayDto, isArray: true }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    authErrors(),
+  );
+
+export const ApiAgendaDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Cross-tour daily agenda (Surface B)',
+      description:
+        'Every departure across the caller´s tours for [from, from+days), ' +
+        'chronological, with live status, the stopping closure (id + audit ' +
+        'line) and the freshness stamp. The daily habit surface - one ' +
+        'operator, all tours, one list.',
+    }),
+    ApiOkResponse({ type: AgendaResponseDto }),
+    authErrors(),
+  );
+
+export const ApiCloseAgendaDayDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Close all of a day across the operator´s tours',
+      description:
+        'The weather-day action: one CLOSE_DATE per tour with departures on ' +
+        'the date (already-closed tours skipped; optional tourId scopes to ' +
+        'one tour). Stops new sales only. Returns the affected tourIds - the ' +
+        'Undo reopens exactly those.',
+    }),
+    ApiOkResponse({ type: CloseAgendaDayResultDto }),
+    authErrors(),
+  );
+
+export const ApiConfirmAvailabilityDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Stamp availability_confirmed_at (freshness confirm)',
+      description:
+        'One tour with tourId, or every tour of the caller´s operator ' +
+        'without - the daily agenda´s "Confirm today´s availability" and the ' +
+        'stamp-on-visit hook (dev spec §6.4). Feeds the freshness nudges.',
+    }),
+    ApiOkResponse({ type: ConfirmAvailabilityResultDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    authErrors(),
+  );
+
+export const ApiCloseRangeDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Close a date range (bulk blackout)',
+      description:
+        'One CLOSE_DATE per date in [from, to], one transaction, skipping ' +
+        'dates already closed. Stops new sales only - existing bookings are ' +
+        'kept. Undo with POST exceptions/reopen-range over the same bounds.',
+    }),
+    ApiOkResponse({ type: CloseRangeResultDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    authErrors(),
+  );
+
+export const ApiReopenRangeDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Reopen a date range',
+      description:
+        'Removes every whole-day closure in [from, to] - the one-unit Undo ' +
+        'of close-range (also reopens individually closed days in the range).',
+    }),
+    ApiOkResponse({ type: ReopenRangeResultDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    authErrors(),
+  );
+
+export const ApiAvailabilitySummaryDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Operator status line: is this tour selling?',
+      description:
+        'The soonest bookable departure and the count of bookable departures ' +
+        'in the next 30 days - the same horizon as the §7.2 listing gate. ' +
+        '0 = the tour is excluded from every ranked surface (F13 warning ' +
+        'state) until a date opens.',
+    }),
+    ApiOkResponse({ type: AvailabilitySummaryDto }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     authErrors(),
   );

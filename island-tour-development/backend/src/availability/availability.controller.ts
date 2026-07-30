@@ -14,12 +14,18 @@ import { ApiTags } from '@nestjs/swagger';
 import { Permission } from '@prisma/client';
 import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorator';
 import { Public } from '@/auth/decorators/public.decorator';
+import { RequireAnyPermission } from '@/auth/decorators/require-any-permission.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import type { TypedAuthUser } from '@/auth/auth.types';
 import { AvailabilityService } from './availability.service';
 import {
+  AgendaQueryDto,
   AvailabilityCalendarDto,
   AvailabilityCheckDto,
+  AvailabilitySummaryQueryDto,
+  CloseAgendaDayDto,
+  CloseRangeDto,
+  ConfirmAvailabilityDto,
   CreateExceptionDto,
   CreateScheduleDto,
   ListDeparturesQueryDto,
@@ -27,13 +33,19 @@ import {
   ListSchedulesQueryDto,
   ManageCalendarQueryDto,
   MaterializeDto,
+  ReopenRangeDto,
   UpdateDepartureDto,
   UpdateExceptionDto,
   UpdateScheduleDto,
 } from './dto/availability.dto';
 import {
+  ApiAgendaDocs,
+  ApiAvailabilitySummaryDocs,
   ApiCalendarDocs,
+  ApiCloseAgendaDayDocs,
   ApiCheckAvailabilityDocs,
+  ApiCloseRangeDocs,
+  ApiConfirmAvailabilityDocs,
   ApiCreateExceptionDocs,
   ApiCreateScheduleDocs,
   ApiDeleteExceptionDocs,
@@ -43,6 +55,7 @@ import {
   ApiListSchedulesDocs,
   ApiManageCalendarDocs,
   ApiMaterializeDocs,
+  ApiReopenRangeDocs,
   ApiUpdateDepartureDocs,
   ApiUpdateExceptionDocs,
   ApiUpdateScheduleDocs,
@@ -77,6 +90,44 @@ export class AvailabilityController {
   @ApiCalendarDocs()
   calendar(@Body() dto: AvailabilityCalendarDto) {
     return this.availability.calendar(dto);
+  }
+
+  // ── Daily agenda (Surface B - cross-tour) ───────────────────────────────────
+
+  @Get('agenda')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiAgendaDocs()
+  agenda(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: AgendaQueryDto,
+  ) {
+    return this.availability.agenda(user.id, user.role, query);
+  }
+
+  @Post('agenda/close-day')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiCloseAgendaDayDocs()
+  closeAgendaDay(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: CloseAgendaDayDto,
+  ) {
+    return this.availability.closeAgendaDay(user.id, user.role, dto);
+  }
+
+  // ── Operator status line ────────────────────────────────────────────────────
+
+  @Get('summary')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiAvailabilitySummaryDocs()
+  summary(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query() query: AvailabilitySummaryQueryDto,
+  ) {
+    return this.availability.availabilitySummary(
+      user.id,
+      user.role,
+      query.tourId,
+    );
   }
 
   // ── Schedules ───────────────────────────────────────────────────────────────
@@ -126,7 +177,7 @@ export class AvailabilityController {
   // ── Exceptions ──────────────────────────────────────────────────────────────
 
   @Post('exceptions')
-  @RequirePermissions(Permission.MANAGE_AVAILABILITY)
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
   @ApiCreateExceptionDocs()
   createException(
     @AuthenticatedUser() user: TypedAuthUser,
@@ -135,8 +186,38 @@ export class AvailabilityController {
     return this.availability.createException(user.id, user.role, dto);
   }
 
+  @Post('confirm')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiConfirmAvailabilityDocs()
+  confirmAvailability(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: ConfirmAvailabilityDto,
+  ) {
+    return this.availability.confirmAvailability(user.id, user.role, dto);
+  }
+
+  @Post('exceptions/close-range')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiCloseRangeDocs()
+  closeRange(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: CloseRangeDto,
+  ) {
+    return this.availability.closeRange(user.id, user.role, dto);
+  }
+
+  @Post('exceptions/reopen-range')
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+  @ApiReopenRangeDocs()
+  reopenRange(
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: ReopenRangeDto,
+  ) {
+    return this.availability.reopenRange(user.id, user.role, dto);
+  }
+
   @Get('exceptions')
-  @RequirePermissions(Permission.MANAGE_AVAILABILITY)
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
   @ApiListExceptionsDocs()
   listExceptions(
     @AuthenticatedUser() user: TypedAuthUser,
@@ -158,7 +239,7 @@ export class AvailabilityController {
 
   @Delete('exceptions/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(Permission.MANAGE_AVAILABILITY)
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
   @ApiDeleteExceptionDocs()
   deleteException(
     @AuthenticatedUser() user: TypedAuthUser,
@@ -170,7 +251,7 @@ export class AvailabilityController {
   // ── Management calendar ─────────────────────────────────────────────────────
 
   @Get('manage-calendar')
-  @RequirePermissions(Permission.MANAGE_AVAILABILITY)
+  @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
   @ApiManageCalendarDocs()
   manageCalendar(
     @AuthenticatedUser() user: TypedAuthUser,

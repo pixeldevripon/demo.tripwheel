@@ -202,3 +202,33 @@ Extends dev spec §8; the engine DoD stays as-is.
 1. ~~Denley: veto round on §5~~ (done July 28, all four as above). This document plus the mockups go to Arnav; `island-tours-portal-availability-final.html` is the build reference (reason set simplified to Fully booked / Other plus an optional note, per Denley July 28), the other two files are exploration.
 2. On approval, register the pair in the project's normal way (proposal flow; candidates: fold the surface split one level deeper into island-tours-availability-dev-spec.md §6, or keep this file as the portal UX companion next to it). Not self-registered into sources/canonical/: the spec-links registry stays untouched until the founder decides.
 3. The current build's Schedules tab is close under the hood: the model mapping survives, the forms become the day panel's actions, and the weekday tabs become grouped pattern rows. This is a re-skin plus one new nav section, not a rebuild.
+
+---
+
+## 7. Build addendum — implementation status (July 30, 2026, dev pass)
+
+Cross-checked against the shipped code (backend `src/availability/`, dashboard `components/trips/` + `components/availability/`). Statuses per finding:
+
+| # | Status | How it shipped |
+|---|---|---|
+| F1 | ✅ (pre-existing) | Month grid + day card were already built; this pass added the 12-month cap and a shadcn date-jump that opens the picked day's card. |
+| F2 | ✅ | `SET_CAPACITY` below `booked_count` now **rejects** on create and update (`assertCapacityAboveBooked`) with the support-path message — it was previously stored and silently ignored by the materializer. Per §5.5 the day panel has **no** capacity input at all (removed this pass). |
+| F3 | ✅ | The popover claimed the opposite of the truth ("booked seats will be cancelled"); every close surface now states "existing bookings are kept", closed state carries "nothing reopens it automatically", and the booked-day panel routes real cancellations to the booking's report action. |
+| F4 | ✅ | Surface B built: `GET /availability/agenda` + `POST /availability/agenda/close-day`, dashboard `/availability` nav section — freshness card, Close all of today (with the exact-Undo tourIds contract), chronological rows across tours, filter chips only for multi-tour operators, thumb-first. Week-strip jump deferred (the 7-day grouped list + Load more covers the job). |
+| F5 | ✅ (pre-existing) | One home for times; in-use times un-deletable with the guard tooltip. |
+| F6 | ✅ | Weekday tabs replaced with grouped pattern rows: one row per (time × identical settings), weekday chips toggle the underlying rows, pause/remove fan out across the rule, gap hint ("No departures on Fridays."). Supersedes the July 17 weekday-tab preference per this review. |
+| F7 | ✅ | Consequence dialogs on tour-level Pause (row actions + review step) and rule Pause/Remove, each stating what stops, what is kept, and the close-on-calendar alternative. Note: the **built** tour-pause is a status gate (tour leaves the site whole; nothing sellable while paused) — simpler than §3.4's close/reopen dance and with no silent-overbooking path, so the dialog copy states the built behaviour. |
+| F8 | ✅ | `POST exceptions/close-range` (idempotent over overlaps, 366-day cap) + `reopen-range` as the one-unit Undo; dashboard dialog + toast-Undo. |
+| F9 | ✅ (pre-existing) | Date-first day card. |
+| F10 | ✅ | `pricingModel` threaded through schedules + calendar + agenda: unit charters read "Private charter · 1 booking per departure (up to N guests)", never fractions; capacity override and seat inputs hidden; extra departure = "the second boat". |
+| F11 | ✅ | Operator vocabulary purge (acceptance #12 words no longer render), resolved capacity values ("40 seats (tour default)"), "All times are local to {island}" on both surfaces. |
+| F12 | ✅ | `createdAt` + `createdByName` exposed on every exception (user-name join, tolerant of deleted accounts); "Closed by Maria · Jul 28, 14:02" in the day card and agenda rows; the Date Changes register built (newest-first, Reopen/Remove, empty state per §3.2d). |
+| F13 | ✅ | `GET /availability/summary` (same bookability math as the §7.2 gate) powers the §3.2a status line + the warning banner on LIVE tours. Copy deliberately says "hidden from ranked listings", **not** "tier billing is paused" — see the tier-billing note below. |
+| F14 | ✅ | `POST /availability/confirm` (one tour or all); stamp-on-visit on both surfaces per dev spec §6.4; the agenda's freshness card is the explicit anchor and reports the STALEST tour's stamp. |
+| F15/F16 | ✅ | Readiness arithmetic fixed earlier; "Next: Content"; timezone line shipped with F11. |
+| F17 | ✅ | Sold out is a first-class info-violet state (grid dot, day-cell word, popover chip with `sold_out_at`, agenda chip), distinct from manual-close, with the self-explaining "reopens automatically" line. |
+| §5.1 | ✅ | Stop-sell split shipped as `STOP_SELL` (permission enum + `@RequireAnyPermission` guard support): close/reopen/agenda/confirm reachable by either grant, timetable/capacity stays `MANAGE_AVAILABILITY`, and the service refuses `ADD_SLOT`/`SET_CAPACITY` from a stop-sell-only seat. Grantable per staff designation (access matrix v1.7). |
+
+**On "tier billing pauses" (§1.3, F13, §3.4):** the master defines no recurring tier charge — tiers are commission-per-booking only — so "not billed for its tier during the unbookable period" is already true by arithmetic and there is no meter to pause. The one thing an unbookable tour *does* keep spending is time (`tier_locked_until`, the 90-day provisional window, grace), and none of those clocks are `is_bookable`-aware. Whether they should suspend while unbookable is a founder call, tracked in MASTER-CHECKLIST. Until then this document's banner copy is implemented **without** the billing phrase.
+
+**Not built, tracked:** the agenda week-strip day picker (Load more covers it); closure reason quick-pick chips (a free note field shipped; chips are polish on top of the same column); API-managed rows (§3.3, dev spec §7 — later by design).

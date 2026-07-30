@@ -40,7 +40,7 @@ describe('SettlementsService', () => {
   beforeEach(() => {
     prisma = mockPrisma();
     mail = mockMail();
-    svc = new SettlementsService(prisma, mail);
+    svc = new SettlementsService(prisma, mail, { notify: jest.fn() } as never);
   });
 
   /** The row shape sendStatusChangeEmails re-reads after a ledger flip. */

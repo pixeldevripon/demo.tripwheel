@@ -10,8 +10,11 @@ import {
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
   DepartureStatus,
+  InboxEvent,
+  Permission,
   Prisma,
   Role,
+  StaffStatus,
   TourStatus,
   type AvailabilityException,
   type AvailabilitySchedule,
@@ -20,7 +23,9 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
+import { InboxService } from '@/inbox/inbox.service';
 import { NotificationsService } from '@/notifications/notifications.service';
+import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import {
   combineDateTime,
   dateKey,
@@ -40,9 +45,19 @@ import {
 } from './availability-status.util';
 import { AvailabilityMaterializerService } from './availability-materializer.service';
 import type {
+  AgendaDayDto,
+  AgendaDepartureDto,
+  AgendaQueryDto,
+  AgendaResponseDto,
   AvailabilityCalendarDto,
   AvailabilityCheckDto,
+  AvailabilitySummaryDto,
   CalendarDayResponseDto,
+  CloseAgendaDayDto,
+  CloseAgendaDayResultDto,
+  CloseRangeDto,
+  ConfirmAvailabilityDto,
+  ReopenRangeDto,
   CreateExceptionDto,
   CreateScheduleDto,
   DepartureResponseDto,
@@ -87,7 +102,33 @@ export class AvailabilityService {
     private readonly prisma: PrismaService,
     private readonly materializer: AvailabilityMaterializerService,
     private readonly notifications: NotificationsService,
+    private readonly inbox: InboxService,
+    // The stop-sell split (matrix v1.7): exception writes are route-guarded by
+    // MANAGE_AVAILABILITY OR STOP_SELL, but only the close types belong to the
+    // narrow grant - the service re-checks before an ADD_SLOT / SET_CAPACITY.
+    private readonly staffPermissions: StaffPermissionsService,
   ) {}
+
+  /**
+   * A STOP_SELL-only seat may close and reopen - never add departures or move
+   * capacity (matrix v1.7: "money-adjacent actions stay owner/manager"). The
+   * route guard cannot see the dto type, so the type-conditional half of the
+   * split is enforced here.
+   */
+  private async assertCanShapeInventory(
+    userId: string,
+    role: Role,
+  ): Promise<void> {
+    const { granted } = await this.staffPermissions.hasPermissions(
+      { id: userId, role },
+      [Permission.MANAGE_AVAILABILITY],
+    );
+    if (!granted) {
+      throw new ForbiddenException(
+        'Adding departures or changing capacity needs the Manage availability permission; your seat can close and reopen only',
+      );
+    }
+  }
 
   // ════════════════════════════════════════════════════════════════════════
   // Schedules (operator)
@@ -298,8 +339,25 @@ export class AvailabilityService {
   ): Promise<ExceptionResponseDto> {
     const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
     this.assertExceptionShape(dto.type, dto.startTime, dto.capacity);
+    if (
+      dto.type === AvailabilityExceptionType.ADD_SLOT ||
+      dto.type === AvailabilityExceptionType.SET_CAPACITY
+    ) {
+      await this.assertCanShapeInventory(userId, role);
+    }
     if (dto.type === AvailabilityExceptionType.ADD_SLOT)
       this.assertResolvableCapacity();
+    if (
+      dto.type === AvailabilityExceptionType.SET_CAPACITY &&
+      dto.capacity != null
+    ) {
+      await this.assertCapacityAboveBooked(
+        dto.tourId,
+        dto.date,
+        dto.startTime,
+        dto.capacity,
+      );
+    }
     const row = await this.prisma.availabilityException.create({
       data: {
         tourId: dto.tourId,
@@ -321,7 +379,7 @@ export class AvailabilityService {
       localDate: dto.date,
       operatorId,
     });
-    return mapException(row);
+    return mapException(row, await this.exceptionActorNames([row]));
   }
 
   async updateException(
@@ -363,6 +421,17 @@ export class AvailabilityService {
     );
     if (effectiveType === AvailabilityExceptionType.ADD_SLOT)
       this.assertResolvableCapacity();
+    if (
+      effectiveType === AvailabilityExceptionType.SET_CAPACITY &&
+      effectiveCapacity != null
+    ) {
+      await this.assertCapacityAboveBooked(
+        existing.tourId,
+        dateKey(existing.date),
+        effectiveStartTime,
+        effectiveCapacity,
+      );
+    }
     const row = await this.prisma.availabilityException.update({
       where: { id },
       data: {
@@ -382,13 +451,13 @@ export class AvailabilityService {
       localDate: dateKey(existing.date),
       operatorId,
     });
-    return mapException(row);
+    return mapException(row, await this.exceptionActorNames([row]));
   }
 
   async deleteException(userId: string, role: Role, id: string): Promise<void> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, date: true },
+      select: { tourId: true, date: true, type: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
     const operatorId = await this.assertTourAccess(
@@ -396,6 +465,15 @@ export class AvailabilityService {
       userId,
       role,
     );
+    // The stop-sell split cuts both ways: deleting an ADD_SLOT or SET_CAPACITY
+    // row SHAPES inventory (it removes a departure / reverts a capacity
+    // decision), so the narrow seat may only undo the close types.
+    if (
+      existing.type === AvailabilityExceptionType.ADD_SLOT ||
+      existing.type === AvailabilityExceptionType.SET_CAPACITY
+    ) {
+      await this.assertCanShapeInventory(userId, role);
+    }
     await this.prisma.availabilityException.delete({ where: { id } });
     // Removing an exception restores the underlying schedule's departures for
     // that date, so re-project + refresh the listing gate now.
@@ -405,6 +483,441 @@ export class AvailabilityService {
       localDate: dateKey(existing.date),
       operatorId,
     });
+  }
+
+  /**
+   * Resolve `createdBy` user ids to display names in one query, so every
+   * exception row can say "Closed by Maria · Jul 28, 14:02" instead of a UUID.
+   * The exception table has no FK to users (createdBy survives account
+   * deletion as a plain string), hence the manual join.
+   */
+  private async exceptionActorNames(
+    rows: Pick<AvailabilityException, 'createdBy'>[],
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(rows.map((r) => r.createdBy).filter((v): v is string => !!v)),
+    ];
+    if (ids.length === 0) return new Map();
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    });
+    return new Map(users.map((u) => [u.id, u.name]));
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Daily agenda (Surface B - one operator, ALL tours, review §3.3)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * The caller's operator WITHOUT auto-provisioning. `resolveOperatorId`
+   * mints an Operator row for admins on first touch (the right behaviour for
+   * tour CREATION, rule 19) - but on the agenda's cross-tour READS that meant
+   * a phantom tour-less operator per admin and a silently empty surface.
+   * Null = "this account runs no operator", which the callers render honestly.
+   */
+  private async operatorContext(userId: string): Promise<string | null> {
+    const operator = await this.prisma.operator.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (operator) return operator.id;
+    const seat = await this.prisma.staffMember.findUnique({
+      where: { userId },
+      select: { operatorId: true, status: true },
+    });
+    return seat?.operatorId && seat.status !== StaffStatus.SUSPENDED
+      ? seat.operatorId
+      : null;
+  }
+
+  /**
+   * The cross-tour daily agenda: every departure across the operator's tours
+   * in one chronological list, so a three-tour operator never opens three
+   * tour editors to run one stormy morning. Read-only composition - closing a
+   * row is the ordinary CLOSE_SLOT/CLOSE_DATE exception write.
+   */
+  async agenda(
+    userId: string,
+    role: Role,
+    query: AgendaQueryDto,
+  ): Promise<AgendaResponseDto> {
+    const operatorId = await this.operatorContext(userId);
+    if (!operatorId) return { days: [], tours: [], lastConfirmedAt: null };
+    const tours = await this.prisma.tour.findMany({
+      where: { operatorId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        timeZone: true,
+        bookingCutoffMinutes: true,
+        pricingModel: true,
+        availabilityConfirmedAt: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+    if (tours.length === 0) {
+      return { days: [], tours: [], lastConfirmedAt: null };
+    }
+    const tourById = new Map(tours.map((t) => [t.id, t]));
+    // One island per operator in practice - the first tour's clock anchors
+    // "today". (Per-departure cutoffs still use each tour's own clock.)
+    const from = query.from ?? dateKey(localNow(tours[0].timeZone));
+    const dayCount = query.days ?? 7;
+    const fromDate = dayDate(from);
+    const toDate = new Date(fromDate.getTime() + (dayCount - 1) * MS_PER_DAY);
+    const tourIds = tours.map((t) => t.id);
+
+    // The widest new read in the module (cross-tour × days) - project it.
+    const [departures, closures] = await Promise.all([
+      this.prisma.departure.findMany({
+        where: {
+          tourId: { in: tourIds },
+          date: { gte: fromDate, lte: toDate },
+        },
+        select: {
+          id: true,
+          tourId: true,
+          date: true,
+          startTime: true,
+          capacity: true,
+          bookedCount: true,
+          status: true,
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+      }),
+      this.prisma.availabilityException.findMany({
+        where: {
+          tourId: { in: tourIds },
+          date: { gte: fromDate, lte: toDate },
+          type: {
+            in: [
+              AvailabilityExceptionType.CLOSE_DATE,
+              AvailabilityExceptionType.CLOSE_SLOT,
+            ],
+          },
+        },
+        select: {
+          id: true,
+          tourId: true,
+          date: true,
+          startTime: true,
+          type: true,
+          note: true,
+          createdBy: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+    const actorNames = await this.exceptionActorNames(closures);
+    // The closure that stops a given departure: its slot-level row first,
+    // else the whole-day row.
+    const closureFor = (tourId: string, date: string, startTime: string) => {
+      const row =
+        closures.find(
+          (c) =>
+            c.tourId === tourId &&
+            dateKey(c.date) === date &&
+            c.type === AvailabilityExceptionType.CLOSE_SLOT &&
+            c.startTime !== null &&
+            timeOfDay(c.startTime) === startTime,
+        ) ??
+        closures.find(
+          (c) =>
+            c.tourId === tourId &&
+            dateKey(c.date) === date &&
+            c.type === AvailabilityExceptionType.CLOSE_DATE,
+        );
+      return row
+        ? {
+            id: row.id,
+            createdAt: row.createdAt.toISOString(),
+            createdByName: row.createdBy
+              ? (actorNames.get(row.createdBy) ?? null)
+              : null,
+            note: row.note,
+          }
+        : null;
+    };
+
+    const byDay = new Map<string, AgendaDepartureDto[]>();
+    for (const row of departures) {
+      const tour = tourById.get(row.tourId);
+      if (!tour) continue;
+      const now = localNow(tour.timeZone);
+      const date = dateKey(row.date);
+      const startTime = timeOfDay(row.startTime);
+      const start = combineDateTime(row.date, row.startTime);
+      const cutoffPassed =
+        now.getTime() >= start.getTime() - tour.bookingCutoffMinutes * 60_000;
+      const list = byDay.get(date) ?? [];
+      list.push({
+        id: row.id,
+        tourId: row.tourId,
+        tourName: tour.name,
+        pricingModel: tour.pricingModel,
+        date,
+        startTime,
+        bookedCount: row.bookedCount,
+        capacity: row.capacity,
+        status: liveDepartureStatus({
+          status: row.status,
+          capacity: row.capacity,
+          bookedCount: row.bookedCount,
+          cutoffPassed,
+        }),
+        cutoffPassed,
+        closure: closureFor(row.tourId, date, startTime),
+      });
+      byDay.set(date, list);
+    }
+    // Every requested day present, even empty - the agenda renders "nothing
+    // runs today" as information, not as a missing row.
+    const days: AgendaDayDto[] = [];
+    for (let i = 0; i < dayCount; i++) {
+      const date = dateKey(new Date(fromDate.getTime() + i * MS_PER_DAY));
+      days.push({ date, departures: byDay.get(date) ?? [] });
+    }
+    // The stalest confirm across tours - the freshness card reports the
+    // weakest link, not the average.
+    const stamps = tours.map((t) => t.availabilityConfirmedAt);
+    const lastConfirmedAt = stamps.some((s) => s == null)
+      ? null
+      : new Date(
+          Math.min(...stamps.map((s) => (s as Date).getTime())),
+        ).toISOString();
+    return {
+      days,
+      tours: tours.map((t) => ({ id: t.id, name: t.name })),
+      lastConfirmedAt,
+    };
+  }
+
+  /**
+   * "Close all of today" (matrix v1.6, the weather-day action): one CLOSE_DATE
+   * per tour that has departures on the date and is not already closed. The
+   * returned tourIds are the exact Undo set - reopenRange(date, date) each.
+   */
+  async closeAgendaDay(
+    userId: string,
+    role: Role,
+    dto: CloseAgendaDayDto,
+  ): Promise<CloseAgendaDayResultDto> {
+    // With a tourId the TOUR's operator anchors the scope (assertTourAccess
+    // returns it, and admins pass its bypass); without one, the caller's own
+    // operator - resolved WITHOUT provisioning, so an admin with no operator
+    // gets an honest zero instead of a phantom row and a silent no-op.
+    let operatorId: string | null;
+    if (dto.tourId) {
+      operatorId = await this.assertTourAccess(dto.tourId, userId, role);
+    } else {
+      operatorId = await this.operatorContext(userId);
+      if (!operatorId) return { closed: 0, tourIds: [] };
+    }
+    const date = dayDate(dto.date);
+    const tours = await this.prisma.tour.findMany({
+      where: {
+        operatorId,
+        isActive: true,
+        ...(dto.tourId && { id: dto.tourId }),
+      },
+      select: { id: true },
+    });
+    const tourIds = tours.map((t) => t.id);
+    if (tourIds.length === 0) return { closed: 0, tourIds: [] };
+    // Read + write in one transaction (same reasoning as closeRange): a
+    // double-tap must not write a second "who closed this" audit row.
+    const targets = await this.prisma.$transaction(async (tx) => {
+      const [withDepartures, alreadyClosed] = await Promise.all([
+        tx.departure.findMany({
+          where: { tourId: { in: tourIds }, date },
+          select: { tourId: true },
+          distinct: ['tourId'],
+        }),
+        tx.availabilityException.findMany({
+          where: {
+            tourId: { in: tourIds },
+            date,
+            type: AvailabilityExceptionType.CLOSE_DATE,
+          },
+          select: { tourId: true },
+        }),
+      ]);
+      const closedSet = new Set(alreadyClosed.map((r) => r.tourId));
+      const ids = withDepartures
+        .map((r) => r.tourId)
+        .filter((id) => !closedSet.has(id));
+      if (ids.length > 0) {
+        await tx.availabilityException.createMany({
+          data: ids.map((tourId) => ({
+            tourId,
+            date,
+            startTime: null,
+            type: AvailabilityExceptionType.CLOSE_DATE,
+            note: dto.note ?? null,
+            createdBy: userId,
+          })),
+        });
+      }
+      return ids;
+    });
+    if (targets.length > 0) {
+      // Project + refresh the gate per affected tour, now not tonight - in
+      // parallel: this is pitched as a one-tap action, not a per-tour queue.
+      await Promise.all(
+        targets.map(async (tourId) => {
+          await this.materializer.materializeTour(tourId, dto.date, dto.date);
+          await this.refreshIsBookable(tourId);
+          this.notifications.emitAvailabilityUpdate({
+            tourId,
+            localDate: dto.date,
+            operatorId,
+          });
+        }),
+      );
+    }
+    this.logger.log(
+      `User ${userId} closed ${dto.date} across ${targets.length} tour(s) (operator ${operatorId})`,
+    );
+    return { closed: targets.length, tourIds: targets };
+  }
+
+  /**
+   * Freshness confirm (E.9 `availability_confirmed_at`, dev spec §6.4): the
+   * anchor of the non-API operator's daily habit. With a tourId it stamps one
+   * tour; without, every tour of the caller's operator - the agenda's one-tap
+   * "Confirm today's availability". Visiting the availability surfaces calls
+   * this too (the visit IS a review of the calendar), so the nudge system
+   * never mails an operator who was just here.
+   */
+  async confirmAvailability(
+    userId: string,
+    role: Role,
+    dto: ConfirmAvailabilityDto,
+  ): Promise<{ confirmed: number; confirmedAt: string }> {
+    const now = new Date();
+    if (dto.tourId) {
+      await this.assertTourAccess(dto.tourId, userId, role);
+      await this.prisma.tour.update({
+        where: { id: dto.tourId },
+        data: { availabilityConfirmedAt: now },
+      });
+      return { confirmed: 1, confirmedAt: now.toISOString() };
+    }
+    const operatorId = await this.operatorContext(userId);
+    if (!operatorId) return { confirmed: 0, confirmedAt: now.toISOString() };
+    const { count } = await this.prisma.tour.updateMany({
+      where: { operatorId, isActive: true },
+      data: { availabilityConfirmedAt: now },
+    });
+    return { confirmed: count, confirmedAt: now.toISOString() };
+  }
+
+  /**
+   * Bulk blackout (dev spec §6.2, F8): one CLOSE_DATE row per date in the
+   * range, one transaction, one re-projection. A two-week haul-out is one
+   * action instead of fourteen forms. Dates already carrying a whole-day
+   * closure are skipped, so re-running an overlapping range never duplicates.
+   * The paired {@link reopenRange} with the same bounds is the one-unit Undo.
+   */
+  async closeRange(
+    userId: string,
+    role: Role,
+    dto: CloseRangeDto,
+  ): Promise<{ closed: number }> {
+    const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
+    assertDateRangeOrder(dto.from, dto.to);
+    const from = dayDate(dto.from);
+    const to = dayDate(dto.to);
+    const days = Math.round((to.getTime() - from.getTime()) / MS_PER_DAY) + 1;
+    // The calendar covers 12 months; a range beyond it is a typo, not a plan.
+    if (days > 366) {
+      throw new BadRequestException(
+        'A closure range cannot exceed 366 days - close the tour instead',
+      );
+    }
+    // Read + write in one transaction so two overlapping range-closes (a
+    // double submit, or racing the agenda's close-day) cannot both see "not
+    // closed yet" and write duplicate audit rows.
+    const rows = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.availabilityException.findMany({
+        where: {
+          tourId: dto.tourId,
+          type: AvailabilityExceptionType.CLOSE_DATE,
+          date: { gte: from, lte: to },
+        },
+        select: { date: true },
+      });
+      const alreadyClosed = new Set(existing.map((r) => dateKey(r.date)));
+      const data: Prisma.AvailabilityExceptionCreateManyInput[] = [];
+      for (let i = 0; i < days; i++) {
+        const date = new Date(from.getTime() + i * MS_PER_DAY);
+        if (alreadyClosed.has(dateKey(date))) continue;
+        data.push({
+          tourId: dto.tourId,
+          date,
+          startTime: null,
+          type: AvailabilityExceptionType.CLOSE_DATE,
+          note: dto.note ?? null,
+          createdBy: userId,
+        });
+      }
+      if (data.length > 0) await tx.availabilityException.createMany({ data });
+      return data;
+    });
+    if (rows.length > 0) {
+      // One projection pass over the whole range (not per-day): the closures
+      // must hit sellable inventory now, not at the nightly job.
+      await this.materializer.materializeTour(dto.tourId, dto.from, dto.to);
+      await this.refreshIsBookable(dto.tourId);
+      this.notifications.emitAvailabilityUpdate({
+        tourId: dto.tourId,
+        operatorId,
+      });
+    }
+    this.logger.log(
+      `User ${userId} closed range ${dto.from}..${dto.to} on tour ${dto.tourId} (${rows.length} day(s))`,
+    );
+    return { closed: rows.length };
+  }
+
+  /** The one-unit Undo of {@link closeRange}: drop every whole-day closure in the range. */
+  async reopenRange(
+    userId: string,
+    role: Role,
+    dto: ReopenRangeDto,
+  ): Promise<{ reopened: number }> {
+    const operatorId = await this.assertTourAccess(dto.tourId, userId, role);
+    assertDateRangeOrder(dto.from, dto.to);
+    // Same bound as closeRange, and checked BEFORE the delete: the
+    // materializer's own 365-day cap would otherwise throw after rows were
+    // already gone, leaving closures deleted but departures un-projected.
+    const spanDays =
+      Math.round(
+        (dayDate(dto.to).getTime() - dayDate(dto.from).getTime()) / MS_PER_DAY,
+      ) + 1;
+    if (spanDays > 366) {
+      throw new BadRequestException('A reopen range cannot exceed 366 days');
+    }
+    const { count } = await this.prisma.availabilityException.deleteMany({
+      where: {
+        tourId: dto.tourId,
+        type: AvailabilityExceptionType.CLOSE_DATE,
+        date: { gte: dayDate(dto.from), lte: dayDate(dto.to) },
+      },
+    });
+    if (count > 0) {
+      await this.materializer.materializeTour(dto.tourId, dto.from, dto.to);
+      await this.refreshIsBookable(dto.tourId);
+      this.notifications.emitAvailabilityUpdate({
+        tourId: dto.tourId,
+        operatorId,
+      });
+    }
+    this.logger.log(
+      `User ${userId} reopened range ${dto.from}..${dto.to} on tour ${dto.tourId} (${count} closure(s))`,
+    );
+    return { reopened: count };
   }
 
   async listExceptions(
@@ -424,9 +937,12 @@ export class AvailabilityService {
     }
     const rows = await this.prisma.availabilityException.findMany({
       where,
-      orderBy: { date: 'asc' },
+      // The Date Changes register reads newest-first (§3.2d): the change you
+      // just made is the one you check.
+      orderBy: [{ createdAt: 'desc' }],
     });
-    return rows.map(mapException);
+    const names = await this.exceptionActorNames(rows);
+    return rows.map((r) => mapException(r, names));
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -500,11 +1016,12 @@ export class AvailabilityService {
       list.push(mapDeparture(row, now, clock.bookingCutoffMinutes, false));
       departuresByDay.set(key, list);
     }
+    const actorNames = await this.exceptionActorNames(exceptions);
     const exceptionsByDay = new Map<string, ExceptionResponseDto[]>();
     for (const row of exceptions) {
       const key = dateKey(row.date);
       const list = exceptionsByDay.get(key) ?? [];
-      list.push(mapException(row));
+      list.push(mapException(row, actorNames));
       exceptionsByDay.set(key, list);
     }
 
@@ -812,6 +1329,62 @@ export class AvailabilityService {
   }
 
   /**
+   * The operator status line (review §3.2a): "is this tour selling?" in one
+   * read - the soonest bookable departure and how many are open inside the
+   * §7.2 30-day listing gate. Zero is the F13 warning state: the tour is out
+   * of every ranked surface (and stays reachable only by direct link) until a
+   * date opens. Same bookability rules as {@link computeIsBookable}, so the
+   * number the operator sees is exactly the number the gate counts.
+   */
+  async availabilitySummary(
+    userId: string,
+    role: Role,
+    tourId: string,
+  ): Promise<AvailabilitySummaryDto> {
+    await this.assertTourAccess(tourId, userId, role);
+    const clock = await this.tourClock(tourId);
+    const now = localNow(clock.timeZone);
+    const horizon = new Date(
+      now.getTime() + BOOKABLE_HORIZON_DAYS * MS_PER_DAY,
+    );
+    const candidates = await this.prisma.departure.findMany({
+      where: {
+        tourId,
+        status: DepartureStatus.OPEN,
+        date: { gte: dayDate(dateKey(now)), lte: dayDate(dateKey(horizon)) },
+      },
+      select: {
+        date: true,
+        startTime: true,
+        capacity: true,
+        bookedCount: true,
+        status: true,
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+    });
+    let openInNext30Days = 0;
+    let nextDeparture: AvailabilitySummaryDto['nextDeparture'] = null;
+    for (const c of candidates) {
+      const start = combineDateTime(c.date, c.startTime);
+      const cutoffPassed =
+        now.getTime() >= start.getTime() - clock.bookingCutoffMinutes * 60_000;
+      const live = liveDepartureStatus({
+        status: c.status,
+        capacity: c.capacity,
+        bookedCount: c.bookedCount,
+        cutoffPassed,
+      });
+      if (!isDepartureBookable(live)) continue;
+      openInNext30Days++;
+      nextDeparture ??= {
+        date: dateKey(c.date),
+        startTime: timeOfDay(c.startTime),
+      };
+    }
+    return { openInNext30Days, nextDeparture };
+  }
+
+  /**
    * Whether the tour has >=1 OPEN, non-cutoff departure within {@link BOOKABLE_HORIZON_DAYS}
    * (master §6). Feeds the nightly `isBookable` flag (ranking/search) - Phase 9.
    */
@@ -859,10 +1432,39 @@ export class AvailabilityService {
    */
   async refreshIsBookable(tourId: string): Promise<boolean> {
     const bookable = await this.computeIsBookable(tourId);
+    // Read the previous value so the EDGE can be detected. A tour that has been
+    // unlisted for a week does not need telling again every nightly run; the
+    // moment it FALLS OFF is the news.
+    const before = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: { isBookable: true, status: true, name: true, operatorId: true },
+    });
     await this.prisma.tour.update({
       where: { id: tourId },
       data: { isBookable: bookable },
     });
+
+    // The silent failure this is worth having: LIVE, published, and invisible
+    // because the departures ran out. Nothing surfaced it before - you had to
+    // open the tour and notice.
+    if (
+      before &&
+      before.isBookable &&
+      !bookable &&
+      before.status === TourStatus.LIVE
+    ) {
+      this.inbox.notify({
+        event: InboxEvent.TOUR_UNLISTED_NO_DEPARTURES,
+        operatorId: before.operatorId,
+        title: `${before.name} has dropped out of listings`,
+        body: 'It is still published, but has no bookable departures in the next 30 days, so travellers cannot find it. Add availability to bring it back.',
+        url: `/trips/${tourId}/edit?step=schedule`,
+        entityType: 'tour',
+        entityId: tourId,
+        // Re-notifiable: if it recovers and falls off again, that is new news.
+        dedupeKey: `TOUR_UNLISTED_NO_DEPARTURES:${tourId}:${new Date().toISOString().slice(0, 10)}`,
+      });
+    }
     return bookable;
   }
 
@@ -1007,6 +1609,44 @@ export class AvailabilityService {
   }
 
   /**
+   * Master E.9: "capacity below booked_count is admin-only with a warning and
+   * never auto-cancels". The materializer honours that by refusing to resize any
+   * departure with `bookedCount > 0`, which made a too-low SET_CAPACITY a SILENT
+   * no-op: the row was stored, the departure kept its old capacity, and the
+   * operator got a success response with nothing changed. Refuse it at the write
+   * instead, so the portal can never claim a capacity it did not get.
+   *
+   * Scoped like the exception itself: a slot-level row checks only that
+   * departure, a whole-day row checks every departure on the date.
+   */
+  private async assertCapacityAboveBooked(
+    tourId: string,
+    date: string,
+    startTime: string | undefined,
+    capacity: number,
+  ): Promise<void> {
+    const rows = await this.prisma.departure.findMany({
+      where: {
+        tourId,
+        date: dayDate(date),
+        ...(startTime && { startTime: hhmmToTime(startTime) }),
+      },
+      select: { startTime: true, bookedCount: true },
+    });
+    const worst = rows.reduce<{ startTime: Date; bookedCount: number } | null>(
+      (max, r) =>
+        r.bookedCount > capacity && (!max || r.bookedCount > max.bookedCount)
+          ? r
+          : max,
+      null,
+    );
+    if (!worst) return;
+    throw new BadRequestException(
+      `Capacity cannot be lower than the ${worst.bookedCount} seat(s) already booked on the ${timeOfDay(worst.startTime)} departure. Existing bookings are never auto-cancelled; lowering below the booked count is an Island Tours support action.`,
+    );
+  }
+
+  /**
    * Public re-projection hook for callers outside the availability module (e.g.
    * {@link ToursService} when a tour's `maxPartySize` - the schedules' default
    * capacity - changes). Re-materialises the near-term window and refreshes the
@@ -1053,7 +1693,10 @@ function mapSchedule(row: AvailabilitySchedule): ScheduleResponseDto {
   };
 }
 
-function mapException(row: AvailabilityException): ExceptionResponseDto {
+function mapException(
+  row: AvailabilityException,
+  actorNames?: Map<string, string>,
+): ExceptionResponseDto {
   return {
     id: row.id,
     tourId: row.tourId,
@@ -1062,6 +1705,12 @@ function mapException(row: AvailabilityException): ExceptionResponseDto {
     type: row.type,
     capacity: row.capacity,
     note: row.note,
+    // Audit surface (dev spec §6.5): every override answers "who, when" so an
+    // "I never closed that date" dispute is resolvable from the screen.
+    createdAt: row.createdAt.toISOString(),
+    createdByName: row.createdBy
+      ? (actorNames?.get(row.createdBy) ?? null)
+      : null,
   };
 }
 

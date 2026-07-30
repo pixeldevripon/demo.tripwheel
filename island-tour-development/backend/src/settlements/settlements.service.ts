@@ -7,12 +7,14 @@ import {
 import {
   BookingStatus,
   Currency,
+  InboxEvent,
   Locale,
   PaymentModel,
   Prisma,
   Role,
   SettlementStatus,
 } from '@prisma/client';
+import { InboxService } from '@/inbox/inbox.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { MailService } from '@/mail/mail.service';
 import { emailSafeLogoUrl } from '@/mail/email-logo.util';
@@ -71,6 +73,7 @@ export class SettlementsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly inbox: InboxService,
   ) {}
 
   /**
@@ -336,6 +339,21 @@ export class SettlementsService {
       // Both ledger flips are admin-only (MANAGE_PAYMENTS), so the byline is
       // always the platform.
       const byline = 'Island Tours';
+
+      // The bell, beside the email. PAID_OUT only: a reversion is an internal
+      // correction, and telling an operator their payout un-happened without a
+      // human explaining why creates a support call, not clarity.
+      if (change === 'PAID_OUT') {
+        this.inbox.notify({
+          event: InboxEvent.SETTLEMENT_STATEMENT_READY,
+          operatorId: row.operatorId,
+          title: `Payout marked as paid - ${amount}`,
+          body: `Booking ${ref}, ${tourName}.`,
+          url: '/settlements',
+          entityType: 'settlement',
+          entityId: id,
+        });
+      }
 
       const shared = {
         emailIconBase: emailIconBase(),
