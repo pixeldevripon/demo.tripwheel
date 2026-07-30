@@ -3477,6 +3477,14 @@ export class BookingsService {
       },
     });
 
+    // DEV ONLY: demo traveller inboxes (@demo.islandtours.test) are not real
+    // mailboxes, so the code is surfaced in the server log for local testing.
+    // Hard-gated on NODE_ENV - an OTP in a shipped production log line is a
+    // leaked credential (logs outlive the 10-minute code and get aggregated).
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`[DEV ONLY] Traveller login code for ${email}: ${code}`);
+    }
+
     // A credential email, so it goes out on the AUTH shell rather than the
     // booking-notice one: this message is about signing in, and the notice
     // shell wrapped the code in a tour name and departure date that have
