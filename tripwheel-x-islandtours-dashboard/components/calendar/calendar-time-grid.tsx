@@ -339,7 +339,7 @@ export function CalendarTimeGrid({
                                                     ? { duration: 0 }
                                                     : springPop
                                             }
-                                            className='pointer-events-none absolute inset-0 bg-primary-subtle/20'
+                                            className='pointer-events-none absolute inset-0 border-x border-primary/25 bg-primary-subtle/50'
                                         />
                                     )}
                                 {hours.map((h) => (
