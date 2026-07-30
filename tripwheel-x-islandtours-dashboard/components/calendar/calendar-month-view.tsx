@@ -43,12 +43,14 @@ export function CalendarMonthView({
 }) {
     const anchorMonth = getMonth(keyToDate(anchor));
     return (
-        <div className='overflow-hidden rounded-lg border border-border/70'>
-            <div className='grid grid-cols-7'>
+        // Same frame language as the week/day time grid: white surface,
+        // hairline borders - never a tinted header band or a dark lattice.
+        <div className='overflow-hidden rounded-lg border border-border/70 bg-background'>
+            <div className='grid grid-cols-7 border-b border-border/50'>
                 {WEEKDAYS.map((d) => (
                     <div
                         key={d}
-                        className='bg-muted/50 py-2 text-center text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
+                        className='border-l border-border/50 py-2.5 text-center text-2xs font-medium uppercase tracking-wider text-muted-foreground first:border-l-0'>
                         {d}
                     </div>
                 ))}
@@ -56,7 +58,7 @@ export function CalendarMonthView({
             {/* The six auto-rows-fr weeks stretch to fill the viewport (the
                 calc mirrors the time grid's), with the per-cell min-h as the
                 floor on short screens. */}
-            <div className='grid min-h-[calc(100dvh-310px)] grid-cols-7 auto-rows-fr gap-px border-t border-border/70 bg-border/70'>
+            <div className='grid min-h-[calc(100dvh-310px)] grid-cols-7 auto-rows-fr'>
                 {days.map((day) => (
                     <MonthCell
                         key={day.date}
@@ -102,7 +104,9 @@ function MonthCell({
     return (
         <div
             className={cn(
-                'group relative flex min-h-24 flex-col gap-1 bg-background p-1 md:min-h-28 md:p-1.5',
+                // Hairline cell borders matching the time grid (first column
+                // and first row lean on the frame/header borders instead).
+                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 first:border-l-0 md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
             )}>
