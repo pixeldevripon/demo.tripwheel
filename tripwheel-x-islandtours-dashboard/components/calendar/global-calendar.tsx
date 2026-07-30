@@ -138,8 +138,9 @@ export function GlobalCalendar() {
     }
 
     const label = rangeLabel(view, anchor);
-    // Add lands on the anchor day, unless it is already behind the island.
-    const addDate = anchor >= today ? anchor : today;
+    // Adding targets the picked day; a past pick disables the button rather
+    // than silently retargeting (the backend refuses writes into the past).
+    const addDisabled = anchor < today;
     const addTours = tourId ? tours.filter((t) => t.id === tourId) : tours;
 
     const filters = (
@@ -227,10 +228,17 @@ export function GlobalCalendar() {
                 <aside className='hidden w-60 shrink-0 flex-col gap-4 xl:flex'>
                     {canShape && (
                         <AddEventPopover
-                            date={addDate}
+                            date={anchor}
                             tours={addTours}
                             defaultTourId={tourId}>
-                            <Button className='h-10 w-full justify-start gap-2'>
+                            <Button
+                                disabled={addDisabled}
+                                title={
+                                    addDisabled
+                                        ? 'Pick today or a future date to add'
+                                        : undefined
+                                }
+                                className='h-10 w-full justify-start gap-2'>
                                 <HugeiconsIcon
                                     icon={PlusSignIcon}
                                     className='size-4'
