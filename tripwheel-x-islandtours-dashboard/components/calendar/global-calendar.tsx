@@ -271,24 +271,28 @@ export function GlobalCalendar() {
                             </PopoverContent>
                         </Popover>
                         {filters}
+                    </div>
+                    <div className='flex items-center gap-2'>
+                        <Tabs
+                            value={view}
+                            onValueChange={(v) => changeView(v as CalendarView)}>
+                            <TabsList className='h-9'>
+                                <TabsTrigger value='day'>Day</TabsTrigger>
+                                <TabsTrigger value='week'>Week</TabsTrigger>
+                                <TabsTrigger value='month'>Month</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        {/* Mobile Range rides the view-switch row, right of
+                            the tabs (the sidebar owns it at xl+). */}
                         {canStopSell && (
                             <Button
                                 variant='outline'
-                                className='h-10'
+                                className='h-9 xl:hidden'
                                 onClick={() => setRangeOpen(true)}>
                                 Range
                             </Button>
                         )}
                     </div>
-                    <Tabs
-                        value={view}
-                        onValueChange={(v) => changeView(v as CalendarView)}>
-                        <TabsList className='h-9'>
-                            <TabsTrigger value='day'>Day</TabsTrigger>
-                            <TabsTrigger value='week'>Week</TabsTrigger>
-                            <TabsTrigger value='month'>Month</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
                 </div>
             </div>
 
