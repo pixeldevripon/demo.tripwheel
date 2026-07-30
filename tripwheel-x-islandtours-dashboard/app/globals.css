@@ -631,37 +631,29 @@
 }
 
 /* ── Toast (sonner): the status ribbon ───────────────────────────────────────
- * Redesigned 2026-07-30 (user call): a full-width ribbon across the top of
- * the app, not a 356px card in the corner. The corner card had two failure
- * modes - a long backend message (a 409 with a real explanation) wrapped into
- * an unreadable brick, and anything shorter was easy to miss entirely.
+ * Redesigned 2026-07-30 (user calls, in order): top-centre ribbon instead of
+ * a 356px corner card; then content-hugging width (min 350px) so text WIDENS
+ * instead of wrapping; splash entrance reduced to a gentle content rise (the
+ * icon drop/ripple drew the eye to the icon instead of the words).
  *
- * The ribbon's grammar:
- *  - one severity WASH bleeding in from the left edge and fading out by ~28%
- *    of the width - colour announces the kind of news, then gets out of the
- *    way of the words (a full-width solid tint would shout for 4 seconds);
- *  - the icon in a tinted CHIP anchors the wash, and stays the strongest
- *    semantic mark;
- *  - title/description keep their hierarchy but at ribbon scale (14/13) -
- *    corner-card 13px read as a whisper across 1500px;
- *  - text is capped at a readable measure (~70ch) so a one-line message never
- *    stretches letterbox-wide, while the SURFACE still spans the app.
+ * SPECIFICITY NOTE: sonner ships its own styles at up to
+ * `[data-sonner-toast][data-styled='true'] [data-x]` = (0,3,0), and its
+ * stylesheet loads AFTER globals.css, so ties lose. Every rule here rides the
+ * `.cn-toast[data-sonner-toast][data-styled='true']` prefix to sit one class
+ * above whatever sonner says. Do not "simplify" the selectors back down.
  */
-/* The LANE the toast may occupy: viewport minus a gutter. Sonner writes its
- * 356px default as an INLINE --width on the <ol>, so this needs !important to
- * win (03 §8.3 bans the inline-style escape hatch). */
+
+/* The LANE a toast may occupy: viewport minus a gutter. Sonner writes its
+ * 356px default as an INLINE --width on the <ol>, hence !important
+ * (03 §8.3 bans the inline-style escape hatch). */
 .toaster[data-sonner-toaster] {
     --width: calc(100vw - 2rem) !important;
 }
 
-/* Sizing (user call 2026-07-30): the toast HUGS its content - min 350px so a
- * two-word success doesn't shrink to a chip, growing as wide as the message
- * needs so text widens instead of wrapping, capped only by the lane. Centred
- * by stretching the absolute li across the lane and letting margin auto split
- * the slack (sonner drives the li's transform, so translateX centring is not
- * available to us). */
-.cn-toast {
-    position: relative;
+/* Geometry: the li is position:absolute (sonner stacks via --y transforms),
+ * so left/right 0 + margin auto centres a fit-content box inside the lane.
+ * Short toasts hold a 350px floor; long messages widen until the lane ends. */
+.cn-toast[data-sonner-toast][data-styled='true'] {
     display: flex;
     left: 0;
     right: 0;
@@ -681,9 +673,8 @@
 }
 
 /* The wash: severity colour entering from the left, gone by a third of the
- * ribbon. A static paint layer - the water language lives in the ENTRANCE
- * (user call 2026-07-30: splash is how the toast APPEARS, not how it looks). */
-.cn-toast::before {
+ * toast. A static paint layer. */
+.cn-toast[data-sonner-toast][data-styled='true']::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -693,33 +684,6 @@
         var(--cn-toast-wash, transparent),
         transparent 28%
     );
-}
-
-/* Entrance: one gentle rise on the content while sonner slides the toast in.
- * The icon-drop + ripple splash was tried and pulled (user call 2026-07-30) -
- * it drew the eye to the icon instead of the words. */
-.cn-toast [data-content],
-.cn-toast [data-button],
-.cn-toast [data-close-button] {
-    animation: cn-toast-surface 0.45s ease-out 0.1s backwards;
-}
-@keyframes cn-toast-surface {
-    0% {
-        transform: translateY(0.375rem);
-        opacity: 0;
-    }
-    100% {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .cn-toast [data-content],
-    .cn-toast [data-button],
-    .cn-toast [data-close-button] {
-        animation: none;
-    }
 }
 
 .cn-toast[data-type='error'] {
@@ -740,9 +704,8 @@
 }
 
 /* Icon chip: a 28px tile carrying the severity colour on its own wash - the
- * one solid semantic mark on the ribbon. Loading/plain toasts fall back to a
- * quiet neutral tile. */
-.cn-toast [data-icon] {
+ * one solid semantic mark on the toast. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-icon] {
     position: relative;
     display: grid;
     place-items: center;
@@ -755,15 +718,13 @@
     color: var(--cn-toast-accent, var(--content-subtle));
 }
 
-/* No measure cap: the toast now hugs its content, so the text itself decides
- * the width - it widens rather than wraps, until the lane runs out. */
-.cn-toast [data-content] {
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content] {
     position: relative;
     min-width: 0;
     align-self: center;
 }
 
-.cn-toast [data-title] {
+.cn-toast[data-sonner-toast][data-styled='true'] [data-title] {
     font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.45;
@@ -771,7 +732,7 @@
 }
 
 /* Detail reads as body copy. Never coloured - colour is the chip's job. */
-.cn-toast [data-description] {
+.cn-toast[data-sonner-toast][data-styled='true'] [data-description] {
     margin-top: 0.125rem;
     font-size: 0.8125rem;
     font-weight: 400;
@@ -779,8 +740,8 @@
     color: var(--content-muted);
 }
 
-/* Action (e.g. Undo) rides the right edge of the ribbon, always visible. */
-.cn-toast [data-button] {
+/* Action (e.g. Undo) rides the right edge, just inside the dismiss. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button] {
     position: relative;
     height: 1.75rem;
     margin-left: auto;
@@ -792,11 +753,9 @@
     font-weight: 500;
 }
 
-/* Sonner absolutely positions its close button as a disc hanging off the
- * TOP-LEFT corner (inline start vars + its own transform), which is why the
- * flex-order approach lost. Pin it to the right edge, vertically centred -
- * the !importants beat sonner's own positioning, not our own code. */
-.cn-toast [data-close-button] {
+/* Dismiss: pinned right-centre. Sonner floats its close disc off the TOP-LEFT
+ * corner via inline-start vars + its own transform - hence the !importants. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
     position: absolute;
     left: auto !important;
     right: 0.75rem !important;
@@ -814,7 +773,33 @@
     cursor: pointer;
     pointer-events: auto;
 }
-.cn-toast [data-close-button]:hover {
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button]:hover {
     background: var(--surface-inset);
     color: var(--content);
+}
+
+/* Entrance: one gentle rise on the content while sonner slides the toast in.
+ * The icon-drop + ripple splash was tried and pulled (user call 2026-07-30). */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+    animation: cn-toast-surface 0.45s ease-out 0.1s backwards;
+}
+@keyframes cn-toast-surface {
+    0% {
+        transform: translateY(0.375rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+        animation: none;
+    }
 }
