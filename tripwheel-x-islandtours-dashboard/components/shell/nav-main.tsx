@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { InboxNavBadge } from '@/components/common/inbox-nav-badge';
 import { useNavPrefetch } from '@/components/shell/use-nav-prefetch';
 import {
     SidebarGroup,
@@ -73,11 +74,21 @@ function SpotlightBadge() {
  * Actionable count badges (04 §1.4: badges only where a number demands
  * action). Keyed by nav url; each badge only mounts when its item survived
  * permission filtering, so operators never fire admin-only queries.
+ *
+ * ONE badge per row, deliberately. The three above count OPEN WORK; the inbox
+ * ones below count UNREAD notifications. Put both on a row and they disagree
+ * the moment you read a notification without doing the work - so the queue
+ * badge keeps its row and those categories reach you through the bell instead.
+ * The inbox fills only the rows that had no number at all.
  */
 const NAV_BADGES: Record<string, React.ComponentType> = {
     'cancellation-requests': CancellationsBadge,
     reviews: PendingReviewsBadge,
     spotlight: SpotlightBadge,
+    trips: () => <InboxNavBadge category='TOURS' />,
+    bookings: () => <InboxNavBadge category='BOOKINGS' />,
+    payments: () => <InboxNavBadge category='PAYMENTS' />,
+    settlements: () => <InboxNavBadge category='SETTLEMENTS' />,
 };
 
 /**

@@ -1,3 +1,4 @@
+import { NotificationBell } from '@/components/common/notification-bell';
 import { CommandPalette } from '@/components/shell/command-palette';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -39,10 +40,7 @@ export function SiteHeader({
                         userPermissions={userPermissions}
                     />
 
-                    {/*       <HugeiconsIcon
-            className="cursor-pointer size-5 text-muted-foreground hover:text-foreground transition-colors"
-            icon={Notification01Icon}
-          /> */}
+                    <NotificationBell />
                     <ProfileDropdown
                         loggedInUser={{
                             name: userName,
