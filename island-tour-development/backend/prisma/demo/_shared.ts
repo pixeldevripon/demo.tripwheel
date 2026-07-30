@@ -167,8 +167,33 @@ export function isoWeekday(date: Date): number {
 }
 
 /** Booking display ref — mirror makeDisplayRef(id, localStart). */
+/**
+ * E.8 display_ref (IT-{year}-XXXXX, Crockford-style alphabet - no 0/1/I/L/O/U),
+ * matching the LIVE generator in bookings.service.ts. Derived DETERMINISTICALLY
+ * from the row id (not crypto-random like production) so `--clean` re-runs
+ * reproduce the same refs - they are login credentials in the demo docs.
+ */
+const DISPLAY_REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+const usedDisplayRefs = new Set<string>();
+
 export function makeDisplayRef(id: string, year: number): string {
-  return `IT-${year}-${id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  const hex = id.replace(/-/g, '');
+  // Successive byte windows: on the (vanishingly rare) collision within a
+  // seed run, slide one byte further into the uuid until the ref is free.
+  for (let offset = 0; offset + 10 <= hex.length; offset += 2) {
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      const byte = parseInt(hex.slice(offset + i * 2, offset + i * 2 + 2), 16);
+      code += DISPLAY_REF_ALPHABET[byte % DISPLAY_REF_ALPHABET.length];
+    }
+    const ref = `IT-${year}-${code}`;
+    if (!usedDisplayRefs.has(ref)) {
+      usedDisplayRefs.add(ref);
+      return ref;
+    }
+  }
+  // 12 windows all taken - practically unreachable; make it visible, not silent.
+  throw new Error(`demo seed: could not derive a unique display ref for ${id}`);
 }
 
 // ── Deterministic PRNG (so re-runs after --clean reproduce the same shape) ───────

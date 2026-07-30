@@ -947,7 +947,16 @@
         "receiptReference": "Boekingsreferentie",
         "receiptNotInvoice": "Dit is een betaalbewijs van een betaling aan Island Tours, geen factuur.",
         "receiptPrint": "Print of bewaar als PDF",
-        "receiptBack": "Terug naar jouw boekingen"
+        "receiptBack": "Terug naar jouw boekingen",
+        "dateChangeCta": "Datum wijzigen",
+        "dateChangeTitle": "Kies een nieuwe datum",
+        "dateChangeNote": "Gratis binnen je gratis-annuleren-venster. Je referentie, prijs en betalingen blijven hetzelfde.",
+        "dateChangeLoading": "Beschikbare data ophalen...",
+        "dateChangeNoOptions": "Er zijn nu geen andere data open. WhatsApp ons en we kijken wat er kan.",
+        "dateChangeConfirm": "Verplaats mijn boeking",
+        "dateChangeMoving": "Verplaatsen...",
+        "dateChangeKeep": "Deze datum houden",
+        "dateChangeFailed": "Die datum kon niet geboekt worden. Kies een andere of probeer het zo opnieuw."
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",

@@ -947,7 +947,16 @@
         "receiptReference": "Buchungsreferenz",
         "receiptNotInvoice": "Dies ist ein Beleg über eine Zahlung an Island Tours, keine Rechnung.",
         "receiptPrint": "Drucken oder als PDF speichern",
-        "receiptBack": "Zurück zu deinen Buchungen"
+        "receiptBack": "Zurück zu deinen Buchungen",
+        "dateChangeCta": "Datum ändern",
+        "dateChangeTitle": "Neues Datum wählen",
+        "dateChangeNote": "Kostenlos innerhalb deines kostenlosen Stornofensters. Referenz, Preis und Zahlungen bleiben gleich.",
+        "dateChangeLoading": "Freie Termine werden geladen...",
+        "dateChangeNoOptions": "Gerade sind keine anderen Termine offen. Schreib uns auf WhatsApp und wir schauen, was geht.",
+        "dateChangeConfirm": "Buchung verschieben",
+        "dateChangeMoving": "Wird verschoben...",
+        "dateChangeKeep": "Dieses Datum behalten",
+        "dateChangeFailed": "Dieser Termin konnte nicht gebucht werden. Wähle einen anderen oder versuche es gleich erneut."
     },
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",

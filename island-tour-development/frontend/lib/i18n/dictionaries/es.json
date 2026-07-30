@@ -947,7 +947,16 @@
         "receiptReference": "Referencia de reserva",
         "receiptNotInvoice": "Esto es un recibo de un pago a Island Tours, no una factura.",
         "receiptPrint": "Imprimir o guardar como PDF",
-        "receiptBack": "Volver a tus reservas"
+        "receiptBack": "Volver a tus reservas",
+        "dateChangeCta": "Cambiar fecha",
+        "dateChangeTitle": "Elige una nueva fecha",
+        "dateChangeNote": "Gratis dentro de tu ventana de cancelación gratuita. Tu referencia, precio y pagos no cambian.",
+        "dateChangeLoading": "Buscando fechas abiertas...",
+        "dateChangeNoOptions": "Ahora mismo no hay otras fechas abiertas. Escríbenos por WhatsApp y vemos qué se puede hacer.",
+        "dateChangeConfirm": "Mover mi reserva",
+        "dateChangeMoving": "Moviendo...",
+        "dateChangeKeep": "Mantener esta fecha",
+        "dateChangeFailed": "No se pudo reservar esa fecha. Elige otra o inténtalo de nuevo en un momento."
     },
     "reviewSubmit": {
         "invalidTitle": "Este enlace de reseña ya no es válido.",

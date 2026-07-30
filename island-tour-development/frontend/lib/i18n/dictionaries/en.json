@@ -947,7 +947,16 @@
         "receiptReference": "Booking reference",
         "receiptNotInvoice": "This is a receipt of a payment to Island Tours, not a tax invoice.",
         "receiptPrint": "Print or save as PDF",
-        "receiptBack": "Back to your bookings"
+        "receiptBack": "Back to your bookings",
+        "dateChangeCta": "Change date",
+        "dateChangeTitle": "Pick a new date",
+        "dateChangeNote": "Free of charge inside your free-cancellation window. Your reference, price and payments stay the same.",
+        "dateChangeLoading": "Checking open dates...",
+        "dateChangeNoOptions": "No other dates are open right now. WhatsApp us and we'll see what we can do.",
+        "dateChangeConfirm": "Move my booking",
+        "dateChangeMoving": "Moving...",
+        "dateChangeKeep": "Keep this date",
+        "dateChangeFailed": "That date could not be booked. Pick another one or try again in a moment."
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

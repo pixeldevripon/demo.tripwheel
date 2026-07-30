@@ -947,7 +947,16 @@
         "receiptReference": "预订参考编号",
         "receiptNotInvoice": "这是支付给 Island Tours 的付款收据，不是税务发票。",
         "receiptPrint": "打印或另存为 PDF",
-        "receiptBack": "返回您的预订"
+        "receiptBack": "返回您的预订",
+        "dateChangeCta": "更改日期",
+        "dateChangeTitle": "选择新日期",
+        "dateChangeNote": "在免费取消期内更改免费。参考编号、价格和付款保持不变。",
+        "dateChangeLoading": "正在查询可选日期...",
+        "dateChangeNoOptions": "目前没有其他可选日期。通过 WhatsApp 联系我们，我们来想办法。",
+        "dateChangeConfirm": "改期我的预订",
+        "dateChangeMoving": "正在改期...",
+        "dateChangeKeep": "保留此日期",
+        "dateChangeFailed": "该日期无法预订。请选择其他日期或稍后重试。"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",
