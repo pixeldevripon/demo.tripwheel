@@ -2,7 +2,9 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlusSignIcon } from '@hugeicons/core-free-icons';
+import { motion, useReducedMotion } from 'framer-motion';
 import { getMonth } from 'date-fns';
+import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewTour } from '@/types/trip';
 import { AddEventPopover } from './add-event-popover';
@@ -109,6 +111,7 @@ function MonthCell({
     canShape: boolean;
     onOpenDay: (date: string) => void;
 }) {
+    const reduceMotion = useReducedMotion();
     const dayNumber = Number(day.date.slice(8, 10));
     const overflow = day.departures.length - MAX_CHIPS;
     return (
@@ -119,10 +122,17 @@ function MonthCell({
                 'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 first:border-l-0 md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
-                // Mirrors the mini calendar's picked date (trip-calendar
-                // marked-cell idiom).
-                isSelected && 'ring-2 ring-inset ring-primary/60',
             )}>
+            {/* Mirrors the mini calendar's picked date. A shared layoutId
+                makes the ring GLIDE between cells instead of teleporting. */}
+            {isSelected && (
+                <motion.div
+                    layoutId='calendar-selected-cell'
+                    aria-hidden
+                    transition={reduceMotion ? { duration: 0 } : springPop}
+                    className='pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-primary/60'
+                />
+            )}
             <div className='flex items-center justify-between'>
                 <button
                     type='button'

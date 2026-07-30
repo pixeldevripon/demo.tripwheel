@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
 import {
     Popover,
@@ -10,6 +11,7 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewDeparture, OverviewTour } from '@/types/trip';
+import { springPop } from '@/lib/motion';
 import { AddEventForm } from './add-event-popover';
 import { gmtLabel, keyToDate } from './calendar-utils';
 import { DayPeek } from './day-peek';
@@ -135,6 +137,7 @@ export function CalendarTimeGrid({
     canShape: boolean;
     onOpenDay: (date: string) => void;
 }) {
+    const reduceMotion = useReducedMotion();
     // A lone day column has room for more side-by-side chips than a week's;
     // narrow screens cap harder so chips never turn into slivers.
     const isMobile = useIsMobile();
@@ -252,14 +255,24 @@ export function CalendarTimeGrid({
                                 </span>
                                 <span
                                     className={cn(
-                                        'flex size-6 items-center justify-center rounded-full text-sm font-medium',
+                                        'relative flex size-6 items-center justify-center rounded-full text-sm font-medium',
                                         isToday && 'bg-foreground text-background',
-                                        // The mini calendar's pick, when it is
-                                        // not simply today.
-                                        isSelected &&
-                                            !isToday &&
-                                            'ring-2 ring-inset ring-primary/60',
                                     )}>
+                                    {/* The mini calendar's pick (when not
+                                        simply today) - the shared layoutId
+                                        glides the ring between days. */}
+                                    {isSelected && !isToday && (
+                                        <motion.span
+                                            layoutId='timegrid-selected-day'
+                                            aria-hidden
+                                            transition={
+                                                reduceMotion
+                                                    ? { duration: 0 }
+                                                    : springPop
+                                            }
+                                            className='pointer-events-none absolute inset-0 rounded-full ring-2 ring-inset ring-primary/60'
+                                        />
+                                    )}
                                     {format(d, 'd')}
                                 </span>
                             </button>
@@ -311,13 +324,24 @@ export function CalendarTimeGrid({
                                 className={cn(
                                     'relative min-w-0 flex-1 border-l border-border/50',
                                     isPastDay && 'bg-muted/20',
-                                    // Wash the mini calendar's picked column
-                                    // (week view only - a day view IS it).
-                                    day.date === selectedDate &&
-                                        days.length > 1 &&
-                                        'bg-primary-subtle/20',
                                     canShape && !isPastDay && 'cursor-pointer',
                                 )}>
+                                {/* The picked column's wash glides with the
+                                    header ring (week view only - a day view
+                                    IS the picked date). */}
+                                {day.date === selectedDate &&
+                                    days.length > 1 && (
+                                        <motion.div
+                                            layoutId='timegrid-selected-col'
+                                            aria-hidden
+                                            transition={
+                                                reduceMotion
+                                                    ? { duration: 0 }
+                                                    : springPop
+                                            }
+                                            className='pointer-events-none absolute inset-0 bg-primary-subtle/20'
+                                        />
+                                    )}
                                 {hours.map((h) => (
                                     <div
                                         key={h}
