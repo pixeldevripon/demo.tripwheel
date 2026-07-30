@@ -50,7 +50,12 @@ export default function MediaSelector({
                         {KIND_TITLE[kind ?? 'all']}
                     </DialogTitle>
                 </DialogHeader>
-                <div className='flex-1 min-h-0 p-6 overflow-hidden'>
+                {/* `flex flex-col` is load-bearing, not decoration. Without it
+                    this box is a BLOCK, so the `flex-1 min-h-0` on
+                    MediaGalleryManager below is inert and the gallery renders at
+                    its natural height - which `overflow-hidden` then crops,
+                    silently taking the bottom of the panel with it. */}
+                <div className='flex min-h-0 flex-1 flex-col p-6 overflow-hidden'>
                     <MediaGalleryManager
                         selector={true}
                         onMediaSelect={handleMediaSelect}
