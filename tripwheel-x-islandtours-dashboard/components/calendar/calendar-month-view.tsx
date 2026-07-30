@@ -53,7 +53,10 @@ export function CalendarMonthView({
                     </div>
                 ))}
             </div>
-            <div className='grid grid-cols-7 auto-rows-fr gap-px border-t border-border/70 bg-border/70'>
+            {/* The six auto-rows-fr weeks stretch to fill the viewport (the
+                calc mirrors the time grid's), with the per-cell min-h as the
+                floor on short screens. */}
+            <div className='grid min-h-[calc(100dvh-310px)] grid-cols-7 auto-rows-fr gap-px border-t border-border/70 bg-border/70'>
                 {days.map((day) => (
                     <MonthCell
                         key={day.date}
