@@ -12,10 +12,53 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Radix Select, with one behaviour patched out.
+ *
+ * ## Why `onValueChange('')` is swallowed
+ *
+ * Radix mirrors the select's value into a hidden native `<select>` so the
+ * control works inside a plain HTML form. That mirror is UNCONTROLLED
+ * (`defaultValue`), so Radix keeps it in sync imperatively: whenever the value
+ * changes it assigns `select.value = next` and dispatches a REAL `change` event,
+ * which React routes straight back into `onValueChange`.
+ *
+ * Its `<option>` list is built from the items, and each item registers itself
+ * from an effect. So there is a window - right after mount - where the mirror
+ * has no options at all. Assigning an unknown value to an option-less
+ * `<select>` does not throw; the DOM silently coerces it to `''`. Radix then
+ * dispatches that `''` back as if the user had chosen it, and the real value is
+ * gone.
+ *
+ * That window is not theoretical: any form that renders a skeleton until its
+ * data arrives (`if (isLoading) return <Skeleton />`) mounts its selects in the
+ * very commit that also calls `reset(data)`, which is exactly the collision.
+ * It cost the AI Translation provider field: it rendered blank on load and then
+ * SAVED the blank over the stored provider, with a "Settings saved" toast.
+ *
+ * `''` is safe to drop unconditionally because Radix itself throws if a
+ * `SelectItem` has `value=""` - so no user choice can ever produce it, and any
+ * `''` arriving here is the mirror echoing its own inability to hold the value.
+ * The mirror stays stale until the next real change, which affects nothing: the
+ * dashboard reads every select through React state, never through native form
+ * submission.
+ *
+ * Keep this wrapper if `select.tsx` is ever re-generated from shadcn.
+ */
 function Select({
+    onValueChange,
     ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-    return <SelectPrimitive.Root data-slot='select' {...props} />;
+    return (
+        <SelectPrimitive.Root
+            data-slot='select'
+            onValueChange={next => {
+                if (next === '') return;
+                onValueChange?.(next);
+            }}
+            {...props}
+        />
+    );
 }
 
 function SelectGroup({
