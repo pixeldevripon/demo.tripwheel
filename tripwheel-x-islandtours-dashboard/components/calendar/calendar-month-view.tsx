@@ -1,15 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PlusSignIcon } from '@hugeicons/core-free-icons';
 import { motion, useReducedMotion } from 'framer-motion';
 import { getMonth } from 'date-fns';
+import {
+    Popover,
+    PopoverAnchor,
+    PopoverContent,
+} from '@/components/ui/popover';
 import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { OverviewDay, OverviewTour } from '@/types/trip';
 import { AddEventPopover } from './add-event-popover';
 import { DOT_CLASS, chipState, keyToDate } from './calendar-utils';
-import { DayPeek } from './day-peek';
+import { DayPeek, DayPeekContent } from './day-peek';
 import { DepartureChip } from './departure-chip';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -114,14 +120,25 @@ function MonthCell({
     const reduceMotion = useReducedMotion();
     const dayNumber = Number(day.date.slice(8, 10));
     const overflow = day.departures.length - MAX_CHIPS;
+    // Click-anywhere day peek: the cell itself is the popover ANCHOR (never a
+    // Radix trigger - chips/buttons inside would toggle it too); our own
+    // click handler opens it and ignores clicks on interactive children.
+    const [peekOpen, setPeekOpen] = useState(false);
     return (
+        <Popover open={peekOpen} onOpenChange={setPeekOpen}>
+        <PopoverAnchor asChild>
         <div
+            onClick={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return;
+                if (day.departures.length > 0) setPeekOpen(true);
+            }}
             className={cn(
                 // Hairline cell borders matching the time grid (first column
                 // and first row lean on the frame/header borders instead).
-                // Full-strength muted on hover - the token is a 94%-light
-                // grey, so any fractional opacity of it is invisible.
-                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-muted md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
+                // hover:bg-accent (n-200) - the muted token is a 94%-light
+                // grey that never reads as a highlight.
+                'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 transition-colors duration-normal first:border-l-0 hover:bg-accent md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
+                day.departures.length > 0 && 'cursor-pointer',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
             )}>
@@ -223,5 +240,26 @@ function MonthCell({
                 </DayPeek>
             )}
         </div>
+        </PopoverAnchor>
+        <PopoverContent
+            className='w-72 p-0'
+            align='center'
+            collisionPadding={12}
+            // Nested chip cards portal outside this node - keep the peek
+            // open while they are used (same guard as DayPeek).
+            onInteractOutside={(e) => {
+                const t = e.target as HTMLElement | null;
+                if (t?.closest("[data-slot='popover-content']")) {
+                    e.preventDefault();
+                }
+            }}>
+            <DayPeekContent
+                date={day.date}
+                departures={day.departures}
+                operatorNameById={operatorNameById}
+                isAdmin={isAdmin}
+            />
+        </PopoverContent>
+        </Popover>
     );
 }

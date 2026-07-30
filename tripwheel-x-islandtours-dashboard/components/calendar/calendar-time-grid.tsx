@@ -326,7 +326,7 @@ export function CalendarTimeGrid({
                                     isPastDay && 'bg-muted/20',
                                     canShape &&
                                         !isPastDay &&
-                                        'cursor-pointer hover:bg-muted',
+                                        'cursor-pointer hover:bg-accent',
                                 )}>
                                 {/* The picked column's wash glides with the
                                     header ring (week view only - a day view
