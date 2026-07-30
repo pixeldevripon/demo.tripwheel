@@ -50,8 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ]);
 
     const title = seo.metaTitle ?? site.siteName ?? 'Island Tours';
-    const description =
-        seo.metaDescription ?? site.siteTagline ?? undefined;
+    const description = seo.metaDescription ?? site.siteTagline ?? undefined;
     const siteName = site.siteName ?? 'Island Tours';
 
     // `getSiteUrl` is never empty (canonicalUrl -> NEXT_PUBLIC_SITE_URL -> launch
@@ -152,9 +151,7 @@ function extractTwitterHandle(url: string | null): string | null {
  */
 export default function RootLayout({
     children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
     return (
         <html
             lang='en'
@@ -176,7 +173,7 @@ export default function RootLayout({
                         disableTransitionOnChange>
                         <TooltipProvider delayDuration={300}>
                             {children}
-                            <Toaster richColors />
+                            <Toaster richColors  />
                         </TooltipProvider>
                     </ThemeProvider>
                 </QueryProvider>

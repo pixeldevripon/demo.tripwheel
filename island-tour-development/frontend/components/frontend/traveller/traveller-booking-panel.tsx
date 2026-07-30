@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, SquareArrowOutUpRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -81,6 +81,28 @@ export function TravellerBookingPanel({
 
     return (
         <div className='border-t border-it-heading/10 bg-it-surface p-5 sm:p-6'>
+            {/* The booking page link leads the panel (founder 2026-07-30),
+                dashboard live-page style: icon + label + green Live pill. */}
+            {manageHref && (
+                <div className='mb-4 flex items-center gap-2.5 border-b border-it-heading/10 pb-4'>
+                    <Link
+                        href={manageHref}
+                        className='inline-flex items-center gap-2 text-[13.5px] font-medium text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
+                        <SquareArrowOutUpRight
+                            className='size-4'
+                            strokeWidth={2}
+                        />
+                        {dict.openBookingPage}
+                    </Link>
+                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-medium text-it-green'>
+                        <span
+                            aria-hidden
+                            className='size-1.5 rounded-full bg-it-green'
+                        />
+                        {dict.liveChip}
+                    </span>
+                </div>
+            )}
             <div className='grid gap-4 lg:grid-cols-2'>
                 <Panel title={typDict.tourDetails}>
                     <DetailRow
@@ -244,11 +266,6 @@ export function TravellerBookingPanel({
 
             <div className='mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-it-heading/10 pt-4'>
                 <span className='flex flex-wrap items-center gap-x-5 gap-y-2'>
-                    {manageHref && (
-                        <QuietLink href={manageHref}>
-                            {dict.openBookingPage}
-                        </QuietLink>
-                    )}
                     {tourHref && (
                         <QuietLink href={tourHref}>{dict.bookAgain}</QuietLink>
                     )}

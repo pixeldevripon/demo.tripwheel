@@ -23,6 +23,7 @@
         "currency": "Moeda",
         "links": {
             "boatTours": "Passeios de barco",
+            "trackBooking": "Acompanhe a sua reserva",
             "help": "Central de Ajuda",
             "contact": "Fale conosco",
             "listTour": "Anuncie seu tour",
@@ -967,7 +968,8 @@
         "receiptPickup": "Recolha",
         "receiptSpectator": "Espectador",
         "emailInvalid": "Introduza um e-mail válido, como voce@exemplo.com.",
-        "emailUnknown": "Não encontrámos reservas com este e-mail. Use o endereço da sua confirmação de reserva."
+        "emailUnknown": "Não encontrámos reservas com este e-mail. Use o endereço da sua confirmação de reserva.",
+        "liveChip": "Online"
     },
     "reviewSubmit": {
         "invalidTitle": "Este link de avaliação já não é válido.",

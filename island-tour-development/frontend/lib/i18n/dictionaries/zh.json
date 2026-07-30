@@ -23,6 +23,7 @@
         "currency": "货币",
         "links": {
             "boatTours": "乘船游览",
+            "trackBooking": "查询您的预订",
             "help": "帮助中心",
             "contact": "联系我们",
             "listTour": "发布您的旅行",
@@ -967,7 +968,8 @@
         "receiptPickup": "接送",
         "receiptSpectator": "随行观看",
         "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。",
-        "emailUnknown": "未找到与此邮箱关联的预订。请使用预订确认邮件中的邮箱地址。"
+        "emailUnknown": "未找到与此邮箱关联的预订。请使用预订确认邮件中的邮箱地址。",
+        "liveChip": "在线"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",

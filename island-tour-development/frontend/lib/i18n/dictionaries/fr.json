@@ -23,6 +23,7 @@
         "currency": "Devise",
         "links": {
             "boatTours": "Excursions en bateau",
+            "trackBooking": "Suivre votre réservation",
             "help": "Centre d'aide",
             "contact": "Nous contacter",
             "listTour": "Référencez votre tour",
@@ -967,7 +968,8 @@
         "receiptPickup": "Prise en charge",
         "receiptSpectator": "Spectateur",
         "emailInvalid": "Saisissez une adresse e-mail valide, comme vous@exemple.com.",
-        "emailUnknown": "Nous ne trouvons aucune réservation associée à cet e-mail. Utilisez l'adresse de votre confirmation de réservation."
+        "emailUnknown": "Nous ne trouvons aucune réservation associée à cet e-mail. Utilisez l'adresse de votre confirmation de réservation.",
+        "liveChip": "En ligne"
     },
     "reviewSubmit": {
         "invalidTitle": "Ce lien d'avis n'est plus valable.",

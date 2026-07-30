@@ -9,6 +9,12 @@ export type NavDict = {
     wishlist: string;
     account: string;
     myAccount: string;
+    /**
+     * No longer rendered: the `/bookings` lookup moved to the footer as
+     * "Track your booking". Kept on the contract because the dictionaries still
+     * carry `nav.myBookings` in all 7 locales, and dropping the field here would
+     * only hide that from the next person who greps for it.
+     */
     myBookings: string;
     logout: string;
     menu: string;

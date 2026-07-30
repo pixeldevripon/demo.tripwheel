@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Loader2, LogOut, Ticket, UserRound } from 'lucide-react';
+import { Loader2, LogOut, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -86,12 +86,10 @@ export function AccountMenu({
     const close = useCallback(() => setOpen(false), []);
     useClickOutside(ref, close, open);
 
-    const bookingsHref = localizeHref(locale, '/bookings');
     const accountHref = localizeHref(locale, '/traveller');
 
     const path = stripLocale(pathname, locale);
     const accountActive = ACCOUNT_PATH.test(path);
-    const bookingsActive = BOOKINGS_PATH.test(path);
 
     // TWO ways to be signed in, and the menu must recognise both: a `/bookings`
     // pair lookup (which saves a booking record) or the account door's OTP
@@ -200,28 +198,15 @@ export function AccountMenu({
                             </Link>
                         </motion.div>
 
-                        {/* The lookup page - it prefills itself from the
-                            cookie's saved search data. */}
-                        <motion.div
-                            {...dropdownItemMotion}
-                            className='border-t border-it-border'>
-                            <Link
-                                href={bookingsHref}
-                                prefetch={false}
-                                onClick={close}
-                                aria-current={
-                                    bookingsActive ? 'page' : undefined
-                                }
-                                className={`${ROW} ${bookingsActive ? ROW_ACTIVE : ROW_IDLE}`}>
-                                <Ticket
-                                    size={16}
-                                    strokeWidth={1.5}
-                                    className={`shrink-0 ${bookingsActive ? 'text-it-primary' : 'text-it-ink-muted'}`}
-                                />
-                                {dict.myBookings}
-                            </Link>
-                        </motion.div>
-
+                        {/* The `/bookings` lookup is deliberately NOT here.
+                            It moved to the footer as "Track your booking",
+                            because it is the door for someone who has a
+                            reference and no account - and this menu only exists
+                            once they are signed in, where the account area above
+                            already shows every booking. Offering both put the
+                            weaker lookup next to the stronger view of the same
+                            thing. The footer reaches the people it is actually
+                            for, on every page, signed in or not. */}
                         <motion.div
                             {...dropdownItemMotion}
                             className='border-t border-it-border'>

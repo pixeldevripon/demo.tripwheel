@@ -23,6 +23,7 @@
         "currency": "Währung",
         "links": {
             "boatTours": "Bootstouren",
+            "trackBooking": "Buchung verfolgen",
             "help": "Hilfecenter",
             "contact": "Kontakt",
             "listTour": "Tour eintragen",
@@ -967,7 +968,8 @@
         "receiptPickup": "Abholung",
         "receiptSpectator": "Zuschauer",
         "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de.",
-        "emailUnknown": "Unter dieser E-Mail-Adresse finden wir keine Buchungen. Nutze die Adresse aus deiner Buchungsbestätigung."
+        "emailUnknown": "Unter dieser E-Mail-Adresse finden wir keine Buchungen. Nutze die Adresse aus deiner Buchungsbestätigung.",
+        "liveChip": "Live"
     },
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",

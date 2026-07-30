@@ -23,6 +23,7 @@
         "currency": "Valuta",
         "links": {
             "boatTours": "Boottochten",
+            "trackBooking": "Volg je boeking",
             "help": "Helpcentrum",
             "contact": "Neem contact op",
             "listTour": "Plaats je tour",
@@ -967,7 +968,8 @@
         "receiptPickup": "Ophaalservice",
         "receiptSpectator": "Toeschouwer",
         "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl.",
-        "emailUnknown": "We vinden geen boekingen op dit e-mailadres. Gebruik het adres uit je boekingsbevestiging."
+        "emailUnknown": "We vinden geen boekingen op dit e-mailadres. Gebruik het adres uit je boekingsbevestiging.",
+        "liveChip": "Live"
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",
