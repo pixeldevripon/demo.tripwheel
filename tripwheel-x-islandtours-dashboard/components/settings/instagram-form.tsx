@@ -423,7 +423,11 @@ function InstagramSettingsCard() {
                                 : cred.hasAccessToken
                                   ? // Stored but unreadable - the encryption key changed under it.
                                     'Stored value cannot be decrypted. Paste the token again to fix it.'
-                                  : 'Long-lived token; stored encrypted and auto-refreshed.'
+                                  : // Says the consequence, not just the mechanics: without a
+                                    // token the public section is gone, tiles or no tiles, and
+                                    // an admin who has curated some would otherwise go looking
+                                    // for the bug on the site instead of in this field.
+                                    'Long-lived token; stored encrypted and auto-refreshed. Until one is saved the Instagram section does not render on the public site.'
                         }
                     />
 

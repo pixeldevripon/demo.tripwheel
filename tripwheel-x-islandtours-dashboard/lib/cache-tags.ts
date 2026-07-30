@@ -90,15 +90,18 @@ export const COARSE_CACHE_TAGS = [
     // footer and every NeedHelp surface, and curating one tile should not
     // regenerate all of them.
     //
-    // The kill switch (`SiteInfo.enableInstagram`) is stored on site-info but
-    // SURFACES here: `/instagram/public/feed` returns it as `enabled`, the single
-    // gate the section obeys. So a `/settings/site` write must bust BOTH tags -
-    // it did not, which is why toggling the section off left it rendering for a
-    // full cacheLife('days'). Following the URL instead of the data is the bug.
+    // `/instagram/public/feed` folds THREE gates into the single `enabled` flag
+    // the section obeys, and they are written through TWO different endpoints:
+    //   - the kill switch (`SiteInfo.enableInstagram`)      -> `/settings/site`
+    //   - the access token (`InstagramAccount.configAccessToken`) -> `/instagram/*`
+    //   - whether any active tile exists at all             -> `/instagram/*`
+    // So a `/settings/site` write must bust BOTH tags - it did not, which is why
+    // toggling the section off left it rendering for a full cacheLife('days').
+    // Following the URL instead of the data is the bug.
     'instagram',
     // Admin-pasted vendor snippets injected into every public page (Settings >
-    // SEO > Custom Scripts). Its own tag rather than `site-info`: that tag
-    // carries the footer and every NeedHelp surface, and this one has to bust
+    // Scripts). Its own tag rather than `site-info`: that tag carries the footer
+    // and every NeedHelp surface, and this one has to bust
     // the ROOT LAYOUT, which is the most expensive thing on the site to
     // regenerate. Switching a snippet off has to take effect at once - an admin
     // toggling one is usually mid-incident, isolating which vendor broke the

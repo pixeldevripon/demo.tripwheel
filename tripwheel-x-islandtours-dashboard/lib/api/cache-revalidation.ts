@@ -230,6 +230,11 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // Instagram grid (Settings > Instagram): the handle row and every tile
     // write. Not `site-info` - only the kill switch lives there, and it is
     // saved through `/settings/site`, which the case above already covers.
+    // Covers the tiles AND `/instagram/credentials`. Saving or CLEARING the
+    // access token changes whether the public section renders at all (the feed
+    // reports `enabled: false` with no token, tiles or no tiles), so the token
+    // write has to bust this tag exactly like a tile edit does - otherwise
+    // removing the credential leaves the grid up for a full cacheLife('days').
     case 'instagram':
       tags.push('instagram');
       break;
