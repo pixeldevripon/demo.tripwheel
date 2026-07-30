@@ -4106,9 +4106,32 @@ describe('BookingsService', () => {
           contactLastName: 'Doe',
           paymentMethodBrand: 'visa',
           paymentMethodLast4: '4242',
+          paymentModel: PaymentModel.OPERATOR_LINK,
+          totalRetail: D('181.00'),
+          depositAmount: D('36.20'),
+          balanceAmount: D('144.80'),
+          pickupAddress: null,
+          pickupTotalPrice: null,
+          unitItems: [
+            { ageBandId: 'band-adult', priceRetail: D('79.00') },
+            { ageBandId: 'band-adult', priceRetail: D('79.00') },
+            { ageBandId: 'band-child', priceRetail: D('23.00') },
+          ],
+          addOns: [
+            {
+              name: 'Open bar upgrade',
+              quantity: 2,
+              unitPrice: D('25.00'),
+              totalPrice: D('50.00'),
+            },
+          ],
           tour: {
             name: 'Klein Curacao',
             destination: { name: 'Curaçao', slug: 'curacao' },
+            ageBands: [
+              { id: 'band-adult', label: 'Adult (18+)' },
+              { id: 'band-child', label: 'Child (4-12)' },
+            ],
           },
           operator: { companyInfo: { companyName: 'Miss Ann' } },
         },
@@ -4134,7 +4157,34 @@ describe('BookingsService', () => {
           bookingLocalDate: '2030-06-05',
           tourName: 'Klein Curacao',
           operatorName: 'Miss Ann',
+          totalRetail: '181',
+          depositAmount: '36.2',
+          balanceAmount: '144.8',
+          pickup: null,
         });
+        // The invoice body: banded party lines + add-on snapshots.
+        expect(res.party).toEqual([
+          {
+            label: 'Adult (18+)',
+            quantity: 2,
+            unitPrice: '79',
+            lineTotal: '158.00',
+          },
+          {
+            label: 'Child (4-12)',
+            quantity: 1,
+            unitPrice: '23',
+            lineTotal: '23.00',
+          },
+        ]);
+        expect(res.addOns).toEqual([
+          {
+            name: 'Open bar upgrade',
+            quantity: 2,
+            unitPrice: '25',
+            totalPrice: '50',
+          },
+        ]);
       });
 
       it("404s another traveller's payment id", async () => {

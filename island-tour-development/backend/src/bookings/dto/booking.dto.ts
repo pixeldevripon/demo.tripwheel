@@ -1051,6 +1051,22 @@ export class TravellerPaymentsResponseDto {
  * a modest receipt. The only traveller payload carrying the payer NAME (the
  * caller IS that person; a nameless receipt proves nothing).
  */
+/** One priced party line on the receipt ("2 x Adult at $99.00"). */
+export class TravellerReceiptPartyLineDto {
+  @ApiProperty({ example: 'Adult (18+)' }) label!: string;
+  @ApiProperty({ example: 2 }) quantity!: number;
+  @ApiProperty({ example: '99.00' }) unitPrice!: string;
+  @ApiProperty({ example: '198.00' }) lineTotal!: string;
+}
+
+/** One purchased extra on the receipt (immutable BookingAddOn snapshot). */
+export class TravellerReceiptAddOnDto {
+  @ApiProperty({ example: 'Open bar upgrade' }) name!: string;
+  @ApiProperty({ example: 2 }) quantity!: number;
+  @ApiProperty({ example: '25.00' }) unitPrice!: string;
+  @ApiProperty({ example: '50.00' }) totalPrice!: string;
+}
+
 export class TravellerReceiptDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: PaymentKind }) kind!: PaymentKind;
@@ -1080,6 +1096,22 @@ export class TravellerReceiptDto {
   destinationSlug!: string | null;
   @ApiPropertyOptional({ nullable: true, example: 'Miss Ann Boat Trips' })
   operatorName!: string | null;
+  @ApiProperty({ enum: PaymentModel }) paymentModel!: PaymentModel;
+  @ApiProperty({ example: '592.80' }) totalRetail!: string;
+  @ApiProperty({ example: '132.24' }) depositAmount!: string;
+  @ApiProperty({ example: '460.56' }) balanceAmount!: string;
+  @ApiProperty({
+    type: [TravellerReceiptPartyLineDto],
+    description: 'Priced party breakdown from the immutable guest snapshots.',
+  })
+  party!: TravellerReceiptPartyLineDto[];
+  @ApiProperty({ type: [TravellerReceiptAddOnDto] })
+  addOns!: TravellerReceiptAddOnDto[];
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'The priced pickup line, when the booking paid for one.',
+  })
+  pickup!: { address: string | null; totalPrice: string } | null;
 }
 
 /** One priced row of a quote breakdown (participants, an add-on, or a priced pickup). */

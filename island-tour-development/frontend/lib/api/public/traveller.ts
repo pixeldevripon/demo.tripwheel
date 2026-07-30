@@ -152,6 +152,24 @@ export interface TravellerReceipt {
     destinationName: string | null;
     destinationSlug: string | null;
     operatorName: string | null;
+    /** Invoice body: what was sold + the booking's money, all snapshots. */
+    paymentModel: 'OPERATOR_LINK' | 'ON_ARRIVAL' | 'PAID_IN_FULL' | 'OPERATOR_FULL';
+    totalRetail: string;
+    depositAmount: string;
+    balanceAmount: string;
+    party: {
+        label: string;
+        quantity: number;
+        unitPrice: string;
+        lineTotal: string;
+    }[];
+    addOns: {
+        name: string;
+        quantity: number;
+        unitPrice: string;
+        totalPrice: string;
+    }[];
+    pickup: { address: string | null; totalPrice: string } | null;
 }
 
 /** Rows per page on the payments ledger. */

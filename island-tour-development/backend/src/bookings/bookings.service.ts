@@ -3354,10 +3354,28 @@ export class BookingsService {
             contactLastName: true,
             paymentMethodBrand: true,
             paymentMethodLast4: true,
+            paymentModel: true,
+            totalRetail: true,
+            depositAmount: true,
+            balanceAmount: true,
+            pickupAddress: true,
+            pickupTotalPrice: true,
+            // Line items: the immutable per-guest and add-on snapshots, so
+            // the receipt documents what was actually sold (invoice look).
+            unitItems: { select: { ageBandId: true, priceRetail: true } },
+            addOns: {
+              select: {
+                name: true,
+                quantity: true,
+                unitPrice: true,
+                totalPrice: true,
+              },
+            },
             tour: {
               select: {
                 name: true,
                 destination: { select: { name: true, slug: true } },
+                ageBands: { select: { id: true, label: true } },
               },
             },
             operator: {
@@ -3375,6 +3393,32 @@ export class BookingsService {
         .filter(Boolean)
         .join(' ') ||
         null);
+
+    // Group the per-guest snapshots into priced party lines ("2 x Adult at
+    // $99"), the same banding rule the TYP uses; UNIT-priced tours carry no
+    // age bands and collapse into one "Guest" line.
+    const bandLabels = new Map(
+      (p.booking.tour?.ageBands ?? []).map((b) => [b.id, b.label]),
+    );
+    const partyLines = new Map<
+      string,
+      { label: string; quantity: number; unitPrice: string; lineTotal: number }
+    >();
+    for (const item of p.booking.unitItems) {
+      const key = item.ageBandId ?? '';
+      const existing = partyLines.get(key);
+      if (existing) {
+        existing.quantity += 1;
+        existing.lineTotal += Number(item.priceRetail);
+      } else {
+        partyLines.set(key, {
+          label: key ? (bandLabels.get(key) ?? 'Traveler') : 'Guest',
+          quantity: 1,
+          unitPrice: item.priceRetail.toString(),
+          lineTotal: Number(item.priceRetail),
+        });
+      }
+    }
 
     return {
       id: p.id,
@@ -3395,6 +3439,30 @@ export class BookingsService {
       destinationName: p.booking.tour?.destination?.name ?? null,
       destinationSlug: p.booking.tour?.destination?.slug ?? null,
       operatorName: p.booking.operator?.companyInfo?.companyName ?? null,
+      // Invoice body: what was sold and what the booking's money looks like.
+      paymentModel: p.booking.paymentModel,
+      totalRetail: p.booking.totalRetail.toString(),
+      depositAmount: p.booking.depositAmount.toString(),
+      balanceAmount: p.booking.balanceAmount.toString(),
+      party: [...partyLines.values()].map((l) => ({
+        label: l.label,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        lineTotal: l.lineTotal.toFixed(2),
+      })),
+      addOns: p.booking.addOns.map((a) => ({
+        name: a.name,
+        quantity: a.quantity,
+        unitPrice: a.unitPrice.toString(),
+        totalPrice: a.totalPrice.toString(),
+      })),
+      pickup:
+        p.booking.pickupTotalPrice && !p.booking.pickupTotalPrice.isZero()
+          ? {
+              address: p.booking.pickupAddress,
+              totalPrice: p.booking.pickupTotalPrice.toString(),
+            }
+          : null,
     };
   }
 
