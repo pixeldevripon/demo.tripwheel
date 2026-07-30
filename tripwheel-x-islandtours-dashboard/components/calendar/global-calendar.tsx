@@ -12,6 +12,11 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
@@ -22,6 +27,7 @@ import { tripsApi } from '@/lib/api/trips';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { AddEventPopover } from './add-event-popover';
+import { RangeDialog } from './range-dialog';
 import {
     DOT_CLASS,
     STATE_LABEL,
@@ -55,9 +61,13 @@ const LEGEND: ChipState[] = ['open', 'soldOut', 'closed', 'past'];
  * every availability mutation still busts overviewAll().
  */
 export function GlobalCalendar() {
-    const { role, can } = useRole();
+    const { role, can, canAny } = useRole();
     const isAdmin = role === 'ADMIN';
     const canShape = can('MANAGE_AVAILABILITY');
+    const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
+    const [rangeOpen, setRangeOpen] = useState(false);
+    // Below xl the sidebar's mini calendar is gone - this popover replaces it.
+    const [jumpOpen, setJumpOpen] = useState(false);
     const reduceMotion = useReducedMotion();
     const queryClient = useQueryClient();
 
@@ -138,8 +148,9 @@ export function GlobalCalendar() {
     }
 
     const label = rangeLabel(view, anchor);
-    // Add lands on the anchor day, unless it is already behind the island.
-    const addDate = anchor >= today ? anchor : today;
+    // Adding targets the picked day; a past pick disables the button rather
+    // than silently retargeting (the backend refuses writes into the past).
+    const addDisabled = anchor < today;
     const addTours = tourId ? tours.filter((t) => t.id === tourId) : tours;
 
     const filters = (
@@ -158,66 +169,130 @@ export function GlobalCalendar() {
         <div className='flex flex-col gap-4'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-                {/* Fixed width so long month names never shove the controls. */}
-                <div className='relative h-8 w-56 overflow-hidden sm:w-64'>
-                    <AnimatePresence mode='wait' initial={false}>
-                        <motion.span
-                            key={label}
-                            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                            transition={swapFade}
-                            className='absolute inset-0 truncate text-2xl font-semibold leading-8'>
-                            {label}
-                        </motion.span>
-                    </AnimatePresence>
-                </div>
-                <Button
-                    variant='outline'
-                    className='h-9'
-                    onClick={() => navigate(today)}>
-                    Today
-                </Button>
-                <div className='flex items-center'>
+                {/* ONE non-wrapping cluster: title + Today + arrows always
+                    share a row (arrows can never orphan onto their own line).
+                    The title is fluid on phones and fixed at sm+ so label
+                    swaps never shove the controls. */}
+                <div className='flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3'>
+                    <div className='relative h-8 min-w-0 flex-1 overflow-hidden sm:w-80 sm:flex-none'>
+                        <AnimatePresence mode='wait' initial={false}>
+                            <motion.span
+                                key={label}
+                                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                                transition={swapFade}
+                                className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl'>
+                                {label}
+                            </motion.span>
+                        </AnimatePresence>
+                    </div>
                     <Button
-                        variant='ghost'
-                        size='icon'
-                        className='size-9'
-                        aria-label='Previous'
-                        onClick={() => navigate(stepAnchor(view, anchor, -1))}>
-                        <HugeiconsIcon icon={ArrowLeft01Icon} className='size-4' />
+                        variant='outline'
+                        className='h-9 shrink-0'
+                        onClick={() => navigate(today)}>
+                        Today
                     </Button>
-                    <Button
-                        variant='ghost'
-                        size='icon'
-                        className='size-9'
-                        aria-label='Next'
-                        onClick={() => navigate(stepAnchor(view, anchor, 1))}>
-                        <HugeiconsIcon icon={ArrowRight01Icon} className='size-4' />
-                    </Button>
+                    <div className='flex shrink-0 items-center'>
+                        <Button
+                            variant='ghost'
+                            size='icon'
+                            className='size-9'
+                            aria-label='Previous'
+                            onClick={() => navigate(stepAnchor(view, anchor, -1))}>
+                            <HugeiconsIcon icon={ArrowLeft01Icon} className='size-4' />
+                        </Button>
+                        <Button
+                            variant='ghost'
+                            size='icon'
+                            className='size-9'
+                            aria-label='Next'
+                            onClick={() => navigate(stepAnchor(view, anchor, 1))}>
+                            <HugeiconsIcon icon={ArrowRight01Icon} className='size-4' />
+                        </Button>
+                    </div>
+                    {isFetching && !isLoading && (
+                        <span
+                            aria-hidden
+                            className='size-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground'
+                        />
+                    )}
                 </div>
-                {isFetching && !isLoading && (
-                    <span
-                        aria-hidden
-                        className='size-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground'
-                    />
-                )}
 
                 <div className='ml-auto flex flex-wrap items-center gap-2'>
-                    {/* Filters live in the sidebar; below xl the sidebar is
-                        gone, so they surface here instead. */}
-                    <div className='flex items-center gap-2 xl:hidden'>
+                    {/* Filters + add + range tool + date jump live in the
+                        sidebar; below xl the sidebar is gone, so they all
+                        surface here - full feature parity on phones. */}
+                    <div className='flex flex-wrap items-center gap-2 xl:hidden'>
+                        {canShape && (
+                            <AddEventPopover
+                                date={anchor}
+                                tours={addTours}
+                                defaultTourId={tourId}>
+                                <Button
+                                    size='icon'
+                                    className='size-10'
+                                    disabled={addDisabled}
+                                    aria-label='Add departure or schedule'
+                                    title={
+                                        addDisabled
+                                            ? 'Pick today or a future date to add'
+                                            : 'Add departure or schedule'
+                                    }>
+                                    <HugeiconsIcon
+                                        icon={PlusSignIcon}
+                                        className='size-4'
+                                    />
+                                </Button>
+                            </AddEventPopover>
+                        )}
+                        <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant='outline' className='h-10'>
+                                    {format(keyToDate(anchor), 'd MMM yyyy')}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className='w-auto p-0'
+                                align='start'
+                                collisionPadding={12}>
+                                <Calendar
+                                    mode='single'
+                                    weekStartsOn={1}
+                                    selected={keyToDate(anchor)}
+                                    defaultMonth={keyToDate(anchor)}
+                                    onSelect={(d) => {
+                                        if (d) {
+                                            navigate(dateToKey(d));
+                                            setJumpOpen(false);
+                                        }
+                                    }}
+                                />
+                            </PopoverContent>
+                        </Popover>
                         {filters}
                     </div>
-                    <Tabs
-                        value={view}
-                        onValueChange={(v) => changeView(v as CalendarView)}>
-                        <TabsList className='h-9'>
-                            <TabsTrigger value='day'>Day</TabsTrigger>
-                            <TabsTrigger value='week'>Week</TabsTrigger>
-                            <TabsTrigger value='month'>Month</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
+                    <div className='flex items-center gap-2'>
+                        <Tabs
+                            value={view}
+                            onValueChange={(v) => changeView(v as CalendarView)}>
+                            <TabsList className='h-9'>
+                                <TabsTrigger value='day'>Day</TabsTrigger>
+                                <TabsTrigger value='week'>Week</TabsTrigger>
+                                <TabsTrigger value='month'>Month</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        {/* Mobile Range rides the view-switch row, right of
+                            the tabs (the sidebar owns it at xl+). */}
+                        {canStopSell && (
+                            <Button
+                                variant='outline'
+                                className='h-9 xl:hidden'
+                                onClick={() => setRangeOpen(true)}>
+                                Range
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -226,10 +301,17 @@ export function GlobalCalendar() {
                 <aside className='hidden w-60 shrink-0 flex-col gap-4 xl:flex'>
                     {canShape && (
                         <AddEventPopover
-                            date={addDate}
+                            date={anchor}
                             tours={addTours}
                             defaultTourId={tourId}>
-                            <Button className='h-10 w-full justify-start gap-2'>
+                            <Button
+                                disabled={addDisabled}
+                                title={
+                                    addDisabled
+                                        ? 'Pick today or a future date to add'
+                                        : undefined
+                                }
+                                className='h-10 w-full justify-start gap-2'>
                                 <HugeiconsIcon
                                     icon={PlusSignIcon}
                                     className='size-4'
@@ -237,6 +319,16 @@ export function GlobalCalendar() {
                                 Add departure or schedule
                             </Button>
                         </AddEventPopover>
+                    )}
+                    {/* Bulk blackout + its reverse - a STOP_SELL seat may
+                        close/reopen even though it cannot add. */}
+                    {canStopSell && (
+                        <Button
+                            variant='outline'
+                            className='h-10 w-full justify-start'
+                            onClick={() => setRangeOpen(true)}>
+                            Close / reopen a range
+                        </Button>
                     )}
                     {/* Mini calendar: remounts when the anchor month moves so
                         its visible month always follows the grid. */}
@@ -286,6 +378,10 @@ export function GlobalCalendar() {
                 </aside>
 
                 <div className='min-w-0 flex-1'>
+                    {/* ONE frame height for every view (and the skeleton), so
+                        switching Day/Week/Month never shifts the layout - the
+                        views fill it and scroll inside themselves. */}
+                    <div className='h-[calc(100dvh-270px)] min-h-[26rem]'>
                     {isLoading ? (
                         <CalendarSkeleton view={view} />
                     ) : (
@@ -295,6 +391,7 @@ export function GlobalCalendar() {
                         <AnimatePresence mode='wait' initial={false}>
                             <motion.div
                                 key={view}
+                                className='h-full'
                                 initial={reduceMotion ? false : { opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={reduceMotion ? undefined : { opacity: 0 }}
@@ -304,6 +401,7 @@ export function GlobalCalendar() {
                                         days={filteredDays}
                                         anchor={anchor}
                                         today={today}
+                                        selectedDate={anchor}
                                         tours={addTours}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
@@ -314,6 +412,7 @@ export function GlobalCalendar() {
                                     <CalendarTimeGrid
                                         days={filteredDays}
                                         today={today}
+                                        selectedDate={anchor}
                                         tours={addTours}
                                         timeZone={tours[0]?.timeZone}
                                         operatorNameById={operatorNameById}
@@ -325,6 +424,33 @@ export function GlobalCalendar() {
                             </motion.div>
                         </AnimatePresence>
                     )}
+                    </div>
+                    {/* The sidebar's legend + freshness line, for viewports
+                        where the sidebar is gone. */}
+                    <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 xl:hidden'>
+                        {LEGEND.map((state) => (
+                            <span
+                                key={state}
+                                className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                <span
+                                    className={cn(
+                                        'size-2 rounded-full',
+                                        DOT_CLASS[state],
+                                    )}
+                                />
+                                {STATE_LABEL[state]}
+                            </span>
+                        ))}
+                        {data?.lastConfirmedAt && (
+                            <span className='text-xs text-muted-foreground'>
+                                · Confirmed{' '}
+                                {format(
+                                    new Date(data.lastConfirmedAt),
+                                    'd MMM, HH:mm',
+                                )}
+                            </span>
+                        )}
+                    </div>
                     <p className='mt-2 text-xs text-muted-foreground'>
                         All times are local to each tour&apos;s island. Counts
                         show Island Tours bookings only - closing never touches
@@ -332,6 +458,16 @@ export function GlobalCalendar() {
                     </p>
                 </div>
             </div>
+
+            {/* Keyed per open so every visit starts with fresh fields and the
+                current tour filter as its default. */}
+            <RangeDialog
+                key={`${rangeOpen}-${tourId ?? 'all'}`}
+                open={rangeOpen}
+                onOpenChange={setRangeOpen}
+                tours={tours}
+                defaultTourId={tourId}
+            />
         </div>
     );
 }
@@ -339,10 +475,12 @@ export function GlobalCalendar() {
 function CalendarSkeleton({ view }: { view: CalendarView }) {
     if (view === 'month') {
         return (
-            <div className='overflow-hidden rounded-lg border border-border/70'>
-                <div className='grid grid-cols-7 gap-px bg-border/70'>
+            <div className='h-full overflow-hidden rounded-lg border border-border/70 bg-background'>
+                <div className='grid h-full grid-cols-7 auto-rows-fr'>
                     {Array.from({ length: 42 }, (_, i) => (
-                        <div key={i} className='min-h-24 bg-background p-2 md:min-h-28'>
+                        <div
+                            key={i}
+                            className='min-h-16 border-l border-t border-border/40 p-2 first:border-l-0 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0'>
                             <Skeleton className='size-6 rounded-full' />
                             {i % 3 === 0 && (
                                 <Skeleton className='mt-2 h-4 w-full rounded-sm' />
@@ -354,9 +492,11 @@ function CalendarSkeleton({ view }: { view: CalendarView }) {
         );
     }
     return (
-        <div className='flex flex-col gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70'>
-            {Array.from({ length: 8 }, (_, i) => (
-                <div key={i} className='flex h-14 items-center gap-4 bg-background px-4'>
+        <div className='flex h-full flex-col overflow-hidden rounded-lg border border-border/70 bg-background'>
+            {Array.from({ length: 10 }, (_, i) => (
+                <div
+                    key={i}
+                    className='flex h-20 shrink-0 items-center gap-4 border-t border-border/40 px-4 first:border-t-0'>
                     <Skeleton className='h-3 w-10' />
                     {i % 2 === 0 && <Skeleton className='h-8 w-40 rounded-md' />}
                 </div>

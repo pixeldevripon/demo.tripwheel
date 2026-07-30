@@ -88,7 +88,7 @@ export function DepartureChip({
                             <span className='w-full truncate font-medium'>
                                 {dep.tourName}
                             </span>
-                            <span className='tabular-nums text-2xs'>
+                            <span className='w-full truncate whitespace-nowrap tabular-nums text-2xs'>
                                 {dep.startTime} · {seatsLabel(dep)}
                             </span>
                         </>
