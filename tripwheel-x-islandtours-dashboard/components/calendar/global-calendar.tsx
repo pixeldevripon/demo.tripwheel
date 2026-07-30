@@ -12,6 +12,11 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OperatorFilterPopover } from '@/components/common/operator-filter-popover';
@@ -61,6 +66,8 @@ export function GlobalCalendar() {
     const canShape = can('MANAGE_AVAILABILITY');
     const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
     const [rangeOpen, setRangeOpen] = useState(false);
+    // Below xl the sidebar's mini calendar is gone - this popover replaces it.
+    const [jumpOpen, setJumpOpen] = useState(false);
     const reduceMotion = useReducedMotion();
     const queryClient = useQueryClient();
 
@@ -162,56 +169,107 @@ export function GlobalCalendar() {
         <div className='flex flex-col gap-4'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-                {/* Fixed width so label swaps never shove the controls -
-                    sized for the longest week range ("Sep 28 - Oct 4, 2026"). */}
-                <div className='relative h-8 w-64 overflow-hidden sm:w-80'>
-                    <AnimatePresence mode='wait' initial={false}>
-                        <motion.span
-                            key={label}
-                            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                            transition={swapFade}
-                            className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl'>
-                            {label}
-                        </motion.span>
-                    </AnimatePresence>
-                </div>
-                <Button
-                    variant='outline'
-                    className='h-9'
-                    onClick={() => navigate(today)}>
-                    Today
-                </Button>
-                <div className='flex items-center'>
+                {/* ONE non-wrapping cluster: title + Today + arrows always
+                    share a row (arrows can never orphan onto their own line).
+                    The title is fluid on phones and fixed at sm+ so label
+                    swaps never shove the controls. */}
+                <div className='flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3'>
+                    <div className='relative h-8 min-w-0 flex-1 overflow-hidden sm:w-80 sm:flex-none'>
+                        <AnimatePresence mode='wait' initial={false}>
+                            <motion.span
+                                key={label}
+                                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                                transition={swapFade}
+                                className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl'>
+                                {label}
+                            </motion.span>
+                        </AnimatePresence>
+                    </div>
                     <Button
-                        variant='ghost'
-                        size='icon'
-                        className='size-9'
-                        aria-label='Previous'
-                        onClick={() => navigate(stepAnchor(view, anchor, -1))}>
-                        <HugeiconsIcon icon={ArrowLeft01Icon} className='size-4' />
+                        variant='outline'
+                        className='h-9 shrink-0'
+                        onClick={() => navigate(today)}>
+                        Today
                     </Button>
-                    <Button
-                        variant='ghost'
-                        size='icon'
-                        className='size-9'
-                        aria-label='Next'
-                        onClick={() => navigate(stepAnchor(view, anchor, 1))}>
-                        <HugeiconsIcon icon={ArrowRight01Icon} className='size-4' />
-                    </Button>
+                    <div className='flex shrink-0 items-center'>
+                        <Button
+                            variant='ghost'
+                            size='icon'
+                            className='size-9'
+                            aria-label='Previous'
+                            onClick={() => navigate(stepAnchor(view, anchor, -1))}>
+                            <HugeiconsIcon icon={ArrowLeft01Icon} className='size-4' />
+                        </Button>
+                        <Button
+                            variant='ghost'
+                            size='icon'
+                            className='size-9'
+                            aria-label='Next'
+                            onClick={() => navigate(stepAnchor(view, anchor, 1))}>
+                            <HugeiconsIcon icon={ArrowRight01Icon} className='size-4' />
+                        </Button>
+                    </div>
+                    {isFetching && !isLoading && (
+                        <span
+                            aria-hidden
+                            className='size-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground'
+                        />
+                    )}
                 </div>
-                {isFetching && !isLoading && (
-                    <span
-                        aria-hidden
-                        className='size-3.5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground'
-                    />
-                )}
 
                 <div className='ml-auto flex flex-wrap items-center gap-2'>
-                    {/* Filters + range tool live in the sidebar; below xl the
-                        sidebar is gone, so they surface here instead. */}
-                    <div className='flex items-center gap-2 xl:hidden'>
+                    {/* Filters + add + range tool + date jump live in the
+                        sidebar; below xl the sidebar is gone, so they all
+                        surface here - full feature parity on phones. */}
+                    <div className='flex flex-wrap items-center gap-2 xl:hidden'>
+                        {canShape && (
+                            <AddEventPopover
+                                date={anchor}
+                                tours={addTours}
+                                defaultTourId={tourId}>
+                                <Button
+                                    size='icon'
+                                    className='size-10'
+                                    disabled={addDisabled}
+                                    aria-label='Add departure or schedule'
+                                    title={
+                                        addDisabled
+                                            ? 'Pick today or a future date to add'
+                                            : 'Add departure or schedule'
+                                    }>
+                                    <HugeiconsIcon
+                                        icon={PlusSignIcon}
+                                        className='size-4'
+                                    />
+                                </Button>
+                            </AddEventPopover>
+                        )}
+                        <Popover open={jumpOpen} onOpenChange={setJumpOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant='outline' className='h-10'>
+                                    {format(keyToDate(anchor), 'd MMM yyyy')}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                className='w-auto p-0'
+                                align='start'
+                                collisionPadding={12}>
+                                <Calendar
+                                    mode='single'
+                                    weekStartsOn={1}
+                                    selected={keyToDate(anchor)}
+                                    defaultMonth={keyToDate(anchor)}
+                                    onSelect={(d) => {
+                                        if (d) {
+                                            navigate(dateToKey(d));
+                                            setJumpOpen(false);
+                                        }
+                                    }}
+                                />
+                            </PopoverContent>
+                        </Popover>
                         {filters}
                         {canStopSell && (
                             <Button
@@ -362,6 +420,32 @@ export function GlobalCalendar() {
                             </motion.div>
                         </AnimatePresence>
                     )}
+                    </div>
+                    {/* The sidebar's legend + freshness line, for viewports
+                        where the sidebar is gone. */}
+                    <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 xl:hidden'>
+                        {LEGEND.map((state) => (
+                            <span
+                                key={state}
+                                className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+                                <span
+                                    className={cn(
+                                        'size-2 rounded-full',
+                                        DOT_CLASS[state],
+                                    )}
+                                />
+                                {STATE_LABEL[state]}
+                            </span>
+                        ))}
+                        {data?.lastConfirmedAt && (
+                            <span className='text-xs text-muted-foreground'>
+                                · Confirmed{' '}
+                                {format(
+                                    new Date(data.lastConfirmedAt),
+                                    'd MMM, HH:mm',
+                                )}
+                            </span>
+                        )}
                     </div>
                     <p className='mt-2 text-xs text-muted-foreground'>
                         All times are local to each tour&apos;s island. Counts

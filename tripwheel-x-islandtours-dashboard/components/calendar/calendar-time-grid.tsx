@@ -232,9 +232,13 @@ export function CalendarTimeGrid({
                 (user call) - wheel/touch scrolling still works. */}
             <div
                 ref={scrollRef}
-                className='min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                <div className='sticky top-0 z-20 flex border-b border-border/50 bg-background'>
-                    <div className='flex w-12 shrink-0 items-center justify-center sm:w-14'>
+                // overflow-x-auto: on phones each week column keeps a real
+                // minimum width and the grid swipes horizontally INSIDE this
+                // frame (the page itself never scrolls sideways); on md+ the
+                // columns share the width and no x-scroll exists.
+                className='min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                <div className='sticky top-0 z-20 flex min-w-fit border-b border-border/50 bg-background'>
+                    <div className='sticky left-0 z-30 flex w-12 shrink-0 items-center justify-center bg-background sm:w-14'>
                         <span className='text-2xs text-muted-foreground'>
                             {gmtLabel(timeZone)}
                         </span>
@@ -249,7 +253,10 @@ export function CalendarTimeGrid({
                                 key={day.date}
                                 type='button'
                                 onClick={() => onOpenDay(day.date)}
-                                className='flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 border-l border-border/50 transition-colors duration-normal hover:bg-muted/50'>
+                                className={cn(
+                                    'flex h-11 flex-1 items-center justify-center gap-1.5 border-l border-border/50 transition-colors duration-normal hover:bg-muted/50',
+                                    days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
+                                )}>
                                 <span className='text-2xs font-medium uppercase tracking-wider text-muted-foreground'>
                                     {format(d, 'EEE')}
                                 </span>
@@ -280,9 +287,9 @@ export function CalendarTimeGrid({
                     })}
                 </div>
 
-                <div className='relative flex'>
-                    {/* Hour gutter. */}
-                    <div className='relative w-12 shrink-0 sm:w-14'>
+                <div className='relative flex min-w-fit'>
+                    {/* Hour gutter - pinned while the columns swipe. */}
+                    <div className='sticky left-0 z-20 w-12 shrink-0 bg-background sm:w-14'>
                         {hours.map((h) => (
                             <div
                                 key={h}
@@ -322,7 +329,8 @@ export function CalendarTimeGrid({
                                 key={day.date}
                                 onClick={(e) => handleColumnClick(e, day, dayIndex)}
                                 className={cn(
-                                    'relative min-w-0 flex-1 border-l border-border/50 transition-colors duration-normal',
+                                    'relative flex-1 border-l border-border/50 transition-colors duration-normal',
+                                    days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
                                     isPastDay && 'bg-muted/20',
                                     canShape &&
                                         !isPastDay &&

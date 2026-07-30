@@ -261,7 +261,7 @@ function MonthCell({
         </div>
         </PopoverAnchor>
         <PopoverContent
-            className='w-72 p-0'
+            className='flex w-72 flex-col overflow-hidden p-0 max-h-(--radix-popover-content-available-height)'
             align='center'
             collisionPadding={12}
             // Nested chip cards portal outside this node - keep the peek
