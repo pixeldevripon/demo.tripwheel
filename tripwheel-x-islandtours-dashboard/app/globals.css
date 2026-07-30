@@ -647,17 +647,28 @@
  *  - text is capped at a readable measure (~70ch) so a one-line message never
  *    stretches letterbox-wide, while the SURFACE still spans the app.
  */
-/* Ribbon width: viewport minus a gutter, capped for ultrawide monitors.
- * Sonner writes its 356px default as an INLINE --width on the <ol>, so this
- * needs !important to win (03 §8.3 bans the inline-style escape hatch). */
+/* The LANE the toast may occupy: viewport minus a gutter. Sonner writes its
+ * 356px default as an INLINE --width on the <ol>, so this needs !important to
+ * win (03 §8.3 bans the inline-style escape hatch). */
 .toaster[data-sonner-toaster] {
-    --width: min(calc(100vw - 2rem), 100rem) !important;
+    --width: calc(100vw - 2rem) !important;
 }
 
+/* Sizing (user call 2026-07-30): the toast HUGS its content - min 350px so a
+ * two-word success doesn't shrink to a chip, growing as wide as the message
+ * needs so text widens instead of wrapping, capped only by the lane. Centred
+ * by stretching the absolute li across the lane and letting margin auto split
+ * the slack (sonner drives the li's transform, so translateX centring is not
+ * available to us). */
 .cn-toast {
     position: relative;
     display: flex;
-    width: 100%;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    width: fit-content;
+    min-width: min(350px, 100%);
+    max-width: 100%;
     align-items: flex-start;
     gap: 0.75rem;
     overflow: hidden;
@@ -684,66 +695,13 @@
     );
 }
 
-/* ── The splash entrance ─────────────────────────────────────────────────────
- * A drop-hits-water choreography, played once on mount:
- *   1. the icon FALLS in from above and squashes on impact (~0.45s spring);
- *   2. a ripple ring expands out of the impact point and fades;
- *   3. the text and buttons SURFACE - a small rise-and-fade trailing the hit.
- * Everything animates on the toast's CHILDREN, never on the toast itself:
- * sonner owns the li's transform for stacking and swipe, and an animation
- * there would fight it mid-flight. */
-
-/* 1 - the drop */
-.cn-toast [data-icon] {
-    animation: cn-toast-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1;
-}
-@keyframes cn-toast-drop {
-    0% {
-        transform: translateY(-1.25rem) scale(0.8);
-        opacity: 0;
-    }
-    55% {
-        /* impact: a touch of squash-and-stretch sells the landing */
-        transform: translateY(0.0625rem) scale(1.1, 0.85);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-    }
-}
-
-/* 2 - the ripple, timed to the impact frame of the drop */
-.cn-toast::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 1.875rem;
-    width: 2.5rem;
-    height: 2.5rem;
-    margin: -1.25rem 0 0 -1.25rem;
-    pointer-events: none;
-    border: 2px solid var(--cn-toast-accent, var(--line));
-    border-radius: 9999px;
-    opacity: 0;
-    animation: cn-toast-ripple 0.7s ease-out 0.22s 1;
-}
-@keyframes cn-toast-ripple {
-    0% {
-        transform: scale(0.3);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(2.4);
-        opacity: 0;
-    }
-}
-
-/* 3 - the content surfaces after the hit */
+/* Entrance: one gentle rise on the content while sonner slides the toast in.
+ * The icon-drop + ripple splash was tried and pulled (user call 2026-07-30) -
+ * it drew the eye to the icon instead of the words. */
 .cn-toast [data-content],
 .cn-toast [data-button],
 .cn-toast [data-close-button] {
-    animation: cn-toast-surface 0.45s ease-out 0.16s backwards;
+    animation: cn-toast-surface 0.45s ease-out 0.1s backwards;
 }
 @keyframes cn-toast-surface {
     0% {
@@ -757,8 +715,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .cn-toast [data-icon],
-    .cn-toast::after,
     .cn-toast [data-content],
     .cn-toast [data-button],
     .cn-toast [data-close-button] {
@@ -799,12 +755,11 @@
     color: var(--cn-toast-accent, var(--content-subtle));
 }
 
+/* No measure cap: the toast now hugs its content, so the text itself decides
+ * the width - it widens rather than wraps, until the lane runs out. */
 .cn-toast [data-content] {
     position: relative;
     min-width: 0;
-    /* Full-width surface, readable measure: nobody should read a sentence
-     * stretched across 1500px. */
-    max-width: 70ch;
     align-self: center;
 }
 
@@ -847,12 +802,17 @@
     right: 0.75rem !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
+    z-index: 2;
+    display: grid;
+    place-items: center;
     width: 1.625rem;
     height: 1.625rem;
     border: none;
     border-radius: 9999px;
     background: transparent;
     color: var(--content-subtle);
+    cursor: pointer;
+    pointer-events: auto;
 }
 .cn-toast [data-close-button]:hover {
     background: var(--surface-inset);
