@@ -58,7 +58,6 @@ export function TravellerView({
 }) {
     const router = useRouter();
     const [tab, setTab] = useState<TravellerTab>(activeTab);
-    const [cancelledOpen, setCancelledOpen] = useState(false);
 
     // Pagination navigates, which re-renders this component with a new
     // activeTab - keep the local tab in step with the URL it came from.
@@ -199,96 +198,46 @@ export function TravellerView({
                                 bookings.data.length ? (
                                     <div className='flex flex-col gap-8'>
                                         {groups.upcoming.length > 0 && (
-                                            <GroupSection
+                                            <CollapsibleGroup
+                                                id='traveller-upcoming'
                                                 title={dict.groupUpcoming}
                                                 count={groups.upcoming.length}
-                                                dict={dict}>
+                                                dict={dict}
+                                                defaultOpen>
                                                 {groups.upcoming.map(b =>
                                                     cardFor(b, 'full')
                                                 )}
-                                            </GroupSection>
+                                            </CollapsibleGroup>
                                         )}
                                         {groups.past.length > 0 && (
-                                            <GroupSection
+                                            <CollapsibleGroup
+                                                id='traveller-past'
                                                 title={dict.groupPast}
                                                 count={groups.past.length}
-                                                dict={dict}>
+                                                dict={dict}
+                                                // Past-only account (5.9): Past
+                                                // leads open; otherwise it is
+                                                // dead weight below the fold.
+                                                defaultOpen={
+                                                    groups.upcoming.length ===
+                                                        0 && !groups.nextTrip
+                                                }>
                                                 {groups.past.map(b =>
                                                     cardFor(b, 'compact')
                                                 )}
-                                            </GroupSection>
+                                            </CollapsibleGroup>
                                         )}
                                         {groups.cancelled.length > 0 && (
-                                            <section>
-                                                {/* Collapsed by default (5.3):
-                                                    dead weight stays out of the
-                                                    way but reachable. */}
-                                                <button
-                                                    type='button'
-                                                    aria-expanded={cancelledOpen}
-                                                    aria-controls='traveller-cancelled'
-                                                    onClick={() =>
-                                                        setCancelledOpen(
-                                                            v => !v
-                                                        )
-                                                    }
-                                                    className='flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-[17px] font-medium tracking-[-0.012em] text-it-text-muted transition-colors hover:text-it-heading'>
-                                                    {dict.groupCancelled}
-                                                    <span className='text-[14px] font-normal'>
-                                                        {
-                                                            groups.cancelled
-                                                                .length
-                                                        }
-                                                    </span>
-                                                    <motion.span
-                                                        aria-hidden
-                                                        animate={{
-                                                            rotate: cancelledOpen
-                                                                ? 180
-                                                                : 0,
-                                                        }}
-                                                        transition={crossFade}
-                                                        className='inline-flex'>
-                                                        <ChevronDown
-                                                            className='size-4'
-                                                            strokeWidth={2}
-                                                        />
-                                                    </motion.span>
-                                                </button>
-                                                <AnimatePresence initial={false}>
-                                                    {cancelledOpen && (
-                                                        <motion.div
-                                                            key='cancelled'
-                                                            id='traveller-cancelled'
-                                                            initial={{
-                                                                height: 0,
-                                                                opacity: 0,
-                                                            }}
-                                                            animate={{
-                                                                height: 'auto',
-                                                                opacity: 1,
-                                                            }}
-                                                            exit={{
-                                                                height: 0,
-                                                                opacity: 0,
-                                                            }}
-                                                            transition={
-                                                                crossFade
-                                                            }
-                                                            className='overflow-hidden'>
-                                                            <div className='flex flex-col gap-3 pt-4'>
-                                                                {groups.cancelled.map(
-                                                                    b =>
-                                                                        cardFor(
-                                                                            b,
-                                                                            'compact'
-                                                                        )
-                                                                )}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </section>
+                                            <CollapsibleGroup
+                                                id='traveller-cancelled'
+                                                title={dict.groupCancelled}
+                                                count={groups.cancelled.length}
+                                                dict={dict}
+                                                muted>
+                                                {groups.cancelled.map(b =>
+                                                    cardFor(b, 'compact')
+                                                )}
+                                            </CollapsibleGroup>
                                         )}
                                     </div>
                                 ) : bookings.total === 0 ? (
@@ -374,30 +323,72 @@ export function TravellerView({
     );
 }
 
-function GroupSection({
+/**
+ * One booking group as a collapsible section (founder 2026-07-30: every group
+ * folds like Cancelled always did). The header IS the toggle - title, real
+ * row count, chevron - so a long Past list stops burying the page.
+ */
+function CollapsibleGroup({
+    id,
     title,
     count,
     dict,
+    defaultOpen = false,
+    muted = false,
     children,
 }: {
+    id: string;
     title: string;
     count: number;
     dict: Dictionary['traveller'];
+    defaultOpen?: boolean;
+    /** Cancelled reads quieter - dead weight, reachable but never loud. */
+    muted?: boolean;
     children: ReactNode;
 }) {
+    const [open, setOpen] = useState(defaultOpen);
     return (
         <section>
-            <div className='mb-4 flex items-baseline gap-2'>
-                <h3 className='m-0 font-medium text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
-                    {title}
-                </h3>
-                <span className='text-[14px] text-it-text-muted'>
+            <button
+                type='button'
+                aria-expanded={open}
+                aria-controls={id}
+                onClick={() => setOpen(v => !v)}
+                className={`flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-medium tracking-[-0.012em] transition-colors ${
+                    muted
+                        ? 'text-[17px] text-it-text-muted hover:text-it-heading'
+                        : 'text-[20px] leading-[1.3] text-it-heading'
+                }`}>
+                {title}
+                <span className='text-[14px] font-normal text-it-text-muted'>
                     {count === 1
                         ? dict.tripCountOne
                         : dict.tripsCount.replace('{count}', String(count))}
                 </span>
-            </div>
-            <div className='flex flex-col gap-4'>{children}</div>
+                <motion.span
+                    aria-hidden
+                    animate={{ rotate: open ? 180 : 0 }}
+                    transition={crossFade}
+                    className='inline-flex text-it-text-muted'>
+                    <ChevronDown className='size-4' strokeWidth={2} />
+                </motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        key='body'
+                        id={id}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={crossFade}
+                        className='overflow-hidden'>
+                        <div className='flex flex-col gap-4 pt-4'>
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }
