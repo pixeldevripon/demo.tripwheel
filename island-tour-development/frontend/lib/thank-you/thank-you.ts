@@ -48,18 +48,6 @@ export interface ThankYouPayment {
     payBeforeShort: string;
 }
 
-export interface ThankYouApartment {
-    eyebrowArea: string;
-    name: string;
-    rating: number;
-    reviewCount: number;
-    sleeps: number;
-    pricePerNight: number;
-    descriptionLines: string[];
-    image: string;
-    airbnbUrl: string;
-}
-
 export interface ThankYouBooking {
     /**
      * True when the request carried the traveler session cookie for this
@@ -142,27 +130,15 @@ export interface ThankYouBooking {
     /** ISO start/end used for the add-to-calendar link. */
     startsAtIso: string;
     endsAtIso: string;
-    apartment: ThankYouApartment;
 }
 
 /**
- * Island Tours' own apartment cross-sell. This is static marketing content, not
- * booking data - it is the same card for every traveller.
+ * The apartment cross-sell used to be a hardcoded `APARTMENT_PROMO` constant
+ * here, on the booking payload. It is NOT booking data - it is the same card for
+ * every traveller - so it now comes from `getHotelPromo()` (Dashboard > Pages >
+ * Hotel), which is cached under its own tag instead of being re-derived inside
+ * every per-traveller lookup. Do not add it back to this interface.
  */
-const APARTMENT_PROMO: ThankYouApartment = {
-    eyebrowArea: 'Jan Thiel',
-    name: 'Palm Suite Apartment',
-    rating: 4.8,
-    reviewCount: 1738,
-    sleeps: 4,
-    pricePerNight: 160,
-    descriptionLines: [
-        'Quiet, modern, 5min from the beach',
-        'Owned and hosted by Island Tours',
-    ],
-    image: 'https://picsum.photos/seed/typ-apartment/1176/758',
-    airbnbUrl: 'https://www.airbnb.com',
-};
 
 // ── Label formatting ────────────────────────────────────────────────────────
 // The backend sends destination-LOCAL wall-clock parts plus real UTC instants.
@@ -389,7 +365,6 @@ export async function getThankYouBooking(
         // lands at the destination's 8am regardless of the traveller's zone).
         startsAtIso: start ? `${typ.localDate}T${typ.startTime}:00` : '',
         endsAtIso: end ? `${typ.localDate}T${typ.endTime}:00` : '',
-        apartment: APARTMENT_PROMO,
     };
 }
 

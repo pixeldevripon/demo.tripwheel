@@ -111,6 +111,18 @@ export const COARSE_CACHE_TAGS = [
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.
     'homepage',
+    // Island Tours' own places to stay, promoted at the foot of the thank-you
+    // page (Dashboard > Pages > Hotels). Its own tag, not `homepage`: it renders
+    // on a different page, and it is the one section whose content decides
+    // whether it renders AT ALL - switching a hotel off, or clearing its photo,
+    // title or booking link, changes WHICH hotel the card shows or takes the
+    // card down entirely. That save has to take effect now rather than after a
+    // cacheLife('days').
+    //
+    // Coarse rather than per-id: the public read serves whichever hotel wins the
+    // promotion order, so editing hotel B can change the card that hotel A was
+    // filling. A per-id tag could not express that.
+    'hotels',
     // The Pages system (legal/policy permalinks). Coarse on purpose: there are
     // a handful of pages, and a slug RENAME must bust the old slug's cached
     // miss as well as the new slug's entry - which a per-slug tag cannot do
