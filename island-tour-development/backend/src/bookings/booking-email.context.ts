@@ -750,6 +750,26 @@ export function preferLocale<T extends { locale: Locale }>(
 }
 
 /**
+ * A tour location of the given type as a display string: localized title
+ * first, street address as the fallback. ONE implementation for every surface
+ * that names a place (confirmation email, traveller account list) - two
+ * copies of this chain WILL drift and name two different meeting points.
+ */
+export function pickTourLocation(
+  locations: readonly {
+    types: string[];
+    streetAddress: string | null;
+    translations: readonly { locale: Locale; title: string | null }[];
+  }[],
+  type: string,
+  locale: Locale,
+): string | null {
+  const loc = locations.find((l) => l.types.includes(type));
+  if (!loc) return null;
+  return preferLocale(loc.translations, locale)?.title ?? loc.streetAddress;
+}
+
+/**
  * The deposit percentage actually charged, derived from the money on the BOOKING
  * rather than read from `Tour.depositPct`.
  *

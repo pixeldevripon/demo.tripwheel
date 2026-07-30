@@ -10,6 +10,7 @@ import { BookingManageHeader } from '@/components/frontend/thank-you/booking-man
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import { claimConversionPush } from '@/lib/api/public/bookings';
+import { getHotelPromo } from '@/lib/api/public/hotel';
 import {
     DEFAULT_LOCALE,
     isLocale,
@@ -128,15 +129,24 @@ async function ThankYouBody({
         : null;
 
     // Cross-sell + apartment upsell belong to the celebratory moment only; the
-    // management/masked views are utilitarian, so skip the fetch there entirely.
-    const relatedHits =
+    // management/masked views are utilitarian, so skip both fetches there
+    // entirely. In parallel - they are independent, and this page is already
+    // several sequential awaits deep behind a spinner.
+    //
+    // The apartment is admin-managed content (Dashboard > Pages > Hotel), NOT
+    // part of the booking payload: it is the same card for every traveller, so it
+    // rides its own cached loader rather than being re-derived per lookup.
+    const [relatedHits, hotel] =
         mode === 'celebratory'
-            ? await getThankYouRelatedTours({
-                  destinationSlug: booking.destinationSlug,
-                  excludeTourId: booking.tourId,
-                  locale,
-              })
-            : [];
+            ? await Promise.all([
+                  getThankYouRelatedTours({
+                      destinationSlug: booking.destinationSlug,
+                      excludeTourId: booking.tourId,
+                      locale,
+                  }),
+                  getHotelPromo(locale),
+              ])
+            : [[], null];
 
     const { title, seeAll, seeAllCount, ...cardDict } = dict.destination.listings;
 
@@ -191,10 +201,16 @@ async function ThankYouBody({
                         cardDict={cardDict}
                         toursHref={toursHref}
                     />
-                    <ThankYouApartmentPromo
-                        apartment={booking.apartment}
-                        dict={dict.thankYou}
-                    />
+                    {/* Admin-managed, and self-hiding: `enabled` is the
+                        backend's verdict that the photo, title and booking link
+                        are all present. Switched off or half-filled, the section
+                        is absent rather than broken. */}
+                    {hotel?.enabled && (
+                        <ThankYouApartmentPromo
+                            hotel={hotel}
+                            dict={dict.thankYou}
+                        />
+                    )}
                 </>
             )}
             <ThankYouQuestion booking={booking} dict={dict.thankYou} />

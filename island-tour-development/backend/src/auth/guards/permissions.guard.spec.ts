@@ -8,6 +8,8 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Permission, Role } from '@prisma/client';
+import { ANY_PERMISSIONS_KEY } from '@/auth/decorators/require-any-permission.decorator';
+import { PERMISSIONS_KEY } from '@/auth/decorators/require-permissions.decorator';
 import { PermissionsGuard } from './permissions.guard';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import type { AuthenticatedRequest } from '@/auth/auth.types';
@@ -27,11 +29,28 @@ function createContext(
 describe('PermissionsGuard', () => {
   let guard: PermissionsGuard;
   let reflector: { getAllAndOverride: jest.Mock };
-  let staffPermissions: { hasPermissions: jest.Mock };
+  let staffPermissions: {
+    hasPermissions: jest.Mock;
+    getEffectivePermissions: jest.Mock;
+  };
+
+  /** Key-aware metadata stub: the guard reads two keys (ALL + ANY). */
+  function setMetadata(all?: Permission[], any?: Permission[]) {
+    reflector.getAllAndOverride.mockImplementation((key: string) =>
+      key === PERMISSIONS_KEY
+        ? all
+        : key === ANY_PERMISSIONS_KEY
+          ? any
+          : undefined,
+    );
+  }
 
   beforeEach(() => {
     reflector = { getAllAndOverride: jest.fn() };
-    staffPermissions = { hasPermissions: jest.fn() };
+    staffPermissions = {
+      hasPermissions: jest.fn(),
+      getEffectivePermissions: jest.fn().mockResolvedValue([]),
+    };
     guard = new PermissionsGuard(
       reflector as unknown as Reflector,
       staffPermissions as unknown as StaffPermissionsService,
@@ -39,7 +58,7 @@ describe('PermissionsGuard', () => {
   });
 
   it('passes through when no permissions are required (undefined metadata)', async () => {
-    reflector.getAllAndOverride.mockReturnValue(undefined);
+    setMetadata(undefined);
     const context = createContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -47,7 +66,7 @@ describe('PermissionsGuard', () => {
   });
 
   it('passes through when the required permissions list is empty', async () => {
-    reflector.getAllAndOverride.mockReturnValue([]);
+    setMetadata([]);
     const context = createContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -55,7 +74,7 @@ describe('PermissionsGuard', () => {
   });
 
   it('throws ForbiddenException when request.user is missing', async () => {
-    reflector.getAllAndOverride.mockReturnValue([Permission.VIEW_TRIPS]);
+    setMetadata([Permission.VIEW_TRIPS]);
     const context = createContext({ user: undefined });
 
     await expect(guard.canActivate(context)).rejects.toThrow(
@@ -69,7 +88,7 @@ describe('PermissionsGuard', () => {
       id: 'user-1',
       role: Role.STAFF,
     } as AuthenticatedRequest['user'];
-    reflector.getAllAndOverride.mockReturnValue([Permission.VIEW_TRIPS]);
+    setMetadata([Permission.VIEW_TRIPS]);
     staffPermissions.hasPermissions.mockResolvedValue({
       granted: true,
       missing: [],
@@ -87,10 +106,7 @@ describe('PermissionsGuard', () => {
       id: 'user-2',
       role: Role.STAFF,
     } as AuthenticatedRequest['user'];
-    reflector.getAllAndOverride.mockReturnValue([
-      Permission.MANAGE_TRIPS,
-      Permission.VIEW_ANALYTICS,
-    ]);
+    setMetadata([Permission.MANAGE_TRIPS, Permission.VIEW_ANALYTICS]);
     staffPermissions.hasPermissions.mockResolvedValue({
       granted: false,
       missing: [Permission.MANAGE_TRIPS],
@@ -99,6 +115,45 @@ describe('PermissionsGuard', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(
       new ForbiddenException('Missing permissions: MANAGE_TRIPS'),
+    );
+  });
+
+  // The stop-sell split (matrix v1.7): @RequireAnyPermission is OR - one hit
+  // from the effective set suffices, none of them throws.
+  it('passes @RequireAnyPermission when the user holds ANY listed permission', async () => {
+    const user = {
+      id: 'user-3',
+      role: Role.STAFF,
+    } as AuthenticatedRequest['user'];
+    setMetadata(undefined, [
+      Permission.MANAGE_AVAILABILITY,
+      Permission.STOP_SELL,
+    ]);
+    staffPermissions.getEffectivePermissions.mockResolvedValue([
+      Permission.STOP_SELL,
+    ]);
+    const context = createContext({ user });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(staffPermissions.hasPermissions).not.toHaveBeenCalled();
+  });
+
+  it('throws @RequireAnyPermission when the user holds none of the set', async () => {
+    const user = {
+      id: 'user-4',
+      role: Role.STAFF,
+    } as AuthenticatedRequest['user'];
+    setMetadata(undefined, [
+      Permission.MANAGE_AVAILABILITY,
+      Permission.STOP_SELL,
+    ]);
+    staffPermissions.getEffectivePermissions.mockResolvedValue([
+      Permission.VIEW_TRIPS,
+    ]);
+    const context = createContext({ user });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      new ForbiddenException('Requires one of: MANAGE_AVAILABILITY, STOP_SELL'),
     );
   });
 });

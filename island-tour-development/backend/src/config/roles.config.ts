@@ -24,6 +24,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     // Editorial curation (Locals' favourite etc.) — admin-only, never operators.
     Permission.MANAGE_EDITORIAL,
     Permission.MANAGE_AVAILABILITY,
+    Permission.STOP_SELL,
     Permission.CREATE_CONTENT,
     Permission.VIEW_CONTENT,
     Permission.EDIT_CONTENT,
@@ -253,6 +254,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     // always Island Tours'. Operators submit-for-review + pause/archive their
     // own tours via EDIT_TRIP routes; publish/unpause/restore are platform.
     Permission.MANAGE_AVAILABILITY,
+    // Matrix v1.7: the narrow close/reopen grant, implied by the full one for
+    // owners; exists so a staff DESIGNATION can hold stop-sell alone.
+    Permission.STOP_SELL,
     Permission.VIEW_CATEGORIES,
   ],
 

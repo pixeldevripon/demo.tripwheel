@@ -17,6 +17,7 @@ import {
   PaymentModel,
   PaymentProvider,
   PaymentStatus,
+  PricingModel,
   Prisma,
 } from '@prisma/client';
 import {
@@ -600,5 +601,221 @@ export async function seedBookingsAndPayments(): Promise<void> {
 
   log(
     `Bookings: ${bookingCount} created; Payments: ${paymentCount} + 2 webhook ledger rows.`,
+  );
+
+  await backfillPhantomDepartures();
+}
+
+/**
+ * Real bookings behind seed-marked seat counts.
+ *
+ * The availability seed writes `bookedCount` DIRECTLY onto its guaranteed
+ * sold-out private hires (no Booking rows behind the number). That made the
+ * calendar's "report it on the booking" deep link - correctly filtered to
+ * that tour and travel day - land on an empty list: a dead end in a demo.
+ *
+ * Idempotent and additive-only: touched departures are exactly those with
+ * `bookedCount > 0` and ZERO bookings referencing them, each gets ONE
+ * CONFIRMED booking for its full seat count, and the departure's own
+ * `bookedCount` is NOT incremented - it already counts these seats.
+ */
+export async function backfillPhantomDepartures(): Promise<void> {
+  const travelers = await loadDemoTravelers();
+  if (travelers.length === 0) return;
+
+  const phantoms = await prisma.departure.findMany({
+    where: {
+      bookedCount: { gt: 0 },
+      bookings: { none: {} },
+      tour: { reference: DEMO_TOUR_REF },
+    },
+    select: {
+      id: true,
+      date: true,
+      startTime: true,
+      bookedCount: true,
+      tour: {
+        select: {
+          id: true,
+          slug: true,
+          operatorId: true,
+          defaultCurrency: true,
+          paymentModel: true,
+          pricingModel: true,
+          basePrice: true,
+          unitIncludedGuests: true,
+          extraPersonPrice: true,
+          depositPct: true,
+          commissionTier: true,
+          durationMinutesTo: true,
+          durationMinutesFrom: true,
+          destination: { select: { slug: true } },
+          ageBands: {
+            select: { id: true, bandType: true, price: true, label: true },
+          },
+        },
+      },
+    },
+  });
+  if (phantoms.length === 0) return;
+
+  let filled = 0;
+  for (const [i, dep] of phantoms.entries()) {
+    const tour = dep.tour;
+    const adultBand =
+      tour.ageBands.find((b) => b.bandType === AgeBandType.ADULT) ??
+      tour.ageBands[0];
+    const isUnit = tour.pricingModel === PricingModel.UNIT;
+    if (!isUnit && !adultBand) continue;
+    if (isUnit && !tour.basePrice) continue;
+
+    const r = rng(9000 + i);
+    const traveler = pick(travelers, r());
+    const [firstName, ...rest] = (traveler.name ?? 'Guest Traveler').split(' ');
+    const lastName = rest.join(' ') || 'Traveler';
+
+    // UNIT charters mirror `computeUnitLines`: one flat whole-unit total
+    // (plus per-guest surcharge beyond the included headcount), riding on
+    // the first seat item; the remaining seats are 0-priced headcount.
+    const guests = dep.bookedCount;
+    let unitTotal: Prisma.Decimal | null = null;
+    let lines: Line[];
+    if (isUnit) {
+      const included = tour.unitIncludedGuests ?? guests;
+      const extraGuests = Math.max(0, guests - included);
+      const surcharge = tour.extraPersonPrice
+        ? tour.extraPersonPrice.times(extraGuests)
+        : D(0);
+      unitTotal = money((tour.basePrice as Prisma.Decimal).plus(surcharge));
+      lines = [{ ageBandId: 'unit', quantity: 1, priceRetail: unitTotal }];
+    } else {
+      const band = adultBand;
+      lines = [
+        { ageBandId: band.id, quantity: guests, priceRetail: band.price },
+      ];
+    }
+    const pricing = computePricing({
+      lines,
+      addOns: [],
+      currency: tour.defaultCurrency,
+      paymentModel: tour.paymentModel,
+      depositPct: tour.depositPct,
+      commissionTier: tour.commissionTier,
+    });
+
+    const id = randomUUID();
+    const localDate = dep.date;
+    const startStr = hhmm(dep.startTime);
+    const startDateTime = dateAt(localDate, startStr);
+    const durTo = tour.durationMinutesTo ?? tour.durationMinutesFrom ?? 120;
+    const endDateTime = new Date(startDateTime.getTime() + durTo * 60_000);
+    // Before the seed's ~26h-ago soldOutAt stamp, so the story holds up:
+    // the booking came first, then the boat read as full.
+    const confirmedAt = new Date(Date.now() - 30 * 60 * 60 * 1000);
+    const usesCardPayment =
+      tour.paymentModel === PaymentModel.PAID_IN_FULL ||
+      tour.paymentModel === PaymentModel.OPERATOR_LINK;
+
+    const booking = await prisma.booking.create({
+      data: {
+        id,
+        tourId: tour.id,
+        departureId: dep.id,
+        operatorId: tour.operatorId,
+        userId: traveler.id,
+        displayRef: makeDisplayRef(id, localDate.getUTCFullYear()),
+        supplierReference: `SUP-${tour.slug.slice(0, 6).toUpperCase()}-PH${i + 1}`,
+        status: BookingStatus.CONFIRMED,
+        paymentModel: tour.paymentModel,
+        currency: tour.defaultCurrency,
+        localDate,
+        startTime: startStr,
+        tourStartDateTime: startDateTime,
+        tourEndDateTime: endDateTime,
+        pickupRequested: false,
+        totalRetail: pricing.totalRetail,
+        commissionRate: pricing.commissionRate,
+        commissionAmount: pricing.commissionAmount,
+        depositAmount: pricing.depositAmount,
+        balanceAmount: pricing.balanceAmount,
+        taxes: [],
+        totalEur: pricing.totalEur,
+        fxRateToEur: pricing.fxRateToEur,
+        contactFirstName: firstName,
+        contactLastName: lastName,
+        contactFullName: traveler.name,
+        contactEmail: traveler.email,
+        contactPhone: '+10000000000',
+        contactCountry: traveler.location ?? 'Netherlands',
+        contactLocales: ['en'],
+        notes: 'Booked out the whole departure - private group.',
+        newsletterOptIn: false,
+        island: tour.destination.slug,
+        customerLocale: 'en',
+        conversionFiredAt: confirmedAt,
+        utcConfirmedAt: confirmedAt,
+        billingCountry: usesCardPayment
+          ? (traveler.location ?? 'Netherlands')
+          : null,
+        paymentMethodBrand: usesCardPayment ? 'visa' : null,
+        paymentMethodLast4: usesCardPayment ? '4242' : null,
+        unitItems: {
+          create: Array.from({ length: guests }, (_, seat) => ({
+            status: BookingStatus.CONFIRMED,
+            ageBandId: isUnit ? null : (adultBand?.id ?? null),
+            priceRetail: isUnit
+              ? seat === 0
+                ? (unitTotal as Prisma.Decimal)
+                : money(0)
+              : adultBand.price,
+            contactFirstName: firstName,
+            contactLastName: lastName,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    if (tour.paymentModel === PaymentModel.PAID_IN_FULL) {
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          provider: PaymentProvider.STRIPE,
+          kind: PaymentKind.FULL,
+          status: PaymentStatus.SUCCEEDED,
+          amount: pricing.totalRetail,
+          currency: tour.defaultCurrency,
+          intentId: `pi_demo_${booking.id.slice(0, 12)}`,
+          chargeId: `ch_demo_${booking.id.slice(0, 12)}`,
+          methodType: 'card',
+        },
+      });
+    } else if (tour.paymentModel === PaymentModel.OPERATOR_LINK) {
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          provider: PaymentProvider.STRIPE,
+          kind: PaymentKind.DEPOSIT,
+          status: PaymentStatus.SUCCEEDED,
+          amount: pricing.depositAmount,
+          currency: tour.defaultCurrency,
+          intentId: `pi_demo_${booking.id.slice(0, 12)}`,
+          chargeId: `ch_demo_${booking.id.slice(0, 12)}`,
+          methodType: 'card',
+        },
+      });
+    }
+
+    // The seat count is already on the departure (that was the whole
+    // problem) - only the tour's CRO counters move.
+    await prisma.tour.update({
+      where: { id: tour.id },
+      data: { bookingCount: { increment: 1 }, lastBookedAt: confirmedAt },
+    });
+    filled++;
+  }
+
+  log(
+    `Bookings: backfilled ${filled} seed-marked sold-out departure${filled === 1 ? '' : 's'} with real bookings.`,
   );
 }

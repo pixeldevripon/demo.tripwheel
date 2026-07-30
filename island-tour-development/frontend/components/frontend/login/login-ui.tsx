@@ -13,6 +13,14 @@ import Link from 'next/link';
 export const inputClass =
     'w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.75 text-[15px] text-it-ink placeholder:text-it-ink-placeholder focus:border-transparent focus:outline-2 focus:outline-it-primary';
 
+/**
+ * Append to `inputClass` when a field has failed validation, so the field itself
+ * carries the state and not only the message below it. The focus ring stays
+ * `it-primary`: once someone is typing a correction, red on the ring reads as
+ * "still wrong" before they have had a chance to finish.
+ */
+export const inputErrorClass = 'border-red-400 focus:outline-it-primary';
+
 export const primaryBtn =
     'flex w-full items-center justify-center gap-2 rounded-full bg-it-primary px-5 py-3.25 text-[15px] font-semibold text-it-primary-fg transition-[filter] hover:brightness-95';
 
@@ -37,6 +45,33 @@ export function Field({
             </label>
             {children}
         </div>
+    );
+}
+
+/**
+ * A single field's validation message, sitting under its input.
+ *
+ * Distinct from `ErrorNote`, which is the FORM-level banner for what came back
+ * from the server (throttled, wrong code). This one is for what is wrong with one
+ * input, and it lives next to that input so the fix is where the message is.
+ *
+ * `id` is required: the input must point at it with `aria-describedby`, or a
+ * screen-reader user hears the field and never the reason it was rejected.
+ */
+export function FieldError({
+    id,
+    children,
+}: {
+    id: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <p
+            id={id}
+            role='alert'
+            className='mt-1.5 text-[13px] leading-[1.5] text-red-600'>
+            {children}
+        </p>
     );
 }
 

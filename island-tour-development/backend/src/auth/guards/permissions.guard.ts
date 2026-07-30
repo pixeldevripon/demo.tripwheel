@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Permission } from '@prisma/client';
+import { ANY_PERMISSIONS_KEY } from '@/auth/decorators/require-any-permission.decorator';
 import { PERMISSIONS_KEY } from '@/auth/decorators/require-permissions.decorator';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import type { AuthenticatedRequest } from '@/auth/auth.types';
@@ -33,6 +34,11 @@ import type { AuthenticatedRequest } from '@/auth/auth.types';
  *     @RequirePermissions(Permission.MANAGE_TRIPS, Permission.VIEW_BOOKINGS)
  *     @Get('/operator/dashboard')
  *     getDashboard() {}
+ *
+ *   Require ANY ONE of a set (OR - the stop-sell split, matrix v1.7):
+ *     @RequireAnyPermission(Permission.MANAGE_AVAILABILITY, Permission.STOP_SELL)
+ *     @Post('/availability/agenda/close-day')
+ *     closeDay() {}
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -46,8 +52,14 @@ export class PermissionsGuard implements CanActivate {
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
+    const anyRequired = this.reflector.getAllAndOverride<Permission[]>(
+      ANY_PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    if (!required || required.length === 0) return true;
+    const hasAll = !!required && required.length > 0;
+    const hasAny = !!anyRequired && anyRequired.length > 0;
+    if (!hasAll && !hasAny) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
@@ -56,15 +68,28 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const { granted, missing } = await this.staffPermissions.hasPermissions(
-      request.user,
-      required,
-    );
-
-    if (!granted) {
-      throw new ForbiddenException(
-        `Missing permissions: ${missing.join(', ')}`,
+    if (hasAll) {
+      const { granted, missing } = await this.staffPermissions.hasPermissions(
+        request.user,
+        required,
       );
+      if (!granted) {
+        throw new ForbiddenException(
+          `Missing permissions: ${missing.join(', ')}`,
+        );
+      }
+    }
+
+    if (hasAny) {
+      // OR semantics: one hit suffices (the stop-sell split, matrix v1.7).
+      const effective = await this.staffPermissions.getEffectivePermissions(
+        request.user,
+      );
+      if (!anyRequired.some((p) => effective.includes(p))) {
+        throw new ForbiddenException(
+          `Requires one of: ${anyRequired.join(', ')}`,
+        );
+      }
     }
 
     return true;

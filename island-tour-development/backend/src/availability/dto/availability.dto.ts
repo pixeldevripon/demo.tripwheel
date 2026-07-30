@@ -64,6 +64,19 @@ export class ExceptionResponseDto {
   })
   capacity!: number | null;
   @ApiPropertyOptional({ nullable: true }) note!: string | null;
+  @ApiProperty({
+    example: '2026-07-28T18:02:11.000Z',
+    description: 'When this change was made - the audit half of §6.5.',
+  })
+  createdAt!: string;
+  @ApiPropertyOptional({
+    example: 'Maria',
+    nullable: true,
+    description:
+      'Display name of whoever made the change ("Closed by Maria"); null when ' +
+      'the account no longer exists or the row predates audit capture.',
+  })
+  createdByName!: string | null;
 }
 
 export class DepartureResponseDto {
@@ -150,8 +163,10 @@ export class ManageCalendarDayDto {
   @ApiProperty({
     example: 3,
     description:
-      'Seats booked across ALL departures on the day - a one-tap close must ' +
-      'confirm when this is > 0 (closing cancels booked departures).',
+      'Seats booked across ALL departures on the day. Closing NEVER touches ' +
+      'them (E.9: a close stops new sales only; cancelling booked departures ' +
+      'is the separate admin-executed refund/rebook flow) - the UI shows this ' +
+      'count so the operator sees who keeps their booking.',
   })
   bookedTotal!: number;
   @ApiProperty({ type: [DepartureResponseDto] })
@@ -175,9 +190,326 @@ export class MaterializeResultDto {
   removed!: number;
 }
 
+export class NextDepartureDto {
+  @ApiProperty({ example: '2026-08-09' }) date!: string;
+  @ApiProperty({ example: '09:00' }) startTime!: string;
+}
+
+export class AvailabilitySummaryDto {
+  @ApiProperty({
+    example: 41,
+    description:
+      'Bookable departures (OPEN, seats left, cutoff not passed) within the ' +
+      'next 30 days - the §7.2 listing-gate horizon. 0 means the tour is ' +
+      'excluded from every ranked surface until a date opens.',
+  })
+  openInNext30Days!: number;
+
+  @ApiPropertyOptional({
+    type: NextDepartureDto,
+    description: 'The soonest bookable departure, null when none exists.',
+  })
+  nextDeparture!: NextDepartureDto | null;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Query DTOs
 // ════════════════════════════════════════════════════════════════════════════
+
+export class AvailabilitySummaryQueryDto {
+  @ApiProperty({ example: 'tour-uuid' })
+  @IsString()
+  tourId!: string;
+}
+
+// ── Daily agenda (Surface B - review §3.3, matrix v1.6) ──────────────────────
+
+export class AgendaQueryDto {
+  @ApiPropertyOptional({
+    example: '2026-07-30',
+    description: 'First day (tour-local). Defaults to the island´s today.',
+  })
+  @IsOptional()
+  @IsLocalDate()
+  from?: string;
+
+  @ApiPropertyOptional({
+    example: 7,
+    description: 'Days to return (default 7, max 28).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(28)
+  days?: number;
+}
+
+export class AgendaDepartureDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() tourId!: string;
+  @ApiProperty({ example: 'Sunset Champagne Sail' }) tourName!: string;
+  @ApiProperty({ enum: ['PER_PERSON', 'UNIT'] })
+  pricingModel!: string;
+  @ApiProperty({ example: '2026-07-30' }) date!: string;
+  @ApiProperty({ example: '16:30' }) startTime!: string;
+  @ApiProperty({ example: 34 }) bookedCount!: number;
+  @ApiProperty({ example: 40 }) capacity!: number;
+  @ApiProperty({
+    enum: DepartureStatus,
+    description: 'LIVE status (cutoff folded in, master read contract).',
+  })
+  status!: DepartureStatus;
+  @ApiProperty({
+    example: false,
+    description:
+      'Booking cutoff has passed (tour-local clock). The read contract folds ' +
+      'this into a CLOSED status, but the agenda renders it as "Departed" - ' +
+      'a wall of struck-through "Closed" 07:00 rows every afternoon reads as ' +
+      '"everything is broken" when it just means the boats left.',
+  })
+  cutoffPassed!: boolean;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The CLOSE_DATE/CLOSE_SLOT row stopping this departure, when one ' +
+      'exists - carries the id (for Reopen) and the who/when audit line.',
+  })
+  closure!: {
+    id: string;
+    createdAt: string;
+    createdByName: string | null;
+    note: string | null;
+  } | null;
+}
+
+export class AgendaDayDto {
+  @ApiProperty({ example: '2026-07-30' }) date!: string;
+  @ApiProperty({ type: [AgendaDepartureDto] })
+  departures!: AgendaDepartureDto[];
+}
+
+export class AgendaResponseDto {
+  @ApiProperty({ type: [AgendaDayDto] }) days!: AgendaDayDto[];
+  @ApiProperty({
+    type: [Object],
+    description: 'The operator´s tours, for the filter chips (id + name).',
+  })
+  tours!: { id: string; name: string }[];
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The STALEST availability_confirmed_at across the operator´s tours - ' +
+      'what the freshness card reports. Null when never confirmed.',
+  })
+  lastConfirmedAt!: string | null;
+}
+
+// ── Global calendar overview (admin + operator, one full-width grid) ─────────
+
+export class OverviewQueryDto {
+  @ApiPropertyOptional({
+    example: '2026-08-01',
+    description: 'First day (tour-local). Defaults to the island´s today.',
+  })
+  @IsOptional()
+  @IsLocalDate()
+  from?: string;
+
+  @ApiPropertyOptional({
+    example: 42,
+    description: 'Days to return (default 42 - a six-week month grid, max 62).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(62)
+  days?: number;
+
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description: 'Narrow to one tour.',
+  })
+  @IsOptional()
+  @IsString()
+  tourId?: string;
+
+  @ApiPropertyOptional({
+    example: 'operator-uuid',
+    description:
+      'Narrow to one operator. Honoured for ADMIN only - every other caller ' +
+      'is pinned to their own operator and the param is ignored.',
+  })
+  @IsOptional()
+  @IsString()
+  operatorId?: string;
+}
+
+export class OverviewTourDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: 'Sunset Champagne Sail' }) name!: string;
+  @ApiProperty() operatorId!: string;
+  @ApiProperty({
+    example: 'Blue Bay Sailing',
+    description: 'Company name, falling back to the owner account´s name.',
+  })
+  operatorName!: string;
+  @ApiProperty({ example: 'America/Curacao' }) timeZone!: string;
+  @ApiProperty({ enum: ['PER_PERSON', 'UNIT'] })
+  pricingModel!: string;
+  @ApiProperty({
+    example: 10,
+    description: 'Default departure capacity (no schedule override).',
+  })
+  maxPartySize!: number;
+  @ApiProperty({
+    type: [String],
+    example: ['09:00', '14:00'],
+    description:
+      'The tour´s slot set - a new weekly schedule´s startTime must be one ' +
+      'of these.',
+  })
+  startTimes!: string[];
+}
+
+export class OverviewDepartureDto extends AgendaDepartureDto {
+  @ApiProperty({
+    description: 'The tour´s operator - admin grids group/filter by it.',
+  })
+  operatorId!: string;
+}
+
+export class OverviewDayDto {
+  @ApiProperty({ example: '2026-08-01' }) date!: string;
+  @ApiProperty({ type: [OverviewDepartureDto] })
+  departures!: OverviewDepartureDto[];
+}
+
+export class AvailabilityOverviewResponseDto {
+  @ApiProperty({
+    example: '2026-07-30',
+    description:
+      'The island´s current date, regardless of the requested window - so ' +
+      'the client never has to infer "today" from days[0].',
+  })
+  today!: string;
+  @ApiProperty({ type: [OverviewDayDto] }) days!: OverviewDayDto[];
+  @ApiProperty({ type: [OverviewTourDto] }) tours!: OverviewTourDto[];
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The STALEST availability_confirmed_at across the scoped tours; null ' +
+      'when any tour was never confirmed.',
+  })
+  lastConfirmedAt!: string | null;
+}
+
+export class CloseAgendaDayDto {
+  @ApiProperty({ example: '2026-07-30' })
+  @IsLocalDate()
+  date!: string;
+
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description: 'Scope to one tour (the agenda´s filtered bulk close).',
+  })
+  @IsOptional()
+  @IsString()
+  tourId?: string;
+
+  @ApiPropertyOptional({ example: 'Weather' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class CloseAgendaDayResultDto {
+  @ApiProperty({
+    example: 3,
+    description: 'Tours whose day was closed (already-closed skipped).',
+  })
+  closed!: number;
+  @ApiProperty({
+    type: [String],
+    description: 'The affected tour ids - the Undo reopens exactly these.',
+  })
+  tourIds!: string[];
+}
+
+// ── Freshness confirm (E.9 availability_confirmed_at, dev spec §6.4) ─────────
+
+export class ConfirmAvailabilityDto {
+  @ApiPropertyOptional({
+    example: 'tour-uuid',
+    description:
+      'Confirm one tour. Omit to confirm every tour of the caller´s operator ' +
+      '- the daily agenda´s one-tap "Confirm today´s availability".',
+  })
+  @IsOptional()
+  @IsString()
+  tourId?: string;
+}
+
+export class ConfirmAvailabilityResultDto {
+  @ApiProperty({ example: 3, description: 'Tours stamped.' })
+  confirmed!: number;
+  @ApiProperty({ example: '2026-07-30T13:02:11.000Z' })
+  confirmedAt!: string;
+}
+
+// ── Bulk blackout (dev spec §6.2: "blackout ranges") ─────────────────────────
+
+export class CloseRangeDto {
+  @ApiProperty({ example: 'tour-uuid' })
+  @IsString()
+  tourId!: string;
+
+  @ApiProperty({ example: '2026-09-01' })
+  @IsLocalDate()
+  from!: string;
+
+  @ApiProperty({ example: '2026-09-14' })
+  @IsLocalDate()
+  to!: string;
+
+  @ApiPropertyOptional({ example: 'Maintenance haul-out' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class ReopenRangeDto {
+  @ApiProperty({ example: 'tour-uuid' })
+  @IsString()
+  tourId!: string;
+
+  @ApiProperty({ example: '2026-09-01' })
+  @IsLocalDate()
+  from!: string;
+
+  @ApiProperty({ example: '2026-09-14' })
+  @IsLocalDate()
+  to!: string;
+}
+
+export class CloseRangeResultDto {
+  @ApiProperty({
+    example: 14,
+    description: 'Whole-day closures written (already-closed dates skipped).',
+  })
+  closed!: number;
+}
+
+export class ReopenRangeResultDto {
+  @ApiProperty({
+    example: 14,
+    description: 'Whole-day closures removed in the range.',
+  })
+  reopened!: number;
+}
 
 export class ListSchedulesQueryDto {
   @ApiProperty({ example: 'tour-uuid' })

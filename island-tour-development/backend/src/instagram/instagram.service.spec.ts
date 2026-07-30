@@ -20,6 +20,10 @@ function createMockPrismaService() {
         username: 'island.tours_',
         profileUrl: '',
         layout: InstagramLayout.GRID,
+        // A configured account is the normal case. The public feed gates on this
+        // being present, so leaving it out of the default mock would make every
+        // other test here assert against a switched-off section.
+        configAccessToken: 'encrypted:IGAA-token',
       }),
       upsert: jest.fn(),
     },
@@ -89,6 +93,37 @@ describe('InstagramService', () => {
       expect(feed.enabled).toBe(false);
       expect(feed.posts).toEqual([]);
       expect(prisma.instagramPost.findMany).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['no token has ever been saved', null],
+      ['the admin cleared the token', ''],
+    ])(
+      'reports disabled, and reads no tiles, when %s',
+      async (_case, token) => {
+        prisma.instagramAccount.findUnique.mockResolvedValue({
+          username: 'island.tours_',
+          profileUrl: '',
+          layout: InstagramLayout.GRID,
+          configAccessToken: token,
+        });
+        // Tiles exist, so this proves the token alone hides the section.
+        prisma.instagramPost.findMany.mockResolvedValue([tile()]);
+
+        const feed = await service.getPublicFeed();
+
+        expect(feed.enabled).toBe(false);
+        expect(feed.posts).toEqual([]);
+        expect(prisma.instagramPost.findMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('never leaks the token itself into the public payload', async () => {
+      prisma.instagramPost.findMany.mockResolvedValue([tile()]);
+
+      const feed = await service.getPublicFeed();
+
+      expect(JSON.stringify(feed)).not.toContain('IGAA-token');
     });
 
     it('reports disabled when switched on but empty - a handle row over an empty grid is worse than no section', async () => {
@@ -183,6 +218,7 @@ describe('InstagramService', () => {
           username: 'island.tours_',
           profileUrl: '',
           layout,
+          configAccessToken: 'encrypted:IGAA-token',
         });
         prisma.instagramPost.findMany.mockResolvedValue([tile()]);
 

@@ -28,6 +28,7 @@ import {
   QuoteBookingDto,
   RecoverReferenceDto,
   ReportCancellationDto,
+  ChangeBookingDateDto,
   RequestCancellationDto,
   RequestTravellerCodeDto,
   ReserveBookingDto,
@@ -51,6 +52,8 @@ import {
   ApiLookupBookingDocs,
   ApiQuoteDocs,
   ApiRecoverReferenceDocs,
+  ApiChangeBookingDateDocs,
+  ApiDateChangeOptionsDocs,
   ApiRequestCancellationDocs,
   ApiRequestTravellerCodeDocs,
   ApiReserveDocs,
@@ -58,6 +61,7 @@ import {
   ApiThankYouDocs,
   ApiTravellerBookingsDocs,
   ApiTravellerPaymentsDocs,
+  ApiTravellerReceiptDocs,
   ApiTravellerSummaryDocs,
   ApiUpdateBookingDocs,
   ApiVerifyTravellerCodeDocs,
@@ -332,6 +336,20 @@ export class BookingsController {
     return this.bookings.listTravellerPayments(query, sessionToken);
   }
 
+  /**
+   * GET /bookings/traveller/payments/:id - one payment as a printable
+   * receipt (review 9a). Same HISTORY-session gate as the list above.
+   */
+  @Get('traveller/payments/:id')
+  @Public()
+  @ApiTravellerReceiptDocs()
+  travellerReceipt(
+    @Param('id') id: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.getTravellerReceipt(id, sessionToken);
+  }
+
   @Get('typ/:publicRef')
   @Public()
   @ApiThankYouDocs()
@@ -426,6 +444,42 @@ export class BookingsController {
       dto.reason,
       sessionToken,
     );
+  }
+
+  /**
+   * GET /bookings/typ/:publicRef/date-change-options - departures the
+   * traveller can move to (review 10.4). Session-owned like the cancellation
+   * request; read-only, so the global throttle tiers suffice.
+   */
+  @Get('typ/:publicRef/date-change-options')
+  @Public()
+  @ApiDateChangeOptionsDocs()
+  dateChangeOptions(
+    @Param('publicRef') publicRef: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.getDateChangeOptions(publicRef, sessionToken);
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/date-change - the atomic self-service
+   * move. Same human-pace throttle as the cancellation request (it mutates
+   * inventory), plus a per-booking cap in the service.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/date-change')
+  @Public()
+  @ApiChangeBookingDateDocs()
+  changeBookingDate(
+    @Param('publicRef') publicRef: string,
+    @Body() dto: ChangeBookingDateDto,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.changeDate(publicRef, dto.departureId, sessionToken);
   }
 
   /**

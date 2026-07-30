@@ -14,12 +14,12 @@
 const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 /**
- * `sent` covers both "we mailed a code" and "that address has no bookings" -
- * the backend is enumeration-proof and never distinguishes the two, so the UI
- * must not either. `throttled` is surfaced only so the form can explain the
- * wait instead of looking broken.
+ * `unknown` = the address has no bookings, so no code was sent - surfaced as
+ * a validation message (founder 2026-07-30, deliberately trading the
+ * anti-enumeration lock for honest UX; the endpoint's throttles bound
+ * probing). `throttled` keeps the form from looking broken during the wait.
  */
-export type RequestCodeResult = 'sent' | 'throttled';
+export type RequestCodeResult = 'sent' | 'unknown' | 'throttled';
 
 export async function requestTravellerCodeClient(
     email: string
@@ -30,7 +30,12 @@ export async function requestTravellerCodeClient(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
-        return res.status === 429 ? 'throttled' : 'sent';
+        if (res.status === 429) return 'throttled';
+        if (res.ok) {
+            const body = (await res.json()) as { sent?: boolean };
+            if (body.sent === false) return 'unknown';
+        }
+        return 'sent';
     } catch {
         // Same ack on a network failure: the traveller's next step (check the
         // inbox) is identical, and a retry costs them nothing.
@@ -80,6 +85,47 @@ export async function requestCancellationClient(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ publicRef, reason }),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+/** One switchable departure for the self-service date change (review 10.4). */
+export interface DateChangeOption {
+    departureId: string;
+    date: string;
+    startTime: string | null;
+    seatsLeft: number;
+}
+
+/** The departures this booking can move to; [] on any refusal or outage. */
+export async function getDateChangeOptionsClient(
+    publicRef: string
+): Promise<DateChangeOption[]> {
+    try {
+        const res = await fetch(
+            `/api/traveller/date-change?ref=${encodeURIComponent(publicRef)}`
+        );
+        if (!res.ok) return [];
+        const body = (await res.json()) as { options?: DateChangeOption[] };
+        return Array.isArray(body.options) ? body.options : [];
+    } catch {
+        return [];
+    }
+}
+
+/** Atomically move the booking; the backend owns every guard. */
+export async function changeDateClient(
+    publicRef: string,
+    departureId: string
+): Promise<boolean> {
+    try {
+        const res = await fetch('/api/traveller/date-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicRef, departureId }),
         });
         return res.ok;
     } catch {

@@ -196,6 +196,18 @@ Stop-sell is the authoritative operator signal: it takes effect immediately on `
 
 The portal also surfaces an `availability_confirmed_at` **freshness nudge** for non-API operators (a prompt to confirm the calendar is current), plus a weekly schedule editor, an exceptions calendar, and a full audit trail.
 
+### 7.1 Management surfaces (as built, 2026-07-30)
+
+Three dashboard surfaces sit on the same model, each a different shape of the same data:
+
+| Surface | Route | Scope | What it is for |
+|---|---|---|---|
+| Daily agenda (Surface B) | `/availability` | Caller's operator only | The morning run: every departure across the operator's tours as one chronological list, one-tap close, freshness confirm (stamp-on-visit) |
+| **Global calendar** | `/calendar` | Operator: own tours · **ADMIN: platform-wide** with operator/tour narrowing | Planning: full-width Month/Week/Day grid (Google-Calendar shape - mini-calendar sidebar, view switch, Today). Departure chips carry the management card (stop-sell/reopen, capacity edit, bookings + timetable deep links); empty space adds a one-off departure (`add_slot`) or a weekly schedule |
+| Per-tour month grid | tour editor Schedule step | One tour | Setup: weekly pattern, exceptions calendar, close/reopen ranges |
+
+The calendar rides `GET /availability/overview` (`from`/`days≤62`/`tourId?`/`operatorId?`): day-bucketed departures with live status + stopping closures, the scoped tours (with `startTimes`/`maxPartySize` for the add popover), and `today` (the island's real date, returned explicitly so no client ever infers it from the window). `operatorId` is honoured **only for ADMIN**; every other caller is pinned to their own operator via the non-provisioning `operatorContext`. Every action the calendar offers is an existing per-tour write (exceptions / schedules / departures) - admins pass those via `assertTourAccess`, so this endpoint is the first and only cross-operator availability READ.
+
 ---
 
 ## 8. All-sold-out recovery

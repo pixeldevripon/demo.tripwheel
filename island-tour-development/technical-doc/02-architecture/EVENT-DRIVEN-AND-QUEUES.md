@@ -232,6 +232,30 @@ new Worker('platform', processor, { connection, concurrency: 10 });
 
 ---
 
+## 6b. The dashboard inbox is NOT a queue
+
+The in-app notification system (`backend/src/inbox` - bell, sidebar badges, login digest) writes its
+rows **synchronously and fire-and-forget** from the service that caused the event. It is deliberately
+not a job.
+
+Fan-out is two indexed reads (resolve the audience, filter by effective permission) and one
+`createMany`. None of the three reasons to reach for a queue apply: it is not slow, not external, and
+not retryable in any way the caller cares about. Putting it behind BullMQ would add Redis as a
+failure mode for a bell.
+
+What it borrows from this document instead:
+
+- **Idempotent consumers (§5.1)** - a `UNIQUE (userId, dedupeKey)` plus `skipDuplicates`, so a repeated
+  call writes nothing rather than duplicating a row.
+- **Never break the caller** - `notify()` returns `void` and swallows its own errors. A notification
+  can never roll back the booking, the verdict or the payout that produced it.
+
+Naming: `src/inbox` is the human dashboard inbox. `src/notifications` is the **OCTO webhook** system -
+subscriptions, signing secrets, HTTP delivery to OTA partners, and a real BullMQ queue. They share a
+word and nothing else; do not merge them.
+
+---
+
 ## 7. What NOT to do
 
 - **Do not** route bookings through a queue to prevent overbooking. The atomic guarded update is the

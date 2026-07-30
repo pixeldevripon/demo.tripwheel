@@ -90,7 +90,14 @@ export class InstagramSyncScheduler implements OnModuleInit {
       const result = await this.sync.syncNow();
       // Only bust the cache when the grid's contents actually moved; a no-op
       // sync (nothing connected, or nothing changed) must not thrash it.
-      if (result.created + result.removed > 0) {
+      //
+      // `updated` counts too. It used to be left out, which read as "same tiles,
+      // nothing to do" - but an update is a re-mirrored image, a new permalink,
+      // or a new caption, and the caption IS the public alt text. All three
+      // render, so all three have to invalidate. Missing it meant a corrected
+      // caption sat unpublished for a full cacheLife('days') with nothing in any
+      // log to say why.
+      if (result.created + result.updated + result.removed > 0) {
         await this.publicCache.revalidateTags(['instagram']);
       }
     } catch (err) {

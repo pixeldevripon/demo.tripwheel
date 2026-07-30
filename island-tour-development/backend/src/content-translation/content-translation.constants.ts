@@ -16,6 +16,9 @@ export const CONTENT_ENTITY_TYPES = [
   'category',
   'collection',
   'homepage',
+  // Island Tours' own apartment promo on the thank-you page. A singleton like
+  // `homepage`, so its entityId is always the fixed key.
+  'hotel',
 ] as const;
 
 export type ContentEntityType = (typeof CONTENT_ENTITY_TYPES)[number];

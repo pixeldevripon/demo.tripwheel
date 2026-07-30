@@ -30,8 +30,11 @@ import {
   RequestTravellerCodeResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
+  ChangeBookingDateResponseDto,
+  DateChangeOptionsResponseDto,
   TravellerBookingsResponseDto,
   TravellerPaymentsResponseDto,
+  TravellerReceiptDto,
   VerifyTravellerCodeResponseDto,
 } from './dto/booking.dto';
 
@@ -317,6 +320,60 @@ export const ApiTravellerPaymentsDocs = () =>
     ApiUnauthorizedResponse({
       type: UnauthorizedErrorDto,
       description: 'Missing, expired, or non-history session.',
+    }),
+  );
+
+export const ApiTravellerReceiptDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Traveller account: one payment as a printable receipt',
+      description:
+        'Receipt payload for the account area (review 9a): the payment, its ' +
+        'booking context and the payer name. A receipt, not a tax invoice - ' +
+        'no VAT breakdown exists on the platform. Self-scoped by the ' +
+        'HISTORY session like every account read.',
+    }),
+    ApiOkResponse({ type: TravellerReceiptDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Missing, expired, or non-history session.',
+    }),
+    ApiNotFoundResponse({
+      type: NotFoundErrorDto,
+      description: "Unknown payment id, or not this traveller's payment.",
+    }),
+  );
+
+export const ApiDateChangeOptionsDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Switchable departures for a self-service date change',
+      description:
+        'The next OPEN departures of the SAME tour with room for this party ' +
+        '(whole unit free for exclusive charters). Session-owned; refuses ' +
+        'outside the free-cancellation window (review 10.4).',
+    }),
+    ApiOkResponse({ type: DateChangeOptionsResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'No owning traveler session.',
+    }),
+  );
+
+export const ApiChangeBookingDateDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Move the booking to another departure (self-service)',
+      description:
+        'Direct atomic swap inside the free-cancellation window: guarded ' +
+        'seat claim on the target departure, release on the old one, time ' +
+        'snapshots updated. Prices and commission are untouched. Traveller ' +
+        'and operator are notified by email.',
+    }),
+    ApiOkResponse({ type: ChangeBookingDateResponseDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'No owning traveler session.',
     }),
   );
 

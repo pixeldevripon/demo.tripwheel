@@ -46,6 +46,7 @@ model Operator {
   spotlightRequests         SpotlightRequest[]
   notificationSubscriptions NotificationSubscription[]
   calendarFeeds             CalendarFeed[]
+  inboxNotifications        InboxNotification[]
 
   @@index([verificationStatus])
   @@map("operators")

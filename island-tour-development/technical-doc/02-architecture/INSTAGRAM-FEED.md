@@ -72,8 +72,33 @@ InstagramConfigService.resolve():
   working connection (`igUserId`, stored token, expiry, last-sync) in the same
   write, so the next sync resolves the new account and handle. See §6.
 
+### 3.1a Removing the token ("Remove token")
+
+`PATCH /instagram/credentials` with `accessToken: ''` clears the credential and
+tears down the whole connection in the same write. **The public section then stops
+rendering, unconditionally** — ahead of `enableInstagram` and ahead of having any
+active tiles (§8). Tiles are kept: they are our rows, not Instagram's, so
+reconnecting later does not re-download them.
+
+This needed a dedicated dashboard affordance, and the reason is worth keeping:
+**"Save Changes" could never do it.** The token field is write-only and resets to
+`''`, so clearing it back to that default un-dirties the field
+(`dirtyFields.accessToken === false`) and the save skips the write entirely. A
+stored token could be REPLACED but never REMOVED. The button is gated on
+`cred.hasAccessToken`, **not** on `connected` — a token that never worked (pasted
+wrong, revoked at Instagram, or autofilled by a password manager) is the one an
+admin most needs to clear, and `connected` is false for all of those.
+
+Verified end to end 2026-07-30 with `enableInstagram` still ON and 31 active
+tiles: `PATCH {accessToken:''}` → `configAccessToken`, `igUserId`, `accessToken`,
+`tokenExpiresAt` and every `lastSync*` field all null, tiles untouched, feed
+`enabled: false`, and the destination page lost the section with no manual
+revalidate (the write busts `instagram` through the normal bridge).
+
 Code: [`instagram-config.service.ts`](../../backend/src/instagram/instagram-config.service.ts) ·
-[`crypto.util.ts`](../../backend/src/common/utils/crypto.util.ts)
+[`crypto.util.ts`](../../backend/src/common/utils/crypto.util.ts) · dashboard
+`hooks/instagram/use-instagram.ts` (`useRemoveInstagramCredentials`) ·
+`components/settings/instagram-form.tsx`
 
 ### 3.2 Environment variables
 
@@ -269,8 +294,27 @@ Code: [`instagram-token.service.ts`](../../backend/src/instagram/instagram-token
 ## 8. Public rendering
 
 `GET /instagram/public/feed` (public, no auth) returns only rendered-tile fields.
-`enabled` folds together the admin kill switch (`SiteInfo.enableInstagram`) and
-"nothing to show" — either way the frontend renders no section.
+`enabled` folds together **three** reasons to render nothing, because they mean
+the same thing to the frontend:
+
+| `enabled: false` when | Why |
+|---|---|
+| the admin kill switch is off (`SiteInfo.enableInstagram`) | explicit "not on this site" |
+| **no access token is configured** (`InstagramAccount.configAccessToken`) | the integration is not set up, so there is no feed to be honest about |
+| there is nothing to show (0 active tiles) | a handle row over an empty grid looks broken |
+
+The token gate tests **presence of the stored value**, not `safeDecrypt` — a
+rotated `ENCRYPTION_KEY` leaves a token that no longer decrypts, and the honest
+signal for that is a sync failing visibly in the dashboard, not a public section
+silently disappearing for a reason nobody would connect to the key. The token
+case is resolved server-side and the public payload never carries a hint of a
+credential; the frontend must not try to re-derive it.
+
+Note the consequence: hand-curated (`source = MANUAL`) tiles are hidden too when
+no token is saved. That is deliberate — the grid presents itself as a live
+Instagram feed under a handle, and without a token the platform can neither
+verify it still owns that handle nor keep the tiles current. The token field in
+the dashboard says so.
 
 - **Two layouts**, chosen in the dashboard (default **`GALLERY`**):
   - `GRID` — curated band, rounded cards, **6 tiles**.
@@ -279,8 +323,41 @@ Code: [`instagram-token.service.ts`](../../backend/src/instagram/instagram-token
     cap stay saved but are greyed-out "not shown" in the dashboard.
 - **Video tiles** paint the poster first, then a muted looped reel; reduced-motion
   visitors see the poster alone.
-- Cached with `'use cache'` + `cacheTag('instagram')`; dashboard writes bust that
-  tag through the cache-revalidation bridge, and the cron busts it directly.
+- Cached with `'use cache'` + `cacheTag('instagram')`. **Two** paths bust it, and
+  they fail in different ways:
+
+  1. **Dashboard writes** — `apiFetch` → `tagsForMutation` → `case 'instagram'`,
+     which covers every write the form makes: `/instagram/account` (layout, posts
+     per sync, frequency), `/instagram/credentials`, `/instagram/posts/:id`,
+     `/instagram/posts/reorder`, `/instagram/sync`. The visibility checkbox is the
+     odd one out — it writes `/settings/site`, so that case emits `instagram`
+     **as well as** `site-info`. Verified end to end 2026-07-30: toggling
+     visibility, changing layout, and hiding a tile each repainted the public
+     destination page within seconds.
+  2. **The auto-sync cron** — `instagram-sync.scheduler.ts` calls
+     `PublicCacheService.revalidateTags(['instagram'])` itself, because nothing
+     about that run passes through the dashboard.
+
+  Two traps live in path 2, both fixed 2026-07-30:
+
+  - It busts only when the grid actually moved, and the predicate must be
+    `created + updated + removed > 0`. `updated` was missing, so a re-mirrored
+    image, a changed permalink, or a corrected caption (**the caption IS the
+    public alt text**) never reached the site — silent for a full
+    `cacheLife('days')`.
+  - `PublicCacheService` needs **`REVALIDATE_SECRET` and `ISLAND_TOURS_URL` in the
+    BACKEND env**. Missing either, it logs `Public-cache revalidation skipped` and
+    returns false — so every backend-originated bust silently does nothing, and
+    that is not only Instagram: the nightly re-rank jobs and AI-translation
+    completions use the same client. `REVALIDATE_SECRET` was simply unset in
+    `backend/.env`. It must be one of the values in the frontend's
+    comma-separated `REVALIDATE_SECRET` list, and it is read at boot — setting it
+    needs a backend restart.
+
+  If a dashboard change looks like it did not bust, check the browser's own
+  Router Cache before the server: an already-open public tab reuses its RSC
+  payload for up to 30 s, so the first thing to try is a hard reload, not a code
+  change.
 
 Code (public frontend repo `island-tour-development/frontend`):
 [`lib/api/public/instagram.ts`](../../frontend/lib/api/public/instagram.ts) ·

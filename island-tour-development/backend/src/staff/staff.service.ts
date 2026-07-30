@@ -5,6 +5,7 @@ import {
   provisionOrAttachAccount,
   rollbackProvisionOrAttach,
 } from '@/common/utils/invite-provisioning.util';
+import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
 import {
   computeEffectivePermissions,
@@ -25,6 +26,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  InboxEvent,
   Permission,
   Prisma,
   Role,
@@ -98,6 +100,7 @@ export class StaffService {
     private readonly prisma: PrismaService,
     private readonly staffPermissions: StaffPermissionsService,
     private readonly mailService: MailService,
+    private readonly inbox: InboxService,
   ) {}
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
@@ -359,6 +362,23 @@ export class StaffService {
 
       // Role may have been elevated on attach - drop the cached permissions.
       this.staffPermissions.invalidate(user.id);
+
+      // Operator team only. A platform seat has no operator inbox to land in,
+      // and Island Tours staff do not need a bell for each other's hiring.
+      if (params.operatorId) {
+        this.inbox.notify({
+          event: InboxEvent.TEAM_SEAT_INVITED,
+          operatorId: params.operatorId,
+          title: `${params.name} was invited to the team`,
+          body: created
+            ? 'They have been emailed a link to set a password.'
+            : 'They already had an account and can sign in with it.',
+          url: '/team',
+          entityType: 'staff',
+          entityId: member.id,
+          actorUserId: params.invitedById,
+        });
+      }
 
       this.logger.log(
         `Staff ${created ? 'invited' : 'attached'}: ${email} (${params.operatorId ? `operator ${params.operatorId}` : 'platform'}) by ${params.invitedById}`,

@@ -36,9 +36,10 @@ import {
   Currency,
   DepartureStatus,
   HubStatus,
+  InboxEvent,
   PickupModel,
-  Prisma,
   PricingModel,
+  Prisma,
   Role,
   SlugEntityType,
   TourApprovalStatus,
@@ -46,6 +47,7 @@ import {
   WholeUnitType,
 } from '@prisma/client';
 import { FxRatesService } from '@/fx/fx-rates.service';
+import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import {
@@ -75,6 +77,7 @@ export class ToursService {
     private readonly availability: AvailabilityService,
     private readonly fx: FxRatesService,
     private readonly mail: MailService,
+    private readonly inbox: InboxService,
   ) {}
 
   /**
@@ -2942,6 +2945,20 @@ export class ToursService {
     });
     this.logger.log(`User ${userId} submitted tour ${id} for review`);
     this.notifyReviewSubmitted(id);
+    this.inbox.notify({
+      event: InboxEvent.TOUR_SUBMITTED_FOR_REVIEW,
+      operatorId: tour.operatorId,
+      title: `${tour.name} was submitted for review`,
+      body: 'It has passed the readiness bar and is waiting for an editorial decision.',
+      url: this.tourReviewPath(id),
+      entityType: 'tour',
+      entityId: id,
+      actorUserId: userId,
+      // A resubmission after changes is a NEW thing to look at, so the round
+      // has to be part of the key - otherwise the second submission dedupes
+      // against the first and the queue silently loses it.
+      dedupeKey: `TOUR_SUBMITTED_FOR_REVIEW:${id}:${updated.submittedAt?.toISOString() ?? ''}`,
+    });
     return this.flattenTour(updated);
   }
 
@@ -2965,6 +2982,17 @@ export class ToursService {
       select: this.tourSelect,
     });
     this.logger.log(`Admin ${adminId} approved tour ${id}`);
+    this.inbox.notify({
+      event: InboxEvent.TOUR_APPROVED,
+      operatorId: tour.operatorId,
+      title: `${tour.name} was approved`,
+      body: 'Island Tours publishes it from here - no action needed from you.',
+      url: this.tourReviewPath(id),
+      entityType: 'tour',
+      entityId: id,
+      actorUserId: adminId,
+      dedupeKey: `TOUR_APPROVED:${id}:${Date.now()}`,
+    });
     // APPROVED is not LIVE: publishing is a separate admin action, so the copy
     // must not congratulate the operator on a page nobody can visit yet.
     this.notifyApproved(id, note?.trim() || undefined);
@@ -2991,6 +3019,17 @@ export class ToursService {
       select: this.tourSelect,
     });
     this.logger.log(`Admin ${adminId} rejected tour ${id}`);
+    this.inbox.notify({
+      event: InboxEvent.TOUR_CHANGES_REQUESTED,
+      operatorId: tour.operatorId,
+      title: `Changes requested on ${tour.name}`,
+      body: note.trim(),
+      url: this.tourReviewPath(id),
+      entityType: 'tour',
+      entityId: id,
+      actorUserId: adminId,
+      dedupeKey: `TOUR_CHANGES_REQUESTED:${id}:${Date.now()}`,
+    });
     this.notifyChangesRequested(id, note.trim());
     return this.flattenTour(updated);
   }
@@ -3132,7 +3171,16 @@ export class ToursService {
 
   /** The wizard's review screen - where both audiences need to land. */
   private tourReviewUrl(tourId: string): string {
-    return `${dashboardAppBase()}/trips/${tourId}/edit?step=review`;
+    return `${dashboardAppBase()}${this.tourReviewPath(tourId)}`;
+  }
+
+  /**
+   * The same destination, dashboard-RELATIVE. Inbox rows store relative paths:
+   * they outlive a domain change, and a stored absolute URL is something a
+   * future bug could point off-site.
+   */
+  private tourReviewPath(tourId: string): string {
+    return `/trips/${tourId}/edit?step=review`;
   }
 
   async publish(id: string, userId: string, userRole: Role) {
@@ -3189,6 +3237,19 @@ export class ToursService {
     this.logger.log(
       `User ${userId} published tour ${id} (bookable=${bookable})`,
     );
+    this.inbox.notify({
+      event: InboxEvent.TOUR_PUBLISHED,
+      operatorId: tour.operatorId,
+      title: `${tour.name} is live`,
+      body: bookable
+        ? 'Travellers can book it now.'
+        : 'It is published but not listed yet - it has no bookable departures in the next 30 days.',
+      url: this.tourReviewPath(id),
+      entityType: 'tour',
+      entityId: id,
+      actorUserId: userId,
+      dedupeKey: `TOUR_PUBLISHED:${id}:${now.toISOString()}`,
+    });
     return this.flattenTour(updated);
   }
 
@@ -3374,6 +3435,31 @@ export class ToursService {
     if (userRole !== Role.ADMIN && tour.status !== TourStatus.ARCHIVED) {
       throw new BadRequestException(
         'Only ARCHIVED tours can be permanently deleted. Archive the tour first.',
+      );
+    }
+
+    // Bookings and reviews are the two Tour relations WITHOUT onDelete:
+    // Cascade, on purpose: a booking carries the commission snapshot, payment
+    // and settlement history, a review carries the operator's reputation
+    // record - neither may vanish because the listing does. Without this
+    // check the delete reaches Postgres, trips over bookings_tourId_fkey and
+    // surfaces as a bare 500 (admin force-delete included). Refuse with the
+    // reason instead: archiving hides the tour everywhere and keeps history.
+    const [bookings, reviews] = await Promise.all([
+      this.prisma.booking.count({ where: { tourId: id } }),
+      this.prisma.review.count({ where: { tourId: id } }),
+    ]);
+    if (bookings > 0 || reviews > 0) {
+      const held = [
+        bookings > 0 ? `${bookings} booking${bookings === 1 ? '' : 's'}` : null,
+        reviews > 0 ? `${reviews} review${reviews === 1 ? '' : 's'}` : null,
+      ]
+        .filter(Boolean)
+        .join(' and ');
+      throw new ConflictException(
+        `This tour cannot be permanently deleted: it has ${held}. ` +
+          'Booking and review history are permanent records - archive the tour instead ' +
+          '(it disappears from every listing and its slug is protected).',
       );
     }
 

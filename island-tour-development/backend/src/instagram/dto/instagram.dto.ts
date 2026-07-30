@@ -201,8 +201,9 @@ export class PublicInstagramPostDto {
  * link), the kill switch, and the tiles.
  *
  * `enabled` is the single gate the frontend obeys. It is false when the admin
- * switched the section off OR when there is nothing to show, so the frontend
- * never has to decide what an empty feed means.
+ * switched the section off, when no access token is configured, OR when there is
+ * nothing to show - so the frontend never has to decide what an empty feed
+ * means, or go looking for a credential it must never be shown.
  */
 export class PublicInstagramFeedResponseDto {
   @ApiProperty({ example: true })

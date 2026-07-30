@@ -31,7 +31,10 @@ import {
   BookingStatus,
   CancellationRefund,
   CancelledBy,
+  DepartureStatus,
+  PaymentKind,
   PaymentModel,
+  PaymentStatus,
   Permission,
   PickupModel,
   Prisma,
@@ -101,6 +104,7 @@ function mockPrisma() {
     departure: {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
       // The atomic seat claim is a guarded `updateMany` (master §5); default = 1 row
       // matched (claim succeeds). Release runs through `update` (read-modify-write).
@@ -344,6 +348,7 @@ describe('BookingsService', () => {
   let stripe: any;
   let mollie: any;
   let staffPermissions: any;
+  let inbox: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -401,6 +406,8 @@ describe('BookingsService', () => {
     };
     // Conflict #7: full financial view by default; individual tests drop
     // VIEW_BOOKING_FINANCIALS to assert the manifest projection.
+    // Fire-and-forget bell; these tests assert the booking, not the badge.
+    inbox = { notify: jest.fn() };
     staffPermissions = {
       getEffectivePermissions: jest
         .fn()
@@ -419,6 +426,7 @@ describe('BookingsService', () => {
       stripe,
       mollie,
       staffPermissions,
+      inbox,
     );
   });
 
@@ -431,6 +439,37 @@ describe('BookingsService', () => {
       expect(m.departure.updateMany).toHaveBeenCalled();
       expect(m.booking.create).toHaveBeenCalled();
       expect(res.status).toBe(BookingStatus.ON_HOLD);
+    });
+
+    // E.8 display_ref (review F11): IT-{tripYear}-XXXXX from a Crockford-style
+    // alphabet - the ref is read aloud at check-in and typed into the login
+    // door, so 0/O, 1/I/L and U are excluded.
+    it('mints an unambiguous 5-char display reference', async () => {
+      setupReserveContext(prisma);
+      await svc.reserve(reserveDto);
+
+      const data = m.booking.create.mock.calls[0][0].data as {
+        displayRef: string;
+      };
+      expect(data.displayRef).toMatch(/^IT-\d{4}-[2-9A-HJKMNP-TV-Z]{5}$/);
+    });
+
+    // A 5-char code CAN collide; the allocator must retry, not crash the
+    // seat-claim transaction with a P2002.
+    it('regenerates the display reference when the first candidate is taken', async () => {
+      setupReserveContext(prisma);
+      m.booking.findUnique
+        .mockResolvedValueOnce(null) // idempotency probe on the booking id
+        .mockResolvedValueOnce({ id: 'clash' }) // first candidate taken
+        .mockResolvedValueOnce(null); // second candidate free
+
+      await svc.reserve(reserveDto);
+
+      const refProbes = m.booking.findUnique.mock.calls.filter(
+        (c: [{ where: { displayRef?: string } }]) => c[0].where.displayRef,
+      );
+      expect(refProbes.length).toBe(2);
+      expect(m.booking.create).toHaveBeenCalled();
     });
 
     // reserve is @Public but AuthGuard still attaches a session, so whoever is
@@ -3117,6 +3156,22 @@ describe('BookingsService', () => {
       expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
     });
 
+    // The booking is still CONFIRMED while a cancellation request is pending -
+    // re-sending "You're booked!" then reads as the platform ignoring the
+    // request (user-reported 2026-07-30).
+    it('409s while a cancellation request is pending', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        confirmed({
+          utcCancellationRequestedAt: new Date('2030-01-02T00:00:00.000Z'),
+          utcCancelledAt: null,
+        }),
+      );
+      await expect(svc.resendConfirmation('p1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(mail.sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    });
+
     it('422s when the booking has no contact email', async () => {
       m.booking.findUnique.mockResolvedValue(confirmed({ contactEmail: null }));
       await expect(svc.resendConfirmation('p1')).rejects.toBeInstanceOf(
@@ -3589,12 +3644,15 @@ describe('BookingsService', () => {
     }
 
     describe('requestTravellerLoginCode', () => {
-      it('acks without creating or mailing anything for an unknown email', async () => {
+      // `sent: false` is a DELIBERATE enumeration trade-off (founder
+      // 2026-07-30): the UI shows "no bookings under this email" instead of
+      // the always-positive ack. Throttles bound probing.
+      it('answers sent:false without creating or mailing anything for an unknown email', async () => {
         m.booking.findFirst.mockResolvedValue(null);
 
         await expect(
           svc.requestTravellerLoginCode({ email: 'nobody@example.test' }),
-        ).resolves.toEqual({ sent: true });
+        ).resolves.toEqual({ sent: false });
 
         expect(m.travelerLoginCode.create).not.toHaveBeenCalled();
         expect(mail.sendTravellerLoginCodeEmail).not.toHaveBeenCalled();
@@ -3741,8 +3799,27 @@ describe('BookingsService', () => {
         createdAt: new Date('2030-01-01T00:00:00.000Z'),
         tour: {
           name: 'Klein Curacao',
+          slug: 'klein-curacao-day-trip',
           cancellationHours: 48,
-          destination: { slug: 'curacao' },
+          durationMinutesFrom: 480,
+          checkInMinutesBefore: 30,
+          meetingPointLat: 12.07,
+          meetingPointLng: -68.86,
+          destination: { slug: 'curacao', name: 'Curaçao' },
+          images: [{ url: 'https://cdn.test/hero.webp' }],
+          translations: [
+            { locale: 'en', meetingPointText: 'Caracasbaai jetty' },
+          ],
+          locations: [],
+        },
+        operator: {
+          contactEmail: 'ops@example.test',
+          contactPhone: '+599 9 560 1367',
+          companyInfo: {
+            companyName: 'Miss Ann',
+            companyEmail: 'info@example.test',
+            companyPhone: null,
+          },
         },
         payments: [],
         settlement: null,
@@ -3833,6 +3910,21 @@ describe('BookingsService', () => {
           paidAmount: '0',
           canRequestCancellation: true,
           cancellationBlockedReason: null,
+          // Logistics + support facts the redesigned card renders (review F7,
+          // 5.8): where to show up, how early, how long, who to call.
+          destinationName: 'Curaçao',
+          tourSlug: 'klein-curacao-day-trip',
+          tourImageUrl: 'https://cdn.test/hero.webp',
+          durationMinutesFrom: 480,
+          arrivalBufferMinutes: 30,
+          meetingPoint: 'Caracasbaai jetty',
+          meetingPointLat: 12.07,
+          meetingPointLng: -68.86,
+          operator: {
+            name: 'Miss Ann',
+            email: 'ops@example.test',
+            phone: '+599 9 560 1367',
+          },
         });
         expect(row.review).toEqual({
           reviewed: false,
@@ -3960,6 +4052,397 @@ describe('BookingsService', () => {
         expect(m.payment.findMany.mock.calls[0][0].where).toEqual({
           booking: { contactEmail: { equals: EMAIL, mode: 'insensitive' } },
         });
+      });
+
+      // Review 5.7 subtotal chips: per currency, never a cross-currency sum,
+      // and an in-flight (PROCESSING) refund stays in its own "on its way"
+      // bucket instead of being claimed as refunded.
+      it('returns per-currency ledger totals with in-flight refunds separate', async () => {
+        m.payment.count.mockResolvedValue(0);
+        m.payment.findMany.mockResolvedValue([]);
+        m.payment.groupBy
+          .mockResolvedValueOnce([
+            { currency: 'USD', _sum: { amount: D('1917.88') } },
+            { currency: 'EUR', _sum: { amount: D('155.48') } },
+          ])
+          .mockResolvedValueOnce([
+            { currency: 'USD', _sum: { amount: D('1200.00') } },
+          ])
+          .mockResolvedValueOnce([
+            { currency: 'EUR', _sum: { amount: D('155.48') } },
+          ]);
+
+        const res = await svc.listTravellerPayments({}, historyToken());
+
+        expect(res.totals).toEqual({
+          paid: [
+            { currency: 'USD', amount: '1917.88' },
+            { currency: 'EUR', amount: '155.48' },
+          ],
+          refunded: [{ currency: 'USD', amount: '1200' }],
+          refundPending: [{ currency: 'EUR', amount: '155.48' }],
+        });
+        // The pending bucket counts ONLY in-flight refunds.
+        expect(m.payment.groupBy.mock.calls[2][0].where).toMatchObject({
+          kind: PaymentKind.REFUND,
+          status: PaymentStatus.PROCESSING,
+        });
+      });
+    });
+
+    describe('getTravellerReceipt', () => {
+      const receiptRow = {
+        id: 'pay1',
+        kind: 'DEPOSIT',
+        status: 'SUCCEEDED',
+        amount: D('36.20'),
+        currency: 'USD',
+        createdAt: new Date('2030-01-01T10:00:00.000Z'),
+        methodType: 'card',
+        booking: {
+          displayRef: 'IT-2030-AAAA',
+          publicRef: 'p1',
+          localDate: day('2030-06-05'),
+          startTime: '07:00',
+          contactFullName: null,
+          contactFirstName: 'Jane',
+          contactLastName: 'Doe',
+          paymentMethodBrand: 'visa',
+          paymentMethodLast4: '4242',
+          paymentModel: PaymentModel.OPERATOR_LINK,
+          totalRetail: D('181.00'),
+          depositAmount: D('36.20'),
+          balanceAmount: D('144.80'),
+          pickupAddress: null,
+          pickupTotalPrice: null,
+          unitItems: [
+            { ageBandId: 'band-adult', priceRetail: D('79.00') },
+            { ageBandId: 'band-adult', priceRetail: D('79.00') },
+            { ageBandId: 'band-child', priceRetail: D('23.00') },
+            // Spectator twin of the adult band - SAME label, own line.
+            { ageBandId: 'band-adult-spec', priceRetail: D('23.40') },
+          ],
+          addOns: [
+            {
+              name: 'Open bar upgrade',
+              quantity: 2,
+              unitPrice: D('25.00'),
+              totalPrice: D('50.00'),
+            },
+          ],
+          tour: {
+            name: 'Klein Curacao',
+            destination: { name: 'Curaçao', slug: 'curacao' },
+            ageBands: [
+              {
+                id: 'band-adult',
+                label: 'Adult (18+)',
+                participation: 'PARTICIPANT',
+              },
+              {
+                id: 'band-child',
+                label: 'Child (4-12)',
+                participation: 'PARTICIPANT',
+              },
+              {
+                id: 'band-adult-spec',
+                label: 'Adult (18+)',
+                participation: 'SPECTATOR',
+              },
+            ],
+          },
+          operator: { companyInfo: { companyName: 'Miss Ann' } },
+        },
+      };
+
+      it('returns the receipt with the payer name, scoped to the session email', async () => {
+        m.payment.findFirst.mockResolvedValue(receiptRow);
+
+        const res = await svc.getTravellerReceipt('pay1', historyToken());
+
+        expect(m.payment.findFirst.mock.calls[0][0].where).toEqual({
+          id: 'pay1',
+          booking: { contactEmail: { equals: EMAIL, mode: 'insensitive' } },
+        });
+        expect(res).toMatchObject({
+          id: 'pay1',
+          amount: '36.2',
+          currency: 'USD',
+          methodBrand: 'visa',
+          methodLast4: '4242',
+          payerName: 'Jane Doe',
+          bookingDisplayRef: 'IT-2030-AAAA',
+          bookingLocalDate: '2030-06-05',
+          tourName: 'Klein Curacao',
+          operatorName: 'Miss Ann',
+          totalRetail: '181',
+          depositAmount: '36.2',
+          balanceAmount: '144.8',
+          pickup: null,
+        });
+        // The invoice body: banded party lines + add-on snapshots.
+        expect(res.party).toEqual([
+          {
+            label: 'Adult (18+)',
+            spectator: false,
+            quantity: 2,
+            unitPrice: '79',
+            lineTotal: '158.00',
+          },
+          {
+            label: 'Child (4-12)',
+            spectator: false,
+            quantity: 1,
+            unitPrice: '23',
+            lineTotal: '23.00',
+          },
+          // The spectator twin stays its OWN line, flagged - it shares the
+          // participant band's label, and merging them would misprice both.
+          {
+            label: 'Adult (18+)',
+            spectator: true,
+            quantity: 1,
+            unitPrice: '23.4',
+            lineTotal: '23.40',
+          },
+        ]);
+        expect(res.addOns).toEqual([
+          {
+            name: 'Open bar upgrade',
+            quantity: 2,
+            unitPrice: '25',
+            totalPrice: '50',
+          },
+        ]);
+      });
+
+      it("404s another traveller's payment id", async () => {
+        m.payment.findFirst.mockResolvedValue(null);
+        await expect(
+          svc.getTravellerReceipt('someone-elses', historyToken()),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
+
+      it('401s a non-history session', async () => {
+        await expect(
+          svc.getTravellerReceipt('pay1', issueTravelerSession(EMAIL)),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+      });
+    });
+
+    // ── Self-service date change (review 10.4, direct swap) ────────────────
+    describe('date change', () => {
+      const T09 = new Date('1970-01-01T09:00:00.000Z');
+      const dcBooking = (over: Record<string, unknown> = {}) => ({
+        id: 'b1',
+        publicRef: 'p1',
+        displayRef: 'IT-2030-AAAA',
+        contactEmail: EMAIL,
+        contactFullName: 'Jane Doe',
+        contactFirstName: null,
+        contactLastName: null,
+        customerLocale: 'en',
+        status: BookingStatus.CONFIRMED,
+        tourId: 't1',
+        departureId: 'dep-old',
+        operatorId: 'op1',
+        island: 'curacao',
+        exclusiveDeparture: false,
+        localDate: day('2030-06-05'),
+        startTime: '07:00',
+        tourStartDateTime: new Date('2030-06-05T07:00:00.000Z'),
+        utcCancellationRequestedAt: null,
+        utcCancelledAt: null,
+        unitItems: [{ id: 'u1' }, { id: 'u2' }],
+        tour: {
+          name: 'Klein Curacao',
+          cancellationHours: 48,
+          durationMinutesFrom: 480,
+        },
+        ...over,
+      });
+      const ownerToken = () => issueTravelerSession(EMAIL);
+
+      it('lists only same-tour OPEN departures with room for the party', async () => {
+        m.booking.findUnique.mockResolvedValue(dcBooking());
+        m.departure.findMany.mockResolvedValue([
+          {
+            id: 'dep-a',
+            date: day('2030-06-10'),
+            startTime: T09,
+            capacity: 8,
+            bookedCount: 2,
+          },
+          {
+            // Full for a 2-seat party - must be filtered out.
+            id: 'dep-b',
+            date: day('2030-06-11'),
+            startTime: T09,
+            capacity: 8,
+            bookedCount: 7,
+          },
+        ]);
+
+        const res = await svc.getDateChangeOptions('p1', ownerToken());
+
+        expect(m.departure.findMany.mock.calls[0][0].where).toMatchObject({
+          tourId: 't1',
+          id: { not: 'dep-old' },
+          status: DepartureStatus.OPEN,
+        });
+        expect(res.options).toEqual([
+          {
+            departureId: 'dep-a',
+            date: '2030-06-10',
+            startTime: '09:00',
+            seatsLeft: 6,
+          },
+        ]);
+      });
+
+      it('an exclusive charter only offers EMPTY departures', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          dcBooking({ exclusiveDeparture: true }),
+        );
+        m.departure.findMany.mockResolvedValue([
+          {
+            id: 'dep-a',
+            date: day('2030-06-10'),
+            startTime: T09,
+            capacity: 8,
+            bookedCount: 1, // someone aboard - not offerable to a charter
+          },
+          {
+            id: 'dep-c',
+            date: day('2030-06-12'),
+            startTime: T09,
+            capacity: 8,
+            bookedCount: 0,
+          },
+        ]);
+
+        const res = await svc.getDateChangeOptions('p1', ownerToken());
+        expect(res.options.map((o) => o.departureId)).toEqual(['dep-c']);
+      });
+
+      it('401s without an owning session', async () => {
+        m.booking.findUnique.mockResolvedValue(dcBooking());
+        await expect(
+          svc.getDateChangeOptions('p1', undefined),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+      });
+
+      it('409s once the free window has closed', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          // Starts in ~1h; 48h window long gone.
+          dcBooking({
+            tourStartDateTime: new Date(Date.now() + 3_600_000),
+          }),
+        );
+        await expect(
+          svc.changeDate('p1', 'dep-a', ownerToken()),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it('409s while a cancellation request is pending', async () => {
+        m.booking.findUnique.mockResolvedValue(
+          dcBooking({
+            utcCancellationRequestedAt: new Date('2030-01-01T00:00:00.000Z'),
+          }),
+        );
+        await expect(
+          svc.changeDate('p1', 'dep-a', ownerToken()),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it('moves atomically: guarded claim on the new departure, release on the old, snapshots updated', async () => {
+        m.booking.findUnique.mockResolvedValue(dcBooking());
+        m.departure.findUnique.mockImplementation(
+          ({ where }: { where: { id: string } }) =>
+            Promise.resolve(
+              where.id === 'dep-new'
+                ? {
+                    id: 'dep-new',
+                    tourId: 't1',
+                    date: day('2030-06-10'),
+                    startTime: T09,
+                    capacity: 8,
+                    bookedCount: 2,
+                    status: DepartureStatus.OPEN,
+                    soldOutAt: null,
+                  }
+                : {
+                    id: 'dep-old',
+                    tourId: 't1',
+                    date: day('2030-06-05'),
+                    startTime: T09,
+                    capacity: 8,
+                    bookedCount: 2,
+                    status: DepartureStatus.OPEN,
+                    soldOutAt: null,
+                  },
+            ),
+        );
+        m.booking.update.mockResolvedValue({
+          publicRef: 'p1',
+          displayRef: 'IT-2030-AAAA',
+          tourId: 't1',
+          operatorId: 'op1',
+          localDate: day('2030-06-10'),
+          startTime: '09:00',
+          tourStartDateTime: new Date('2030-06-10T09:00:00.000Z'),
+        });
+
+        const res = await svc.changeDate('p1', 'dep-new', ownerToken());
+
+        // Guarded seat claim on the target (the reserve backstop, reused).
+        expect(m.departure.updateMany.mock.calls[0][0]).toMatchObject({
+          where: {
+            id: 'dep-new',
+            status: DepartureStatus.OPEN,
+            bookedCount: { lte: 6 },
+          },
+          data: { bookedCount: { increment: 2 } },
+        });
+        // Old departure released via read-modify-write (never negative).
+        expect(m.departure.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 'dep-old' },
+            data: { bookedCount: 0 },
+          }),
+        );
+        // Time snapshots follow the new departure; money fields untouched.
+        const data = m.booking.update.mock.calls[0][0].data;
+        expect(data).toMatchObject({
+          departureId: 'dep-new',
+          startTime: '09:00',
+        });
+        expect(data.totalRetail).toBeUndefined();
+        expect(res).toEqual({
+          changed: true,
+          localDate: '2030-06-10',
+          startTime: '09:00',
+        });
+      });
+
+      it('422s when the target departure fills in the race window', async () => {
+        m.booking.findUnique.mockResolvedValue(dcBooking());
+        m.departure.findUnique.mockResolvedValue({
+          id: 'dep-new',
+          tourId: 't1',
+          date: day('2030-06-10'),
+          startTime: T09,
+          capacity: 8,
+          bookedCount: 7,
+          status: DepartureStatus.OPEN,
+          soldOutAt: null,
+        });
+        m.departure.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(
+          svc.changeDate('p1', 'dep-new', ownerToken()),
+        ).rejects.toBeInstanceOf(UnprocessableEntityException);
+        expect(m.booking.update).not.toHaveBeenCalled();
       });
     });
   });

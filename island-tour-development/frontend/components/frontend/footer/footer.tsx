@@ -24,6 +24,7 @@ type FooterDict = {
     currency: string;
     links: {
         boatTours: string;
+        trackBooking: string;
         help: string;
         contact: string;
         listTour: string;
@@ -254,9 +255,16 @@ export async function Footer({
             href: `${destinationBase}/${PINNED_HUB_SLUG}`,
         },
     ];
+    // "Track your booking" is the `/bookings` reference lookup. It lives here
+    // rather than in the account menu because the people who need it are the ones
+    // who have a confirmation email and no account - and that menu only opens
+    // once you are signed in, where the account area already lists every
+    // booking. The footer is on every page, signed in or not.
+    //
     // Help/contact/list-your-tour/affiliate pages don't exist yet - no href
     // deactivates them (plain text, no 404) until those pages are built.
     const supportLinks = [
+        { label: dict.links.trackBooking, href: '/bookings' },
         { label: dict.links.help },
         { label: dict.links.contact },
     ];

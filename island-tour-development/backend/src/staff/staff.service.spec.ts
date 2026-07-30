@@ -28,6 +28,7 @@ import {
   StaffStatus,
   UserStatus,
 } from '@prisma/client';
+import { InboxService } from '@/inbox/inbox.service';
 import { MailService } from '@/mail/mail.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { auth } from '@/auth/auth.instance';
@@ -157,6 +158,7 @@ describe('StaffService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: StaffPermissionsService, useValue: staffPermissions },
         { provide: MailService, useValue: mailService },
+        { provide: InboxService, useValue: { notify: jest.fn() } },
       ],
     }).compile();
 

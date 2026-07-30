@@ -21,6 +21,7 @@ function mockPrisma(): any {
     hub: { findUnique: jest.fn(), findMany: noRows() },
     collection: { findUnique: jest.fn(), findMany: noRows() },
     homePage: { findUnique: jest.fn(), findFirst: jest.fn() },
+    hotel: { findUnique: jest.fn(), findMany: noRows() },
     faq: { findMany: jest.fn().mockResolvedValue([]), ...upsert() },
     pageContentSection: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -457,17 +458,34 @@ describe('ContentTranslationService', () => {
   });
 
   describe('enqueuePending (nightly sweep)', () => {
-    it('enqueues the recent entities of every type plus the homepage singleton', async () => {
+    it('enqueues the recent entities of every type, hotels and the homepage included', async () => {
       prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
       prisma.category.findMany.mockResolvedValue([{ id: 'c1' }]);
+      prisma.hotel.findMany.mockResolvedValue([{ id: 'h1' }]);
       prisma.homePage.findFirst.mockResolvedValue({ id: 'default' });
 
       const res = await svc.enqueuePending(10);
 
-      expect(res.enqueued).toBe(4);
+      expect(res.enqueued).toBe(5);
       expect(enqueuer.enqueue).toHaveBeenCalledWith('tour', 't1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('category', 'c1');
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('hotel', 'h1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('homepage', 'default');
+    });
+
+    /**
+     * The homepage is self-seeded on first admin read, so a database where nobody
+     * has opened the editor yet has no row at all. The sweep has to skip it rather
+     * than enqueue a job for an id that does not exist. (Hotels need no such
+     * guard - `findMany` on an empty table is simply an empty list.)
+     */
+    it('skips the homepage singleton when it has no row yet', async () => {
+      prisma.homePage.findFirst.mockResolvedValue(null);
+
+      const res = await svc.enqueuePending(10);
+
+      expect(res.enqueued).toBe(0);
+      expect(enqueuer.enqueue).not.toHaveBeenCalled();
     });
 
     it('does not even read the database while unconfigured', async () => {

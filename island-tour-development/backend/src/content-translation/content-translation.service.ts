@@ -74,6 +74,8 @@ function cacheTags(entityType: ContentEntityType, entityId: string): string[] {
       return [`collection:${entityId}`, 'collections'];
     case 'homepage':
       return ['homepage'];
+    case 'hotel':
+      return ['hotels'];
   }
 }
 
@@ -224,7 +226,7 @@ export class ContentTranslationService {
       orderBy: { updatedAt: 'desc' },
       take: limitPerType,
     } as const;
-    const [tours, destinations, hubs, categories, collections, home] =
+    const [tours, destinations, hubs, categories, collections, home, hotels] =
       await Promise.all([
         this.prisma.tour.findMany({ select: { id: true }, ...recent }),
         this.prisma.destination.findMany({ select: { id: true }, ...recent }),
@@ -232,6 +234,7 @@ export class ContentTranslationService {
         this.prisma.category.findMany({ select: { id: true }, ...recent }),
         this.prisma.collection.findMany({ select: { id: true }, ...recent }),
         this.prisma.homePage.findFirst({ select: { id: true } }),
+        this.prisma.hotel.findMany({ select: { id: true }, ...recent }),
       ]);
 
     const jobs: Array<[ContentEntityType, string]> = [
@@ -250,6 +253,7 @@ export class ContentTranslationService {
         id,
       ]),
       ...(home ? [['homepage', home.id] as [ContentEntityType, string]] : []),
+      ...hotels.map(({ id }): [ContentEntityType, string] => ['hotel', id]),
     ];
     for (const [entityType, entityId] of jobs) {
       this.enqueuer.enqueue(entityType, entityId);

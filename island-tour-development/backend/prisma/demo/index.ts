@@ -5,7 +5,7 @@
 // (the base `pnpm prisma:seed` must have run first to create the admin user,
 // categories, destinations, hubs, and attribute dictionary that this depends on).
 
-import { SlugEntityType } from '@prisma/client';
+import { SlugEntityType, type Prisma } from '@prisma/client';
 import {
   DEMO_EMAIL_DOMAIN,
   DEMO_TOUR_REF,
@@ -78,9 +78,21 @@ export async function runDemoSeed(): Promise<void> {
 export async function cleanDemo(): Promise<void> {
   console.log('\n════════════ DEMO CLEAN — removing demo graph ════════════');
 
+  // A demo tour is EITHER seeded (reference marker) OR hand-created under a
+  // demo operator account while testing the dashboard. The second kind used
+  // to survive the clean and then block the operator delete with a
+  // `tours_operatorId_fkey` violation - demo accounts are disposable, so
+  // everything they own goes with them.
+  const DEMO_TOUR_WHERE: Prisma.TourWhereInput = {
+    OR: [
+      { reference: DEMO_TOUR_REF },
+      { operator: { user: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` } } } },
+    ],
+  };
+
   // Capture demo tour slugs before deletion (for slug_registry cleanup).
   const demoTours = await prisma.tour.findMany({
-    where: { reference: DEMO_TOUR_REF },
+    where: DEMO_TOUR_WHERE,
     select: { slug: true, destination: { select: { slug: true } } },
   });
 
@@ -88,13 +100,13 @@ export async function cleanDemo(): Promise<void> {
   //    translations, payments, items, add-ons — but Settlement has NO cascade,
   //    so it must go explicitly, and first).
   await prisma.review.deleteMany({
-    where: { tour: { reference: DEMO_TOUR_REF } },
+    where: { tour: DEMO_TOUR_WHERE },
   });
   await prisma.settlement.deleteMany({
-    where: { booking: { tour: { reference: DEMO_TOUR_REF } } },
+    where: { booking: { tour: DEMO_TOUR_WHERE } },
   });
   await prisma.booking.deleteMany({
-    where: { tour: { reference: DEMO_TOUR_REF } },
+    where: { tour: DEMO_TOUR_WHERE },
   });
 
   // 2) Collections (demo slugs) + their FAQs (polymorphic - no FK cascade) +
@@ -142,7 +154,7 @@ export async function cleanDemo(): Promise<void> {
       },
     });
   }
-  await prisma.tour.deleteMany({ where: { reference: DEMO_TOUR_REF } });
+  await prisma.tour.deleteMany({ where: DEMO_TOUR_WHERE });
 
   // 4b) Demo sub-categories (filter-only; no slug_registry). Drop any lingering
   //     tour links first, then the category rows.

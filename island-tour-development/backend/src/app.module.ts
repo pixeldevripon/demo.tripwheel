@@ -13,6 +13,7 @@ import { MailModule } from '@/mail/mail.module';
 import { UserModule } from '@/users/user.module';
 import { SettingsModule } from './settings/settings.module';
 import { HomePageModule } from './home-page/home-page.module';
+import { HotelsModule } from './hotels/hotels.module';
 import { PagesModule } from './pages/pages.module';
 import { FeaturedExperiencesModule } from './featured-experiences/featured-experiences.module';
 import { PlatformReviewsModule } from './platform-reviews/platform-reviews.module';
@@ -40,6 +41,7 @@ import { PaymentsModule } from '@/payments/payments.module';
 import { SettlementsModule } from '@/settlements/settlements.module';
 import { TrackingModule } from '@/tracking/tracking.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
+import { InboxModule } from '@/inbox/inbox.module';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { WishlistModule } from '@/wishlist/wishlist.module';
 import { WorkersModule } from '@/workers/workers.module';
@@ -64,6 +66,7 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     UserModule,
     SettingsModule,
     HomePageModule,
+    HotelsModule,
     PagesModule,
     FeaturedExperiencesModule,
     PlatformReviewsModule,
@@ -91,6 +94,9 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     SettlementsModule,
     TrackingModule,
     ReviewsModule,
+    // The dashboard bell. NOT NotificationsModule below, which is the OCTO
+    // webhook system - the two share a word and nothing else.
+    InboxModule,
     NotificationsModule,
     WishlistModule,
     WorkersModule,

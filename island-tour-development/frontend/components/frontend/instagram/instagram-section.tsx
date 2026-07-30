@@ -15,9 +15,13 @@ export type InstagramDict = {
  * consent-managed cookies into six EU locales for a decorative strip.
  *
  * Renders NOTHING unless there is a real section to show - the admin kill
- * switch, an empty feed, or a missing handle each remove it entirely. A handle
- * row over an empty grid, or an '@' with no name, looks broken in a way that no
- * section does.
+ * switch, a missing Instagram access token, an empty feed, or a missing handle
+ * each remove it entirely. A handle row over an empty grid, or an '@' with no
+ * name, looks broken in a way that no section does.
+ *
+ * The first three arrive folded into `feed.enabled`, decided by the backend. Do
+ * not try to re-derive the token case here: this component must never be able to
+ * see a credential, and a second copy of the rule would drift from the first.
  *
  * The LAYOUT is admin-chosen (Settings > Instagram) and arrives on the feed
  * payload, so switching it is a content decision rather than a deploy. Both

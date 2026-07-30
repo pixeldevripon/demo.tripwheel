@@ -10,6 +10,7 @@ import {
   BookingStatus,
   CancelledBy,
   EligibilityState,
+  InboxEvent,
   Prisma,
   Role,
   SpotlightStatus,
@@ -17,6 +18,7 @@ import {
   TourStatus,
   type SpotlightRequest,
 } from '@prisma/client';
+import { InboxService } from '@/inbox/inbox.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import type {
@@ -107,7 +109,10 @@ const CAP_STATUSES: SpotlightStatus[] = [
 export class TiersService {
   private readonly logger = new Logger(TiersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inbox: InboxService,
+  ) {}
 
   // ════════════════════════════════════════════════════════════════════════
   // Spotlight — operator
@@ -141,6 +146,16 @@ export class TiersService {
     this.logger.log(
       `Spotlight requested ${row.id} for tour ${tourId} by user ${userId}`,
     );
+    this.inbox.notify({
+      event: InboxEvent.SPOTLIGHT_REQUESTED,
+      operatorId: tour.operatorId,
+      title: `Spotlight requested for ${tour.name}`,
+      body: 'Max three per destination - approve or reject from the spotlight queue.',
+      url: '/spotlight',
+      entityType: 'spotlight',
+      entityId: row.id,
+      actorUserId: userId,
+    });
     return mapSpotlight(row);
   }
 
@@ -290,6 +305,16 @@ export class TiersService {
     });
 
     this.logger.log(`Spotlight ${id} APPROVED by admin ${adminUserId}`);
+    this.inbox.notify({
+      event: InboxEvent.SPOTLIGHT_APPROVED,
+      operatorId: updated.operatorId,
+      title: 'Your Spotlight request was approved',
+      body: `It runs from ${startsAt.toISOString().slice(0, 10)} to ${endsAt.toISOString().slice(0, 10)} at the 35% Spotlight rate.`,
+      url: `/trips/${updated.tourId}/edit?step=reach`,
+      entityType: 'spotlight',
+      entityId: id,
+      actorUserId: adminUserId,
+    });
     return mapSpotlight(updated);
   }
 
@@ -318,6 +343,16 @@ export class TiersService {
       select: SPOTLIGHT_SELECT,
     });
     this.logger.log(`Spotlight ${id} REJECTED by admin ${adminUserId}`);
+    this.inbox.notify({
+      event: InboxEvent.SPOTLIGHT_REJECTED,
+      operatorId: row.operatorId,
+      title: 'Your Spotlight request was not approved',
+      body: dto.rejectionReason,
+      url: `/trips/${row.tourId}/edit?step=reach`,
+      entityType: 'spotlight',
+      entityId: id,
+      actorUserId: adminUserId,
+    });
     return mapSpotlight(row);
   }
 
@@ -754,6 +789,16 @@ export class TiersService {
           },
         });
         demoted++;
+        this.inbox.notify({
+          event: InboxEvent.TIER_DEMOTED,
+          operatorId: t.operatorId,
+          title: 'A tour was moved to the organic tier',
+          body: `It spent 30 days in grace without meeting the bar (${bar.failedMetric}). Existing bookings keep the commission they were made at.`,
+          url: `/trips/${t.id}/edit?step=reach`,
+          entityType: 'tour',
+          entityId: t.id,
+          // Scheduled job: no actor.
+        });
         this.logger.warn(
           `Eligibility: tour ${t.id} demoted ${t.tierKey} -> organic (failed: ${bar.failedMetric})`,
         );
@@ -821,6 +866,7 @@ export class TiersService {
     userId: string,
     role: Role,
   ): Promise<{
+    name: string;
     operatorId: string;
     destinationId: string;
     aggregateRating: number | null;
@@ -829,6 +875,9 @@ export class TiersService {
     const tour = await this.prisma.tour.findUnique({
       where: { id: tourId },
       select: {
+        // `name` is here for notification copy: "Spotlight requested for X"
+        // beats "Spotlight requested" plus a UUID.
+        name: true,
         operatorId: true,
         destinationId: true,
         aggregateRating: true,

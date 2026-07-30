@@ -43,6 +43,16 @@ model User {
 
   passwordChangeRequest PasswordChangeRequest?
 
+  // Dashboard inbox (inbox.prisma) - the bell, not the OCTO webhook family.
+  inboxNotifications       InboxNotification[] @relation("InboxRecipient")
+  inboxNotificationsCaused InboxNotification[] @relation("InboxActor")
+
+  /// When this account was last shown the login digest modal. The modal is a
+  /// once-per-session interruption, and "session" cannot be derived on the
+  /// client - mounting the dashboard layout happens on every navigation, so
+  /// keying off mount pops the dialog all day. The server stamps this instead.
+  inboxDigestShownAt DateTime?
+
   @@index([id, email])
   @@index([role])
   @@map("user")

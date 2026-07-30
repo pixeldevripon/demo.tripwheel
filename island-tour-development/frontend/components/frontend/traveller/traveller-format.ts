@@ -29,25 +29,115 @@ export function money(
  */
 const DATE_LOCALE: Partial<Record<Locale, string>> = { en: 'en-GB' };
 
+function parseWallClock(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value;
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /**
  * A wall-clock `localDate` (YYYY-MM-DD) or an ISO instant, as a readable date.
  * Date-only values are pinned to UTC so a negative-offset browser cannot show
- * the day before.
+ * the day before. Carries the weekday (review F16): "Fri 14 Aug 2026".
  */
 export function formatDay(
     value: string | null | undefined,
     locale: Locale
 ): string {
-    if (!value) return '';
-    const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00Z` : value;
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return '';
+    const date = parseWallClock(value);
+    if (!date) return '';
     return new Intl.DateTimeFormat(DATE_LOCALE[locale] ?? locale, {
+        weekday: 'short',
         day: 'numeric',
         month: 'short',
         year: 'numeric',
         timeZone: 'UTC',
     }).format(date);
+}
+
+/**
+ * A money deadline: "{Day, DD Mon, HH:MM}" (review F10). The value is the
+ * backend's LOCAL wall clock serialized as a UTC-labeled ISO string, so it is
+ * read back in UTC - the island's clock, not the browser's.
+ */
+export function formatDeadline(
+    value: string | null | undefined,
+    locale: Locale
+): string {
+    const date = parseWallClock(value);
+    if (!date) return '';
+    const day = new Intl.DateTimeFormat(DATE_LOCALE[locale] ?? locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+    }).format(date);
+    const time = new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: 'UTC',
+    }).format(date);
+    return `${day}, ${time}`;
+}
+
+/** "Fri 14 Aug" - the short trip date inside the cancel confirm strip. */
+export function formatDayShort(
+    value: string | null | undefined,
+    locale: Locale
+): string {
+    const date = parseWallClock(value);
+    if (!date) return '';
+    return new Intl.DateTimeFormat(DATE_LOCALE[locale] ?? locale, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+    }).format(date);
+}
+
+/** "{count} traveler(s)" with a real singular (review F8). */
+export function partyLabel(
+    count: number,
+    dict: { guestsOne: string; guests: string }
+): string {
+    return count === 1
+        ? dict.guestsOne
+        : dict.guests.replace('{count}', String(count));
+}
+
+/** Rough duration label from the tour's lower-bound minutes: "8h" / "2h 30m". */
+export function durationLabel(minutes: number | null | undefined): string {
+    if (!minutes || minutes <= 0) return '';
+    if (minutes < 60) return `${minutes}m`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/**
+ * "d•••••e@gmail.com" for the signed-in row - the raw address never renders
+ * on a surface that gets screenshotted and shared.
+ */
+export function maskEmail(email: string): string {
+    const [local, domain] = email.split('@');
+    if (!domain || !local) return email;
+    const first = local[0] ?? '';
+    const last = local.length > 1 ? local[local.length - 1] : '';
+    return `${first}•••••${last}@${domain}`;
+}
+
+/** Google Maps link, coordinates first (an address is ambiguous across islands). */
+export function mapsUrl(
+    lat: number | null,
+    lng: number | null,
+    address: string | null
+): string | null {
+    const query =
+        lat != null && lng != null ? `${lat},${lng}` : (address ?? '').trim();
+    if (!query) return null;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 /**
