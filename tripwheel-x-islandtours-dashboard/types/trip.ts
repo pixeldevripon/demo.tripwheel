@@ -411,6 +411,9 @@ export interface TourException {
   type: TourExceptionType;
   capacity: number | null; // add_slot / set_capacity
   note: string | null;
+  // Audit surface (dev spec §6.5): who made the change, and when.
+  createdAt: string; // ISO
+  createdByName: string | null;
 }
 
 // ── Management calendar (operator month grid) ───────────────────────────────────
@@ -431,6 +434,97 @@ export interface TourDeparture {
   available: boolean;
   soldOutAt: string | null;
   manuallyEdited: boolean;
+}
+
+// F13 status line: "is this tour selling?" in one read. 0 open in 30 days =
+// out of every ranked listing (§7.2) until a date opens.
+export interface AvailabilitySummary {
+  openInNext30Days: number;
+  nextDeparture: { date: string; startTime: string } | null;
+}
+
+// ── Daily agenda (Surface B): one operator, ALL tours, one list ──────────────
+
+export interface AgendaDeparture
+  extends Pick<
+    TourDeparture,
+    | 'id'
+    | 'tourId'
+    | 'date'
+    | 'startTime'
+    | 'bookedCount'
+    | 'capacity'
+    | 'status'
+  > {
+  tourName: string;
+  pricingModel: PricingModel;
+  // Cutoff has passed (tour-local). Status folds this into CLOSED per the
+  // read contract; the agenda renders it as "Departed" instead - a 07:00 boat
+  // that already left is not a problem to fix.
+  cutoffPassed: boolean;
+  // The CLOSE_DATE/CLOSE_SLOT row stopping this departure, when one exists -
+  // its id feeds Reopen, the rest is the audit line.
+  closure: {
+    id: string;
+    createdAt: string;
+    createdByName: string | null;
+    note: string | null;
+  } | null;
+}
+
+export interface AgendaDay {
+  date: string;
+  departures: AgendaDeparture[];
+}
+
+export interface AgendaResponse {
+  days: AgendaDay[];
+  tours: { id: string; name: string }[];
+  // The STALEST availability_confirmed_at across tours (weakest link).
+  lastConfirmedAt: string | null;
+}
+
+// ── Global calendar overview: one grid, admin platform-wide ─────────────────
+// Operators (and their staff) are pinned to their own tours; ADMIN reads every
+// operator and may narrow with operatorId/tourId. Same departure shape as the
+// agenda plus the operatorId the admin grid groups/filters by.
+
+export interface OverviewDeparture extends AgendaDeparture {
+  operatorId: string;
+}
+
+export interface OverviewDay {
+  date: string;
+  departures: OverviewDeparture[];
+}
+
+// Tour metadata the calendar's management popovers need: startTimes constrain
+// a new weekly schedule's startTime, maxPartySize is the default capacity.
+export interface OverviewTour {
+  id: string;
+  name: string;
+  operatorId: string;
+  operatorName: string;
+  timeZone: string;
+  pricingModel: PricingModel;
+  maxPartySize: number;
+  startTimes: string[];
+}
+
+export interface AvailabilityOverviewResponse {
+  // The island's real today, independent of the requested window - never
+  // infer today from days[0].
+  today: string;
+  days: OverviewDay[];
+  tours: OverviewTour[];
+  lastConfirmedAt: string | null;
+}
+
+export interface AvailabilityOverviewParams {
+  from?: string; // 'YYYY-MM-DD', defaults to the island's today
+  days?: number; // default 42 (six-week grid), max 62
+  tourId?: string;
+  operatorId?: string; // honoured for ADMIN only
 }
 
 // open = every in-service slot sellable · partial = some slot closed/overridden ·

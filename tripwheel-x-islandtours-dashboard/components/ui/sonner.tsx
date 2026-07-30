@@ -33,11 +33,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             theme={theme as ToasterProps['theme']}
-            // TOP-right, not the library default of bottom-right: every long
-            // dashboard form has a sticky action bar (Save / Copy from English) in
-            // the bottom-right corner, and a toast landed straight on top of Save -
-            // blocking the click for as long as it was on screen.
+            // The status ribbon anchors here (2026-07-30, user call; see
+            // `.cn-toast` in globals.css - alignment CSS follows this prop via
+            // data-x-position, so any of the six values Just Works). Prefer a
+            // TOP position: every long dashboard form has a sticky Save bar at
+            // the bottom and a toast must never sit on it. Width hugs content
+            // (350px floor) inside a viewport-wide lane.
             position='top-right'
+            offset={12}
+            gap={8}
+            closeButton
             // No `text-sm!` here: it forced 14px onto the whole toast and beat
             // the per-element sizes in `.cn-toast [data-title] / [data-description]`,
             // so the type scale could only ever be set from one of the two
@@ -87,3 +92,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
+

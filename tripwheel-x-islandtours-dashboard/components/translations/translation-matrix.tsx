@@ -40,6 +40,11 @@ import {
     useDestinationTranslations,
 } from '@/hooks/destinations/use-destinations';
 import { useHomePageTranslations } from '@/hooks/home-page/use-home-page';
+import {
+    useHotels,
+    useHotelTranslations,
+} from '@/hooks/hotels/use-hotels';
+import { hotelName } from '@/types/hotel';
 import { useHubs, useHubTranslations } from '@/hooks/hubs/use-hubs';
 import {
     useAdminTrips,
@@ -147,6 +152,39 @@ function HomepageRow() {
             id={HOME_ID}
             name='Homepage'
             subtitle='Hero, experiences heading, CTA card and FAQ intro'
+            records={data as never}
+            isLoading={isLoading}
+        />
+    );
+}
+
+/**
+ * Our own hotels. A short unpaged list, like collections - there are a handful of
+ * rows and the point of the screen is comparing them.
+ */
+function HotelsBody() {
+    const q = useHotels();
+    return (
+        <>
+            {(q.data ?? []).map(h => (
+                <HotelRow key={h.id} id={h.id} name={hotelName(h)} />
+            ))}
+            {q.isLoading && <SkeletonRows />}
+            {!q.isLoading && (q.data ?? []).length === 0 && (
+                <EmptyRow label='No hotels yet.' />
+            )}
+        </>
+    );
+}
+
+function HotelRow({ id, name }: { id: string; name: string }) {
+    const { data, isLoading } = useHotelTranslations(id);
+    return (
+        <MatrixRow
+            type='hotel'
+            id={id}
+            name={name}
+            subtitle='Name, neighbourhood, pitch and button text'
             records={data as never}
             isLoading={isLoading}
         />
@@ -441,8 +479,9 @@ export function TranslationMatrix() {
         );
     }
 
-    // Collections render every row; the homepage is a single fixed row.
-    const paginated = type !== 'collection' && type !== 'homepage';
+    // Collections and hotels render every row; the homepage is one fixed row.
+    const paginated =
+        type !== 'collection' && type !== 'homepage' && type !== 'hotel';
 
     return (
         <div className='space-y-4'>
@@ -546,6 +585,7 @@ export function TranslationMatrix() {
                                 />
                             )}
                             {type === 'homepage' && <HomepageRow />}
+                            {type === 'hotel' && <HotelsBody />}
                         </tbody>
                     </table>
                 </div>

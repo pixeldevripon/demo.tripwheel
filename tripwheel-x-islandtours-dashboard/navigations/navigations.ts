@@ -1,5 +1,6 @@
 import {
     Calendar03Icon,
+    CalendarCheckIn01Icon,
     CalendarRemove01Icon,
     Coins01Icon,
     CreditCardIcon,
@@ -8,6 +9,7 @@ import {
     FilterHorizontalIcon,
     Globe02Icon,
     Home01Icon,
+    Building06Icon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -50,6 +52,22 @@ const dashboardNav: NavGroup[] = [
                 icon: DashboardSquare01Icon,
                 permissions: [Permission.VIEW_ANALYTICS],
             },
+            {
+                // THE daily habit (matrix v1.6, availability review §3.3):
+                // every departure across all the operator's tours, one list,
+                // one-tap close. Setup stays under Tours.
+                title: 'Availability',
+                url: 'availability',
+                icon: CalendarCheckIn01Icon,
+                // ANY-of: a stop-sell-only dock seat sees the agenda too.
+                permissions: [
+                    Permission.MANAGE_AVAILABILITY,
+                    Permission.STOP_SELL,
+                ],
+            },
+            // The global calendar (/calendar) deliberately has NO sidebar
+            // entry - it lives as the calendar button in the site header,
+            // one click from anywhere.
             {
                 title: 'Bookings',
                 url: 'bookings',
@@ -167,6 +185,18 @@ const dashboardNav: NavGroup[] = [
                 icon: StarIcon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
+            {
+                // Our OWN places to stay, promoted on the thank-you page. They
+                // sit under Pages rather than Curate for the same reason the
+                // homepage does: this is "what does this page say", not "which
+                // marketplace entities do we push". They are also not operator
+                // listings - they never enter search, ranking or booking - so
+                // they belong nowhere near Tours.
+                title: 'Hotels',
+                url: 'hotels',
+                icon: Building06Icon,
+                permissions: [Permission.MANAGE_EDITORIAL],
+            },
         ],
     },
     {
@@ -269,4 +299,5 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
+
 

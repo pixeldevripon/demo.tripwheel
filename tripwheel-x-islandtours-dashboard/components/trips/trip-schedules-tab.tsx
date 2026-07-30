@@ -9,6 +9,16 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react';
 
 import { DatePickerField } from '@/components/date-picker-field';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +26,6 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Tooltip,
     TooltipContent,
@@ -31,7 +40,7 @@ import {
     useUpdateTrip,
 } from '@/hooks/trips/use-trips';
 import { cn } from '@/lib/utils';
-import type { TourSchedule } from '@/types/trip';
+import type { PricingModel, TourSchedule } from '@/types/trip';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -55,69 +64,196 @@ function formatDay(day: string): string {
 }
 
 // Validity window: "From 2 Jul 2026" when open-ended, else "2 Jul → 30 Sep 2026".
-function validityLabel(schedule: TourSchedule): string {
-    const from = formatDay(schedule.validFrom);
-    return schedule.validUntil
-        ? `${from} → ${formatDay(schedule.validUntil)}`
+function validityLabel(window: {
+    validFrom: string;
+    validUntil: string | null;
+}): string {
+    const from = formatDay(window.validFrom);
+    return window.validUntil
+        ? `${from} → ${formatDay(window.validUntil)}`
         : `From ${from}`;
 }
 
-// ── Schedule list row (one weekday × one start time) ──────────────────────────
+// ── Pattern rows (one row per start time × identical settings) ────────────────
 
-interface ScheduleRowProps {
-    schedule: TourSchedule;
-    tripId: string;
+/**
+ * The storage model is one row per (weekday, time) - correct for the engine,
+ * wrong for a human (F6: "daily at 16:30 except Friday" is one thought, not
+ * seven rows behind seven tabs). A pattern groups the identical rows and puts
+ * the weekdays back on ONE line as toggleable chips. Nothing changes in the
+ * model or the API: a chip toggle creates/deletes the underlying row, and the
+ * row-level actions fan out across the group.
+ */
+interface SchedulePattern {
+    key: string;
+    startTime: string;
+    capacityOverride: number | null;
+    validFrom: string;
+    validUntil: string | null;
+    status: TourSchedule['status'];
+    /** weekday (0=Mon) → the backing schedule row. */
+    byWeekday: Map<number, TourSchedule>;
 }
 
-function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
-    const { mutate: updateSchedule, isPending: isUpdating } =
-        useUpdateSchedule();
-    const { mutate: removeSchedule, isPending: isRemoving } =
-        useRemoveSchedule();
+function groupPatterns(schedules: TourSchedule[]): SchedulePattern[] {
+    const map = new Map<string, SchedulePattern>();
+    for (const s of schedules) {
+        // Status is part of the identity on purpose: "16:30 paused on Monday,
+        // selling Tue-Sun" must render as two honest rows, not one muddle.
+        const key = [
+            s.startTime,
+            s.capacityOverride ?? '',
+            s.validFrom,
+            s.validUntil ?? '',
+            s.status,
+        ].join('|');
+        let p = map.get(key);
+        if (!p) {
+            p = {
+                key,
+                startTime: s.startTime,
+                capacityOverride: s.capacityOverride,
+                validFrom: s.validFrom,
+                validUntil: s.validUntil,
+                status: s.status,
+                byWeekday: new Map(),
+            };
+            map.set(key, p);
+        }
+        p.byWeekday.set(s.weekday, s);
+    }
+    return [...map.values()].sort(
+        (a, b) =>
+            a.startTime.localeCompare(b.startTime) ||
+            a.validFrom.localeCompare(b.validFrom)
+    );
+}
 
-    const isActive = schedule.status === 'ACTIVE';
+interface PatternRowProps {
+    pattern: SchedulePattern;
+    tripId: string;
+    /** Pre-worded by the parent - seat tours and private charters read differently (F10). */
+    capacityLabel: string;
+}
 
-    function handleToggleActive() {
-        updateSchedule(
-            {
-                tripId,
-                scheduleId: schedule.id,
-                payload: { status: isActive ? 'PAUSED' : 'ACTIVE' },
-            },
-            {
-                onError: err =>
-                    toast.error(
-                        err instanceof Error ? err.message : 'Failed to update.'
-                    ),
+function PatternRow({ pattern, tripId, capacityLabel }: PatternRowProps) {
+    const { mutateAsync: createSchedule } = useCreateSchedule();
+    const { mutateAsync: updateSchedule } = useUpdateSchedule();
+    const { mutateAsync: removeSchedule } = useRemoveSchedule();
+    // One flag for every mutation this row can issue - group actions fan out
+    // over several rows and none of them may interleave.
+    const [busy, setBusy] = useState(false);
+    // F7: pause and remove both get a consequence dialog. Neither verb means
+    // "stop selling today" (the engine is forward-only), and an operator who
+    // believes it does has a silent-overbooking morning ahead of them.
+    const [confirming, setConfirming] = useState<'pause' | 'remove' | null>(
+        null
+    );
+
+    const isActive = pattern.status === 'ACTIVE';
+    const rows = [...pattern.byWeekday.values()];
+
+    async function run(work: () => Promise<unknown>, failMsg: string) {
+        setBusy(true);
+        try {
+            await work();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : failMsg);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /** Chip tap: day on ↔ off, writing/deleting the underlying row. */
+    function toggleDay(weekday: number) {
+        const existing = pattern.byWeekday.get(weekday);
+        if (existing) {
+            void run(
+                () => removeSchedule({ tripId, scheduleId: existing.id }),
+                'Failed to remove the day.'
+            );
+        } else {
+            void run(
+                () =>
+                    createSchedule({
+                        tripId,
+                        payload: {
+                            weekday,
+                            startTime: pattern.startTime,
+                            capacityOverride:
+                                pattern.capacityOverride ?? undefined,
+                            validFrom: pattern.validFrom,
+                            validUntil: pattern.validUntil ?? undefined,
+                            // A day added to a paused rule arrives paused - the
+                            // chip joins the rule, it does not overrule it.
+                            status: pattern.status,
+                        },
+                    }),
+                'Failed to add the day.'
+            );
+        }
+    }
+
+    /**
+     * Fan an action across every weekday row of the rule and NAME what
+     * failed: a mixed state ("Mon-Thu paused, Fri didn't take") presented as
+     * one generic error is worse than the failure itself.
+     */
+    async function fanOut(
+        work: (s: TourSchedule) => Promise<unknown>,
+        verb: string
+    ) {
+        setBusy(true);
+        try {
+            const results = await Promise.allSettled(rows.map(work));
+            const failedDays = results
+                .map((r, i) =>
+                    r.status === 'rejected'
+                        ? WEEKDAYS[rows[i].weekday]?.label
+                        : null
+                )
+                .filter((d): d is string => !!d);
+            if (failedDays.length > 0) {
+                toast.error(
+                    `${verb} failed for ${failedDays.join(', ')} - the other days went through. Retry to finish.`
+                );
             }
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /** Pause/resume the WHOLE rule - one tap, not one per weekday (F6). */
+    function toggleActive() {
+        setConfirming(null);
+        void fanOut(
+            s =>
+                updateSchedule({
+                    tripId,
+                    scheduleId: s.id,
+                    payload: { status: isActive ? 'PAUSED' : 'ACTIVE' },
+                }),
+            isActive ? 'Pausing' : 'Resuming'
         );
     }
 
-    function handleDelete() {
-        removeSchedule(
-            { tripId, scheduleId: schedule.id },
-            {
-                onError: err =>
-                    toast.error(
-                        err instanceof Error ? err.message : 'Failed to remove.'
-                    ),
-            }
+    function removeAll() {
+        setConfirming(null);
+        void fanOut(
+            s => removeSchedule({ tripId, scheduleId: s.id }),
+            'Removing'
         );
     }
 
     return (
-        // Flat and hairline-ruled, matching every other list in the wizard.
-        // The weekday prefix is gone: these rows live inside a weekday tab, so
-        // "Tue · 09:00" repeated the tab you are standing on. The time is the
-        // only thing that varies down the list, so it leads.
-        <div className='flex items-center gap-3 border-b border-line py-3 last:border-b-0'>
+        <div className='flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line py-3 last:border-b-0'>
             <span
                 aria-hidden
                 className={`size-1.5 shrink-0 rounded-full ${isActive ? 'bg-success-solid' : 'bg-content-subtle'}`}
             />
-            <div className='min-w-0'>
+            <div className='min-w-14'>
                 <p className='text-sm font-medium tabular-nums text-content'>
-                    {schedule.startTime}
+                    {pattern.startTime}
                     {!isActive && (
                         <span className='ml-2 text-xs font-normal text-content-muted'>
                             Paused
@@ -125,34 +261,110 @@ function ScheduleRow({ schedule, tripId }: ScheduleRowProps) {
                     )}
                 </p>
                 <p className='truncate text-xs text-content-muted'>
-                    {validityLabel(schedule)}
+                    {validityLabel(pattern)}
                 </p>
             </div>
 
+            {/* The week on one line. A filled chip = the rule runs that day;
+                tapping toggles the day directly. */}
+            <div className='flex items-center gap-1'>
+                {WEEKDAYS.map(w => {
+                    const on = pattern.byWeekday.has(w.value);
+                    return (
+                        <button
+                            key={w.value}
+                            type='button'
+                            disabled={busy}
+                            onClick={() => toggleDay(w.value)}
+                            aria-pressed={on}
+                            aria-label={`${w.full}: ${on ? 'runs' : 'off'}`}
+                            title={
+                                on
+                                    ? `Remove ${w.full} from this rule`
+                                    : `Add ${w.full} to this rule`
+                            }
+                            className={cn(
+                                'grid size-6 place-items-center rounded-md text-2xs font-medium transition-colors disabled:opacity-50',
+                                on
+                                    ? 'bg-foreground text-background'
+                                    : 'bg-surface-inset text-content-subtle hover:bg-muted'
+                            )}>
+                            {w.label[0]}
+                        </button>
+                    );
+                })}
+            </div>
+
             <span className='ml-auto text-xs whitespace-nowrap text-content-muted'>
-                {/* "default cap" parsed as a sentence fragment. Say the number
-                    when there is one, and name the fallback when there is not. */}
-                {schedule.capacityOverride != null
-                    ? `${schedule.capacityOverride} seats`
-                    : 'Default capacity'}
+                {capacityLabel}
             </span>
-            <Button
-                size='sm'
-                variant='ghost'
-                onClick={handleToggleActive}
-                disabled={isUpdating}
-                className='text-content-muted'>
-                {isActive ? 'Pause' : 'Activate'}
-            </Button>
-            <Button
-                size='icon-sm'
-                variant='ghost'
-                aria-label='Remove schedule'
-                onClick={handleDelete}
-                disabled={isRemoving}
-                className='text-destructive hover:bg-destructive/10 hover:text-destructive'>
-                <HugeiconsIcon icon={Delete02Icon} className='size-3.5' />
-            </Button>
+            <span className='flex items-center'>
+                <Button
+                    size='sm'
+                    variant='ghost'
+                    onClick={() =>
+                        isActive ? setConfirming('pause') : toggleActive()
+                    }
+                    disabled={busy}
+                    className='text-content-muted'>
+                    {isActive ? 'Pause' : 'Resume'}
+                </Button>
+                {/* Remove appears once the rule is paused (reference mockup):
+                    pause-first is the natural confirmation step, and removal
+                    never touches booked departures (forward-only engine). */}
+                {!isActive && (
+                    <Button
+                        size='icon-sm'
+                        variant='ghost'
+                        aria-label='Remove this rule'
+                        onClick={() => setConfirming('remove')}
+                        disabled={busy}
+                        className='text-destructive hover:bg-destructive/10 hover:text-destructive'>
+                        <HugeiconsIcon
+                            icon={Delete02Icon}
+                            className='size-3.5'
+                        />
+                    </Button>
+                )}
+            </span>
+
+            {/* F7 consequence dialogs: what happens to future dates, what
+                happens to booked ones, and the one-tap alternative. */}
+            <AlertDialog
+                open={confirming !== null}
+                onOpenChange={open => !open && setConfirming(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {confirming === 'remove'
+                                ? `Remove the ${pattern.startTime} rule?`
+                                : `Pause the ${pattern.startTime} rule?`}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {confirming === 'remove'
+                                ? 'No new dates will be created from this rule. '
+                                : 'This stops creating new dates from today. '}
+                            Dates already on sale stay on sale, and departures
+                            with bookings are kept. To stop selling specific
+                            dates now, close them on the calendar below
+                            instead.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={
+                                confirming === 'remove'
+                                    ? removeAll
+                                    : toggleActive
+                            }>
+                            {confirming === 'remove'
+                                ? 'Remove rule'
+                                : 'Pause rule'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -335,9 +547,9 @@ export function StartTimesSection({
                     Start times
                 </CardTitle>
                 <p className='text-sm text-muted-foreground mt-1'>
-                    The tour&apos;s declared departure times. Recurring
-                    schedules and date exceptions can only use times declared
-                    here.
+                    The tour&apos;s declared departure times. The weekly
+                    schedule and one-off date changes can only use times
+                    declared here.
                 </p>
             </CardHeader>
             <CardContent className='pt-6'>{body}</CardContent>
@@ -357,6 +569,13 @@ interface RecurringSchedulesSectionProps {
      */
     maxPartySize: number;
     declaredStartTimes: string[];
+    /**
+     * F10: a unit-priced private charter never gets seat copy - one booking
+     * takes the whole departure, maxPartySize is a guest ceiling (not seats),
+     * and the capacity override is hidden (it invites "raise capacity for more
+     * bookings", which is an extra-departure question, not a capacity one).
+     */
+    pricingModel?: PricingModel;
     /** Drop the Card chrome - the wizard supplies its own section header. */
     bare?: boolean;
 }
@@ -370,8 +589,10 @@ export function RecurringSchedulesSection({
     tripId,
     maxPartySize,
     declaredStartTimes,
+    pricingModel = 'PER_PERSON',
     bare = false,
 }: RecurringSchedulesSectionProps) {
+    const isUnit = pricingModel === 'UNIT';
     const { data: schedules, isLoading } = useSchedules(tripId);
     const { mutateAsync: createSchedule, isPending: isCreating } =
         useCreateSchedule();
@@ -396,22 +617,14 @@ export function RecurringSchedulesSection({
         form?: string;
     }>({});
 
-    // One backend row per weekday × start time. Group by weekday so the list is
-    // scannable one day at a time (tabbed), each day's times sorted.
-    const schedulesByWeekday = new Map<number, TourSchedule[]>();
-    for (const s of schedules ?? []) {
-        const list = schedulesByWeekday.get(s.weekday) ?? [];
-        list.push(s);
-        schedulesByWeekday.set(s.weekday, list);
-    }
-    for (const list of schedulesByWeekday.values()) {
-        list.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    }
-    // Weekdays that actually have schedules, in Mon…Sun order.
-    const activeWeekdays = WEEKDAYS.filter(w =>
-        schedulesByWeekday.has(w.value)
-    );
+    // One backend row per weekday × start time, grouped into pattern rows
+    // (F6): "16:30 · Mon-Sun, not Fri" is one row, not seven behind tabs.
+    const patterns = groupPatterns(schedules ?? []);
     const totalSchedules = schedules?.length ?? 0;
+    // The F6 gap hint: weekdays no rule covers at all, named quietly instead
+    // of hidden behind a "Fri 0" tab nobody clicks.
+    const coveredWeekdays = new Set((schedules ?? []).map(s => s.weekday));
+    const gapDays = WEEKDAYS.filter(w => !coveredWeekdays.has(w.value));
 
     // The tour's declared start times, de-duped and sorted. When present, the form
     // constrains the picker to these so a slot can never be rejected on save.
@@ -475,7 +688,10 @@ export function RecurringSchedulesSection({
             next.weekdays = 'Select at least one weekday.';
         if (startTimes.length === 0)
             next.startTimes = 'Add at least one start time.';
-        const cap = capacity.trim() ? Number(capacity) : undefined;
+        // Unit tours never send an override - the field is hidden (F10) and a
+        // stale draft value must not sneak into the payload behind it.
+        const cap =
+            !isUnit && capacity.trim() ? Number(capacity) : undefined;
         if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
             next.capacity =
                 'Capacity override must be a whole number of at least 1.';
@@ -522,69 +738,34 @@ export function RecurringSchedulesSection({
                     ))}
                 </div>
             ) : totalSchedules > 0 ? (
-                /* Weekday tabs (user preference 2026-07-17), made friendlier:
-               ALL seven days are always present - a day without rules shows
-               a quiet 0 chip and an honest empty panel, so schedule gaps
-               stay visible without leaving the tabbed layout. */
-                <Tabs
-                    defaultValue={String(activeWeekdays[0]?.value ?? 0)}
-                    className='w-full'>
-                    <TabsList>
-                        {WEEKDAYS.map(w => {
-                            const dayCount =
-                                schedulesByWeekday.get(w.value)?.length ?? 0;
-                            return (
-                                <TabsTrigger
-                                    key={w.value}
-                                    value={String(w.value)}>
-                                    {w.label}
-                                    <span
-                                        className={cn(
-                                            'ml-1.5 rounded-full px-1.5 text-2xs font-medium tabular-nums',
-                                            dayCount > 0
-                                                ? 'bg-primary-subtle text-primary-subtle-content'
-                                                : 'bg-surface-inset text-content-subtle'
-                                        )}>
-                                        {dayCount}
-                                    </span>
-                                </TabsTrigger>
-                            );
-                        })}
-                    </TabsList>
-                    {WEEKDAYS.map(w => {
-                        const daySchedules =
-                            schedulesByWeekday.get(w.value) ?? [];
-                        return (
-                            <TabsContent
-                                key={w.value}
-                                value={String(w.value)}
-                                className='mt-4'>
-                                {daySchedules.length > 0 ? (
-                                    daySchedules.map(schedule => (
-                                        <ScheduleRow
-                                            key={schedule.id}
-                                            schedule={schedule}
-                                            tripId={tripId}
-                                        />
-                                    ))
-                                ) : (
-                                    <div className='rounded-lg border border-dashed border-line px-4 py-6 text-center'>
-                                        <p className='text-sm font-medium text-content-muted'>
-                                            No departures on {w.full}
-                                        </p>
-                                        <p className='mt-1 text-xs text-content-subtle'>
-                                            Use “Add schedule” below and select{' '}
-                                            {w.label} to create one.
-                                        </p>
-                                    </div>
-                                )}
-                            </TabsContent>
-                        );
-                    })}
-                </Tabs>
+                /* Grouped pattern rows (F6, supersedes the 2026-07-17 weekday
+               tabs per the July 29 availability review): one row per
+               (time × identical settings), the week as chips on the row. */
+                <div>
+                    {patterns.map(p => (
+                        <PatternRow
+                            key={p.key}
+                            pattern={p}
+                            tripId={tripId}
+                            capacityLabel={
+                                isUnit
+                                    ? `Private charter · 1 booking per departure (up to ${maxPartySize} guests)`
+                                    : p.capacityOverride != null
+                                      ? `${p.capacityOverride} seats`
+                                      : `${maxPartySize} seats (tour default)`
+                            }
+                        />
+                    ))}
+                    {gapDays.length > 0 && gapDays.length < 7 && (
+                        <p className='pt-2.5 text-xs text-content-subtle'>
+                            No departures on{' '}
+                            {gapDays.map(w => `${w.full}s`).join(' or ')}.
+                        </p>
+                    )}
+                </div>
             ) : (
                 <p className='text-sm text-muted-foreground text-center py-6'>
-                    No schedules yet.
+                    No weekly departure times yet.
                 </p>
             )}
 
@@ -737,26 +918,31 @@ export function RecurringSchedulesSection({
                     )}
                 </Field>
 
-                <Field>
-                    <Label>Capacity override (optional)</Label>
-                    <Input
-                        type='number'
-                        min={1}
-                        value={capacity}
-                        onChange={e => {
-                            setCapacity(e.target.value);
-                            clearError('capacity');
-                        }}
-                        placeholder={`Leave blank for ${maxPartySize} seats`}
-                        aria-invalid={!!errors.capacity}
-                        className='max-w-xs'
-                    />
-                    {errors.capacity && (
-                        <p className='text-xs text-destructive mt-1.5'>
-                            {errors.capacity}
-                        </p>
-                    )}
-                </Field>
+                {/* F10: no seat-capacity control on a private charter - one
+                    booking takes the whole departure. Running two boats is an
+                    extra-departure question, answered on the calendar. */}
+                {!isUnit && (
+                    <Field>
+                        <Label>Capacity override (optional)</Label>
+                        <Input
+                            type='number'
+                            min={1}
+                            value={capacity}
+                            onChange={e => {
+                                setCapacity(e.target.value);
+                                clearError('capacity');
+                            }}
+                            placeholder={`Leave blank for ${maxPartySize} seats`}
+                            aria-invalid={!!errors.capacity}
+                            className='max-w-xs'
+                        />
+                        {errors.capacity && (
+                            <p className='text-xs text-destructive mt-1.5'>
+                                {errors.capacity}
+                            </p>
+                        )}
+                    </Field>
+                )}
 
                 <div className='grid grid-cols-2 gap-4'>
                     <Field>
@@ -812,12 +998,11 @@ export function RecurringSchedulesSection({
         <Card>
             <CardHeader className='border-b pb-4'>
                 <CardTitle className='text-lg font-medium'>
-                    Recurring Schedules
+                    Weekly schedule
                 </CardTitle>
                 <p className='text-sm text-muted-foreground mt-1'>
-                    Weekly departure patterns (one rule per weekday and start
-                    time). Departures are materialised from these rules by the
-                    availability engine.
+                    The departure times this tour repeats every week. The
+                    calendar shows the result.
                 </p>
             </CardHeader>
             <CardContent className='pt-6'>{body}</CardContent>

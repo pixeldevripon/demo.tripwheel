@@ -63,18 +63,25 @@ import {
     useUpsertHomePageTranslation,
 } from '@/hooks/home-page/use-home-page';
 import {
+    useHotel,
+    useHotelTranslations,
+    useUpsertHotelTranslation,
+} from '@/hooks/hotels/use-hotels';
+import {
     usePageContentSections,
     useUpsertPageContentSectionTranslation,
 } from '@/hooks/page-content-sections/use-page-content-sections';
 import { useGenerateTranslation } from '@/hooks/translations/use-generate-translation';
 import { HOME_ID } from '@/lib/api/home-page';
 import { type Locale } from '@/lib/constants/locales';
+import { hotelName } from '@/types/hotel';
 import { HUB_PICK_TYPE_LABELS, HUB_SECTION_TYPE_LABELS } from '@/types/enums';
 import {
     CATEGORY_FIELDS,
     COLLECTION_FIELDS,
     DESTINATION_FIELDS,
     HOMEPAGE_FIELDS,
+    HOTEL_FIELDS,
     HUB_FIELDS,
 } from '@/lib/translatable-schema';
 import { ContentWorkspace, type ExtraSection } from './content-workspace';
@@ -134,6 +141,72 @@ export function HomepageWorkspace({ locale }: { locale: Locale }) {
                     // A human save always clears the machine flag - otherwise
                     // the AI refresher would later overwrite this row.
                     payload: { fields: toFields(values), isMachineTranslated: false },
+                })
+            }
+            onTranslateWithAI={() => generate.mutate({ force: true })}
+            isTranslating={generate.isPending}
+        />
+    );
+}
+
+/**
+ * One of Island Tours' own hotels (thank-you page promo). The leanest workspace
+ * in here: its records come from ONE list endpoint (a hotel has few locales, so
+ * per-locale fetches would be three calls for the same payload), there is no
+ * page-content record, and NO `faqBasePath` - a hotel has no questions attached
+ * to it, so passing one would fire a request at a route the backend does not
+ * serve.
+ *
+ * Only prose is translatable. The rating, review count, sleeps and price live on
+ * the record and are edited once in the Details tab: they are the same fact in
+ * every language, and a translation provider handed a price would be free to
+ * reformat the figure.
+ */
+export function HotelWorkspace({
+    id,
+    locale,
+}: {
+    id: string;
+    locale: Locale;
+}) {
+    // The hotel itself, only for its NAME: the workspace header and breadcrumb
+    // said a flat "Hotel" while this was a singleton, which is useless once
+    // there is a list of them.
+    const { data: hotel } = useHotel(id);
+    const { data: translations, isLoading } = useHotelTranslations(id);
+    const upsert = useUpsertHotelTranslation(id);
+    const generate = useGenerateTranslation('hotel', id, locale);
+
+    const source = useMemo(
+        () => translations?.find(t => t.locale === 'en'),
+        [translations],
+    );
+    const target = useMemo(
+        () => translations?.find(t => t.locale === locale),
+        [translations, locale],
+    );
+
+    return (
+        <ContentWorkspace
+            type='hotel'
+            id={id}
+            locale={locale}
+            fields={HOTEL_FIELDS}
+            entityName={hotel ? hotelName(hotel) : undefined}
+            source={source as never}
+            target={target as never}
+            isLoading={isLoading}
+            isMachineTranslated={target?.isMachineTranslated}
+            isSaving={upsert.isPending}
+            onSave={values =>
+                upsert.mutateAsync({
+                    locale,
+                    // A human save always clears the machine flag - otherwise
+                    // the AI refresher would later overwrite this row.
+                    payload: {
+                        fields: toFields(values),
+                        isMachineTranslated: false,
+                    },
                 })
             }
             onTranslateWithAI={() => generate.mutate({ force: true })}

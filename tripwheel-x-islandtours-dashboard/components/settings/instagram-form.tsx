@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { StatusBadge } from '@/components/common/status-badge';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -66,6 +67,7 @@ import {
     useInstagramConnection,
     useInstagramCredentials,
     useInstagramPosts,
+    useRemoveInstagramCredentials,
     useReorderInstagramPosts,
     useSaveInstagramCredentials,
     useSyncInstagram,
@@ -178,6 +180,8 @@ function InstagramSettingsCard() {
     const { mutateAsync: saveSiteInfo, isPending: savingSite } =
         useUpdateSiteInfo();
     const sync = useSyncInstagram();
+    const removeToken = useRemoveInstagramCredentials();
+    const [confirmingRemove, setConfirmingRemove] = useState(false);
 
     const {
         register,
@@ -385,19 +389,49 @@ function InstagramSettingsCard() {
                         </span>
                     )}
 
-                    {/* type="button" so it never submits the surrounding settings form. */}
-                    <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={() => sync.mutate()}
-                        disabled={sync.isPending || !connected}>
-                        <HugeiconsIcon
-                            icon={RefreshIcon}
-                            className='size-3.5'
-                        />
-                        {sync.isPending ? 'Syncing...' : 'Sync now'}
-                    </Button>
+                    {/* type="button" so neither of these submits the settings form. */}
+                    <div className='flex items-center gap-2'>
+                        <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => sync.mutate()}
+                            disabled={sync.isPending || !connected}>
+                            <HugeiconsIcon
+                                icon={RefreshIcon}
+                                className='size-3.5'
+                            />
+                            {sync.isPending ? 'Syncing...' : 'Sync now'}
+                        </Button>
+                        {/* The ONLY way to remove a stored token.
+                            "Save Changes" cannot do it: the token field is
+                            write-only and resets to '', so clearing it back to
+                            that default un-dirties the field and the save skips
+                            it - a token could be replaced but never removed.
+
+                            Gated on `cred.hasAccessToken`, NOT on `connected`.
+                            A token that never worked (pasted wrong, revoked at
+                            Instagram, or autofilled by a password manager) is
+                            exactly the one an admin most needs to clear, and
+                            for all of those `connected` is false. */}
+                        {cred.hasAccessToken && (
+                            <Button
+                                type='button'
+                                variant='ghost'
+                                size='sm'
+                                className='text-danger-fg hover:text-danger-fg'
+                                onClick={() => setConfirmingRemove(true)}
+                                disabled={removeToken.isPending}>
+                                <HugeiconsIcon
+                                    icon={Cancel01Icon}
+                                    className='size-3.5'
+                                />
+                                {removeToken.isPending
+                                    ? 'Removing...'
+                                    : 'Remove token'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {connected && connection?.lastSyncError && (
@@ -423,7 +457,11 @@ function InstagramSettingsCard() {
                                 : cred.hasAccessToken
                                   ? // Stored but unreadable - the encryption key changed under it.
                                     'Stored value cannot be decrypted. Paste the token again to fix it.'
-                                  : 'Long-lived token; stored encrypted and auto-refreshed.'
+                                  : // Says the consequence, not just the mechanics: without a
+                                    // token the public section is gone, tiles or no tiles, and
+                                    // an admin who has curated some would otherwise go looking
+                                    // for the bug on the site instead of in this field.
+                                    'Long-lived token; stored encrypted and auto-refreshed. Until one is saved the Instagram section does not render on the public site.'
                         }
                     />
 
@@ -544,6 +582,26 @@ function InstagramSettingsCard() {
                     </p>
                 )}
             </div>
+
+            {/* Irreversible in the only sense that matters: the token is stored
+                encrypted and never readable again, so "undo" means going back to
+                Instagram for a new one. The description leads with the public
+                consequence rather than the mechanics - that is the part an admin
+                is deciding about. */}
+            <ConfirmDialog
+                open={confirmingRemove}
+                onOpenChange={open => !open && setConfirmingRemove(false)}
+                destructive
+                loading={removeToken.isPending}
+                title='Remove the access token?'
+                description='The Instagram section stops rendering on the public site straight away, whatever else is set - the visibility switch and the synced tiles make no difference without a token. Syncing stops too, and the stored token cannot be read back, so reconnecting means generating a new one at Instagram. Your tiles stay saved here.'
+                confirmLabel='Remove token'
+                onConfirm={() => {
+                    removeToken.mutate(undefined, {
+                        onSettled: () => setConfirmingRemove(false),
+                    });
+                }}
+            />
         </SettingsCard>
     );
 }

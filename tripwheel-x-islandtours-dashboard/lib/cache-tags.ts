@@ -90,15 +90,18 @@ export const COARSE_CACHE_TAGS = [
     // footer and every NeedHelp surface, and curating one tile should not
     // regenerate all of them.
     //
-    // The kill switch (`SiteInfo.enableInstagram`) is stored on site-info but
-    // SURFACES here: `/instagram/public/feed` returns it as `enabled`, the single
-    // gate the section obeys. So a `/settings/site` write must bust BOTH tags -
-    // it did not, which is why toggling the section off left it rendering for a
-    // full cacheLife('days'). Following the URL instead of the data is the bug.
+    // `/instagram/public/feed` folds THREE gates into the single `enabled` flag
+    // the section obeys, and they are written through TWO different endpoints:
+    //   - the kill switch (`SiteInfo.enableInstagram`)      -> `/settings/site`
+    //   - the access token (`InstagramAccount.configAccessToken`) -> `/instagram/*`
+    //   - whether any active tile exists at all             -> `/instagram/*`
+    // So a `/settings/site` write must bust BOTH tags - it did not, which is why
+    // toggling the section off left it rendering for a full cacheLife('days').
+    // Following the URL instead of the data is the bug.
     'instagram',
     // Admin-pasted vendor snippets injected into every public page (Settings >
-    // SEO > Custom Scripts). Its own tag rather than `site-info`: that tag
-    // carries the footer and every NeedHelp surface, and this one has to bust
+    // Scripts). Its own tag rather than `site-info`: that tag carries the footer
+    // and every NeedHelp surface, and this one has to bust
     // the ROOT LAYOUT, which is the most expensive thing on the site to
     // regenerate. Switching a snippet off has to take effect at once - an admin
     // toggling one is usually mid-incident, isolating which vendor broke the
@@ -108,6 +111,18 @@ export const COARSE_CACHE_TAGS = [
     // headings). Coarse rather than granular because there is exactly one
     // homepage - a per-id tag would carry the constant 'default' forever.
     'homepage',
+    // Island Tours' own places to stay, promoted at the foot of the thank-you
+    // page (Dashboard > Pages > Hotels). Its own tag, not `homepage`: it renders
+    // on a different page, and it is the one section whose content decides
+    // whether it renders AT ALL - switching a hotel off, or clearing its photo,
+    // title or booking link, changes WHICH hotel the card shows or takes the
+    // card down entirely. That save has to take effect now rather than after a
+    // cacheLife('days').
+    //
+    // Coarse rather than per-id: the public read serves whichever hotel wins the
+    // promotion order, so editing hotel B can change the card that hotel A was
+    // filling. A per-id tag could not express that.
+    'hotels',
     // The Pages system (legal/policy permalinks). Coarse on purpose: there are
     // a handful of pages, and a slug RENAME must bust the old slug's cached
     // miss as well as the new slug's entry - which a per-slug tag cannot do

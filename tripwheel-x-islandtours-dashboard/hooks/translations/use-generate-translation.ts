@@ -8,6 +8,7 @@ import { collectionKeys } from '@/hooks/collections/use-collections';
 import { destinationKeys } from '@/hooks/destinations/use-destinations';
 import { faqGroupKeys } from '@/hooks/faq/use-faq-groups';
 import { homePageKeys } from '@/hooks/home-page/use-home-page';
+import { hotelKeys } from '@/hooks/hotels/use-hotels';
 import { hubKeys } from '@/hooks/hubs/use-hubs';
 import { pageContentSectionKeys } from '@/hooks/page-content-sections/use-page-content-sections';
 import { contentTranslationApi } from '@/lib/api/content-translation';
@@ -54,6 +55,10 @@ function invalidateForType(
     case 'homepage':
       invalidate(homePageKeys.all());
       invalidate(faqGroupKeys.all('/home-page', id));
+      break;
+    // No FAQ key: the apartment card has no questions attached to it.
+    case 'hotel':
+      invalidate(hotelKeys.all());
       break;
   }
 }

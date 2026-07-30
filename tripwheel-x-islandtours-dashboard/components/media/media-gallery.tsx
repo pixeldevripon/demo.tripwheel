@@ -307,14 +307,34 @@ export default function MediaGallery({
         </div>
       )}
 
-      <div className="border border-border rounded-lg shadow-sm relative">
+      <div
+        className={`border border-border rounded-lg shadow-sm relative ${
+          // In the dialog this has to shrink with the dialog, so it joins the
+          // flex column instead of sizing itself.
+          selector ? "flex min-h-0 flex-1 flex-col" : ""
+        }`}
+      >
         {/* Selector dialog scrolls internally (fixed-height modal);
                     the media page grows with its content and scrolls with the
-                    document - no inner scrollbar. */}
+                    document - no inner scrollbar.
+
+            The selector branch used to be `min-h-[60vh] max-h-[70/75vh]`, which
+            measured the VIEWPORT while the dialog is `h-[92dvh]` minus a header,
+            padding and a toolbar that WRAPS as the window narrows. Nothing kept
+            those in step, so `min-h-[60vh]` could force the panel taller than the
+            space it had and the parent's `overflow-hidden` cropped the bottom -
+            worse the narrower the window got, because the wrapping toolbar ate
+            more of the budget. `flex-1 min-h-0` takes exactly the room that is
+            left instead of guessing at it. */}
         <div
           className={
             selector
-              ? `min-h-[60vh] ${bulkSelectedItems.length > 0 ? "max-h-[70vh]" : "max-h-[75vh]"} overflow-y-auto mx-auto p-6`
+              // NO `mx-auto` here. As a flex item, auto side margins absorb the
+              // free space, so the box shrink-wraps its content and centres -
+              // which collapsed the grid to a single narrow column. It is a
+              // harmless no-op on the block-layout branch below, and a layout
+              // bug here.
+              ? "min-h-0 w-full flex-1 overflow-y-auto p-6"
               : "min-h-[60vh] mx-auto p-6"
           }
         >
@@ -406,7 +426,7 @@ export default function MediaGallery({
           <div className="p-3">
             <hr className="outline-0 border-t border-primary/30" />
             <div className="flex justify-end mt-2 items-center gap-4">
-              <h5>Selected {bulkSelectedItems.length} items</h5>
+              <h5 className="font-normal text-sm">Selected {bulkSelectedItems.length} items</h5>
               <Button onClick={handleInserToForm} size="lg" className="rounded">
                 Insert
               </Button>

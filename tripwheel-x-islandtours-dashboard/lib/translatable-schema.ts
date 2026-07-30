@@ -1,6 +1,7 @@
 import type { PermissionKey } from '@/lib/config/rbac';
 import type { Locale } from '@/lib/constants/locales';
 import { HOMEPAGE_DEFAULTS } from '@/lib/home-page/defaults';
+import { HOTEL_DEFAULTS } from '@/lib/hotels/defaults';
 
 /**
  * The translatable-surface registry (04 §3.3, Phase 17) - the keystone of the
@@ -24,7 +25,8 @@ export type TranslatableEntityType =
     | 'category'
     | 'hub'
     | 'collection'
-    | 'homepage';
+    | 'homepage'
+    | 'hotel';
 
 export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     'tour',
@@ -35,6 +37,9 @@ export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     // Singleton: exactly one row, keyed 'default'. It has no entity list to
     // page through and no page-content record - see HOMEPAGE_FIELDS.
     'homepage',
+    // Island Tours' own hotels, promoted on the thank-you page. A short unpaged
+    // list (like collections), with no page-content record and no FAQs.
+    'hotel',
 ];
 
 export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
@@ -44,6 +49,7 @@ export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
     category: 'Categories',
     collection: 'Collections',
     homepage: 'Homepage',
+    hotel: 'Hotels',
 };
 
 /**
@@ -69,6 +75,7 @@ export const TRANSLATABLE_ENTITY_PERMISSIONS: Record<
     category: ['EDIT_CATEGORY'],
     collection: ['EDIT_COLLECTION'],
     homepage: ['MANAGE_EDITORIAL'],
+    hotel: ['MANAGE_EDITORIAL'],
 };
 
 export interface TranslatableFieldDef {
@@ -322,6 +329,64 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
     },
 ];
 
+/**
+ * One hotel's five copy fields (thank-you page promo).
+ *
+ * NO SEO ENTRY, unlike HOMEPAGE_FIELDS: the card lives on the thank-you page,
+ * which is `noindex` by design (it is keyed by an unguessable booking ref), so
+ * search-engine meta would be dead weight.
+ *
+ * NO NUMBERS EITHER: the rating, review count, sleeps and price are the same fact
+ * in every language, so they live on the record and are edited once in the
+ * Details tab - handing a price to a translation provider only invites it to
+ * "localise" the figure.
+ *
+ * `title` IS REQUIRED IN ENGLISH in the sense that matters: clearing it takes the
+ * card off the public site. That is stated in its description rather than
+ * enforced here, because the field genuinely is nullable and an admin retiring
+ * the promo by emptying it is a legitimate thing to do.
+ */
+export const HOTEL_FIELDS: TranslatableFieldDef[] = [
+    {
+        name: 'title',
+        label: 'Hotel name',
+        kind: 'input',
+        description:
+            'The heading on the card. Leave this empty and this hotel stops being promoted.',
+    },
+    {
+        name: 'areaLabel',
+        label: 'Neighbourhood',
+        kind: 'input',
+        description: 'The small label beside the eyebrow, e.g. "Jan Thiel".',
+    },
+    {
+        name: 'description',
+        label: 'Short pitch',
+        kind: 'textarea',
+        rows: 3,
+        description: 'One line per paragraph on the card. Two lines fit best.',
+    },
+    {
+        name: 'eyebrow',
+        label: 'Eyebrow label',
+        kind: 'input',
+        description:
+            'The small caps line above the name. Leave empty to keep the ' +
+            "site's own label, which is already translated everywhere.",
+        placeholder: HOTEL_DEFAULTS.eyebrow,
+    },
+    {
+        name: 'ctaLabel',
+        label: 'Button text',
+        kind: 'input',
+        description:
+            'Set this when the booking link is not Airbnb, so the button stops ' +
+            'naming it. Empty keeps the translated default.',
+        placeholder: HOTEL_DEFAULTS.ctaLabel,
+    },
+];
+
 export const ENTITY_FIELDS: Record<
     TranslatableEntityType,
     TranslatableFieldDef[]
@@ -332,6 +397,7 @@ export const ENTITY_FIELDS: Record<
     hub: HUB_FIELDS,
     collection: COLLECTION_FIELDS,
     homepage: HOMEPAGE_FIELDS,
+    hotel: HOTEL_FIELDS,
 };
 
 /**

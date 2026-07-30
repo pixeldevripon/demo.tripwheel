@@ -1,6 +1,7 @@
 'use client';
 
 import { AppSidebar } from '@/components/shell/app-sidebar';
+import { InboxDigestDialog } from '@/components/common/inbox-digest-dialog';
 import { SiteHeader } from '@/components/shell/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { RoleProvider } from '@/contexts/role-context';
@@ -120,6 +121,11 @@ export default function DashboardShell({
                     </div>
                 </SidebarInset>
             </SidebarProvider>
+            {/* Mounted at the shell, not per page: it must fire once per
+                session, and a page-level mount would re-run it on every
+                navigation. It renders null unless the server says something
+                arrived since this account last saw the digest. */}
+            <InboxDigestDialog />
         </RoleProvider>
     );
 }

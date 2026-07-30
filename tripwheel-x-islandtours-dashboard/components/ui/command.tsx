@@ -51,11 +51,21 @@ function CommandDialog({
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
+            {/* No `top-*` / `translate-y-*` override here: `DialogContent` is
+                already centred (`top-1/2 -translate-y-1/2`) and this must stay
+                centred at every viewport size.
+
+                It used to carry `top-1/3 translate-y-0`, which cancelled only the
+                VERTICAL half of that centring - so the palette stayed centred
+                horizontally while its top edge was pinned a third of the way down
+                and it grew downwards from there. On a short viewport that ran it
+                off the bottom of the screen.
+
+                Height is safe to centre because `CommandList` caps itself at
+                `min(28rem, 55dvh)`, so the panel can never be taller than the
+                viewport no matter how many results match. */}
             <DialogContent
-                className={cn(
-                    'top-1/3 translate-y-0 overflow-hidden p-0',
-                    className
-                )}
+                className={cn('overflow-hidden p-0', className)}
                 showCloseButton={showCloseButton}>
                 {children}
             </DialogContent>
@@ -97,7 +107,11 @@ function CommandList({
         <CommandPrimitive.List
             data-slot='command-list'
             className={cn(
-                'no-scrollbar max-h-[min(28rem,55vh)] scroll-py-1 overflow-x-hidden overflow-y-auto outline-none',
+                // `dvh`, not `vh`: on mobile browsers `vh` measures the viewport
+                // WITH the URL bar expanded, so 55vh can exceed what is actually
+                // visible - and since the dialog is centred, that overflows both
+                // edges at once. `dvh` tracks the live visible height.
+                'no-scrollbar max-h-[min(28rem,55dvh)] scroll-py-1 overflow-x-hidden overflow-y-auto outline-none',
                 className
             )}
             {...props}

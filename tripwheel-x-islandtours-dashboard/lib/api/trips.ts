@@ -12,7 +12,13 @@ import type {
   CreatePickupLocationPayload,
   CreateTourSchedulePayload,
   CreateTourExceptionPayload,
+  AgendaResponse,
+  AvailabilityOverviewParams,
+  AvailabilityOverviewResponse,
+  AvailabilitySummary,
+  DepartureStatus,
   ManageCalendarDay,
+  TourDeparture,
   CreateTripPayload,
   MyTripsQueryParams,
   PaginatedTrips,
@@ -541,10 +547,91 @@ export const tripsApi = {
     return apiFetch<void>(`/availability/exceptions/${exceptionId}`, { method: 'DELETE' });
   },
 
+  // Global calendar overview: every departure across the scoped tours,
+  // day-bucketed. Operators are pinned to themselves; admins read platform-wide.
+  getOverview(params: AvailabilityOverviewParams = {}): Promise<AvailabilityOverviewResponse> {
+    return apiFetch<AvailabilityOverviewResponse>(
+      `/availability/overview${buildQuery({ ...params })}`
+    );
+  },
+
+  // Per-departure edit (capacity / manual status). The backend refuses a
+  // capacity below bookedCount and 409s on a concurrent booking race.
+  updateDeparture(
+    departureId: string,
+    payload: { capacity?: number; status?: DepartureStatus }
+  ): Promise<TourDeparture> {
+    return apiFetch<TourDeparture>(`/availability/departures/${departureId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Daily agenda (Surface B): every departure across the operator's tours.
+  getAgenda(params?: { from?: string; days?: number }): Promise<AgendaResponse> {
+    return apiFetch<AgendaResponse>(`/availability/agenda${buildQuery(params ?? {})}`);
+  },
+
+  // "Close all of today" - one CLOSE_DATE per open tour on the date.
+  closeAgendaDay(payload: {
+    date: string;
+    tourId?: string;
+    note?: string;
+  }): Promise<{ closed: number; tourIds: string[] }> {
+    return apiFetch<{ closed: number; tourIds: string[] }>(
+      `/availability/agenda/close-day`,
+      { method: 'POST', body: JSON.stringify(payload) }
+    );
+  },
+
+  // Freshness confirm (F14): stamps availability_confirmed_at - one tour with
+  // tripId, every tour of the operator without.
+  confirmAvailability(
+    tripId?: string
+  ): Promise<{ confirmed: number; confirmedAt: string }> {
+    return apiFetch<{ confirmed: number; confirmedAt: string }>(
+      `/availability/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify(tripId ? { tourId: tripId } : {}),
+      }
+    );
+  },
+
+  // Bulk blackout (F8): one CLOSE_DATE per date in [from, to], one call.
+  closeRange(
+    tripId: string,
+    payload: { from: string; to: string; note?: string }
+  ): Promise<{ closed: number }> {
+    return apiFetch<{ closed: number }>(`/availability/exceptions/close-range`, {
+      method: 'POST',
+      body: JSON.stringify({ tourId: tripId, ...payload }),
+    });
+  },
+
+  // The one-unit Undo of closeRange (drops every whole-day closure in range).
+  reopenRange(
+    tripId: string,
+    payload: { from: string; to: string }
+  ): Promise<{ reopened: number }> {
+    return apiFetch<{ reopened: number }>(`/availability/exceptions/reopen-range`, {
+      method: 'POST',
+      body: JSON.stringify({ tourId: tripId, ...payload }),
+    });
+  },
+
   // Management calendar (operator month grid - one-tap close/reopen layer)
   getManageCalendar(tripId: string, month: string): Promise<ManageCalendarDay[]> {
     return apiFetch<ManageCalendarDay[]>(
       `/availability/manage-calendar${buildQuery({ tourId: tripId, month })}`
+    );
+  },
+
+  // F13 status line: soonest bookable departure + 30-day open count (the same
+  // horizon the §7.2 listing gate counts).
+  getAvailabilitySummary(tripId: string): Promise<AvailabilitySummary> {
+    return apiFetch<AvailabilitySummary>(
+      `/availability/summary${buildQuery({ tourId: tripId })}`
     );
   },
 };

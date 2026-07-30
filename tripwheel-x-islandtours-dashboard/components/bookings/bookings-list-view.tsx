@@ -65,6 +65,9 @@ export function BookingsListView({
         ...(filters.paymentModel
             ? { paymentModel: filters.paymentModel as BookingPaymentModel }
             : {}),
+        // Deep links carry it (tour calendar's "report it on the booking"
+        // filters to that tour + travel day); the URL is the filter UI here.
+        ...(filters.tourId ? { tourId: filters.tourId } : {}),
         ...(filters.from ? { from: filters.from } : {}),
         ...(filters.to ? { to: filters.to } : {}),
         ...(debouncedSearch ? { search: debouncedSearch } : {}),

@@ -70,6 +70,39 @@ export function useSaveInstagramCredentials() {
   });
 }
 
+/**
+ * Remove the stored access token, which TAKES THE PUBLIC SECTION DOWN.
+ *
+ * Its own hook rather than `useSaveInstagramCredentials({ accessToken: '' })`
+ * from a call site, for two reasons:
+ *
+ * 1. There was no way to do this at all. The token field is write-only and
+ *    resets to `''`, so RHF un-dirties it the moment a user clears it back to
+ *    that default - `dirtyFields.accessToken` is false and the settings form
+ *    skips the write. A stored token could be REPLACED but never REMOVED.
+ * 2. Removing is not saving. It ends the connection (the backend nulls
+ *    igUserId, the refreshed token, the expiry and the last-sync state) and the
+ *    public grid stops rendering, so it deserves its own wording rather than
+ *    "Instagram access token saved".
+ *
+ * `posts` is invalidated too. The tiles themselves survive - they are rows in
+ * our database, not Instagram's - but the dashboard list labels which of them
+ * reach the page, and after this none of them do.
+ */
+export function useRemoveInstagramCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => instagramApi.saveCredentials({ accessToken: '' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: instagramKeys.credentials() });
+      qc.invalidateQueries({ queryKey: instagramKeys.connection() });
+      qc.invalidateQueries({ queryKey: instagramKeys.posts() });
+      toast.success('Access token removed. The Instagram section is now hidden.');
+    },
+    onError,
+  });
+}
+
 // ── Connection (token status + manual sync) ─────────────────────────────────
 
 export function useInstagramConnection() {

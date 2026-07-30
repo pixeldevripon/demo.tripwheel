@@ -46,6 +46,10 @@ import {
     useUpsertHomePageTranslation,
 } from '@/hooks/home-page/use-home-page';
 import {
+    useHotelTranslations,
+    useUpsertHotelTranslation,
+} from '@/hooks/hotels/use-hotels';
+import {
     useHubTranslationByLocale,
     useUpsertHubTranslation,
 } from '@/hooks/hubs/use-hubs';
@@ -58,6 +62,7 @@ import {
     COLLECTION_FIELDS,
     DESTINATION_FIELDS,
     HOMEPAGE_FIELDS,
+    HOTEL_FIELDS,
     HUB_FIELDS,
     type TranslatableEntityType,
     type TranslatableFieldDef,
@@ -310,6 +315,35 @@ function HomepageEnglishContent() {
     );
 }
 
+/**
+ * One hotel's English copy. No field filtering, unlike the homepage: HOTEL_FIELDS
+ * has no SEO entries to hold back, because the thank-you page it renders on is
+ * `noindex` by design.
+ */
+function HotelEnglishContent({ id }: { id: string }) {
+    const { data, isLoading } = useHotelTranslations(id);
+    const upsert = useUpsertHotelTranslation(id);
+    const english = data?.find(t => t.locale === 'en');
+
+    return (
+        <EnglishContentForm
+            fields={HOTEL_FIELDS}
+            record={english as never}
+            isLoading={isLoading}
+            isSaving={upsert.isPending}
+            onSave={values =>
+                upsert.mutate(
+                    {
+                        locale: 'en',
+                        payload: { fields: contentFields(values) },
+                    },
+                    saveToasts,
+                )
+            }
+        />
+    );
+}
+
 function CollectionEnglishContent({ id }: { id: string }) {
     const { data, isLoading } = useCollectionTranslationByLocale(id, 'en');
     const upsert = useUpsertCollectionTranslation();
@@ -348,7 +382,9 @@ export function EnglishContentEditor({
                 <CardDescription>
                     {type === 'homepage'
                         ? 'Every word on the public homepage, in the order the sections appear. Leave a field empty and the site keeps the copy it ships with - shown greyed in the box.'
-                        : 'The source every other language translates from. Required publish fields (like the tour overview) live here.'}
+                        : type === 'hotel'
+                          ? 'The words on this hotel\'s card. The name is required: empty it and the hotel stops being promoted. The last two fall back to the label the site ships with, shown greyed in the box.'
+                          : 'The source every other language translates from. Required publish fields (like the tour overview) live here.'}
                 </CardDescription>
             </CardHeader>
             <CardContent className='pt-6'>
@@ -358,6 +394,7 @@ export function EnglishContentEditor({
                 {type === 'hub' && <HubEnglishContent id={id} />}
                 {type === 'collection' && <CollectionEnglishContent id={id} />}
                 {type === 'homepage' && <HomepageEnglishContent />}
+                {type === 'hotel' && <HotelEnglishContent id={id} />}
             </CardContent>
         </Card>
     );

@@ -70,6 +70,14 @@ export function TripDeleteDialog({
                   ? 'Admin force delete - the trip will be permanently removed regardless of its current status. All associated data (images, inclusions, age bands, add-ons, schedules) will also be permanently removed.'
                   : 'This archived trip will be permanently removed along with all its data (images, inclusions, age bands, add-ons, schedules). This cannot be undone.'}
               </p>
+              {/* Bookings and reviews never cascade off a tour (commission,
+                  payment and reputation history) - the backend refuses the
+                  delete while either exists, for admins too. */}
+              <p className="text-xs text-muted-foreground">
+                A trip with bookings or reviews cannot be deleted - booking and
+                review history are permanent records. Archive it instead; it
+                disappears from every listing.
+              </p>
               <p className="text-xs font-medium text-destructive">
                 This action is irreversible and cannot be undone.
               </p>

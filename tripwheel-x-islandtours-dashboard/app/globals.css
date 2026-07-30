@@ -630,80 +630,189 @@
     transition: margin-left 0.2s ease;
 }
 
-/* ── Toast (sonner) ──────────────────────────────────────────────────────────
- * `classNames.toast` pointed at `cn-toast`, which was never written - so every
- * toast fell through to sonner's `richColors`, which tints the WHOLE toast in
- * the semantic colour. A five-line backend validation message rendered as a
- * block of bold red text on pink: unreadable, and it read as a crash rather
- * than as a form telling you something.
+/* ── Toast (sonner): the status ribbon ───────────────────────────────────────
+ * Redesigned 2026-07-30 (user calls, in order): top-centre ribbon instead of
+ * a 356px corner card; then content-hugging width (min 350px) so text WIDENS
+ * instead of wrapping; splash entrance reduced to a gentle content rise (the
+ * icon drop/ripple drew the eye to the icon instead of the words).
  *
- * The shape is a neutral surface with a real title/description hierarchy, so
- * the eye lands on WHAT happened before it reads why. The icon is the only
- * semantic colour on the toast - there is no coloured rail. A bar and an icon
- * both saying "error" is the same signal twice, and the bar was the louder of
- * the two on an otherwise quiet surface.
+ * SPECIFICITY NOTE: sonner ships its own styles at up to
+ * `[data-sonner-toast][data-styled='true'] [data-x]` = (0,3,0), and its
+ * stylesheet loads AFTER globals.css, so ties lose. Every rule here rides the
+ * `.cn-toast[data-sonner-toast][data-styled='true']` prefix to sit one class
+ * above whatever sonner says. Do not "simplify" the selectors back down.
  */
-.cn-toast {
-    position: relative;
-    width: 100%;
+
+/* The LANE a toast may occupy: viewport minus a gutter. Sonner writes its
+ * 356px default as an INLINE --width on the <ol>, hence !important
+ * (03 §8.3 bans the inline-style escape hatch). */
+.toaster[data-sonner-toaster] {
+    --width: calc(100vw - 2rem) !important;
+}
+
+/* Geometry: the li is position:absolute (sonner stacks via --y transforms),
+ * stretched left/right 0 across the lane with a fit-content box inside it.
+ * The MARGINS decide alignment and must follow the Toaster's `position` prop
+ * (sonner stamps data-x-position on the li) - a bare `margin-inline: auto`
+ * here once force-centred every position, which read as "position not
+ * working". Short toasts hold a 350px floor; long ones widen to the lane. */
+.cn-toast[data-sonner-toast][data-styled='true'] {
+    display: flex;
+    left: 0;
+    right: 0;
+    width: fit-content;
+    min-width: min(350px, 100%);
+    max-width: 100%;
     align-items: flex-start;
-    gap: 0.625rem;
+    gap: 0.75rem;
     overflow: hidden;
-    padding: 0.75rem 0.875rem;
+    /* Wider right padding reserves the edge for the pinned dismiss button. */
+    padding: 0.875rem 3rem 0.875rem 1rem;
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--surface-overlay);
     box-shadow: var(--elevation-lg);
 }
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='center'] {
+    margin-inline: auto;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='right'] {
+    margin-left: auto;
+    margin-right: 0;
+}
+.cn-toast[data-sonner-toast][data-styled='true'][data-x-position='left'] {
+    margin-left: 0;
+    margin-right: auto;
+}
 
-/* Optical alignment: the icon sits slightly high in its own box, so nudge it
- * down onto the title's cap height rather than its line box. */
-.cn-toast [data-icon] {
-    margin-top: 0.0625rem;
-    margin-inline-end: 0.125rem;
+/* The wash: severity colour entering from the left, gone by a third of the
+ * toast. A static paint layer. */
+.cn-toast[data-sonner-toast][data-styled='true']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        90deg,
+        var(--cn-toast-wash, transparent),
+        transparent 28%
+    );
+}
+
+.cn-toast[data-type='error'] {
+    --cn-toast-wash: var(--danger-subtle);
+    --cn-toast-accent: var(--danger-solid);
+}
+.cn-toast[data-type='success'] {
+    --cn-toast-wash: var(--success-subtle);
+    --cn-toast-accent: var(--success-solid);
+}
+.cn-toast[data-type='warning'] {
+    --cn-toast-wash: var(--warning-subtle);
+    --cn-toast-accent: var(--warning-solid);
+}
+.cn-toast[data-type='info'] {
+    --cn-toast-wash: var(--info-subtle);
+    --cn-toast-accent: var(--primary);
+}
+
+/* Icon chip: a 28px tile carrying the severity colour on its own wash - the
+ * one solid semantic mark on the toast. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-icon] {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0;
     flex-shrink: 0;
-    color: var(--content-subtle);
+    border-radius: var(--radius-md);
+    background: var(--cn-toast-wash, var(--surface-inset));
+    color: var(--cn-toast-accent, var(--content-subtle));
 }
 
-.cn-toast[data-type='error'] [data-icon] {
-    color: var(--danger-solid);
-}
-.cn-toast[data-type='success'] [data-icon] {
-    color: var(--success-solid);
-}
-.cn-toast[data-type='warning'] [data-icon] {
-    color: var(--warning-solid);
-}
-.cn-toast[data-type='info'] [data-icon] {
-    color: var(--primary);
-}
-
-.cn-toast [data-content] {
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content] {
+    position: relative;
     min-width: 0;
+    align-self: center;
 }
 
-/* 13px, not 14. A toast is a passing remark, and at body size it read as a
- * paragraph that had appeared over the page rather than a note about what just
- * happened. */
-.cn-toast [data-title] {
-    font-size: 0.8125rem;
+.cn-toast[data-sonner-toast][data-styled='true'] [data-title] {
+    font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.45;
     color: var(--content);
 }
 
-/* Detail reads as body copy. Never coloured - colour is the rail's job. */
-.cn-toast [data-description] {
+/* Detail reads as body copy. Never coloured - colour is the chip's job. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-description] {
     margin-top: 0.125rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 400;
     line-height: 1.5;
     color: var(--content-muted);
 }
 
-.cn-toast [data-button] {
-    height: 1.625rem;
+/* Action (e.g. Undo) rides the right edge, just inside the dismiss. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button] {
+    position: relative;
+    height: 1.75rem;
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
     border-radius: var(--radius-sm);
+    padding-inline: 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
+}
+
+/* Dismiss: pinned right-centre. Sonner floats its close disc off the TOP-LEFT
+ * corner via inline-start vars + its own transform - hence the !importants. */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+    position: absolute;
+    left: auto !important;
+    right: 0.75rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    border: none;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--content-subtle);
+    cursor: pointer;
+    pointer-events: auto;
+}
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button]:hover {
+    background: var(--surface-inset);
+    color: var(--content);
+}
+
+/* Entrance: one gentle rise on the content while sonner slides the toast in.
+ * The icon-drop + ripple splash was tried and pulled (user call 2026-07-30). */
+.cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+.cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+    animation: cn-toast-surface 0.45s ease-out 0.1s backwards;
+}
+@keyframes cn-toast-surface {
+    0% {
+        transform: translateY(0.375rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-content],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-button],
+    .cn-toast[data-sonner-toast][data-styled='true'] [data-close-button] {
+        animation: none;
+    }
 }

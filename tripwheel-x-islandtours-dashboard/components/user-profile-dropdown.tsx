@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import {
     ArrowDown01Icon,
     ArrowRight01Icon,
-    ComputerIcon,
     Moon02Icon,
     Sun03Icon,
 } from '@hugeicons/core-free-icons';
@@ -162,14 +161,28 @@ export default function ProfileDropdown({
     );
 }
 
+/**
+ * Light and dark only - there is no "System" option.
+ *
+ * A first visit still FOLLOWS the operating system (the provider keeps
+ * `defaultTheme='system'` + `enableSystem`), so dropping the button costs nothing
+ * except the ability to pin yourself back to "whatever the OS says" after
+ * choosing explicitly. What it buys is a control with two states instead of a
+ * third that most people read as a bug ("why is neither light nor dark on?").
+ */
 const THEME_OPTIONS = [
     { value: 'light', label: 'Light theme', icon: Sun03Icon },
     { value: 'dark', label: 'Dark theme', icon: Moon02Icon },
-    { value: 'system', label: 'System theme', icon: ComputerIcon },
 ] as const;
 
 function ThemeSegmentedControl() {
-    const { theme, setTheme } = useTheme();
+    // `resolvedTheme`, NOT `theme`. `theme` is the STORED preference, which is
+    // still `'system'` for anyone who picked that before the option went away -
+    // and for everyone on their first visit, since that is the provider default.
+    // Matching on it would leave both pills dark and the control looking broken.
+    // `resolvedTheme` is what is actually painted, which is also the honest thing
+    // to highlight: it answers "which one am I looking at right now".
+    const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -179,7 +192,9 @@ function ThemeSegmentedControl() {
     return (
         <div className='flex items-center gap-0.5 rounded-full bg-muted p-0.5'>
             {THEME_OPTIONS.map(option => {
-                const active = mounted && theme === option.value;
+                // Gated on `mounted`: the server cannot know the resolved theme,
+                // so rendering an active pill before hydration would mismatch.
+                const active = mounted && resolvedTheme === option.value;
                 return (
                     <button
                         key={option.value}
