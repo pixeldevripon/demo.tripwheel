@@ -72,6 +72,10 @@ function createMockPrismaService() {
     tourHub: { deleteMany: jest.fn(), createMany: jest.fn() },
     tourAgeBand: { findMany: jest.fn(), findFirst: jest.fn() },
     departure: { findMany: jest.fn() },
+    // The two non-cascade Tour relations: remove() refuses while either holds
+    // rows. Default 0 so existing delete tests keep passing.
+    booking: { count: jest.fn().mockResolvedValue(0) },
+    review: { count: jest.fn().mockResolvedValue(0) },
     slugRegistry: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -1777,6 +1781,21 @@ describe('ToursService', () => {
       await expect(
         service.remove('tour-1', 'user-1', Role.TOUR_OPERATOR),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    // The FK that used to 500: bookings (and reviews) deliberately do not
+    // cascade off Tour - they are financial/reputation records. remove()
+    // must refuse with the reason BEFORE the delete reaches Postgres.
+    it('refuses to delete a tour that has bookings or reviews - even for ADMIN', async () => {
+      prisma.tour.findUnique.mockResolvedValue(
+        makeTour({ status: TourStatus.LIVE }),
+      );
+      prisma.booking.count.mockResolvedValue(3);
+      prisma.review.count.mockResolvedValue(1);
+      await expect(
+        service.remove('tour-1', 'admin', Role.ADMIN),
+      ).rejects.toThrow(/3 bookings and 1 review\b.*archive the tour instead/);
+      expect(prisma.tour.delete).not.toHaveBeenCalled();
     });
 
     it('remove deletes the tour and starts the 90-day slug cooldown (keeps the registry row)', async () => {

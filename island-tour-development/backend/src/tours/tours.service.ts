@@ -3438,6 +3438,31 @@ export class ToursService {
       );
     }
 
+    // Bookings and reviews are the two Tour relations WITHOUT onDelete:
+    // Cascade, on purpose: a booking carries the commission snapshot, payment
+    // and settlement history, a review carries the operator's reputation
+    // record - neither may vanish because the listing does. Without this
+    // check the delete reaches Postgres, trips over bookings_tourId_fkey and
+    // surfaces as a bare 500 (admin force-delete included). Refuse with the
+    // reason instead: archiving hides the tour everywhere and keeps history.
+    const [bookings, reviews] = await Promise.all([
+      this.prisma.booking.count({ where: { tourId: id } }),
+      this.prisma.review.count({ where: { tourId: id } }),
+    ]);
+    if (bookings > 0 || reviews > 0) {
+      const held = [
+        bookings > 0 ? `${bookings} booking${bookings === 1 ? '' : 's'}` : null,
+        reviews > 0 ? `${reviews} review${reviews === 1 ? '' : 's'}` : null,
+      ]
+        .filter(Boolean)
+        .join(' and ');
+      throw new ConflictException(
+        `This tour cannot be permanently deleted: it has ${held}. ` +
+          'Booking and review history are permanent records - archive the tour instead ' +
+          '(it disappears from every listing and its slug is protected).',
+      );
+    }
+
     await this.prisma.$transaction(async (tx) => {
       // Master slug-registry rule: hard delete starts the 90-day reuse cooldown. The TOUR
       // slug_registry row is kept (isActive=false, deletedAt=now) so the slug stays protected
