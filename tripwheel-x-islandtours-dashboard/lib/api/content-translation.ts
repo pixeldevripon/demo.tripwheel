@@ -23,15 +23,25 @@ export interface GenerateTranslationResult {
   reason?: string;
 }
 
-const PATH_SEGMENT: Record<Exclude<TranslatableEntityType, 'homepage'>, string> = {
+const PATH_SEGMENT: Record<
+  Exclude<TranslatableEntityType, 'homepage'>,
+  string
+> = {
   tour: 'tours',
   destination: 'destinations',
   hub: 'hubs',
   category: 'categories',
   collection: 'collections',
+  // Hotels are a normal list with real ids, so they take the standard per-id
+  // shape below. They were briefly a singleton and had their own special case
+  // here; leaving it behind pointed this at `/hotel/...`, which no longer
+  // exists, and every "Translate with AI" click answered "Cannot POST".
+  hotel: 'hotels',
 };
 
 function pathFor(type: TranslatableEntityType, id: string, locale: Locale): string {
+  // The homepage is the only singleton: it carries no id, because the backend
+  // resolves its one row itself.
   if (type === 'homepage') return `/home-page/translations/${locale}/generate`;
   return `/${PATH_SEGMENT[type]}/${id}/translations/${locale}/generate`;
 }

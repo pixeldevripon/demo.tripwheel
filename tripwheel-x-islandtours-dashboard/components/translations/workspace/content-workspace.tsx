@@ -69,8 +69,12 @@ export interface ContentWorkspaceProps {
     id: string;
     locale: Locale;
     fields: TranslatableFieldDef[];
-    /** FAQ endpoint base, e.g. '/destinations'. */
-    faqBasePath: string;
+    /**
+     * FAQ endpoint base, e.g. '/destinations'. OMIT for a surface with no FAQs
+     * at all (the apartment promo) - the FAQ query is skipped and no FAQ card
+     * renders, rather than a request being fired at a route that does not exist.
+     */
+    faqBasePath?: string;
     entityName: string | undefined;
     /** EN source record (field name → value). */
     source: Record<string, unknown> | undefined;
@@ -164,11 +168,23 @@ export function ContentWorkspace({
         });
     }, [faqGroups, locale]);
 
+    /**
+     * Whether this entity HAS a page-content record. The same flag gates the
+     * card below and the save handler, so the key set has to agree with it:
+     * seeding page-content keys for an entity that has none padded the "0 / N
+     * fields" counter with three fields that are never rendered and can never be
+     * filled, so it could not reach 100%. The homepage and hotels are both in
+     * that position.
+     */
+    const hasPageContent = !!onSavePageContent;
+
     const defaults = useMemo(() => {
         const d: Record<string, string> = {};
         for (const f of fields) d[f.name] = toFormValue(target?.[f.name]);
-        for (const f of PAGE_CONTENT_FIELDS)
-            d[pcKey(f.name)] = toFormValue(pageTarget?.[f.name]);
+        if (hasPageContent) {
+            for (const f of PAGE_CONTENT_FIELDS)
+                d[pcKey(f.name)] = toFormValue(pageTarget?.[f.name]);
+        }
         for (const row of faqRows) {
             d[faqKey(row.groupId, 'question')] = row.existing.question;
             d[faqKey(row.groupId, 'answer')] = row.existing.answer;
@@ -186,6 +202,7 @@ export function ContentWorkspace({
         fields,
         target,
         pageTarget,
+        hasPageContent,
         faqRows,
         locale,
         JSON.stringify(extraSections.map(s => s.rows)),
@@ -233,8 +250,11 @@ export function ContentWorkspace({
             copied++;
         };
         for (const f of fields) trySet(f.name, toFormValue(source?.[f.name]));
-        for (const f of PAGE_CONTENT_FIELDS)
-            trySet(pcKey(f.name), toFormValue(pageSource?.[f.name]));
+        // Same gate as `defaults`: no page-content record, no page-content keys.
+        if (hasPageContent) {
+            for (const f of PAGE_CONTENT_FIELDS)
+                trySet(pcKey(f.name), toFormValue(pageSource?.[f.name]));
+        }
         for (const row of faqRows) {
             trySet(faqKey(row.groupId, 'question'), row.base.question);
             trySet(faqKey(row.groupId, 'answer'), row.base.answer);

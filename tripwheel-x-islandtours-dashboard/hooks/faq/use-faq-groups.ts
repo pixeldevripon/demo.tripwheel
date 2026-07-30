@@ -10,14 +10,23 @@ import type {
 } from '@/types/faq';
 
 export const faqGroupKeys = {
-  all: (basePath: string, id: string) => ['faq-groups', basePath, id] as const,
+  // `basePath` widened to allow undefined (FAQ-less surfaces pass none) and
+  // normalized here so the key shape stays a stable string triple.
+  all: (basePath: string | undefined, id: string) =>
+    ['faq-groups', basePath ?? '', id] as const,
 };
 
-export function useFaqGroups(basePath: string, id: string) {
+/**
+ * `basePath` is OPTIONAL so a surface with no FAQs at all can share the entity
+ * components without faking an endpoint. The apartment promo is the case: it has
+ * no questions attached to it, and passing a path would fire a request at a route
+ * the backend does not serve.
+ */
+export function useFaqGroups(basePath: string | undefined, id: string) {
   return useQuery({
     queryKey: faqGroupKeys.all(basePath, id),
-    queryFn: () => faqGroupsApi.list(basePath, id),
-    enabled: !!id,
+    queryFn: () => faqGroupsApi.list(basePath!, id),
+    enabled: !!id && !!basePath,
   });
 }
 
@@ -65,7 +74,9 @@ export function useDeleteFaqTranslation(basePath: string, id: string) {
   });
 }
 
-export function useUpsertFaqTranslation(basePath: string, id: string) {
+/** `basePath` optional for the same reason as `useFaqGroups`: FAQ-less surfaces.
+ *  With none there are no FAQ rows to submit, so the mutation is never fired. */
+export function useUpsertFaqTranslation(basePath: string | undefined, id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -76,7 +87,7 @@ export function useUpsertFaqTranslation(basePath: string, id: string) {
       groupId: string;
       locale: Locale;
       payload: UpsertFaqTranslationPayload;
-    }) => faqGroupsApi.upsertTranslation(basePath, id, groupId, locale, payload),
+    }) => faqGroupsApi.upsertTranslation(basePath!, id, groupId, locale, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: faqGroupKeys.all(basePath, id) });
     },

@@ -206,6 +206,21 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('homepage');
       break;
 
+    // Island Tours' own hotels, promoted on the thank-you page (Pages > Hotels):
+    // create, edit, delete, reorder and per-locale copy at
+    // `/hotels/:id/translations/:locale`. One coarse tag covers all of them -
+    // the public read serves whichever hotel wins the promotion order, so
+    // editing hotel B can change the card hotel A was filling.
+    //
+    // This bust is load-bearing in a way the homepage's is not: the same fields
+    // an admin edits here also DECIDE WHETHER THE SECTION RENDERS. Switching a
+    // hotel off, or clearing its photo, English title or booking link, hands the
+    // card to the next one or takes it down - so without this the old promo
+    // would keep showing for a full cacheLife('days').
+    case 'hotels':
+      tags.push('hotels');
+      break;
+
     // The Pages system (legal/policy permalinks): create/edit/publish/rename/
     // delete and per-locale content at `/pages/:id/translations/:locale`. One
     // coarse tag - a rename must bust the OLD slug's cached entry too, which a
