@@ -25,6 +25,7 @@ export function CalendarMonthView({
     days,
     anchor,
     today,
+    selectedDate,
     tours,
     operatorNameById,
     isAdmin,
@@ -35,6 +36,8 @@ export function CalendarMonthView({
     /** 'YYYY-MM-DD' inside the displayed month (dims other-month days). */
     anchor: string;
     today: string;
+    /** The mini-calendar's picked date - ringed in the grid. */
+    selectedDate?: string;
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
     isAdmin: boolean;
@@ -68,6 +71,7 @@ export function CalendarMonthView({
                         day={day}
                         inMonth={getMonth(keyToDate(day.date)) === anchorMonth}
                         isToday={day.date === today}
+                        isSelected={day.date === selectedDate}
                         isPast={day.date < today}
                         tours={tours}
                         operatorNameById={operatorNameById}
@@ -86,6 +90,7 @@ function MonthCell({
     day,
     inMonth,
     isToday,
+    isSelected,
     isPast,
     tours,
     operatorNameById,
@@ -96,6 +101,7 @@ function MonthCell({
     day: OverviewDay;
     inMonth: boolean;
     isToday: boolean;
+    isSelected: boolean;
     isPast: boolean;
     tours: OverviewTour[];
     operatorNameById: Map<string, string>;
@@ -113,6 +119,9 @@ function MonthCell({
                 'group relative flex min-h-24 flex-col gap-1 border-l border-t border-border/40 p-1 first:border-l-0 md:min-h-28 md:p-1.5 [&:nth-child(-n+7)]:border-t-0 [&:nth-child(7n+1)]:border-l-0',
                 !inMonth && 'bg-muted/30',
                 isPast && inMonth && 'bg-muted/20',
+                // Mirrors the mini calendar's picked date (trip-calendar
+                // marked-cell idiom).
+                isSelected && 'ring-2 ring-inset ring-primary/60',
             )}>
             <div className='flex items-center justify-between'>
                 <button

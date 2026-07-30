@@ -310,6 +310,7 @@ export function GlobalCalendar() {
                                         days={filteredDays}
                                         anchor={anchor}
                                         today={today}
+                                        selectedDate={anchor}
                                         tours={addTours}
                                         operatorNameById={operatorNameById}
                                         isAdmin={isAdmin}
@@ -320,6 +321,7 @@ export function GlobalCalendar() {
                                     <CalendarTimeGrid
                                         days={filteredDays}
                                         today={today}
+                                        selectedDate={anchor}
                                         tours={addTours}
                                         timeZone={tours[0]?.timeZone}
                                         operatorNameById={operatorNameById}

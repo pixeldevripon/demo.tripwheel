@@ -115,6 +115,7 @@ function layoutDay(
 export function CalendarTimeGrid({
     days,
     today,
+    selectedDate,
     tours,
     timeZone,
     operatorNameById,
@@ -124,6 +125,8 @@ export function CalendarTimeGrid({
 }: {
     days: OverviewDay[];
     today: string;
+    /** The mini-calendar's picked date - marked in header + column. */
+    selectedDate?: string;
     tours: OverviewTour[];
     /** First tour's IANA zone - feeds the "GMT-4" gutter corner label. */
     timeZone?: string;
@@ -236,6 +239,8 @@ export function CalendarTimeGrid({
                     {days.map((day) => {
                         const d = keyToDate(day.date);
                         const isToday = day.date === today;
+                        const isSelected =
+                            day.date === selectedDate && days.length > 1;
                         return (
                             <button
                                 key={day.date}
@@ -249,6 +254,11 @@ export function CalendarTimeGrid({
                                     className={cn(
                                         'flex size-6 items-center justify-center rounded-full text-sm font-medium',
                                         isToday && 'bg-foreground text-background',
+                                        // The mini calendar's pick, when it is
+                                        // not simply today.
+                                        isSelected &&
+                                            !isToday &&
+                                            'ring-2 ring-inset ring-primary/60',
                                     )}>
                                     {format(d, 'd')}
                                 </span>
@@ -301,6 +311,11 @@ export function CalendarTimeGrid({
                                 className={cn(
                                     'relative min-w-0 flex-1 border-l border-border/50',
                                     isPastDay && 'bg-muted/20',
+                                    // Wash the mini calendar's picked column
+                                    // (week view only - a day view IS it).
+                                    day.date === selectedDate &&
+                                        days.length > 1 &&
+                                        'bg-primary-subtle/20',
                                     canShape && !isPastDay && 'cursor-pointer',
                                 )}>
                                 {hours.map((h) => (
