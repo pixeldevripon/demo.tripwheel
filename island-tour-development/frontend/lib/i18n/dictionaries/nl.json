@@ -9,7 +9,7 @@
         "language": "Taal",
         "categories": "Categorieën",
         "search": "Zoeken naar",
-        "myBookings": "Boekingen",
+        "myBookings": "Mijn boekingen",
         "myAccount": "Accounts"
     },
     "footer": {
@@ -964,7 +964,9 @@
         "receiptRemaining": "Resterend bedrag",
         "receiptThisPayment": "Deze betaling",
         "receiptThisRefund": "Deze terugbetaling",
-        "receiptPickup": "Ophaalservice"
+        "receiptPickup": "Ophaalservice",
+        "receiptSpectator": "Toeschouwer",
+        "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl."
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",

@@ -9,7 +9,7 @@
         "language": "Language",
         "categories": "Categories",
         "search": "Search for",
-        "myBookings": "Bookings",
+        "myBookings": "My bookings",
         "myAccount": "Accounts"
     },
     "footer": {
@@ -964,7 +964,9 @@
         "receiptRemaining": "Remaining balance",
         "receiptThisPayment": "This payment",
         "receiptThisRefund": "This refund",
-        "receiptPickup": "Pickup"
+        "receiptPickup": "Pickup",
+        "receiptSpectator": "Spectator",
+        "emailInvalid": "Enter a valid email address, like you@example.com."
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

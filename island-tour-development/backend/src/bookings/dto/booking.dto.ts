@@ -1054,6 +1054,13 @@ export class TravellerPaymentsResponseDto {
 /** One priced party line on the receipt ("2 x Adult at $99.00"). */
 export class TravellerReceiptPartyLineDto {
   @ApiProperty({ example: 'Adult (18+)' }) label!: string;
+  @ApiProperty({
+    example: false,
+    description:
+      'Spectator band (BandParticipation.SPECTATOR). Labels are shared with ' +
+      'the participant twin, so the client renders this distinction.',
+  })
+  spectator!: boolean;
   @ApiProperty({ example: 2 }) quantity!: number;
   @ApiProperty({ example: '99.00' }) unitPrice!: string;
   @ApiProperty({ example: '198.00' }) lineTotal!: string;

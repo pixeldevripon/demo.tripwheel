@@ -159,6 +159,8 @@ export interface TravellerReceipt {
     balanceAmount: string;
     party: {
         label: string;
+        /** Spectator band - shares its label with the participant twin. */
+        spectator: boolean;
         quantity: number;
         unitPrice: string;
         lineTotal: string;

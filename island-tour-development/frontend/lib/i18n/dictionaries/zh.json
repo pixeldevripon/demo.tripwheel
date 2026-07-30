@@ -9,7 +9,7 @@
         "language": "语言",
         "categories": "分类",
         "search": "搜索",
-        "myBookings": "预订",
+        "myBookings": "我的预订",
         "myAccount": "账户"
     },
     "footer": {
@@ -964,7 +964,9 @@
         "receiptRemaining": "余款",
         "receiptThisPayment": "本次付款",
         "receiptThisRefund": "本次退款",
-        "receiptPickup": "接送"
+        "receiptPickup": "接送",
+        "receiptSpectator": "随行观看",
+        "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",

@@ -4116,6 +4116,8 @@ describe('BookingsService', () => {
             { ageBandId: 'band-adult', priceRetail: D('79.00') },
             { ageBandId: 'band-adult', priceRetail: D('79.00') },
             { ageBandId: 'band-child', priceRetail: D('23.00') },
+            // Spectator twin of the adult band - SAME label, own line.
+            { ageBandId: 'band-adult-spec', priceRetail: D('23.40') },
           ],
           addOns: [
             {
@@ -4129,8 +4131,21 @@ describe('BookingsService', () => {
             name: 'Klein Curacao',
             destination: { name: 'Curaçao', slug: 'curacao' },
             ageBands: [
-              { id: 'band-adult', label: 'Adult (18+)' },
-              { id: 'band-child', label: 'Child (4-12)' },
+              {
+                id: 'band-adult',
+                label: 'Adult (18+)',
+                participation: 'PARTICIPANT',
+              },
+              {
+                id: 'band-child',
+                label: 'Child (4-12)',
+                participation: 'PARTICIPANT',
+              },
+              {
+                id: 'band-adult-spec',
+                label: 'Adult (18+)',
+                participation: 'SPECTATOR',
+              },
             ],
           },
           operator: { companyInfo: { companyName: 'Miss Ann' } },
@@ -4166,15 +4181,26 @@ describe('BookingsService', () => {
         expect(res.party).toEqual([
           {
             label: 'Adult (18+)',
+            spectator: false,
             quantity: 2,
             unitPrice: '79',
             lineTotal: '158.00',
           },
           {
             label: 'Child (4-12)',
+            spectator: false,
             quantity: 1,
             unitPrice: '23',
             lineTotal: '23.00',
+          },
+          // The spectator twin stays its OWN line, flagged - it shares the
+          // participant band's label, and merging them would misprice both.
+          {
+            label: 'Adult (18+)',
+            spectator: true,
+            quantity: 1,
+            unitPrice: '23.4',
+            lineTotal: '23.40',
           },
         ]);
         expect(res.addOns).toEqual([

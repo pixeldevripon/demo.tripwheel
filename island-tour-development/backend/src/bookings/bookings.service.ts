@@ -3375,7 +3375,9 @@ export class BookingsService {
               select: {
                 name: true,
                 destination: { select: { name: true, slug: true } },
-                ageBands: { select: { id: true, label: true } },
+                ageBands: {
+                  select: { id: true, label: true, participation: true },
+                },
               },
             },
             operator: {
@@ -3396,13 +3398,25 @@ export class BookingsService {
 
     // Group the per-guest snapshots into priced party lines ("2 x Adult at
     // $99"), the same banding rule the TYP uses; UNIT-priced tours carry no
-    // age bands and collapse into one "Guest" line.
-    const bandLabels = new Map(
-      (p.booking.tour?.ageBands ?? []).map((b) => [b.id, b.label]),
+    // age bands and collapse into one "Guest" line. Spectator bands (Figma
+    // "Bringing Spectators?") share a LABEL with their participant twin -
+    // "Adult (18+)" exists twice - so the participation flag rides along and
+    // the client marks those lines, or the breakdown reads as a duplicate.
+    const bands = new Map(
+      (p.booking.tour?.ageBands ?? []).map((b) => [
+        b.id,
+        { label: b.label, spectator: b.participation === 'SPECTATOR' },
+      ]),
     );
     const partyLines = new Map<
       string,
-      { label: string; quantity: number; unitPrice: string; lineTotal: number }
+      {
+        label: string;
+        spectator: boolean;
+        quantity: number;
+        unitPrice: string;
+        lineTotal: number;
+      }
     >();
     for (const item of p.booking.unitItems) {
       const bandId = item.ageBandId ?? '';
@@ -3415,8 +3429,10 @@ export class BookingsService {
         existing.quantity += 1;
         existing.lineTotal += Number(item.priceRetail);
       } else {
+        const band = bandId ? bands.get(bandId) : undefined;
         partyLines.set(key, {
-          label: bandId ? (bandLabels.get(bandId) ?? 'Traveler') : 'Guest',
+          label: bandId ? (band?.label ?? 'Traveler') : 'Guest',
+          spectator: band?.spectator ?? false,
           quantity: 1,
           unitPrice: item.priceRetail.toString(),
           lineTotal: Number(item.priceRetail),
@@ -3450,6 +3466,7 @@ export class BookingsService {
       balanceAmount: p.booking.balanceAmount.toString(),
       party: [...partyLines.values()].map((l) => ({
         label: l.label,
+        spectator: l.spectator,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         lineTotal: l.lineTotal.toFixed(2),

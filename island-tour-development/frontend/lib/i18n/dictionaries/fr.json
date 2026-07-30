@@ -9,7 +9,7 @@
         "language": "Langue",
         "categories": "Catégories",
         "search": "Rechercher",
-        "myBookings": "Réservations",
+        "myBookings": "Mes réservations",
         "myAccount": "Comptes"
     },
     "footer": {
@@ -964,7 +964,9 @@
         "receiptRemaining": "Solde restant",
         "receiptThisPayment": "Ce paiement",
         "receiptThisRefund": "Ce remboursement",
-        "receiptPickup": "Prise en charge"
+        "receiptPickup": "Prise en charge",
+        "receiptSpectator": "Spectateur",
+        "emailInvalid": "Saisissez une adresse e-mail valide, comme vous@exemple.com."
     },
     "reviewSubmit": {
         "invalidTitle": "Ce lien d'avis n'est plus valable.",

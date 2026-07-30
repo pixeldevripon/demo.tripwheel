@@ -195,7 +195,15 @@ async function ReceiptBody({
                             {receipt.party.map((line, i) => (
                                 <ItemRow
                                     key={`party-${i}`}
-                                    name={line.label}
+                                    // Spectator bands share the participant
+                                    // band's label ("Adult (18+)" twice), so
+                                    // the flag is the only thing telling the
+                                    // two lines apart.
+                                    name={
+                                        line.spectator
+                                            ? `${line.label} · ${t.receiptSpectator}`
+                                            : line.label
+                                    }
                                     qty={line.quantity}
                                     unit={fmt(line.unitPrice)}
                                     amount={fmt(line.lineTotal)}
