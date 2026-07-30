@@ -33,11 +33,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
     return (
         <Sonner
             theme={theme as ToasterProps['theme']}
-            // TOP-right, not the library default of bottom-right: every long
-            // dashboard form has a sticky action bar (Save / Copy from English) in
-            // the bottom-right corner, and a toast landed straight on top of Save -
-            // blocking the click for as long as it was on screen.
-            position='top-right'
+            // TOP-CENTER at full width - the status ribbon (2026-07-30, user
+            // call; see `.cn-toast` in globals.css). Top rather than bottom for
+            // the same reason as the old top-right card: every long dashboard
+            // form has a sticky Save bar at the bottom and a toast must never
+            // sit on it. Ribbon width spans the viewport minus a gutter,
+            // capped so ultrawide monitors don't get a 3000px banner.
+            position='top-center'
+            offset={12}
+            gap={8}
+            closeButton
             // No `text-sm!` here: it forced 14px onto the whole toast and beat
             // the per-element sizes in `.cn-toast [data-title] / [data-description]`,
             // so the type scale could only ever be set from one of the two

@@ -630,80 +630,152 @@
     transition: margin-left 0.2s ease;
 }
 
-/* ── Toast (sonner) ──────────────────────────────────────────────────────────
- * `classNames.toast` pointed at `cn-toast`, which was never written - so every
- * toast fell through to sonner's `richColors`, which tints the WHOLE toast in
- * the semantic colour. A five-line backend validation message rendered as a
- * block of bold red text on pink: unreadable, and it read as a crash rather
- * than as a form telling you something.
+/* ── Toast (sonner): the status ribbon ───────────────────────────────────────
+ * Redesigned 2026-07-30 (user call): a full-width ribbon across the top of
+ * the app, not a 356px card in the corner. The corner card had two failure
+ * modes - a long backend message (a 409 with a real explanation) wrapped into
+ * an unreadable brick, and anything shorter was easy to miss entirely.
  *
- * The shape is a neutral surface with a real title/description hierarchy, so
- * the eye lands on WHAT happened before it reads why. The icon is the only
- * semantic colour on the toast - there is no coloured rail. A bar and an icon
- * both saying "error" is the same signal twice, and the bar was the louder of
- * the two on an otherwise quiet surface.
+ * The ribbon's grammar:
+ *  - one severity WASH bleeding in from the left edge and fading out by ~28%
+ *    of the width - colour announces the kind of news, then gets out of the
+ *    way of the words (a full-width solid tint would shout for 4 seconds);
+ *  - the icon in a tinted CHIP anchors the wash, and stays the strongest
+ *    semantic mark;
+ *  - title/description keep their hierarchy but at ribbon scale (14/13) -
+ *    corner-card 13px read as a whisper across 1500px;
+ *  - text is capped at a readable measure (~70ch) so a one-line message never
+ *    stretches letterbox-wide, while the SURFACE still spans the app.
  */
+/* Ribbon width: viewport minus a gutter, capped for ultrawide monitors.
+ * Sonner writes its 356px default as an INLINE --width on the <ol>, so this
+ * needs !important to win (03 §8.3 bans the inline-style escape hatch). */
+.toaster[data-sonner-toaster] {
+    --width: min(calc(100vw - 2rem), 100rem) !important;
+}
+
 .cn-toast {
     position: relative;
+    display: flex;
     width: 100%;
     align-items: flex-start;
-    gap: 0.625rem;
+    gap: 0.75rem;
     overflow: hidden;
-    padding: 0.75rem 0.875rem;
+    padding: 0.875rem 1rem;
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--surface-overlay);
     box-shadow: var(--elevation-lg);
 }
 
-/* Optical alignment: the icon sits slightly high in its own box, so nudge it
- * down onto the title's cap height rather than its line box. */
-.cn-toast [data-icon] {
-    margin-top: 0.0625rem;
-    margin-inline-end: 0.125rem;
-    flex-shrink: 0;
-    color: var(--content-subtle);
+/* The wash: severity colour entering from the left, gone by a third of the
+ * ribbon. Sits UNDER the content; the chip gives it something to anchor to. */
+.cn-toast::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        90deg,
+        var(--cn-toast-wash, transparent),
+        transparent 28%
+    );
 }
 
-.cn-toast[data-type='error'] [data-icon] {
-    color: var(--danger-solid);
+.cn-toast[data-type='error'] {
+    --cn-toast-wash: var(--danger-subtle);
+    --cn-toast-accent: var(--danger-solid);
 }
-.cn-toast[data-type='success'] [data-icon] {
-    color: var(--success-solid);
+.cn-toast[data-type='success'] {
+    --cn-toast-wash: var(--success-subtle);
+    --cn-toast-accent: var(--success-solid);
 }
-.cn-toast[data-type='warning'] [data-icon] {
-    color: var(--warning-solid);
+.cn-toast[data-type='warning'] {
+    --cn-toast-wash: var(--warning-subtle);
+    --cn-toast-accent: var(--warning-solid);
 }
-.cn-toast[data-type='info'] [data-icon] {
-    color: var(--primary);
+.cn-toast[data-type='info'] {
+    --cn-toast-wash: var(--info-subtle);
+    --cn-toast-accent: var(--primary);
+}
+
+/* Icon chip: a 28px tile carrying the severity colour on its own wash - the
+ * one solid semantic mark on the ribbon. Loading/plain toasts fall back to a
+ * quiet neutral tile. */
+.cn-toast [data-icon] {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: var(--cn-toast-wash, var(--surface-inset));
+    color: var(--cn-toast-accent, var(--content-subtle));
 }
 
 .cn-toast [data-content] {
+    position: relative;
     min-width: 0;
+    /* Full-width surface, readable measure: nobody should read a sentence
+     * stretched across 1500px. */
+    max-width: 70ch;
+    align-self: center;
 }
 
-/* 13px, not 14. A toast is a passing remark, and at body size it read as a
- * paragraph that had appeared over the page rather than a note about what just
- * happened. */
 .cn-toast [data-title] {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 500;
     line-height: 1.45;
     color: var(--content);
 }
 
-/* Detail reads as body copy. Never coloured - colour is the rail's job. */
+/* Detail reads as body copy. Never coloured - colour is the chip's job. */
 .cn-toast [data-description] {
     margin-top: 0.125rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 400;
     line-height: 1.5;
     color: var(--content-muted);
 }
 
+/* Action (e.g. Undo) rides the right edge of the ribbon, always visible. */
 .cn-toast [data-button] {
-    height: 1.625rem;
+    position: relative;
+    height: 1.75rem;
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
     border-radius: var(--radius-sm);
+    padding-inline: 0.625rem;
     font-size: 0.75rem;
     font-weight: 500;
+}
+
+/* Sonner's close button defaults to a floating disc half-outside the corner;
+ * on a ribbon it becomes an inline dismiss at the far right. */
+.cn-toast [data-close-button] {
+    position: static;
+    order: 99;
+    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--content-subtle);
+    transform: none;
+}
+.cn-toast [data-close-button]:hover {
+    background: var(--surface-inset);
+    color: var(--content);
+}
+/* When an action button is present it owns the right edge; the close slot
+ * follows it instead of stacking a second margin-auto gap. */
+.cn-toast [data-button] ~ [data-close-button],
+.cn-toast:has([data-button]) [data-close-button] {
+    margin-left: 0.25rem;
 }
