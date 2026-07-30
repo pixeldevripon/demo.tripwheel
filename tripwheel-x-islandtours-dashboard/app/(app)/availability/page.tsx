@@ -11,8 +11,10 @@ export default function AvailabilityPage() {
             <div className='mb-6'>
                 <h1 className='text-2xl font-medium'>Availability</h1>
                 <p className='text-sm text-muted-foreground mt-1'>
-                    Every departure across your tours, today first. Close or
-                    reopen in one tap - timetable setup lives on each tour.
+                    Every departure across your tours, today first. Counts
+                    show Island Tours bookings only - full through another
+                    channel? Close the departure here (booked guests always
+                    keep their bookings). Timetable setup lives on each tour.
                 </p>
             </div>
             <AvailabilityAgenda />

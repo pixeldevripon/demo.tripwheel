@@ -32,6 +32,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     useCloseRange,
     useCreateException,
@@ -39,6 +40,7 @@ import {
     useRemoveException,
     useReopenRange,
 } from '@/hooks/trips/use-trips';
+import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type {
     ManageCalendarDay,
@@ -47,6 +49,7 @@ import type {
     TourDeparture,
 } from '@/types/trip';
 import { addMonths, format, startOfMonth } from 'date-fns';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -73,6 +76,30 @@ interface TripAvailabilityCalendarProps {
     pricingModel?: PricingModel;
     /** Drop the Card chrome - the wizard section header names this calendar. */
     bare?: boolean;
+    /**
+     * Deep link (agenda row → this calendar): jump the grid to this date's
+     * month and MARK the date - selection only, the day's action popup stays
+     * closed until the operator clicks the cell themselves. Ignored when the
+     * date is past or beyond the 12-month horizon.
+     */
+    initialDate?: string;
+}
+
+/** 'YYYY-MM-DD' within [island today, +12 months], else null. */
+function normalizeInitialDate(
+    initialDate: string | undefined,
+    timeZone: string
+): string | null {
+    if (!initialDate || !/^\d{4}-\d{2}-\d{2}$/.test(initialDate)) return null;
+    const islandToday = new Intl.DateTimeFormat('en-CA', { timeZone }).format(
+        new Date()
+    );
+    const maxMonth = islandToday
+        .slice(0, 7)
+        .replace(/^\d{4}/, y => String(+y + 1));
+    if (initialDate < islandToday || initialDate.slice(0, 7) > maxMonth)
+        return null;
+    return initialDate;
 }
 
 /**
@@ -100,16 +127,20 @@ export function TripAvailabilityCalendar({
     declaredStartTimes,
     pricingModel = 'PER_PERSON',
     bare = false,
+    initialDate,
 }: TripAvailabilityCalendarProps) {
     const isUnit = pricingModel === 'UNIT';
     // Initial month from the ISLAND's clock, not the browser's: an operator
     // ahead of the tour's timezone opening this near their local midnight
-    // would otherwise land one month past the island's actual today.
+    // would otherwise land one month past the island's actual today. A deep-
+    // linked date (agenda row) anchors the month instead, when valid.
     const [monthDate, setMonthDate] = useState(() => {
         const islandToday = new Intl.DateTimeFormat('en-CA', {
             timeZone,
         }).format(new Date());
-        return new Date(`${islandToday.slice(0, 7)}-01T00:00:00`);
+        const anchor =
+            normalizeInitialDate(initialDate, timeZone) ?? islandToday;
+        return new Date(`${anchor.slice(0, 7)}-01T00:00:00`);
     });
     const month = format(monthDate, 'yyyy-MM');
     const {
@@ -117,16 +148,29 @@ export function TripAvailabilityCalendar({
         isLoading,
         isFetching,
     } = useManageCalendar(tripId, month);
+    // Two distinct states, deliberately: `selectedDate` MARKS a cell (a ring,
+    // nothing more) - it is where jump-to-date and the agenda deep link land.
+    // `openDate` is the day's action popup, and only a direct click on the
+    // cell opens it.
+    const [selectedDate, setSelectedDate] = useState<string | null>(() =>
+        normalizeInitialDate(initialDate, timeZone)
+    );
     const [openDate, setOpenDate] = useState<string | null>(null);
     const [jumpOpen, setJumpOpen] = useState(false);
+    const reduceMotion = useReducedMotion();
     // F8 bulk blackout: a two-week haul-out is one dialog, not fourteen taps.
+    // The same dialog runs in reverse ('reopen') - without it, a range close
+    // could only be undone from the toast or day by day.
     const [rangeOpen, setRangeOpen] = useState(false);
+    const [rangeMode, setRangeMode] = useState<'close' | 'reopen'>('close');
     const [rangeFrom, setRangeFrom] = useState('');
     const [rangeTo, setRangeTo] = useState('');
     const [rangeNote, setRangeNote] = useState('');
     const [rangeError, setRangeError] = useState<string | null>(null);
     const { mutate: closeRange, isPending: isClosingRange } = useCloseRange();
-    const { mutate: reopenRange } = useReopenRange();
+    const { mutate: reopenRange, isPending: isReopeningRange } =
+        useReopenRange();
+    const rangeBusy = isClosingRange || isReopeningRange;
 
     function submitRange() {
         if (!rangeFrom || !rangeTo) {
@@ -140,6 +184,33 @@ export function TripAvailabilityCalendar({
         setRangeError(null);
         const from = rangeFrom;
         const to = rangeTo;
+        if (rangeMode === 'reopen') {
+            // No Undo on a bulk reopen, deliberately: re-closing the same
+            // bounds would also close days that were OPEN before, which is
+            // not an undo. The Date changes register handles corrections.
+            reopenRange(
+                { tripId, payload: { from, to } },
+                {
+                    onSuccess: ({ reopened }) => {
+                        setRangeOpen(false);
+                        setRangeFrom('');
+                        setRangeTo('');
+                        toast.success(
+                            reopened > 0
+                                ? `Reopened ${reopened} day${reopened === 1 ? '' : 's'}. New sales are running again.`
+                                : 'No day-closures in that range to reopen.'
+                        );
+                    },
+                    onError: err =>
+                        setRangeError(
+                            err instanceof Error
+                                ? err.message
+                                : 'Failed to reopen the range.'
+                        ),
+                }
+            );
+            return;
+        }
         closeRange(
             {
                 tripId,
@@ -235,13 +306,34 @@ export function TripAvailabilityCalendar({
                 <PopoverTrigger asChild>
                     {/* Styled like the Select triggers beside it (border,
                         surface, chevron) so it READS as a control - a bare
-                        text label hid the jump feature entirely. */}
+                        text label hid the jump feature entirely. w-44 is
+                        FIXED, sized to "September 2026": a min-width let
+                        "November" grow the trigger and shove the arrows
+                        sideways on every page. */}
                     <button
                         type='button'
                         aria-label='Jump to month'
-                        className='flex h-8 min-w-36 items-center justify-between gap-1.5 rounded-md border border-input bg-surface-raised px-2.5 text-sm font-medium tabular-nums shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-line-strong focus-visible:border-focus-ring focus-visible:ring-[3px] focus-visible:ring-focus-ring/25'>
-                        <span>
-                            {format(monthDate, 'MMMM yyyy')}
+                        className='flex h-8 w-44 items-center justify-between gap-1.5 rounded-md border border-input bg-surface-raised px-2.5 text-sm font-medium tabular-nums shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-line-strong focus-visible:border-focus-ring focus-visible:ring-[3px] focus-visible:ring-focus-ring/25'>
+                        <span className='flex items-center'>
+                            {/* Label swaps with the house label-swap motion. */}
+                            <AnimatePresence initial={false} mode='wait'>
+                                <motion.span
+                                    key={month}
+                                    initial={
+                                        reduceMotion ? false : { opacity: 0, y: 6 }
+                                    }
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={
+                                        reduceMotion
+                                            ? undefined
+                                            : { opacity: 0, y: -6 }
+                                    }
+                                    transition={
+                                        reduceMotion ? { duration: 0 } : swapFade
+                                    }>
+                                    {format(monthDate, 'MMMM yyyy')}
+                                </motion.span>
+                            </AnimatePresence>
                             {isFetching && !isLoading && (
                                 <HugeiconsIcon
                                     icon={Loading03Icon}
@@ -257,20 +349,21 @@ export function TripAvailabilityCalendar({
                 </PopoverTrigger>
                 <PopoverContent align='center' className='w-auto p-0'>
                     {/* Pick a DATE, not just a month (the reference mockup's
-                        "Go"): the grid jumps to that month AND the day card
-                        opens on the chosen date - one motion from "Aug 28 is
-                        full" to acting on Aug 28. */}
+                        "Go"): the grid jumps to that month and the chosen day
+                        is MARKED - the action popup stays closed until the
+                        operator clicks the cell (auto-opening it made every
+                        jump land in a dialog they did not ask for). */}
                     <Calendar
                         mode='single'
                         selected={
-                            openDate
-                                ? new Date(`${openDate}T00:00:00`)
+                            selectedDate
+                                ? new Date(`${selectedDate}T00:00:00`)
                                 : undefined
                         }
                         onSelect={date => {
                             if (!date) return;
                             setMonthDate(startOfMonth(date));
-                            setOpenDate(format(date, 'yyyy-MM-dd'));
+                            setSelectedDate(format(date, 'yyyy-MM-dd'));
                             setJumpOpen(false);
                         }}
                         defaultMonth={monthDate}
@@ -305,8 +398,11 @@ export function TripAvailabilityCalendar({
                         size='sm'
                         variant='outline'
                         className='h-8'
-                        onClick={() => setRangeOpen(true)}>
-                        Close a range
+                        onClick={() => {
+                            setRangeMode('close');
+                            setRangeOpen(true);
+                        }}>
+                        Close / reopen a range
                     </Button>
                     {monthNav}
                 </div>
@@ -316,7 +412,11 @@ export function TripAvailabilityCalendar({
             ) : (
                 <>
                     {/* Hairline grid: gap-px over the border color reads as ruled
-                lines - calmer than a box around every day. */}
+                lines - calmer than a box around every day. The weekday header
+                is its own static grid; the month body below remounts per
+                month with a plain quick fade (crossFade). A directional
+                slide was tried and pulled - on a grid this size it read as
+                the whole table lurching, not as paging. */}
                     <div className='overflow-hidden rounded-lg border'>
                         <div className='grid grid-cols-7 gap-px bg-border/70'>
                             {WEEKDAY_HEADERS.map(h => (
@@ -326,6 +426,15 @@ export function TripAvailabilityCalendar({
                                     {h}
                                 </div>
                             ))}
+                        </div>
+                        <motion.div
+                            key={month}
+                            initial={reduceMotion ? false : { opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={
+                                reduceMotion ? { duration: 0 } : crossFade
+                            }
+                            className='grid grid-cols-7 gap-px border-t border-border/70 bg-border/70'>
                             {Array.from({ length: leadingBlanks }).map(
                                 (_, i) => (
                                     <div
@@ -342,12 +451,17 @@ export function TripAvailabilityCalendar({
                                           day={day}
                                           isPast={day.date < todayKey}
                                           isToday={day.date === todayKey}
+                                          marked={selectedDate === day.date}
                                           open={openDate === day.date}
-                                          onOpenChange={next =>
+                                          onOpenChange={next => {
                                               setOpenDate(
                                                   next ? day.date : null
-                                              )
-                                          }
+                                              );
+                                              // The mark follows a real click
+                                              // too - one "you are here" cell.
+                                              if (next)
+                                                  setSelectedDate(day.date);
+                                          }}
                                           tripId={tripId}
                                           maxPartySize={maxPartySize}
                                           declaredStartTimes={
@@ -376,7 +490,7 @@ export function TripAvailabilityCalendar({
                                     />
                                 )
                             )}
-                        </div>
+                        </motion.div>
                     </div>
 
                     <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground'>
@@ -398,28 +512,48 @@ export function TripAvailabilityCalendar({
                         </span>
                         <span className='flex items-center gap-1.5'>
                             <span className='rounded-sm bg-primary-subtle px-1 py-px text-2xs font-medium text-primary-subtle-content'>
-                                3 booked
+                                3/26 booked
                             </span>
-                            seats sold on that day
+                            seats sold / day capacity
                         </span>
                     </div>
                 </>
             )}
 
-            {/* F8: bulk blackout dialog. Writes one CLOSE_DATE per day in the
-                range server-side; the toast's Undo reopens the same bounds. */}
+            {/* F8: bulk blackout dialog, dual-mode. Close writes one
+                CLOSE_DATE per day server-side (the toast's Undo reopens the
+                same bounds); Reopen removes the whole-day closures in the
+                range - the answer to "I closed two weeks, the boat is fixed
+                early". Single-departure closures and sold-out days are not
+                touched by Reopen; those act from the day itself. */}
             <Dialog open={rangeOpen} onOpenChange={setRangeOpen}>
                 <DialogContent className='sm:max-w-md'>
                     <DialogHeader>
-                        <DialogTitle>Close a range of dates</DialogTitle>
+                        <DialogTitle>
+                            {rangeMode === 'close'
+                                ? 'Close a range of dates'
+                                : 'Reopen a range of dates'}
+                        </DialogTitle>
                         <DialogDescription>
-                            Stops new sales on every departure between the two
-                            days, inclusive. Existing bookings are kept.
+                            {rangeMode === 'close'
+                                ? 'Stops new sales on every departure between the two days, inclusive. Existing bookings are kept.'
+                                : 'Removes the day-closures between the two days, inclusive - new sales resume. Single-departure closures and sold-out days are untouched.'}
                         </DialogDescription>
                     </DialogHeader>
+                    <Tabs
+                        value={rangeMode}
+                        onValueChange={v => {
+                            setRangeMode(v as 'close' | 'reopen');
+                            setRangeError(null);
+                        }}>
+                        <TabsList>
+                            <TabsTrigger value='close'>Close</TabsTrigger>
+                            <TabsTrigger value='reopen'>Reopen</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                     <div className='grid grid-cols-2 gap-3'>
                         <Field>
-                            <Label>First closed day</Label>
+                            <Label>First day</Label>
                             <DatePickerField
                                 value={rangeFrom}
                                 onChange={v => {
@@ -429,7 +563,7 @@ export function TripAvailabilityCalendar({
                             />
                         </Field>
                         <Field>
-                            <Label>Last closed day</Label>
+                            <Label>Last day</Label>
                             <DatePickerField
                                 value={rangeTo}
                                 onChange={v => {
@@ -439,15 +573,17 @@ export function TripAvailabilityCalendar({
                             />
                         </Field>
                     </div>
-                    <Field>
-                        <Label>Reason (optional)</Label>
-                        <Input
-                            value={rangeNote}
-                            onChange={e => setRangeNote(e.target.value)}
-                            placeholder='e.g. Maintenance haul-out'
-                            maxLength={500}
-                        />
-                    </Field>
+                    {rangeMode === 'close' && (
+                        <Field>
+                            <Label>Reason (optional)</Label>
+                            <Input
+                                value={rangeNote}
+                                onChange={e => setRangeNote(e.target.value)}
+                                placeholder='e.g. Maintenance haul-out'
+                                maxLength={500}
+                            />
+                        </Field>
+                    )}
                     {rangeError && (
                         <p className='text-xs text-destructive'>{rangeError}</p>
                     )}
@@ -455,20 +591,26 @@ export function TripAvailabilityCalendar({
                         <Button
                             variant='ghost'
                             onClick={() => setRangeOpen(false)}
-                            disabled={isClosingRange}>
+                            disabled={rangeBusy}>
                             Cancel
                         </Button>
                         <Button
-                            variant='destructive'
+                            variant={
+                                rangeMode === 'close'
+                                    ? 'destructive'
+                                    : 'default'
+                            }
                             onClick={submitRange}
-                            disabled={isClosingRange}>
-                            {isClosingRange && (
+                            disabled={rangeBusy}>
+                            {rangeBusy && (
                                 <HugeiconsIcon
                                     icon={Loading03Icon}
                                     className='size-4 animate-spin'
                                 />
                             )}
-                            Close these days
+                            {rangeMode === 'close'
+                                ? 'Close these days'
+                                : 'Reopen these days'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -496,8 +638,11 @@ export function TripAvailabilityCalendar({
                             size='sm'
                             variant='outline'
                             className='h-8'
-                            onClick={() => setRangeOpen(true)}>
-                            Close a range
+                            onClick={() => {
+                                setRangeMode('close');
+                                setRangeOpen(true);
+                            }}>
+                            Close / reopen a range
                         </Button>
                         {monthNav}
                     </div>
@@ -515,6 +660,8 @@ interface DayCellProps {
     day: ManageCalendarDay;
     isPast: boolean;
     isToday: boolean;
+    /** Marked via jump-to-date / deep link - a ring, no popup. */
+    marked: boolean;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     maxPartySize: number;
@@ -527,6 +674,7 @@ function DayCell({
     day,
     isPast,
     isToday,
+    marked,
     open,
     onOpenChange,
     maxPartySize,
@@ -576,6 +724,10 @@ function DayCell({
                             day.status !== 'closed' &&
                             day.status !== 'partial' &&
                             'hover:bg-muted/60',
+                        // Selection mark (jump / deep link) vs the held popup
+                        // ring: the mark is the primary colour so "the day I
+                        // asked for" and "the day I have open" never blur.
+                        marked && !open && 'ring-2 ring-inset ring-primary/60',
                         open && 'ring-2 ring-inset ring-foreground/30'
                     )}>
                     <span className='flex items-center gap-1.5'>
@@ -658,23 +810,55 @@ function DayCell({
                         ) : (
                             <span />
                         )}
-                        {day.bookedTotal > 0 && (
-                            <span
-                                className={cn(
-                                    'whitespace-nowrap rounded-sm px-1 py-px text-2xs font-medium tabular-nums leading-none',
-                                    isPast
-                                        ? 'text-muted-foreground/60'
-                                        : 'bg-primary-subtle text-primary-subtle-content'
-                                )}>
-                                {/* Unit charters: guests, never seat math (F10). */}
-                                {day.bookedTotal}{' '}
-                                {isUnit
-                                    ? day.bookedTotal === 1
-                                        ? 'guest'
-                                        : 'guests'
-                                    : 'booked'}
-                            </span>
-                        )}
+                        {/* The seat picture, on every day that has materialized
+                            departures - not only booked ones. "3/26 booked"
+                            answers how full AND how big the day is in one
+                            read; an untouched day shows its capacity quietly
+                            (plain muted text, no chip) so an all-open month
+                            does not become a wall of chips. Unit charters:
+                            guests, never seat math (F10). */}
+                        {isUnit
+                            ? day.bookedTotal > 0 && (
+                                  <span
+                                      className={cn(
+                                          'whitespace-nowrap rounded-sm px-1 py-px text-2xs font-medium tabular-nums leading-none',
+                                          isPast
+                                              ? 'text-muted-foreground/60'
+                                              : 'bg-primary-subtle text-primary-subtle-content'
+                                      )}>
+                                      {day.bookedTotal}{' '}
+                                      {day.bookedTotal === 1
+                                          ? 'guest'
+                                          : 'guests'}
+                                  </span>
+                              )
+                            : day.departures.length > 0 &&
+                              (day.bookedTotal > 0 ? (
+                                  <span
+                                      className={cn(
+                                          'whitespace-nowrap rounded-sm px-1 py-px text-2xs font-medium tabular-nums leading-none',
+                                          isPast
+                                              ? 'text-muted-foreground/60'
+                                              : 'bg-primary-subtle text-primary-subtle-content'
+                                      )}>
+                                      {day.bookedTotal}/
+                                      {day.departures.reduce(
+                                          (s, d) => s + d.capacity,
+                                          0
+                                      )}{' '}
+                                      booked
+                                  </span>
+                              ) : (
+                                  !isPast && (
+                                      <span className='whitespace-nowrap text-2xs tabular-nums leading-none text-muted-foreground'>
+                                          {day.departures.reduce(
+                                              (s, d) => s + d.capacity,
+                                              0
+                                          )}{' '}
+                                          seats
+                                      </span>
+                                  )
+                              ))}
                     </span>
                 </button>
             </PopoverAnchor>
@@ -1030,8 +1214,11 @@ function DayPopover({
                             <p className='text-xs text-muted-foreground'>
                                 Closing keeps every booking. If a departure truly
                                 will not run, report it on the{' '}
+                                {/* Deep-filtered: THIS tour, THIS day - the
+                                    operator lands on exactly the bookings the
+                                    closure touches, never the full list. */}
                                 <Link
-                                    href='/bookings'
+                                    href={`/bookings?tourId=${tripId}&from=${day.date}&to=${day.date}`}
                                     className='underline underline-offset-2 hover:text-foreground'>
                                     booking
                                 </Link>{' '}

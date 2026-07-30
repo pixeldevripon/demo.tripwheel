@@ -23,6 +23,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -136,7 +137,20 @@ interface StepScheduleProps {
 export function StepSchedule({ trip }: StepScheduleProps) {
     const { mutateAsync: updateTrip, isPending } = useUpdateTrip();
     // Failures render in place, above the step, instead of as a toast.
-    const { setStepError } = useWizard();
+    const { setStepError, revealSection } = useWizard();
+
+    // Agenda deep link (?step=schedule&date=YYYY-MM-DD): land with the
+    // Calendar section open and that date marked on the grid. The calendar
+    // itself validates the date (past / beyond-horizon values are ignored).
+    const searchParams = useSearchParams();
+    const rawJumpDate = searchParams.get('date');
+    const jumpDate =
+        rawJumpDate && /^\d{4}-\d{2}-\d{2}$/.test(rawJumpDate)
+            ? rawJumpDate
+            : undefined;
+    useEffect(() => {
+        if (jumpDate) revealSection('schedule:calendar');
+    }, [jumpDate, revealSection]);
     const { data: schedules } = useSchedules(trip.id);
     const { data: summary } = useAvailabilitySummary(trip.id);
     // Same query the register itself renders from - deduped by react-query,
@@ -232,7 +246,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
     const horizonEmpty = summary != null && summary.openInNext30Days === 0;
     const statusLine =
         summary?.nextDeparture != null ? (
-            <p className='text-xs text-muted-foreground'>
+            <p className='text-xs pt-2 text-muted-foreground'>
                 Next departure:{' '}
                 <span className='font-medium text-foreground'>
                     {format(
@@ -369,6 +383,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                         maxPartySize={trip.maxPartySize}
                         declaredStartTimes={trip.startTimes ?? []}
                         pricingModel={trip.pricingModel}
+                        initialDate={jumpDate}
                     />
                 </WizardSection>
 
