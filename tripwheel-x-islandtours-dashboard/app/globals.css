@@ -669,49 +669,51 @@
     box-shadow: var(--elevation-lg);
 }
 
-/* The splash (user direction 2026-07-30: "water drop and splash style" - on a
- * Caribbean tours brand, the weather metaphor IS the brand): the severity
- * colour lands at the chip like a drop hitting water - one soft pool bleeding
- * right, then a trail of ever-smaller droplets thrown off ahead of it. All
- * one paint layer, under the content. */
+/* The wash: severity colour entering from the left, gone by a third of the
+ * ribbon. A static paint layer - the water language lives in the ENTRANCE
+ * (user call 2026-07-30: splash is how the toast APPEARS, not how it looks). */
 .cn-toast::before {
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-        /* the pool around the point of impact */
-        radial-gradient(
-            14rem 200% at 0% 50%,
-            var(--cn-toast-wash, transparent),
-            transparent 70%
-        ),
-        /* splash droplets, scattering and shrinking to the right */
-        radial-gradient(
-            circle 0.6rem at 15rem 26%,
-            var(--cn-toast-wash, transparent) 0 99%,
-            transparent 100%
-        ),
-        radial-gradient(
-            circle 0.4rem at 18.5rem 68%,
-            var(--cn-toast-wash, transparent) 0 99%,
-            transparent 100%
-        ),
-        radial-gradient(
-            circle 0.25rem at 21.5rem 38%,
-            var(--cn-toast-wash, transparent) 0 99%,
-            transparent 100%
-        ),
-        radial-gradient(
-            circle 0.15rem at 23.5rem 58%,
-            var(--cn-toast-wash, transparent) 0 99%,
-            transparent 100%
-        );
+    background: linear-gradient(
+        90deg,
+        var(--cn-toast-wash, transparent),
+        transparent 28%
+    );
 }
 
-/* The ripple: one ring expanding out of the chip when the toast lands, then
- * gone - the "drop just hit" moment. Runs once; its transform is its own, so
- * it never fights sonner's positioning transforms on the toast itself. */
+/* ── The splash entrance ─────────────────────────────────────────────────────
+ * A drop-hits-water choreography, played once on mount:
+ *   1. the icon FALLS in from above and squashes on impact (~0.45s spring);
+ *   2. a ripple ring expands out of the impact point and fades;
+ *   3. the text and buttons SURFACE - a small rise-and-fade trailing the hit.
+ * Everything animates on the toast's CHILDREN, never on the toast itself:
+ * sonner owns the li's transform for stacking and swipe, and an animation
+ * there would fight it mid-flight. */
+
+/* 1 - the drop */
+.cn-toast [data-icon] {
+    animation: cn-toast-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1;
+}
+@keyframes cn-toast-drop {
+    0% {
+        transform: translateY(-1.25rem) scale(0.8);
+        opacity: 0;
+    }
+    55% {
+        /* impact: a touch of squash-and-stretch sells the landing */
+        transform: translateY(0.0625rem) scale(1.1, 0.85);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* 2 - the ripple, timed to the impact frame of the drop */
 .cn-toast::after {
     content: '';
     position: absolute;
@@ -724,22 +726,42 @@
     border: 2px solid var(--cn-toast-accent, var(--line));
     border-radius: 9999px;
     opacity: 0;
-    animation: cn-toast-ripple 0.9s ease-out 0.05s 1;
+    animation: cn-toast-ripple 0.7s ease-out 0.22s 1;
 }
-
 @keyframes cn-toast-ripple {
     0% {
         transform: scale(0.3);
-        opacity: 0.55;
+        opacity: 0.5;
     }
     100% {
-        transform: scale(2.2);
+        transform: scale(2.4);
         opacity: 0;
     }
 }
 
+/* 3 - the content surfaces after the hit */
+.cn-toast [data-content],
+.cn-toast [data-button],
+.cn-toast [data-close-button] {
+    animation: cn-toast-surface 0.45s ease-out 0.16s backwards;
+}
+@keyframes cn-toast-surface {
+    0% {
+        transform: translateY(0.375rem);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .cn-toast::after {
+    .cn-toast [data-icon],
+    .cn-toast::after,
+    .cn-toast [data-content],
+    .cn-toast [data-button],
+    .cn-toast [data-close-button] {
         animation: none;
     }
 }
@@ -761,18 +783,18 @@
     --cn-toast-accent: var(--primary);
 }
 
-/* Icon chip: the DROP itself - a teardrop (round everywhere, one pinched
- * corner trailing up-left, where a falling drop just detached) carrying the
- * severity colour. Loading/plain toasts fall back to a quiet neutral drop. */
+/* Icon chip: a 28px tile carrying the severity colour on its own wash - the
+ * one solid semantic mark on the ribbon. Loading/plain toasts fall back to a
+ * quiet neutral tile. */
 .cn-toast [data-icon] {
     position: relative;
     display: grid;
     place-items: center;
-    width: 1.875rem;
-    height: 1.875rem;
+    width: 1.75rem;
+    height: 1.75rem;
     margin: 0;
     flex-shrink: 0;
-    border-radius: 0.25rem 9999px 9999px 9999px;
+    border-radius: var(--radius-md);
     background: var(--cn-toast-wash, var(--surface-inset));
     color: var(--cn-toast-accent, var(--content-subtle));
 }
