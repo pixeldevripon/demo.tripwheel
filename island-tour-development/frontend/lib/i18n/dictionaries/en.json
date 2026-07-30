@@ -805,7 +805,7 @@
         "sendCode": "Send me a code",
         "sending": "Sending...",
         "codeTitle": "Enter your code",
-        "codeSentNote": "If {email} has bookings with us, a 6-digit code is on its way.",
+        "codeSentNote": "We've sent a 6-digit code to {email}.",
         "codeLabel": "6-digit code",
         "codeHint": "The code is valid for 10 minutes and can be used once.",
         "verify": "Sign in",
@@ -966,7 +966,8 @@
         "receiptThisRefund": "This refund",
         "receiptPickup": "Pickup",
         "receiptSpectator": "Spectator",
-        "emailInvalid": "Enter a valid email address, like you@example.com."
+        "emailInvalid": "Enter a valid email address, like you@example.com.",
+        "emailUnknown": "We can't find any bookings under this email. Use the address from your booking confirmation."
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

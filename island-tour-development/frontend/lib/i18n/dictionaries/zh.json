@@ -805,7 +805,7 @@
         "sendCode": "发送验证码",
         "sending": "发送中...",
         "codeTitle": "输入验证码",
-        "codeSentNote": "如果 {email} 在我们这里有预订，6 位验证码已在发送途中。",
+        "codeSentNote": "我们已向 {email} 发送 6 位验证码。",
         "codeLabel": "6 位验证码",
         "codeHint": "验证码 10 分钟内有效，仅可使用一次。",
         "verify": "登录",
@@ -966,7 +966,8 @@
         "receiptThisRefund": "本次退款",
         "receiptPickup": "接送",
         "receiptSpectator": "随行观看",
-        "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。"
+        "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。",
+        "emailUnknown": "未找到与此邮箱关联的预订。请使用预订确认邮件中的邮箱地址。"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",

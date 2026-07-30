@@ -3644,12 +3644,15 @@ describe('BookingsService', () => {
     }
 
     describe('requestTravellerLoginCode', () => {
-      it('acks without creating or mailing anything for an unknown email', async () => {
+      // `sent: false` is a DELIBERATE enumeration trade-off (founder
+      // 2026-07-30): the UI shows "no bookings under this email" instead of
+      // the always-positive ack. Throttles bound probing.
+      it('answers sent:false without creating or mailing anything for an unknown email', async () => {
         m.booking.findFirst.mockResolvedValue(null);
 
         await expect(
           svc.requestTravellerLoginCode({ email: 'nobody@example.test' }),
-        ).resolves.toEqual({ sent: true });
+        ).resolves.toEqual({ sent: false });
 
         expect(m.travelerLoginCode.create).not.toHaveBeenCalled();
         expect(mail.sendTravellerLoginCodeEmail).not.toHaveBeenCalled();

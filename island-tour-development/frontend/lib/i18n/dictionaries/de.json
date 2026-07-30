@@ -805,7 +805,7 @@
         "sendCode": "Code senden",
         "sending": "Wird gesendet...",
         "codeTitle": "Code eingeben",
-        "codeSentNote": "Wenn {email} Buchungen bei uns hat, ist ein 6-stelliger Code unterwegs.",
+        "codeSentNote": "Wir haben einen 6-stelligen Code an {email} gesendet.",
         "codeLabel": "6-stelliger Code",
         "codeHint": "Der Code gilt 10 Minuten und kann einmal verwendet werden.",
         "verify": "Anmelden",
@@ -966,7 +966,8 @@
         "receiptThisRefund": "Diese Erstattung",
         "receiptPickup": "Abholung",
         "receiptSpectator": "Zuschauer",
-        "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de."
+        "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de.",
+        "emailUnknown": "Unter dieser E-Mail-Adresse finden wir keine Buchungen. Nutze die Adresse aus deiner Buchungsbestätigung."
     },
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",

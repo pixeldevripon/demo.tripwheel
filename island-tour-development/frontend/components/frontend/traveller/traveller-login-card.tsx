@@ -99,6 +99,14 @@ export function TravellerLoginCard({
         setEmailError(null);
         const result = await requestTravellerCodeClient(value);
         setBusy(false);
+        // No bookings under this address -> no code was sent. Stay on the
+        // email step with a validation message (founder 2026-07-30) instead
+        // of advancing to a code screen that can never succeed.
+        if (result === 'unknown') {
+            setEmailError(dict.emailUnknown);
+            emailRef.current?.focus();
+            return;
+        }
         if (result === 'throttled') {
             setError(dict.throttledError);
             // Still advance: an earlier code may well be sitting in the inbox.

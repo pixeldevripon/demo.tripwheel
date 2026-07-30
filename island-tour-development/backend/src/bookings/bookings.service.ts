@@ -3545,8 +3545,12 @@ export class BookingsService {
       select: { contactEmail: true },
     });
     if (!booking) {
+      // `sent: false` is DELIBERATE enumeration: the founder chose the honest
+      // "we can't find bookings under this email" UX over the always-positive
+      // lock (login spec 5.9) on 2026-07-30. The per-IP throttle + the
+      // per-email caps above bound probing. Revert = return { sent: true }.
       this.logger.log('Traveller login code requested for an unknown email');
-      return { sent: true };
+      return { sent: false };
     }
 
     // Only the newest code may ever be live: requesting a second one

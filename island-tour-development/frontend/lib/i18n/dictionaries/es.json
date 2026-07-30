@@ -805,7 +805,7 @@
         "sendCode": "Enviarme un código",
         "sending": "Enviando...",
         "codeTitle": "Introduce tu código",
-        "codeSentNote": "Si {email} tiene reservas con nosotros, un código de 6 dígitos va en camino.",
+        "codeSentNote": "Hemos enviado un código de 6 dígitos a {email}.",
         "codeLabel": "Código de 6 dígitos",
         "codeHint": "El código es válido 10 minutos y se puede usar una vez.",
         "verify": "Iniciar sesión",
@@ -966,7 +966,8 @@
         "receiptThisRefund": "Este reembolso",
         "receiptPickup": "Recogida",
         "receiptSpectator": "Espectador",
-        "emailInvalid": "Introduce un correo válido, como tu@ejemplo.com."
+        "emailInvalid": "Introduce un correo válido, como tu@ejemplo.com.",
+        "emailUnknown": "No encontramos reservas con este correo. Usa la dirección de tu confirmación de reserva."
     },
     "reviewSubmit": {
         "invalidTitle": "Este enlace de reseña ya no es válido.",

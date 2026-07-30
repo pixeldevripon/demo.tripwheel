@@ -805,7 +805,7 @@
         "sendCode": "Stuur me een code",
         "sending": "Versturen...",
         "codeTitle": "Vul je code in",
-        "codeSentNote": "Als {email} boekingen bij ons heeft, is er een 6-cijferige code onderweg.",
+        "codeSentNote": "We hebben een 6-cijferige code naar {email} gestuurd.",
         "codeLabel": "6-cijferige code",
         "codeHint": "De code is 10 minuten geldig en kan een keer worden gebruikt.",
         "verify": "Inloggen",
@@ -966,7 +966,8 @@
         "receiptThisRefund": "Deze terugbetaling",
         "receiptPickup": "Ophaalservice",
         "receiptSpectator": "Toeschouwer",
-        "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl."
+        "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl.",
+        "emailUnknown": "We vinden geen boekingen op dit e-mailadres. Gebruik het adres uit je boekingsbevestiging."
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",
