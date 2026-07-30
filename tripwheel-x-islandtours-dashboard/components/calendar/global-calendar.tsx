@@ -22,6 +22,7 @@ import { tripsApi } from '@/lib/api/trips';
 import { crossFade, swapFade } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { AddEventPopover } from './add-event-popover';
+import { RangeDialog } from './range-dialog';
 import {
     DOT_CLASS,
     STATE_LABEL,
@@ -55,9 +56,11 @@ const LEGEND: ChipState[] = ['open', 'soldOut', 'closed', 'past'];
  * every availability mutation still busts overviewAll().
  */
 export function GlobalCalendar() {
-    const { role, can } = useRole();
+    const { role, can, canAny } = useRole();
     const isAdmin = role === 'ADMIN';
     const canShape = can('MANAGE_AVAILABILITY');
+    const canStopSell = canAny(['MANAGE_AVAILABILITY', 'STOP_SELL']);
+    const [rangeOpen, setRangeOpen] = useState(false);
     const reduceMotion = useReducedMotion();
     const queryClient = useQueryClient();
 
@@ -206,10 +209,18 @@ export function GlobalCalendar() {
                 )}
 
                 <div className='ml-auto flex flex-wrap items-center gap-2'>
-                    {/* Filters live in the sidebar; below xl the sidebar is
-                        gone, so they surface here instead. */}
+                    {/* Filters + range tool live in the sidebar; below xl the
+                        sidebar is gone, so they surface here instead. */}
                     <div className='flex items-center gap-2 xl:hidden'>
                         {filters}
+                        {canStopSell && (
+                            <Button
+                                variant='outline'
+                                className='h-10'
+                                onClick={() => setRangeOpen(true)}>
+                                Range
+                            </Button>
+                        )}
                     </div>
                     <Tabs
                         value={view}
@@ -246,6 +257,16 @@ export function GlobalCalendar() {
                                 Add departure or schedule
                             </Button>
                         </AddEventPopover>
+                    )}
+                    {/* Bulk blackout + its reverse - a STOP_SELL seat may
+                        close/reopen even though it cannot add. */}
+                    {canStopSell && (
+                        <Button
+                            variant='outline'
+                            className='h-10 w-full justify-start'
+                            onClick={() => setRangeOpen(true)}>
+                            Close / reopen a range
+                        </Button>
                     )}
                     {/* Mini calendar: remounts when the anchor month moves so
                         its visible month always follows the grid. */}
@@ -349,6 +370,16 @@ export function GlobalCalendar() {
                     </p>
                 </div>
             </div>
+
+            {/* Keyed per open so every visit starts with fresh fields and the
+                current tour filter as its default. */}
+            <RangeDialog
+                key={`${rangeOpen}-${tourId ?? 'all'}`}
+                open={rangeOpen}
+                onOpenChange={setRangeOpen}
+                tours={tours}
+                defaultTourId={tourId}
+            />
         </div>
     );
 }
