@@ -11,7 +11,6 @@ import { crossFade } from '@/lib/motion';
 import { requestCancellationClient } from '@/lib/api/traveller-login';
 
 import { TravellerChip } from './traveller-chip';
-import { TravellerDateChange } from './traveller-date-change';
 import {
     formatDeadline,
     formatDay,
@@ -138,17 +137,10 @@ export function TravellerCancelPanel({
             <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
                 {windowLine}
             </p>
-            {/* Self-service date change (review 10.4): only while the free
-                window is open - the same gate the backend enforces. */}
-            {windowOpen && (
-                <div className='mt-3'>
-                    <TravellerDateChange
-                        booking={booking}
-                        dict={dict}
-                        locale={locale}
-                    />
-                </div>
-            )}
+            {/* Self-service date change (review 10.4) is BUILT but HIDDEN for
+                v1 (founder call 2026-07-30): render <TravellerDateChange
+                booking dict locale /> here (inside a windowOpen check) to
+                re-enable - the backend endpoints, proxy and copy all exist. */}
             <AnimatePresence mode='wait' initial={false}>
                 {confirming ? (
                     <motion.div
