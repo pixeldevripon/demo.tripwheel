@@ -14,9 +14,9 @@ import { gmtLabel, keyToDate } from './calendar-utils';
 import { DayPeek } from './day-peek';
 import { DepartureChip } from './departure-chip';
 
-// Keep in lockstep with the classes below: hour rows are h-14 (56px), chips
+// Keep in lockstep with the classes below: hour rows are h-20 (80px), chips
 // h-12 (48px). The numbers exist only for position math.
-const HOUR_PX = 56;
+const HOUR_PX = 80;
 
 interface Positioned {
     dep: OverviewDeparture;
@@ -260,7 +260,7 @@ export function CalendarTimeGrid({
                         {hours.map((h) => (
                             <div
                                 key={h}
-                                className='relative h-14 border-t border-border/40 first:border-t-0'>
+                                className='relative h-20 border-t border-border/40 first:border-t-0'>
                                 <span className='absolute -top-2 right-1.5 bg-background px-0.5 text-2xs tabular-nums text-muted-foreground sm:right-2'>
                                     {h === startHour
                                         ? ''
@@ -303,7 +303,7 @@ export function CalendarTimeGrid({
                                 {hours.map((h) => (
                                     <div
                                         key={h}
-                                        className='h-14 border-t border-border/40 first:border-t-0'
+                                        className='h-20 border-t border-border/40 first:border-t-0'
                                     />
                                 ))}
 
