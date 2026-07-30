@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Archive02Icon, Calendar03Icon, CheckmarkCircle02Icon, Delete02Icon, File02Icon, Image02Icon, MoreHorizontalIcon, PauseIcon, PencilEdit02Icon, PlayIcon, RotateLeft01Icon, SentIcon, Tag01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
+import { Archive02Icon, Calendar03Icon, CheckmarkCircle02Icon, Delete02Icon, File02Icon, Image02Icon, LinkSquare02Icon, MoreHorizontalIcon, PauseIcon, PencilEdit02Icon, PlayIcon, RotateLeft01Icon, SentIcon, Tag01Icon, TranslateIcon } from '@hugeicons/core-free-icons';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -44,6 +44,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
+import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
+import { tourUrl } from '@/lib/public-site';
 import type { TripListItem } from '@/types/trip';
 import { TripDeleteDialog } from './trip-delete-dialog';
 import { TripArchiveDialog } from './trip-archive-dialog';
@@ -75,6 +77,22 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   const isLifecyclePending =
     isPublishing || isPausing || isUnpausing || isRestoring ||
     isSubmitting || isApproving || isRejecting;
+
+  // The live URL is `/{locale}/{destination}/{tour-slug}/`, and the destination
+  // SLUG is not on the row (it carries `destinationId` only) - so resolve it from
+  // the destinations query. No extra request: the trips table already holds this
+  // exact query for its filter dropdown, so this is a cache read.
+  const { data: destinations } = useActiveDestinations();
+  const destinationSlug = destinations?.find(
+    (d) => d.id === trip.destinationId,
+  )?.slug;
+  // ONLY for a LIVE trip. Every public tour read gates on `status: LIVE`, so a
+  // draft, paused or archived trip 404s - and a menu item that leads to a 404 is
+  // worse than no menu item. Same reason it needs the slug to have resolved.
+  const publicUrl =
+    trip.status === 'LIVE' && destinationSlug
+      ? tourUrl(destinationSlug, trip.slug)
+      : null;
 
   // Conflict #1: publishing is always Island Tours'. Operators (EDIT_TRIP
   // without MANAGE_TRIPS) submit a ready DRAFT for review; the admin
@@ -156,6 +174,20 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
+          {/* The live page LEADS the menu (founder 2026-07-30): seeing what
+              travellers see is the most-reached-for action, and the Live pill
+              doubles as the status cue. A real anchor, not router.push: this
+              leaves the dashboard for the public site, so it opens in a new
+              tab and keeps whatever the operator had open here. */}
+          {publicUrl && (
+            <DropdownMenuItem asChild>
+              <a className='text-success-solid' href={publicUrl} target="_blank" rel="noopener noreferrer">
+                <HugeiconsIcon icon={LinkSquare02Icon} />
+                View trip page
+              </a>
+            </DropdownMenuItem>
+          )}
 
           {/* Navigation - hidden for archived trips */}
           {!isArchived && (
