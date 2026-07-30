@@ -1,24 +1,27 @@
 /**
- * Status chips for the traveller account area.
+ * Status chips for the traveller account area, per DIT-7 (review F15):
  *
- * The public site has no dashboard `StatusBadge`, so these mirror the token
- * recipe already used by `BookingManageHeader` (green / error / warning
- * subtle). Colour is never the only cue - every chip carries its label.
+ * - BOOKING STATUS chips are white with an ink label, a hairline border and a
+ *   small state dot - state is a fact, not an alarm, so no tinted panels.
+ * - PAYMENT chips are green-tint (money settled) or paper (nothing owed /
+ *   nothing taken). Colour is never the only cue - every chip carries its
+ *   label, and the dot merely echoes it.
  */
 
 type Tone = 'positive' | 'pending' | 'negative' | 'neutral';
 
-const TONE_CLASS: Record<Tone, string> = {
-    positive: 'bg-it-green-subtle text-it-green',
-    pending: 'bg-it-warning-subtle text-it-warning',
-    negative: 'bg-it-error-subtle text-it-error',
-    neutral: 'bg-it-surface text-it-text-muted',
+/** State-dot colour per tone. Chip chrome itself stays white + hairline. */
+const DOT_CLASS: Record<Tone, string> = {
+    positive: 'bg-it-green',
+    pending: 'bg-it-warning',
+    negative: 'bg-it-text-muted',
+    neutral: 'bg-it-text-muted',
 };
 
 /** Booking display statuses -> tone. Unknown values read neutral. */
 const BOOKING_TONE: Record<string, Tone> = {
     CONFIRMED: 'positive',
-    REDEEMED: 'positive',
+    REDEEMED: 'neutral',
     ON_HOLD: 'pending',
     PENDING: 'pending',
     CANCELLATION_REQUESTED: 'pending',
@@ -32,7 +35,7 @@ const BOOKING_TONE: Record<string, Tone> = {
 
 const PAYMENT_TONE: Record<string, Tone> = {
     PAID: 'positive',
-    PARTIALLY_PAID: 'pending',
+    PARTIALLY_PAID: 'positive',
     UNPAID: 'neutral',
     REFUNDED: 'neutral',
     SUCCEEDED: 'positive',
@@ -40,6 +43,8 @@ const PAYMENT_TONE: Record<string, Tone> = {
     REQUIRES_PAYMENT: 'pending',
     FAILED: 'negative',
     PARTIALLY_REFUNDED: 'neutral',
+    // A voided/never-captured charge: a fact, not an alarm.
+    CANCELLED: 'neutral',
 };
 
 export function bookingTone(status: string): Tone {
@@ -50,6 +55,7 @@ export function paymentTone(status: string): Tone {
     return PAYMENT_TONE[status] ?? 'neutral';
 }
 
+/** DIT-7 status chip: white, ink label, hairline, state dot. */
 export function TravellerChip({
     label,
     tone = 'neutral',
@@ -58,8 +64,32 @@ export function TravellerChip({
     tone?: Tone;
 }) {
     return (
+        <span className='inline-flex items-center gap-1.5 rounded-full border border-it-heading/15 bg-it-white px-2.5 py-1 text-[12px] font-medium text-it-heading'>
+            <span
+                aria-hidden
+                className={`size-1.5 shrink-0 rounded-full ${DOT_CLASS[tone]}`}
+            />
+            {label}
+        </span>
+    );
+}
+
+/** DIT-7 payment chip: green-tint when money is settled, paper otherwise. */
+export function TravellerPayChip({
+    label,
+    settled = true,
+}: {
+    label: string;
+    /** false = "nothing owed / nothing taken" - paper, not green. */
+    settled?: boolean;
+}) {
+    return (
         <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-semibold ${TONE_CLASS[tone]}`}>
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium ${
+                settled
+                    ? 'bg-it-green-subtle text-it-green'
+                    : 'border border-it-heading/15 bg-it-surface text-it-text-muted'
+            }`}>
             {label}
         </span>
     );

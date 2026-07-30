@@ -71,7 +71,10 @@ export function BookingManageHeader({
      * verdict is computed in the mapper, because reading the clock during
      * render is impure.
      */
-    const showCalendar = !cancelled && !booking.departed;
+    // No calendar CTA while a cancellation request is pending either -
+    // calendaring a trip the traveller just asked to cancel reads as the
+    // platform not listening (same logic as hiding the resend line below).
+    const showCalendar = !cancelled && !cancellationPending && !booking.departed;
 
     const stateNote = cancelled
         ? dict.cancelledNote
@@ -190,18 +193,23 @@ export function BookingManageHeader({
                 </MountReveal>
                 )}
 
-                <MountReveal
-                    delay={0.15}
-                    className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
-                    <ResendEmailLine
-                        publicRef={booking.publicRef}
-                        helpPrefix={dict.emailHelpPrefix}
-                        resendLabel={dict.resendEmail}
-                        resentLabel={dict.emailResent}
-                        sendingLabel={dict.emailResending}
-                        failedLabel={dict.emailResendFailed}
-                    />
-                </MountReveal>
+                {/* Re-sending "You're booked!" while a cancellation request
+                    is pending (or after a cancel) reads as the platform
+                    ignoring the request - the backend refuses it too. */}
+                {!cancelled && !cancellationPending && (
+                    <MountReveal
+                        delay={0.15}
+                        className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                        <ResendEmailLine
+                            publicRef={booking.publicRef}
+                            helpPrefix={dict.emailHelpPrefix}
+                            resendLabel={dict.resendEmail}
+                            resentLabel={dict.emailResent}
+                            sendingLabel={dict.emailResending}
+                            failedLabel={dict.emailResendFailed}
+                        />
+                    </MountReveal>
+                )}
             </div>
         </section>
     );

@@ -48,9 +48,13 @@ export interface InstagramTile {
 
 export interface InstagramFeed {
     /**
-     * The one gate the section obeys: false when an admin switched the grid off
-     * OR when there is nothing to show. A handle row above an empty grid is
-     * worse than no section at all.
+     * The one gate the section obeys: false when an admin switched the grid off,
+     * when no Instagram access token is configured, OR when there is nothing to
+     * show. A handle row above an empty grid is worse than no section at all.
+     *
+     * The token case is resolved server-side on purpose - whether a credential
+     * exists is decided where the credential lives, and the public payload never
+     * carries so much as a hint of one.
      */
     enabled: boolean;
     /** Handle without '@' - the header row adds it. */

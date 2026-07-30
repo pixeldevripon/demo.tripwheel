@@ -15,22 +15,12 @@ export function TravellerPageSkeleton() {
                             <Bar className='h-9 w-60' />
                             <Bar className='mt-3 h-4 w-80 max-w-full' />
                         </div>
-                        <Bar className='h-10 w-28 shrink-0 rounded-full' />
-                    </div>
-                    <div className='mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4'>
-                        {[0, 1, 2].map(i => (
-                            <div
-                                key={i}
-                                className='rounded-[16px] border border-it-heading/10 bg-it-surface px-5 py-4'>
-                                <Bar className='h-3.5 w-24' />
-                                <Bar className='mt-2 h-7 w-20' />
-                            </div>
-                        ))}
+                        <Bar className='h-5 w-56 shrink-0' />
                     </div>
                 </div>
             </section>
 
-            <section className='it-section min-h-[480px] bg-it-surface md:min-h-[560px]'>
+            <section className='min-h-[480px] bg-it-surface pt-8 pb-16 md:min-h-[660px] md:pt-12 md:pb-24'>
                 <div className='it-container flex flex-col gap-6'>
                     <div className='flex items-center gap-7 border-b border-it-heading/10 pb-3.5'>
                         <Bar className='h-5 w-24' />

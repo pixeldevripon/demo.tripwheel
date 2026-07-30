@@ -86,3 +86,44 @@ export async function requestCancellationClient(
         return false;
     }
 }
+
+/** One switchable departure for the self-service date change (review 10.4). */
+export interface DateChangeOption {
+    departureId: string;
+    date: string;
+    startTime: string | null;
+    seatsLeft: number;
+}
+
+/** The departures this booking can move to; [] on any refusal or outage. */
+export async function getDateChangeOptionsClient(
+    publicRef: string
+): Promise<DateChangeOption[]> {
+    try {
+        const res = await fetch(
+            `/api/traveller/date-change?ref=${encodeURIComponent(publicRef)}`
+        );
+        if (!res.ok) return [];
+        const body = (await res.json()) as { options?: DateChangeOption[] };
+        return Array.isArray(body.options) ? body.options : [];
+    } catch {
+        return [];
+    }
+}
+
+/** Atomically move the booking; the backend owns every guard. */
+export async function changeDateClient(
+    publicRef: string,
+    departureId: string
+): Promise<boolean> {
+    try {
+        const res = await fetch('/api/traveller/date-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicRef, departureId }),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}

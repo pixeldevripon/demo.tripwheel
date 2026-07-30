@@ -15,9 +15,10 @@ import { getDictionary } from '@/lib/i18n/dictionaries';
 import {
     getTravellerBookings,
     getTravellerPayments,
-    getTravellerSummary,
 } from '@/lib/api/public/traveller';
+import { getPublicSiteInfo } from '@/lib/api/public/settings';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 
 type PageParams = { locale: string };
 type PageSearch = { tab?: string; page?: string };
@@ -35,8 +36,9 @@ type PageSearch = { tab?: string; page?: string };
  * the public site moves to its own domain.
  */
 
-/** Personal and account-gated - never indexed. */
+/** Personal and account-gated - never indexed (review F13: page = bookings). */
 export const metadata: Metadata = {
+    title: 'Your bookings | Island Tours',
     robots: { index: false, follow: false },
 };
 
@@ -75,19 +77,19 @@ async function TravellerBody({
 
     if (!sessionToken) return signedOut;
 
-    const [summary, bookings, payments] = await Promise.all([
-        getTravellerSummary(sessionToken),
-        getTravellerBookings(sessionToken, tab === 'bookings' ? page : 1),
+    const [bookings, payments, siteInfo] = await Promise.all([
+        getTravellerBookings(sessionToken, tab === 'bookings' ? page : 1, locale),
         getTravellerPayments(sessionToken, tab === 'payments' ? page : 1),
+        // Cached under `site-info` - powers the WhatsApp support entry points.
+        getPublicSiteInfo(),
     ]);
 
     // Null means 401: no session, an expired one, or a weaker pair-login /
     // checkout token. All of those are "sign in here", not an error.
-    if (!summary || !bookings || !payments) return signedOut;
+    if (!bookings || !payments) return signedOut;
 
     return (
         <TravellerView
-            summary={summary}
             bookings={bookings}
             payments={payments}
             activeTab={tab}
@@ -96,6 +98,10 @@ async function TravellerBody({
             locale={locale}
             // eslint-disable-next-line react-hooks/purity -- request-time render (gated by connection() above); the free-cancellation copy needs a stable "now", and stamping it here keeps the client components pure
             nowMs={Date.now()}
+            whatsappHref={buildWhatsappUrl(
+                siteInfo.whatsappNumber,
+                siteInfo.enableWhatsappChat
+            )}
         />
     );
 }

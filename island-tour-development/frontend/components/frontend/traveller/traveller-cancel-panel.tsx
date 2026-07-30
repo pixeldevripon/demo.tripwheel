@@ -11,19 +11,26 @@ import { crossFade } from '@/lib/motion';
 import { requestCancellationClient } from '@/lib/api/traveller-login';
 
 import { TravellerChip } from './traveller-chip';
-import { formatDay } from './traveller-format';
+import { TravellerDateChange } from './traveller-date-change';
+import {
+    formatDeadline,
+    formatDay,
+    formatDayShort,
+    isPositive,
+    money,
+} from './traveller-format';
 
 /**
- * Cancellation state and (when allowed) the request form.
+ * Cancellation state and (when allowed) the inline confirm strip (review 5.4):
+ * "Cancel {tour}, {date}? Refund {amount}." - the refund line only above zero.
  *
  * Everything shown here comes from SERVER verdicts - `cancellationBlockedReason`,
  * `canRequestCancellation`, `requestedInFreeWindow`, `freeCancelDeadline`.
  * Nothing is re-derived from the dates on screen: `localDate`/`startTime` are
- * wall-clock values that mean nothing without the tour's timezone, so a
- * client-side judgement would confidently contradict the API.
+ * wall-clock values that mean nothing without the tour's timezone.
  *
  * The request never cancels anything. It opens a request our team processes
- * and confirms by email.
+ * and confirms by email; the deadline is judged on the request instant (C23).
  */
 export function TravellerCancelPanel({
     booking,
@@ -64,21 +71,24 @@ export function TravellerCancelPanel({
     if (booking.cancellationBlockedReason === 'ALREADY_REQUESTED') {
         const note =
             booking.requestedInFreeWindow === true
-                ? dict.cancelRequestedInWindow
+                ? dict.cancelRequestedInWindow.replace(
+                      '{amount}',
+                      money(booking.paidAmount, booking.currency, locale)
+                  )
                 : booking.requestedInFreeWindow === false
                   ? dict.cancelRequestedLate
                   : null;
         return (
             <div className='rounded-[12px] bg-it-surface px-4 py-3.5'>
                 <TravellerChip label={dict.cancelRequestedChip} tone='pending' />
-                <p className='mt-2 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                <p className='mt-2 mb-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
                     {dict.cancelRequestedOn.replace(
                         '{date}',
                         formatDay(booking.utcCancellationRequestedAt, locale)
                     )}
                 </p>
                 {note && (
-                    <p className='mt-1.5 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                    <p className='mt-1.5 mb-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
                         {note}
                     </p>
                 )}
@@ -86,56 +96,96 @@ export function TravellerCancelPanel({
         );
     }
 
-    if (booking.cancellationBlockedReason === 'DEPARTED') {
-        return (
-            <p className='text-[13.5px] leading-[1.6] text-it-text-muted'>
-                {dict.cancelDeparted}
-            </p>
-        );
-    }
-
     if (booking.cancellationBlockedReason === 'NOT_CONFIRMED') {
         return (
-            <p className='text-[13.5px] leading-[1.6] text-it-text-muted'>
+            <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
                 {dict.cancelNotConfirmed}
             </p>
         );
     }
 
-    if (!booking.canRequestCancellation) return null;
+    if (booking.cancellationBlockedReason === 'DEPARTED') return null;
 
     // A missing deadline means the free window cannot be evidenced, so it is
     // treated as closed - never promise a refund we cannot back.
     //
     // Compared against the SERVER's request instant, not a live `Date.now()`:
     // reading the clock during render is impure, and this copy must not flip
-    // mid-session. The authoritative judgement is the backend's anyway - it
-    // stamps the real request time when the form is submitted.
+    // mid-session. The authoritative judgement is the backend's anyway.
     const deadline = booking.freeCancelDeadline;
     const windowOpen = deadline ? new Date(deadline).getTime() > nowMs : false;
+    const refundable = isPositive(booking.paidAmount);
+
+    // Locked 6.3 family (F10): every money deadline carries the weekday, the
+    // time of day and "(local time)".
+    const windowLine = deadline
+        ? (windowOpen ? dict.cancelFreeUntil : dict.cancelWindowClosed).replace(
+              '{deadline}',
+              formatDeadline(deadline, locale)
+          )
+        : dict.cancelWindowUnknown;
+
+    if (!booking.canRequestCancellation) {
+        return (
+            <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                {windowLine}
+            </p>
+        );
+    }
 
     return (
         <div>
-            <p className='text-[13.5px] leading-[1.6] text-it-text-muted'>
-                {windowOpen
-                    ? dict.cancelFreeUntil.replace(
-                          '{date}',
-                          formatDay(deadline, locale)
-                      )
-                    : dict.cancelWindowClosed}
+            <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                {windowLine}
             </p>
+            {/* Self-service date change (review 10.4): only while the free
+                window is open - the same gate the backend enforces. */}
+            {windowOpen && (
+                <div className='mt-3'>
+                    <TravellerDateChange
+                        booking={booking}
+                        dict={dict}
+                        locale={locale}
+                    />
+                </div>
+            )}
             <AnimatePresence mode='wait' initial={false}>
                 {confirming ? (
                     <motion.div
-                        key='form'
+                        key='strip'
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
                         transition={crossFade}
-                        className='mt-3'>
+                        className='mt-3 rounded-[12px] bg-it-surface p-4'>
+                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading'>
+                            {dict.cancelStripTitle
+                                .replace('{tour}', booking.tourName)
+                                .replace(
+                                    '{date}',
+                                    formatDayShort(booking.localDate, locale)
+                                )}
+                            {/* Refund line only above zero (6.4 pattern). */}
+                            {refundable && windowOpen && (
+                                <>
+                                    {' '}
+                                    {dict.cancelStripRefund.replace(
+                                        '{amount}',
+                                        money(
+                                            booking.paidAmount,
+                                            booking.currency,
+                                            locale
+                                        )
+                                    )}
+                                </>
+                            )}
+                        </p>
+                        <p className='mt-1.5 mb-0 text-[13px] leading-[1.6] text-it-text-muted'>
+                            {dict.cancelStripNote}
+                        </p>
                         <label
                             htmlFor={`cancel-reason-${booking.id}`}
-                            className='mb-1.5 block text-[13px] font-semibold text-it-heading'>
+                            className='mt-3 mb-1.5 block text-[13px] font-medium text-it-heading'>
                             {dict.cancelReasonLabel}
                         </label>
                         <textarea
@@ -143,16 +193,13 @@ export function TravellerCancelPanel({
                             rows={2}
                             maxLength={500}
                             value={reason}
-                            onChange={(e) => setReason(e.target.value)}
+                            onChange={e => setReason(e.target.value)}
                             className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'
                         />
-                        <p className='mt-2 text-[13px] leading-[1.6] text-it-text-muted'>
-                            {dict.cancelDisclaimer}
-                        </p>
                         {failed && (
                             <p
                                 role='alert'
-                                className='mt-2 text-[13px] text-it-error'>
+                                className='mt-2 mb-0 text-[13px] text-it-error'>
                                 {dict.cancelFailed}
                             </p>
                         )}
