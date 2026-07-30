@@ -220,24 +220,39 @@ export function getTravellerPayments(
     );
 }
 
-/** Null on 401 (login card) AND on 404 (not this traveller's payment). */
+/**
+ * The receipt read keeps 401 and 404 apart ON PURPOSE: an expired session
+ * must land on the login (redirect to /traveller), while an unknown or
+ * foreign payment id is a genuine 404 - after a demo re-seed every old
+ * payment id 404s, and sending those to the login would loop forever.
+ */
+export type TravellerReceiptResult =
+    | { kind: 'ok'; receipt: TravellerReceipt }
+    | { kind: 'unauthorized' }
+    | { kind: 'not-found' };
+
 export async function getTravellerReceipt(
     sessionToken: string,
     paymentId: string
-): Promise<TravellerReceipt | null> {
+): Promise<TravellerReceiptResult> {
+    const path = `/bookings/traveller/payments/${encodeURIComponent(paymentId)}`;
+    let res: Response;
     try {
-        return await travellerGet<TravellerReceipt>(
-            `/bookings/traveller/payments/${encodeURIComponent(paymentId)}`,
-            sessionToken
-        );
+        res = await publicFetch(path, {
+            [TRAVELER_SESSION_HEADER]: sessionToken,
+        });
     } catch (err) {
-        // A malformed/unknown id 404s; that is "no receipt", not an outage.
-        if (
-            err instanceof BackendUnavailableError &&
-            err.message.includes('HTTP 404')
-        ) {
-            return null;
-        }
-        throw err;
+        throw new BackendUnavailableError(
+            path,
+            err instanceof Error ? err.message : 'network error'
+        );
+    }
+    if (res.status === 401) return { kind: 'unauthorized' };
+    if (res.status === 404) return { kind: 'not-found' };
+    if (!res.ok) throw new BackendUnavailableError(path, `HTTP ${res.status}`);
+    try {
+        return { kind: 'ok', receipt: (await res.json()) as TravellerReceipt };
+    } catch {
+        throw new BackendUnavailableError(path, 'invalid JSON body');
     }
 }

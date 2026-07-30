@@ -79,11 +79,16 @@ async function ReceiptBody({
     ]);
     const t = dict.traveller;
 
-    // No session -> the account page renders its login card; a foreign or
-    // unknown payment id -> nothing to show either.
+    // No/expired session -> the account page renders its login card. Only an
+    // unknown or foreign payment id is a genuine 404 (e.g. a Receipt link
+    // from before a demo re-seed, whose payment rows no longer exist).
     if (!sessionToken) redirect(localizeHref(locale, '/traveller'));
-    const receipt = await getTravellerReceipt(sessionToken, paymentId);
-    if (!receipt) notFound();
+    const result = await getTravellerReceipt(sessionToken, paymentId);
+    if (result.kind === 'unauthorized') {
+        redirect(localizeHref(locale, '/traveller'));
+    }
+    if (result.kind === 'not-found') notFound();
+    const receipt = result.receipt;
 
     const isRefund = receipt.kind === 'REFUND';
     const amount = money(receipt.amount, receipt.currency, locale);
