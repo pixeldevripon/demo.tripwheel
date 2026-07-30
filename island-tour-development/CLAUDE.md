@@ -97,6 +97,7 @@ backend/
 │   ├── bookings/ · payments/ (Stripe, 4 models, webhooks) ← to build
 │   ├── reviews/                 ← to build
 │   ├── inbox/                   ✓ dashboard bell/badges/digest (NOT notifications/, which is OCTO webhooks)
+│   ├── hotels/                  ✓ OUR own places to stay - the thank-you page promo
 │   ├── tracking/ (TYP, booking_complete, CAPI)  ← to build
 │   └── workers/ (BullMQ nightly jobs, email, materialization) ← to build
 ├── prisma/                      ← split schema (Prisma 7 merges automatically)
@@ -217,6 +218,7 @@ prisma/
 ├── reviews.prisma         Review (E.7 expansion) ← expand
 ├── wishlist.prisma        Wishlist
 ├── faq.prisma             Faq (polymorphic; pageType + entityId)
+├── hotel.prisma           Hotel + HotelTranslation - our own places to stay (TYP promo)
 ├── media-gallery.prisma · settings.prisma · webhooks.prisma
 └── migrations/
 ```

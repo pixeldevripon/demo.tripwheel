@@ -4,6 +4,7 @@ import {
   Currency,
   FilterDisplayType,
   HubType,
+  Locale,
   Prisma,
   PrismaClient,
   Region,
@@ -88,6 +89,69 @@ async function main() {
   await seedDestinations();
   await seedHubs();
   await seedAttributes();
+  await seedHotel();
+}
+
+// ── Island Tours' own hotels (thank-you page promo) ───────────────────────────
+/**
+ * The hotels list ships with one row so an admin edits existing content instead
+ * of facing an empty form before the section works at all.
+ *
+ * `isSeeded: true` makes it undeletable (403 in the service), the same protection
+ * seeded destinations have: the promo keeps one guaranteed occupant, so the
+ * section can only be emptied deliberately - by switching hotels off - and never
+ * by an accidental delete.
+ *
+ * The `20260730130000_hotel_promo` migration inserts the same row, which is what
+ * covers production (`prisma migrate deploy` does not run seeds). This exists for
+ * a database whose row was deleted by hand, and for `migrate reset` flows.
+ *
+ * CREATE-ONLY: it never touches an existing row. Re-running the seed is routine,
+ * and reverting the real property's photo and price back to these demo values
+ * would be a silent data loss with no undo.
+ */
+async function seedHotel() {
+  const existing = await prisma.hotel.findFirst({ select: { id: true } });
+  if (existing) {
+    console.log('Hotels already exist. Leaving them untouched.');
+    return;
+  }
+
+  console.log('Seeding the promoted hotel...');
+  await prisma.hotel.create({
+    data: {
+      isEnabled: true,
+      displayOrder: 0,
+      isSeeded: true,
+      imageUrl: 'https://picsum.photos/seed/typ-apartment/1176/758',
+      bookingUrl: 'https://www.airbnb.com',
+      rating: 4.8,
+      reviewCount: 1738,
+      sleeps: 4,
+      pricePerNight: 160,
+      currency: Currency.USD,
+      translations: {
+        create: {
+          locale: Locale.en,
+          // Seeded as real values, NOT left null. Null renders the site's own
+          // translated label, which is correct but leaves the editor showing two
+          // empty boxes - an admin cannot tell a field that is deliberately
+          // inheriting from one nobody has filled in. Written out, they are
+          // editable and the AI pipeline translates them into the other six
+          // locales like any other copy.
+          //
+          // NO EMOJI: the palm is chrome, rendered by the card itself.
+          eyebrow: 'OUR APARTMENT',
+          ctaLabel: 'See availability on Airbnb',
+          areaLabel: 'Jan Thiel',
+          title: 'Palm Suite Apartment',
+          description:
+            'Quiet, modern, 5min from the beach\nOwned and hosted by Island Tours',
+        },
+      },
+    },
+  });
+  console.log('Hotel seeded.');
 }
 
 // ── Hidden internal-management admin (isSystemAccount) ─────────────────────────

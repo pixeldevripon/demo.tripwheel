@@ -178,6 +178,8 @@ export class EntityRegistry {
         return this.collectCollection(entityId);
       case 'homepage':
         return this.collectHomepage(entityId);
+      case 'hotel':
+        return this.collectHotel(entityId);
     }
   }
 
@@ -815,6 +817,51 @@ export class EntityRegistry {
     ];
     units.push(...(await this.faqUnits(FaqPageType.homepage, home.id)));
     return units;
+  }
+
+  /**
+   * Island Tours' own apartment promo (thank-you page).
+   *
+   * One unit, no sub-surfaces: it has no FAQs and no page-content sections. The
+   * NUMBERS (rating, review count, sleeps, price) are deliberately absent - they
+   * live on the parent record because they are the same fact in every language,
+   * and handing them to a translation provider would invite it to "localise" a
+   * price. Only prose travels: the eyebrow, the area, the title, the pitch and
+   * the CTA label.
+   */
+  private async collectHotel(id: string): Promise<TranslationUnit[] | null> {
+    const prisma = this.prisma;
+    const hotel = await prisma.hotel.findUnique({
+      where: { id },
+      select: { id: true, translations: true },
+    });
+    if (!hotel) return null;
+
+    const fields = ['eyebrow', 'areaLabel', 'title', 'description', 'ctaLabel'];
+    const en = hotel.translations.find((t) => t.locale === Locale.en);
+
+    return [
+      {
+        key: translationUnitKeys.main(),
+        source: pickSource(en, fields),
+        existing: existingByLocale(hotel.translations, fields),
+        write: async (locale, f, sourceHash, machine) => {
+          const data = {
+            eyebrow: str(f, 'eyebrow'),
+            areaLabel: str(f, 'areaLabel'),
+            title: str(f, 'title'),
+            description: str(f, 'description'),
+            ctaLabel: str(f, 'ctaLabel'),
+            ...stamp(machine, sourceHash),
+          };
+          await prisma.hotelTranslation.upsert({
+            where: { hotelId_locale: { hotelId: hotel.id, locale } },
+            create: { hotelId: hotel.id, locale, ...data },
+            update: data,
+          });
+        },
+      },
+    ];
   }
 
   // ── Shared sub-surface collectors ───────────────────────────────────────────
