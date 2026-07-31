@@ -150,7 +150,8 @@ export class StaffService {
     },
   } satisfies Prisma.UserSelect;
 
-  /** An ADMIN user rendered as a read-only staff member (see findSystemAdmins). */
+  /** An ADMIN user rendered as a read-only staff member (direct id fetch only
+   * - admins never LIST; founder 2026-07-31). */
   private toSystemAdminResponse(
     admin: Prisma.UserGetPayload<{ select: StaffService['systemAdminSelect'] }>,
   ) {
@@ -605,70 +606,16 @@ export class StaffService {
   // ── Platform staff (admin-side) ────────────────────────────────────────────
 
   /**
-   * Platform members, with the system administrator(s) shown at the top.
-   *
-   * ADMIN accounts are deliberately NOT staff-managed (see staff.prisma): they
-   * have no `staff_members` row, so the plain member query cannot see them and
-   * the Users page used to render without the very account running it. They
-   * are synthesized into the list here as read-only entries flagged
-   * `isSystemAdmin`, so the page shows who holds the keys while every mutating
-   * path keeps rejecting them (`assertNotSystemAdmin`).
-   *
-   * The synthesized rows carry `seatRole: OWNER` so any surface that already
-   * hides destructive actions for owners does the right thing for admins
-   * without needing to know about the new flag.
+   * Platform members. ADMIN accounts are NOT listed (founder 2026-07-31):
+   * they are not staff-managed (no `staff_members` row - see staff.prisma),
+   * and surfacing the system administrator in the Users table read as an
+   * invite-able, editable member when every mutating path rejects it. The
+   * admin still resolves on a DIRECT id fetch (`getPlatformStaff`) so
+   * deep-links don't 404, and `assertNotSystemAdmin` keeps guarding writes.
    */
   async listPlatformStaff(query: StaffQueryDto) {
-    const { page = 1, limit = 20 } = query;
-    const admins = await this.findSystemAdmins(query);
-    const staff = await this.listMembers(null, query);
-
-    // One virtual list: [admins..., staff...]. Slice it per page so the pager
-    // total and the row count stay consistent across every page.
-    const offset = (page - 1) * limit;
-    const adminSlice = admins.slice(offset, offset + limit);
-    const remaining = limit - adminSlice.length;
-    const staffSkip = Math.max(0, offset - admins.length);
-
-    const staffSlice =
-      remaining > 0 ? staff.data.slice(staffSkip, staffSkip + remaining) : [];
-
-    return {
-      total: admins.length + staff.total,
-      page,
-      limit,
-      data: [...adminSlice, ...staffSlice],
-    };
-  }
-
-  /**
-   * ADMIN users rendered in the staff-member shape. Honours the same search
-   * filter as the real query; a `status` filter other than ACTIVE or any
-   * `designationId` filter excludes them, since an admin is always active and
-   * never carries a designation.
-   */
-  private async findSystemAdmins(query: StaffQueryDto) {
-    const { search, status, designationId } = query;
-    if (designationId) return [];
-    if (status && status !== StaffStatus.ACTIVE) return [];
-
-    const admins = await this.prisma.user.findMany({
-      where: {
-        role: Role.ADMIN,
-        // The hidden internal-management admin never surfaces here.
-        isSystemAccount: false,
-        ...(search && {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-          ],
-        }),
-      },
-      select: this.systemAdminSelect,
-      orderBy: { createdAt: 'asc' },
-    });
-
-    return admins.map((admin) => this.toSystemAdminResponse(admin));
+    // `listMembers` paginates internally - no extra slicing here.
+    return this.listMembers(null, query);
   }
 
   /**

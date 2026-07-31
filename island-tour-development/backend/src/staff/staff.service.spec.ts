@@ -743,27 +743,19 @@ describe('StaffService', () => {
       prisma.staffMember.findMany.mockResolvedValue([]);
     });
 
-    it('lists the platform admin even though it has no staff_members row', async () => {
+    // Founder 2026-07-31: the system administrator is HIDDEN from the Users
+    // table - it is not staff-managed and listing it read as an editable
+    // member. Direct id fetch still resolves (deep links), writes still 403.
+    it('never lists the platform admin', async () => {
       const res = await service.listPlatformStaff({});
 
-      expect(res.total).toBe(1);
-      expect(res.data).toHaveLength(1);
-      expect(res.data[0]).toMatchObject({
-        id: 'admin-1',
-        isSystemAdmin: true,
-        operatorId: null,
-        status: StaffStatus.ACTIVE,
-        designation: null,
-      });
-      // Real last-login comes from the newest session, not a placeholder.
-      expect(res.data[0].lastLoginAt).toEqual(new Date('2026-07-19T10:00:00Z'));
-      // Full admin permission set, so the UI can render "Full access".
-      expect(res.data[0].effectivePermissions).toContain(
-        Permission.MANAGE_SYSTEM,
-      );
+      expect(res.total).toBe(0);
+      expect(res.data).toHaveLength(0);
+      // The list never even queries the users table for admins now.
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
     });
 
-    it('sorts the admin ahead of real staff and counts it in the total', async () => {
+    it('lists only real staff, admin excluded from the total', async () => {
       prisma.staffMember.count.mockResolvedValue(1);
       prisma.staffMember.findMany.mockResolvedValue([
         {
@@ -792,18 +784,16 @@ describe('StaffService', () => {
 
       const res = await service.listPlatformStaff({});
 
-      expect(res.total).toBe(2);
-      expect(res.data.map((m) => m.id)).toEqual(['admin-1', 'staff-1']);
-      expect(res.data[1].isSystemAdmin).toBe(false);
+      expect(res.total).toBe(1);
+      expect(res.data.map((m) => m.id)).toEqual(['staff-1']);
+      expect(res.data[0].isSystemAdmin).toBe(false);
     });
 
-    it('hides the admin when filtering for a status it can never hold', async () => {
+    it('stays empty under any status filter (no phantom admin rows)', async () => {
       const res = await service.listPlatformStaff({
         status: StaffStatus.SUSPENDED,
       });
 
-      // An admin is always active and never invited, so a SUSPENDED filter
-      // must not surface it as a phantom match.
       expect(prisma.user.findMany).not.toHaveBeenCalled();
       expect(res.data).toHaveLength(0);
       expect(res.total).toBe(0);
