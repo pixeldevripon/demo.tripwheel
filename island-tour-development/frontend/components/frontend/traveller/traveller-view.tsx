@@ -67,13 +67,26 @@ export function TravellerView({
      * Switch tab AND write it to the URL: `traveller/page.tsx` reads
      * `searchParams.tab` server-side, so a tab held only in local state was
      * lost on refresh, on Back, and on any shared link.
+     *
+     * SHALLOW on purpose (history.replaceState, the Next-documented SPA
+     * pattern - same as the dashboard's EntityTabs): both tabs' datasets are
+     * already in this component's props, so the old `router.push` bought
+     * nothing except a full dynamic re-render - a skeleton flash and a
+     * backend round trip per tab click. The URL still updates for refresh /
+     * share / Back-from-receipt; pagination below keeps a real navigation
+     * because a new page genuinely needs new data.
      */
     function selectTab(next: TravellerTab) {
         if (next === tab) return;
-        setTab(next); // optimistic - the strip highlights before the nav lands
-        router.push(`${localizeHref(locale, '/traveller')}?tab=${next}`, {
-            scroll: false,
-        });
+        setTab(next);
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', next);
+        params.delete('page'); // page numbers do not carry across tabs
+        window.history.replaceState(
+            null,
+            '',
+            `${localizeHref(locale, '/traveller')}?${params}`
+        );
     }
 
     const tabs: { key: TravellerTab; label: string; count: number }[] = [
