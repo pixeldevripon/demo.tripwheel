@@ -417,7 +417,7 @@ describe('BookingsService', () => {
     // Confirmation-email recommendation block: default to "nothing placed" so the
     // email tests here are unaffected by it.
     recommendations = {
-      getFeatured: jest.fn().mockResolvedValue({ enabled: false }),
+      getFeatured: jest.fn().mockResolvedValue([]),
     };
     svc = new BookingsService(
       prisma,

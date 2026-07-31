@@ -5,6 +5,8 @@ import {
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import { applyDecorators } from '@nestjs/common';
+import { Locale } from '@/common/constants/locales';
+import { GenerateTranslationResponseDto } from '@/content-translation/dto/content-translation.dto';
 import {
   ApiBody,
   ApiConsumes,
@@ -16,7 +18,10 @@ import {
 import {
   AsyncUploadResponseDto,
   DeleteMediaResponseDto,
+  MEDIA_SEO_MAX_URLS,
   MediaGalleryResponseDto,
+  MediaSeoResponseDto,
+  MediaTranslationResponseDto,
   PaginatedMediaGalleryResponseDto,
   SignedUploadParamsResponseDto,
 } from './dto/upload-media.dto';
@@ -257,6 +262,105 @@ export function ApiGetExcludedUrlsDocs() {
   );
 }
 
+/**
+ * GET /media-gallery/seo
+ */
+export function ApiGetMediaSeoDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Localized SEO copy for a batch of image URLs (public)',
+      description:
+        'Title, description and alt text for the given image URLs in the requested ' +
+        'locale, each field falling back to English on its own when the translation ' +
+        'is missing or was deliberately cleared. Entity tables store only an image ' +
+        'URL and no media id, so the URL is the join key. Query strings are ignored ' +
+        'when matching (every Cloudinary URL carries an `?_a=` analytics param, and ' +
+        'the entity row and the library row need not carry the same one), and the ' +
+        '`url` returned is the query-stripped form to look results up by. Assets ' +
+        'flagged excludeFromIndexing are still returned - alt text is an ' +
+        'accessibility need regardless of indexability.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Localized copy, one entry per matched asset',
+      type: [MediaSeoResponseDto],
+    }),
+    ApiResponse({
+      status: 400,
+      description: `No url given, or more than ${MEDIA_SEO_MAX_URLS}`,
+      type: BadRequestErrorDto,
+    }),
+  );
+}
+
+/**
+ * GET /media-gallery/:id/translations
+ */
+export function ApiGetMediaTranslationsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Every stored locale for one asset',
+      description:
+        "All per-locale copy for one attachment, for the dashboard's inline locale " +
+        'switcher. Takes NO locale param on purpose - the editor needs them all at ' +
+        'once, and a defaulted locale filter is what made a comparable editor ' +
+        'silently show English only. English is absent by construction: it lives on ' +
+        'the asset row itself and is edited through PATCH /media-gallery/:id.',
+    }),
+    ApiParam({ name: 'id', description: 'Media id' }),
+    ApiResponse({
+      status: 200,
+      description: 'Stored locales, ascending',
+      type: [MediaTranslationResponseDto],
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Not found, or outside the caller media scope',
+      type: NotFoundErrorDto,
+    }),
+    ApiResponse({ status: 401, type: UnauthorizedErrorDto }),
+  );
+}
+
+/**
+ * PATCH /media-gallery/:id/translations/:locale
+ */
+export function ApiUpsertMediaTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Save one locale's copy for one asset",
+      description:
+        'Upserts title / description / alt text for a single locale. An empty ' +
+        'string CLEARS the field to null and keeps the row - the surviving row is ' +
+        'flagged human, which is what stops the AI refilling a field the editor ' +
+        'deliberately emptied, and the public page falls back to English for it. ' +
+        'Rejects `en`: English is the source every other locale falls back to.',
+    }),
+    ApiParam({ name: 'id', description: 'Media id' }),
+    ApiParam({
+      name: 'locale',
+      enum: Locale,
+      description: 'Target locale, not en',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'The saved locale row',
+      type: MediaTranslationResponseDto,
+    }),
+    ApiResponse({
+      status: 400,
+      description: 'locale=en, or an invalid locale / field length',
+      type: BadRequestErrorDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Not found, or outside the caller media scope',
+      type: NotFoundErrorDto,
+    }),
+    ApiResponse({ status: 401, type: UnauthorizedErrorDto }),
+  );
+}
+
 // ── Mutation endpoints ────────────────────────────────────────────────────────
 
 /**
@@ -312,5 +416,52 @@ export function ApiDeleteMediaDocs() {
       type: NotFoundErrorDto,
     }),
     ...commonErrors,
+  );
+}
+
+/**
+ * POST /media-gallery/:id/translations/:locale/generate
+ */
+export function ApiGenerateMediaTranslationDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Translate one asset's copy into one locale with AI",
+      description:
+        'Synchronous, single asset, single locale - one provider call. The ' +
+        'background path deliberately batches a whole bucket of assets instead; ' +
+        'this is the on-demand button in the media viewer. A human-saved locale ' +
+        'row is left untouched unless `force=true`, so the button cannot quietly ' +
+        'undo an editor edit. Scoped to the caller media library.',
+    }),
+    ApiParam({ name: 'id', description: 'Media id' }),
+    ApiParam({
+      name: 'locale',
+      enum: Locale,
+      description: 'Target locale, not en',
+    }),
+    ApiQuery({
+      name: 'force',
+      required: false,
+      type: Boolean,
+      description:
+        'Re-translate and re-stamp even a human-saved row. Needs an explicit confirmation in the UI.',
+    }),
+    ApiResponse({
+      status: 201,
+      description: 'What was written / skipped',
+      type: GenerateTranslationResponseDto,
+    }),
+    ApiResponse({
+      status: 400,
+      description:
+        'locale=en, an invalid locale, or AI translation unconfigured',
+      type: BadRequestErrorDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Not found, or outside the caller media scope',
+      type: NotFoundErrorDto,
+    }),
+    ApiResponse({ status: 401, type: UnauthorizedErrorDto }),
   );
 }

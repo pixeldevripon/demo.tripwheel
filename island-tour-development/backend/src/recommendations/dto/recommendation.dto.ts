@@ -226,6 +226,13 @@ export class RecommendationCategoryRefDto {
 
   @ApiProperty({ example: 'hotels' })
   slug!: string;
+
+  @ApiPropertyOptional({
+    example: 'TreePalm',
+    nullable: true,
+    description: 'Icon name for the list (from the category icon picker).',
+  })
+  icon!: string | null;
 }
 
 /** The admin view of one recommendation: the record plus every stored locale. */

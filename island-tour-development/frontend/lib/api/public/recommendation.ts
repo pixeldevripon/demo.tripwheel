@@ -90,43 +90,45 @@ function hiddenRecommendation(locale: Locale): PublicRecommendation {
 }
 
 /**
+ * The recommendations featured on a surface - up to a few, in promotion order.
+ * Empty means the section does not render.
+ *
  * Content an admin changes rarely but expects to see live, same contract as
  * `getHomePageContent`: `cacheLife('days')` under the `recommendations` tag, which
  * the dashboard busts on save - so the long window costs nothing in staleness.
  *
  * Cached even though the page around it is not: the booking lookup is
- * per-traveller and uncached, but this card is the same for everyone.
+ * per-traveller and uncached, but these cards are the same for everyone.
  */
-export async function getRecommendation(
+export async function getRecommendations(
     locale: Locale = DEFAULT_LOCALE,
     placement: RecommendationPlacement = 'THANK_YOU_PAGE',
-): Promise<PublicRecommendation> {
+): Promise<PublicRecommendation[]> {
     'use cache';
     cacheLife('days');
     cacheTag('recommendations');
 
-    const res = await publicGet<Partial<PublicRecommendation>>(
+    const res = await publicGet<Partial<PublicRecommendation>[]>(
         `/recommendations/public${buildQuery({ locale, placement })}`,
     );
 
-    return normalize(res, locale);
+    if (!Array.isArray(res)) return [];
+    // Drop any wrong-shaped item rather than render a broken card - the two
+    // services deploy independently, so an older/newer backend degrades to fewer
+    // cards, never a crash inside `.map()` on the page a traveller reaches straight
+    // after paying.
+    return res
+        .filter((item): item is Partial<PublicRecommendation> => item?.enabled === true)
+        .map((item) => normalize(item, locale));
 }
 
-/**
- * Fill in whatever the API did not send, and never let a wrong-shaped response
- * render a card. `publicGet` soft-nulls "no response"; it does NOT cover a response
- * of the wrong SHAPE, and the two services deploy independently. `enabled` is
- * coerced to a strict `true` and `descriptionLines` re-checked as an array.
- */
+/** Fill in whatever the API did not send for one card item. */
 function normalize(
-    res: Partial<PublicRecommendation> | null,
+    res: Partial<PublicRecommendation>,
     locale: Locale,
 ): PublicRecommendation {
-    const hidden = hiddenRecommendation(locale);
-    if (!res || res.enabled !== true) return hidden;
-
     return {
-        ...hidden,
+        ...hiddenRecommendation(locale),
         ...res,
         enabled: true,
         locale,

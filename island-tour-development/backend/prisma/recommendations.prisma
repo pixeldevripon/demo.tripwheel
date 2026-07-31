@@ -33,36 +33,6 @@
 // any of these is skipped; when none qualifies the payload reports `enabled: false`
 // and the section does not render. Everything else is optional and hides on its own.
 
-/// Admin-managed recommendation category (Hotel, Restaurant, Car rental, …). A pure
-/// taxonomy for organising the recommendation library; the label is an English
-/// management string in v1 (not publicly rendered), so it is NOT in the translation
-/// pipeline. Seeded rows are delete-protected like seeded destinations.
-model RecommendationCategory {
-  id String @id @default(uuid())
-
-  /// English canonical label ("Hotels"). Shown in the dashboard, not on the public site.
-  name String
-
-  /// URL-safe key (generateSlug of the name). Unique so imports/links are stable.
-  slug String @unique
-
-  /// Optional icon key/url for the dashboard chip.
-  icon String?
-
-  /// Ordering of categories in the dashboard.
-  displayOrder Int @default(0)
-
-  /// Seed protection: the service refuses to delete a row carrying it (403).
-  isSeeded Boolean @default(false)
-
-  recommendations Recommendation[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("recommendation_categories")
-}
-
 model Recommendation {
   id String @id @default(uuid())
 
@@ -71,10 +41,10 @@ model Recommendation {
   /// case.
   source RecommendationSource @default(EXTERNAL)
 
-  /// The category this is filed under. Nullable + SetNull so deleting a category
-  /// never deletes its recommendations - they just fall back to "uncategorised".
-  categoryId String?
-  category   RecommendationCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  /// The category - a fixed, pre-typed value (not admin-managed). Decides which
+  /// optional fact fields an external pick shows (a HOTEL has "sleeps", a RESTAURANT
+  /// does not) and its dashboard icon; the field map lives in the dashboard.
+  category RecommendationCategory @default(OTHER)
 
   /// Whether this may be featured at all. Off retires it without deleting content.
   isEnabled Boolean @default(true)

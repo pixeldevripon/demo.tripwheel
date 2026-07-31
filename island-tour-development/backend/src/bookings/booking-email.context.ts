@@ -228,10 +228,11 @@ export type RelatedTourInput = {
 };
 
 /**
- * The one recommendation featured in the confirmation email (the admin-managed
- * post-booking promo, placed on the CONFIRMATION_EMAIL surface). Null hides the
- * whole block. `linkUrl` is absolute for an EXTERNAL pick and a site-relative path
- * for an INTERNAL one - the builder absolutizes the latter with `frontendUrl`.
+ * One recommendation featured in the confirmation email (the admin-managed
+ * post-booking promo, placed on the CONFIRMATION_EMAIL surface). The caller passes
+ * an array (up to a few); an empty array hides the whole block. `linkUrl` is
+ * absolute for an EXTERNAL pick and a site-relative path for an INTERNAL one - the
+ * builder absolutizes the latter with `frontendUrl`.
  */
 export type RecommendationInput = {
   title: string;
@@ -305,8 +306,8 @@ export type ConfirmationEmailInput = {
     slug: string;
   };
   relatedTours: readonly RelatedTourInput[];
-  /** The featured post-booking recommendation, or null to hide the block. */
-  recommendation: RecommendationInput | null;
+  /** The featured post-booking recommendations (up to a few); empty hides the block. */
+  recommendations: readonly RecommendationInput[];
   config: {
     frontendUrl: string;
     /**
@@ -330,7 +331,7 @@ export function buildConfirmationEmailContext(
     site,
     destination,
     relatedTours,
-    recommendation,
+    recommendations,
     config,
   } = input;
 
@@ -431,17 +432,51 @@ export function buildConfirmationEmailContext(
     relatedTourTwoRating: ratingLabel(two),
     relatedTourTwoPrice: priceLabel(two, locale),
 
-    // "You might also like" - the single featured recommendation. Empty name
-    // hides the whole block ([IF recommendationName] in the template).
-    recommendationName: recommendation?.title ?? '',
-    recommendationImageUrl: recommendation?.imageUrl ?? '',
-    recommendationMeta: recommendation
-      ? recommendationMeta(recommendation, locale)
-      : '',
-    recommendationCtaLabel: recommendation?.ctaLabel?.trim() || 'See more',
-    recommendationUrl: recommendation
-      ? recommendationUrl(recommendation, base, urlLocale)
-      : '',
+    // "You might also like" - up to three featured recommendations as fixed slots
+    // (mirroring the relatedTour one/two pattern). An empty Name hides that slot's
+    // block ([IF recommendationOneName] etc. in the template); an empty first slot
+    // hides the whole section.
+    ...recommendationSlot(
+      'recommendationOne',
+      recommendations[0],
+      base,
+      urlLocale,
+      locale,
+    ),
+    ...recommendationSlot(
+      'recommendationTwo',
+      recommendations[1],
+      base,
+      urlLocale,
+      locale,
+    ),
+    ...recommendationSlot(
+      'recommendationThree',
+      recommendations[2],
+      base,
+      urlLocale,
+      locale,
+    ),
+  };
+}
+
+/**
+ * The five tokens for one recommendation slot, all empty when the slot is unused so
+ * the template's `[IF <prefix>Name]` hides it.
+ */
+function recommendationSlot(
+  prefix: string,
+  rec: RecommendationInput | undefined,
+  base: string,
+  urlLocale: Locale,
+  locale: Locale | null,
+): Record<string, string> {
+  return {
+    [`${prefix}Name`]: rec?.title ?? '',
+    [`${prefix}ImageUrl`]: rec?.imageUrl ?? '',
+    [`${prefix}Meta`]: rec ? recommendationMeta(rec, locale) : '',
+    [`${prefix}CtaLabel`]: rec?.ctaLabel?.trim() || 'See more',
+    [`${prefix}Url`]: rec ? recommendationUrl(rec, base, urlLocale) : '',
   };
 }
 
@@ -736,10 +771,14 @@ export function buildConfirmationEmailText(ctx: EmailTemplateContext): string {
       (v) => `Questions about your booking? WhatsApp: ${v}`,
     ),
     `View your tour: ${get('tourUrl')}`,
-    optional(get('recommendationName'), (v) => {
-      const meta = get('recommendationMeta');
-      return `You might also like: ${v}${meta ? ` (${meta})` : ''} - ${get('recommendationUrl')}`;
-    }),
+    ...['recommendationOne', 'recommendationTwo', 'recommendationThree'].map(
+      (p) => {
+        const name = get(`${p}Name`);
+        if (!name) return null;
+        const meta = get(`${p}Meta`);
+        return `You might also like: ${name}${meta ? ` (${meta})` : ''} - ${get(`${p}Url`)}`;
+      },
+    ),
     '',
     'Island Tours. Built by Islanders.',
     'This is a transactional booking email.',

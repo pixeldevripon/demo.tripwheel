@@ -267,8 +267,53 @@ on the save path.
 | category | Main (name translates) + page content + FAQ groups |
 | collection | Main + page content + FAQ groups + per-tour rationales |
 | homepage | 11 HomePageTranslation fields + FAQ groups (entityId `'default'`) |
+| recommendation | Main RecommendationTranslation copy (EXTERNAL rows only - internal ones follow their entity) |
+| media | **One unit per ASSET** (`title`, `description`, `altText`; source = the `MediaGallery` BASE row). See the bucket note below - this is the only type whose entityId is not a single entity. |
 
 Excluded v1: Pages module (TipTap).
+
+### Media is batched, and that is the whole point
+
+`ContentTranslationService` issues exactly **one provider call per locale per entity,
+regardless of how many units that entity has.** Every other type has a handful of units, so
+this is invisible. Media has thousands of candidate assets, so it is decisive:
+
+| Shape | Provider calls for 1,000 assets |
+|---|---|
+| One job per asset | ~6,000 - dead on a ~1k requests/day free tier |
+| 50 assets per job | **~120** |
+
+So a `media` job's `entityId` is either:
+
+- **`bucket:<hex>`** - the first hex character of an asset uuid, giving **16 stable buckets**.
+  Every English copy save enqueues its asset's bucket (`ContentTranslationEnqueuer.enqueueMedia`),
+  and the queue's `jobId` de-duplication collapses a burst of edits into one job. The collector
+  takes up to `MEDIA_BUCKET_SIZE` (50) assets **ordered least-translated-first**, which makes a
+  bucket self-draining: finished assets sort to the back and fall outside the window, so a
+  backlog works through over successive nights. Ordering by `updatedAt` instead would re-offer
+  the same finished fifty forever and never reach the fifty-first.
+- **a media uuid** - the viewer's per-asset "Translate with AI" button. One call, one asset.
+
+The nightly sweep enqueues **all 16 buckets unconditionally**, not `limitPerType` rows like the
+entity types: it is the only path that drains a library that existed before the feature, and a
+bucket with nothing outstanding costs zero provider calls thanks to `sourceHash`.
+
+Two more media-specific notes:
+
+- **Media needs NO `translation_clear_marks`.** `MediaTranslation`'s columns are nullable, so a
+  cleared field keeps its row (flagged human) and the overwrite policy reads the row directly.
+  Clear marks exist only for the NOT NULL surfaces where clearing must DELETE the row.
+- **Media is deliberately NOT a Translation-Console entity type.** The console is a matrix over
+  every entity of a type plus a workspace page per (entity, locale), which does not survive a
+  library of thousands. Editing happens inline in the media viewer's locale pills, and the
+  "what still needs doing" view is a `?untranslated=<locale>` filter on the media grid. The
+  console's type list lives in the dashboard's `lib/translatable-schema.ts` and is independent
+  of `CONTENT_ENTITY_TYPES`, which is what lets media join the pipeline without joining the
+  matrix.
+- **`title` and `description` translate but have no public reader yet** (founder call
+  2026-07-31). `altText` reaches og:image, gallery photos and heroes through `getMediaSeo`.
+  Google removed `<image:title>` / `<image:caption>` from the image-sitemap spec, so the surface
+  originally proposed for the other two would have emitted tags nothing reads.
 
 ## 7. Rate limits, failure handling, ops
 

@@ -1745,11 +1745,11 @@ export class BookingsService {
     ]);
     if (!tour) throw new NotFoundException('Tour not found');
 
-    const [related, featuredRec] = await Promise.all([
+    const [related, featuredRecs] = await Promise.all([
       this.loadRelatedTours(tour.destinationId, booking.tourId),
-      // The one recommendation placed on the confirmation email, drawn from the
-      // same admin-managed library as the thank-you-page card. `enabled: false`
-      // (nothing placed here, or nothing complete) hides the whole block.
+      // The recommendations placed on the confirmation email (up to a few), drawn
+      // from the same admin-managed library as the thank-you-page cards. An empty
+      // list hides the whole block.
       this.recommendations.getFeatured(
         locale,
         RecommendationPlacement.CONFIRMATION_EMAIL,
@@ -1836,19 +1836,17 @@ export class BookingsService {
         slug: tour.destination.slug,
       },
       relatedTours: related,
-      // `enabled: false` -> null -> the email's recommendation block is skipped.
-      recommendation: featuredRec.enabled
-        ? {
-            title: featuredRec.title ?? '',
-            imageUrl: featuredRec.imageUrl ?? '',
-            linkUrl: featuredRec.linkUrl ?? '',
-            external: featuredRec.external,
-            ctaLabel: featuredRec.ctaLabel,
-            rating: featuredRec.rating,
-            priceAmount: featuredRec.priceAmount,
-            currency: featuredRec.currency,
-          }
-        : null,
+      // Up to a few cards; an empty list hides the email's recommendation block.
+      recommendations: featuredRecs.map((r) => ({
+        title: r.title ?? '',
+        imageUrl: r.imageUrl ?? '',
+        linkUrl: r.linkUrl ?? '',
+        external: r.external,
+        ctaLabel: r.ctaLabel,
+        rating: r.rating,
+        priceAmount: r.priceAmount,
+        currency: r.currency,
+      })),
       config: {
         frontendUrl: islandToursBase(),
         // BETTER_AUTH_URL is this API's own public origin (it is what Better Auth

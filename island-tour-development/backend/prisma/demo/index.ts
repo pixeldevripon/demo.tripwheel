@@ -21,6 +21,7 @@ import { seedSettlements } from './settlements';
 import { seedReviews } from './reviews';
 import { seedDemandShowcase } from './demand-showcase';
 import { COLLECTION_SLUGS, seedCollections } from './collections';
+import { cleanRecommendations, seedRecommendations } from './recommendations';
 import { seedCommercial } from './commercial';
 import { seedEngagement } from './engagement';
 import { seedEntityContent } from './entity-content';
@@ -53,6 +54,7 @@ export async function runDemoSeed(): Promise<void> {
   await seedReviews(); // reviews + translations + aggregate recompute
   await seedDemandShowcase(); // §3.7 sellout setup + likelyToSellOut recompute (badge showcase)
   await seedCollections(); // collections + membership + COLLECTION slug_registry
+  await seedRecommendations(); // post-booking promo: varied categories + ext/int picks
   await seedCommercial(); // spotlight + force-majeure + featured experiences
   await seedEngagement(); // wishlists + notifications
   await seedEntityContent(); // dest/cat/hub translations + page content + FAQs + hub editorial
@@ -132,6 +134,10 @@ export async function cleanDemo(): Promise<void> {
       entityType: SlugEntityType.COLLECTION,
     },
   });
+
+  // 2b) Demo recommendations + demo recommendation categories. The base "Hotels"
+  //     category + its Palm Suite row are left in place.
+  await cleanRecommendations();
 
   // 3) Demo-only commercial tables.
   await prisma.featuredExperience.deleteMany({});

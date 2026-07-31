@@ -5,6 +5,7 @@ import { getPublishedPage } from '@/lib/api/public';
 import { getSitemapEntries } from '@/lib/api/public/sitemap';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { ogImageMeta } from '@/lib/seo/og-image';
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 
@@ -76,9 +77,11 @@ export async function generateMetadata({
         return {
             title: page.metaTitle || page.title,
             ...(page.metaDescription && { description: page.metaDescription }),
-            ...(page.ogImage && {
-                openGraph: { images: [{ url: page.ogImage }] },
-            }),
+            ...(await ogImageMeta(
+                page.ogImage,
+                locale,
+                page.metaTitle || page.title,
+            )),
             ...twitterCard(
                 page.metaTitle || page.title,
                 page.metaDescription,

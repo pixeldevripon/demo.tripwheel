@@ -720,6 +720,28 @@ enum RecommendationPlacement {
   CONFIRMATION_EMAIL
 }
 
+// The category of a recommendation - a FIXED, pre-typed set of tour/travel-adjacent
+// things a traveller might want after booking. NOT admin-managed: each value carries
+// a typed field set and an icon fixed in code (dashboard `types/recommendation.ts`),
+// so a hotel shows "sleeps" and a restaurant does not, with no per-tenant config.
+enum RecommendationCategory {
+  HOTEL
+  APARTMENT
+  VILLA
+  RESTAURANT
+  BAR
+  CAFE
+  CAR_RENTAL
+  TRANSFER
+  SHOP
+  SPA
+  BEACH_CLUB
+  ATTRACTION
+  ACTIVITY
+  NIGHTLIFE
+  OTHER
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

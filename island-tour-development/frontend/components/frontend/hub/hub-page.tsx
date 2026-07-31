@@ -15,6 +15,7 @@ import {
     formatPriceFrom,
     resolveDisplayPrice,
 } from '@/lib/currency/current';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
@@ -486,7 +487,13 @@ export async function HubPage({
     // "Also worth your time on {destination}" links to the destination's own
     // activity categories (tour-gated, top 3), not sibling hubs (master 5.5 /
     // Figma 48024:12096). Cached alongside the render, so the shell stays static.
-    const categories = await getDestinationCategories(destinationSlug, locale);
+    //
+    // The hero's localized alt text rides the same await: both depend only on the
+    // render above, so serializing them would add a round-trip for nothing.
+    const [categories, heroSeo] = await Promise.all([
+        getDestinationCategories(destinationSlug, locale),
+        getMediaSeo([render.hero.heroImage], locale),
+    ]);
 
     const hubDict = dict.destination.hub;
     const listingsDict = dict.destination.listings;
@@ -640,6 +647,12 @@ export async function HubPage({
                 title={render.hero.h1}
                 tagline={render.hero.heroTagline}
                 image={render.hero.heroImage}
+                imageAlt={
+                    render.hero.heroImage
+                        ? heroSeo.get(normalizeUrl(render.hero.heroImage))
+                              ?.altText
+                        : null
+                }
                 meta={heroMeta}
                 dict={{
                     tagline: hubDict.tagline,

@@ -121,22 +121,20 @@ describe('RecommendationsService', () => {
   });
 
   describe('getFeatured (public read)', () => {
-    it('returns the hidden payload when nothing qualifies', async () => {
+    it('returns an empty list when nothing qualifies', async () => {
       prisma.recommendation.findMany.mockResolvedValue([]);
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(false);
-      expect(res.title).toBeNull();
-      expect(res.currency).toBe(Currency.USD);
+      expect(res).toEqual([]);
     });
 
     it('features the first COMPLETE external row and marks it external', async () => {
       prisma.recommendation.findMany.mockResolvedValue([externalRow()]);
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(true);
-      expect(res.external).toBe(true);
-      expect(res.title).toBe('Palm Suite');
-      expect(res.linkUrl).toBe('https://airbnb.com/x');
-      expect(res.descriptionLines).toEqual(['Line one', 'Line two']);
+      expect(res).toHaveLength(1);
+      expect(res[0].external).toBe(true);
+      expect(res[0].title).toBe('Palm Suite');
+      expect(res[0].linkUrl).toBe('https://airbnb.com/x');
+      expect(res[0].descriptionLines).toEqual(['Line one', 'Line two']);
     });
 
     it('skips an incomplete external row (missing image) and keeps walking', async () => {
@@ -145,8 +143,19 @@ describe('RecommendationsService', () => {
         externalRow({ id: 'b', displayOrder: 1 }),
       ]);
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(true);
-      expect(res.title).toBe('Palm Suite');
+      expect(res).toHaveLength(1);
+      expect(res[0].title).toBe('Palm Suite');
+    });
+
+    it('caps the list at FEATURED_LIMIT (3)', async () => {
+      prisma.recommendation.findMany.mockResolvedValue([
+        externalRow({ id: 'a', displayOrder: 0 }),
+        externalRow({ id: 'b', displayOrder: 1 }),
+        externalRow({ id: 'c', displayOrder: 2 }),
+        externalRow({ id: 'd', displayOrder: 3 }),
+      ]);
+      const res = await service.getFeatured('en', THANK_YOU_PAGE);
+      expect(res).toHaveLength(3);
     });
 
     it('filters by placement in the query (has)', async () => {
@@ -172,11 +181,11 @@ describe('RecommendationsService', () => {
         images: [{ url: 'https://cdn.test/tour.jpg' }],
       });
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(true);
-      expect(res.external).toBe(false);
-      expect(res.title).toBe('Sunset Cruise');
-      expect(res.imageUrl).toBe('https://cdn.test/tour.jpg');
-      expect(res.linkUrl).toBe('/curacao/sunset-cruise');
+      expect(res).toHaveLength(1);
+      expect(res[0].external).toBe(false);
+      expect(res[0].title).toBe('Sunset Cruise');
+      expect(res[0].imageUrl).toBe('https://cdn.test/tour.jpg');
+      expect(res[0].linkUrl).toBe('/curacao/sunset-cruise');
     });
 
     it('skips an INTERNAL tour that is not LIVE', async () => {
@@ -192,7 +201,7 @@ describe('RecommendationsService', () => {
         images: [{ url: 'https://cdn.test/tour.jpg' }],
       });
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(false);
+      expect(res).toEqual([]);
     });
 
     it('skips an INTERNAL row whose entity resolves live but has no image', async () => {
@@ -209,7 +218,7 @@ describe('RecommendationsService', () => {
         destination: { slug: 'curacao' },
       });
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(false);
+      expect(res).toEqual([]);
     });
 
     it('links a destination-only internal recommendation to /{slug}', async () => {
@@ -226,8 +235,9 @@ describe('RecommendationsService', () => {
         isActive: true,
       });
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.linkUrl).toBe('/curacao');
-      expect(res.title).toBe('Curaçao');
+      expect(res).toHaveLength(1);
+      expect(res[0].linkUrl).toBe('/curacao');
+      expect(res[0].title).toBe('Curaçao');
     });
 
     it('skips an INTERNAL hub that is not PUBLISHED', async () => {
@@ -244,7 +254,7 @@ describe('RecommendationsService', () => {
         destination: { slug: 'curacao' },
       });
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
-      expect(res.enabled).toBe(false);
+      expect(res).toEqual([]);
     });
   });
 
@@ -404,7 +414,9 @@ describe('RecommendationsService', () => {
   });
 
   describe('findAll (featuredPlacements)', () => {
-    it('marks exactly one winner per surface across the list', async () => {
+    it('marks up to FEATURED_LIMIT rows per surface as shown', async () => {
+      // Two complete rows on the same surface: both fit under the cap of 3, so
+      // both are "on the site".
       prisma.recommendation.findMany.mockResolvedValue([
         { ...externalRow({ id: 'a', displayOrder: 0 }), category: null },
         { ...externalRow({ id: 'b', displayOrder: 1 }), category: null },
@@ -413,7 +425,24 @@ describe('RecommendationsService', () => {
       expect(res.find((r) => r.id === 'a')?.featuredPlacements).toEqual([
         THANK_YOU_PAGE,
       ]);
-      expect(res.find((r) => r.id === 'b')?.featuredPlacements).toEqual([]);
+      expect(res.find((r) => r.id === 'b')?.featuredPlacements).toEqual([
+        THANK_YOU_PAGE,
+      ]);
+    });
+
+    it('pushes rows past the cap to "next in line" (empty featuredPlacements)', async () => {
+      prisma.recommendation.findMany.mockResolvedValue(
+        ['a', 'b', 'c', 'd'].map((id, i) => ({
+          ...externalRow({ id, displayOrder: i }),
+          category: null,
+        })),
+      );
+      const res = await service.findAll();
+      // a,b,c are the top 3; d falls to next in line.
+      expect(res.find((r) => r.id === 'd')?.featuredPlacements).toEqual([]);
+      expect(res.find((r) => r.id === 'c')?.featuredPlacements).toEqual([
+        THANK_YOU_PAGE,
+      ]);
     });
   });
 });

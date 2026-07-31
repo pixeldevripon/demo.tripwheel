@@ -14,6 +14,7 @@ import {
   Currency,
   HubStatus,
   Prisma,
+  RecommendationCategory,
   RecommendationPlacement,
   RecommendationRefType,
   RecommendationSource,
@@ -38,7 +39,7 @@ const TRANSLATION_SELECT = {
 const BASE_SELECT = {
   id: true,
   source: true,
-  categoryId: true,
+  category: true,
   isEnabled: true,
   displayOrder: true,
   isSeeded: true,
@@ -54,13 +55,18 @@ const BASE_SELECT = {
   currency: true,
 } as const;
 
-const CATEGORY_REF_SELECT = { id: true, name: true, slug: true } as const;
-
 /** Every placement, so the "who is featured where" pass has a stable order. */
 const ALL_PLACEMENTS: RecommendationPlacement[] = [
   RecommendationPlacement.THANK_YOU_PAGE,
   RecommendationPlacement.CONFIRMATION_EMAIL,
 ];
+
+/**
+ * How many recommendations a single surface shows. Each surface renders a short
+ * SECTION - up to this many enabled, complete, placed cards in promotion order;
+ * anything past it is "next in line".
+ */
+const FEATURED_LIMIT = 3;
 
 /**
  * Which recommendation each surface features: lowest `displayOrder` wins, `id`
@@ -88,7 +94,7 @@ function num(value: Prisma.Decimal | null): number | null {
 export interface RecommendationRow {
   id: string;
   source: RecommendationSource;
-  categoryId: string | null;
+  category: RecommendationCategory;
   isEnabled: boolean;
   displayOrder: number;
   isSeeded: boolean;
@@ -143,15 +149,16 @@ export class RecommendationsService {
   // ── Public read ─────────────────────────────────────────────────────────────
 
   /**
-   * The one recommendation a surface should feature, for one locale.
+   * The recommendations a surface should feature, for one locale - up to
+   * `FEATURED_LIMIT`, in promotion order. Empty means the section does not render.
    *
    * Deliberately read-only: an anonymous GET must never write.
    *
    * The whole enabled+placed set is read and walked in promotion order because an
-   * enabled-but-INCOMPLETE row is skipped rather than ending the search -
-   * otherwise a half-filled row at `displayOrder: 0` would silently suppress the
-   * good one behind it. "Incomplete" means the EXTERNAL essentials are missing, or
-   * the INTERNAL entity no longer resolves live (archived/deleted).
+   * enabled-but-INCOMPLETE row is skipped rather than ending the search - a
+   * half-filled row at `displayOrder: 0` must not consume a slot. "Incomplete"
+   * means the EXTERNAL essentials are missing, or the INTERNAL entity no longer
+   * resolves live (archived/deleted).
    */
   async getFeatured(locale: Locale, placement: RecommendationPlacement) {
     const rows = await this.prisma.recommendation.findMany({
@@ -168,12 +175,15 @@ export class RecommendationsService {
       orderBy: PROMOTION_ORDER,
     });
 
+    const cards: Array<{ enabled: true; locale: Locale } & ResolvedCard> = [];
     for (const row of rows) {
       const card = await this.buildCard(row, row.translations, locale);
-      if (card) return { enabled: true, locale, ...card };
+      if (card) {
+        cards.push({ enabled: true, locale, ...card });
+        if (cards.length >= FEATURED_LIMIT) break;
+      }
     }
-
-    return this.hiddenPayload(locale);
+    return cards;
   }
 
   /**
@@ -338,33 +348,6 @@ export class RecommendationsService {
     }
   }
 
-  /**
-   * The "do not render" answer, content and all. Every field is nulled rather than
-   * merely flagged: the shape is identical to the enabled one, so a caller that
-   * forgets the flag renders an empty card instead of leaking a half-configured
-   * promo, and the currency still carries a real value because the frontend types
-   * it as an enum.
-   */
-  private hiddenPayload(locale: Locale) {
-    return {
-      enabled: false,
-      locale,
-      external: false,
-      imageUrl: null,
-      linkUrl: null,
-      rating: null,
-      reviewCount: null,
-      sleeps: null,
-      priceAmount: null,
-      currency: Currency.USD,
-      eyebrow: null,
-      areaLabel: null,
-      title: null,
-      descriptionLines: [] as string[],
-      ctaLabel: null,
-    };
-  }
-
   // ── Admin ───────────────────────────────────────────────────────────────────
 
   /**
@@ -411,8 +394,6 @@ export class RecommendationsService {
       );
     }
 
-    if (base.categoryId) await this.assertCategoryExists(base.categoryId);
-
     // English copy is created WITH the row (external always; internal only when an
     // override was typed) rather than left to a second request.
     const hasCopy = !!(
@@ -455,11 +436,11 @@ export class RecommendationsService {
     });
     if (!existing)
       throw new NotFoundException(`Recommendation ${id} not found`);
-    if (dto.categoryId) await this.assertCategoryExists(dto.categoryId);
 
-    // Enforce the same source-consistency rule as create() against the EFFECTIVE
-    // post-patch state, so a PATCH cannot leave a row permanently incomplete (an
-    // internal pointer with no target) with a silent 200.
+    // Source CAN change after creation (the dashboard confirms the switch first,
+    // since it changes what the record means). Enforce the same source-consistency
+    // rule as create() against the EFFECTIVE post-patch state, so a PATCH cannot
+    // leave a row permanently incomplete (an internal pointer with no target).
     const effectiveSource = dto.source ?? existing.source;
     const effectiveRefType =
       dto.refType !== undefined ? dto.refType : existing.refType;
@@ -484,7 +465,7 @@ export class RecommendationsService {
       where: { id },
       data: {
         ...(dto.source !== undefined && { source: dto.source }),
-        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.category !== undefined && { category: dto.category }),
         ...(dto.isEnabled !== undefined && { isEnabled: dto.isEnabled }),
         ...(dto.displayOrder !== undefined && {
           displayOrder: dto.displayOrder,
@@ -593,11 +574,10 @@ export class RecommendationsService {
 
   private toAdminShape(
     row: RecommendationRow & {
-      category: { id: string; name: string; slug: string } | null;
       translations: TranslationRow[];
     },
     card: ResolvedCard | null,
-    featured: Map<RecommendationPlacement, string>,
+    featured: Map<RecommendationPlacement, Set<string>>,
   ) {
     return {
       id: row.id,
@@ -623,8 +603,8 @@ export class RecommendationsService {
       sleeps: row.sleeps,
       priceAmount: num(row.priceAmount),
       currency: row.currency,
-      featuredPlacements: ALL_PLACEMENTS.filter(
-        (p) => featured.get(p) === row.id,
+      featuredPlacements: ALL_PLACEMENTS.filter((p) =>
+        featured.get(p)?.has(row.id),
       ),
       isComplete: card !== null,
       translations: row.translations,
@@ -640,7 +620,6 @@ export class RecommendationsService {
     const rows = await this.prisma.recommendation.findMany({
       select: {
         ...BASE_SELECT,
-        category: { select: CATEGORY_REF_SELECT },
         translations: {
           select: TRANSLATION_SELECT,
           orderBy: { locale: 'asc' },
@@ -658,8 +637,9 @@ export class RecommendationsService {
   }
 
   /**
-   * Which recommendation wins each surface: the first enabled, complete row in
-   * promotion order whose placements include that surface. One winner per surface.
+   * Which recommendations show on each surface: the first `FEATURED_LIMIT` enabled,
+   * complete rows in promotion order whose placements include that surface. The rest
+   * are "next in line".
    */
   private computeFeatured(
     described: Array<{
@@ -670,14 +650,17 @@ export class RecommendationsService {
       };
       card: ResolvedCard | null;
     }>,
-  ): Map<RecommendationPlacement, string> {
-    const featured = new Map<RecommendationPlacement, string>();
+  ): Map<RecommendationPlacement, Set<string>> {
+    const featured = new Map<RecommendationPlacement, Set<string>>();
     for (const placement of ALL_PLACEMENTS) {
-      const winner = described.find(
-        ({ row, card }) =>
-          row.isEnabled && !!card && row.placements.includes(placement),
-      );
-      if (winner) featured.set(placement, winner.row.id);
+      const shown = new Set<string>();
+      for (const { row, card } of described) {
+        if (row.isEnabled && !!card && row.placements.includes(placement)) {
+          shown.add(row.id);
+          if (shown.size >= FEATURED_LIMIT) break;
+        }
+      }
+      featured.set(placement, shown);
     }
     return featured;
   }
@@ -688,18 +671,6 @@ export class RecommendationsService {
       select: { id: true },
     });
     if (!found) throw new NotFoundException(`Recommendation ${id} not found`);
-  }
-
-  private async assertCategoryExists(categoryId: string) {
-    const found = await this.prisma.recommendationCategory.findUnique({
-      where: { id: categoryId },
-      select: { id: true },
-    });
-    if (!found) {
-      throw new BadRequestException(
-        `Recommendation category ${categoryId} not found`,
-      );
-    }
   }
 
   /**

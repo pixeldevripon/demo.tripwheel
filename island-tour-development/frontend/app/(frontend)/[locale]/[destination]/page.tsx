@@ -25,6 +25,7 @@ import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { ogImageMeta } from '@/lib/seo/og-image';
 import {
     buildBreadcrumbJsonLd,
     buildTouristDestinationJsonLd,
@@ -117,9 +118,11 @@ export async function generateMetadata({
                 ...(page.metaDescription && {
                     description: page.metaDescription,
                 }),
-                ...(page.ogImage && {
-                    openGraph: { images: [{ url: page.ogImage }] },
-                }),
+                ...(await ogImageMeta(
+                    page.ogImage,
+                    locale,
+                    page.metaTitle || page.title,
+                )),
                 ...twitterCard(
                     page.metaTitle || page.title,
                     page.metaDescription,
@@ -137,9 +140,11 @@ export async function generateMetadata({
         ...(pageContent?.metaDescription && {
             description: pageContent.metaDescription,
         }),
-        ...(island.ogImage && {
-            openGraph: { images: [{ url: island.ogImage }] },
-        }),
+        ...(await ogImageMeta(
+            island.ogImage,
+            locale,
+            pageContent?.metaTitle || island.name,
+        )),
         ...twitterCard(pageContent?.metaTitle, pageContent?.metaDescription),
         alternates,
     };

@@ -7,6 +7,8 @@ import { PageBody } from '@/components/frontend/legal/page-body';
 import { TourPage } from '@/components/frontend/tour/tour-page';
 import {
     filterIndexableImages,
+    getMediaSeo,
+    normalizeUrl,
     getActiveCollectionsForDestination,
     getActiveDestinations,
     getCategoryBySlugForDestination,
@@ -29,6 +31,7 @@ import {
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { ogImageMeta } from '@/lib/seo/og-image';
 import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect, redirect } from 'next/navigation';
@@ -231,6 +234,14 @@ export async function generateMetadata({
         return {
             title: categoryTitle,
             description: categoryDescription,
+            // The category branch published NO og:image at all, so sharing a
+            // category page fell back to the sitewide default card. `ogImage`
+            // first, then the hero photo, with localized alt from the library.
+            ...(await ogImageMeta(
+                category.ogImage ?? category.heroImage,
+                locale,
+                categoryTitle
+            )),
             ...twitterCard(categoryTitle, categoryDescription),
             alternates,
         };
@@ -257,6 +268,12 @@ export async function generateMetadata({
         return {
             title: collectionTitle,
             description: collectionDescription,
+            // Also had no og:image before this.
+            ...(await ogImageMeta(
+                render.ogImage ?? render.heroImage,
+                locale,
+                collectionTitle
+            )),
             ...twitterCard(collectionTitle, collectionDescription),
             alternates,
         };
@@ -282,9 +299,11 @@ export async function generateMetadata({
         return {
             title: entityTitle,
             description: entityDescription,
-            ...(render.ogImage && {
-                openGraph: { images: [{ url: render.ogImage }] },
-            }),
+            ...(await ogImageMeta(
+                render.ogImage ?? render.hero.heroImage,
+                locale,
+                entityTitle
+            )),
             ...twitterCard(entityTitle, entityDescription),
             alternates,
         };
@@ -309,11 +328,19 @@ export async function generateMetadata({
             orderedImages.map(img => img.url)
         );
         const tourTitle = tour.translation?.title ?? tour.name;
+        // Alt text prefers the LIVE media-library value for the visitor's locale.
+        // `TourImage.altText` is a snapshot taken when the image was picked, so
+        // it is English-only and goes stale the moment the library is edited -
+        // it stays as the second choice, ahead of the tour title.
+        const mediaSeo = await getMediaSeo(indexable.slice(0, 3), locale);
         const ogImages = indexable.slice(0, 3).map(url => {
             const img = orderedImages.find(i => i.url === url);
             return {
                 url,
-                alt: img?.altText ?? tourTitle,
+                alt:
+                    mediaSeo.get(normalizeUrl(url))?.altText ||
+                    img?.altText ||
+                    tourTitle,
                 width: img?.width,
                 height: img?.height,
             };

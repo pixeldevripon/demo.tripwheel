@@ -3,6 +3,7 @@ import { AuthenticatedUser } from '@/auth/decorators/authenticated-user.decorato
 import { Public } from '@/auth/decorators/public.decorator';
 import { RequirePermissions } from '@/auth/decorators/require-permissions.decorator';
 import { Permission } from '@prisma/client';
+import { Locale } from '@/common/constants/locales';
 import {
   BadRequestException,
   Body,
@@ -10,6 +11,8 @@ import {
   Delete,
   Get,
   Param,
+  ParseBoolPipe,
+  ParseEnumPipe,
   Patch,
   Post,
   Query,
@@ -26,14 +29,20 @@ import {
   BulkDeleteMediaDto,
   ConfirmUploadDto,
   MediaGalleryQueryDto,
+  MediaSeoQueryDto,
   UpdateMediaDto,
+  UpsertMediaTranslationDto,
 } from './dto/upload-media.dto';
 import { MediaGalleryService } from './media-gallery.service';
 import type { MediaUploadJobPayload } from './media-upload.processor';
 import {
   ApiConfirmUploadDocs,
   ApiDeleteMediaDocs,
+  ApiGenerateMediaTranslationDocs,
   ApiGetMediaByIdDocs,
+  ApiGetMediaSeoDocs,
+  ApiGetMediaTranslationsDocs,
+  ApiUpsertMediaTranslationDocs,
   ApiGetMyMediaDocs,
   ApiGetExcludedUrlsDocs,
   ApiGetSignedParamsDocs,
@@ -290,6 +299,92 @@ export class MediaGalleryController {
   @ApiGetExcludedUrlsDocs()
   getExcludedUrls() {
     return this.mediaGalleryService.getExcludedUrls();
+  }
+
+  /**
+   * GET /media-gallery/seo
+   *
+   * Public, localized SEO copy (title / description / alt text) for a batch of
+   * image URLs. Backs the public site's `getMediaSeo`, which captions og:image,
+   * gallery photos and hero images. Static route - MUST stay above ':id'.
+   */
+  @Public()
+  @Get('seo')
+  @ApiGetMediaSeoDocs()
+  getMediaSeo(@Query() query: MediaSeoQueryDto) {
+    return this.mediaGalleryService.getSeo(query.url, query.locale);
+  }
+
+  /**
+   * GET /media-gallery/:id/translations
+   *
+   * Every stored locale for one asset - the read-back behind the media viewer's
+   * inline locale switcher. Deliberately takes no locale param.
+   */
+  @Get(':id/translations')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
+  @ApiGetMediaTranslationsDocs()
+  getMediaTranslations(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.mediaGalleryService.getTranslations(id, {
+      id: user.id,
+      role: user.role,
+    });
+  }
+
+  /**
+   * PATCH /media-gallery/:id/translations/:locale
+   *
+   * Save one locale's copy. An empty string clears the field and keeps the row
+   * (which is what makes a clear stick against the AI refresher). `en` is
+   * rejected - it lives on the asset row and is edited via PATCH :id.
+   */
+  @Patch(':id/translations/:locale')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
+  @ApiUpsertMediaTranslationDocs()
+  upsertMediaTranslation(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Body() dto: UpsertMediaTranslationDto,
+  ) {
+    return this.mediaGalleryService.upsertTranslation(
+      id,
+      locale,
+      { id: user.id, role: user.role },
+      dto,
+    );
+  }
+
+  /**
+   * POST /media-gallery/:id/translations/:locale/generate
+   *
+   * Translate ONE asset into ONE locale now (the viewer's AI button). Lives here
+   * rather than on the content-translation controller so it inherits the media
+   * scope check - an operator must not spend quota on, or rewrite, another
+   * operator's library.
+   *
+   * Human-saved rows are still protected unless `force`, so the button cannot
+   * quietly undo an editor's work.
+   */
+  @Post(':id/translations/:locale/generate')
+  @RequirePermissions(Permission.UPLOAD_MEDIA)
+  @ApiGenerateMediaTranslationDocs()
+  generateMediaTranslation(
+    @Param('id') id: string,
+    @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
+    @AuthenticatedUser() user: TypedAuthUser,
+    @Query('force', new ParseBoolPipe({ optional: true }))
+    force: boolean | undefined,
+  ) {
+    return this.mediaGalleryService.generateTranslation(
+      id,
+      locale,
+      { id: user.id, role: user.role },
+      force ?? false,
+    );
   }
 
   /**

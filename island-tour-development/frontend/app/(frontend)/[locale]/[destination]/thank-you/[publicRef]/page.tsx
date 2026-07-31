@@ -10,7 +10,7 @@ import { BookingManageHeader } from '@/components/frontend/thank-you/booking-man
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import { claimConversionPush } from '@/lib/api/public/bookings';
-import { getRecommendation } from '@/lib/api/public/recommendation';
+import { getRecommendations } from '@/lib/api/public/recommendation';
 import {
     DEFAULT_LOCALE,
     isLocale,
@@ -136,7 +136,7 @@ async function ThankYouBody({
     // The recommendation is admin-managed content (Dashboard > Recommendations),
     // NOT part of the booking payload: it is the same card for every traveller, so
     // it rides its own cached loader rather than being re-derived per lookup.
-    const [relatedHits, recommendation] =
+    const [relatedHits, recommendations] =
         mode === 'celebratory'
             ? await Promise.all([
                   getThankYouRelatedTours({
@@ -144,9 +144,9 @@ async function ThankYouBody({
                       excludeTourId: booking.tourId,
                       locale,
                   }),
-                  getRecommendation(locale, 'THANK_YOU_PAGE'),
+                  getRecommendations(locale, 'THANK_YOU_PAGE'),
               ])
-            : [[], null];
+            : [[], []];
 
     const { title, seeAll, seeAllCount, ...cardDict } = dict.destination.listings;
 
@@ -201,16 +201,17 @@ async function ThankYouBody({
                         cardDict={cardDict}
                         toursHref={toursHref}
                     />
-                    {/* Admin-managed, and self-hiding: `enabled` is the
-                        backend's verdict that the photo, title and link are all
-                        present. Switched off or half-filled, the section is
-                        absent rather than broken. */}
-                    {recommendation?.enabled && (
+                    {/* Admin-managed, and self-hiding: the backend returns only the
+                        enabled, complete cards placed on this surface (up to a few),
+                        in promotion order. Empty -> nothing renders; otherwise they
+                        stack. */}
+                    {recommendations.map((rec, i) => (
                         <ThankYouRecommendation
-                            recommendation={recommendation}
+                            key={i}
+                            recommendation={rec}
                             dict={dict.thankYou}
                         />
-                    )}
+                    ))}
                 </>
             )}
             <ThankYouQuestion booking={booking} dict={dict.thankYou} />

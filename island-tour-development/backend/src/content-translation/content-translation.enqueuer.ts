@@ -5,6 +5,7 @@ import type { Queue } from 'bullmq';
 import {
   CONTENT_TRANSLATION_QUEUE,
   ENQUEUE_DELAY_MS,
+  mediaBucketOf,
   PAGE_TYPE_TO_ENTITY,
   type ContentEntityType,
 } from './content-translation.constants';
@@ -50,6 +51,19 @@ export class ContentTranslationEnqueuer {
     const entityType = PAGE_TYPE_TO_ENTITY[pageType];
     if (!entityType) return;
     this.enqueue(entityType, entityId);
+  }
+
+  /**
+   * Queue the BUCKET a media asset belongs to, never the asset itself.
+   *
+   * Exists so no call site has to remember the bucketing. Enqueuing the raw id
+   * would still work - the collector accepts a uuid for the manual button - but
+   * it would cost 6 provider calls per asset instead of 6 per fifty, which is
+   * the difference between affordable and quota-dead. Bucket keys also make the
+   * queue's jobId de-duplication collapse a burst of edits into one job.
+   */
+  enqueueMedia(mediaId: string): void {
+    this.enqueue('media', mediaBucketOf(mediaId));
   }
 
   private async enqueueAsync(

@@ -16,6 +16,8 @@ import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { safeRemoteImage } from '@/lib/images/remote-hosts';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { ogImageMeta } from '@/lib/seo/og-image';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 
 /**
  * The homepage's search-engine listing, per locale, from the dashboard's
@@ -37,9 +39,11 @@ export async function generateMetadata({
         ...(content.metaDescription && {
             description: content.metaDescription,
         }),
-        ...(content.ogImage && {
-            openGraph: { images: [{ url: content.ogImage }] },
-        }),
+        ...(await ogImageMeta(
+            content.ogImage,
+            locale,
+            content.metaTitle || 'Island Tours',
+        )),
         // Self-referencing canonical + hreflang for the 7 locales (homepage = the
         // locale root, so the locale-less path is '').
         alternates: buildAlternates(locale, ''),
@@ -61,6 +65,14 @@ export default async function HomePage({
         getFeaturedExperiences(locale as Locale),
     ]);
     const { home } = dict;
+    // Hero alt text from the media library, per locale. A second await rather
+    // than a member of the Promise.all above: the URL to look up comes out of
+    // `content`, so it cannot be requested until that resolves.
+    const heroSeo = await getMediaSeo([content.heroImage], locale as Locale);
+    const heroImageUrl = safeRemoteImage(content.heroImage);
+    const heroImageAlt = content.heroImage
+        ? (heroSeo.get(normalizeUrl(content.heroImage))?.altText ?? null)
+        : null;
     // Hero search + Popular are driven by the live destinations (name + slug).
     const islands = destinations.map(d => ({ name: d.name, slug: d.slug }));
     // "Explore islands" cards need the hero image + live tour count too.
@@ -167,7 +179,8 @@ export default async function HomePage({
         <>
             <Hero
                 dict={heroDict}
-                image={safeRemoteImage(content.heroImage)}
+                image={heroImageUrl}
+                imageAlt={heroImageAlt}
                 locale={locale as Locale}
                 destinations={islands}
                 search={{

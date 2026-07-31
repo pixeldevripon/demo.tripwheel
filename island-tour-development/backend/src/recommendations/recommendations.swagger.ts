@@ -54,19 +54,18 @@ export function ApiGetPublicRecommendationDocs() {
   return applyDecorators(
     ApiOperation({
       summary:
-        'Get the featured recommendation for a surface + locale (no auth)',
+        'Get the featured recommendations for a surface + locale (no auth)',
       description:
-        'Each surface renders ONE card, so this returns one recommendation: the ' +
-        'first enabled, complete one placed on that surface by displayOrder. Never ' +
-        '404s. `enabled` is the whole contract - false when none qualifies, with ' +
-        'every other field null, so the page hides the section. EXTERNAL cards link ' +
-        'off-site (`external: true`); INTERNAL cards are rendered from the live ' +
-        'entity and link same-tab via a site-relative path.',
+        'Each surface renders a short SECTION, so this returns up to 3 ' +
+        'recommendations: the enabled, complete ones placed on that surface, in ' +
+        'promotion order. Never 404s; an EMPTY ARRAY means the section hides. ' +
+        'EXTERNAL cards link off-site (`external: true`); INTERNAL cards are ' +
+        'rendered from the live entity and link same-tab via a site-relative path.',
     }),
     ApiResponse({
       status: 200,
-      description: 'Featured recommendation retrieved successfully',
-      type: PublicRecommendationResponseDto,
+      description: 'Featured recommendations retrieved successfully',
+      type: [PublicRecommendationResponseDto],
     }),
     ...commonErrors,
   );

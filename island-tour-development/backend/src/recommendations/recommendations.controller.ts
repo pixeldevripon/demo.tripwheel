@@ -17,33 +17,26 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Locale, Permission } from '@prisma/client';
 import {
-  CreateRecommendationCategoryDto,
   CreateRecommendationDto,
   RecommendationPublicQueryDto,
-  UpdateRecommendationCategoryDto,
   UpdateRecommendationDto,
   UpsertRecommendationTranslationDto,
 } from './dto/recommendation.dto';
-import { RecommendationCategoriesService } from './recommendation-categories.service';
 import { RecommendationsService } from './recommendations.service';
 import {
-  ApiCreateRecommendationCategoryDocs,
   ApiCreateRecommendationDocs,
-  ApiDeleteRecommendationCategoryDocs,
   ApiDeleteRecommendationDocs,
   ApiGetPublicRecommendationDocs,
   ApiGetRecommendationDocs,
   ApiGetRecommendationTranslationsDocs,
-  ApiListRecommendationCategoriesDocs,
   ApiListRecommendationsDocs,
-  ApiUpdateRecommendationCategoryDocs,
   ApiUpdateRecommendationDocs,
   ApiUpsertRecommendationTranslationDocs,
 } from './recommendations.swagger';
 
 /**
  * RecommendationsController - Island Tours' post-booking promo (thank-you page and
- * confirmation email), generalising the old Hotels feature.
+ * confirmation email).
  *
  * ## Access-Control Strategy
  *   - `GET /recommendations/public` is `@Public()`: the marketing site has no
@@ -52,16 +45,14 @@ import {
  *     marketing content, not platform configuration, so it sits with the homepage
  *     and the other editorial surfaces. Operators must never reach it.
  *
- * Route ordering: the static `public` and `categories` routes are declared BEFORE
- * the dynamic `:id` ones so `public`/`categories` is never read as an `:id`.
+ * The category is a fixed enum on the recommendation (not admin-managed), so there
+ * are no category routes. Route ordering: the static `public` route is declared
+ * BEFORE the dynamic `:id` ones.
  */
 @ApiTags('Recommendations')
 @Controller('recommendations')
 export class RecommendationsController {
-  constructor(
-    private readonly recommendations: RecommendationsService,
-    private readonly categories: RecommendationCategoriesService,
-  ) {}
+  constructor(private readonly recommendations: RecommendationsService) {}
 
   // ── Public read ─────────────────────────────────────────────────────────────
 
@@ -70,50 +61,6 @@ export class RecommendationsController {
   @ApiGetPublicRecommendationDocs()
   getPublic(@Query() query: RecommendationPublicQueryDto) {
     return this.recommendations.getFeatured(query.locale!, query.placement!);
-  }
-
-  // ── Categories (static prefix, declared before `:id`) ───────────────────────
-  // Category ids are NOT validated with ParseUUIDPipe: the seeded "Hotels"
-  // category ships with the fixed key `rec-cat-hotel` (not a uuid) so the seed and
-  // migration stay idempotent, and it must remain renameable. A bad id just 404s
-  // in the service.
-
-  @Get('categories')
-  @RequirePermissions(Permission.MANAGE_EDITORIAL)
-  @ApiListRecommendationCategoriesDocs()
-  listCategories() {
-    return this.categories.findAll();
-  }
-
-  @Post('categories')
-  @RequirePermissions(Permission.MANAGE_EDITORIAL)
-  @ApiCreateRecommendationCategoryDocs()
-  createCategory(
-    @Body() dto: CreateRecommendationCategoryDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.categories.create(dto, user.id);
-  }
-
-  @Patch('categories/:categoryId')
-  @RequirePermissions(Permission.MANAGE_EDITORIAL)
-  @ApiUpdateRecommendationCategoryDocs()
-  updateCategory(
-    @Param('categoryId') categoryId: string,
-    @Body() dto: UpdateRecommendationCategoryDto,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.categories.update(categoryId, dto, user.id);
-  }
-
-  @Delete('categories/:categoryId')
-  @RequirePermissions(Permission.MANAGE_EDITORIAL)
-  @ApiDeleteRecommendationCategoryDocs()
-  removeCategory(
-    @Param('categoryId') categoryId: string,
-    @AuthenticatedUser() user: TypedAuthUser,
-  ) {
-    return this.categories.remove(categoryId, user.id);
   }
 
   // ── Admin recommendations ────────────────────────────────────────────────────

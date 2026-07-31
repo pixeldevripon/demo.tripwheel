@@ -11,7 +11,10 @@ import {
   type TranslatableValue,
   type TranslationProvider,
 } from './providers/translation-provider.interface';
-import type { ContentEntityType } from './content-translation.constants';
+import {
+  MEDIA_BUCKET_KEYS,
+  type ContentEntityType,
+} from './content-translation.constants';
 
 /**
  * Orchestrates AI translation of one entity: collect units (registry) ->
@@ -76,6 +79,11 @@ function cacheTags(entityType: ContentEntityType, entityId: string): string[] {
       return ['homepage'];
     case 'recommendation':
       return ['recommendations'];
+    // Coarse, and it has to be: entity tables store only an image URL and no
+    // media id, so nothing here can know which tours, destinations or hubs
+    // render the assets this job just translated. There is no id to name.
+    case 'media':
+      return ['media-seo'];
   }
 }
 
@@ -269,6 +277,17 @@ export class ContentTranslationService {
       ...recommendations.map(({ id }): [ContentEntityType, string] => [
         'recommendation',
         id,
+      ]),
+      // All 16 media buckets, every night, unconditionally - not `limitPerType`
+      // rows like the entity types above. This is the ONLY path that drains a
+      // pre-existing library: the collector orders each bucket
+      // least-translated-first and takes MEDIA_BUCKET_SIZE, so a big backlog
+      // works through a bucket over successive nights. A bucket with nothing
+      // outstanding costs zero provider calls (sourceHash), so sweeping all 16
+      // is cheap even when there is no work.
+      ...MEDIA_BUCKET_KEYS.map((key): [ContentEntityType, string] => [
+        'media',
+        key,
       ]),
     ];
     for (const [entityType, entityId] of jobs) {
