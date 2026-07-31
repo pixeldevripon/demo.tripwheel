@@ -167,12 +167,17 @@ export function GlobalCalendar() {
 
     return (
         // At lg+ the page is exactly the leftover viewport: 100dvh minus the
-        // shell chrome (inset margins 8+8, pane p-4 16+16, page lg:p-8 32+32
-        // = 112px) minus the header var. The grid then FILLS it (flex-1)
-        // instead of guessing with a magic constant, so the calendar always
-        // ends at the viewport bottom. Below lg the page keeps its natural
-        // flow and the grid keeps its own height calc.
-        <div className='flex flex-col gap-4 lg:h-[calc(100dvh-var(--header-height)-112px)]'>
+        // header var minus 80px = the chrome ABOVE the calendar (inset margin
+        // 8 + pane p-4 16 + page lg:p-8 32) plus ONE 16px + 8px margin kept
+        // at the bottom - the page's own 56px of bottom padding is deliberately
+        // reclaimed (founder 2026-07-31: no unused band under the grid). The
+        // grid then FILLS the frame (flex-1), so the calendar always ends at
+        // the viewport bottom at every screen height. The -mb-8 gives back the
+        // 32px the taller frame borrows from the page's bottom padding - in
+        // normal flow the padding would otherwise re-appear BELOW the frame
+        // and put a scrollbar on the whole page. Below lg the page keeps its
+        // natural flow and the grid keeps its own height calc.
+        <div className='flex flex-col gap-4 lg:-mb-8 lg:h-[calc(100dvh-var(--header-height)-80px)]'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
             <div className='flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2'>
                 {/* ONE non-wrapping cluster: title + Today + arrows always
@@ -311,8 +316,10 @@ export function GlobalCalendar() {
             {/* ── Body: sidebar + grid ────────────────────────────────── */}
             <div className='flex items-start gap-4 lg:min-h-0 lg:flex-1'>
                 {/* Scrolls inside itself when the fixed page height leaves it
-                    less room than its stack needs (short viewports). */}
-                <aside className='hidden max-h-full w-60 shrink-0 flex-col gap-4 overflow-y-auto xl:flex'>
+                    less room than its stack needs (short viewports) - with the
+                    rail HIDDEN (wheel/trackpad still scrolls), so no scrollbar
+                    ever sits between the sidebar and the grid. */}
+                <aside className='hidden max-h-full w-60 shrink-0 flex-col gap-3 overflow-y-auto scrollbar-none xl:flex'>
                     {canShape && (
                         <AddEventPopover
                             date={anchor}
