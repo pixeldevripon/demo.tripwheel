@@ -173,8 +173,8 @@ export function ContentWorkspace({
      * card below and the save handler, so the key set has to agree with it:
      * seeding page-content keys for an entity that has none padded the "0 / N
      * fields" counter with three fields that are never rendered and can never be
-     * filled, so it could not reach 100%. The homepage and hotels are both in
-     * that position.
+     * filled, so it could not reach 100%. The homepage and recommendations are
+     * both in that position.
      */
     const hasPageContent = !!onSavePageContent;
 

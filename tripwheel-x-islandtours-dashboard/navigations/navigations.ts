@@ -198,14 +198,14 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
             {
-                // Our OWN places to stay, promoted on the thank-you page. They
-                // sit under Pages rather than Curate for the same reason the
-                // homepage does: this is "what does this page say", not "which
-                // marketplace entities do we push". They are also not operator
-                // listings - they never enter search, ranking or booking - so
-                // they belong nowhere near Tours.
-                title: 'Hotels',
-                url: 'hotels',
+                // Our post-booking recommendations, promoted on the thank-you
+                // page and confirmation email - our own tours/destinations, or
+                // external places to stay, eat and shop. They sit here rather
+                // than Curate for the same reason the homepage does: this is
+                // "what does this surface say", not "which marketplace entities
+                // do we push". They never enter search, ranking or booking.
+                title: 'Recommendations',
+                url: 'recommendations',
                 icon: Building06Icon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },

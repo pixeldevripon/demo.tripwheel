@@ -41,10 +41,10 @@ import {
 } from '@/hooks/destinations/use-destinations';
 import { useHomePageTranslations } from '@/hooks/home-page/use-home-page';
 import {
-    useHotels,
-    useHotelTranslations,
-} from '@/hooks/hotels/use-hotels';
-import { hotelName } from '@/types/hotel';
+    useRecommendations,
+    useRecommendationTranslations,
+} from '@/hooks/recommendations/use-recommendations';
+import { recommendationName } from '@/types/recommendation';
 import { useHubs, useHubTranslations } from '@/hooks/hubs/use-hubs';
 import {
     useAdminTrips,
@@ -159,29 +159,35 @@ function HomepageRow() {
 }
 
 /**
- * Our own hotels. A short unpaged list, like collections - there are a handful of
- * rows and the point of the screen is comparing them.
+ * Our post-booking recommendations. A short unpaged list, like collections -
+ * there are a handful of rows and the point of the screen is comparing them.
+ * INTERNAL picks appear too but carry no copy of their own; only EXTERNAL ones
+ * have words to translate.
  */
-function HotelsBody() {
-    const q = useHotels();
+function RecommendationsBody() {
+    const q = useRecommendations();
     return (
         <>
-            {(q.data ?? []).map(h => (
-                <HotelRow key={h.id} id={h.id} name={hotelName(h)} />
+            {(q.data ?? []).map(r => (
+                <RecommendationRow
+                    key={r.id}
+                    id={r.id}
+                    name={recommendationName(r)}
+                />
             ))}
             {q.isLoading && <SkeletonRows />}
             {!q.isLoading && (q.data ?? []).length === 0 && (
-                <EmptyRow label='No hotels yet.' />
+                <EmptyRow label='No recommendations yet.' />
             )}
         </>
     );
 }
 
-function HotelRow({ id, name }: { id: string; name: string }) {
-    const { data, isLoading } = useHotelTranslations(id);
+function RecommendationRow({ id, name }: { id: string; name: string }) {
+    const { data, isLoading } = useRecommendationTranslations(id);
     return (
         <MatrixRow
-            type='hotel'
+            type='recommendation'
             id={id}
             name={name}
             subtitle='Name, neighbourhood, pitch and button text'
@@ -479,9 +485,12 @@ export function TranslationMatrix() {
         );
     }
 
-    // Collections and hotels render every row; the homepage is one fixed row.
+    // Collections and recommendations render every row; the homepage is one
+    // fixed row.
     const paginated =
-        type !== 'collection' && type !== 'homepage' && type !== 'hotel';
+        type !== 'collection' &&
+        type !== 'homepage' &&
+        type !== 'recommendation';
 
     return (
         <div className='space-y-4'>
@@ -585,7 +594,9 @@ export function TranslationMatrix() {
                                 />
                             )}
                             {type === 'homepage' && <HomepageRow />}
-                            {type === 'hotel' && <HotelsBody />}
+                            {type === 'recommendation' && (
+                                <RecommendationsBody />
+                            )}
                         </tbody>
                     </table>
                 </div>

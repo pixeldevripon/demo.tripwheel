@@ -1,7 +1,7 @@
 import type { PermissionKey } from '@/lib/config/rbac';
 import type { Locale } from '@/lib/constants/locales';
 import { HOMEPAGE_DEFAULTS } from '@/lib/home-page/defaults';
-import { HOTEL_DEFAULTS } from '@/lib/hotels/defaults';
+import { RECOMMENDATION_DEFAULTS } from '@/lib/recommendations/defaults';
 
 /**
  * The translatable-surface registry (04 §3.3, Phase 17) - the keystone of the
@@ -26,7 +26,7 @@ export type TranslatableEntityType =
     | 'hub'
     | 'collection'
     | 'homepage'
-    | 'hotel';
+    | 'recommendation';
 
 export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     'tour',
@@ -37,9 +37,11 @@ export const TRANSLATABLE_ENTITY_TYPES: TranslatableEntityType[] = [
     // Singleton: exactly one row, keyed 'default'. It has no entity list to
     // page through and no page-content record - see HOMEPAGE_FIELDS.
     'homepage',
-    // Island Tours' own hotels, promoted on the thank-you page. A short unpaged
-    // list (like collections), with no page-content record and no FAQs.
-    'hotel',
+    // Island Tours' post-booking recommendations, promoted on the thank-you page
+    // and confirmation email. A short unpaged list (like collections), with no
+    // page-content record and no FAQs. Only EXTERNAL picks carry translatable
+    // copy; INTERNAL ones draw their words from the entity they point at.
+    'recommendation',
 ];
 
 export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
@@ -49,7 +51,7 @@ export const ENTITY_TYPE_LABELS: Record<TranslatableEntityType, string> = {
     category: 'Categories',
     collection: 'Collections',
     homepage: 'Homepage',
-    hotel: 'Hotels',
+    recommendation: 'Recommendations',
 };
 
 /**
@@ -75,7 +77,7 @@ export const TRANSLATABLE_ENTITY_PERMISSIONS: Record<
     category: ['EDIT_CATEGORY'],
     collection: ['EDIT_COLLECTION'],
     homepage: ['MANAGE_EDITORIAL'],
-    hotel: ['MANAGE_EDITORIAL'],
+    recommendation: ['MANAGE_EDITORIAL'],
 };
 
 export interface TranslatableFieldDef {
@@ -330,10 +332,12 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
 ];
 
 /**
- * One hotel's five copy fields (thank-you page promo).
+ * An EXTERNAL recommendation's five copy fields (thank-you page + confirmation
+ * email promo). INTERNAL recommendations have no copy of their own, so they never
+ * reach this form - their card is drawn from the entity they point at.
  *
- * NO SEO ENTRY, unlike HOMEPAGE_FIELDS: the card lives on the thank-you page,
- * which is `noindex` by design (it is keyed by an unguessable booking ref), so
+ * NO SEO ENTRY, unlike HOMEPAGE_FIELDS: the card lives on post-booking surfaces
+ * that are `noindex` by design (keyed by an unguessable booking ref), so
  * search-engine meta would be dead weight.
  *
  * NO NUMBERS EITHER: the rating, review count, sleeps and price are the same fact
@@ -346,13 +350,13 @@ export const HOMEPAGE_FIELDS: TranslatableFieldDef[] = [
  * enforced here, because the field genuinely is nullable and an admin retiring
  * the promo by emptying it is a legitimate thing to do.
  */
-export const HOTEL_FIELDS: TranslatableFieldDef[] = [
+export const RECOMMENDATION_FIELDS: TranslatableFieldDef[] = [
     {
         name: 'title',
-        label: 'Hotel name',
+        label: 'Name',
         kind: 'input',
         description:
-            'The heading on the card. Leave this empty and this hotel stops being promoted.',
+            'The heading on the card. Leave this empty and this recommendation stops being promoted.',
     },
     {
         name: 'areaLabel',
@@ -374,16 +378,16 @@ export const HOTEL_FIELDS: TranslatableFieldDef[] = [
         description:
             'The small caps line above the name. Leave empty to keep the ' +
             "site's own label, which is already translated everywhere.",
-        placeholder: HOTEL_DEFAULTS.eyebrow,
+        placeholder: RECOMMENDATION_DEFAULTS.eyebrow,
     },
     {
         name: 'ctaLabel',
         label: 'Button text',
         kind: 'input',
         description:
-            'Set this when the booking link is not Airbnb, so the button stops ' +
+            'Set this when the link is not Airbnb, so the button stops ' +
             'naming it. Empty keeps the translated default.',
-        placeholder: HOTEL_DEFAULTS.ctaLabel,
+        placeholder: RECOMMENDATION_DEFAULTS.ctaLabel,
     },
 ];
 
@@ -397,7 +401,7 @@ export const ENTITY_FIELDS: Record<
     hub: HUB_FIELDS,
     collection: COLLECTION_FIELDS,
     homepage: HOMEPAGE_FIELDS,
-    hotel: HOTEL_FIELDS,
+    recommendation: RECOMMENDATION_FIELDS,
 };
 
 /**

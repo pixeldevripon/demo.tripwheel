@@ -3,7 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
     Delete02Icon,
-    Hotel01Icon,
+    Image01Icon,
     LinkSquare02Icon,
     MoreHorizontalIcon,
     PencilEdit02Icon,
@@ -12,6 +12,7 @@ import {
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -26,76 +27,93 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { hotelName, type Hotel } from '@/types/hotel';
+import {
+    RECOMMENDATION_PLACEMENT_LABELS,
+    recommendationName,
+    type Recommendation,
+} from '@/types/recommendation';
 
-export interface MakeHotelColumnsOptions {
+export interface MakeRecommendationColumnsOptions {
     canManage: boolean;
-    onDelete: (hotel: Hotel) => void;
+    onDelete: (recommendation: Recommendation) => void;
 }
 
 /**
- * One STATUS column rather than three flags, because an admin is asking one
- * question: is this the hotel on the site, and if not, why not? The four answers
+ * One STATUS column rather than several flags, because an admin is asking one
+ * question: is this recommendation on the site, and if not, why not? The answers
  * are mutually exclusive and ordered by which explains the most.
  */
-function statusOf(hotel: Hotel): {
+function statusOf(rec: Recommendation): {
     label: string;
     variant: 'success' | 'warning' | 'neutral';
     hint: string;
 } {
-    if (hotel.isPromoted) {
+    if (rec.featuredPlacements.length > 0) {
+        const where = rec.featuredPlacements
+            .map((p) => RECOMMENDATION_PLACEMENT_LABELS[p].toLowerCase())
+            .join(' and ');
         return {
             label: 'On the site',
             variant: 'success',
-            hint: 'This is the hotel travellers see after booking.',
+            hint: `Shown on the ${where} after a booking.`,
         };
     }
-    if (!hotel.isEnabled) {
+    if (!rec.isEnabled) {
         return {
             label: 'Switched off',
             variant: 'neutral',
             hint: 'Not in the running. Switch it on to promote it.',
         };
     }
-    if (!hotel.isComplete) {
+    if (rec.placements.length === 0) {
+        return {
+            label: 'No surface',
+            variant: 'warning',
+            hint: 'Not assigned to any surface. Pick at least one to show it.',
+        };
+    }
+    if (!rec.isComplete) {
         return {
             label: 'Incomplete',
             variant: 'warning',
-            hint: 'Needs a photo, an English name and a booking link before it can show.',
+            hint:
+                rec.source === 'INTERNAL'
+                    ? 'Its linked entity no longer resolves.'
+                    : 'Needs a photo, an English name and a link before it can show.',
         };
     }
     return {
         label: 'Next in line',
         variant: 'neutral',
-        hint: 'Ready, but another hotel has a higher promotion priority.',
+        hint: 'Ready, but another recommendation has a higher promotion priority.',
     };
 }
 
-export function makeHotelColumns({
+export function makeRecommendationColumns({
     canManage,
     onDelete,
-}: MakeHotelColumnsOptions): ColumnDef<Hotel>[] {
+}: MakeRecommendationColumnsOptions): ColumnDef<Recommendation>[] {
     return [
         {
             id: 'photo',
             header: '',
             cell: ({ row }) => {
-                const { imageUrl } = row.original;
+                const rec = row.original;
                 // `bg-muted` on the container, not the image: an empty frame has
-                // to read as "no photo yet" rather than as a broken image, and a
-                // missing photo is the single most common reason a hotel is not
-                // being promoted.
+                // to read as "no photo yet" rather than as a broken image.
+                // INTERNAL rows draw their imagery live from the entity, so they
+                // legitimately have none here.
                 return (
                     <div className='flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted'>
-                        {imageUrl ? (
+                        {rec.imageUrl ? (
                             <img
-                                src={imageUrl}
+                                src={rec.imageUrl}
                                 alt=''
                                 className='size-full object-cover'
                             />
                         ) : (
                             <HugeiconsIcon
-                                icon={Hotel01Icon}
+                                icon={Image01Icon}
                                 className='size-4 text-muted-foreground'
                             />
                         )}
@@ -107,21 +125,44 @@ export function makeHotelColumns({
         },
         {
             id: 'name',
-            accessorFn: hotelName,
+            accessorFn: recommendationName,
             header: 'Name',
             cell: ({ row }) => {
-                const name = hotelName(row.original);
+                const name = recommendationName(row.original);
                 if (!canManage)
                     return <span className='text-sm font-medium'>{name}</span>;
                 return (
                     <Link
-                        href={`/hotels/${row.original.id}/edit`}
+                        href={`/recommendations/${row.original.id}/edit`}
                         className='text-sm font-medium hover:underline underline-offset-4'>
                         {name}
                     </Link>
                 );
             },
             enableSorting: true,
+        },
+        {
+            id: 'source',
+            header: 'Source',
+            cell: ({ row }) => (
+                <Badge variant='secondary'>
+                    {row.original.source === 'INTERNAL'
+                        ? 'Internal'
+                        : 'External'}
+                </Badge>
+            ),
+            enableSorting: false,
+            size: 100,
+        },
+        {
+            id: 'category',
+            header: 'Category',
+            cell: ({ row }) => (
+                <span className='text-xs text-muted-foreground'>
+                    {row.original.category?.name ?? 'Uncategorised'}
+                </span>
+            ),
+            enableSorting: false,
         },
         {
             id: 'status',
@@ -137,37 +178,10 @@ export function makeHotelColumns({
             enableSorting: false,
         },
         {
-            id: 'sleeps',
-            header: 'Sleeps',
-            cell: ({ row }) => (
-                <span className='text-xs text-muted-foreground'>
-                    {row.original.sleeps ?? '-'}
-                </span>
-            ),
-            enableSorting: false,
-            size: 80,
-        },
-        {
-            id: 'price',
-            header: 'Per night',
-            cell: ({ row }) => {
-                const { pricePerNight, currency } = row.original;
-                if (pricePerNight === null)
-                    return <span className='text-xs text-muted-foreground'>-</span>;
-                return (
-                    <span className='text-xs text-muted-foreground'>
-                        {/* The row's OWN currency - never a hardcoded symbol. */}
-                        {pricePerNight} {currency}
-                    </span>
-                );
-            },
-            enableSorting: false,
-        },
-        {
             id: 'actions',
             header: '',
             cell: ({ row }) => {
-                const hotel = row.original;
+                const rec = row.original;
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -180,22 +194,24 @@ export function makeHotelColumns({
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             {canManage && (
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/hotels/${hotel.id}/edit`}>
-                                        <HugeiconsIcon icon={PencilEdit02Icon} />
+                                    <Link
+                                        href={`/recommendations/${rec.id}/edit`}>
+                                        <HugeiconsIcon
+                                            icon={PencilEdit02Icon}
+                                        />
                                         Edit
                                     </Link>
                                 </DropdownMenuItem>
                             )}
-                            {/* The listing itself lives on someone else's site
-                                (Airbnb, Booking.com, ...) - we hold a link to it
-                                and nothing more, so "view" can only mean opening
-                                that. There is no on-site page to preview: the
-                                card renders on a thank-you page reachable only
-                                with a real booking reference. */}
-                            {hotel.bookingUrl && (
+                            {/* EXTERNAL picks live on someone else's site - we
+                                hold a link and nothing more, so "view" opens it.
+                                INTERNAL picks render on a thank-you page reachable
+                                only with a real booking reference, so there is
+                                nothing to preview. */}
+                            {rec.source === 'EXTERNAL' && rec.linkUrl && (
                                 <DropdownMenuItem asChild>
                                     <a
-                                        href={hotel.bookingUrl}
+                                        href={rec.linkUrl}
                                         target='_blank'
                                         rel='noopener noreferrer'>
                                         <HugeiconsIcon icon={LinkSquare02Icon} />
@@ -209,17 +225,16 @@ export function makeHotelColumns({
                                     {/* Seeded rows are undeletable - the API
                                         answers 403. Disabling it here with a
                                         reason beats letting an admin click into
-                                        an error, and mirrors how seeded
-                                        destinations behave. */}
+                                        an error. */}
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <span>
                                                 <DropdownMenuItem
                                                     className='text-destructive focus:text-destructive'
-                                                    disabled={hotel.isSeeded}
+                                                    disabled={rec.isSeeded}
                                                     onClick={() =>
-                                                        !hotel.isSeeded &&
-                                                        onDelete(hotel)
+                                                        !rec.isSeeded &&
+                                                        onDelete(rec)
                                                     }>
                                                     <HugeiconsIcon
                                                         icon={Delete02Icon}
@@ -228,10 +243,10 @@ export function makeHotelColumns({
                                                 </DropdownMenuItem>
                                             </span>
                                         </TooltipTrigger>
-                                        {hotel.isSeeded && (
+                                        {rec.isSeeded && (
                                             <TooltipContent>
-                                                Seeded hotels cannot be deleted.
-                                                Switch it off instead.
+                                                Seeded recommendations cannot be
+                                                deleted. Switch it off instead.
                                             </TooltipContent>
                                         )}
                                     </Tooltip>
