@@ -389,9 +389,20 @@ export function TravelerLogin({
                         className='transition-colors hover:text-it-primary'>
                         {dict.privacy}
                     </Link>
-                    {/* Help page doesn't exist yet - deactivated like the main
-                        footer (plain text, no 404) until it's built. */}
-                    <span className='cursor-default'>{dict.help}</span>
+                    {/* No help page yet, so Help routes to WhatsApp (founder
+                        2026-07-30) - the same dashboard-managed number as the
+                        header pill. Plain text when the chat is disabled. */}
+                    {whatsappHref ? (
+                        <a
+                            href={whatsappHref}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='transition-colors hover:text-it-primary'>
+                            {dict.help}
+                        </a>
+                    ) : (
+                        <span className='cursor-default'>{dict.help}</span>
+                    )}
                 </div>
             </footer>
         </div>
