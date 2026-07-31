@@ -3,51 +3,45 @@
 import { EntityTabs } from '@/components/common/entity-tabs';
 import { CalendarFeedsForm } from './calendar-feeds-form';
 import { CustomScriptsForm } from './custom-scripts-form';
-import { InstagramForm } from './instagram-form';
-import { IntegrationsForm } from './integrations-form';
-import { PaymentsForm } from './payments-form';
+import { IntegrationSettings } from './integration-settings';
 import { ReviewRequestsForm } from './review-requests-form';
 import { ReviewsForm } from './reviews-form';
 import { SeoForm } from './seo-form';
 import { SiteInfoForm } from './site-info-form';
-import { SocialMediaForm } from './social-media-form';
 
 /**
- * Admin settings sections, ordered outward from the site itself: what the site
- * IS (Site - identity plus the footer's social links, SEO), where it shows up
- * (Instagram - the brand grid on destination pages, its own tab because it is
- * a curation surface, not a credential form), then what it runs on (Payments,
- * Integrations, Reviews - the third-party review feed + the post-tour review
- * request cadence).
+ * Admin settings sections, reorganized 2026-07-31 (founder annotation): six
+ * top-level tabs instead of eight. Everything that is a THIRD-PARTY hookup -
+ * tracking, payments, the social feed - now lives under one "Integration"
+ * tab with its own sub-tabs (see `IntegrationSettings`), so the top row reads
+ * as what the site IS (Site, SEO), what it plugs into (Integration), and the
+ * operational surfaces (Reviews, iCal, Custom Code).
  *
  * The FIRST tab is the no-`?tab=` default, so Site leads: it is the one every
  * admin opens, and it is where `?tab=general` already pointed. Tabs are
  * URL-synced and stay mounted so switching sections never discards unsaved
  * edits.
  *
- * Social folded INTO Site on 2026-07-28 - six optional footer URLs did not
- * earn a tab of their own once the legal entity left the page. Two stacked
- * `SettingsCard`s in one tab is the house pattern (Reviews does the same);
- * each keeps its own Save, so nothing about the write path changes.
+ * `SocialMediaForm` (the footer's six social profile URLs) moved from Site to
+ * Integration → Social in the same reorg - it now sits with the Instagram
+ * feed it is conceptually part of ("everything related to social").
  *
- * The platform's legal entity ("Company Information") LEFT this page the same
- * day - it now lives on `/profile` under Company, in the profile page's flat
- * block layout. Its old tab values, and `social`, stay aliased so bookmarked
- * `?tab=social` / `company` / `legal-entity` / `account` links still resolve
- * to a real tab instead of falling through to the first one.
+ * "Custom Code" is the renamed Scripts tab - same `CustomScriptsForm`, new
+ * value `custom-code` with `scripts` aliased so old bookmarks keep working.
+ * It sits LAST rather than next to SEO now, per the founder's ordering; it is
+ * still a top-level tab of its own (it executes ARBITRARY THIRD-PARTY CODE on
+ * every page including checkout, so it must stay a surface you can audit at a
+ * glance, never a card folded into SEO).
  *
- * `reviews` was previously ALIASED to `integrations` and is now a real tab.
- * The alias had to go: EntityTabs resolves aliases before it looks the value
- * up, so leaving it would have made the new tab unreachable by URL. Legacy
- * `?tab=reviews` links still land on the platform-reviews form they were
- * written for - it just has a tab of its own now.
+ * ## Alias rules (EntityTabs resolves these BEFORE lookup)
  *
- * `scripts` sits directly after SEO rather than folded into it. It emits into
- * the same place SEO does (the public head and body), so that is its nearest
- * neighbour and where an admin already goes looking for the GTM field - but it
- * is the one surface here that executes ARBITRARY THIRD-PARTY CODE on every
- * page including checkout, and a thing you audit should not be a card you have
- * to scroll to find.
+ * - `general` / `company` / `legal-entity` / `account` → `site` (legacy Site
+ *   sub-surfaces that left this page for `/profile`).
+ * - `integrations` / `payments` / `instagram` / `social` → `integration`. The
+ *   raw legacy value STAYS in the URL, and `IntegrationSettings` reads it to
+ *   open the matching sub-tab - so `?tab=payments` (the setup-guide link)
+ *   still lands on the payment form, one level deeper.
+ * - `scripts` → `custom-code`.
  *
  * `calendar` is the one tab here that is NOT platform-wide: an admin holds
  * MANAGE_AVAILABILITY and (per CLAUDE.md rule 19) is auto-provisioned an
@@ -55,7 +49,6 @@ import { SocialMediaForm } from './social-media-form';
  * every operator's. It is here rather than only on the operator page because
  * ADMIN is a strict superset (rule 3) and this branch renders INSTEAD of
  * `OperatorSettings`, so leaving it out hid the feature from admins entirely.
- * It sits last: it is the least platform-shaped thing on the page.
  */
 export function AdminSettings() {
     return (
@@ -63,42 +56,26 @@ export function AdminSettings() {
             basePath='/settings'
             aliases={{
                 general: 'site',
-                social: 'site',
                 company: 'site',
                 'legal-entity': 'site',
                 account: 'site',
+                integrations: 'integration',
+                payments: 'integration',
+                instagram: 'integration',
+                social: 'integration',
+                scripts: 'custom-code',
             }}
             tabs={[
                 {
                     value: 'site',
                     label: 'Site',
-                    content: (
-                        <div className='space-y-6'>
-                            <SiteInfoForm />
-                            <SocialMediaForm />
-                        </div>
-                    ),
+                    content: <SiteInfoForm />,
                 },
                 { value: 'seo', label: 'SEO', content: <SeoForm /> },
                 {
-                    value: 'scripts',
-                    label: 'Scripts',
-                    content: <CustomScriptsForm />,
-                },
-                {
-                    value: 'instagram',
-                    label: 'Instagram',
-                    content: <InstagramForm />,
-                },
-                {
-                    value: 'payments',
-                    label: 'Payments',
-                    content: <PaymentsForm />,
-                },
-                {
-                    value: 'integrations',
-                    label: 'Integrations',
-                    content: <IntegrationsForm />,
+                    value: 'integration',
+                    label: 'Integration',
+                    content: <IntegrationSettings />,
                 },
                 {
                     value: 'reviews',
@@ -112,11 +89,15 @@ export function AdminSettings() {
                 },
                 {
                     value: 'calendar',
-                    label: 'iCal sync',
+                    label: 'iCal',
                     content: <CalendarFeedsForm />,
+                },
+                {
+                    value: 'custom-code',
+                    label: 'Custom Code',
+                    content: <CustomScriptsForm />,
                 },
             ]}
         />
     );
 }
-
