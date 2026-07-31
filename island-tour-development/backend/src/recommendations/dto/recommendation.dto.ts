@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Currency,
   Locale,
+  RecommendationCategory,
   RecommendationPlacement,
   RecommendationRefType,
   RecommendationSource,
@@ -186,55 +187,6 @@ export class RecommendationTranslationEntryDto {
   isMachineTranslated!: boolean;
 }
 
-/** A category as returned to the dashboard. */
-export class RecommendationCategoryResponseDto {
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
-  id!: string;
-
-  @ApiProperty({ example: 'Hotels' })
-  name!: string;
-
-  @ApiProperty({ example: 'hotels' })
-  slug!: string;
-
-  @ApiPropertyOptional({ example: 'building', nullable: true })
-  icon!: string | null;
-
-  @ApiProperty({ example: 0 })
-  displayOrder!: number;
-
-  @ApiProperty({
-    example: true,
-    description: 'Seeded categories cannot be deleted (403).',
-  })
-  isSeeded!: boolean;
-
-  @ApiProperty({
-    example: 2,
-    description: 'How many recommendations are filed under this category.',
-  })
-  recommendationCount!: number;
-}
-
-/** A category slimmed to what a recommendation row nests. */
-export class RecommendationCategoryRefDto {
-  @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
-  id!: string;
-
-  @ApiProperty({ example: 'Hotels' })
-  name!: string;
-
-  @ApiProperty({ example: 'hotels' })
-  slug!: string;
-
-  @ApiPropertyOptional({
-    example: 'TreePalm',
-    nullable: true,
-    description: 'Icon name for the list (from the category icon picker).',
-  })
-  icon!: string | null;
-}
-
 /** The admin view of one recommendation: the record plus every stored locale. */
 export class RecommendationResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
@@ -246,8 +198,12 @@ export class RecommendationResponseDto {
   })
   source!: RecommendationSource;
 
-  @ApiPropertyOptional({ type: RecommendationCategoryRefDto, nullable: true })
-  category!: RecommendationCategoryRefDto | null;
+  @ApiProperty({
+    enum: RecommendationCategory,
+    example: RecommendationCategory.HOTEL,
+    description: 'Fixed category - decides the dashboard fields + icon.',
+  })
+  category!: RecommendationCategory;
 
   @ApiProperty({ example: true })
   isEnabled!: boolean;
@@ -381,14 +337,13 @@ export class UpdateRecommendationDto {
   source?: RecommendationSource;
 
   @ApiPropertyOptional({
-    nullable: true,
-    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    description: 'The category to file this under. Null = uncategorised.',
+    enum: RecommendationCategory,
+    example: RecommendationCategory.HOTEL,
+    description: 'The fixed category - decides the dashboard fields + icon.',
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(SLUG_MAX_LENGTH)
-  categoryId?: string | null;
+  @IsEnum(RecommendationCategory)
+  category?: RecommendationCategory;
 
   @ApiPropertyOptional({
     example: true,
@@ -591,60 +546,34 @@ export class UpsertRecommendationTranslationDto {
   isMachineTranslated?: boolean = false;
 }
 
-// ── Category request DTOs ─────────────────────────────────────────────────────
+// ── Display settings (per-surface card caps) ──────────────────────────────────
 
-export class CreateRecommendationCategoryDto {
-  @ApiProperty({ example: 'Restaurants' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(SHORT_TEXT_MAX_LENGTH)
-  name!: string;
+const MIN_SURFACE_LIMIT = 1;
+const MAX_SURFACE_LIMIT = 10;
 
-  @ApiPropertyOptional({
-    example: 'restaurants',
-    description: 'URL-safe key. Defaults to a slug of the name.',
+export class RecommendationSettingsResponseDto {
+  @ApiProperty({ example: 3, description: 'Max cards on the thank-you page.' })
+  thankYouPageLimit!: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Max cards in the confirmation email.',
   })
-  @IsOptional()
-  @IsString()
-  @MaxLength(SLUG_MAX_LENGTH)
-  slug?: string;
-
-  @ApiPropertyOptional({ example: 'utensils', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MaxLength(SHORT_TEXT_MAX_LENGTH)
-  icon?: string | null;
-
-  @ApiPropertyOptional({ example: 0 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  displayOrder?: number;
+  confirmationEmailLimit!: number;
 }
 
-export class UpdateRecommendationCategoryDto {
-  @ApiPropertyOptional({ example: 'Restaurants' })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(SHORT_TEXT_MAX_LENGTH)
-  name?: string;
-
-  @ApiPropertyOptional({ example: 'restaurants' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(SLUG_MAX_LENGTH)
-  slug?: string;
-
-  @ApiPropertyOptional({ example: 'utensils', nullable: true })
-  @IsOptional()
-  @IsString()
-  @MaxLength(SHORT_TEXT_MAX_LENGTH)
-  icon?: string | null;
-
-  @ApiPropertyOptional({ example: 0 })
+export class UpdateRecommendationSettingsDto {
+  @ApiPropertyOptional({ example: 3, minimum: 1, maximum: 10 })
   @IsOptional()
   @IsInt()
-  @Min(0)
-  displayOrder?: number;
+  @Min(MIN_SURFACE_LIMIT)
+  @Max(MAX_SURFACE_LIMIT)
+  thankYouPageLimit?: number;
+
+  @ApiPropertyOptional({ example: 2, minimum: 1, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(MIN_SURFACE_LIMIT)
+  @Max(MAX_SURFACE_LIMIT)
+  confirmationEmailLimit?: number;
 }

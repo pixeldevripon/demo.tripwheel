@@ -23,6 +23,7 @@ import {
 import {
   CreateRecommendationDto,
   UpdateRecommendationDto,
+  UpdateRecommendationSettingsDto,
   UpsertRecommendationTranslationDto,
 } from './dto/recommendation.dto';
 
@@ -62,11 +63,19 @@ const ALL_PLACEMENTS: RecommendationPlacement[] = [
 ];
 
 /**
- * How many recommendations a single surface shows. Each surface renders a short
- * SECTION - up to this many enabled, complete, placed cards in promotion order;
- * anything past it is "next in line".
+ * How many recommendations a surface shows (a short SECTION - up to this many
+ * enabled, complete, placed cards in promotion order; the rest are "next in line").
+ * Admin-configurable per surface via `RecommendationSettings`; these are the
+ * fallback defaults, and the min/max the stored value is clamped to.
  */
-const FEATURED_LIMIT = 3;
+const DEFAULT_LIMITS: Record<RecommendationPlacement, number> = {
+  [RecommendationPlacement.THANK_YOU_PAGE]: 3,
+  [RecommendationPlacement.CONFIRMATION_EMAIL]: 2,
+};
+const MIN_LIMIT = 1;
+const MAX_LIMIT = 10;
+
+type PlacementLimits = Record<RecommendationPlacement, number>;
 
 /**
  * Which recommendation each surface features: lowest `displayOrder` wins, `id`
@@ -120,8 +129,13 @@ export interface TranslationRow {
   isMachineTranslated: boolean;
 }
 
-/** The renderable pieces of a card, once the gate has passed. */
-interface ResolvedCard {
+/**
+ * The renderable pieces of a card, once the gate has passed. EXPORTED so the
+ * public read's array return type can name it - an unexported local interface
+ * makes the controller method a TS4053 at declaration-emit time (same reason
+ * `RecommendationRow`/`TranslationRow` are exported).
+ */
+export interface ResolvedCard {
   external: boolean;
   imageUrl: string;
   linkUrl: string;
@@ -161,26 +175,30 @@ export class RecommendationsService {
    * resolves live (archived/deleted).
    */
   async getFeatured(locale: Locale, placement: RecommendationPlacement) {
-    const rows = await this.prisma.recommendation.findMany({
-      where: { isEnabled: true, placements: { has: placement } },
-      select: {
-        ...BASE_SELECT,
-        // Both locales: `mergeTranslation` fills any field the locale row leaves
-        // blank from English.
-        translations: {
-          where: { locale: { in: [locale, Locale.en] } },
-          select: TRANSLATION_SELECT,
+    const [limits, rows] = await Promise.all([
+      this.resolveLimits(),
+      this.prisma.recommendation.findMany({
+        where: { isEnabled: true, placements: { has: placement } },
+        select: {
+          ...BASE_SELECT,
+          // Both locales: `mergeTranslation` fills any field the locale row leaves
+          // blank from English.
+          translations: {
+            where: { locale: { in: [locale, Locale.en] } },
+            select: TRANSLATION_SELECT,
+          },
         },
-      },
-      orderBy: PROMOTION_ORDER,
-    });
+        orderBy: PROMOTION_ORDER,
+      }),
+    ]);
 
+    const limit = limits[placement];
     const cards: Array<{ enabled: true; locale: Locale } & ResolvedCard> = [];
     for (const row of rows) {
       const card = await this.buildCard(row, row.translations, locale);
       if (card) {
         cards.push({ enabled: true, locale, ...card });
-        if (cards.length >= FEATURED_LIMIT) break;
+        if (cards.length >= limit) break;
       }
     }
     return cards;
@@ -221,6 +239,11 @@ export class RecommendationsService {
         linkUrl: resolved.linkPath,
         title: resolved.title,
         ...facts,
+        // An internal pick's numeric facts come from the LIVE entity (a tour's
+        // rating + price), not the row - those columns are for external content.
+        rating: resolved.rating ?? facts.rating,
+        priceAmount: resolved.priceAmount ?? facts.priceAmount,
+        currency: resolved.currency ?? facts.currency,
       };
     }
 
@@ -249,6 +272,11 @@ export class RecommendationsService {
     imageUrl: string | null;
     title: string;
     linkPath: string;
+    // A TOUR pick also carries its live rating + "from" price, so the card is not
+    // a bare photo; the other entity kinds have no natural rating/price.
+    rating?: number | null;
+    priceAmount?: number | null;
+    currency?: Currency;
   } | null> {
     switch (refType) {
       case RecommendationRefType.TOUR: {
@@ -261,6 +289,9 @@ export class RecommendationsService {
             isActive: true,
             isBookable: true,
             ogImage: true,
+            aggregateRating: true,
+            priceFrom: true,
+            defaultCurrency: true,
             destination: { select: { slug: true, isActive: true } },
             images: { where: { isHero: true }, take: 1, select: { url: true } },
           },
@@ -278,6 +309,9 @@ export class RecommendationsService {
           imageUrl: t.images[0]?.url ?? t.ogImage ?? null,
           title: t.name,
           linkPath: `/${t.destination.slug}/${t.slug}`,
+          rating: t.aggregateRating,
+          priceAmount: t.priceFrom ? t.priceFrom.toNumber() : null,
+          currency: t.defaultCurrency,
         };
       }
       case RecommendationRefType.DESTINATION: {
@@ -359,8 +393,11 @@ export class RecommendationsService {
    * row-by-row flag would show several all claiming to be live.
    */
   async findAll() {
-    const described = await this.describeAll();
-    const featured = this.computeFeatured(described);
+    const [described, limits] = await Promise.all([
+      this.describeAll(),
+      this.resolveLimits(),
+    ]);
+    const featured = this.computeFeatured(described, limits);
     return described.map(({ row, card }) =>
       this.toAdminShape(row, card, featured),
     );
@@ -369,12 +406,66 @@ export class RecommendationsService {
   async findOne(id: string) {
     // Built on the same list as findAll: whether THIS row wins a surface is
     // decided against the others, and one implementation keeps the two in step.
-    const described = await this.describeAll();
+    const [described, limits] = await Promise.all([
+      this.describeAll(),
+      this.resolveLimits(),
+    ]);
     const found = described.find((d) => d.row.id === id);
     if (!found) throw new NotFoundException(`Recommendation ${id} not found`);
 
-    const featured = this.computeFeatured(described);
+    const featured = this.computeFeatured(described, limits);
     return this.toAdminShape(found.row, found.card, featured);
+  }
+
+  // ── Display settings (per-surface card caps) ────────────────────────────────
+
+  /** The admin-set caps, seeding the singleton on first read. */
+  async getSettings() {
+    return this.prisma.recommendationSettings.upsert({
+      where: { id: 'default' },
+      create: { id: 'default' },
+      update: {},
+      select: { thankYouPageLimit: true, confirmationEmailLimit: true },
+    });
+  }
+
+  async updateSettings(dto: UpdateRecommendationSettingsDto, adminId: string) {
+    const data = {
+      ...(dto.thankYouPageLimit !== undefined && {
+        thankYouPageLimit: dto.thankYouPageLimit,
+      }),
+      ...(dto.confirmationEmailLimit !== undefined && {
+        confirmationEmailLimit: dto.confirmationEmailLimit,
+      }),
+    };
+    const row = await this.prisma.recommendationSettings.upsert({
+      where: { id: 'default' },
+      create: { id: 'default', ...data },
+      update: data,
+      select: { thankYouPageLimit: true, confirmationEmailLimit: true },
+    });
+    this.logger.log(`Admin ${adminId} updated recommendation display settings`);
+    return row;
+  }
+
+  /** The per-surface caps, clamped to [MIN_LIMIT, MAX_LIMIT], defaults on absence. */
+  private async resolveLimits(): Promise<PlacementLimits> {
+    const row = await this.prisma.recommendationSettings.findUnique({
+      where: { id: 'default' },
+      select: { thankYouPageLimit: true, confirmationEmailLimit: true },
+    });
+    const clamp = (value: number | undefined, fallback: number) =>
+      Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, value ?? fallback));
+    return {
+      [RecommendationPlacement.THANK_YOU_PAGE]: clamp(
+        row?.thankYouPageLimit,
+        DEFAULT_LIMITS[RecommendationPlacement.THANK_YOU_PAGE],
+      ),
+      [RecommendationPlacement.CONFIRMATION_EMAIL]: clamp(
+        row?.confirmationEmailLimit,
+        DEFAULT_LIMITS[RecommendationPlacement.CONFIRMATION_EMAIL],
+      ),
+    };
   }
 
   async create(dto: CreateRecommendationDto, adminId: string) {
@@ -650,6 +741,7 @@ export class RecommendationsService {
       };
       card: ResolvedCard | null;
     }>,
+    limits: PlacementLimits,
   ): Map<RecommendationPlacement, Set<string>> {
     const featured = new Map<RecommendationPlacement, Set<string>>();
     for (const placement of ALL_PLACEMENTS) {
@@ -657,7 +749,7 @@ export class RecommendationsService {
       for (const { row, card } of described) {
         if (row.isEnabled && !!card && row.placements.includes(placement)) {
           shown.add(row.id);
-          if (shown.size >= FEATURED_LIMIT) break;
+          if (shown.size >= limits[placement]) break;
         }
       }
       featured.set(placement, shown);

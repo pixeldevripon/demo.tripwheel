@@ -1,6 +1,5 @@
 import {
   BadRequestErrorDto,
-  ConflictErrorDto,
   ForbiddenErrorDto,
   InternalServerErrorDto,
   NotFoundErrorDto,
@@ -10,8 +9,8 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   PublicRecommendationResponseDto,
-  RecommendationCategoryResponseDto,
   RecommendationResponseDto,
+  RecommendationSettingsResponseDto,
   RecommendationTranslationEntryDto,
 } from './dto/recommendation.dto';
 
@@ -178,6 +177,37 @@ export function ApiGetRecommendationTranslationsDocs() {
   );
 }
 
+export function ApiGetRecommendationSettingsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Get the per-surface card caps (admin)',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Settings retrieved successfully',
+      type: RecommendationSettingsResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
+export function ApiUpdateRecommendationSettingsDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Update the per-surface card caps (admin)',
+      description:
+        'How many recommendation cards the thank-you page and the confirmation ' +
+        'email each show (1-10). Takes effect on the next cache bust.',
+    }),
+    ApiResponse({
+      status: 200,
+      description: 'Settings updated successfully',
+      type: RecommendationSettingsResponseDto,
+    }),
+    ...adminErrors,
+  );
+}
+
 export function ApiUpsertRecommendationTranslationDocs() {
   return applyDecorators(
     ApiOperation({
@@ -195,74 +225,5 @@ export function ApiUpsertRecommendationTranslationDocs() {
     }),
     ...adminErrors,
     notFound,
-  );
-}
-
-// ── Categories ────────────────────────────────────────────────────────────────
-
-const categoryNotFound = ApiResponse({
-  status: 404,
-  description: 'Category not found',
-  type: NotFoundErrorDto,
-});
-
-export function ApiListRecommendationCategoriesDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'List recommendation categories (admin)' }),
-    ApiResponse({
-      status: 200,
-      description: 'Categories retrieved successfully',
-      type: [RecommendationCategoryResponseDto],
-    }),
-    ...adminErrors,
-  );
-}
-
-export function ApiCreateRecommendationCategoryDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Create a recommendation category (admin)' }),
-    ApiResponse({
-      status: 201,
-      description: 'Category created successfully',
-      type: RecommendationCategoryResponseDto,
-    }),
-    ApiResponse({
-      status: 409,
-      description: 'Conflict - a category with that slug already exists',
-      type: ConflictErrorDto,
-    }),
-    ...adminErrors,
-  );
-}
-
-export function ApiUpdateRecommendationCategoryDocs() {
-  return applyDecorators(
-    ApiOperation({ summary: 'Update a recommendation category (admin)' }),
-    ApiResponse({
-      status: 200,
-      description: 'Category updated successfully',
-      type: RecommendationCategoryResponseDto,
-    }),
-    ApiResponse({
-      status: 409,
-      description: 'Conflict - a category with that slug already exists',
-      type: ConflictErrorDto,
-    }),
-    ...adminErrors,
-    categoryNotFound,
-  );
-}
-
-export function ApiDeleteRecommendationCategoryDocs() {
-  return applyDecorators(
-    ApiOperation({
-      summary: 'Delete a recommendation category (admin)',
-      description:
-        'Recommendations filed under it fall back to uncategorised (FK SetNull). ' +
-        'SEEDED categories are refused with a 403.',
-    }),
-    ApiResponse({ status: 200, description: 'Category deleted successfully' }),
-    ...adminErrors,
-    categoryNotFound,
   );
 }

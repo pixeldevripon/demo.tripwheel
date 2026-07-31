@@ -37,7 +37,10 @@ function createMockPrisma() {
       findMany: jest.fn(),
       upsert: jest.fn(),
     },
-    recommendationCategory: { findUnique: jest.fn() },
+    recommendationSettings: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+    },
     tour: { findUnique: jest.fn() },
     destination: { findUnique: jest.fn() },
     collection: { findUnique: jest.fn() },
@@ -50,7 +53,7 @@ function externalRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'rec-ext',
     source: RecommendationSource.EXTERNAL,
-    categoryId: null,
+    category: 'OTHER',
     isEnabled: true,
     displayOrder: 0,
     isSeeded: false,
@@ -83,7 +86,7 @@ function internalRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 'rec-int',
     source: RecommendationSource.INTERNAL,
-    categoryId: null,
+    category: 'OTHER',
     isEnabled: true,
     displayOrder: 0,
     isSeeded: false,
@@ -147,7 +150,8 @@ describe('RecommendationsService', () => {
       expect(res[0].title).toBe('Palm Suite');
     });
 
-    it('caps the list at FEATURED_LIMIT (3)', async () => {
+    it('caps the list at the default limit (3) when no setting is stored', async () => {
+      prisma.recommendationSettings.findUnique.mockResolvedValue(null);
       prisma.recommendation.findMany.mockResolvedValue([
         externalRow({ id: 'a', displayOrder: 0 }),
         externalRow({ id: 'b', displayOrder: 1 }),
@@ -156,6 +160,19 @@ describe('RecommendationsService', () => {
       ]);
       const res = await service.getFeatured('en', THANK_YOU_PAGE);
       expect(res).toHaveLength(3);
+    });
+
+    it('honours the admin-set per-surface cap', async () => {
+      prisma.recommendationSettings.findUnique.mockResolvedValue({
+        thankYouPageLimit: 1,
+        confirmationEmailLimit: 2,
+      });
+      prisma.recommendation.findMany.mockResolvedValue([
+        externalRow({ id: 'a', displayOrder: 0 }),
+        externalRow({ id: 'b', displayOrder: 1 }),
+      ]);
+      const res = await service.getFeatured('en', THANK_YOU_PAGE);
+      expect(res).toHaveLength(1);
     });
 
     it('filters by placement in the query (has)', async () => {
@@ -264,7 +281,7 @@ describe('RecommendationsService', () => {
       // findOne() re-reads via describeAll() -> findMany, so the created row must
       // be discoverable there.
       prisma.recommendation.findMany.mockResolvedValue([
-        { ...externalRow({ id: 'new-id' }), category: null },
+        { ...externalRow({ id: 'new-id' }) },
       ]);
     });
 
@@ -310,20 +327,6 @@ describe('RecommendationsService', () => {
             source: RecommendationSource.INTERNAL,
             refType: RecommendationRefType.TOUR,
             refId: 'ghost',
-          },
-          'admin',
-        ),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('rejects a non-existent categoryId with 400', async () => {
-      prisma.recommendationCategory.findUnique.mockResolvedValue(null);
-      await expect(
-        service.create(
-          {
-            source: RecommendationSource.EXTERNAL,
-            title: 'X',
-            categoryId: 'nope',
           },
           'admin',
         ),
@@ -418,8 +421,8 @@ describe('RecommendationsService', () => {
       // Two complete rows on the same surface: both fit under the cap of 3, so
       // both are "on the site".
       prisma.recommendation.findMany.mockResolvedValue([
-        { ...externalRow({ id: 'a', displayOrder: 0 }), category: null },
-        { ...externalRow({ id: 'b', displayOrder: 1 }), category: null },
+        { ...externalRow({ id: 'a', displayOrder: 0 }) },
+        { ...externalRow({ id: 'b', displayOrder: 1 }) },
       ]);
       const res = await service.findAll();
       expect(res.find((r) => r.id === 'a')?.featuredPlacements).toEqual([
@@ -432,10 +435,9 @@ describe('RecommendationsService', () => {
 
     it('pushes rows past the cap to "next in line" (empty featuredPlacements)', async () => {
       prisma.recommendation.findMany.mockResolvedValue(
-        ['a', 'b', 'c', 'd'].map((id, i) => ({
-          ...externalRow({ id, displayOrder: i }),
-          category: null,
-        })),
+        ['a', 'b', 'c', 'd'].map((id, i) =>
+          externalRow({ id, displayOrder: i }),
+        ),
       );
       const res = await service.findAll();
       // a,b,c are the top 3; d falls to next in line.

@@ -1,33 +1,28 @@
 // DEMO SEED — post-booking recommendations.
 //
 // Populates the Recommendations module with VARIETY so the dashboard list and the
-// public cards have realistic content to render: external picks (hotel, restaurant,
-// car rental, shop) across several categories, plus internal picks pointing at demo
-// tours / destinations / collections / hubs. Idempotent (deterministic ids, upsert)
-// and removable via cleanDemo().
+// public cards have realistic content: external picks across many category enum
+// values (stays, food, transport, shopping, activities, nightlife…), plus internal
+// picks pointing at demo tours / destinations / collections / hubs. Idempotent
+// (deterministic ids + upsert) and removable via cleanRecommendations().
 //
-// Depends on the base seed (the "Hotels" category + destinations + hubs) and the
-// demo tours + collections (run earlier in runDemoSeed).
+// Run on its own:  pnpm prisma:seed:recommendations
+//
+// NOTE: only the facts RELEVANT to a category are set on each row (a stay has
+// sleeps; a restaurant does not), because the public card renders whatever facts
+// are non-null. The dashboard form enforces the same relevance on save.
 
 import {
   Currency,
+  RecommendationCategory,
   RecommendationPlacement,
   RecommendationRefType,
   RecommendationSource,
 } from '@prisma/client';
 import { demoId, log, photo, prisma, section } from './_shared';
+import type { PhotoName } from './_shared';
 
 const { THANK_YOU_PAGE, CONFIRMATION_EMAIL } = RecommendationPlacement;
-
-/** Demo categories (upserted by slug). Hotels already exists from the base seed. */
-const DEMO_CATEGORIES = [
-  { slug: 'restaurants', name: 'Restaurants', displayOrder: 1 },
-  { slug: 'car-rental', name: 'Car rental', displayOrder: 2 },
-  { slug: 'shops', name: 'Shops', displayOrder: 3 },
-  { slug: 'experiences', name: 'Experiences', displayOrder: 4 },
-] as const;
-
-export const DEMO_REC_CATEGORY_SLUGS = DEMO_CATEGORIES.map((c) => c.slug);
 
 type EnCopy = {
   title: string;
@@ -39,13 +34,13 @@ type EnCopy = {
 
 type DemoRec = {
   key: string;
-  categorySlug: string;
+  category: RecommendationCategory;
   source: RecommendationSource;
   isEnabled?: boolean;
   displayOrder: number;
   placements: RecommendationPlacement[];
   // external
-  imageUrl?: string;
+  photo?: PhotoName;
   linkUrl?: string;
   rating?: number;
   reviewCount?: number;
@@ -58,20 +53,22 @@ type DemoRec = {
   refKind?: 'tour' | 'destination' | 'collection' | 'hub';
 };
 
+const C = RecommendationCategory;
+
+// External picks - each carries only the facts that fit its category.
 const EXTERNAL_RECS: DemoRec[] = [
   {
     key: 'ocean-view-villa',
-    categorySlug: 'hotels',
+    category: C.VILLA,
     source: RecommendationSource.EXTERNAL,
-    displayOrder: 5, // behind the base Palm Suite (0) so that one stays the TYP winner
+    displayOrder: 1,
     placements: [THANK_YOU_PAGE],
-    imageUrl: photo('beachPalms', 1176, 758),
+    photo: 'beachPalms',
     linkUrl: 'https://www.airbnb.com/rooms/ocean-view-villa',
     rating: 4.7,
     reviewCount: 812,
     sleeps: 6,
     priceAmount: 210,
-    currency: Currency.USD,
     en: {
       title: 'Ocean View Villa',
       areaLabel: 'Pietermaai',
@@ -82,16 +79,35 @@ const EXTERNAL_RECS: DemoRec[] = [
     },
   },
   {
-    key: 'nemo-beach-restaurant',
-    categorySlug: 'restaurants',
+    key: 'pietermaai-loft',
+    category: C.APARTMENT,
     source: RecommendationSource.EXTERNAL,
-    displayOrder: 1,
+    displayOrder: 2,
     placements: [THANK_YOU_PAGE],
-    imageUrl: photo('grilledFood', 1176, 758),
+    photo: 'colonialStreet',
+    linkUrl: 'https://www.example-loft.test',
+    rating: 4.6,
+    reviewCount: 340,
+    sleeps: 3,
+    priceAmount: 130,
+    en: {
+      title: 'Pietermaai Loft',
+      areaLabel: 'Pietermaai',
+      description: 'Restored townhouse, steps from the bars',
+      ctaLabel: 'Book your stay',
+    },
+  },
+  {
+    key: 'nemo-beach-restaurant',
+    category: C.RESTAURANT,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 3,
+    placements: [THANK_YOU_PAGE],
+    photo: 'grilledFood',
     linkUrl: 'https://www.example-nemo-beach.test',
     rating: 4.6,
     reviewCount: 430,
-    currency: Currency.USD,
+    priceAmount: 45,
     en: {
       title: 'Nemo Beach Restaurant',
       areaLabel: 'Jan Thiel',
@@ -101,17 +117,52 @@ const EXTERNAL_RECS: DemoRec[] = [
     },
   },
   {
-    key: 'curacao-car-hire',
-    categorySlug: 'car-rental',
+    key: 'mundo-bizarro-bar',
+    category: C.BAR,
     source: RecommendationSource.EXTERNAL,
-    displayOrder: 0, // wins the confirmation-email surface (nothing was placed there)
+    displayOrder: 4,
+    placements: [THANK_YOU_PAGE],
+    photo: 'cocktails',
+    linkUrl: 'https://www.example-mundo.test',
+    rating: 4.5,
+    reviewCount: 280,
+    priceAmount: 12,
+    en: {
+      title: 'Mundo Bizarro',
+      areaLabel: 'Pietermaai',
+      description: 'Cuban cocktails and live music',
+      ctaLabel: 'See what’s on',
+    },
+  },
+  {
+    key: 'coffee-and-dreams',
+    category: C.CAFE,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 5,
+    placements: [THANK_YOU_PAGE],
+    photo: 'colonialStreet',
+    linkUrl: 'https://www.example-cafe.test',
+    rating: 4.7,
+    reviewCount: 190,
+    priceAmount: 6,
+    en: {
+      title: 'Coffee & Dreams',
+      areaLabel: 'Willemstad',
+      description: 'Flat whites and fresh pastries',
+      ctaLabel: 'Find it on the map',
+    },
+  },
+  {
+    key: 'curacao-car-hire',
+    category: C.CAR_RENTAL,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 0, // top of the email surface
     placements: [CONFIRMATION_EMAIL],
-    imageUrl: photo('jeepTrail', 1176, 758),
+    photo: 'jeepTrail',
     linkUrl: 'https://www.example-curacao-cars.test',
     rating: 4.4,
     reviewCount: 260,
     priceAmount: 39,
-    currency: Currency.USD,
     en: {
       title: 'Curaçao Car Hire',
       areaLabel: 'Airport pickup',
@@ -121,16 +172,32 @@ const EXTERNAL_RECS: DemoRec[] = [
     },
   },
   {
-    key: 'serenas-art-factory',
-    categorySlug: 'shops',
+    key: 'island-airport-transfer',
+    category: C.TRANSFER,
     source: RecommendationSource.EXTERNAL,
-    displayOrder: 2,
+    displayOrder: 1,
+    placements: [CONFIRMATION_EMAIL],
+    photo: 'aerialIsland',
+    linkUrl: 'https://www.example-transfer.test',
+    rating: 4.8,
+    priceAmount: 25,
+    en: {
+      title: 'Island Airport Transfer',
+      areaLabel: 'Hato Airport',
+      description: 'Private ride to your hotel',
+      ctaLabel: 'Book a transfer',
+    },
+  },
+  {
+    key: 'serenas-art-factory',
+    category: C.SHOP,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 6,
     placements: [THANK_YOU_PAGE, CONFIRMATION_EMAIL],
-    imageUrl: photo('fruitMarket', 1176, 758),
+    photo: 'fruitMarket',
     linkUrl: 'https://www.example-serenas-art.test',
     rating: 4.8,
     reviewCount: 1502,
-    currency: Currency.USD,
     en: {
       title: "Serena's Art Factory",
       areaLabel: 'Willemstad',
@@ -139,51 +206,123 @@ const EXTERNAL_RECS: DemoRec[] = [
       ctaLabel: 'Visit the shop',
     },
   },
+  {
+    key: 'baoase-spa',
+    category: C.SPA,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 7,
+    placements: [THANK_YOU_PAGE],
+    photo: 'lagoonPool',
+    linkUrl: 'https://www.example-spa.test',
+    rating: 4.9,
+    reviewCount: 210,
+    priceAmount: 90,
+    en: {
+      title: 'Baoase Spa',
+      areaLabel: 'Jan Thiel',
+      description: 'Beachfront massages and day passes',
+      ctaLabel: 'Book a treatment',
+    },
+  },
+  {
+    key: 'cabana-beach-club',
+    category: C.BEACH_CLUB,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 8,
+    placements: [THANK_YOU_PAGE],
+    photo: 'beachChairs',
+    linkUrl: 'https://www.example-cabana.test',
+    rating: 4.6,
+    reviewCount: 640,
+    priceAmount: 20,
+    en: {
+      title: 'Cabana Beach Club',
+      areaLabel: 'Mambo Beach',
+      description: 'Day beds, DJs and a swim-up bar',
+      ctaLabel: 'Reserve a bed',
+    },
+  },
+  {
+    key: 'sea-aquarium',
+    category: C.ATTRACTION,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 9,
+    placements: [THANK_YOU_PAGE],
+    photo: 'turtleReef',
+    linkUrl: 'https://www.example-aquarium.test',
+    rating: 4.3,
+    reviewCount: 900,
+    priceAmount: 21,
+    en: {
+      title: 'Curaçao Sea Aquarium',
+      areaLabel: 'Bapor Kibra',
+      description: 'Swim with dolphins and feed the rays',
+      ctaLabel: 'Get tickets',
+    },
+  },
+  {
+    key: 'mambo-nightlife',
+    category: C.NIGHTLIFE,
+    source: RecommendationSource.EXTERNAL,
+    displayOrder: 10,
+    placements: [THANK_YOU_PAGE],
+    photo: 'sunsetBeach',
+    linkUrl: 'https://www.example-mambo.test',
+    rating: 4.4,
+    reviewCount: 510,
+    priceAmount: 15,
+    en: {
+      title: 'Mambo Beach After Dark',
+      areaLabel: 'Mambo Beach',
+      description: 'Open-air clubs right on the sand',
+      ctaLabel: 'See tonight’s lineup',
+    },
+  },
 ];
 
 const INTERNAL_RECS: DemoRec[] = [
   {
     key: 'internal-tour',
-    categorySlug: 'experiences',
+    category: C.ACTIVITY,
     source: RecommendationSource.INTERNAL,
-    displayOrder: 3,
+    displayOrder: 11,
     placements: [THANK_YOU_PAGE],
     refType: RecommendationRefType.TOUR,
     refKind: 'tour',
   },
   {
     key: 'internal-destination',
-    categorySlug: 'experiences',
+    category: C.ACTIVITY,
     source: RecommendationSource.INTERNAL,
-    displayOrder: 4,
+    displayOrder: 2,
     placements: [CONFIRMATION_EMAIL],
     refType: RecommendationRefType.DESTINATION,
     refKind: 'destination',
   },
   {
     key: 'internal-collection',
-    categorySlug: 'experiences',
+    category: C.ACTIVITY,
     source: RecommendationSource.INTERNAL,
-    displayOrder: 5,
+    displayOrder: 12,
     placements: [THANK_YOU_PAGE],
     refType: RecommendationRefType.COLLECTION,
     refKind: 'collection',
   },
   {
     key: 'internal-hub',
-    categorySlug: 'experiences',
+    category: C.ACTIVITY,
     source: RecommendationSource.INTERNAL,
     isEnabled: false, // one switched-off row, so the list shows that status too
-    displayOrder: 6,
+    displayOrder: 13,
     placements: [THANK_YOU_PAGE],
     refType: RecommendationRefType.HUB,
     refKind: 'hub',
   },
 ];
 
-/** All demo recommendation ids, for cleanDemo(). */
-export const DEMO_RECOMMENDATION_IDS = [...EXTERNAL_RECS, ...INTERNAL_RECS].map(
-  (r) => demoId('recommendation', r.key),
+/** All demo recommendation ids, for cleanRecommendations(). */
+const DEMO_RECOMMENDATION_IDS = [...EXTERNAL_RECS, ...INTERNAL_RECS].map((r) =>
+  demoId('recommendation', r.key),
 );
 
 /** Resolve an internal ref to a live entity id, or null when it is not seeded. */
@@ -211,9 +350,8 @@ async function resolveRefId(
       });
       if (!d) return null;
       // An internal DESTINATION card needs a hero image to render. Base
-      // destinations ship without one, so backfill a demo photo when it is
-      // missing (only then - never overwrites an admin-set hero). Otherwise the
-      // pick would sit "incomplete" forever and the demo would look broken.
+      // destinations ship without one, so backfill a demo photo when missing
+      // (never overwrites an admin-set hero) - otherwise the pick sits incomplete.
       if (!d.heroImage) {
         await prisma.destination.update({
           where: { id: d.id },
@@ -243,36 +381,16 @@ async function resolveRefId(
 export async function seedRecommendations(): Promise<void> {
   section('Recommendations (post-booking promo)');
 
-  // 1) Categories (upsert by slug; Hotels already exists from the base seed).
-  const categoryIdBySlug = new Map<string, string>();
-  categoryIdBySlug.set('hotels', 'rec-cat-hotel');
-  for (const c of DEMO_CATEGORIES) {
-    const row = await prisma.recommendationCategory.upsert({
-      where: { slug: c.slug },
-      create: {
-        id: demoId('rec-category', c.slug),
-        slug: c.slug,
-        name: c.name,
-        displayOrder: c.displayOrder,
-      },
-      update: { name: c.name, displayOrder: c.displayOrder },
-      select: { id: true },
-    });
-    categoryIdBySlug.set(c.slug, row.id);
-  }
-  log(`Categories: ${DEMO_CATEGORIES.length} demo (+ base Hotels).`);
-
-  // 2) External recommendations (carry their own copy).
+  // External picks (carry their own copy). Only the category-appropriate facts.
   for (const r of EXTERNAL_RECS) {
     const id = demoId('recommendation', r.key);
-    const categoryId = categoryIdBySlug.get(r.categorySlug) ?? null;
     const base = {
       source: r.source,
-      categoryId,
+      category: r.category,
       isEnabled: r.isEnabled ?? true,
       displayOrder: r.displayOrder,
       placements: r.placements,
-      imageUrl: r.imageUrl ?? null,
+      imageUrl: r.photo ? photo(r.photo, 1176, 758) : null,
       linkUrl: r.linkUrl ?? null,
       rating: r.rating ?? null,
       reviewCount: r.reviewCount ?? null,
@@ -301,10 +419,12 @@ export async function seedRecommendations(): Promise<void> {
       update: base,
     });
   }
-  log(`External picks: ${EXTERNAL_RECS.length}.`);
+  log(
+    `External picks: ${EXTERNAL_RECS.length} across ${new Set(EXTERNAL_RECS.map((r) => r.category)).size} categories.`,
+  );
 
-  // 3) Internal recommendations (drawn live from the referenced entity). Skip any
-  //    whose target is not seeded in this database.
+  // Internal picks (drawn live from the referenced entity). Skip any whose target
+  // is not seeded in this database.
   let internalCount = 0;
   for (const r of INTERNAL_RECS) {
     if (!r.refType || !r.refKind) continue;
@@ -314,10 +434,9 @@ export async function seedRecommendations(): Promise<void> {
       continue;
     }
     const id = demoId('recommendation', r.key);
-    const categoryId = categoryIdBySlug.get(r.categorySlug) ?? null;
     const base = {
       source: r.source,
-      categoryId,
+      category: r.category,
       isEnabled: r.isEnabled ?? true,
       displayOrder: r.displayOrder,
       placements: r.placements,
@@ -335,17 +454,13 @@ export async function seedRecommendations(): Promise<void> {
 }
 
 /**
- * Remove the demo recommendations (fixed ids) + demo categories (by slug). The
- * base "Hotels" category and its Palm Suite row are left in place. refId is a plain
- * string (no FK), so this is order-independent.
+ * Remove the demo recommendations (fixed ids). The base "Palm Suite Apartment"
+ * (seeded in prisma/seed.ts) is left in place.
  */
 export async function cleanRecommendations(): Promise<void> {
   section('Recommendations (clean)');
   const recs = await prisma.recommendation.deleteMany({
     where: { id: { in: DEMO_RECOMMENDATION_IDS } },
   });
-  const cats = await prisma.recommendationCategory.deleteMany({
-    where: { slug: { in: DEMO_REC_CATEGORY_SLUGS } },
-  });
-  log(`Removed ${recs.count} recommendation(s) + ${cats.count} categor(ies).`);
+  log(`Removed ${recs.count} recommendation(s).`);
 }

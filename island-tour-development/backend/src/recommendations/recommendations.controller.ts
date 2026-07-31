@@ -20,6 +20,7 @@ import {
   CreateRecommendationDto,
   RecommendationPublicQueryDto,
   UpdateRecommendationDto,
+  UpdateRecommendationSettingsDto,
   UpsertRecommendationTranslationDto,
 } from './dto/recommendation.dto';
 import { RecommendationsService } from './recommendations.service';
@@ -28,9 +29,11 @@ import {
   ApiDeleteRecommendationDocs,
   ApiGetPublicRecommendationDocs,
   ApiGetRecommendationDocs,
+  ApiGetRecommendationSettingsDocs,
   ApiGetRecommendationTranslationsDocs,
   ApiListRecommendationsDocs,
   ApiUpdateRecommendationDocs,
+  ApiUpdateRecommendationSettingsDocs,
   ApiUpsertRecommendationTranslationDocs,
 } from './recommendations.swagger';
 
@@ -61,6 +64,25 @@ export class RecommendationsController {
   @ApiGetPublicRecommendationDocs()
   getPublic(@Query() query: RecommendationPublicQueryDto) {
     return this.recommendations.getFeatured(query.locale!, query.placement!);
+  }
+
+  // ── Display settings (static prefix, declared before `:id`) ─────────────────
+
+  @Get('settings')
+  @RequirePermissions(Permission.MANAGE_EDITORIAL)
+  @ApiGetRecommendationSettingsDocs()
+  getSettings() {
+    return this.recommendations.getSettings();
+  }
+
+  @Patch('settings')
+  @RequirePermissions(Permission.MANAGE_EDITORIAL)
+  @ApiUpdateRecommendationSettingsDocs()
+  updateSettings(
+    @Body() dto: UpdateRecommendationSettingsDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.recommendations.updateSettings(dto, user.id);
   }
 
   // ── Admin recommendations ────────────────────────────────────────────────────

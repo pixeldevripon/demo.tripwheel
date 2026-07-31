@@ -1,4 +1,4 @@
-import { ThankYouRecommendation } from '@/components/frontend/thank-you/thank-you-recommendation';
+import { ThankYouRecommendations } from '@/components/frontend/thank-you/thank-you-recommendation';
 import { ThankYouHero } from '@/components/frontend/thank-you/thank-you-hero';
 import { ThankYouNextSteps } from '@/components/frontend/thank-you/thank-you-next-steps';
 import { ThankYouQuestion } from '@/components/frontend/thank-you/thank-you-question';
@@ -202,16 +202,13 @@ async function ThankYouBody({
                         toursHref={toursHref}
                     />
                     {/* Admin-managed, and self-hiding: the backend returns only the
-                        enabled, complete cards placed on this surface (up to a few),
-                        in promotion order. Empty -> nothing renders; otherwise they
-                        stack. */}
-                    {recommendations.map((rec, i) => (
-                        <ThankYouRecommendation
-                            key={i}
-                            recommendation={rec}
-                            dict={dict.thankYou}
-                        />
-                    ))}
+                        enabled, complete cards placed on this surface, in promotion
+                        order. Up to 3 stack as full cards; more flip to a 4-col
+                        grid. Empty -> nothing renders. */}
+                    <ThankYouRecommendations
+                        recommendations={recommendations}
+                        dict={dict.thankYou}
+                    />
                 </>
             )}
             <ThankYouQuestion booking={booking} dict={dict.thankYou} />

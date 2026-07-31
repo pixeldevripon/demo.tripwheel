@@ -7,6 +7,7 @@ import {
   Locale,
   Prisma,
   PrismaClient,
+  RecommendationCategory,
   RecommendationPlacement,
   RecommendationSource,
   Region,
@@ -115,14 +116,6 @@ async function main() {
 async function seedRecommendations() {
   console.log('Seeding recommendations...');
 
-  // The seeded "Hotels" category the migrated apartment is filed under.
-  const hotelCategory = await prisma.recommendationCategory.upsert({
-    where: { slug: 'hotels' },
-    create: { name: 'Hotels', slug: 'hotels', displayOrder: 0, isSeeded: true },
-    update: {},
-    select: { id: true },
-  });
-
   const existing = await prisma.recommendation.findFirst({
     select: { id: true },
   });
@@ -135,7 +128,7 @@ async function seedRecommendations() {
   await prisma.recommendation.create({
     data: {
       source: RecommendationSource.EXTERNAL,
-      categoryId: hotelCategory.id,
+      category: RecommendationCategory.HOTEL,
       isEnabled: true,
       displayOrder: 0,
       isSeeded: true,
