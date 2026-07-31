@@ -56,9 +56,10 @@ export function stepAnchor(
 /** The toolbar's range label ("August 2026" / "Aug 3 - 9, 2026" / full day). */
 export function rangeLabel(view: CalendarView, anchorKey: string): string {
     const anchor = keyToDate(anchorKey);
-    // Short weekday - the full "Thursday, 30 July 2026" overflows the
-    // toolbar's fixed label width.
-    if (view === 'day') return format(anchor, 'EEE, d MMMM yyyy');
+    // Short weekday AND short month - "Thursday, 30 July 2026" and even
+    // "Sat, 1 August 2026" overflow the toolbar's fixed label width now that
+    // it matches the sidebar column (founder 2026-07-31).
+    if (view === 'day') return format(anchor, 'EEE, d MMM yyyy');
     if (view === 'week') {
         const start = startOfWeek(anchor, { weekStartsOn: 1 });
         const end = addDays(start, 6);
