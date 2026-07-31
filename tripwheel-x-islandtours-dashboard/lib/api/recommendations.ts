@@ -2,8 +2,10 @@ import type { Locale } from '@/lib/constants/locales';
 import type {
   CreateRecommendationPayload,
   Recommendation,
+  RecommendationSettings,
   RecommendationTranslation,
   UpdateRecommendationPayload,
+  UpdateRecommendationSettingsPayload,
   UpsertRecommendationTranslationPayload,
 } from '@/types/recommendation';
 import { apiFetch } from './fetch';
@@ -69,5 +71,19 @@ export const recommendationsApi = {
         body: JSON.stringify(payload),
       },
     );
+  },
+
+  /** The per-surface caps on how many cards render. */
+  getSettings(): Promise<RecommendationSettings> {
+    return apiFetch<RecommendationSettings>('/recommendations/settings');
+  },
+
+  updateSettings(
+    payload: UpdateRecommendationSettingsPayload,
+  ): Promise<RecommendationSettings> {
+    return apiFetch<RecommendationSettings>('/recommendations/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
 };

@@ -7,6 +7,7 @@ import type { Locale } from '@/lib/constants/locales';
 import type {
   CreateRecommendationPayload,
   UpdateRecommendationPayload,
+  UpdateRecommendationSettingsPayload,
   UpsertRecommendationTranslationPayload,
 } from '@/types/recommendation';
 
@@ -16,6 +17,7 @@ export const recommendationKeys = {
   detail: (id: string) => ['recommendations', 'detail', id] as const,
   translations: (id: string) =>
     ['recommendations', 'translations', id] as const,
+  settings: () => ['recommendations', 'settings'] as const,
 };
 
 export function useRecommendations() {
@@ -81,6 +83,27 @@ export function useRecommendationTranslations(id: string) {
     queryKey: recommendationKeys.translations(id),
     queryFn: () => recommendationsApi.getTranslations(id),
     enabled: !!id,
+  });
+}
+
+export function useRecommendationSettings() {
+  return useQuery({
+    queryKey: recommendationKeys.settings(),
+    queryFn: () => recommendationsApi.getSettings(),
+  });
+}
+
+export function useUpdateRecommendationSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateRecommendationSettingsPayload) =>
+      recommendationsApi.updateSettings(payload),
+    onSuccess: () => {
+      // The caps decide how many rows WIN each surface, so changing them can move
+      // a card between rows: invalidate the whole list, not just the settings.
+      queryClient.invalidateQueries({ queryKey: recommendationKeys.settings() });
+      queryClient.invalidateQueries({ queryKey: recommendationKeys.all() });
+    },
   });
 }
 

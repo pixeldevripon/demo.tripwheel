@@ -66,6 +66,95 @@ export const RECOMMENDATION_REF_TYPES: RecommendationRefType[] = [
 ];
 
 /**
+ * The recommendation category, a fixed backend enum (no admin CRUD). Every pick is
+ * bucketed under exactly one of these; the value stored on the row IS the enum key.
+ */
+export type RecommendationCategory =
+    | 'HOTEL'
+    | 'APARTMENT'
+    | 'VILLA'
+    | 'RESTAURANT'
+    | 'BAR'
+    | 'CAFE'
+    | 'CAR_RENTAL'
+    | 'TRANSFER'
+    | 'SHOP'
+    | 'SPA'
+    | 'BEACH_CLUB'
+    | 'ATTRACTION'
+    | 'ACTIVITY'
+    | 'NIGHTLIFE'
+    | 'OTHER';
+
+/** The categories, in the order they are offered in the form. */
+export const RECOMMENDATION_CATEGORIES: RecommendationCategory[] = [
+    'HOTEL',
+    'APARTMENT',
+    'VILLA',
+    'RESTAURANT',
+    'BAR',
+    'CAFE',
+    'CAR_RENTAL',
+    'TRANSFER',
+    'SHOP',
+    'SPA',
+    'BEACH_CLUB',
+    'ATTRACTION',
+    'ACTIVITY',
+    'NIGHTLIFE',
+    'OTHER',
+];
+
+/** Human labels for each category. */
+export const RECOMMENDATION_CATEGORY_LABELS: Record<
+    RecommendationCategory,
+    string
+> = {
+    HOTEL: 'Hotel',
+    APARTMENT: 'Apartment',
+    VILLA: 'Villa',
+    RESTAURANT: 'Restaurant',
+    BAR: 'Bar',
+    CAFE: 'Café',
+    CAR_RENTAL: 'Car rental',
+    TRANSFER: 'Transfer',
+    SHOP: 'Shop',
+    SPA: 'Spa',
+    BEACH_CLUB: 'Beach club',
+    ATTRACTION: 'Attraction',
+    ACTIVITY: 'Activity',
+    NIGHTLIFE: 'Nightlife',
+    OTHER: 'Other',
+};
+
+/**
+ * Icon-name keys from `lib/constants/category-icons.ts` (the same curated
+ * Hugeicons set the platform categories use). Every value below is a verified key
+ * of `CATEGORY_ICON_COMPONENTS`; `getCategoryIconComponent` falls back to Tag for
+ * anything unknown.
+ */
+export const RECOMMENDATION_CATEGORY_ICON: Record<
+    RecommendationCategory,
+    string
+> = {
+    HOTEL: 'TreePalm',
+    APARTMENT: 'TreePalm',
+    VILLA: 'Crown',
+    RESTAURANT: 'Utensils',
+    BAR: 'Wine',
+    CAFE: 'Coffee',
+    CAR_RENTAL: 'Car',
+    TRANSFER: 'Plane',
+    SHOP: 'Gem',
+    SPA: 'Droplets',
+    BEACH_CLUB: 'Sun',
+    ATTRACTION: 'Ticket',
+    ACTIVITY: 'Sparkles',
+    NIGHTLIFE: 'Music',
+    OTHER: 'Tag',
+};
+
+/**
  * The optional "fact" fields an EXTERNAL pick can carry in its meta row. The photo
  * and link are NOT here - they are the render gate, always shown. Copy (name, pitch,
  * etc.) lives in the Content tab.
@@ -79,32 +168,35 @@ export type RecommendationFactField =
 /**
  * Which fact fields are relevant PER CATEGORY, so the form only shows what fits the
  * kind of place: a hotel has "Sleeps", a restaurant does not; a shop has no price
- * line. Keyed by category slug. Extend this when a new category needs a different
- * set; anything not listed (incl. Uncategorised) gets `DEFAULT_FACT_FIELDS`.
- *
- * `sleeps` is deliberately hotel-only - it is the one field that reads wrong on any
- * other kind of pick.
+ * line. `sleeps` is deliberately stay-only (hotel/apartment/villa) - it is the one
+ * field that reads wrong on any other kind of pick.
  */
-export const CATEGORY_FACT_FIELDS: Record<string, RecommendationFactField[]> = {
-    hotels: ['rating', 'reviewCount', 'sleeps', 'priceAmount'],
-    restaurants: ['rating', 'reviewCount', 'priceAmount'],
-    'car-rental': ['rating', 'reviewCount', 'priceAmount'],
-    shops: ['rating', 'reviewCount'],
-    experiences: ['rating', 'priceAmount'],
+export const CATEGORY_FACT_FIELDS: Record<
+    RecommendationCategory,
+    RecommendationFactField[]
+> = {
+    HOTEL: ['rating', 'reviewCount', 'sleeps', 'priceAmount'],
+    APARTMENT: ['rating', 'reviewCount', 'sleeps', 'priceAmount'],
+    VILLA: ['rating', 'reviewCount', 'sleeps', 'priceAmount'],
+    RESTAURANT: ['rating', 'reviewCount', 'priceAmount'],
+    BAR: ['rating', 'reviewCount', 'priceAmount'],
+    CAFE: ['rating', 'reviewCount', 'priceAmount'],
+    CAR_RENTAL: ['rating', 'reviewCount', 'priceAmount'],
+    TRANSFER: ['rating', 'priceAmount'],
+    SHOP: ['rating', 'reviewCount'],
+    SPA: ['rating', 'reviewCount', 'priceAmount'],
+    BEACH_CLUB: ['rating', 'reviewCount', 'priceAmount'],
+    ATTRACTION: ['rating', 'reviewCount', 'priceAmount'],
+    ACTIVITY: ['rating', 'priceAmount'],
+    NIGHTLIFE: ['rating', 'reviewCount', 'priceAmount'],
+    OTHER: ['rating', 'reviewCount', 'priceAmount'],
 };
 
-/** The general set for an unknown / uncategorised pick - no hotel-specific Sleeps. */
-export const DEFAULT_FACT_FIELDS: RecommendationFactField[] = [
-    'rating',
-    'reviewCount',
-    'priceAmount',
-];
-
-/** The fact fields to show for a category slug (its own set, or the default). */
+/** The fact fields to show for a category (its own set, or the default). */
 export function factFieldsForCategory(
-    slug: string | null | undefined,
+    c: RecommendationCategory,
 ): RecommendationFactField[] {
-    return (slug && CATEGORY_FACT_FIELDS[slug]) || DEFAULT_FACT_FIELDS;
+    return CATEGORY_FACT_FIELDS[c] ?? ['rating', 'reviewCount', 'priceAmount'];
 }
 
 /** Per-locale recommendation copy (EXTERNAL only). */
@@ -121,19 +213,12 @@ export interface RecommendationTranslation {
     isMachineTranslated: boolean;
 }
 
-/** The category a recommendation belongs to, as embedded on the row. */
-export interface RecommendationCategoryRef {
-    id: string;
-    name: string;
-    slug: string;
-}
-
 /** One recommendation as the dashboard sees it. */
 export interface Recommendation {
     id: string;
     source: RecommendationSource;
-    /** Null = uncategorised. */
-    category: RecommendationCategoryRef | null;
+    /** The fixed enum bucket this pick is grouped under. */
+    category: RecommendationCategory;
     /** Whether this recommendation may be promoted at all. */
     isEnabled: boolean;
     /** Promotion priority within a surface - lower shows first. */
@@ -173,19 +258,6 @@ export interface Recommendation {
     translations: RecommendationTranslation[];
 }
 
-/** One recommendation category as the dashboard sees it. */
-export interface RecommendationCategory {
-    id: string;
-    name: string;
-    slug: string;
-    icon: string | null;
-    displayOrder: number;
-    /** Seeded categories cannot be deleted (the API answers 403). */
-    isSeeded: boolean;
-    /** How many recommendations sit in this category. */
-    recommendationCount: number;
-}
-
 /**
  * PATCH /recommendations/:id - only the named fields are touched; null clears
  * one. The English-copy fields (title/areaLabel/...) are NOT here: on an existing
@@ -193,7 +265,7 @@ export interface RecommendationCategory {
  */
 export interface UpdateRecommendationPayload {
     source?: RecommendationSource;
-    categoryId?: string | null;
+    category?: RecommendationCategory;
     isEnabled?: boolean;
     displayOrder?: number;
     placements?: RecommendationPlacement[];
@@ -232,21 +304,19 @@ export interface UpsertRecommendationTranslationPayload {
     isMachineTranslated?: boolean;
 }
 
-/** POST /recommendations/categories */
-export interface CreateRecommendationCategoryPayload {
-    name: string;
-    slug?: string;
-    icon?: string | null;
-    displayOrder?: number;
+/**
+ * Per-surface caps on how many recommendation cards actually render. Extras stay
+ * "next in line" - complete and enabled, but not shown until a higher-priority
+ * row drops out. Each is clamped 1-10 by the backend.
+ */
+export interface RecommendationSettings {
+    thankYouPageLimit: number;
+    confirmationEmailLimit: number;
 }
 
-/** PATCH /recommendations/categories/:categoryId */
-export interface UpdateRecommendationCategoryPayload {
-    name?: string;
-    slug?: string;
-    icon?: string | null;
-    displayOrder?: number;
-}
+/** PATCH /recommendations/settings - either cap alone, or both. */
+export type UpdateRecommendationSettingsPayload =
+    Partial<RecommendationSettings>;
 
 /**
  * What the list and console label a row by:

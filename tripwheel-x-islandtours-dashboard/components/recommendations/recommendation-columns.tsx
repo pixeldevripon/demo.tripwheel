@@ -2,17 +2,22 @@
 
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
+    Cancel01Icon,
     Delete02Icon,
+    File01Icon,
     Image01Icon,
+    Link01Icon,
     LinkSquare02Icon,
+    Location01Icon,
+    Mail01Icon,
     MoreHorizontalIcon,
     PencilEdit02Icon,
+    Tick02Icon,
 } from '@hugeicons/core-free-icons';
 
 import { type ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -28,15 +33,38 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getCategoryIconComponent } from '@/lib/constants/category-icons';
 import {
+    RECOMMENDATION_CATEGORY_ICON,
+    RECOMMENDATION_CATEGORY_LABELS,
     RECOMMENDATION_PLACEMENT_LABELS,
     recommendationName,
     type Recommendation,
+    type RecommendationPlacement,
+    type UpdateRecommendationPayload,
 } from '@/types/recommendation';
 
 export interface MakeRecommendationColumnsOptions {
     canManage: boolean;
     onDelete: (recommendation: Recommendation) => void;
+    /**
+     * The update mutate, threaded in so the row's quick toggles (placements +
+     * enabled) can run without the columns owning a hook. Optional: a read-only
+     * viewer never sees the toggles.
+     */
+    onUpdate?: (id: string, payload: UpdateRecommendationPayload) => void;
+}
+
+/** Add or remove one placement from a row's set, preserving the rest. */
+function togglePlacement(
+    placements: RecommendationPlacement[],
+    p: RecommendationPlacement,
+    on: boolean,
+): RecommendationPlacement[] {
+    const has = placements.includes(p);
+    if (on && !has) return [...placements, p];
+    if (!on && has) return placements.filter((x) => x !== p);
+    return placements;
 }
 
 /**
@@ -93,6 +121,7 @@ function statusOf(rec: Recommendation): {
 export function makeRecommendationColumns({
     canManage,
     onDelete,
+    onUpdate,
 }: MakeRecommendationColumnsOptions): ColumnDef<Recommendation>[] {
     return [
         // Selection column, first - only for managers, since a read-only
@@ -182,24 +211,71 @@ export function makeRecommendationColumns({
         {
             id: 'source',
             header: 'Source',
-            cell: ({ row }) => (
-                <Badge variant='secondary'>
-                    {row.original.source === 'INTERNAL'
-                        ? 'Internal'
-                        : 'External'}
-                </Badge>
-            ),
+            cell: ({ row }) => {
+                const isInternal = row.original.source === 'INTERNAL';
+                return (
+                    <span className='flex items-center gap-1.5 text-sm'>
+                        <HugeiconsIcon
+                            icon={isInternal ? Location01Icon : Link01Icon}
+                            className='size-4 text-muted-foreground'
+                        />
+                        {isInternal ? 'Internal' : 'External'}
+                    </span>
+                );
+            },
             enableSorting: false,
-            size: 100,
+            size: 120,
         },
         {
             id: 'category',
             header: 'Category',
-            cell: ({ row }) => (
-                <span className='text-xs text-muted-foreground'>
-                    {row.original.category?.name ?? 'Uncategorised'}
-                </span>
-            ),
+            cell: ({ row }) => {
+                const cat = row.original.category;
+                return (
+                    <span className='flex items-center gap-2 text-sm'>
+                        <span className='flex size-6 shrink-0 items-center justify-center rounded bg-muted'>
+                            <HugeiconsIcon
+                                icon={getCategoryIconComponent(
+                                    RECOMMENDATION_CATEGORY_ICON[cat],
+                                )}
+                                className='size-3.5 text-muted-foreground'
+                            />
+                        </span>
+                        {RECOMMENDATION_CATEGORY_LABELS[cat]}
+                    </span>
+                );
+            },
+            enableSorting: false,
+        },
+        {
+            id: 'where',
+            header: 'Where it shows',
+            cell: ({ row }) => {
+                const { placements } = row.original;
+                if (placements.length === 0)
+                    return (
+                        <span className='text-sm text-muted-foreground'>-</span>
+                    );
+                return (
+                    <div className='flex flex-wrap gap-1'>
+                        {placements.map((p) => (
+                            <span
+                                key={p}
+                                className='inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground'>
+                                <HugeiconsIcon
+                                    icon={
+                                        p === 'THANK_YOU_PAGE'
+                                            ? File01Icon
+                                            : Mail01Icon
+                                    }
+                                    className='size-3'
+                                />
+                                {RECOMMENDATION_PLACEMENT_LABELS[p]}
+                            </span>
+                        ))}
+                    </div>
+                );
+            },
             enableSorting: false,
         },
         {
@@ -220,6 +296,8 @@ export function makeRecommendationColumns({
             header: '',
             cell: ({ row }) => {
                 const rec = row.original;
+                const onTyp = rec.placements.includes('THANK_YOU_PAGE');
+                const onEmail = rec.placements.includes('CONFIRMATION_EMAIL');
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -228,7 +306,7 @@ export function makeRecommendationColumns({
                                 <span className='sr-only'>Open menu</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align='end' className='w-56'>
+                        <DropdownMenuContent align='end' className='w-60'>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             {canManage && (
                                 <DropdownMenuItem asChild>
@@ -240,6 +318,67 @@ export function makeRecommendationColumns({
                                         Edit
                                     </Link>
                                 </DropdownMenuItem>
+                            )}
+                            {/* Quick placement + on/off toggles - the same three
+                                switches the form owns, reachable without opening it.
+                                A tick marks the currently-active state. */}
+                            {canManage && onUpdate && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            onUpdate(rec.id, {
+                                                placements: togglePlacement(
+                                                    rec.placements,
+                                                    'THANK_YOU_PAGE',
+                                                    !onTyp,
+                                                ),
+                                            })
+                                        }>
+                                        <HugeiconsIcon
+                                            icon={onTyp ? Tick02Icon : File01Icon}
+                                        />
+                                        {onTyp
+                                            ? 'Hide from thank-you page'
+                                            : 'Show on thank-you page'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            onUpdate(rec.id, {
+                                                placements: togglePlacement(
+                                                    rec.placements,
+                                                    'CONFIRMATION_EMAIL',
+                                                    !onEmail,
+                                                ),
+                                            })
+                                        }>
+                                        <HugeiconsIcon
+                                            icon={
+                                                onEmail ? Tick02Icon : Mail01Icon
+                                            }
+                                        />
+                                        {onEmail
+                                            ? 'Hide from confirmation email'
+                                            : 'Show in confirmation email'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() =>
+                                            onUpdate(rec.id, {
+                                                isEnabled: !rec.isEnabled,
+                                            })
+                                        }>
+                                        <HugeiconsIcon
+                                            icon={
+                                                rec.isEnabled
+                                                    ? Tick02Icon
+                                                    : Cancel01Icon
+                                            }
+                                        />
+                                        {rec.isEnabled
+                                            ? 'Switch off'
+                                            : 'Switch on'}
+                                    </DropdownMenuItem>
+                                </>
                             )}
                             {/* EXTERNAL picks live on someone else's site - we
                                 hold a link and nothing more, so "view" opens it.

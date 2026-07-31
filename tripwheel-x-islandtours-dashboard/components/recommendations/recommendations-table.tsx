@@ -20,8 +20,15 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import type { useDeleteRecommendation } from '@/hooks/recommendations/use-recommendations';
-import type { Recommendation } from '@/types/recommendation';
+import type {
+    useDeleteRecommendation,
+    useUpdateRecommendation,
+} from '@/hooks/recommendations/use-recommendations';
+import type {
+    Recommendation,
+    RecommendationPlacement,
+    UpdateRecommendationPayload,
+} from '@/types/recommendation';
 import { makeRecommendationColumns } from './recommendation-columns';
 
 interface RecommendationsTableProps {
@@ -30,6 +37,8 @@ interface RecommendationsTableProps {
     onDelete: (recommendation: Recommendation) => void;
     /** The delete mutate, threaded from the list view so the bulk bar can reuse it. */
     deleteRecommendation: ReturnType<typeof useDeleteRecommendation>['mutate'];
+    /** The update mutate, threaded so the row toggles and bulk bar can reuse it. */
+    updateRecommendation: ReturnType<typeof useUpdateRecommendation>['mutate'];
     actionSlot?: React.ReactNode;
 }
 
@@ -43,9 +52,24 @@ export function RecommendationsTable({
     canManage,
     onDelete,
     deleteRecommendation,
+    updateRecommendation,
     actionSlot,
 }: RecommendationsTableProps) {
-    const columns = makeRecommendationColumns({ canManage, onDelete });
+    const onUpdate = (id: string, payload: UpdateRecommendationPayload) => {
+        updateRecommendation(
+            { id, payload },
+            {
+                onError: (err) =>
+                    toast.error(
+                        err instanceof Error
+                            ? err.message
+                            : 'Failed to update the recommendation.',
+                    ),
+            },
+        );
+    };
+
+    const columns = makeRecommendationColumns({ canManage, onDelete, onUpdate });
 
     // Bulk delete is confirmed rather than immediate: it fans out across every
     // selected row, so a mis-click is expensive.
@@ -77,16 +101,158 @@ export function RecommendationsTable({
                 )}
                 bulkActions={
                     canManage
-                        ? (rows, clearSelection) => (
-                              <Button
-                                  size='sm'
-                                  variant='destructive'
-                                  onClick={() =>
-                                      setBulkTarget({ rows, clearSelection })
-                                  }>
-                                  Delete
-                              </Button>
-                          )
+                        ? (rows, clearSelection) => {
+                              // Fan the update mutate over every selected row, then
+                              // toast the count and drop the selection. Each build
+                              // computes the row's next value from its own current
+                              // state, so a shared "add to email" never clobbers the
+                              // other surface a row already has.
+                              const runBulk = (
+                                  build: (
+                                      rec: Recommendation,
+                                  ) => UpdateRecommendationPayload,
+                                  done: string,
+                              ) => {
+                                  rows.forEach((r) =>
+                                      updateRecommendation(
+                                          {
+                                              id: r.original.id,
+                                              payload: build(r.original),
+                                          },
+                                          {
+                                              onError: (err) =>
+                                                  toast.error(
+                                                      err instanceof Error
+                                                          ? err.message
+                                                          : 'Failed to update.',
+                                                  ),
+                                          },
+                                      ),
+                                  );
+                                  toast.success(
+                                      `${rows.length} recommendation(s) ${done}.`,
+                                  );
+                                  clearSelection();
+                              };
+
+                              const withPlacement = (
+                                  rec: Recommendation,
+                                  p: RecommendationPlacement,
+                                  on: boolean,
+                              ): RecommendationPlacement[] => {
+                                  const has = rec.placements.includes(p);
+                                  if (on && !has) return [...rec.placements, p];
+                                  if (!on && has)
+                                      return rec.placements.filter(
+                                          (x) => x !== p,
+                                      );
+                                  return rec.placements;
+                              };
+
+                              return (
+                                  <div className='flex flex-wrap items-center gap-2'>
+                                      <Button
+                                          size='sm'
+                                          variant='outline'
+                                          onClick={() =>
+                                              runBulk(
+                                                  () => ({ isEnabled: true }),
+                                                  'enabled',
+                                              )
+                                          }>
+                                          Enable
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          variant='outline'
+                                          onClick={() =>
+                                              runBulk(
+                                                  () => ({ isEnabled: false }),
+                                                  'disabled',
+                                              )
+                                          }>
+                                          Disable
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          onClick={() =>
+                                              runBulk(
+                                                  (rec) => ({
+                                                      placements: withPlacement(
+                                                          rec,
+                                                          'THANK_YOU_PAGE',
+                                                          true,
+                                                      ),
+                                                  }),
+                                                  'added to the thank-you page',
+                                              )
+                                          }>
+                                          Add to thank-you page
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          variant='outline'
+                                          onClick={() =>
+                                              runBulk(
+                                                  (rec) => ({
+                                                      placements: withPlacement(
+                                                          rec,
+                                                          'THANK_YOU_PAGE',
+                                                          false,
+                                                      ),
+                                                  }),
+                                                  'removed from the thank-you page',
+                                              )
+                                          }>
+                                          Remove from thank-you page
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          onClick={() =>
+                                              runBulk(
+                                                  (rec) => ({
+                                                      placements: withPlacement(
+                                                          rec,
+                                                          'CONFIRMATION_EMAIL',
+                                                          true,
+                                                      ),
+                                                  }),
+                                                  'added to the email',
+                                              )
+                                          }>
+                                          Add to email
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          variant='outline'
+                                          onClick={() =>
+                                              runBulk(
+                                                  (rec) => ({
+                                                      placements: withPlacement(
+                                                          rec,
+                                                          'CONFIRMATION_EMAIL',
+                                                          false,
+                                                      ),
+                                                  }),
+                                                  'removed from the email',
+                                              )
+                                          }>
+                                          Remove from email
+                                      </Button>
+                                      <Button
+                                          size='sm'
+                                          variant='destructive'
+                                          onClick={() =>
+                                              setBulkTarget({
+                                                  rows,
+                                                  clearSelection,
+                                              })
+                                          }>
+                                          Delete
+                                      </Button>
+                                  </div>
+                              );
+                          }
                         : undefined
                 }
             />

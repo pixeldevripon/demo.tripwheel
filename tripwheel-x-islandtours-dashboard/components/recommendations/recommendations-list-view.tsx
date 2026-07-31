@@ -23,11 +23,13 @@ import { useRole } from '@/contexts/role-context';
 import {
     useDeleteRecommendation,
     useRecommendations,
+    useUpdateRecommendation,
 } from '@/hooks/recommendations/use-recommendations';
 import {
     recommendationName,
     type Recommendation,
 } from '@/types/recommendation';
+import { RecommendationSettingsDialog } from './recommendation-settings-dialog';
 import { RecommendationsTable } from './recommendations-table';
 
 export function RecommendationsListView() {
@@ -36,7 +38,9 @@ export function RecommendationsListView() {
 
     const { data: recommendations, isLoading } = useRecommendations();
     const { mutate: remove, isPending: removing } = useDeleteRecommendation();
+    const { mutate: update } = useUpdateRecommendation();
     const [target, setTarget] = useState<Recommendation | null>(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
 
     return (
         <div className='space-y-4'>
@@ -52,14 +56,16 @@ export function RecommendationsListView() {
                     canManage={canManage}
                     onDelete={setTarget}
                     deleteRecommendation={remove}
+                    updateRecommendation={update}
                     actionSlot={
                         canManage ? (
                             <div className='flex items-center gap-2'>
-                                <Button asChild size='sm' variant='outline'>
-                                    <Link href='/recommendations/categories'>
-                                        <HugeiconsIcon icon={Settings02Icon} />
-                                        Categories
-                                    </Link>
+                                <Button
+                                    size='sm'
+                                    variant='outline'
+                                    onClick={() => setSettingsOpen(true)}>
+                                    <HugeiconsIcon icon={Settings02Icon} />
+                                    Display settings
                                 </Button>
                                 <Button asChild size='sm'>
                                     <Link href='/recommendations/new'>
@@ -108,6 +114,13 @@ export function RecommendationsListView() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {canManage && (
+                <RecommendationSettingsDialog
+                    open={settingsOpen}
+                    onOpenChange={setSettingsOpen}
+                />
+            )}
         </div>
     );
 }

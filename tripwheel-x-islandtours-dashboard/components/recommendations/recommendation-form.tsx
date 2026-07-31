@@ -1,5 +1,6 @@
 'use client';
 
+import { HugeiconsIcon } from '@hugeicons/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -35,14 +36,20 @@ import {
     useCreateRecommendation,
     useUpdateRecommendation,
 } from '@/hooks/recommendations/use-recommendations';
-import { useRecommendationCategories } from '@/hooks/recommendations/use-recommendation-categories';
+import {
+    getCategoryIconComponent,
+} from '@/lib/constants/category-icons';
 import {
     factFieldsForCategory,
+    RECOMMENDATION_CATEGORIES,
+    RECOMMENDATION_CATEGORY_ICON,
+    RECOMMENDATION_CATEGORY_LABELS,
     RECOMMENDATION_PLACEMENT_LABELS,
     RECOMMENDATION_PLACEMENTS,
     RECOMMENDATION_REF_TYPE_LABELS,
     RECOMMENDATION_REF_TYPES,
     type Recommendation,
+    type RecommendationCategory,
     type RecommendationCurrency,
     type RecommendationPlacement,
     type RecommendationRefType,
@@ -56,7 +63,8 @@ const CURRENCIES: { value: RecommendationCurrency; label: string }[] = [
     { value: 'EUR', label: 'EUR - euro (€)' },
 ];
 
-const UNCATEGORISED = '__none__';
+/** New recommendations open on a sensible, common default. */
+const DEFAULT_CATEGORY: RecommendationCategory = 'HOTEL';
 
 /**
  * Numeric fields are text inputs in the form and a number (or null) on the wire.
@@ -65,7 +73,7 @@ const UNCATEGORISED = '__none__';
  */
 interface RecommendationValues {
     source: RecommendationSource;
-    categoryId: string;
+    category: RecommendationCategory;
     isEnabled: boolean;
     displayOrder: string;
     placements: RecommendationPlacement[];
@@ -114,7 +122,6 @@ export function RecommendationForm({
     const router = useRouter();
     const isEdit = !!recommendation;
 
-    const { data: categories } = useRecommendationCategories();
     const { mutate: create, isPending: creating } = useCreateRecommendation();
     const { mutate: update, isPending: updating } = useUpdateRecommendation();
     const isPending = creating || updating;
@@ -129,7 +136,7 @@ export function RecommendationForm({
     } = useForm<RecommendationValues>({
         defaultValues: {
             source: 'EXTERNAL',
-            categoryId: '',
+            category: DEFAULT_CATEGORY,
             isEnabled: true,
             displayOrder: '0',
             placements: ['THANK_YOU_PAGE'],
@@ -150,7 +157,7 @@ export function RecommendationForm({
         if (!recommendation) return;
         reset({
             source: recommendation.source,
-            categoryId: recommendation.category?.id ?? '',
+            category: recommendation.category,
             isEnabled: recommendation.isEnabled,
             displayOrder: String(recommendation.displayOrder),
             placements: recommendation.placements,
@@ -173,10 +180,7 @@ export function RecommendationForm({
     // Which fact fields to show depends on the CATEGORY: a hotel has Sleeps, a
     // restaurant does not, a shop has no price. Fields not relevant to the chosen
     // category are hidden, and cleared on save so a stale value never lingers.
-    const selectedCategory = (categories ?? []).find(
-        (c) => c.id === values.categoryId,
-    );
-    const visibleFacts = factFieldsForCategory(selectedCategory?.slug);
+    const visibleFacts = factFieldsForCategory(values.category);
     const showRating = visibleFacts.includes('rating');
     const showReviewCount = visibleFacts.includes('reviewCount');
     const showSleeps = visibleFacts.includes('sleeps');
@@ -219,7 +223,7 @@ export function RecommendationForm({
 
         const common = {
             source: v.source,
-            categoryId: v.categoryId || null,
+            category: v.category,
             isEnabled: v.isEnabled,
             displayOrder: toNumberOrNull(v.displayOrder) ?? 0,
             placements: v.placements,
@@ -369,31 +373,41 @@ export function RecommendationForm({
                             <Field>
                                 <Label>Category</Label>
                                 <Select
-                                    value={values.categoryId || UNCATEGORISED}
+                                    value={values.category}
                                     onValueChange={(v) =>
                                         setValue(
-                                            'categoryId',
-                                            v === UNCATEGORISED ? '' : v,
+                                            'category',
+                                            v as RecommendationCategory,
                                         )
                                     }>
                                     <SelectTrigger>
-                                        <SelectValue placeholder='Uncategorised' />
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value={UNCATEGORISED}>
-                                            Uncategorised
-                                        </SelectItem>
-                                        {(categories ?? []).map((c) => (
-                                            <SelectItem key={c.id} value={c.id}>
-                                                {c.name}
+                                        {RECOMMENDATION_CATEGORIES.map((cat) => (
+                                            <SelectItem key={cat} value={cat}>
+                                                <span className='flex items-center gap-2'>
+                                                    <HugeiconsIcon
+                                                        icon={getCategoryIconComponent(
+                                                            RECOMMENDATION_CATEGORY_ICON[
+                                                                cat
+                                                            ],
+                                                        )}
+                                                        className='size-4 text-muted-foreground'
+                                                    />
+                                                    {
+                                                        RECOMMENDATION_CATEGORY_LABELS[
+                                                            cat
+                                                        ]
+                                                    }
+                                                </span>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <FieldDescription>
-                                    The bucket this pick is grouped under on the
-                                    page. Manage the list on the Categories
-                                    screen.
+                                    The kind of place this pick is. It decides which
+                                    detail fields the card shows.
                                 </FieldDescription>
                             </Field>
 
