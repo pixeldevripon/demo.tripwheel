@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         );
         // Same contract as the cancellation proxy: bust this session's cached
         // account reads so the follow-up router.refresh() sees the new date.
-        if (res.ok) revalidateTag(travellerCacheTag(sessionToken));
+        if (res.ok) revalidateTag(travellerCacheTag(sessionToken), { expire: 0 });
         return NextResponse.json({ ok: res.ok }, { status: res.ok ? 200 : 400 });
     } catch {
         return NextResponse.json({ ok: false }, { status: 502 });

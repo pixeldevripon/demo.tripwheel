@@ -34,7 +34,7 @@ const TOKEN_SHAPE = /^v1\.[A-Za-z0-9_-]{1,512}\.[A-Za-z0-9_-]{1,128}$/;
 /** Bust the cached account reads for every token involved in a change. */
 function bustTraveller(...tokens: Array<string | null>) {
     for (const token of tokens) {
-        if (token) revalidateTag(travellerCacheTag(token));
+        if (token) revalidateTag(travellerCacheTag(token), { expire: 0 });
     }
 }
 
