@@ -1,6 +1,8 @@
+import { revalidateTag } from 'next/cache';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
+import { travellerCacheTag } from '@/lib/api/public/traveller';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
@@ -73,6 +75,11 @@ export async function POST(req: NextRequest) {
                 ),
             }
         );
+        // Bust this session's cached account reads BEFORE responding: the
+        // caller follows success with router.refresh(), which must see the
+        // pending-cancellation state, not a 30s-fresh cache entry.
+        // (revalidateTag, not updateTag - updateTag throws in Route Handlers.)
+        if (res.ok) revalidateTag(travellerCacheTag(sessionToken), { expire: 0 });
         // The backend's message is safe to relay (it explains WHY a request was
         // refused - already requested, departed, not confirmed) but the status
         // is what the caller branches on.

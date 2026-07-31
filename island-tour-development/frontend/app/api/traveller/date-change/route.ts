@@ -1,6 +1,8 @@
+import { revalidateTag } from 'next/cache';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
+import { travellerCacheTag } from '@/lib/api/public/traveller';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
@@ -88,6 +90,9 @@ export async function POST(req: NextRequest) {
                 body: JSON.stringify({ departureId }),
             }
         );
+        // Same contract as the cancellation proxy: bust this session's cached
+        // account reads so the follow-up router.refresh() sees the new date.
+        if (res.ok) revalidateTag(travellerCacheTag(sessionToken), { expire: 0 });
         return NextResponse.json({ ok: res.ok }, { status: res.ok ? 200 : 400 });
     } catch {
         return NextResponse.json({ ok: false }, { status: 502 });

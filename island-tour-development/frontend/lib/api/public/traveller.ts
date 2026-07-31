@@ -1,18 +1,30 @@
 /**
  * Server-side reads for the traveller account area (`/{locale}/traveller`).
  *
- * Every call carries the HttpOnly traveler session as `x-traveler-session`, so
- * these are PER-USER and must never be wrapped in `'use cache'` - the response
- * would be cached under a shared key and leak one traveller's bookings to the
- * next visitor. Callers await them inside a `<Suspense>` boundary after
- * `connection()`, exactly like the TYP read.
+ * Every call carries the HttpOnly traveler session as `x-traveler-session` -
+ * PER-USER data. The reads ARE wrapped in `'use cache'`, and that is safe for
+ * one precise reason: the session token is a FUNCTION ARGUMENT, so it is part
+ * of the cache key. One traveller's entry can never serve another traveller -
+ * reaching it would require presenting the same unguessable HMAC token. (A
+ * naive wrap that read the token from `cookies()` inside the scope would be
+ * rejected by Next outright; keyed-by-argument is the sanctioned pattern.)
+ *
+ * WHY cache at all: without it every hop inside the account area - receipt
+ * and back, tab deep-link, pagination, refresh - re-paid the full
+ * frontend->backend round trip and re-showed skeletons. A short-lived entry
+ * (fresh 30s, hard cap 5min) makes those hops near-instant while staying
+ * honest: every traveller-area mutation proxy calls
+ * `revalidateTag(travellerCacheTag(token))` BEFORE responding, so the
+ * `router.refresh()` that follows a cancel/date-change sees fresh data.
  *
  * A 401 is a normal outcome here, not an error: it means "no session, an
  * expired one, or a weaker (pair-login / checkout) token". It maps to `null`
  * so the page can render the login card instead of an error boundary. Only a
- * genuinely unreachable backend throws.
+ * genuinely unreachable backend throws (errors are never cached).
  */
 import 'server-only';
+import { createHash } from 'node:crypto';
+import { cacheLife, cacheTag } from 'next/cache';
 import { BackendUnavailableError, publicFetch } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 import type { PaymentModel } from '@/types/trip';
@@ -218,11 +230,42 @@ async function travellerGet<T>(
 // reading it when the stat tiles were replaced by the next-trip module
 // (review F5) - the dashboard's customer summary still uses the shared math.
 
-export function getTravellerBookings(
+/**
+ * The cache tag for every cached read belonging to one session. The token is
+ * hashed so the tag never carries the credential itself (tags can surface in
+ * logs and diagnostics). Mutation proxies (`app/api/traveller/*`) import this
+ * to bust the session's entries with `revalidateTag` - `updateTag` is not
+ * allowed in Route Handlers.
+ */
+export function travellerCacheTag(sessionToken: string): string {
+    const digest = createHash('sha256')
+        .update(sessionToken)
+        .digest('hex')
+        .slice(0, 16);
+    return `traveller-${digest}`;
+}
+
+/**
+ * Shared lifetime for the account-area reads: fresh for 30s (hopping between
+ * the list, a receipt, and back costs zero backend round trips), refreshed in
+ * the background after that, and never older than 2 minutes even if the tag
+ * busting somehow misses. The short hard cap is what bounds changes the
+ * frontend cannot see coming - a webhook settling a refund, an operator
+ * confirming a booking - while every change the frontend DOES mediate (login,
+ * checkout session hand-off, cancel, date change) busts the tag immediately.
+ */
+function travellerCacheProfile(sessionToken: string): void {
+    cacheLife({ stale: 30, revalidate: 30, expire: 120 });
+    cacheTag(travellerCacheTag(sessionToken));
+}
+
+export async function getTravellerBookings(
     sessionToken: string,
     page = 1,
     locale?: string
 ): Promise<TravellerPage<TravellerBooking> | null> {
+    'use cache';
+    travellerCacheProfile(sessionToken);
     const localeParam = locale ? `&locale=${locale}` : '';
     return travellerGet<TravellerPage<TravellerBooking>>(
         `/bookings/traveller/bookings?page=${page}&limit=${TRAVELLER_BOOKINGS_PAGE_SIZE}${localeParam}`,
@@ -230,10 +273,12 @@ export function getTravellerBookings(
     );
 }
 
-export function getTravellerPayments(
+export async function getTravellerPayments(
     sessionToken: string,
     page = 1
 ): Promise<TravellerPaymentsPage | null> {
+    'use cache';
+    travellerCacheProfile(sessionToken);
     return travellerGet<TravellerPaymentsPage>(
         `/bookings/traveller/payments?page=${page}&limit=${TRAVELLER_PAGE_SIZE}`,
         sessionToken
@@ -255,6 +300,8 @@ export async function getTravellerReceipt(
     sessionToken: string,
     paymentId: string
 ): Promise<TravellerReceiptResult> {
+    'use cache';
+    travellerCacheProfile(sessionToken);
     const path = `/bookings/traveller/payments/${encodeURIComponent(paymentId)}`;
     let res: Response;
     try {
