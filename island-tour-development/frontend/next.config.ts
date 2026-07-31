@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
         serverActions: {
             bodySizeLimit: '100mb',
         },
+        // Client router cache for DYNAMIC pages (default 0s = every link hop
+        // refetches the RSC payload and re-shows the loading skeleton, even
+        // when the server would answer from cache). 30s lets short back-and-
+        // forth hops - receipt <-> payments, account <-> receipt - replay the
+        // payload instantly with NO request and NO skeleton. Mutations stay
+        // correct: router.refresh() (used after cancel/date-change/login)
+        // bypasses and replaces these entries.
+        staleTimes: {
+            dynamic: 30,
+        },
     },
     turbopack: {
         root: path.resolve(__dirname),
