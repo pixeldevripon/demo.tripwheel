@@ -11,7 +11,10 @@ import {
   type TranslatableValue,
   type TranslationProvider,
 } from './providers/translation-provider.interface';
-import type { ContentEntityType } from './content-translation.constants';
+import {
+  MEDIA_BUCKET_KEYS,
+  type ContentEntityType,
+} from './content-translation.constants';
 
 /**
  * Orchestrates AI translation of one entity: collect units (registry) ->
@@ -74,8 +77,13 @@ function cacheTags(entityType: ContentEntityType, entityId: string): string[] {
       return [`collection:${entityId}`, 'collections'];
     case 'homepage':
       return ['homepage'];
-    case 'hotel':
-      return ['hotels'];
+    case 'recommendation':
+      return ['recommendations'];
+    // Coarse, and it has to be: entity tables store only an image URL and no
+    // media id, so nothing here can know which tours, destinations or hubs
+    // render the assets this job just translated. There is no id to name.
+    case 'media':
+      return ['media-seo'];
   }
 }
 
@@ -226,16 +234,29 @@ export class ContentTranslationService {
       orderBy: { updatedAt: 'desc' },
       take: limitPerType,
     } as const;
-    const [tours, destinations, hubs, categories, collections, home, hotels] =
-      await Promise.all([
-        this.prisma.tour.findMany({ select: { id: true }, ...recent }),
-        this.prisma.destination.findMany({ select: { id: true }, ...recent }),
-        this.prisma.hub.findMany({ select: { id: true }, ...recent }),
-        this.prisma.category.findMany({ select: { id: true }, ...recent }),
-        this.prisma.collection.findMany({ select: { id: true }, ...recent }),
-        this.prisma.homePage.findFirst({ select: { id: true } }),
-        this.prisma.hotel.findMany({ select: { id: true }, ...recent }),
-      ]);
+    const [
+      tours,
+      destinations,
+      hubs,
+      categories,
+      collections,
+      home,
+      recommendations,
+    ] = await Promise.all([
+      this.prisma.tour.findMany({ select: { id: true }, ...recent }),
+      this.prisma.destination.findMany({ select: { id: true }, ...recent }),
+      this.prisma.hub.findMany({ select: { id: true }, ...recent }),
+      this.prisma.category.findMany({ select: { id: true }, ...recent }),
+      this.prisma.collection.findMany({ select: { id: true }, ...recent }),
+      this.prisma.homePage.findFirst({ select: { id: true } }),
+      // Only EXTERNAL recommendations carry copy; internal ones follow their
+      // entity and have no translation rows to refresh.
+      this.prisma.recommendation.findMany({
+        where: { source: 'EXTERNAL' },
+        select: { id: true },
+        ...recent,
+      }),
+    ]);
 
     const jobs: Array<[ContentEntityType, string]> = [
       ...tours.map(({ id }): [ContentEntityType, string] => ['tour', id]),
@@ -253,7 +274,21 @@ export class ContentTranslationService {
         id,
       ]),
       ...(home ? [['homepage', home.id] as [ContentEntityType, string]] : []),
-      ...hotels.map(({ id }): [ContentEntityType, string] => ['hotel', id]),
+      ...recommendations.map(({ id }): [ContentEntityType, string] => [
+        'recommendation',
+        id,
+      ]),
+      // All 16 media buckets, every night, unconditionally - not `limitPerType`
+      // rows like the entity types above. This is the ONLY path that drains a
+      // pre-existing library: the collector orders each bucket
+      // least-translated-first and takes MEDIA_BUCKET_SIZE, so a big backlog
+      // works through a bucket over successive nights. A bucket with nothing
+      // outstanding costs zero provider calls (sourceHash), so sweeping all 16
+      // is cheap even when there is no work.
+      ...MEDIA_BUCKET_KEYS.map((key): [ContentEntityType, string] => [
+        'media',
+        key,
+      ]),
     ];
     for (const [entityType, entityId] of jobs) {
       this.enqueuer.enqueue(entityType, entityId);

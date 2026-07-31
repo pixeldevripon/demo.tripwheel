@@ -13,6 +13,11 @@ interface CollectionHeroProps {
     eyebrow: string | null;
     subtitle: string | null;
     heroImage: string | null;
+    /**
+     * Localized alt text from the media library. Resolved by the caller (the
+     * loader is server-only) and falls back to the collection title.
+     */
+    heroImageAlt?: string | null;
     tourCount: number;
     /** Localized "from" price incl. currency symbol (e.g. "$120"), or null to hide. */
     startingPrice?: string | null;
@@ -36,6 +41,7 @@ export function CollectionHero({
     eyebrow,
     subtitle,
     heroImage,
+    heroImageAlt,
     tourCount,
     startingPrice,
     dict,
@@ -48,7 +54,7 @@ export function CollectionHero({
                 <>
                     <Image
                         src={heroImage}
-                        alt={title}
+                        alt={heroImageAlt || title}
                         fill
                         priority
                         sizes='100vw'

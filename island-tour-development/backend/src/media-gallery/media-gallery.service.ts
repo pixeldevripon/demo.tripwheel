@@ -1,17 +1,42 @@
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
 import { resolveOperatorId } from '@/common/utils/operator.util';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Permission, Role } from '@prisma/client';
 import type { MediaGallery, Prisma } from '@prisma/client';
 import { CloudinaryService } from './cloudinary.service';
 import type { Multer } from 'multer';
 
+import { Locale } from '@/common/constants/locales';
+import { orBase } from '@/common/utils/translation.util';
+import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
+import { ContentTranslationService } from '@/content-translation/content-translation.service';
+
 import type {
   ConfirmUploadDto,
   MediaGalleryQueryDto,
+  MediaSeoResponseDto,
   UpdateMediaDto,
+  UpsertMediaTranslationDto,
 } from './dto/upload-media.dto';
+
+/** A Cloudinary URL without its `?_a=` analytics tail. See `getSeo`. */
+function stripQuery(url: string): string {
+  return url.split('?')[0];
+}
+
+/**
+ * Field-value normalizer for every media metadata write: `undefined` means "not
+ * in this payload, leave it alone", an empty/whitespace string means "clear it".
+ */
+function clean(v: string | undefined): string | null | undefined {
+  return v === undefined ? undefined : v.trim() === '' ? null : v.trim();
+}
 
 /** The session identity every media call is scoped by. */
 export type MediaActor = { id: string; role: Role };
@@ -38,6 +63,9 @@ export class MediaGalleryService {
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly staffPermissions: StaffPermissionsService,
+    // Both from the @Global ContentTranslationModule - no module import needed.
+    private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly contentTranslationService: ContentTranslationService,
   ) {}
 
   // ─── Operator-context scoping (conflict #6 stage 2) ─────────────────────────
@@ -244,6 +272,85 @@ export class MediaGalleryService {
     return rows.map((r) => r.url);
   }
 
+  /**
+   * Localized SEO copy for a batch of image URLs. Public - consumed by the
+   * public site's `getMediaSeo`, which captions og:image, gallery photos beyond
+   * the first, and hero images in the visitor's language.
+   *
+   * ## Why URLs and not ids
+   * Entity tables store a bare image URL (`heroImage`, `ogImage`, `TourImage.url`)
+   * and no media id, so the URL is the only join key the caller has. Picking an
+   * image copies the URL out of the library; nothing links back.
+   *
+   * ## Matching ignores the query string
+   * Every stored Cloudinary URL carries an `?_a=…` analytics param, and the copy
+   * on an entity row and the copy in the library are not guaranteed to carry the
+   * SAME one - so an exact-string match silently returns nothing. Both sides are
+   * compared query-stripped.
+   *
+   * The predicate is `url = <stripped>` OR `url LIKE '<stripped>?%'` rather than
+   * a bare prefix match: `.../hero` is a prefix of `.../hero-bg`, so
+   * `startsWith(stripped)` would hand one asset's copy to a different image.
+   *
+   * ## Fallback is PER FIELD
+   * A locale row may exist with only some fields filled - either never
+   * translated, or deliberately cleared in the dashboard (stored as null, row
+   * kept). Each field therefore falls back to the English base row on its own
+   * via `orBase`. Taking the locale row wholesale would render a cleared field
+   * blank instead of showing English, which is the bug class task #143 fixed.
+   *
+   * Rows flagged `excludeFromIndexing` are NOT filtered out here: alt text is an
+   * accessibility need on every image, indexable or not. Only SEO surfaces
+   * filter, and they already do it through `filterIndexableImages`.
+   */
+  async getSeo(
+    urls: string[],
+    locale: Locale = Locale.en,
+  ): Promise<MediaSeoResponseDto[]> {
+    // De-duplicate: a page can render the same asset as both hero and gallery
+    // tile, and there is no reason to widen the query for it.
+    const stripped = [...new Set(urls.map(stripQuery))];
+    if (stripped.length === 0) return [];
+
+    const rows = await this.prisma.mediaGallery.findMany({
+      where: {
+        OR: stripped.flatMap((url) => [
+          { url },
+          { url: { startsWith: `${url}?` } },
+        ]),
+      },
+      select: {
+        url: true,
+        title: true,
+        description: true,
+        altText: true,
+        ...(locale === Locale.en
+          ? {}
+          : {
+              translations: {
+                where: { locale },
+                select: { title: true, description: true, altText: true },
+              },
+            }),
+      },
+    });
+
+    return rows.map((row) => {
+      const t =
+        'translations' in row
+          ? (row.translations?.[0] ?? undefined)
+          : undefined;
+      return {
+        url: stripQuery(row.url),
+        // `orBase` treats a blank string as "say nothing", so a field cleared to
+        // '' by an older write falls back just like a null one.
+        title: orBase(t?.title, row.title ?? '') || null,
+        description: orBase(t?.description, row.description ?? '') || null,
+        altText: orBase(t?.altText, row.altText ?? '') || null,
+      };
+    });
+  }
+
   async getMyMedia(actor: MediaActor, query: MediaGalleryQueryDto) {
     const {
       page = 1,
@@ -284,9 +391,56 @@ export class MediaGalleryService {
           return {};
       }
     })();
+    /**
+     * "Still needs translating into <locale>" - the media library's answer to the
+     * Translation Console, which cannot enumerate thousands of assets.
+     *
+     * Anchored on `altText` because that is the field with real public impact
+     * (og:image, gallery photos, heroes). Gating the worklist on title or
+     * description would manufacture busywork: nothing renders those yet.
+     *
+     * `altText: { not: null }` first - an asset with no English alt text has
+     * nothing to translate, and listing it forever would make the filter useless.
+     *
+     * A row that EXISTS with a null altText and the human flag is a deliberate
+     * clear ("show English here"), so it is excluded: nagging about it would
+     * fight the clear-means-clear contract. Only a missing row, or a machine row
+     * the AI left without alt text, counts as outstanding work.
+     */
+    // `en` is ignored rather than honoured: English lives on the asset row, so
+    // NO asset ever has an `en` translation row and `none: { locale: 'en' }`
+    // would match every one of them - a filter that looks like it did something
+    // while quietly changing nothing about which rows are outstanding.
+    const untranslatedLocale =
+      query.untranslated && query.untranslated !== Locale.en
+        ? query.untranslated
+        : undefined;
+
+    const untranslatedWhere: Prisma.MediaGalleryWhereInput = untranslatedLocale
+      ? {
+          altText: { not: null },
+          OR: [
+            { translations: { none: { locale: untranslatedLocale } } },
+            {
+              translations: {
+                some: {
+                  locale: untranslatedLocale,
+                  altText: null,
+                  isMachineTranslated: true,
+                },
+              },
+            },
+          ],
+        }
+      : {};
+
+    // AND, never a spread. `mediaScope` returns `{ OR: [...] }` for an operator
+    // context and both `typeWhere` and `untranslatedWhere` can carry their own
+    // `OR` - spreading them into one object makes the last `OR` silently
+    // overwrite the earlier ones. That is not a cosmetic difference: losing the
+    // scope clause hands one operator every other operator's library.
     const where: Prisma.MediaGalleryWhereInput = {
-      ...(await this.mediaScope(actor)),
-      ...typeWhere,
+      AND: [await this.mediaScope(actor), typeWhere, untranslatedWhere],
     };
 
     // Rows uploaded before the metadata columns existed have null
@@ -349,10 +503,7 @@ export class MediaGalleryService {
       throw new NotFoundException(`Media ${id} not found`);
     }
 
-    const clean = (v: string | undefined) =>
-      v === undefined ? undefined : v.trim() === '' ? null : v.trim();
-
-    return this.prisma.mediaGallery.update({
+    const updated = await this.prisma.mediaGallery.update({
       where: { id },
       data: {
         title: clean(dto.title),
@@ -362,6 +513,148 @@ export class MediaGalleryService {
         excludeFromIndexing: dto.excludeFromIndexing,
       },
     });
+
+    // English copy changed -> queue the AI to refresh the other six locales.
+    // Only when copy actually changed: a filename tweak or an indexing toggle
+    // has nothing to translate, and enqueuing on those would burn free-tier
+    // quota re-hashing unchanged sources.
+    //
+    // Fire-and-forget by contract - it enqueues the asset's BUCKET, swallows
+    // Redis failures, and never delays or fails this save.
+    if (
+      dto.title !== undefined ||
+      dto.description !== undefined ||
+      dto.altText !== undefined
+    ) {
+      this.contentTranslation.enqueueMedia(id);
+    }
+
+    return updated;
+  }
+
+  /**
+   * Every stored locale for one asset, for the dashboard's inline locale
+   * switcher. Takes NO locale param on purpose: the editor needs them all at
+   * once, and a defaulted locale filter is exactly the trap that made the hub
+   * page-sections editor silently show English only.
+   *
+   * English is absent from the result by construction - it lives on the base
+   * `MediaGallery` row and is edited through `PATCH /media-gallery/:id`.
+   */
+  async getTranslations(id: string, actor: MediaActor) {
+    await this.assertVisible(id, actor);
+
+    return this.prisma.mediaTranslation.findMany({
+      where: { mediaId: id },
+      select: {
+        locale: true,
+        title: true,
+        description: true,
+        altText: true,
+        isMachineTranslated: true,
+        updatedAt: true,
+      },
+      orderBy: { locale: 'asc' },
+    });
+  }
+
+  /**
+   * Upsert one locale's copy for one asset - the dashboard's per-locale save.
+   *
+   * ## Clearing
+   * An empty string stores NULL and the ROW SURVIVES. That is the whole
+   * contract: the surviving row carries `isMachineTranslated: false`, which the
+   * AI refresher reads as human-owned and skips, so a field the editor cleared
+   * STAYS cleared and the public page falls back to English for it. Deleting the
+   * row instead would read as "never translated" and get refilled on the next
+   * English edit.
+   *
+   * Every write is a human write, so the machine flag and the source hash are
+   * always reset - never taken from the DTO, which has no business carrying them.
+   */
+  async upsertTranslation(
+    id: string,
+    locale: Locale,
+    actor: MediaActor,
+    dto: UpsertMediaTranslationDto,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source every other locale falls back to - edit it on the asset itself via PATCH /media-gallery/:id.',
+      );
+    }
+    await this.assertVisible(id, actor);
+
+    const fields = {
+      title: clean(dto.title) ?? null,
+      description: clean(dto.description) ?? null,
+      altText: clean(dto.altText) ?? null,
+    };
+
+    const row = await this.prisma.mediaTranslation.upsert({
+      where: { mediaId_locale: { mediaId: id, locale } },
+      create: {
+        mediaId: id,
+        locale,
+        ...fields,
+        isMachineTranslated: false,
+        sourceHash: null,
+      },
+      update: { ...fields, isMachineTranslated: false, sourceHash: null },
+      select: {
+        locale: true,
+        title: true,
+        description: true,
+        altText: true,
+        isMachineTranslated: true,
+        updatedAt: true,
+      },
+    });
+    this.logger.log(`Media ${id} ${locale} copy saved by ${actor.id}`);
+    return row;
+  }
+
+  /**
+   * Translate ONE asset into one locale on demand (the viewer's AI button).
+   *
+   * Goes through the registry's single-uuid branch, so it costs one provider call
+   * and touches only this asset - unlike the background path, which deliberately
+   * batches a whole bucket. Ownership is checked first: an operator must not be
+   * able to spend quota on, or rewrite, another operator's library.
+   *
+   * The overwrite policy is the pipeline's, unchanged: a human-saved row is left
+   * alone unless `force`, so this button cannot quietly undo someone's edit.
+   */
+  async generateTranslation(
+    id: string,
+    locale: Locale,
+    actor: MediaActor,
+    force = false,
+  ) {
+    if (locale === Locale.en) {
+      throw new BadRequestException(
+        'English is the source language - pick a target locale',
+      );
+    }
+    await this.assertVisible(id, actor);
+
+    return this.contentTranslationService.translateEntity(
+      'media',
+      id,
+      [locale],
+      force,
+    );
+  }
+
+  /** 404s unless the asset is inside the actor's media scope. */
+  private async assertVisible(id: string, actor: MediaActor): Promise<void> {
+    const found = await this.prisma.mediaGallery.findFirst({
+      where: { id, ...(await this.mediaScope(actor)) },
+      select: { id: true },
+    });
+    if (!found) {
+      throw new NotFoundException(`Media ${id} not found`);
+    }
   }
 
   async deleteMedia(

@@ -6,6 +6,7 @@ import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getTourReviewSummary } from '@/lib/api/public/reviews';
 import { getTourBySlug } from '@/lib/api/public/tours';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { getServerCurrency } from '@/lib/currency/server';
 import { type Locale } from '@/lib/constants/locales';
 import {
@@ -175,10 +176,23 @@ export async function TourDetailContent({
 
     // Gallery (Figma node 47940:12742): live images in displayOrder (backend-
     // ordered), with a placeholder fallback so the slider never gets an empty set.
-    const galleryImages =
+    //
+    // Alt text is resolved HERE rather than in the gallery: that component is a
+    // client leaf and the media loader is server-only. Precedence is live media
+    // library (localized) -> the TourImage snapshot (English, taken when the
+    // image was picked, so it goes stale) -> the tour title.
+    const galleryUrls =
         detail.images.length > 0
             ? detail.images.map(img => img.url)
             : FALLBACK_GALLERY_IMAGES;
+    const galleryAlts = await getMediaSeo(galleryUrls, locale);
+    const galleryImages = galleryUrls.map((url, i) => ({
+        url,
+        alt:
+            galleryAlts.get(normalizeUrl(url))?.altText ||
+            detail.images[i]?.altText ||
+            title,
+    }));
 
     // Meta strip pills - only the applicable ones render (duration / pickup /
     // languages), all localized.

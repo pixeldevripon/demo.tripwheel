@@ -42,11 +42,35 @@ Each translatable entity has a typed child table keyed `(entityId, locale)` uniq
 | Trip | `TripTranslation` | title, overview, description, isMachineTranslated |
 | Collection | `CollectionTranslation` | name, overview, h1Override, breadcrumbLabel, isMachineTranslated |
 | Tour highlights / inclusions / exclusions | `Tour*Translation` | text/label, isMachineTranslated |
+| Media asset | `MediaTranslation` | title, description, altText, isMachineTranslated, sourceHash |
 
 SEO meta is stored separately per locale in the `*PageContent` tables (`metaTitle`,
 `metaDescription`, `aboutText`). FAQ is a polymorphic table (`pageType` + `entityId` + `locale`).
 
 `name` overrides are optional; a null translated `name` falls back to the canonical base value.
+
+### Media library copy (SHIPPED 2026-07-31)
+
+The media library's `title` / `description` / `altText` are translatable, with the **English
+source on the `MediaGallery` row itself** (the hub our-picks shape) - so reads merge per field
+with `orBase()`.
+
+The join key is a **URL, not an id**: entity tables store bare image URLs (`heroImage`,
+`ogImage`, `TourImage.url`) and carry no media id, so nothing links a rendered image back to its
+library row. Every stored Cloudinary URL also carries an `?_a=` analytics param that the entity
+row and the library row need not agree on, so **matching is always query-stripped** on both
+sides (`GET /media-gallery/seo` server-side, `normalizeUrl` in the frontend loader). The
+predicate is `url = <stripped> OR url LIKE '<stripped>?%'`, never a bare prefix match - `.../hero`
+is a prefix of `.../hero-bg`, and a prefix match would hand one asset's alt text to another image.
+
+Editing is **inline in the media viewer**, not the Translation Console: the console is a matrix
+over every entity of a type, which cannot enumerate a library of thousands. The worklist view is
+a `?untranslated=<locale>` filter on the media grid instead. AI translation batches assets 50 to
+a job - see `AI-TRANSLATION-FLOW.md` §6.
+
+Real public readers today: `og:image` alt on every entity type, tour gallery photos (per photo,
+no longer one shared tour title), and hero images. `title` / `description` are stored and served
+by the API but no page renders them yet.
 
 ## Fetch & fallback
 

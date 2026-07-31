@@ -1,4 +1,4 @@
-import { ThankYouApartmentPromo } from '@/components/frontend/thank-you/thank-you-apartment';
+import { ThankYouRecommendations } from '@/components/frontend/thank-you/thank-you-recommendation';
 import { ThankYouHero } from '@/components/frontend/thank-you/thank-you-hero';
 import { ThankYouNextSteps } from '@/components/frontend/thank-you/thank-you-next-steps';
 import { ThankYouQuestion } from '@/components/frontend/thank-you/thank-you-question';
@@ -10,7 +10,7 @@ import { BookingManageHeader } from '@/components/frontend/thank-you/booking-man
 import { ThankYouPageSkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { getActiveDestinations } from '@/lib/api/public';
 import { claimConversionPush } from '@/lib/api/public/bookings';
-import { getHotelPromo } from '@/lib/api/public/hotel';
+import { getRecommendations } from '@/lib/api/public/recommendation';
 import {
     DEFAULT_LOCALE,
     isLocale,
@@ -133,10 +133,10 @@ async function ThankYouBody({
     // entirely. In parallel - they are independent, and this page is already
     // several sequential awaits deep behind a spinner.
     //
-    // The apartment is admin-managed content (Dashboard > Pages > Hotel), NOT
-    // part of the booking payload: it is the same card for every traveller, so it
-    // rides its own cached loader rather than being re-derived per lookup.
-    const [relatedHits, hotel] =
+    // The recommendation is admin-managed content (Dashboard > Recommendations),
+    // NOT part of the booking payload: it is the same card for every traveller, so
+    // it rides its own cached loader rather than being re-derived per lookup.
+    const [relatedHits, recommendations] =
         mode === 'celebratory'
             ? await Promise.all([
                   getThankYouRelatedTours({
@@ -144,9 +144,9 @@ async function ThankYouBody({
                       excludeTourId: booking.tourId,
                       locale,
                   }),
-                  getHotelPromo(locale),
+                  getRecommendations(locale, 'THANK_YOU_PAGE'),
               ])
-            : [[], null];
+            : [[], []];
 
     const { title, seeAll, seeAllCount, ...cardDict } = dict.destination.listings;
 
@@ -201,16 +201,14 @@ async function ThankYouBody({
                         cardDict={cardDict}
                         toursHref={toursHref}
                     />
-                    {/* Admin-managed, and self-hiding: `enabled` is the
-                        backend's verdict that the photo, title and booking link
-                        are all present. Switched off or half-filled, the section
-                        is absent rather than broken. */}
-                    {hotel?.enabled && (
-                        <ThankYouApartmentPromo
-                            hotel={hotel}
-                            dict={dict.thankYou}
-                        />
-                    )}
+                    {/* Admin-managed, and self-hiding: the backend returns only the
+                        enabled, complete cards placed on this surface, in promotion
+                        order. Up to 3 stack as full cards; more flip to a 4-col
+                        grid. Empty -> nothing renders. */}
+                    <ThankYouRecommendations
+                        recommendations={recommendations}
+                        dict={dict.thankYou}
+                    />
                 </>
             )}
             <ThankYouQuestion booking={booking} dict={dict.thankYou} />

@@ -1,11 +1,12 @@
 /**
- * TEMPORARY verification spec for the hotel promo going dynamic
- * (Dashboard > Pages > Hotels -> the last card on the thank-you page).
+ * TEMPORARY verification spec for the post-booking recommendation promo
+ * (Dashboard > Recommendations -> the last card on the thank-you page).
  *
  * Prefixed `__` like the other throwaway probes in this folder. It talks to the
  * REAL backend and a REAL booking, because the thing being proved is exactly the
  * wiring: the card must render values that came from the database, and must
- * disappear when no hotel qualifies.
+ * disappear when no recommendation qualifies. Asserts the demo-seed values (the
+ * migrated "Palm Suite Apartment"), so run it against a fresh demo seed.
  *
  * Reaching the card needs CELEBRATORY mode, which needs two things a plain
  * `page.goto` does not have:
@@ -48,7 +49,7 @@ async function openThankYou(page: import('@playwright/test').Page, context: impo
     await page.goto(`/${BOOKING.island}/thank-you/${BOOKING.publicRef}`);
 }
 
-test('the thank-you hotel card renders values from the database', async ({
+test('the thank-you recommendation card renders values from the database', async ({
     page,
     context,
 }) => {
@@ -62,8 +63,8 @@ test('the thank-you hotel card renders values from the database', async ({
     // node and fails as "hidden" while the page looks perfect in a browser.
     const body = page.locator('body');
     await expect(body).toContainText('Palm Suite Apartment', { timeout: 30_000 });
-    // Facts from the hotels table, not the old hardcoded constants: same values,
-    // but they can only be on screen now if they came through the API.
+    // Facts from the recommendations table, not the old hardcoded constants: same
+    // values, but they can only be on screen now if they came through the API.
     await expect(body).toContainText('Jan Thiel');
     await expect(body).toContainText('4.8');
     await expect(body).toContainText('1,738');
@@ -87,7 +88,7 @@ test('the thank-you hotel card renders values from the database', async ({
     const box = await card.boundingBox();
     expect(box).not.toBeNull();
     await page.screenshot({
-        path: 'e2e/__shots/hotel-promo-live.png',
+        path: 'e2e/__shots/recommendation-promo-live.png',
         clip: box!,
     });
 });

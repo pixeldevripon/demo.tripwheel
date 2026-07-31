@@ -32,10 +32,61 @@ model MediaGallery {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  translations MediaTranslation[]
+
   @@index([id])
   @@index([publicId])
   @@index([url])
   @@index([userId])
   @@index([operatorId])
   @@map("media_gallery")
+}
+
+/// Per-locale attachment copy, edited inline in the dashboard's media viewer (the
+/// locale pills above "Attachment details") and filled by the AI refresher.
+/// Deliberately NOT a Translation Console entity type: the console is a matrix over
+/// every entity of a type plus a workspace page per (entity, locale), which does not
+/// survive a library of thousands of assets. The console's job here is a
+/// `?untranslated=<locale>` filter on the media grid instead.
+///
+/// The ENGLISH source stays on the `MediaGallery` base row (the hub our-picks shape),
+/// so reads resolve with `orBase()` per field.
+///
+/// Every column is NULLABLE on purpose. Clearing a field in the dashboard stores null
+/// and the ROW SURVIVES carrying `isMachineTranslated: false`, which the AI reads as
+/// human-owned and skips - so a cleared field stays cleared and the page falls back to
+/// English. That is why media needs NO `translation_clear_marks` rows, unlike the NOT
+/// NULL FAQ / section / hub-curation / tour-child surfaces where a clear must DELETE
+/// the row and the gap needs a tombstone to be told apart from "never translated".
+///
+/// `fileName` and `excludeFromIndexing` are absent by design: a filename and an
+/// indexing flag are properties of the asset, not copy that differs by language.
+model MediaTranslation {
+  id      String       @id @default(uuid())
+  mediaId String
+  media   MediaGallery @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  locale  Locale
+
+  /// Attachment title. Reachable through `GET /media-gallery/seo`; no public page
+  /// renders it yet (Google removed `<image:title>` from the image-sitemap spec).
+  title String?
+
+  /// Attachment description. Same reach and same caveat as `title`.
+  description String?
+
+  /// The alt attribute. THE field with real public impact: og:image alt, gallery
+  /// photos beyond the first, and hero images all read it through `getMediaSeo`.
+  altText String?
+
+  isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
+  updatedAt           DateTime @updatedAt
+
+  // No separate @@index([mediaId, locale]): the unique constraint above already
+  // creates an index on exactly those columns in that order, which is the only
+  // way this table is ever queried (one asset's row for one locale, or an
+  // asset's rows across locales). Some sibling *Translation models declare both;
+  // the duplicate costs write throughput and storage for no read benefit.
+  @@unique([mediaId, locale])
+  @@map("media_translations")
 }

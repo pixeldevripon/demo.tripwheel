@@ -12,6 +12,7 @@ import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getCurrentYear } from '@/lib/current-year';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
+import { ogImageMeta } from '@/lib/seo/og-image';
 import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
 import { getSiteUrl } from '@/lib/seo/site-url';
 import { JsonLd } from '@/components/frontend/seo/json-ld';
@@ -86,7 +87,7 @@ export async function generateMetadata({
     return {
         title: allToursTitle,
         description: allToursDescription,
-        ...(dest.ogImage && { openGraph: { images: [{ url: dest.ogImage }] } }),
+        ...(await ogImageMeta(dest.ogImage, locale, allToursTitle)),
         ...twitterCard(allToursTitle, allToursDescription),
         alternates,
     };

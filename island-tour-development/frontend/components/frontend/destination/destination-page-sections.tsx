@@ -11,6 +11,7 @@ import {
     getDestinationHubs,
     getDestinationTours,
 } from '@/lib/api/public';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
@@ -44,9 +45,12 @@ export async function DestinationHeroSection({
     destinationName,
     heroImage,
 }: HeroSectionProps) {
-    const [categories, hubs] = await Promise.all([
+    const [categories, hubs, heroSeo] = await Promise.all([
         getDestinationCategories(destination, locale),
         getDestinationHubs(destination, locale),
+        // Independent of the other two - joins the same Promise.all rather than
+        // adding a third round-trip to the hero's critical path.
+        getMediaSeo([heroImage], locale),
     ]);
 
     const exploreTypes: ExploreType[] = [
@@ -90,6 +94,11 @@ export async function DestinationHeroSection({
                 destinationSlug={destination}
                 activities={activities}
                 image={heroImage}
+                imageAlt={
+                    heroImage
+                        ? heroSeo.get(normalizeUrl(heroImage))?.altText
+                        : null
+                }
             />
             {exploreTypes.length > 0 && (
                 <DestinationExploreTypes

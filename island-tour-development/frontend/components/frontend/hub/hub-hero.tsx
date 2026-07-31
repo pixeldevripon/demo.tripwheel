@@ -40,6 +40,7 @@ export function HubHero({
     tagline,
     meta,
     image,
+    imageAlt,
     dict,
     onCheckAvailability,
     scrollTargetId = 'hub-section-trips',
@@ -50,6 +51,12 @@ export function HubHero({
     meta: HubHeroMeta[];
     /** Background photo - falls back to the deep-ocean hero gradient. */
     image?: string | null;
+    /**
+     * Localized alt text from the media library. Resolved by the caller (this is
+     * a client component and the loader is server-only) and falls back to the
+     * hub title.
+     */
+    imageAlt?: string | null;
     dict: HubHeroDict;
     /**
      * Custom handler for the Check Availability button. When omitted, the button
@@ -90,7 +97,7 @@ export function HubHero({
                 <>
                     <Image
                         src={image}
-                        alt={title}
+                        alt={imageAlt || title}
                         fill
                         priority
                         className='object-cover'

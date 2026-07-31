@@ -46,6 +46,13 @@ export const translationUnitKeys = {
    */
   hubSection: (sectionType: string, displayOrder: number): string =>
     `hubsection:${sectionType}:${displayOrder}`,
+  /**
+   * One media-library asset. Unlike every other key, a single `media` job
+   * carries MANY of these - a bucket of up to MEDIA_BUCKET_SIZE assets shares
+   * one provider call per locale, which is what makes a library of thousands
+   * affordable.
+   */
+  media: (mediaId: string): string => `media:${mediaId}`,
 } as const;
 
 /**

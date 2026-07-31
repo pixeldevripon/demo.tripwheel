@@ -288,18 +288,18 @@ export class ContentTranslationController {
     return this.generate('homepage', home.id, locale, force);
   }
 
-  // Hotels are a normal list, so this is the standard per-id shape - unlike the
-  // homepage singleton above.
-  @Post('hotels/:id/translations/:locale/generate')
+  // Recommendations are a normal list, so this is the standard per-id shape -
+  // unlike the homepage singleton above.
+  @Post('recommendations/:id/translations/:locale/generate')
   @RequirePermissions(Permission.MANAGE_EDITORIAL)
-  @ApiGenerateTranslationDocs('hotel')
-  generateHotel(
+  @ApiGenerateTranslationDocs('recommendation')
+  generateRecommendation(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('locale', new ParseEnumPipe(Locale)) locale: Locale,
     @Query('force', new ParseBoolPipe({ optional: true }))
     force: boolean | undefined,
   ): Promise<GenerateTranslationResponseDto> {
-    return this.generate('hotel', id, locale, force);
+    return this.generate('recommendation', id, locale, force);
   }
 
   private async generate(

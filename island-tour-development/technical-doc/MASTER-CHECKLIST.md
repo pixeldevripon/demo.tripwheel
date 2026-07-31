@@ -1512,24 +1512,28 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Page CRUD + slug (auto-gen + `slugTouched`, rename→301 note) + publish state + English content wiring (`{fields}` translation payload); other locales are schema-ready, deferred by the English-only decision
 - [x] Both user decisions resolved 2026-07-26 (fall-through routing; adapted TipTap port) — see `technical-doc/content/HOMEPAGE-AND-PAGES.md` Phase 5
 
-## Hotels (thank-you page promo)
+## Recommendations (post-booking promo)
 
-Island Tours' own places to stay, advertised on the thank-you page after a
-traveller books. Built 2026-07-30, replacing the hardcoded `APARTMENT_PROMO`
-constant on the public site.
+Island Tours' post-booking promo - featured on the thank-you page (and, once the
+email block ships, the confirmation email) after a traveller books. Generalises
+the single-purpose **Hotels** promo (built 2026-07-30) into a typed,
+internal/external, placement-controlled system on 2026-07-31.
 
-- [x] `Hotel` + `HotelTranslation` models (`prisma/hotel.prisma`), tables `hotels` / `hotel_translations`
-- [x] Migrations: `20260730130000_hotel_promo` (create + pre-seed), `20260730140000_hotels_list` (singleton -> protected list, re-key to uuid), `20260730150000_hotel_seed_labels` (fill the eyebrow / button labels)
-- [x] **A LIST that feeds ONE card.** The page renders a single promo, so the public read serves the first *enabled and complete* hotel by `displayOrder`; an incomplete row is SKIPPED rather than ending the search, or a half-filled draft at order 0 would silently suppress the good hotel behind it
-- [x] **Seed protection** - the shipped row carries `isSeeded`, and `DELETE` on it answers 403, exactly like a seeded destination. The promo therefore always has one occupant; it can only be emptied deliberately, by switching hotels off
-- [x] **The render gate**: image + English title + booking link. Missing any one of them and that hotel is not promotable. Unlike the homepage there is no "null falls back to bundled copy" rule here - we ship no default hotel, and inventing one would advertise a place that does not exist
-- [x] Backend `src/hotels/` - `GET /hotels/public` (`@Public()`) + full CRUD and per-locale copy behind `MANAGE_EDITORIAL`; 41 unit tests
-- [x] Public loader `lib/api/public/hotel.ts` (`'use cache'`, `cacheLife('days')`, `cacheTag('hotels')`), gated on one `enabled` flag; `getThankYouBooking` no longer carries the promo
-- [x] Cache tag `hotels` added to `lib/cache-tags.ts` in BOTH repos (byte-identical) + `case 'hotels'` in the dashboard's `cache-revalidation.ts`. Verified end to end: a dashboard save changes the RENDERED thank-you page within seconds
-- [x] Dashboard `Pages > Hotels` - list (photo / name / status / sleeps / per-night), create, edit with Details + Content tabs, Delete disabled with a reason on the seeded row, "View listing" row action opening the external booking site
-- [x] Registered in the Translation Console (`hotel` entity type) + the AI pipeline (`entity-registry.collectHotel`, nightly sweep, `POST /hotels/:id/translations/:locale/generate`), so all 7 locales are reachable
-- [x] The palm emoji moved OUT of the seven i18n dictionaries and INTO the card component - it is chrome, identical in every language, and an admin types a plain label
-- [ ] No on-site preview of the promoted hotel - the card renders on a thank-you page reachable only with a real booking reference, so the only external link an admin gets is the booking site itself
+- [x] `RecommendationCategory` + `Recommendation` + `RecommendationTranslation` models (`prisma/recommendations.prisma`), tables `recommendation_categories` / `recommendations` / `recommendation_translations`
+- [x] Migration `20260731120000_recommendations` renames `hotels` -> `recommendations` (+ `bookingUrl`->`linkUrl`, `pricePerNight`->`priceAmount`), adds `source`/`categoryId`/`placements`/`refType`/`refId`, creates the category table, and carries the seeded "Palm Suite Apartment" over as an EXTERNAL recommendation in a seeded "Hotels" category placed on `THANK_YOU_PAGE` (no on-screen change)
+- [x] **Admin-managed categories** (Hotel, Restaurant, Car rental, …) - CRUD under `/recommendations/categories`, seed-protected delete, `SetNull` FK so deleting a category never deletes its recommendations
+- [x] **Two kinds.** EXTERNAL = custom content (photo/link + per-locale copy, off-site). INTERNAL = a pointer at a Tour / Destination / Collection / Hub, rendered from the LIVE entity and linked same-tab (`/{destinationSlug}/{slug}`); the resolver fails closed (returns null -> card skipped) on any non-public/archived/deleted entity, so a draft never leaks
+- [x] **One featured card PER SURFACE.** `getFeatured(locale, placement)` serves the first *enabled and complete* recommendation placed on that surface by `displayOrder`; an incomplete row is SKIPPED rather than ending the search. `featuredPlacements` on the admin shape names which surfaces each row currently wins
+- [x] **Seed protection** on both the row and the "Hotels" category (`isSeeded` -> 403 on delete), exactly like a seeded destination
+- [x] **The render gate**: EXTERNAL needs image + English title + link; INTERNAL needs the entity to still resolve live to a name + image + link. No "null falls back to bundled copy" - we ship no default, and inventing one would advertise a place that does not exist
+- [x] Backend `src/recommendations/` - `GET /recommendations/public?locale=&placement=` (`@Public()`) + full CRUD, category CRUD, and per-locale copy behind `MANAGE_EDITORIAL`; PATCH updates; create/update enforce source rules + refId existence; 23 unit tests
+- [x] Public loader `lib/api/public/recommendation.ts` (`'use cache'`, `cacheLife('days')`, `cacheTag('recommendations')`), gated on one `enabled` flag; component `thank-you-recommendation.tsx` branches the CTA on `external` (off-site new tab vs on-site `MotionLink`)
+- [x] Cache tag `recommendations` in `lib/cache-tags.ts` in BOTH repos (byte-identical) + `case 'recommendations'` in the dashboard's `cache-revalidation.ts` (public shipped first, per the contract)
+- [x] Dashboard `Recommendations` - list (source badge / category / name / featured-placements status), create/edit form forking on Source (External fields + Content tab vs Internal RefType + entity picker), Placement checkboxes, Category select, Categories CRUD sub-screen, seed-protected delete
+- [x] Registered in the Translation Console (`recommendation` entity type) + the AI pipeline (`entity-registry.collectRecommendation`, nightly sweep over EXTERNAL rows, `POST /recommendations/:id/translations/:locale/generate`), so all 7 locales are reachable
+- [x] The palm emoji stays chrome in the card component, identical in every language (carried over from the hotel card)
+- [ ] **Confirmation-email block** (`CONFIRMATION_EMAIL` placement) - backend `getFeatured` supports it and the dashboard offers the placement, but the locked confirmation-email template does not yet render a recommendation block (no wireframe for it yet - deferred pending a design decision)
+- [ ] No on-site preview of the featured recommendation - the card renders on a thank-you page reachable only with a real booking reference
 
 ## Featured experiences
 

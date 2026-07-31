@@ -34,6 +34,7 @@ export function Hero({
     destinations,
     search,
     image,
+    imageAlt,
 }: {
     dict: HeroDict;
     locale: Locale;
@@ -41,6 +42,12 @@ export function Hero({
     search: SearchDict;
     /** Admin-chosen hero photo; null/absent keeps the bundled default. */
     image?: string | null;
+    /**
+     * Localized alt text from the media library, resolved by the caller (the
+     * loader is server-only). Falls back to a generic line - and stays generic
+     * for the BUNDLED fallback photo, which is not a library asset at all.
+     */
+    imageAlt?: string | null;
 }) {
     const popular = destinations.slice(0, 4);
 
@@ -52,7 +59,10 @@ export function Hero({
                 {/* Photo background (token bg above stays as the loading fallback). */}
                 <Image
                     src={image || FALLBACK_HERO_IMAGE}
-                    alt='Island tours hero image'
+                    // Library alt only applies when the admin's photo is the one
+                    // actually rendering; the bundled fallback keeps the generic
+                    // line.
+                    alt={(image && imageAlt) || 'Island tours hero image'}
                     fill
                     quality={100}
                     priority

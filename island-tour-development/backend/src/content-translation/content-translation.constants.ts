@@ -16,12 +16,55 @@ export const CONTENT_ENTITY_TYPES = [
   'category',
   'collection',
   'homepage',
-  // Island Tours' own apartment promo on the thank-you page. A singleton like
-  // `homepage`, so its entityId is always the fixed key.
-  'hotel',
+  // Island Tours' post-booking recommendations (thank-you page / email promo).
+  // Only EXTERNAL recommendations carry copy; internal ones follow their entity.
+  'recommendation',
+  // Media library copy (alt text / title / description). The ONE type whose
+  // entityId is not a single entity: it is either a media uuid (the manual
+  // per-asset button) or a `bucket:<hex>` key standing for up to
+  // MEDIA_BUCKET_SIZE assets. See `mediaBucketOf`.
+  'media',
 ] as const;
 
 export type ContentEntityType = (typeof CONTENT_ENTITY_TYPES)[number];
+
+/**
+ * How many assets one `media` job translates.
+ *
+ * THIS IS THE WHOLE REASON MEDIA IS BATCHED. `ContentTranslationService` issues
+ * exactly ONE provider call per locale per entity, no matter how many units the
+ * entity has. Per-asset jobs would therefore cost 6 calls each - 1,000 assets =
+ * 6,000 calls, which is dead on arrival against a ~1k requests/day free tier.
+ * Fifty assets per job turns that into ~120 calls for the same 1,000 assets.
+ *
+ * Fifty is safe on payload size too: three short fields per asset is roughly 2k
+ * tokens, nowhere near a context limit.
+ */
+export const MEDIA_BUCKET_SIZE = 50;
+
+/** Prefix marking an entityId as a media bucket rather than a media uuid. */
+export const MEDIA_BUCKET_PREFIX = 'bucket:';
+
+/**
+ * The bucket an asset belongs to: the first hex character of its uuid, giving 16
+ * stable buckets.
+ *
+ * Stable is the point. Every metadata save enqueues its asset's bucket, and the
+ * queue de-duplicates on `jobId = '<type>:<entityId>'` - so a burst of edits
+ * across a bucket collapses into ONE job instead of one per asset, and the
+ * bucket an asset maps to never changes as the library grows.
+ */
+export function mediaBucketOf(mediaId: string): string {
+  return `${MEDIA_BUCKET_PREFIX}${mediaId.slice(0, 1)}`;
+}
+
+/**
+ * Every media bucket, for the nightly sweep. A uuid's first character is one hex
+ * digit, so the whole library is covered by these 16 keys.
+ */
+export const MEDIA_BUCKET_KEYS: string[] = [...'0123456789abcdef'].map(
+  (c) => `${MEDIA_BUCKET_PREFIX}${c}`,
+);
 
 /**
  * FaqPageType -> entity type, for the FAQ / page-content-section choke points

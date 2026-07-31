@@ -7,6 +7,7 @@ import { TiersModule } from '@/tiers/tiers.module';
 import { FxModule } from '@/fx/fx.module';
 import { MollieModule } from '@/payments/mollie.module';
 import { StripeModule } from '@/payments/stripe.module';
+import { RecommendationsModule } from '@/recommendations/recommendations.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 import { LookupRateLimiter } from './lookup-rate-limiter';
@@ -28,6 +29,7 @@ import { LookupRateLimiter } from './lookup-rate-limiter';
     RateLimitModule,
     StripeModule,
     MollieModule,
+    RecommendationsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, LookupRateLimiter],

@@ -250,6 +250,38 @@
           </div>
         </td></tr>[/IF]
 
+        <!-- Block 12: featured recommendations (admin-managed; up to 3 in a 2-column grid, each slot hidden when empty; the whole block hides when the first is empty) -->
+        [IF recommendationOneName]<tr><td class="it-cell" style="padding:4px 28px 28px;font-family:'Plus Jakarta Sans',Arial,sans-serif">
+          <div style="background:#F7F8FA;border:1px solid #E8EAED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:15px;font-weight:700;color:#1F2937;margin-bottom:14px">You might also like</div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" style="vertical-align:top;padding-right:7px">
+                  <img src="{recommendationOneImageUrl}" width="250" height="140" alt="{recommendationOneName}" style="display:block;width:100%;height:140px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0">
+                  <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">{recommendationOneName}</div>
+                  [IF recommendationOneMeta]<div style="font-size:12.5px;color:#6B7280;margin-top:3px">{recommendationOneMeta}</div>[/IF]
+                  <a href="{recommendationOneUrl}" style="display:inline-block;margin-top:8px;font-size:13px;color:#E8611A;font-weight:600;text-decoration:underline">{recommendationOneCtaLabel}</a>
+                </td>
+                <td width="50%" style="vertical-align:top;padding-left:7px">
+                  [IF recommendationTwoName]<img src="{recommendationTwoImageUrl}" width="250" height="140" alt="{recommendationTwoName}" style="display:block;width:100%;height:140px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0">
+                  <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">{recommendationTwoName}</div>
+                  [IF recommendationTwoMeta]<div style="font-size:12.5px;color:#6B7280;margin-top:3px">{recommendationTwoMeta}</div>[/IF]
+                  <a href="{recommendationTwoUrl}" style="display:inline-block;margin-top:8px;font-size:13px;color:#E8611A;font-weight:600;text-decoration:underline">{recommendationTwoCtaLabel}</a>[/IF]
+                </td>
+              </tr>
+              [IF recommendationThreeName]<tr>
+                <td width="50%" style="vertical-align:top;padding-right:7px;padding-top:16px">
+                  <img src="{recommendationThreeImageUrl}" width="250" height="140" alt="{recommendationThreeName}" style="display:block;width:100%;height:140px;object-fit:cover;border-radius:9px;background:#1FB6C9;border:0">
+                  <div style="font-size:13.5px;font-weight:700;color:#1F2937;margin-top:8px;line-height:1.3">{recommendationThreeName}</div>
+                  [IF recommendationThreeMeta]<div style="font-size:12.5px;color:#6B7280;margin-top:3px">{recommendationThreeMeta}</div>[/IF]
+                  <a href="{recommendationThreeUrl}" style="display:inline-block;margin-top:8px;font-size:13px;color:#E8611A;font-weight:600;text-decoration:underline">{recommendationThreeCtaLabel}</a>
+                </td>
+                <td width="50%" style="padding-left:7px"></td>
+              </tr>[/IF]
+            </table>
+          </div>
+        </td></tr>[/IF]
+
       </table>
     </td></tr>
   </table>

@@ -349,6 +349,7 @@ describe('BookingsService', () => {
   let mollie: any;
   let staffPermissions: any;
   let inbox: any;
+  let recommendations: any;
   let svc: BookingsService;
 
   beforeEach(() => {
@@ -413,6 +414,11 @@ describe('BookingsService', () => {
         .fn()
         .mockResolvedValue([Permission.VIEW_BOOKING_FINANCIALS]),
     };
+    // Confirmation-email recommendation block: default to "nothing placed" so the
+    // email tests here are unaffected by it.
+    recommendations = {
+      getFeatured: jest.fn().mockResolvedValue([]),
+    };
     svc = new BookingsService(
       prisma,
       mail,
@@ -427,6 +433,7 @@ describe('BookingsService', () => {
       mollie,
       staffPermissions,
       inbox,
+      recommendations,
     );
   });
 

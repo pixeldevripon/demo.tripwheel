@@ -1,4 +1,5 @@
 import { getCollectionRender, getDestinationBySlug } from '@/lib/api/public';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { type Locale } from '@/lib/constants/locales';
 import { deriveDisplayRate, formatPriceFrom } from '@/lib/currency/current';
 import { getServerCurrency } from '@/lib/currency/server';
@@ -60,6 +61,8 @@ export async function CollectionPage({
         : null;
 
     if (!collection) notFound();
+
+    const heroSeo = await getMediaSeo([collection.heroImage], locale);
 
     const listings = dict.destination.listings;
     const collectionDict = dict.destination.collections;
@@ -139,6 +142,12 @@ export async function CollectionPage({
                 eyebrow={collection.eyebrowLabel}
                 subtitle={collection.curationNote}
                 heroImage={collection.heroImage}
+                heroImageAlt={
+                    collection.heroImage
+                        ? heroSeo.get(normalizeUrl(collection.heroImage))
+                              ?.altText
+                        : null
+                }
                 tourCount={collection.fastStats.tourCount}
                 startingPrice={startingPriceDisplay}
                 dict={{

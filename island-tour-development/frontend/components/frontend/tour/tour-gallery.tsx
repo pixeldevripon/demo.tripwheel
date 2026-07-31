@@ -13,6 +13,19 @@ export type TourGalleryMeta = {
 };
 
 /**
+ * One gallery photo with the text that describes it.
+ *
+ * `alt` is resolved on the server (media library, per locale, falling back to
+ * the tour title) because this component is a client leaf and the media loader
+ * is server-only. Every photo used to share the single tour title, so a gallery
+ * of twelve announced the same sentence twelve times.
+ */
+export type TourGalleryImage = {
+    url: string;
+    alt: string;
+};
+
+/**
  * Tour photo gallery + meta strip (Figma node 47940:12742).
  *
  * Desktop: a 5-tile collage - one large tile (396x448) plus a 2x2 grid of small
@@ -30,7 +43,7 @@ export function TourGallery({
     meta,
     showAllPhotosLabel,
 }: {
-    images: string[];
+    images: TourGalleryImage[];
     title: string;
     meta: TourGalleryMeta[];
     showAllPhotosLabel: string;
@@ -96,8 +109,8 @@ export function TourGallery({
                         transition={crossFade}
                         className='absolute inset-0'>
                         <Image
-                            src={images[slide]}
-                            alt={title}
+                            src={images[slide].url}
+                            alt={images[slide].alt}
                             fill
                             // Both gallery layouts render in the DOM (CSS picks
                             // one), and both start from images[0]. Matching
@@ -198,14 +211,14 @@ export function TourGallery({
                 <motion.button
                     type='button'
                     onClick={() => openAt(0)}
-                    aria-label={title}
+                    aria-label={hero?.alt ?? title}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
                     className={`${tileClass} lg:row-span-2`}>
                     {hero && (
                         <Image
-                            src={hero}
-                            alt={title}
+                            src={hero.url}
+                            alt={hero.alt}
                             fill
                             // Must match the mobile hero's `sizes` - see there.
                             sizes='(min-width: 1024px) 396px, 100vw'
@@ -217,17 +230,20 @@ export function TourGallery({
                         />
                     )}
                 </motion.button>
-                {rest.map((src, i) => (
+                {rest.map((img, i) => (
                     <motion.button
                         type='button'
                         key={i}
                         onClick={() => openAt(i + 1)}
-                        aria-label={`${title} - photo ${i + 2}`}
+                        aria-label={img.alt || `${title} - photo ${i + 2}`}
                         whileTap={{ scale: 0.98 }}
                         transition={springPop}
                         className={tileClass}>
                         <Image
-                            src={src}
+                            src={img.url}
+                            // Empty on purpose: the wrapping button already
+                            // carries the description as its aria-label, and
+                            // repeating it here announces the photo twice.
                             alt=''
                             fill
                             sizes='190px'
@@ -332,8 +348,11 @@ export function TourGallery({
                                 transition={crossFade}
                                 className='absolute inset-0'>
                                 <Image
-                                    src={images[index]}
-                                    alt={`${title} - photo ${index + 1}`}
+                                    src={images[index].url}
+                                    alt={
+                                        images[index].alt ||
+                                        `${title} - photo ${index + 1}`
+                                    }
                                     fill
                                     sizes='100vw'
                                     className='object-contain'

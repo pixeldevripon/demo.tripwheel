@@ -689,6 +689,59 @@ enum InstagramSyncStatus {
   EXPIRING
 }
 
+// ── Recommendations (see recommendations.prisma) ──────────────────────────────
+
+// Where a recommendation's content comes from.
+//   EXTERNAL - admin-authored custom content (image/title/link + per-locale copy),
+//              like the original hotel promo. Points off-site.
+//   INTERNAL - a pointer at an existing platform entity (tour/destination/
+//              collection/hub); the card is rendered from that entity's LIVE data
+//              and links to its on-site page.
+enum RecommendationSource {
+  INTERNAL
+  EXTERNAL
+}
+
+// Which platform entity an INTERNAL recommendation points at. All four resolve to
+// an on-site URL of the shape /{destinationSlug}/{slug} (a destination is just
+// /{destinationSlug}).
+enum RecommendationRefType {
+  TOUR
+  DESTINATION
+  COLLECTION
+  HUB
+}
+
+// The surfaces a recommendation may be featured on. A recommendation carries a
+// SET of these; each surface features the first enabled, complete recommendation
+// whose set contains it, by displayOrder.
+enum RecommendationPlacement {
+  THANK_YOU_PAGE
+  CONFIRMATION_EMAIL
+}
+
+// The category of a recommendation - a FIXED, pre-typed set of tour/travel-adjacent
+// things a traveller might want after booking. NOT admin-managed: each value carries
+// a typed field set and an icon fixed in code (dashboard `types/recommendation.ts`),
+// so a hotel shows "sleeps" and a restaurant does not, with no per-tenant config.
+enum RecommendationCategory {
+  HOTEL
+  APARTMENT
+  VILLA
+  RESTAURANT
+  BAR
+  CAFE
+  CAR_RENTAL
+  TRANSFER
+  SHOP
+  SPA
+  BEACH_CLUB
+  ATTRACTION
+  ACTIVITY
+  NIGHTLIFE
+  OTHER
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

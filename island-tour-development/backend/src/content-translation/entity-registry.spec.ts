@@ -1,5 +1,6 @@
 import { Locale } from '@prisma/client';
 import { EntityRegistry } from './entity-registry';
+import { MEDIA_BUCKET_SIZE } from './content-translation.constants';
 
 /**
  * Focused on the hub collector's curation surfaces (Our Picks, comparison,
@@ -362,5 +363,129 @@ describe('EntityRegistry - clear marks', () => {
     await registry.collect('hub', 'h1');
 
     expect(clearMarks.forget).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The media collector is the one that batches: a single job carries up to
+ * MEDIA_BUCKET_SIZE assets so they share ONE provider call per locale. Its other
+ * oddity is that the English source is the asset row itself, not an `en`
+ * translation row.
+ */
+describe('EntityRegistry - media buckets', () => {
+  let prisma: any;
+  let registry: EntityRegistry;
+
+  const asset = (id: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    title: 'Hero',
+    description: null,
+    altText: 'A boat',
+    translations: [],
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    prisma = {
+      mediaGallery: { findMany: jest.fn().mockResolvedValue([]) },
+      mediaTranslation: { upsert: jest.fn().mockResolvedValue({}) },
+    };
+    registry = new EntityRegistry(prisma, mockClearMarks() as never);
+  });
+
+  it('turns a bucket into one unit per asset, keyed by asset id', async () => {
+    prisma.mediaGallery.findMany.mockResolvedValue([asset('a1'), asset('a2')]);
+
+    const units = await registry.collect('media', 'bucket:a');
+
+    expect(units?.map((u) => u.key)).toEqual(['media:a1', 'media:a2']);
+    // Source comes off the BASE row (no `en` translation row exists for media).
+    expect(units?.[0].source).toEqual({ title: 'Hero', altText: 'A boat' });
+  });
+
+  it('queries the bucket least-translated-first, capped at the batch size', async () => {
+    await registry.collect('media', 'bucket:7');
+
+    const args = prisma.mediaGallery.findMany.mock.calls[0][0];
+    expect(args.where.id).toEqual({ startsWith: '7' });
+    // Ordering by updatedAt instead would re-offer the same finished fifty
+    // forever and never reach the fifty-first asset in a big bucket.
+    expect(args.orderBy[0]).toEqual({ translations: { _count: 'asc' } });
+    expect(args.take).toBe(MEDIA_BUCKET_SIZE);
+    // Nothing to translate without English copy to translate FROM.
+    expect(args.where.OR).toEqual([
+      { title: { not: null } },
+      { description: { not: null } },
+      { altText: { not: null } },
+    ]);
+  });
+
+  it('accepts a bare uuid for the manual per-asset button', async () => {
+    prisma.mediaGallery.findMany.mockResolvedValue([asset('a1')]);
+
+    const units = await registry.collect('media', 'a1');
+
+    expect(prisma.mediaGallery.findMany.mock.calls[0][0].where).toEqual({
+      id: 'a1',
+    });
+    expect(units).toHaveLength(1);
+  });
+
+  it('treats an empty BUCKET as no work, but a missing ASSET as gone', async () => {
+    // A drained bucket is a normal nightly no-op; returning null would log it
+    // as "deleted while queued".
+    expect(await registry.collect('media', 'bucket:f')).toEqual([]);
+    expect(await registry.collect('media', 'missing-id')).toBeNull();
+  });
+
+  it('writes through to the asset own locale row', async () => {
+    prisma.mediaGallery.findMany.mockResolvedValue([asset('a1')]);
+
+    const units = await registry.collect('media', 'bucket:a');
+    await units?.[0].write(
+      Locale.nl,
+      { title: 'Held', altText: 'Een boot' },
+      'hash-1',
+      true,
+    );
+
+    const args = prisma.mediaTranslation.upsert.mock.calls[0][0];
+    expect(args.where).toEqual({
+      mediaId_locale: { mediaId: 'a1', locale: Locale.nl },
+    });
+    expect(args.create).toMatchObject({
+      mediaId: 'a1',
+      locale: Locale.nl,
+      title: 'Held',
+      altText: 'Een boot',
+      isMachineTranslated: true,
+      sourceHash: 'hash-1',
+    });
+  });
+
+  it('reports an existing locale row so the policy can protect it', async () => {
+    prisma.mediaGallery.findMany.mockResolvedValue([
+      asset('a1', {
+        translations: [
+          {
+            locale: Locale.nl,
+            title: null,
+            description: null,
+            altText: null,
+            isMachineTranslated: false,
+            sourceHash: null,
+          },
+        ],
+      }),
+    ]);
+
+    const units = await registry.collect('media', 'bucket:a');
+
+    // Human row with everything blank = a deliberate clear. The service skips
+    // it, and media needs no clear-MARK to say so because the row survives.
+    expect(units?.[0].existing[Locale.nl]).toEqual({
+      isMachineTranslated: false,
+      sourceHash: null,
+    });
   });
 });

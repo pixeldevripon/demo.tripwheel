@@ -1,6 +1,7 @@
 import { Locale } from '@prisma/client';
 import { ContentTranslationService } from './content-translation.service';
 import { EntityRegistry } from './entity-registry';
+import { MEDIA_BUCKET_KEYS } from './content-translation.constants';
 
 /**
  * The overwrite policy is the product here: the cases that matter are the
@@ -21,7 +22,7 @@ function mockPrisma(): any {
     hub: { findUnique: jest.fn(), findMany: noRows() },
     collection: { findUnique: jest.fn(), findMany: noRows() },
     homePage: { findUnique: jest.fn(), findFirst: jest.fn() },
-    hotel: { findUnique: jest.fn(), findMany: noRows() },
+    recommendation: { findUnique: jest.fn(), findMany: noRows() },
     faq: { findMany: jest.fn().mockResolvedValue([]), ...upsert() },
     pageContentSection: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -40,6 +41,8 @@ function mockPrisma(): any {
     pickupLocationTranslation: upsert(),
     collectionTourRationale: upsert(),
     homePageTranslation: upsert(),
+    mediaGallery: { findMany: noRows() },
+    mediaTranslation: upsert(),
   };
 }
 
@@ -458,19 +461,37 @@ describe('ContentTranslationService', () => {
   });
 
   describe('enqueuePending (nightly sweep)', () => {
-    it('enqueues the recent entities of every type, hotels and the homepage included', async () => {
+    it('enqueues the recent entities of every type, recommendations and the homepage included', async () => {
       prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
       prisma.category.findMany.mockResolvedValue([{ id: 'c1' }]);
-      prisma.hotel.findMany.mockResolvedValue([{ id: 'h1' }]);
+      prisma.recommendation.findMany.mockResolvedValue([{ id: 'r1' }]);
       prisma.homePage.findFirst.mockResolvedValue({ id: 'default' });
 
       const res = await svc.enqueuePending(10);
 
-      expect(res.enqueued).toBe(5);
+      // 5 entity jobs + all 16 media buckets.
+      expect(res.enqueued).toBe(5 + MEDIA_BUCKET_KEYS.length);
       expect(enqueuer.enqueue).toHaveBeenCalledWith('tour', 't1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('category', 'c1');
-      expect(enqueuer.enqueue).toHaveBeenCalledWith('hotel', 'h1');
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('recommendation', 'r1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('homepage', 'default');
+    });
+
+    /**
+     * Media is swept WHOLESALE, not `limitPerType` rows like the entity types:
+     * this is the only path that drains a library that existed before the
+     * feature, and a bucket with nothing outstanding costs zero provider calls.
+     */
+    it('sweeps all 16 media buckets every run', async () => {
+      const res = await svc.enqueuePending(10);
+
+      expect(res.enqueued).toBe(MEDIA_BUCKET_KEYS.length);
+      for (const key of MEDIA_BUCKET_KEYS) {
+        expect(enqueuer.enqueue).toHaveBeenCalledWith('media', key);
+      }
+      // Buckets, never bare asset ids - per-asset jobs would cost 6 provider
+      // calls each instead of 6 per fifty.
+      expect(MEDIA_BUCKET_KEYS[0]).toBe('bucket:0');
     });
 
     /**
@@ -484,8 +505,9 @@ describe('ContentTranslationService', () => {
 
       const res = await svc.enqueuePending(10);
 
-      expect(res.enqueued).toBe(0);
-      expect(enqueuer.enqueue).not.toHaveBeenCalled();
+      // The media buckets are unconditional, so only the homepage job is absent.
+      expect(res.enqueued).toBe(MEDIA_BUCKET_KEYS.length);
+      expect(enqueuer.enqueue).not.toHaveBeenCalledWith('homepage', 'default');
     });
 
     it('does not even read the database while unconfigured', async () => {
@@ -511,5 +533,88 @@ describe('ContentTranslationService', () => {
       'Gemini HTTP 429',
     );
     expect(prisma.categoryTranslation.upsert).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The media viewer's AI toast branches on these two counters to name the right
+   * cause, so the distinction is a contract, not an implementation detail.
+   */
+  describe('media: written/skipped tell the two "nothing happened" cases apart', () => {
+    it('reports 0/0 when the asset has NO English copy to translate from', async () => {
+      prisma.mediaGallery.findMany.mockResolvedValue([
+        {
+          id: 'm1',
+          title: null,
+          description: null,
+          altText: null,
+          translations: [],
+        },
+      ]);
+
+      const res = await svc.translateEntity('media', 'm1', [Locale.nl]);
+
+      // Sourceless units are `continue`d past WITHOUT counting as skipped -
+      // that is what lets the UI say "add English copy first" instead of
+      // blaming a hand-edited row.
+      expect(res.written).toBe(0);
+      expect(res.skipped).toBe(0);
+      expect(provider.translateFields).not.toHaveBeenCalled();
+    });
+
+    it('reports a SKIP when a human row is protected', async () => {
+      prisma.mediaGallery.findMany.mockResolvedValue([
+        {
+          id: 'm1',
+          title: 'Hero',
+          description: null,
+          altText: 'A boat',
+          translations: [
+            {
+              locale: Locale.nl,
+              title: null,
+              description: null,
+              altText: null,
+              isMachineTranslated: false,
+              sourceHash: null,
+            },
+          ],
+        },
+      ]);
+
+      const res = await svc.translateEntity('media', 'm1', [Locale.nl]);
+
+      expect(res.written).toBe(0);
+      expect(res.skipped).toBe(1);
+      expect(provider.translateFields).not.toHaveBeenCalled();
+    });
+
+    it('sends ONE payload for a whole bucket of assets', async () => {
+      prisma.mediaGallery.findMany.mockResolvedValue([
+        {
+          id: 'a1',
+          title: 'One',
+          description: null,
+          altText: null,
+          translations: [],
+        },
+        {
+          id: 'a2',
+          title: 'Two',
+          description: null,
+          altText: null,
+          translations: [],
+        },
+      ]);
+
+      const res = await svc.translateEntity('media', 'bucket:a', [Locale.nl]);
+
+      // Two assets, one provider call - the whole reason media is batched.
+      expect(provider.translateFields).toHaveBeenCalledTimes(1);
+      expect(Object.keys(provider.translateFields.mock.calls[0][0])).toEqual([
+        'media:a1.title',
+        'media:a2.title',
+      ]);
+      expect(res.written).toBe(2);
+    });
   });
 });

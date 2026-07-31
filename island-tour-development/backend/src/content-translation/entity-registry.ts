@@ -5,7 +5,11 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { TranslationClearMarkService } from './translation-clear-mark.service';
 import { translationUnitKeys } from './translation-unit-keys';
 import type { TranslatableValue } from './providers/translation-provider.interface';
-import type { ContentEntityType } from './content-translation.constants';
+import {
+  MEDIA_BUCKET_PREFIX,
+  MEDIA_BUCKET_SIZE,
+  type ContentEntityType,
+} from './content-translation.constants';
 
 /**
  * Entity registry - turns one entity into its list of translation units.
@@ -142,6 +146,9 @@ const TOUR_FIELDS = [
 const PAGE_CONTENT_FIELDS = ['aboutText', 'metaTitle', 'metaDescription'];
 const FAQ_FIELDS = ['question', 'answer'];
 const SECTION_FIELDS = ['heading', 'body'];
+// Media library copy. All three translate (founder call 2026-07-31); `altText`
+// is the one with public readers today.
+const MEDIA_FIELDS = ['title', 'description', 'altText'];
 
 @Injectable()
 export class EntityRegistry {
@@ -178,8 +185,10 @@ export class EntityRegistry {
         return this.collectCollection(entityId);
       case 'homepage':
         return this.collectHomepage(entityId);
-      case 'hotel':
-        return this.collectHotel(entityId);
+      case 'recommendation':
+        return this.collectRecommendation(entityId);
+      case 'media':
+        return this.collectMedia(entityId);
     }
   }
 
@@ -820,31 +829,34 @@ export class EntityRegistry {
   }
 
   /**
-   * Island Tours' own apartment promo (thank-you page).
+   * Island Tours' post-booking recommendations (thank-you page / email promo).
    *
-   * One unit, no sub-surfaces: it has no FAQs and no page-content sections. The
-   * NUMBERS (rating, review count, sleeps, price) are deliberately absent - they
-   * live on the parent record because they are the same fact in every language,
-   * and handing them to a translation provider would invite it to "localise" a
-   * price. Only prose travels: the eyebrow, the area, the title, the pitch and
-   * the CTA label.
+   * One unit, no sub-surfaces: no FAQs, no page-content sections. The NUMBERS
+   * (rating, review count, sleeps, price) are deliberately absent - they live on
+   * the parent record because they are the same fact in every language, and
+   * handing them to a translation provider would invite it to "localise" a price.
+   * Only prose travels: the eyebrow, the area, the title, the pitch and the CTA
+   * label. INTERNAL recommendations follow their entity and usually carry no copy;
+   * when they carry an override it is translated like any other.
    */
-  private async collectHotel(id: string): Promise<TranslationUnit[] | null> {
+  private async collectRecommendation(
+    id: string,
+  ): Promise<TranslationUnit[] | null> {
     const prisma = this.prisma;
-    const hotel = await prisma.hotel.findUnique({
+    const recommendation = await prisma.recommendation.findUnique({
       where: { id },
       select: { id: true, translations: true },
     });
-    if (!hotel) return null;
+    if (!recommendation) return null;
 
     const fields = ['eyebrow', 'areaLabel', 'title', 'description', 'ctaLabel'];
-    const en = hotel.translations.find((t) => t.locale === Locale.en);
+    const en = recommendation.translations.find((t) => t.locale === Locale.en);
 
     return [
       {
         key: translationUnitKeys.main(),
         source: pickSource(en, fields),
-        existing: existingByLocale(hotel.translations, fields),
+        existing: existingByLocale(recommendation.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
           const data = {
             eyebrow: str(f, 'eyebrow'),
@@ -854,14 +866,112 @@ export class EntityRegistry {
             ctaLabel: str(f, 'ctaLabel'),
             ...stamp(machine, sourceHash),
           };
-          await prisma.hotelTranslation.upsert({
-            where: { hotelId_locale: { hotelId: hotel.id, locale } },
-            create: { hotelId: hotel.id, locale, ...data },
+          await prisma.recommendationTranslation.upsert({
+            where: {
+              recommendationId_locale: {
+                recommendationId: recommendation.id,
+                locale,
+              },
+            },
+            create: {
+              recommendationId: recommendation.id,
+              locale,
+              ...data,
+            },
             update: data,
           });
         },
       },
     ];
+  }
+
+  // ── Media library: MANY assets per job ──────────────────────────────────────
+
+  /**
+   * Media assets, as one unit per asset.
+   *
+   * `key` is either a media uuid (the manual per-asset button) or
+   * `bucket:<hex>` - the only entityId in the pipeline that stands for more than
+   * one row. The batching exists because `ContentTranslationService` makes ONE
+   * provider call per locale per entity regardless of unit count: fifty assets in
+   * one job cost 6 calls, where fifty per-asset jobs would cost 300. On a ~1k
+   * requests/day free tier that is the difference between a library of thousands
+   * being translatable and not.
+   *
+   * The English source is the `MediaGallery` row ITSELF, not an `en` translation
+   * row (the hub our-picks shape), so `pickSource` reads the base row.
+   *
+   * Bucket ordering is least-translated-first, which makes a bucket
+   * self-draining: assets already done sort to the back and fall outside the
+   * window once a bucket holds more than MEDIA_BUCKET_SIZE candidates. Ordering
+   * by `updatedAt` instead would re-offer the same fifty finished assets forever
+   * and never reach the fifty-first.
+   *
+   * Media needs no clear-mark handling: its columns are NULLABLE, so a cleared
+   * field keeps its row (flagged human) and the policy reads it straight off the
+   * row. `applyClearMarks` runs anyway and finds nothing, which is correct.
+   */
+  private async collectMedia(key: string): Promise<TranslationUnit[] | null> {
+    const prisma = this.prisma;
+    const isBucket = key.startsWith(MEDIA_BUCKET_PREFIX);
+
+    const select = {
+      id: true,
+      title: true,
+      description: true,
+      altText: true,
+      translations: {
+        select: {
+          locale: true,
+          title: true,
+          description: true,
+          altText: true,
+          isMachineTranslated: true,
+          sourceHash: true,
+        },
+      },
+    } as const;
+
+    const rows = isBucket
+      ? await prisma.mediaGallery.findMany({
+          where: {
+            id: { startsWith: key.slice(MEDIA_BUCKET_PREFIX.length) },
+            // Nothing to translate without English copy to translate FROM.
+            OR: [
+              { title: { not: null } },
+              { description: { not: null } },
+              { altText: { not: null } },
+            ],
+          },
+          select,
+          orderBy: [{ translations: { _count: 'asc' } }, { updatedAt: 'desc' }],
+          take: MEDIA_BUCKET_SIZE,
+        })
+      : await prisma.mediaGallery.findMany({ where: { id: key }, select });
+
+    // A bucket that is empty (or fully done) is a no-op, NOT a missing entity -
+    // returning null would log it as "deleted while queued". A single asset that
+    // is gone genuinely is.
+    if (rows.length === 0) return isBucket ? [] : null;
+
+    return rows.map((row) => ({
+      key: translationUnitKeys.media(row.id),
+      source: pickSource(row, MEDIA_FIELDS),
+      existing: existingByLocale(row.translations, MEDIA_FIELDS),
+      write: async (locale, f, sourceHash, machine) => {
+        const data = {
+          title: str(f, 'title'),
+          description: str(f, 'description'),
+          altText: str(f, 'altText'),
+          ...stamp(machine, sourceHash),
+        };
+        await prisma.mediaTranslation.upsert({
+          where: { mediaId_locale: { mediaId: row.id, locale } },
+          create: { mediaId: row.id, locale, ...data },
+          update: data,
+        });
+      },
+    }));
   }
 
   // ── Shared sub-surface collectors ───────────────────────────────────────────

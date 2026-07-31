@@ -1,7 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Currency, Locale } from '@prisma/client';
+import {
+  Currency,
+  Locale,
+  RecommendationCategory,
+  RecommendationPlacement,
+  RecommendationRefType,
+  RecommendationSource,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
@@ -30,6 +38,7 @@ const URL_RULES = { protocols: ['https'], require_protocol: true };
 /** Ceilings that only stop absurd input; the card has no layout beyond these. */
 const SHORT_TEXT_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 600;
+const SLUG_MAX_LENGTH = 120;
 
 /** A rating is out of 5, and nobody sleeps 500 people in an apartment. */
 const MAX_RATING = 5;
@@ -39,31 +48,43 @@ const MAX_PRICE = 1_000_000;
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
 /**
- * The PROMOTED hotel for one locale: the record flattened together with that
- * locale's copy. The thank-you page renders one card, so this is one hotel - the
- * first enabled, complete one in `displayOrder`.
+ * The FEATURED recommendation for one surface + locale: the record flattened
+ * together with that locale's copy. Each surface renders one card, so this is one
+ * recommendation - the first enabled, complete one in `displayOrder` whose
+ * placements include the requested surface.
  *
  * `enabled` IS THE CONTRACT. Unlike the homepage - where every null field falls
- * back to a bundled dictionary default - a property's name, photo and booking
- * link have no sensible built-in, because inventing one would advertise a place
- * that does not exist. So the service decides here whether the card is renderable
- * at all, and everything is nulled out when it is not: the frontend cannot
- * accidentally render half a card, and a future gate condition needs no frontend
- * deploy.
+ * back to a bundled dictionary default - a card's name, photo and link have no
+ * sensible built-in, because inventing one would advertise a place that does not
+ * exist. So the service decides here whether the card is renderable at all, and
+ * everything is nulled out when it is not.
+ *
+ * For an INTERNAL recommendation the image/title/link are resolved from the LIVE
+ * entity (tour/destination/collection/hub) it points at; `external` is then false
+ * and the frontend links same-tab. For EXTERNAL it is the admin's own content and
+ * `external` is true (open in a new tab).
  */
-export class PublicHotelResponseDto {
+export class PublicRecommendationResponseDto {
   @ApiProperty({
     example: true,
     description:
       'Whether the public site should render the card at all. False when NO ' +
-      'hotel qualifies: every one is either switched off or missing one of the ' +
-      'three essentials (image, title, booking link). Every other field is null ' +
-      'in that case.',
+      'recommendation qualifies for this surface (all switched off, none placed ' +
+      'here, or each missing its essentials). Every other field is null then.',
   })
   enabled!: boolean;
 
   @ApiProperty({ enum: Locale, example: Locale.en })
   locale!: Locale;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the link is OFF-SITE (external content) - the frontend opens it ' +
+      'in a new tab. INTERNAL recommendations are false: they link same-tab to ' +
+      'an on-site page.',
+  })
+  external!: boolean;
 
   @ApiPropertyOptional({
     example: 'https://res.cloudinary.com/demo/image/upload/palm-suite.jpg',
@@ -71,8 +92,15 @@ export class PublicHotelResponseDto {
   })
   imageUrl!: string | null;
 
-  @ApiPropertyOptional({ example: 'https://www.airbnb.com', nullable: true })
-  bookingUrl!: string | null;
+  @ApiPropertyOptional({
+    example: 'https://www.airbnb.com',
+    nullable: true,
+    description:
+      'Where the CTA goes. Absolute https for EXTERNAL; a site-relative path ' +
+      '(`/curacao/tours/sunset-cruise`) for INTERNAL, which the frontend ' +
+      'localises.',
+  })
+  linkUrl!: string | null;
 
   @ApiPropertyOptional({
     example: 4.8,
@@ -90,7 +118,7 @@ export class PublicHotelResponseDto {
   sleeps!: number | null;
 
   @ApiPropertyOptional({ example: 160, nullable: true })
-  pricePerNight!: number | null;
+  priceAmount!: number | null;
 
   @ApiProperty({
     enum: Currency,
@@ -123,8 +151,7 @@ export class PublicHotelResponseDto {
     ],
     description:
       'The stored description split on newlines, blank lines dropped - the ' +
-      'card renders one paragraph per entry. Split here rather than on the ' +
-      'frontend so the wire shape says what the card actually needs.',
+      'card renders one paragraph per entry.',
   })
   descriptionLines!: string[];
 
@@ -137,7 +164,7 @@ export class PublicHotelResponseDto {
 }
 
 /** One locale's stored copy, as returned to the dashboard. */
-export class HotelTranslationEntryDto {
+export class RecommendationTranslationEntryDto {
   @ApiProperty({ enum: Locale, example: Locale.nl })
   locale!: Locale;
 
@@ -160,37 +187,79 @@ export class HotelTranslationEntryDto {
   isMachineTranslated!: boolean;
 }
 
-/** The admin view of one hotel: the record plus every stored locale. */
-export class HotelResponseDto {
+/** The admin view of one recommendation: the record plus every stored locale. */
+export class RecommendationResponseDto {
   @ApiProperty({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
   id!: string;
 
   @ApiProperty({
-    example: true,
-    description: 'Whether this hotel may be promoted at all.',
+    enum: RecommendationSource,
+    example: RecommendationSource.EXTERNAL,
   })
+  source!: RecommendationSource;
+
+  @ApiProperty({
+    enum: RecommendationCategory,
+    example: RecommendationCategory.HOTEL,
+    description: 'Fixed category - decides the dashboard fields + icon.',
+  })
+  category!: RecommendationCategory;
+
+  @ApiProperty({ example: true })
   isEnabled!: boolean;
 
   @ApiProperty({
     example: 0,
     description:
-      'Promotion priority - the lowest enabled, complete hotel takes the card.',
+      'Promotion priority per surface - the lowest enabled, complete row placed ' +
+      'on a surface takes that surface.',
   })
   displayOrder!: number;
 
   @ApiProperty({
     example: true,
     description:
-      'Seeded hotels cannot be deleted (403), the same protection seeded ' +
-      'destinations have. Switch it off instead.',
+      'Seeded recommendations cannot be deleted (403). Switch it off instead.',
   })
   isSeeded!: boolean;
+
+  @ApiProperty({
+    enum: RecommendationPlacement,
+    isArray: true,
+    example: [RecommendationPlacement.THANK_YOU_PAGE],
+    description: 'The surfaces this may be featured on.',
+  })
+  placements!: RecommendationPlacement[];
+
+  @ApiPropertyOptional({
+    enum: RecommendationRefType,
+    nullable: true,
+    example: null,
+    description: 'INTERNAL only: which entity kind this points at.',
+  })
+  refType!: RecommendationRefType | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: null,
+    description: 'INTERNAL only: the id of the pointed-at entity.',
+  })
+  refId!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    example: null,
+    description:
+      'INTERNAL only: the LIVE name of the pointed-at entity, for the list. ' +
+      'Null when the entity no longer resolves (archived/deleted).',
+  })
+  refLabel!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   imageUrl!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
-  bookingUrl!: string | null;
+  linkUrl!: string | null;
 
   @ApiPropertyOptional({ example: 4.8, nullable: true })
   rating!: number | null;
@@ -202,49 +271,80 @@ export class HotelResponseDto {
   sleeps!: number | null;
 
   @ApiPropertyOptional({ example: 160, nullable: true })
-  pricePerNight!: number | null;
+  priceAmount!: number | null;
 
   @ApiProperty({ enum: Currency, example: Currency.USD })
   currency!: Currency;
 
   @ApiProperty({
-    example: true,
+    enum: RecommendationPlacement,
+    isArray: true,
+    example: [RecommendationPlacement.THANK_YOU_PAGE],
     description:
-      'Whether THIS hotel is the one on the public site right now - decided ' +
-      'across the whole list, since exactly one is promoted. The editor shows ' +
-      'it rather than leaving an admin to discover that a half-filled hotel ' +
-      'never reached the site.',
+      'The surfaces this row is CURRENTLY the featured card on - decided across ' +
+      'the whole list per surface. Empty when another row wins every surface it ' +
+      'is placed on, or it is incomplete. Surfaced because the failure mode is ' +
+      'silent: a card with no link simply never appears.',
   })
-  isPromoted!: boolean;
+  featuredPlacements!: RecommendationPlacement[];
 
   @ApiProperty({
     example: true,
     description:
-      'Whether it COULD be promoted: the render gate (image + English title + ' +
-      'booking link), minus the on/off switch.',
+      'Whether it COULD be featured: the render gate (a resolvable image + ' +
+      'title + link), minus the on/off switch and placement.',
   })
   isComplete!: boolean;
 
-  @ApiProperty({ type: [HotelTranslationEntryDto] })
-  translations!: HotelTranslationEntryDto[];
+  @ApiProperty({ type: [RecommendationTranslationEntryDto] })
+  translations!: RecommendationTranslationEntryDto[];
 }
 
 // ── Query DTOs ────────────────────────────────────────────────────────────────
 
-export class HotelLocaleQueryDto {
+export class RecommendationPublicQueryDto {
   @ApiPropertyOptional({ enum: Locale, default: Locale.en })
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: RecommendationPlacement,
+    default: RecommendationPlacement.THANK_YOU_PAGE,
+    description: 'Which surface to feature a card for.',
+  })
+  @IsOptional()
+  @IsEnum(RecommendationPlacement)
+  placement?: RecommendationPlacement = RecommendationPlacement.THANK_YOU_PAGE;
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
 
 /**
- * Locale-agnostic apartment fields. Every property is optional so a PATCH only
- * touches what it names; an explicit `null` clears one.
+ * Locale-agnostic recommendation fields. Every property is optional so a PATCH
+ * only touches what it names; an explicit `null` clears one.
  */
-export class UpdateHotelDto {
+export class UpdateRecommendationDto {
+  @ApiPropertyOptional({
+    enum: RecommendationSource,
+    example: RecommendationSource.EXTERNAL,
+    description:
+      'EXTERNAL (custom content, off-site) or INTERNAL (a pointer at a platform ' +
+      'entity, rendered from live data).',
+  })
+  @IsOptional()
+  @IsEnum(RecommendationSource)
+  source?: RecommendationSource;
+
+  @ApiPropertyOptional({
+    enum: RecommendationCategory,
+    example: RecommendationCategory.HOTEL,
+    description: 'The fixed category - decides the dashboard fields + icon.',
+  })
+  @IsOptional()
+  @IsEnum(RecommendationCategory)
+  category?: RecommendationCategory;
+
   @ApiPropertyOptional({
     example: true,
     description:
@@ -254,15 +354,40 @@ export class UpdateHotelDto {
   @IsBoolean()
   isEnabled?: boolean;
 
-  @ApiPropertyOptional({
-    example: 0,
-    description:
-      'Promotion priority. The lowest enabled, complete hotel takes the card.',
-  })
+  @ApiPropertyOptional({ example: 0 })
   @IsOptional()
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  @ApiPropertyOptional({
+    enum: RecommendationPlacement,
+    isArray: true,
+    example: [RecommendationPlacement.THANK_YOU_PAGE],
+    description: 'Where this may be featured. An empty array parks it nowhere.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(RecommendationPlacement, { each: true })
+  placements?: RecommendationPlacement[];
+
+  @ApiPropertyOptional({
+    enum: RecommendationRefType,
+    nullable: true,
+    description: 'INTERNAL only: which entity kind this points at.',
+  })
+  @IsOptional()
+  @IsEnum(RecommendationRefType)
+  refType?: RecommendationRefType | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'INTERNAL only: the id of the pointed-at entity.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(SLUG_MAX_LENGTH)
+  refId?: string | null;
 
   @ApiPropertyOptional({
     example: 'https://res.cloudinary.com/demo/image/upload/palm-suite.jpg',
@@ -277,7 +402,7 @@ export class UpdateHotelDto {
   @IsOptional()
   @IsUrl(URL_RULES)
   @MaxLength(URL_MAX_LENGTH)
-  bookingUrl?: string | null;
+  linkUrl?: string | null;
 
   @ApiPropertyOptional({
     example: 4.8,
@@ -308,7 +433,7 @@ export class UpdateHotelDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(MAX_PRICE)
-  pricePerNight?: number | null;
+  priceAmount?: number | null;
 
   @ApiPropertyOptional({ enum: Currency, example: Currency.USD })
   @IsOptional()
@@ -317,21 +442,25 @@ export class UpdateHotelDto {
 }
 
 /**
- * Creating a hotel. Extends the update shape with the ENGLISH COPY, which is
+ * Creating a recommendation. Extends the update shape with the ENGLISH COPY,
  * written in the same transaction as the row.
  *
- * The title is the only required field in the whole payload. That is deliberate:
- * it is part of the render gate AND the label the dashboard list shows, so a
- * hotel without one is a row an admin cannot identify and the site can never
- * promote. Everything else can be filled in afterwards - a new hotel is expected
- * to sit incomplete (and therefore unpromoted) while it is being written.
+ * No field is required at the DTO level - the shape is the same for INTERNAL and
+ * EXTERNAL. The service enforces the source-specific rules: EXTERNAL needs a
+ * `title` (the render gate and the list label), INTERNAL needs `refType` + `refId`
+ * (its title/photo follow the entity). Everything else can be filled in later - a
+ * new recommendation is expected to sit incomplete (and unfeatured) while written.
  */
-export class CreateHotelDto extends UpdateHotelDto {
-  @ApiProperty({ example: 'Palm Suite Apartment' })
+export class CreateRecommendationDto extends UpdateRecommendationDto {
+  @ApiPropertyOptional({
+    example: 'Palm Suite Apartment',
+    description: 'Required for EXTERNAL; ignored for INTERNAL.',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(SHORT_TEXT_MAX_LENGTH)
-  title!: string;
+  title?: string;
 
   @ApiPropertyOptional({ example: 'Jan Thiel' })
   @IsOptional()
@@ -369,8 +498,8 @@ export class CreateHotelDto extends UpdateHotelDto {
 }
 
 /** Per-locale copy. Mirrors the `fields` wrapper every other entity uses. */
-export class HotelTranslationFieldsDto {
-  @ApiPropertyOptional({ example: '🌴 OUR APARTMENT' })
+export class RecommendationTranslationFieldsDto {
+  @ApiPropertyOptional({ example: 'OUR APARTMENT' })
   @IsOptional()
   @IsString()
   @MaxLength(SHORT_TEXT_MAX_LENGTH)
@@ -405,14 +534,46 @@ export class HotelTranslationFieldsDto {
   ctaLabel?: string | null;
 }
 
-export class UpsertHotelTranslationDto {
-  @ApiProperty({ type: HotelTranslationFieldsDto })
+export class UpsertRecommendationTranslationDto {
+  @ApiProperty({ type: RecommendationTranslationFieldsDto })
   @ValidateNested()
-  @Type(() => HotelTranslationFieldsDto)
-  fields!: HotelTranslationFieldsDto;
+  @Type(() => RecommendationTranslationFieldsDto)
+  fields!: RecommendationTranslationFieldsDto;
 
   @ApiPropertyOptional({ example: false, default: false })
   @IsOptional()
   @IsBoolean()
   isMachineTranslated?: boolean = false;
+}
+
+// ── Display settings (per-surface card caps) ──────────────────────────────────
+
+const MIN_SURFACE_LIMIT = 1;
+const MAX_SURFACE_LIMIT = 10;
+
+export class RecommendationSettingsResponseDto {
+  @ApiProperty({ example: 3, description: 'Max cards on the thank-you page.' })
+  thankYouPageLimit!: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Max cards in the confirmation email.',
+  })
+  confirmationEmailLimit!: number;
+}
+
+export class UpdateRecommendationSettingsDto {
+  @ApiPropertyOptional({ example: 3, minimum: 1, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(MIN_SURFACE_LIMIT)
+  @Max(MAX_SURFACE_LIMIT)
+  thankYouPageLimit?: number;
+
+  @ApiPropertyOptional({ example: 2, minimum: 1, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(MIN_SURFACE_LIMIT)
+  @Max(MAX_SURFACE_LIMIT)
+  confirmationEmailLimit?: number;
 }

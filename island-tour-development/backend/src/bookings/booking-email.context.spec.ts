@@ -105,6 +105,7 @@ function input(
         currency: Currency.USD,
       },
     ],
+    recommendations: over.recommendations ?? [],
     config: {
       frontendUrl: 'https://island.tours',
       apiUrl: 'https://api.island.tours',
@@ -605,5 +606,85 @@ describe('helpers', () => {
     expect(preferLocale(rows, Locale.nl)?.v).toBe('nl');
     expect(preferLocale(rows, Locale.de)?.v).toBe('en');
     expect(preferLocale([], Locale.de)).toBeUndefined();
+  });
+
+  describe('featured recommendation block', () => {
+    it('empties every slot token when nothing is placed on the email', () => {
+      const ctx = buildConfirmationEmailContext(input({ recommendations: [] }));
+      expect(ctx.recommendationOneName).toBe('');
+      expect(ctx.recommendationOneUrl).toBe('');
+      expect(ctx.recommendationTwoName).toBe('');
+      expect(ctx.recommendationThreeName).toBe('');
+    });
+
+    it('passes an EXTERNAL link through untouched and formats the meta', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({
+          recommendations: [
+            {
+              title: 'Palm Suite Apartment',
+              imageUrl: 'https://cdn.test/rec.jpg',
+              linkUrl: 'https://www.airbnb.com/rooms/123',
+              external: true,
+              ctaLabel: 'See availability on Airbnb',
+              rating: 4.8,
+              priceAmount: 160,
+              currency: Currency.USD,
+            },
+          ],
+        }),
+      );
+      expect(ctx.recommendationOneName).toBe('Palm Suite Apartment');
+      expect(ctx.recommendationOneUrl).toBe('https://www.airbnb.com/rooms/123');
+      expect(ctx.recommendationOneCtaLabel).toBe('See availability on Airbnb');
+      expect(String(ctx.recommendationOneMeta)).toContain('4.8');
+      expect(String(ctx.recommendationOneMeta)).toContain('from');
+    });
+
+    it('absolutizes an INTERNAL site-relative link with the site + locale', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({
+          recommendations: [
+            {
+              title: 'Sunset Cruise',
+              imageUrl: 'https://cdn.test/tour.jpg',
+              linkUrl: '/curacao/sunset-cruise',
+              external: false,
+              ctaLabel: null,
+              rating: null,
+              priceAmount: null,
+              currency: Currency.USD,
+            },
+          ],
+        }),
+      );
+      // frontendUrl in the test input is https://island.tours; locale en.
+      expect(ctx.recommendationOneUrl).toBe(
+        'https://island.tours/en/curacao/sunset-cruise',
+      );
+      // Null ctaLabel falls back to a sensible default in the email.
+      expect(ctx.recommendationOneCtaLabel).toBe('See more');
+      // No rating/price -> the meta line is empty and the template hides it.
+      expect(ctx.recommendationOneMeta).toBe('');
+    });
+
+    it('fills up to three slots and leaves the rest empty', () => {
+      const rec = (title: string) => ({
+        title,
+        imageUrl: 'https://cdn.test/x.jpg',
+        linkUrl: 'https://x.test',
+        external: true,
+        ctaLabel: null,
+        rating: null,
+        priceAmount: null,
+        currency: Currency.USD,
+      });
+      const ctx = buildConfirmationEmailContext(
+        input({ recommendations: [rec('A'), rec('B')] }),
+      );
+      expect(ctx.recommendationOneName).toBe('A');
+      expect(ctx.recommendationTwoName).toBe('B');
+      expect(ctx.recommendationThreeName).toBe('');
+    });
   });
 });

@@ -21,6 +21,7 @@ export function DestinationHero({
     destinationSlug,
     activities,
     image,
+    imageAlt,
 }: {
     destinationName: string;
     dict: DestinationHeroDict;
@@ -31,6 +32,11 @@ export function DestinationHero({
     activities: ActivityLink[];
     /** Optional background photo - falls back to the shared home-hero gradient. */
     image?: string;
+    /**
+     * Localized alt text from the media library. Resolved by the caller (the
+     * loader is server-only) and falls back to the island name.
+     */
+    imageAlt?: string | null;
 }) {
     return (
         // Same shell as the home hero: bottom-anchored on mobile, centred on desktop.
@@ -40,7 +46,7 @@ export function DestinationHero({
         <section className='relative z-20 h-136.75 md:h-150 2xl:h-180 flex items-end justify-center bg-it-hero-bg pb-12 md:items-center md:pb-0'>
             {image && (
                 <div className='absolute inset-0 overflow-hidden'>
-                    <Image src={image} alt={destinationName} fill priority className='object-cover' />
+                    <Image src={image} alt={imageAlt || destinationName} fill priority className='object-cover' />
                     {/* Legibility overlay over the photo */}
                     <div className='absolute inset-0 bg-black/50' />
                 </div>
