@@ -968,7 +968,7 @@
         "receiptPickup": "Recogida",
         "receiptSpectator": "Espectador",
         "emailInvalid": "Introduce un correo válido, como tu@ejemplo.com.",
-        "emailUnknown": "No encontramos reservas con este correo. Usa la dirección de tu confirmación de reserva.",
+        "emailUnknown": "No se encontró ninguna cuenta con este correo electrónico.",
         "liveChip": "En línea"
     },
     "reviewSubmit": {

@@ -968,7 +968,7 @@
         "receiptPickup": "Abholung",
         "receiptSpectator": "Zuschauer",
         "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de.",
-        "emailUnknown": "Unter dieser E-Mail-Adresse finden wir keine Buchungen. Nutze die Adresse aus deiner Buchungsbestätigung.",
+        "emailUnknown": "Kein Konto mit dieser E-Mail-Adresse gefunden.",
         "liveChip": "Live"
     },
     "reviewSubmit": {

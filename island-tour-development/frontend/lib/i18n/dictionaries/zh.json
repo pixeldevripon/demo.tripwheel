@@ -968,7 +968,7 @@
         "receiptPickup": "接送",
         "receiptSpectator": "随行观看",
         "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。",
-        "emailUnknown": "未找到与此邮箱关联的预订。请使用预订确认邮件中的邮箱地址。",
+        "emailUnknown": "未找到使用此邮箱地址的账户。",
         "liveChip": "在线"
     },
     "reviewSubmit": {

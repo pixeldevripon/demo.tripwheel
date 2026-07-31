@@ -968,7 +968,7 @@
         "receiptPickup": "Pickup",
         "receiptSpectator": "Spectator",
         "emailInvalid": "Enter a valid email address, like you@example.com.",
-        "emailUnknown": "We can't find any bookings under this email. Use the address from your booking confirmation.",
+        "emailUnknown": "No account found with this email address.",
         "liveChip": "Live"
     },
     "reviewSubmit": {

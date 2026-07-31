@@ -968,7 +968,7 @@
         "receiptPickup": "Ophaalservice",
         "receiptSpectator": "Toeschouwer",
         "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl.",
-        "emailUnknown": "We vinden geen boekingen op dit e-mailadres. Gebruik het adres uit je boekingsbevestiging.",
+        "emailUnknown": "Geen account gevonden met dit e-mailadres.",
         "liveChip": "Live"
     },
     "reviewSubmit": {
