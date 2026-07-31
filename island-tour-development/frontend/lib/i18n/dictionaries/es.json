@@ -794,7 +794,8 @@
         "terms": "Términos",
         "privacy": "Política de privacidad",
         "help": "Ayuda",
-        "tagline": "Hecho por isleños."
+        "tagline": "Hecho por isleños.",
+        "lostUnknown": "No se encontró ninguna cuenta con este correo electrónico."
     },
     "traveller": {
         "title": "Tus reservas",

@@ -794,7 +794,8 @@
         "terms": "Termos",
         "privacy": "Política de privacidade",
         "help": "Ajuda",
-        "tagline": "Feito por ilhéus."
+        "tagline": "Feito por ilhéus.",
+        "lostUnknown": "Nenhuma conta encontrada com este endereço de e-mail."
     },
     "traveller": {
         "title": "As suas reservas",

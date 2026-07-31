@@ -794,7 +794,8 @@
         "terms": "AGB",
         "privacy": "Datenschutz",
         "help": "Hilfe",
-        "tagline": "Von Inselbewohnern gemacht."
+        "tagline": "Von Inselbewohnern gemacht.",
+        "lostUnknown": "Kein Konto mit dieser E-Mail-Adresse gefunden."
     },
     "traveller": {
         "title": "Deine Buchungen",

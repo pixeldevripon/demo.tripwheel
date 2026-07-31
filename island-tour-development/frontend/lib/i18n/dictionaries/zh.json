@@ -794,7 +794,8 @@
         "terms": "条款",
         "privacy": "隐私政策",
         "help": "帮助",
-        "tagline": "由岛民打造。"
+        "tagline": "由岛民打造。",
+        "lostUnknown": "未找到使用此邮箱地址的账户。"
     },
     "traveller": {
         "title": "您的预订",

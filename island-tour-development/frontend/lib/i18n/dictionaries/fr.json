@@ -794,7 +794,8 @@
         "terms": "Conditions",
         "privacy": "Politique de confidentialité",
         "help": "Aide",
-        "tagline": "Créé par des insulaires."
+        "tagline": "Créé par des insulaires.",
+        "lostUnknown": "Aucun compte trouvé avec cette adresse e-mail."
     },
     "traveller": {
         "title": "Vos réservations",

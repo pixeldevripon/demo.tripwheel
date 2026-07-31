@@ -794,7 +794,8 @@
         "terms": "Voorwaarden",
         "privacy": "Privacybeleid",
         "help": "Help",
-        "tagline": "Gemaakt door eilandbewoners."
+        "tagline": "Gemaakt door eilandbewoners.",
+        "lostUnknown": "Geen account gevonden met dit e-mailadres."
     },
     "traveller": {
         "title": "Jouw boekingen",
