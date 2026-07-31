@@ -969,7 +969,8 @@
         "receiptSpectator": "Toeschouwer",
         "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl.",
         "emailUnknown": "Geen account gevonden met dit e-mailadres.",
-        "liveChip": "Live"
+        "liveChip": "Live",
+        "loginHelp": "Weet je niet zeker met welk e-mailadres je hebt geboekt? Kijk in je boekingsbevestiging, of"
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",

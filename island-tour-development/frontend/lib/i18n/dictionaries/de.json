@@ -969,7 +969,8 @@
         "receiptSpectator": "Zuschauer",
         "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de.",
         "emailUnknown": "Kein Konto mit dieser E-Mail-Adresse gefunden.",
-        "liveChip": "Live"
+        "liveChip": "Live",
+        "loginHelp": "Nicht sicher, mit welcher E-Mail du gebucht hast? Sieh in deiner Buchungsbestätigung nach, oder"
     },
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",

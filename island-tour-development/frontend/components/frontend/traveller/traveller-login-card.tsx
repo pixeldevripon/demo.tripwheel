@@ -54,8 +54,11 @@ const EMAIL_ERROR_ID = 'traveller-email-error';
  */
 export function TravellerLoginCard({
     dict,
+    whatsappHref = null,
 }: {
     dict: Dictionary['traveller'];
+    /** Dashboard-managed WhatsApp deep link; null hides the support link. */
+    whatsappHref?: string | null;
 }) {
     const router = useRouter();
     const [step, setStep] = useState<'email' | 'code'>('email');
@@ -258,6 +261,27 @@ export function TravellerLoginCard({
                     )}
                 </motion.div>
             </AnimatePresence>
+
+            {/* The passwordless "forgot" story: there is no password to reset -
+                the recoverable thing is WHICH email was used, and that is on
+                the booking confirmation. Everything past that (lost inbox
+                access) is deliberately support-only: a self-serve email change
+                on a booking would be an account-takeover vector. */}
+            <p className='mt-5 mb-0 text-center text-[13px] leading-[1.6] text-it-text-muted'>
+                {dict.loginHelp}
+                {whatsappHref && (
+                    <>
+                        {' '}
+                        <a
+                            href={whatsappHref}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='font-medium text-it-primary no-underline hover:opacity-80'>
+                            {dict.whatsappUs}
+                        </a>
+                    </>
+                )}
+            </p>
         </div>
     );
 }

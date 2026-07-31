@@ -969,7 +969,8 @@
         "receiptSpectator": "Spectator",
         "emailInvalid": "Enter a valid email address, like you@example.com.",
         "emailUnknown": "No account found with this email address.",
-        "liveChip": "Live"
+        "liveChip": "Live",
+        "loginHelp": "Not sure which email you booked with? Check your booking confirmation email, or"
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

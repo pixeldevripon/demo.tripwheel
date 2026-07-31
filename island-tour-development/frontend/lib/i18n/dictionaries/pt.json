@@ -969,7 +969,8 @@
         "receiptSpectator": "Espectador",
         "emailInvalid": "Introduza um e-mail válido, como voce@exemplo.com.",
         "emailUnknown": "Nenhuma conta encontrada com este endereço de e-mail.",
-        "liveChip": "Online"
+        "liveChip": "Online",
+        "loginHelp": "Não sabe com que e-mail reservou? Veja o seu e-mail de confirmação, ou"
     },
     "reviewSubmit": {
         "invalidTitle": "Este link de avaliação já não é válido.",
