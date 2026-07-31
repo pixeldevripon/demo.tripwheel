@@ -3,6 +3,7 @@ import { MotionLink } from '@/components/frontend/motion-link';
 import { MountReveal } from '@/components/frontend/mount-reveal';
 import { springPop } from '@/lib/motion';
 import { ReviewSubmitFlow } from '@/components/frontend/review/review-submit-flow';
+import { ReviewCardSkeleton } from '@/components/frontend/skeletons/review-card-skeleton';
 import { getReviewInvitation } from '@/lib/api/public/review-invitation';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -117,24 +118,6 @@ async function ReviewBody({
     );
 }
 
-function ReviewSkeleton() {
-    return (
-        <div className='w-full max-w-xl animate-pulse rounded-[16px] bg-it-white p-6 sm:p-8'>
-            <div className='h-40 w-full rounded-[12px] bg-it-border' />
-            <div className='mt-5 h-7 w-3/4 rounded-[6px] bg-it-border' />
-            <div className='mt-2 h-4 w-1/2 rounded-[6px] bg-it-border' />
-            <div className='mt-5 flex gap-2'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                    <div
-                        key={i}
-                        className='size-8 rounded-[6px] bg-it-border'
-                    />
-                ))}
-            </div>
-        </div>
-    );
-}
-
 export default async function ReviewPage({
     params,
 }: {
@@ -147,7 +130,7 @@ export default async function ReviewPage({
     return (
         <section className='it-section flex min-h-[70vh] items-center justify-center bg-it-surface'>
             <div className='it-container [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-xl'>
-                <Suspense fallback={<ReviewSkeleton />}>
+                <Suspense fallback={<ReviewCardSkeleton />}>
                     <ReviewBody token={token} locale={locale} />
                 </Suspense>
             </div>

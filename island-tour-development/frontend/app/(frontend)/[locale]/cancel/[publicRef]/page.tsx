@@ -1,5 +1,6 @@
 import { CancelRequestCard } from '@/components/frontend/cancel/cancel-request-card';
 import { MountReveal } from '@/components/frontend/mount-reveal';
+import { CancelCardSkeleton } from '@/components/frontend/skeletons/cancel-card-skeleton';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { formatMoney } from '@/lib/currency/current';
 import { getDictionary } from '@/lib/i18n/dictionaries';
@@ -173,20 +174,6 @@ async function CancelBody({
                 thankYouHref={thankYouHref}
             />
         </MountReveal>
-    );
-}
-
-function CancelCardSkeleton() {
-    return (
-        <div className='w-full max-w-107.5 animate-pulse rounded-[16px] bg-it-white p-6'>
-            <div className='h-6 w-3/4 rounded-[6px] bg-it-border' />
-            <div className='mt-3 h-4 w-1/2 rounded-[6px] bg-it-border' />
-            <div className='mt-4 h-20 w-full rounded-[10px] bg-it-border' />
-            <div className='mt-4 flex gap-2.5'>
-                <div className='h-11 w-40 rounded-[10px] bg-it-border' />
-                <div className='h-11 w-36 rounded-[10px] bg-it-border' />
-            </div>
-        </div>
     );
 }
 
