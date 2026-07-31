@@ -10,6 +10,7 @@ import {
     lookupLabel,
     money,
 } from '@/components/frontend/traveller/traveller-format';
+import { TravellerReceiptSkeleton } from '@/components/frontend/skeletons/traveller-receipt-skeleton';
 import { TravellerReceiptPrintButton } from '@/components/frontend/traveller/traveller-receipt-actions';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
 import { getTravellerReceipt } from '@/lib/api/public/traveller';
@@ -61,13 +62,10 @@ export default async function TravellerReceiptPage({
     const paymentId = decodeURIComponent(rawPaymentId);
 
     return (
-        <Suspense
-            fallback={
-                <div
-                    className='min-h-[60vh] bg-it-surface'
-                    aria-busy='true'
-                />
-            }>
+        // Same receipt-shaped skeleton as the route's loading.tsx, so the
+        // placeholder never changes shape between the navigation phase and
+        // the data-streaming phase.
+        <Suspense fallback={<TravellerReceiptSkeleton />}>
             <ReceiptBody locale={locale} paymentId={paymentId} />
         </Suspense>
     );
