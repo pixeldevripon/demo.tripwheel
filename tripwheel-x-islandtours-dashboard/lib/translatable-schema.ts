@@ -97,6 +97,13 @@ export interface TranslatableFieldDef {
      * is what the site is showing".
      */
     placeholder?: string;
+    /**
+     * Opt-in half-width: consecutive `half` fields pair into one two-column row
+     * in the English content editor. Purely presentational and default-off, so
+     * entities that do not set it are unchanged. Only meaningful for short
+     * `input` fields.
+     */
+    half?: boolean;
 }
 
 /**
@@ -362,7 +369,18 @@ export const RECOMMENDATION_FIELDS: TranslatableFieldDef[] = [
         name: 'areaLabel',
         label: 'Neighbourhood',
         kind: 'input',
+        half: true,
         description: 'The small label beside the eyebrow, e.g. "Jan Thiel".',
+    },
+    {
+        name: 'eyebrow',
+        label: 'Eyebrow label',
+        kind: 'input',
+        half: true,
+        description:
+            'The small caps line above the name. Leave empty to keep the ' +
+            "site's own label, which is already translated everywhere.",
+        placeholder: RECOMMENDATION_DEFAULTS.eyebrow,
     },
     {
         name: 'description',
@@ -370,15 +388,6 @@ export const RECOMMENDATION_FIELDS: TranslatableFieldDef[] = [
         kind: 'textarea',
         rows: 3,
         description: 'One line per paragraph on the card. Two lines fit best.',
-    },
-    {
-        name: 'eyebrow',
-        label: 'Eyebrow label',
-        kind: 'input',
-        description:
-            'The small caps line above the name. Leave empty to keep the ' +
-            "site's own label, which is already translated everywhere.",
-        placeholder: RECOMMENDATION_DEFAULTS.eyebrow,
     },
     {
         name: 'ctaLabel',

@@ -10,7 +10,7 @@ import {
     FilterHorizontalIcon,
     Globe02Icon,
     Home01Icon,
-    Building06Icon,
+    ThumbsUpIcon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -206,7 +206,7 @@ const dashboardNav: NavGroup[] = [
                 // do we push". They never enter search, ranking or booking.
                 title: 'Recommendations',
                 url: 'recommendations',
-                icon: Building06Icon,
+                icon: ThumbsUpIcon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],

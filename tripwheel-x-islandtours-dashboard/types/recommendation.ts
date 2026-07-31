@@ -65,6 +65,48 @@ export const RECOMMENDATION_REF_TYPES: RecommendationRefType[] = [
     'HUB',
 ];
 
+/**
+ * The optional "fact" fields an EXTERNAL pick can carry in its meta row. The photo
+ * and link are NOT here - they are the render gate, always shown. Copy (name, pitch,
+ * etc.) lives in the Content tab.
+ */
+export type RecommendationFactField =
+    | 'rating'
+    | 'reviewCount'
+    | 'sleeps'
+    | 'priceAmount';
+
+/**
+ * Which fact fields are relevant PER CATEGORY, so the form only shows what fits the
+ * kind of place: a hotel has "Sleeps", a restaurant does not; a shop has no price
+ * line. Keyed by category slug. Extend this when a new category needs a different
+ * set; anything not listed (incl. Uncategorised) gets `DEFAULT_FACT_FIELDS`.
+ *
+ * `sleeps` is deliberately hotel-only - it is the one field that reads wrong on any
+ * other kind of pick.
+ */
+export const CATEGORY_FACT_FIELDS: Record<string, RecommendationFactField[]> = {
+    hotels: ['rating', 'reviewCount', 'sleeps', 'priceAmount'],
+    restaurants: ['rating', 'reviewCount', 'priceAmount'],
+    'car-rental': ['rating', 'reviewCount', 'priceAmount'],
+    shops: ['rating', 'reviewCount'],
+    experiences: ['rating', 'priceAmount'],
+};
+
+/** The general set for an unknown / uncategorised pick - no hotel-specific Sleeps. */
+export const DEFAULT_FACT_FIELDS: RecommendationFactField[] = [
+    'rating',
+    'reviewCount',
+    'priceAmount',
+];
+
+/** The fact fields to show for a category slug (its own set, or the default). */
+export function factFieldsForCategory(
+    slug: string | null | undefined,
+): RecommendationFactField[] {
+    return (slug && CATEGORY_FACT_FIELDS[slug]) || DEFAULT_FACT_FIELDS;
+}
+
 /** Per-locale recommendation copy (EXTERNAL only). */
 export interface RecommendationTranslation {
     locale: Locale;

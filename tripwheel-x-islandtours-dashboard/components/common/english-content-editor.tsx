@@ -124,47 +124,77 @@ function EnglishContentForm({
         );
     }
 
+    const renderField = (f: TranslatableFieldDef) => {
+        const disabled = disabledFields.includes(f.name);
+        return (
+            <Field key={f.name}>
+                <Label htmlFor={`en-${f.name}`}>{f.label}</Label>
+                {f.kind === 'input' ? (
+                    <Input
+                        id={`en-${f.name}`}
+                        maxLength={f.maxLength}
+                        placeholder={f.placeholder}
+                        disabled={disabled}
+                        {...register(f.name)}
+                    />
+                ) : (
+                    <Textarea
+                        id={`en-${f.name}`}
+                        rows={f.rows ?? 3}
+                        maxLength={f.maxLength}
+                        placeholder={f.placeholder}
+                        disabled={disabled}
+                        {...register(f.name)}
+                    />
+                )}
+                {disabled ? (
+                    <FieldDescription>
+                        Managed in the Details tab.
+                    </FieldDescription>
+                ) : (
+                    f.description && (
+                        <FieldDescription>{f.description}</FieldDescription>
+                    )
+                )}
+            </Field>
+        );
+    };
+
+    // Opt-in pairing: a `half` field waits for the next `half` field and the two
+    // share one two-column row. Full-width fields keep their order and render
+    // one per row; an unpaired half falls back to full width. Entities with no
+    // `half` fields (every one but recommendations) are untouched.
+    const rows: TranslatableFieldDef[][] = [];
+    let pendingHalf: TranslatableFieldDef | null = null;
+    for (const f of fields) {
+        if (f.half) {
+            if (pendingHalf) {
+                rows.push([pendingHalf, f]);
+                pendingHalf = null;
+            } else {
+                pendingHalf = f;
+            }
+        } else {
+            rows.push([f]);
+        }
+    }
+    if (pendingHalf) rows.push([pendingHalf]);
+
     return (
         <form
             onSubmit={handleSubmit(onSave)}
             className='space-y-6'>
-            {fields.map(f => {
-                const disabled = disabledFields.includes(f.name);
-                return (
-                    <Field key={f.name}>
-                        <Label htmlFor={`en-${f.name}`}>{f.label}</Label>
-                        {f.kind === 'input' ? (
-                            <Input
-                                id={`en-${f.name}`}
-                                maxLength={f.maxLength}
-                                placeholder={f.placeholder}
-                                disabled={disabled}
-                                {...register(f.name)}
-                            />
-                        ) : (
-                            <Textarea
-                                id={`en-${f.name}`}
-                                rows={f.rows ?? 3}
-                                maxLength={f.maxLength}
-                                placeholder={f.placeholder}
-                                disabled={disabled}
-                                {...register(f.name)}
-                            />
-                        )}
-                        {disabled ? (
-                            <FieldDescription>
-                                Managed in the Details tab.
-                            </FieldDescription>
-                        ) : (
-                            f.description && (
-                                <FieldDescription>
-                                    {f.description}
-                                </FieldDescription>
-                            )
-                        )}
-                    </Field>
-                );
-            })}
+            {rows.map(row =>
+                row.length === 2 ? (
+                    <div
+                        key={row[0].name}
+                        className='grid gap-4 sm:grid-cols-2'>
+                        {row.map(renderField)}
+                    </div>
+                ) : (
+                    renderField(row[0])
+                ),
+            )}
             <div className='flex justify-end border-t border-line pt-4'>
                 <Button type='submit' disabled={isSaving || !isDirty}>
                     {isSaving ? 'Saving...' : 'Save English Content'}

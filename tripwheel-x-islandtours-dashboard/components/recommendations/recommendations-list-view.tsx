@@ -25,8 +25,6 @@ import {
     useRecommendations,
 } from '@/hooks/recommendations/use-recommendations';
 import {
-    RECOMMENDATION_PLACEMENTS,
-    RECOMMENDATION_PLACEMENT_LABELS,
     recommendationName,
     type Recommendation,
 } from '@/types/recommendation';
@@ -42,36 +40,6 @@ export function RecommendationsListView() {
 
     return (
         <div className='space-y-4'>
-            {/* What each surface is doing, stated once above the list. Without it
-                an admin has to read every status badge to answer the only
-                question they came here with. */}
-            {!isLoading && (
-                <div className='rounded-md border border-line bg-surface-sunken px-4 py-3 text-sm text-content-muted'>
-                    <p className='mb-1 font-medium text-content'>
-                        Currently promoted
-                    </p>
-                    <ul className='space-y-0.5'>
-                        {RECOMMENDATION_PLACEMENTS.map((p) => {
-                            const winners = (recommendations ?? []).filter((r) =>
-                                r.featuredPlacements.includes(p),
-                            );
-                            return (
-                                <li key={p}>
-                                    <span className='font-medium'>
-                                        {RECOMMENDATION_PLACEMENT_LABELS[p]}:
-                                    </span>{' '}
-                                    {winners.length > 0
-                                        ? winners
-                                              .map((w) => recommendationName(w))
-                                              .join(', ')
-                                        : 'nothing shown'}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
-            )}
-
             {isLoading ? (
                 <div className='space-y-2 p-4'>
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -83,6 +51,7 @@ export function RecommendationsListView() {
                     data={recommendations ?? []}
                     canManage={canManage}
                     onDelete={setTarget}
+                    deleteRecommendation={remove}
                     actionSlot={
                         canManage ? (
                             <div className='flex items-center gap-2'>

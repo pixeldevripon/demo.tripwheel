@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { StatusBadge } from '@/components/common/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -94,6 +95,43 @@ export function makeRecommendationColumns({
     onDelete,
 }: MakeRecommendationColumnsOptions): ColumnDef<Recommendation>[] {
     return [
+        // Selection column, first - only for managers, since a read-only
+        // viewer has no bulk action to run against the selection.
+        ...(canManage
+            ? [
+                  {
+                      id: 'select',
+                      header: ({ table }) => (
+                          <Checkbox
+                              checked={
+                                  table.getIsAllPageRowsSelected()
+                                      ? true
+                                      : table.getIsSomePageRowsSelected()
+                                        ? 'indeterminate'
+                                        : false
+                              }
+                              onCheckedChange={(value) =>
+                                  table.toggleAllPageRowsSelected(!!value)
+                              }
+                              aria-label='Select all'
+                          />
+                      ),
+                      cell: ({ row }) => (
+                          <Checkbox
+                              checked={row.getIsSelected()}
+                              onCheckedChange={(value) =>
+                                  row.toggleSelected(!!value)
+                              }
+                              aria-label='Select row'
+                              onClick={(e) => e.stopPropagation()}
+                          />
+                      ),
+                      enableSorting: false,
+                      enableHiding: false,
+                      size: 48,
+                  } satisfies ColumnDef<Recommendation>,
+              ]
+            : []),
         {
             id: 'photo',
             header: '',

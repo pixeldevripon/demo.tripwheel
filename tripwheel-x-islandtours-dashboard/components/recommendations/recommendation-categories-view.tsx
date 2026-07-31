@@ -39,6 +39,8 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { CategoryIconPicker } from '@/components/categories/category-icon-picker';
+import { getCategoryIconComponent } from '@/lib/constants/category-icons';
 import { useRole } from '@/contexts/role-context';
 import {
     useCreateRecommendationCategory,
@@ -97,7 +99,6 @@ export function RecommendationCategoriesView() {
                             <tr className='border-b border-line bg-surface-sunken/60 text-left text-2xs font-medium tracking-caps uppercase text-content-subtle'>
                                 <th className='px-4 py-2.5'>Name</th>
                                 <th className='px-4 py-2.5'>Slug</th>
-                                <th className='px-4 py-2.5'>Icon</th>
                                 <th className='px-4 py-2.5'>Order</th>
                                 <th className='px-4 py-2.5 text-right'>
                                     In use
@@ -111,13 +112,20 @@ export function RecommendationCategoriesView() {
                                     key={c.id}
                                     className='border-b border-line last:border-0'>
                                     <td className='px-4 py-2.5 font-medium'>
-                                        {c.name}
+                                        <div className='flex items-center gap-3'>
+                                            <div className='flex size-8 shrink-0 items-center justify-center rounded-sm bg-muted'>
+                                                <HugeiconsIcon
+                                                    icon={getCategoryIconComponent(
+                                                        c.icon,
+                                                    )}
+                                                    className='size-4 text-muted-foreground'
+                                                />
+                                            </div>
+                                            {c.name}
+                                        </div>
                                     </td>
                                     <td className='px-4 py-2.5 text-content-muted'>
                                         {c.slug}
-                                    </td>
-                                    <td className='px-4 py-2.5 text-content-muted'>
-                                        {c.icon || '-'}
                                     </td>
                                     <td className='px-4 py-2.5 text-content-muted'>
                                         {c.displayOrder}
@@ -395,12 +403,14 @@ function CategoryDialog({
                     <div className='grid gap-4 sm:grid-cols-2'>
                         <Field>
                             <Label>Icon</Label>
-                            <Input
-                                {...register('icon')}
-                                placeholder='e.g. utensils'
+                            <CategoryIconPicker
+                                value={watch('icon') || null}
+                                onChange={(name) =>
+                                    setValue('icon', name ?? '')
+                                }
                             />
                             <FieldDescription>
-                                Optional icon name for the section heading.
+                                Optional icon for the section heading.
                             </FieldDescription>
                         </Field>
                         <Field>

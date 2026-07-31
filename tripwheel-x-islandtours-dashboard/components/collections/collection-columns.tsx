@@ -12,6 +12,7 @@ import {
   COLLECTION_TYPE,
 } from '@/components/common/status-maps';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +38,39 @@ export function makeCollectionColumns({
   showIsland = false,
 }: MakeCollectionColumnsOptions): ColumnDef<Collection>[] {
   return [
+    // Selection column, first - only for managers, since a read-only viewer
+    // has no bulk action to run against the selection.
+    ...(canDelete
+      ? [
+          {
+            id: 'select',
+            header: ({ table }) => (
+              <Checkbox
+                checked={
+                  table.getIsAllPageRowsSelected()
+                    ? true
+                    : table.getIsSomePageRowsSelected()
+                    ? 'indeterminate'
+                    : false
+                }
+                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                aria-label="Select all"
+              />
+            ),
+            cell: ({ row }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+            size: 48,
+          } satisfies ColumnDef<Collection>,
+        ]
+      : []),
     {
       accessorKey: 'name',
       header: 'Name',

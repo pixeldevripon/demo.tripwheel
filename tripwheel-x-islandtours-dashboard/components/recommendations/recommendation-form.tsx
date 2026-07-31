@@ -1,10 +1,20 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ImageSelectorField } from '@/components/common/image-selector-field';
 import { CheckboxField } from '@/components/settings/settings-fields';
 import { Button } from '@/components/ui/button';
@@ -13,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -20,13 +31,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import {
     useCreateRecommendation,
     useUpdateRecommendation,
 } from '@/hooks/recommendations/use-recommendations';
 import { useRecommendationCategories } from '@/hooks/recommendations/use-recommendation-categories';
 import {
+    factFieldsForCategory,
     RECOMMENDATION_PLACEMENT_LABELS,
     RECOMMENDATION_PLACEMENTS,
     RECOMMENDATION_REF_TYPE_LABELS,
@@ -159,6 +170,33 @@ export function RecommendationForm({
     const values = watch();
     const isInternal = values.source === 'INTERNAL';
 
+    // Which fact fields to show depends on the CATEGORY: a hotel has Sleeps, a
+    // restaurant does not, a shop has no price. Fields not relevant to the chosen
+    // category are hidden, and cleared on save so a stale value never lingers.
+    const selectedCategory = (categories ?? []).find(
+        (c) => c.id === values.categoryId,
+    );
+    const visibleFacts = factFieldsForCategory(selectedCategory?.slug);
+    const showRating = visibleFacts.includes('rating');
+    const showReviewCount = visibleFacts.includes('reviewCount');
+    const showSleeps = visibleFacts.includes('sleeps');
+    const showPrice = visibleFacts.includes('priceAmount');
+
+    // Changing the source of an EXISTING recommendation flips what the whole record
+    // means (its own photo/copy vs a live entity), so it is confirmed first. On a
+    // NEW one it switches freely.
+    const [pendingSource, setPendingSource] =
+        useState<RecommendationSource | null>(null);
+
+    function handleSourceChange(next: RecommendationSource) {
+        if (next === values.source) return;
+        if (isEdit) {
+            setPendingSource(next);
+            return;
+        }
+        setValue('source', next);
+    }
+
     function togglePlacement(p: RecommendationPlacement, on: boolean) {
         const next = on
             ? [...values.placements, p]
@@ -199,10 +237,14 @@ export function RecommendationForm({
                   refId: null,
                   imageUrl: v.imageUrl.trim() || null,
                   linkUrl: v.linkUrl.trim() || null,
-                  rating: toNumberOrNull(v.rating),
-                  reviewCount: toNumberOrNull(v.reviewCount),
-                  sleeps: toNumberOrNull(v.sleeps),
-                  priceAmount: toNumberOrNull(v.priceAmount),
+                  // A fact not relevant to the category is hidden AND cleared, so a
+                  // hotel's "Sleeps" does not linger after it becomes a restaurant.
+                  rating: showRating ? toNumberOrNull(v.rating) : null,
+                  reviewCount: showReviewCount
+                      ? toNumberOrNull(v.reviewCount)
+                      : null,
+                  sleeps: showSleeps ? toNumberOrNull(v.sleeps) : null,
+                  priceAmount: showPrice ? toNumberOrNull(v.priceAmount) : null,
                   currency: v.currency,
               };
 
@@ -245,53 +287,55 @@ export function RecommendationForm({
     }
 
     return (
-        <div className='space-y-6'>
+        <div className='space-y-5'>
             {recommendation && <LiveNotice recommendation={recommendation} />}
 
             <Card>
-                <CardHeader className='border-b pb-8'>
+                <CardHeader className='border-b pb-6'>
                     <CardTitle>
                         {isEdit
                             ? 'Recommendation Details'
                             : 'New Recommendation'}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className='pt-8'>
+                <CardContent className='pt-6'>
                     <form
                         onSubmit={handleSubmit(onSubmit)}
-                        className='space-y-6'>
-                        {/* Source ─ the fork the whole form hangs off. */}
+                        className='space-y-5'>
+                        {/* Source ─ the fork the whole form hangs off. Stays
+                            mutable on edit: switching an existing pick between
+                            internal and external is a legitimate change. */}
                         <Field>
                             <Label>Source</Label>
-                            <div className='inline-flex rounded-md border border-input bg-surface-sunken p-0.5'>
-                                {(
-                                    [
-                                        {
-                                            value: 'EXTERNAL' as const,
-                                            label: 'External pick',
-                                        },
-                                        {
-                                            value: 'INTERNAL' as const,
-                                            label: 'Our own entity',
-                                        },
-                                    ]
-                                ).map((opt) => (
-                                    <button
-                                        key={opt.value}
-                                        type='button'
-                                        onClick={() =>
-                                            setValue('source', opt.value)
-                                        }
-                                        className={cn(
-                                            'rounded-[5px] px-3 py-1.5 text-sm font-medium transition-colors',
-                                            values.source === opt.value
-                                                ? 'bg-surface-raised text-content shadow-xs'
-                                                : 'text-content-muted hover:text-content',
-                                        )}>
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
+                            <RadioGroup
+                                value={values.source}
+                                onValueChange={(v) =>
+                                    handleSourceChange(v as RecommendationSource)
+                                }
+                                className='flex flex-wrap items-center gap-6 pt-1'>
+                                <div className='flex items-center gap-2'>
+                                    <RadioGroupItem
+                                        value='EXTERNAL'
+                                        id='source-external'
+                                    />
+                                    <Label
+                                        htmlFor='source-external'
+                                        className='cursor-pointer font-normal'>
+                                        External pick
+                                    </Label>
+                                </div>
+                                <div className='flex items-center gap-2'>
+                                    <RadioGroupItem
+                                        value='INTERNAL'
+                                        id='source-internal'
+                                    />
+                                    <Label
+                                        htmlFor='source-internal'
+                                        className='cursor-pointer font-normal'>
+                                        Our own entity
+                                    </Label>
+                                </div>
+                            </RadioGroup>
                             <FieldDescription>
                                 {isInternal
                                     ? 'Points at one of our own tours, destinations, collections or hubs. The card is drawn live from that entity.'
@@ -319,36 +363,56 @@ export function RecommendationForm({
                             </Field>
                         )}
 
-                        {/* Category ─ shared by both sources. */}
-                        <Field>
-                            <Label>Category</Label>
-                            <Select
-                                value={values.categoryId || UNCATEGORISED}
-                                onValueChange={(v) =>
-                                    setValue(
-                                        'categoryId',
-                                        v === UNCATEGORISED ? '' : v,
-                                    )
-                                }>
-                                <SelectTrigger>
-                                    <SelectValue placeholder='Uncategorised' />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={UNCATEGORISED}>
-                                        Uncategorised
-                                    </SelectItem>
-                                    {(categories ?? []).map((c) => (
-                                        <SelectItem key={c.id} value={c.id}>
-                                            {c.name}
+                        {/* Category + promotion priority ─ shared by both
+                            sources, inlined to keep the form short. */}
+                        <div className='grid gap-4 sm:grid-cols-2'>
+                            <Field>
+                                <Label>Category</Label>
+                                <Select
+                                    value={values.categoryId || UNCATEGORISED}
+                                    onValueChange={(v) =>
+                                        setValue(
+                                            'categoryId',
+                                            v === UNCATEGORISED ? '' : v,
+                                        )
+                                    }>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder='Uncategorised' />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={UNCATEGORISED}>
+                                            Uncategorised
                                         </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FieldDescription>
-                                The bucket this pick is grouped under on the
-                                page. Manage the list on the Categories screen.
-                            </FieldDescription>
-                        </Field>
+                                        {(categories ?? []).map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>
+                                                {c.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FieldDescription>
+                                    The bucket this pick is grouped under on the
+                                    page. Manage the list on the Categories
+                                    screen.
+                                </FieldDescription>
+                            </Field>
+
+                            <Field>
+                                <Label>Promotion priority</Label>
+                                <Input
+                                    type='number'
+                                    min='0'
+                                    step='1'
+                                    {...register('displayOrder')}
+                                    placeholder='0'
+                                />
+                                <FieldDescription>
+                                    Which pick gets the card on a surface: the
+                                    lowest number wins, among those switched on
+                                    and complete.
+                                </FieldDescription>
+                            </Field>
+                        </div>
 
                         {/* Placements ─ shared by both sources. */}
                         <Field>
@@ -502,91 +566,110 @@ export function RecommendationForm({
                                     </FieldError>
                                 </Field>
 
-                                {/* The four facts in the meta row - each optional. */}
-                                <div className='grid gap-4 sm:grid-cols-2'>
-                                    <Field>
-                                        <Label>Rating</Label>
-                                        <Input
-                                            type='number'
-                                            step='0.1'
-                                            min='0'
-                                            max='5'
-                                            {...register('rating', {
-                                                validate: (v) => {
-                                                    if (!v.trim()) return true;
-                                                    const n = Number(v);
-                                                    if (!Number.isFinite(n))
-                                                        return 'Must be a number';
-                                                    return (
-                                                        (n >= 0 && n <= 5) ||
-                                                        'Must be between 0 and 5'
-                                                    );
-                                                },
-                                            })}
-                                            placeholder='e.g. 4.8'
-                                            aria-invalid={!!errors.rating}
-                                        />
-                                        <FieldDescription>
-                                            The score from wherever it is listed.
-                                            Out of 5, one decimal.
-                                        </FieldDescription>
-                                        <FieldError>
-                                            {errors.rating?.message}
-                                        </FieldError>
-                                    </Field>
+                                {/* The meta-row facts - only those relevant to the
+                                    chosen category are shown. */}
+                                {(showRating ||
+                                    showReviewCount ||
+                                    showSleeps ||
+                                    showPrice) && (
+                                    <div className='grid gap-4 sm:grid-cols-2'>
+                                        {showRating && (
+                                            <Field>
+                                                <Label>Rating</Label>
+                                                <Input
+                                                    type='number'
+                                                    step='0.1'
+                                                    min='0'
+                                                    max='5'
+                                                    {...register('rating', {
+                                                        validate: (v) => {
+                                                            if (!v.trim())
+                                                                return true;
+                                                            const n = Number(v);
+                                                            if (
+                                                                !Number.isFinite(
+                                                                    n,
+                                                                )
+                                                            )
+                                                                return 'Must be a number';
+                                                            return (
+                                                                (n >= 0 &&
+                                                                    n <= 5) ||
+                                                                'Must be between 0 and 5'
+                                                            );
+                                                        },
+                                                    })}
+                                                    placeholder='e.g. 4.8'
+                                                    aria-invalid={!!errors.rating}
+                                                />
+                                                <FieldDescription>
+                                                    The score from wherever it is
+                                                    listed. Out of 5, one decimal.
+                                                </FieldDescription>
+                                                <FieldError>
+                                                    {errors.rating?.message}
+                                                </FieldError>
+                                            </Field>
+                                        )}
 
-                                    <Field>
-                                        <Label>Number of reviews</Label>
-                                        <Input
-                                            type='number'
-                                            min='0'
-                                            step='1'
-                                            {...register('reviewCount')}
-                                            placeholder='e.g. 1738'
-                                        />
-                                        <FieldDescription>
-                                            Shown in brackets after the rating.
-                                            Empty shows the rating on its own.
-                                        </FieldDescription>
-                                    </Field>
+                                        {showReviewCount && (
+                                            <Field>
+                                                <Label>Number of reviews</Label>
+                                                <Input
+                                                    type='number'
+                                                    min='0'
+                                                    step='1'
+                                                    {...register('reviewCount')}
+                                                    placeholder='e.g. 1738'
+                                                />
+                                                <FieldDescription>
+                                                    Shown in brackets after the
+                                                    rating. Empty shows the rating
+                                                    on its own.
+                                                </FieldDescription>
+                                            </Field>
+                                        )}
 
-                                    <Field>
-                                        <Label>Sleeps</Label>
-                                        <Input
-                                            type='number'
-                                            min='1'
-                                            step='1'
-                                            {...register('sleeps')}
-                                            placeholder='e.g. 4'
-                                        />
-                                        <FieldDescription>
-                                            How many guests. Renders as
-                                            &quot;Sleeps 4&quot;, translated.
-                                            Leave empty for picks where it does
-                                            not apply.
-                                        </FieldDescription>
-                                    </Field>
+                                        {showSleeps && (
+                                            <Field>
+                                                <Label>Sleeps</Label>
+                                                <Input
+                                                    type='number'
+                                                    min='1'
+                                                    step='1'
+                                                    {...register('sleeps')}
+                                                    placeholder='e.g. 4'
+                                                />
+                                                <FieldDescription>
+                                                    How many guests. Renders as
+                                                    &quot;Sleeps 4&quot;,
+                                                    translated.
+                                                </FieldDescription>
+                                            </Field>
+                                        )}
 
-                                    <Field>
-                                        <Label>
-                                            Price ({values.currency})
-                                        </Label>
-                                        <Input
-                                            type='number'
-                                            min='0'
-                                            step='0.01'
-                                            {...register('priceAmount')}
-                                            placeholder='e.g. 160'
-                                        />
-                                        <FieldDescription>
-                                            Shown as &quot;from ...&quot;. The card
-                                            renders the symbol of the currency
-                                            below, so enter the number only.
-                                        </FieldDescription>
-                                    </Field>
-                                </div>
+                                        {showPrice && (
+                                            <Field>
+                                                <Label>
+                                                    Price ({values.currency})
+                                                </Label>
+                                                <Input
+                                                    type='number'
+                                                    min='0'
+                                                    step='0.01'
+                                                    {...register('priceAmount')}
+                                                    placeholder='e.g. 160'
+                                                />
+                                                <FieldDescription>
+                                                    Shown as &quot;from ...&quot;.
+                                                    Enter the number only.
+                                                </FieldDescription>
+                                            </Field>
+                                        )}
+                                    </div>
+                                )}
 
-                                <div className='grid gap-4 sm:grid-cols-2'>
+                                {showPrice && (
                                     <Field>
                                         <Label>Currency</Label>
                                         <Select
@@ -612,47 +695,11 @@ export function RecommendationForm({
                                         </Select>
                                         <FieldDescription>
                                             The currency the price above is IN. It
-                                            is never converted - the card shows
-                                            this figure and this symbol to
-                                            everyone.
+                                            is never converted.
                                         </FieldDescription>
                                     </Field>
-
-                                    <Field>
-                                        <Label>Promotion priority</Label>
-                                        <Input
-                                            type='number'
-                                            min='0'
-                                            step='1'
-                                            {...register('displayOrder')}
-                                            placeholder='0'
-                                        />
-                                        <FieldDescription>
-                                            Which pick gets the card on a surface:
-                                            the lowest number wins, among those
-                                            switched on and complete.
-                                        </FieldDescription>
-                                    </Field>
-                                </div>
+                                )}
                             </>
-                        )}
-
-                        {/* Internal has no meta row, so its priority sits here. */}
-                        {isInternal && (
-                            <Field>
-                                <Label>Promotion priority</Label>
-                                <Input
-                                    type='number'
-                                    min='0'
-                                    step='1'
-                                    {...register('displayOrder')}
-                                    placeholder='0'
-                                />
-                                <FieldDescription>
-                                    Which pick gets the card on a surface: the
-                                    lowest number wins, among those switched on.
-                                </FieldDescription>
-                            </Field>
                         )}
 
                         <div className='flex justify-end pt-2'>
@@ -667,6 +714,35 @@ export function RecommendationForm({
                     </form>
                 </CardContent>
             </Card>
+
+            {/* Changing an existing pick's source swaps its whole meaning, so it is
+                confirmed before it takes effect. */}
+            <AlertDialog
+                open={!!pendingSource}
+                onOpenChange={(o) => !o && setPendingSource(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Change the source?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {pendingSource === 'INTERNAL'
+                                ? 'This will point the recommendation at one of our own entities and draw the card live from it. Its own photo, link and price stop being used.'
+                                : "This will make the recommendation carry its own photo, link and copy again, and stop drawing from a linked entity. You'll need to fill those in."}{' '}
+                            Save afterwards to apply the change.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Keep as is</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (pendingSource)
+                                    setValue('source', pendingSource);
+                                setPendingSource(null);
+                            }}>
+                            Change source
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
