@@ -1,4 +1,5 @@
 import {
+    Calendar01Icon,
     Calendar03Icon,
     CalendarCheckIn01Icon,
     CalendarRemove01Icon,
@@ -65,14 +66,25 @@ const dashboardNav: NavGroup[] = [
                     Permission.STOP_SELL,
                 ],
             },
-            // The global calendar (/calendar) deliberately has NO sidebar
-            // entry - it lives as the calendar button in the site header,
-            // one click from anywhere.
             {
                 title: 'Bookings',
                 url: 'bookings',
                 icon: Calendar03Icon,
                 permissions: [Permission.VIEW_BOOKINGS],
+            },
+            {
+                // The global Month/Week/Day management calendar. Lived as a
+                // glyph in the site header until 2026-07-31 (founder sketch:
+                // navigation belongs in the sidebar, not the header chrome).
+                // Same ANY-of gate as Availability - a stop-sell-only seat
+                // can close/reopen from the calendar too.
+                title: 'Calendar',
+                url: 'calendar',
+                icon: Calendar01Icon,
+                permissions: [
+                    Permission.MANAGE_AVAILABILITY,
+                    Permission.STOP_SELL,
+                ],
             },
             {
                 title: 'Cancellations',

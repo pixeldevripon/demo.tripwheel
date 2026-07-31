@@ -166,15 +166,29 @@ export function GlobalCalendar() {
     );
 
     return (
-        <div className='flex flex-col gap-4'>
+        // At lg+ the page is exactly the leftover viewport: 100dvh minus the
+        // header var minus 80px = the chrome ABOVE the calendar (inset margin
+        // 8 + pane p-4 16 + page lg:p-8 32) plus ONE 16px + 8px margin kept
+        // at the bottom - the page's own 56px of bottom padding is deliberately
+        // reclaimed (founder 2026-07-31: no unused band under the grid). The
+        // grid then FILLS the frame (flex-1), so the calendar always ends at
+        // the viewport bottom at every screen height. The -mb-8 gives back the
+        // 32px the taller frame borrows from the page's bottom padding - in
+        // normal flow the padding would otherwise re-appear BELOW the frame
+        // and put a scrollbar on the whole page. Below lg the page keeps its
+        // natural flow and the grid keeps its own height calc.
+        <div className='flex flex-col gap-4 lg:-mb-8 lg:h-[calc(100dvh-var(--header-height)-80px)]'>
             {/* ── Toolbar (Waton shape: big title, quiet controls) ─────── */}
-            <div className='flex flex-wrap items-center gap-x-3 gap-y-2'>
+            <div className='flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2'>
                 {/* ONE non-wrapping cluster: title + Today + arrows always
                     share a row (arrows can never orphan onto their own line).
                     The title is fluid on phones and fixed at sm+ so label
-                    swaps never shove the controls. */}
-                <div className='flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3'>
-                    <div className='relative h-8 min-w-0 flex-1 overflow-hidden sm:w-80 sm:flex-none'>
+                    swaps never shove the controls. At xl the label column
+                    matches the sidebar (w-60 + gap-4), so Today + arrows sit
+                    exactly where the grid starts - no dead gap after the
+                    title (founder sketch 2026-07-31). */}
+                <div className='flex w-full min-w-0 items-center gap-2 sm:w-auto sm:gap-3 xl:gap-4'>
+                    <div className='relative h-8 min-w-0 flex-1 overflow-hidden sm:w-80 sm:flex-none xl:w-60'>
                         <AnimatePresence mode='wait' initial={false}>
                             <motion.span
                                 key={label}
@@ -182,7 +196,10 @@ export function GlobalCalendar() {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
                                 transition={swapFade}
-                                className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl'>
+                                // xl steps back DOWN to text-xl: the label
+                                // column narrows to the sidebar's w-60 there,
+                                // and 2xl truncates even short-month labels.
+                                className='absolute inset-0 truncate text-xl font-semibold leading-8 sm:text-2xl xl:text-xl'>
                                 {label}
                             </motion.span>
                         </AnimatePresence>
@@ -297,8 +314,12 @@ export function GlobalCalendar() {
             </div>
 
             {/* ── Body: sidebar + grid ────────────────────────────────── */}
-            <div className='flex items-start gap-4'>
-                <aside className='hidden w-60 shrink-0 flex-col gap-4 xl:flex'>
+            <div className='flex items-start gap-4 lg:min-h-0 lg:flex-1'>
+                {/* Scrolls inside itself when the fixed page height leaves it
+                    less room than its stack needs (short viewports) - with the
+                    rail HIDDEN (wheel/trackpad still scrolls), so no scrollbar
+                    ever sits between the sidebar and the grid. */}
+                <aside className='hidden max-h-full w-60 shrink-0 flex-col gap-3 overflow-y-auto scrollbar-none xl:flex'>
                     {canShape && (
                         <AddEventPopover
                             date={anchor}
@@ -377,11 +398,13 @@ export function GlobalCalendar() {
                     )}
                 </aside>
 
-                <div className='min-w-0 flex-1'>
+                <div className='min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col lg:self-stretch'>
                     {/* ONE frame height for every view (and the skeleton), so
                         switching Day/Week/Month never shifts the layout - the
-                        views fill it and scroll inside themselves. */}
-                    <div className='h-[calc(100dvh-270px)] min-h-[26rem]'>
+                        views fill it and scroll inside themselves. At lg+ the
+                        frame is the column's leftover height (exact viewport
+                        fill); below lg it falls back to its own calc. */}
+                    <div className='h-[calc(100dvh-270px)] min-h-104 lg:h-auto lg:flex-1'>
                     {isLoading ? (
                         <CalendarSkeleton view={view} />
                     ) : (
@@ -427,7 +450,7 @@ export function GlobalCalendar() {
                     </div>
                     {/* The sidebar's legend + freshness line, for viewports
                         where the sidebar is gone. */}
-                    <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 xl:hidden'>
+                    <div className='mt-2 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 xl:hidden'>
                         {LEGEND.map((state) => (
                             <span
                                 key={state}
