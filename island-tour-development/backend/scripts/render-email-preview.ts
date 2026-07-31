@@ -140,6 +140,16 @@ const ctx = buildConfirmationEmailContext({
       currency: Currency.USD,
     },
   ],
+  recommendation: {
+    title: 'Palm Suite Apartment',
+    imageUrl: demoImage,
+    linkUrl: 'https://www.airbnb.com/rooms/123',
+    external: true,
+    ctaLabel: 'See availability on Airbnb',
+    rating: 4.8,
+    priceAmount: 160,
+    currency: Currency.USD,
+  },
   config: {
     frontendUrl: process.env.FRONTEND_URL ?? 'https://island.tours',
     apiUrl: process.env.BETTER_AUTH_URL ?? 'https://api.island.tours',

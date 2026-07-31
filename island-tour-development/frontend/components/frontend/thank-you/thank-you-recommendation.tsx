@@ -1,6 +1,8 @@
 import { MotionA } from '@/components/frontend/motion-primitives';
+import { MotionLink } from '@/components/frontend/motion-link';
 import { Reveal } from '@/components/frontend/reveal';
-import type { PublicHotel } from '@/lib/api/public/hotel';
+import type { PublicRecommendation } from '@/lib/api/public/recommendation';
+import { localizeHref } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
 import { currencySymbol } from '@/lib/tours/booking';
@@ -20,39 +22,42 @@ const metaText = 'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/
 const EYEBROW_MARK = '🌴';
 const dot = <span className='size-1 shrink-0 rounded-full bg-it-heading/20' />;
 
+const ctaClass =
+    'flex h-12 w-full max-w-[340px] items-center justify-center rounded-full border border-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5';
+
 /**
- * "Our apartment" promo card (Figma 47745-12127): photo half + details half
- * with the outline booking CTA.
+ * Post-booking recommendation promo card (Figma 47745-12127): photo half + details
+ * half with the outline CTA. Generalises the old "Our apartment" card - the content
+ * can now be an EXTERNAL place (off-site link) or an INTERNAL entity (a tour /
+ * destination / collection / hub, linked same-tab).
  *
- * Content is admin-managed (Dashboard > Pages > Hotel) rather than hardcoded, so
+ * Content is admin-managed (Dashboard > Recommendations) rather than hardcoded, so
  * every row below is written to survive a half-filled record:
  *
- *   - The CALLER gates on `hotel.enabled`, which is the backend's verdict that
- *     the three essentials (photo, title, link) are all present. This component
- *     narrows them anyway and returns null if any is missing, because a
- *     non-null assertion here would be a crash on the one page a traveller
- *     reaches straight after paying.
+ *   - The CALLER gates on `recommendation.enabled`, the backend's verdict that the
+ *     essentials (photo, title, link) are all present. This component narrows them
+ *     anyway and returns null if any is missing - a non-null assertion here would
+ *     be a crash on the one page a traveller reaches straight after paying.
  *   - Each META FACT (rating, sleeps, price) renders only if it is set, and the
- *     separator dots are derived from what survived - otherwise an apartment
- *     with no rating shows a leading dot floating against nothing.
- *   - CHROME labels (eyebrow, CTA) fall back to the dictionary, which carries
- *     both in all 7 locales. An admin override is used verbatim.
+ *     separator dots are derived from what survived.
+ *   - CHROME labels (eyebrow, CTA) fall back to the dictionary, which carries both
+ *     in all 7 locales. An admin override is used verbatim.
  */
-export function ThankYouApartmentPromo({
-    hotel,
+export function ThankYouRecommendation({
+    recommendation,
     dict,
 }: {
-    hotel: PublicHotel;
+    recommendation: PublicRecommendation;
     dict: ThankYouDict;
 }) {
-    const { imageUrl, bookingUrl, title } = hotel;
-    if (!imageUrl || !bookingUrl || !title) return null;
+    const { imageUrl, linkUrl, title, external, locale } = recommendation;
+    if (!imageUrl || !linkUrl || !title) return null;
 
     // Only the facts the admin actually filled in, as a keyed list so the dots
     // sit BETWEEN whatever survived rather than at fixed positions.
     const facts: { key: string; node: ReactNode }[] = [];
 
-    if (hotel.rating !== null) {
+    if (recommendation.rating !== null) {
         facts.push({
             key: 'rating',
             node: (
@@ -65,47 +70,47 @@ export function ThankYouApartmentPromo({
                         className='size-4'
                     />
                     <span className={metaText}>
-                        {hotel.rating}
+                        {recommendation.rating}
                         {/* The review count is its own optional field: a rating
                             with no count must not render an empty "4.8 ()". */}
-                        {hotel.reviewCount !== null &&
-                            ` (${hotel.reviewCount.toLocaleString('en-US')})`}
+                        {recommendation.reviewCount !== null &&
+                            ` (${recommendation.reviewCount.toLocaleString('en-US')})`}
                     </span>
                 </span>
             ),
         });
     }
 
-    if (hotel.sleeps !== null) {
+    if (recommendation.sleeps !== null) {
         facts.push({
             key: 'sleeps',
             node: (
                 <span className={metaText}>
-                    {dict.sleeps.replace('{count}', String(hotel.sleeps))}
+                    {dict.sleeps.replace('{count}', String(recommendation.sleeps))}
                 </span>
             ),
         });
     }
 
-    if (hotel.pricePerNight !== null) {
+    if (recommendation.priceAmount !== null) {
         facts.push({
             key: 'price',
             node: (
                 <span className='flex items-baseline gap-1'>
                     <span className={metaText}>{dict.from}</span>
                     <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        {/* The record's OWN currency. This was a literal '$'
-                            while the card was hardcoded, which would have
-                            printed dollars over a euro price the moment the
-                            field became editable. */}
-                        {currencySymbol(hotel.currency)}
-                        {hotel.pricePerNight}
+                        {/* The record's OWN currency, never a literal '$' - that
+                            would print dollars over a euro price. */}
+                        {currencySymbol(recommendation.currency)}
+                        {recommendation.priceAmount}
                     </span>
                     <span className={metaText}>{dict.perNight}</span>
                 </span>
             ),
         });
     }
+
+    const ctaLabel = recommendation.ctaLabel ?? dict.aptCta;
 
     return (
         <section className='it-section !pt-0 bg-it-white'>
@@ -126,22 +131,16 @@ export function ThankYouApartmentPromo({
                                 <div className='flex items-center gap-4'>
                                     <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-[#858585]'>
                                         {/* The palm is CHROME, owned by this
-                                            component - it is not in the stored
-                                            eyebrow and not in the dictionary.
-                                            Keeping it here is what lets an admin
-                                            type a plain label without having to
-                                            paste an emoji, and stops a custom
-                                            label losing the mark entirely. */}
-                                        {EYEBROW_MARK} {hotel.eyebrow ?? dict.aptEyebrow}
+                                            component - not in the stored eyebrow
+                                            and not in the dictionary. */}
+                                        {EYEBROW_MARK}{' '}
+                                        {recommendation.eyebrow ?? dict.aptEyebrow}
                                     </span>
-                                    {/* The area is optional, and so is the dot
-                                        that would otherwise separate it from
-                                        nothing. */}
-                                    {hotel.areaLabel && (
+                                    {recommendation.areaLabel && (
                                         <>
                                             {dot}
                                             <span className={metaText}>
-                                                {hotel.areaLabel}
+                                                {recommendation.areaLabel}
                                             </span>
                                         </>
                                     )}
@@ -162,9 +161,9 @@ export function ThankYouApartmentPromo({
                                             </div>
                                         )}
                                     </div>
-                                    {hotel.descriptionLines.length > 0 && (
+                                    {recommendation.descriptionLines.length > 0 && (
                                         <div className='flex flex-col'>
-                                            {hotel.descriptionLines.map(line => (
+                                            {recommendation.descriptionLines.map(line => (
                                                 <p
                                                     key={line}
                                                     className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -175,15 +174,28 @@ export function ThankYouApartmentPromo({
                                     )}
                                 </div>
                             </div>
-                            <MotionA
-                                href={bookingUrl}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                whileTap={{ scale: 0.98 }}
-                                transition={springPop}
-                                className='flex h-12 w-full max-w-[340px] items-center justify-center rounded-full border border-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5'>
-                                {hotel.ctaLabel ?? dict.aptCta}
-                            </MotionA>
+                            {/* EXTERNAL opens off-site in a new tab; INTERNAL keeps
+                                client-side navigation (prefetch + page transition)
+                                same-tab via MotionLink. */}
+                            {external ? (
+                                <MotionA
+                                    href={linkUrl}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                    whileTap={{ scale: 0.98 }}
+                                    transition={springPop}
+                                    className={ctaClass}>
+                                    {ctaLabel}
+                                </MotionA>
+                            ) : (
+                                <MotionLink
+                                    href={localizeHref(locale, linkUrl)}
+                                    whileTap={{ scale: 0.98 }}
+                                    transition={springPop}
+                                    className={ctaClass}>
+                                    {ctaLabel}
+                                </MotionLink>
+                            )}
                         </div>
                     </div>
                 </Reveal>

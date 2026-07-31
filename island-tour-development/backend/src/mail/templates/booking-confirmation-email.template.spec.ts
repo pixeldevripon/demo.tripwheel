@@ -120,6 +120,11 @@ function ctx(overrides: EmailTemplateContext = {}): EmailTemplateContext {
     relatedTourTwoRating: '4.7',
     relatedTourTwoPrice: 'from $35',
     allToursUrl: 'https://island.tours/curacao/tours',
+    recommendationName: 'Palm Suite Apartment',
+    recommendationImageUrl: 'https://cdn.test/rec.jpg',
+    recommendationMeta: '4.8 · from $160',
+    recommendationCtaLabel: 'See availability on Airbnb',
+    recommendationUrl: 'https://www.airbnb.com/rooms/123',
     ...overrides,
   };
 }

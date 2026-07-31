@@ -178,8 +178,8 @@ export class EntityRegistry {
         return this.collectCollection(entityId);
       case 'homepage':
         return this.collectHomepage(entityId);
-      case 'hotel':
-        return this.collectHotel(entityId);
+      case 'recommendation':
+        return this.collectRecommendation(entityId);
     }
   }
 
@@ -820,31 +820,34 @@ export class EntityRegistry {
   }
 
   /**
-   * Island Tours' own apartment promo (thank-you page).
+   * Island Tours' post-booking recommendations (thank-you page / email promo).
    *
-   * One unit, no sub-surfaces: it has no FAQs and no page-content sections. The
-   * NUMBERS (rating, review count, sleeps, price) are deliberately absent - they
-   * live on the parent record because they are the same fact in every language,
-   * and handing them to a translation provider would invite it to "localise" a
-   * price. Only prose travels: the eyebrow, the area, the title, the pitch and
-   * the CTA label.
+   * One unit, no sub-surfaces: no FAQs, no page-content sections. The NUMBERS
+   * (rating, review count, sleeps, price) are deliberately absent - they live on
+   * the parent record because they are the same fact in every language, and
+   * handing them to a translation provider would invite it to "localise" a price.
+   * Only prose travels: the eyebrow, the area, the title, the pitch and the CTA
+   * label. INTERNAL recommendations follow their entity and usually carry no copy;
+   * when they carry an override it is translated like any other.
    */
-  private async collectHotel(id: string): Promise<TranslationUnit[] | null> {
+  private async collectRecommendation(
+    id: string,
+  ): Promise<TranslationUnit[] | null> {
     const prisma = this.prisma;
-    const hotel = await prisma.hotel.findUnique({
+    const recommendation = await prisma.recommendation.findUnique({
       where: { id },
       select: { id: true, translations: true },
     });
-    if (!hotel) return null;
+    if (!recommendation) return null;
 
     const fields = ['eyebrow', 'areaLabel', 'title', 'description', 'ctaLabel'];
-    const en = hotel.translations.find((t) => t.locale === Locale.en);
+    const en = recommendation.translations.find((t) => t.locale === Locale.en);
 
     return [
       {
         key: translationUnitKeys.main(),
         source: pickSource(en, fields),
-        existing: existingByLocale(hotel.translations, fields),
+        existing: existingByLocale(recommendation.translations, fields),
         write: async (locale, f, sourceHash, machine) => {
           const data = {
             eyebrow: str(f, 'eyebrow'),
@@ -854,9 +857,18 @@ export class EntityRegistry {
             ctaLabel: str(f, 'ctaLabel'),
             ...stamp(machine, sourceHash),
           };
-          await prisma.hotelTranslation.upsert({
-            where: { hotelId_locale: { hotelId: hotel.id, locale } },
-            create: { hotelId: hotel.id, locale, ...data },
+          await prisma.recommendationTranslation.upsert({
+            where: {
+              recommendationId_locale: {
+                recommendationId: recommendation.id,
+                locale,
+              },
+            },
+            create: {
+              recommendationId: recommendation.id,
+              locale,
+              ...data,
+            },
             update: data,
           });
         },

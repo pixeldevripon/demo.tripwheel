@@ -105,6 +105,7 @@ function input(
         currency: Currency.USD,
       },
     ],
+    recommendation: over.recommendation ?? null,
     config: {
       frontendUrl: 'https://island.tours',
       apiUrl: 'https://api.island.tours',
@@ -605,5 +606,63 @@ describe('helpers', () => {
     expect(preferLocale(rows, Locale.nl)?.v).toBe('nl');
     expect(preferLocale(rows, Locale.de)?.v).toBe('en');
     expect(preferLocale([], Locale.de)).toBeUndefined();
+  });
+
+  describe('featured recommendation block', () => {
+    it('empties every token when no recommendation is placed on the email', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({ recommendation: null }),
+      );
+      expect(ctx.recommendationName).toBe('');
+      expect(ctx.recommendationUrl).toBe('');
+      expect(ctx.recommendationMeta).toBe('');
+    });
+
+    it('passes an EXTERNAL link through untouched and formats the meta', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({
+          recommendation: {
+            title: 'Palm Suite Apartment',
+            imageUrl: 'https://cdn.test/rec.jpg',
+            linkUrl: 'https://www.airbnb.com/rooms/123',
+            external: true,
+            ctaLabel: 'See availability on Airbnb',
+            rating: 4.8,
+            priceAmount: 160,
+            currency: Currency.USD,
+          },
+        }),
+      );
+      expect(ctx.recommendationName).toBe('Palm Suite Apartment');
+      expect(ctx.recommendationUrl).toBe('https://www.airbnb.com/rooms/123');
+      expect(ctx.recommendationCtaLabel).toBe('See availability on Airbnb');
+      expect(String(ctx.recommendationMeta)).toContain('4.8');
+      expect(String(ctx.recommendationMeta)).toContain('from');
+    });
+
+    it('absolutizes an INTERNAL site-relative link with the site + locale', () => {
+      const ctx = buildConfirmationEmailContext(
+        input({
+          recommendation: {
+            title: 'Sunset Cruise',
+            imageUrl: 'https://cdn.test/tour.jpg',
+            linkUrl: '/curacao/sunset-cruise',
+            external: false,
+            ctaLabel: null,
+            rating: null,
+            priceAmount: null,
+            currency: Currency.USD,
+          },
+        }),
+      );
+      // frontendUrl in the test input is https://island.tours; locale en.
+      expect(ctx.recommendationUrl).toBe(
+        'https://island.tours/en/curacao/sunset-cruise',
+      );
+      // Null ctaLabel falls back to a sensible default in the email.
+      expect(ctx.recommendationCtaLabel).toBe('See more');
+      // No rating/price -> the meta line is empty and the template hides it.
+      expect(ctx.recommendationMeta).toBe('');
+    });
   });
 });

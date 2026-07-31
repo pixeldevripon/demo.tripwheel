@@ -689,6 +689,37 @@ enum InstagramSyncStatus {
   EXPIRING
 }
 
+// ── Recommendations (see recommendations.prisma) ──────────────────────────────
+
+// Where a recommendation's content comes from.
+//   EXTERNAL - admin-authored custom content (image/title/link + per-locale copy),
+//              like the original hotel promo. Points off-site.
+//   INTERNAL - a pointer at an existing platform entity (tour/destination/
+//              collection/hub); the card is rendered from that entity's LIVE data
+//              and links to its on-site page.
+enum RecommendationSource {
+  INTERNAL
+  EXTERNAL
+}
+
+// Which platform entity an INTERNAL recommendation points at. All four resolve to
+// an on-site URL of the shape /{destinationSlug}/{slug} (a destination is just
+// /{destinationSlug}).
+enum RecommendationRefType {
+  TOUR
+  DESTINATION
+  COLLECTION
+  HUB
+}
+
+// The surfaces a recommendation may be featured on. A recommendation carries a
+// SET of these; each surface features the first enabled, complete recommendation
+// whose set contains it, by displayOrder.
+enum RecommendationPlacement {
+  THANK_YOU_PAGE
+  CONFIRMATION_EMAIL
+}
+
 // ── Operator ──────────────────────────────────────────────────────────────────
 
 enum OperatorVerificationStatus {

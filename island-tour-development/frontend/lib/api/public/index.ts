@@ -12,7 +12,7 @@ export * from './destinations';
 export * from './featured-experiences';
 export * from './filters';
 export * from './home-page';
-export * from './hotel';
+export * from './recommendation';
 export * from './pages';
 export * from './hubs';
 export * from './instagram';

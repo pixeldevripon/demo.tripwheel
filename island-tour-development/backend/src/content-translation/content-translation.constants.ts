@@ -16,9 +16,9 @@ export const CONTENT_ENTITY_TYPES = [
   'category',
   'collection',
   'homepage',
-  // Island Tours' own apartment promo on the thank-you page. A singleton like
-  // `homepage`, so its entityId is always the fixed key.
-  'hotel',
+  // Island Tours' post-booking recommendations (thank-you page / email promo).
+  // Only EXTERNAL recommendations carry copy; internal ones follow their entity.
+  'recommendation',
 ] as const;
 
 export type ContentEntityType = (typeof CONTENT_ENTITY_TYPES)[number];

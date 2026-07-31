@@ -133,11 +133,11 @@ export interface ThankYouBooking {
 }
 
 /**
- * The apartment cross-sell used to be a hardcoded `APARTMENT_PROMO` constant
+ * The post-booking cross-sell used to be a hardcoded `APARTMENT_PROMO` constant
  * here, on the booking payload. It is NOT booking data - it is the same card for
- * every traveller - so it now comes from `getHotelPromo()` (Dashboard > Pages >
- * Hotel), which is cached under its own tag instead of being re-derived inside
- * every per-traveller lookup. Do not add it back to this interface.
+ * every traveller - so it now comes from `getRecommendation()` (Dashboard >
+ * Recommendations), which is cached under its own tag instead of being re-derived
+ * inside every per-traveller lookup. Do not add it back to this interface.
  */
 
 // ── Label formatting ────────────────────────────────────────────────────────

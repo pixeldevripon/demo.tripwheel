@@ -21,7 +21,7 @@ function mockPrisma(): any {
     hub: { findUnique: jest.fn(), findMany: noRows() },
     collection: { findUnique: jest.fn(), findMany: noRows() },
     homePage: { findUnique: jest.fn(), findFirst: jest.fn() },
-    hotel: { findUnique: jest.fn(), findMany: noRows() },
+    recommendation: { findUnique: jest.fn(), findMany: noRows() },
     faq: { findMany: jest.fn().mockResolvedValue([]), ...upsert() },
     pageContentSection: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -458,10 +458,10 @@ describe('ContentTranslationService', () => {
   });
 
   describe('enqueuePending (nightly sweep)', () => {
-    it('enqueues the recent entities of every type, hotels and the homepage included', async () => {
+    it('enqueues the recent entities of every type, recommendations and the homepage included', async () => {
       prisma.tour.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
       prisma.category.findMany.mockResolvedValue([{ id: 'c1' }]);
-      prisma.hotel.findMany.mockResolvedValue([{ id: 'h1' }]);
+      prisma.recommendation.findMany.mockResolvedValue([{ id: 'r1' }]);
       prisma.homePage.findFirst.mockResolvedValue({ id: 'default' });
 
       const res = await svc.enqueuePending(10);
@@ -469,7 +469,7 @@ describe('ContentTranslationService', () => {
       expect(res.enqueued).toBe(5);
       expect(enqueuer.enqueue).toHaveBeenCalledWith('tour', 't1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('category', 'c1');
-      expect(enqueuer.enqueue).toHaveBeenCalledWith('hotel', 'h1');
+      expect(enqueuer.enqueue).toHaveBeenCalledWith('recommendation', 'r1');
       expect(enqueuer.enqueue).toHaveBeenCalledWith('homepage', 'default');
     });
 

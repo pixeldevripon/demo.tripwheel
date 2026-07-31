@@ -7,6 +7,8 @@ import {
   Locale,
   Prisma,
   PrismaClient,
+  RecommendationPlacement,
+  RecommendationSource,
   Region,
   Role,
   SlugEntityType,
@@ -89,46 +91,61 @@ async function main() {
   await seedDestinations();
   await seedHubs();
   await seedAttributes();
-  await seedHotel();
+  await seedRecommendations();
 }
 
-// ── Island Tours' own hotels (thank-you page promo) ───────────────────────────
+// ── Island Tours' post-booking recommendations (thank-you page / email promo) ──
 /**
- * The hotels list ships with one row so an admin edits existing content instead
- * of facing an empty form before the section works at all.
+ * The recommendations list ships with one seeded "Hotel" category and one row (the
+ * old "Palm Suite Apartment" apartment promo), so an admin edits existing content
+ * instead of facing an empty form before the section works at all.
  *
- * `isSeeded: true` makes it undeletable (403 in the service), the same protection
- * seeded destinations have: the promo keeps one guaranteed occupant, so the
- * section can only be emptied deliberately - by switching hotels off - and never
- * by an accidental delete.
+ * `isSeeded: true` makes both the category and the row undeletable (403 in the
+ * service), the same protection seeded destinations have: the promo keeps one
+ * guaranteed occupant, so the section can only be emptied deliberately - by
+ * switching it off - and never by an accidental delete.
  *
- * The `20260730130000_hotel_promo` migration inserts the same row, which is what
- * covers production (`prisma migrate deploy` does not run seeds). This exists for
+ * The `20260731120000_recommendations` migration performs the same seeding, which is
+ * what covers production (`prisma migrate deploy` does not run seeds). This exists for
  * a database whose row was deleted by hand, and for `migrate reset` flows.
  *
- * CREATE-ONLY: it never touches an existing row. Re-running the seed is routine,
- * and reverting the real property's photo and price back to these demo values
- * would be a silent data loss with no undo.
+ * CREATE-ONLY on the recommendation: it never touches an existing row. The category
+ * is upserted by slug (idempotent) so the seeded row always has a home to point at.
  */
-async function seedHotel() {
-  const existing = await prisma.hotel.findFirst({ select: { id: true } });
+async function seedRecommendations() {
+  console.log('Seeding recommendations...');
+
+  // The seeded "Hotels" category the migrated apartment is filed under.
+  const hotelCategory = await prisma.recommendationCategory.upsert({
+    where: { slug: 'hotels' },
+    create: { name: 'Hotels', slug: 'hotels', displayOrder: 0, isSeeded: true },
+    update: {},
+    select: { id: true },
+  });
+
+  const existing = await prisma.recommendation.findFirst({
+    select: { id: true },
+  });
   if (existing) {
-    console.log('Hotels already exist. Leaving them untouched.');
+    console.log('Recommendations already exist. Leaving them untouched.');
     return;
   }
 
-  console.log('Seeding the promoted hotel...');
-  await prisma.hotel.create({
+  console.log('Seeding the promoted apartment recommendation...');
+  await prisma.recommendation.create({
     data: {
+      source: RecommendationSource.EXTERNAL,
+      categoryId: hotelCategory.id,
       isEnabled: true,
       displayOrder: 0,
       isSeeded: true,
+      placements: [RecommendationPlacement.THANK_YOU_PAGE],
       imageUrl: 'https://picsum.photos/seed/typ-apartment/1176/758',
-      bookingUrl: 'https://www.airbnb.com',
+      linkUrl: 'https://www.airbnb.com',
       rating: 4.8,
       reviewCount: 1738,
       sleeps: 4,
-      pricePerNight: 160,
+      priceAmount: 160,
       currency: Currency.USD,
       translations: {
         create: {
@@ -151,7 +168,7 @@ async function seedHotel() {
       },
     },
   });
-  console.log('Hotel seeded.');
+  console.log('Recommendation seeded.');
 }
 
 // ── Hidden internal-management admin (isSystemAccount) ─────────────────────────

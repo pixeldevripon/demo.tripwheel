@@ -227,6 +227,23 @@ export type RelatedTourInput = {
   currency: Currency;
 };
 
+/**
+ * The one recommendation featured in the confirmation email (the admin-managed
+ * post-booking promo, placed on the CONFIRMATION_EMAIL surface). Null hides the
+ * whole block. `linkUrl` is absolute for an EXTERNAL pick and a site-relative path
+ * for an INTERNAL one - the builder absolutizes the latter with `frontendUrl`.
+ */
+export type RecommendationInput = {
+  title: string;
+  imageUrl: string;
+  linkUrl: string;
+  external: boolean;
+  ctaLabel: string | null;
+  rating: number | null;
+  priceAmount: number | null;
+  currency: Currency;
+};
+
 export type ConfirmationEmailInput = {
   booking: {
     displayRef: string;
@@ -288,6 +305,8 @@ export type ConfirmationEmailInput = {
     slug: string;
   };
   relatedTours: readonly RelatedTourInput[];
+  /** The featured post-booking recommendation, or null to hide the block. */
+  recommendation: RecommendationInput | null;
   config: {
     frontendUrl: string;
     /**
@@ -304,8 +323,16 @@ export type ConfirmationEmailInput = {
 export function buildConfirmationEmailContext(
   input: ConfirmationEmailInput,
 ): EmailTemplateContext {
-  const { booking, tour, operator, site, destination, relatedTours, config } =
-    input;
+  const {
+    booking,
+    tour,
+    operator,
+    site,
+    destination,
+    relatedTours,
+    recommendation,
+    config,
+  } = input;
 
   const locale = booking.customerLocale;
   const urlLocale = locale ?? Locale.en;
@@ -403,7 +430,52 @@ export function buildConfirmationEmailContext(
     relatedTourTwoName: two?.name ?? '',
     relatedTourTwoRating: ratingLabel(two),
     relatedTourTwoPrice: priceLabel(two, locale),
+
+    // "You might also like" - the single featured recommendation. Empty name
+    // hides the whole block ([IF recommendationName] in the template).
+    recommendationName: recommendation?.title ?? '',
+    recommendationImageUrl: recommendation?.imageUrl ?? '',
+    recommendationMeta: recommendation
+      ? recommendationMeta(recommendation, locale)
+      : '',
+    recommendationCtaLabel: recommendation?.ctaLabel?.trim() || 'See more',
+    recommendationUrl: recommendation
+      ? recommendationUrl(recommendation, base, urlLocale)
+      : '',
   };
+}
+
+/**
+ * "4.8 · from $160" - the recommendation's meta line, each part optional. Money is
+ * the recommendation's OWN currency (never converted), matching the card on the TYP.
+ */
+function recommendationMeta(
+  rec: RecommendationInput,
+  locale: Locale | null,
+): string {
+  const parts: string[] = [];
+  if (rec.rating != null) parts.push(rec.rating.toFixed(1));
+  if (rec.priceAmount != null) {
+    parts.push(
+      `from ${formatMoney(String(rec.priceAmount), rec.currency, locale)}`,
+    );
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * The CTA href. EXTERNAL picks link off-site (absolute already); INTERNAL ones
+ * carry a site-relative path (`/curacao/...`) that must be absolutized against the
+ * public site and locale-prefixed, since an inbox has no site to resolve it.
+ */
+function recommendationUrl(
+  rec: RecommendationInput,
+  base: string,
+  urlLocale: Locale,
+): string {
+  if (rec.external) return rec.linkUrl;
+  const path = rec.linkUrl.startsWith('/') ? rec.linkUrl : `/${rec.linkUrl}`;
+  return `${base}/${urlLocale}${path}`;
 }
 
 /**
@@ -664,6 +736,10 @@ export function buildConfirmationEmailText(ctx: EmailTemplateContext): string {
       (v) => `Questions about your booking? WhatsApp: ${v}`,
     ),
     `View your tour: ${get('tourUrl')}`,
+    optional(get('recommendationName'), (v) => {
+      const meta = get('recommendationMeta');
+      return `You might also like: ${v}${meta ? ` (${meta})` : ''} - ${get('recommendationUrl')}`;
+    }),
     '',
     'Island Tours. Built by Islanders.',
     'This is a transactional booking email.',

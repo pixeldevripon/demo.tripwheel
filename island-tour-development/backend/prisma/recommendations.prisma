@@ -1,0 +1,169 @@
+// Island Tours' post-booking RECOMMENDATIONS - the promo shown to a traveller who
+// has just booked a tour (thank-you page today, confirmation email too). This is
+// admin-managed marketing content and NOT operator listings: recommendations never
+// enter search, ranking, availability or the booking flow.
+//
+// It generalises the original single-purpose Hotels feature. A recommendation is
+// either:
+//   EXTERNAL - custom content (photo/title/link + per-locale copy) pointing off-site
+//              (a hotel on Airbnb, a restaurant, a car-rental page). This is exactly
+//              the old hotel card.
+//   INTERNAL - a pointer at an existing Tour / Destination / Collection / Hub; the
+//              card is rendered from that entity's LIVE data and links to its on-site
+//              page. Nothing is copied - the title/photo follow the entity.
+//
+// Each recommendation is filed under an admin-managed CATEGORY (Hotel, Restaurant,
+// Car rental, …) and carries a SET of PLACEMENTS choosing where it may appear.
+//
+// A LIST that feeds ONE card PER SURFACE. Each surface (thank-you page, confirmation
+// email) renders exactly one card: the public read serves the first ENABLED, COMPLETE
+// recommendation whose placements include that surface, by `displayOrder`. Holding
+// several rows is about swapping which one is featured - and keeping the retired
+// one's copy - without retyping it.
+//
+// PRE-SEEDED AND PROTECTED: the migration carries the old "Palm Suite Apartment" over
+// as an EXTERNAL recommendation in a seeded "Hotel" category with `isSeeded`, which
+// makes it undeletable (403 in the service) exactly like a seeded destination. The
+// section can never be left with no content by an accidental delete.
+//
+// THE RENDER GATE (why it is not the usual "null = dictionary fallback"): a card has
+// no sensible built-in name/photo - inventing one would advertise a place that does
+// not exist. So EXTERNAL requires image + title + link, and INTERNAL requires the
+// referenced entity to still resolve to a name + image + on-site link. A row missing
+// any of these is skipped; when none qualifies the payload reports `enabled: false`
+// and the section does not render. Everything else is optional and hides on its own.
+
+/// Admin-managed recommendation category (Hotel, Restaurant, Car rental, …). A pure
+/// taxonomy for organising the recommendation library; the label is an English
+/// management string in v1 (not publicly rendered), so it is NOT in the translation
+/// pipeline. Seeded rows are delete-protected like seeded destinations.
+model RecommendationCategory {
+  id String @id @default(uuid())
+
+  /// English canonical label ("Hotels"). Shown in the dashboard, not on the public site.
+  name String
+
+  /// URL-safe key (generateSlug of the name). Unique so imports/links are stable.
+  slug String @unique
+
+  /// Optional icon key/url for the dashboard chip.
+  icon String?
+
+  /// Ordering of categories in the dashboard.
+  displayOrder Int @default(0)
+
+  /// Seed protection: the service refuses to delete a row carrying it (403).
+  isSeeded Boolean @default(false)
+
+  recommendations Recommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("recommendation_categories")
+}
+
+model Recommendation {
+  id String @id @default(uuid())
+
+  /// EXTERNAL (custom content, off-site) or INTERNAL (pointer at a platform entity,
+  /// rendered from live data). Defaults EXTERNAL - the migrated hotel and the common
+  /// case.
+  source RecommendationSource @default(EXTERNAL)
+
+  /// The category this is filed under. Nullable + SetNull so deleting a category
+  /// never deletes its recommendations - they just fall back to "uncategorised".
+  categoryId String?
+  category   RecommendationCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  /// Whether this may be featured at all. Off retires it without deleting content.
+  isEnabled Boolean @default(true)
+
+  /// Which recommendation each surface features: the lowest `displayOrder` among the
+  /// enabled, complete ones whose placements include that surface wins, `id` breaking
+  /// ties. A priority list, not a layout.
+  displayOrder Int @default(0)
+
+  /// Seed protection, same contract as `Destination.isSeeded` (403 on delete).
+  isSeeded Boolean @default(false)
+
+  /// Where this may appear. Empty = nowhere (parked). A surface reads rows whose set
+  /// contains its own placement value.
+  placements RecommendationPlacement[] @default([])
+
+  // ── INTERNAL pointer (source = INTERNAL) ────────────────────────────────────
+  /// Which entity kind is pointed at, and its id. The card's photo/title/link are
+  /// resolved from the LIVE entity at read time - nothing is snapshotted here.
+  refType RecommendationRefType?
+  refId   String?
+
+  // ── EXTERNAL content (source = EXTERNAL) ────────────────────────────────────
+  /// The photo filling the left half of the card. Part of the EXTERNAL render gate.
+  imageUrl String?
+
+  /// Where the CTA goes (Airbnb, Booking.com, our own page). Part of the EXTERNAL
+  /// render gate: the card's only action is this click.
+  linkUrl String?
+
+  /// Guest rating beside the star, e.g. 4.8. Typed in by an admin (the host
+  /// platform's reviews) - never joined to the platform's own tour Review rows.
+  rating      Decimal? @db.Decimal(2, 1)
+  reviewCount Int?
+
+  /// "Sleeps 4" - an optional capacity fact (hotel-oriented; null for other kinds).
+  sleeps Int?
+
+  /// "from $160/night". The currency travels WITH the amount and the frontend renders
+  /// that currency's symbol - the card must never print a hardcoded $ over a euro price.
+  priceAmount Decimal? @db.Decimal(10, 2)
+  currency    Currency @default(USD)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations RecommendationTranslation[]
+
+  /// The public read's exact predicate and ordering.
+  @@index([isEnabled, displayOrder, id])
+  @@map("recommendations")
+}
+
+// Per-locale EXTERNAL recommendation copy. Mirrors the *Translation pattern used by
+// every other entity (locale column + compound unique + isMachineTranslated +
+// sourceHash), so the Translation Console and the AI refresher pick it up by
+// registration. The NUMBERS live on the parent (a rating is the same fact in every
+// language). INTERNAL recommendations carry no copy - their text follows the entity -
+// though optional eyebrow/ctaLabel overrides may still be set here.
+model RecommendationTranslation {
+  id               String         @id @default(uuid())
+  recommendationId String
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  locale           Locale
+
+  /// Small-caps label above the title ("OUR APARTMENT"). Null keeps the bundled
+  /// dictionary label, already translated in all 7 locales.
+  eyebrow String?
+
+  /// The neighbourhood beside the eyebrow ("Jan Thiel"). Translatable because some
+  /// locales transliterate place names.
+  areaLabel String?
+
+  /// The title ("Palm Suite Apartment"). Part of the EXTERNAL render gate, and the
+  /// label the dashboard list shows.
+  title String?
+
+  /// The short pitch under the meta row. NEWLINE-SEPARATED: the card renders one
+  /// paragraph per line.
+  description String?
+
+  /// CTA label ("See availability on Airbnb"). Null keeps the bundled dictionary label.
+  ctaLabel String?
+
+  isMachineTranslated Boolean  @default(false)
+  sourceHash          String? // sha1 of the EN source a machine row was built from
+  updatedAt           DateTime @updatedAt
+
+  @@unique([recommendationId, locale])
+  @@index([recommendationId, locale])
+  @@map("recommendation_translations")
+}
