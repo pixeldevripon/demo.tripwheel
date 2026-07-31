@@ -329,12 +329,10 @@ export function CalendarTimeGrid({
                                 key={day.date}
                                 onClick={(e) => handleColumnClick(e, day, dayIndex)}
                                 className={cn(
-                                    'relative flex-1 border-l border-border/50 transition-colors duration-normal',
+                                    'relative flex-1 border-l border-border/50',
                                     days.length > 1 ? 'min-w-24 md:min-w-0' : 'min-w-0',
                                     isPastDay && 'bg-muted/20',
-                                    canShape &&
-                                        !isPastDay &&
-                                        'cursor-pointer hover:bg-accent',
+                                    canShape && !isPastDay && 'cursor-pointer',
                                 )}>
                                 {/* The picked column's wash glides with the
                                     header ring (week view only - a day view
@@ -352,10 +350,18 @@ export function CalendarTimeGrid({
                                             className='pointer-events-none absolute inset-0 border-x border-primary/25 bg-primary-subtle/50'
                                         />
                                     )}
+                                {/* Hover lights ONE hour cell, matching the
+                                    month view's per-cell wash - never the
+                                    whole day column (founder 2026-07-31). */}
                                 {hours.map((h) => (
                                     <div
                                         key={h}
-                                        className='h-20 border-t border-border/40 first:border-t-0'
+                                        className={cn(
+                                            'h-20 border-t border-border/40 first:border-t-0',
+                                            canShape &&
+                                                !isPastDay &&
+                                                'transition-colors duration-normal hover:bg-accent',
+                                        )}
                                     />
                                 ))}
 
