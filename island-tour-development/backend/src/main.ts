@@ -5,7 +5,11 @@ import { auth } from '@/auth/auth.instance';
 import { AllExceptionsFilter } from '@/common/filters/http-exception.filter';
 import { parseCorsOrigins } from '@/common/utils/parse-cors-origins';
 import { validateEnv } from '@/env.validate';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import {
+  ForbiddenException,
+  ValidationPipe,
+  type INestApplication,
+} from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -54,7 +58,11 @@ async function bootstrap() {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('CORS: origin not allowed'));
+        // An HttpException, NOT a plain Error: the request is still blocked
+        // before any route handler (same security semantics), but the filter
+        // answers a clean 403 instead of logging a 500 + stack trace for
+        // every internet scanner probing /graphql with a foreign Origin.
+        callback(new ForbiddenException('CORS: origin not allowed'));
       }
     },
     credentials: true,

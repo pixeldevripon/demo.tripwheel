@@ -3258,10 +3258,13 @@ export class BookingsService {
     });
 
     if (!bookings.length) {
+      // `sent: false` mirrors the traveller OTP door (founder 2026-07-31):
+      // the honest "no account under this email" UX over the always-positive
+      // anti-enumeration lock. Throttles above bound probing.
       this.logger.log(
         'Reference recovery requested for an email with no bookings',
       );
-      return { sent: true };
+      return { sent: false };
     }
 
     const [latest] = bookings;

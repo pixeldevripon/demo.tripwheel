@@ -794,7 +794,8 @@
         "terms": "Terms",
         "privacy": "Privacy Policy",
         "help": "Help",
-        "tagline": "Built by Islanders."
+        "tagline": "Built by Islanders.",
+        "lostUnknown": "No account found with this email address."
     },
     "traveller": {
         "title": "Your bookings",
@@ -968,8 +969,9 @@
         "receiptPickup": "Pickup",
         "receiptSpectator": "Spectator",
         "emailInvalid": "Enter a valid email address, like you@example.com.",
-        "emailUnknown": "We can't find any bookings under this email. Use the address from your booking confirmation.",
-        "liveChip": "Live"
+        "emailUnknown": "No account found with this email address.",
+        "liveChip": "Live",
+        "loginHelp": "Not sure which email you booked with? Check your booking confirmation email, or"
     },
     "reviewSubmit": {
         "invalidTitle": "This review link is no longer valid.",

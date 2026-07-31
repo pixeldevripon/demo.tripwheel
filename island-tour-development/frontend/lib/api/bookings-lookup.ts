@@ -42,18 +42,28 @@ export async function lookupBookingClient(
 }
 
 /**
- * "Lost your reference?" recovery. The backend always acks `{ sent: true }`
- * (enumeration-proof), so callers show the same "if that email has bookings"
- * note no matter what - including on throttle or network failure.
+ * "Lost your reference?" recovery. `sent: false` means the address has no
+ * bookings and nothing was mailed - shown as a validation message, mirroring
+ * the traveller OTP door (founder 2026-07-31, the honest UX over the
+ * always-positive anti-enumeration ack; server throttles bound probing).
+ * Throttle and network failures still ack positively: an earlier email may
+ * genuinely be on its way, and a retry costs nothing.
  */
-export async function recoverReferenceClient(email: string): Promise<void> {
+export async function recoverReferenceClient(
+    email: string
+): Promise<'sent' | 'unknown'> {
     try {
-        await fetch(`${BASE_URL}/bookings/lookup/recover-reference`, {
+        const res = await fetch(`${BASE_URL}/bookings/lookup/recover-reference`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
+        if (res.ok) {
+            const body = (await res.json()) as { sent?: boolean };
+            if (body.sent === false) return 'unknown';
+        }
+        return 'sent';
     } catch {
-        // Deliberately swallowed - the UI response is identical either way.
+        return 'sent';
     }
 }

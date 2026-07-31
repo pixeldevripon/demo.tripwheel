@@ -794,7 +794,8 @@
         "terms": "Voorwaarden",
         "privacy": "Privacybeleid",
         "help": "Help",
-        "tagline": "Gemaakt door eilandbewoners."
+        "tagline": "Gemaakt door eilandbewoners.",
+        "lostUnknown": "Geen account gevonden met dit e-mailadres."
     },
     "traveller": {
         "title": "Jouw boekingen",
@@ -968,8 +969,9 @@
         "receiptPickup": "Ophaalservice",
         "receiptSpectator": "Toeschouwer",
         "emailInvalid": "Vul een geldig e-mailadres in, zoals jij@voorbeeld.nl.",
-        "emailUnknown": "We vinden geen boekingen op dit e-mailadres. Gebruik het adres uit je boekingsbevestiging.",
-        "liveChip": "Live"
+        "emailUnknown": "Geen account gevonden met dit e-mailadres.",
+        "liveChip": "Live",
+        "loginHelp": "Weet je niet zeker met welk e-mailadres je hebt geboekt? Kijk in je boekingsbevestiging, of"
     },
     "reviewSubmit": {
         "invalidTitle": "Deze reviewlink is niet meer geldig.",

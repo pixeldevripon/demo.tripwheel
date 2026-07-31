@@ -81,26 +81,34 @@ async function TravellerBody({
     // Per-traveller data: opt out of the prerendered shell before reading the
     // session cookie, and never cache anything below this point.
     await connection();
-    const [dict, sessionToken] = await Promise.all([
+    const [dict, sessionToken, siteInfo] = await Promise.all([
         getDictionary(locale),
         getTravelerSessionToken(),
+        // Cached under `site-info` - powers the WhatsApp support entry points
+        // on BOTH sides of the door (login help line + account support rows).
+        getPublicSiteInfo(),
     ]);
+    const whatsappHref = buildWhatsappUrl(
+        siteInfo.whatsappNumber,
+        siteInfo.enableWhatsappChat
+    );
 
     const signedOut = (
         <section className={`${SIGNED_OUT_BAND} bg-it-surface px-4 py-14`}>
             <MountReveal className='w-full'>
-                <TravellerLoginCard dict={dict.traveller} />
+                <TravellerLoginCard
+                    dict={dict.traveller}
+                    whatsappHref={whatsappHref}
+                />
             </MountReveal>
         </section>
     );
 
     if (!sessionToken) return signedOut;
 
-    const [bookings, payments, siteInfo] = await Promise.all([
+    const [bookings, payments] = await Promise.all([
         getTravellerBookings(sessionToken, tab === 'bookings' ? page : 1, locale),
         getTravellerPayments(sessionToken, tab === 'payments' ? page : 1),
-        // Cached under `site-info` - powers the WhatsApp support entry points.
-        getPublicSiteInfo(),
     ]);
 
     // Null means 401: no session, an expired one, or a weaker pair-login /
@@ -117,10 +125,7 @@ async function TravellerBody({
             locale={locale}
             // eslint-disable-next-line react-hooks/purity -- request-time render (gated by connection() above); the free-cancellation copy needs a stable "now", and stamping it here keeps the client components pure
             nowMs={Date.now()}
-            whatsappHref={buildWhatsappUrl(
-                siteInfo.whatsappNumber,
-                siteInfo.enableWhatsappChat
-            )}
+            whatsappHref={whatsappHref}
         />
     );
 }

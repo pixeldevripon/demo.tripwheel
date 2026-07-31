@@ -4,9 +4,11 @@ import { getDestinationCategories } from '@/lib/api/public/categories';
 import { getDestinationHubs } from '@/lib/api/public/hubs';
 import {
     getPublicCompanyInfo,
+    getPublicSiteInfo,
     getPublicSocialMedia,
 } from '@/lib/api/public/settings';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 import { springPop } from '@/lib/motion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -136,9 +138,12 @@ function LinkColumn({
 }: {
     locale: Locale;
     title: string;
-    links: { label: string; href?: string }[];
+    /** `href` = internal (localized); `external` = full URL (wa.me etc.). */
+    links: { label: string; href?: string; external?: string }[];
     className?: string;
 }) {
+    const linkCls =
+        'inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base';
     return (
         <div className={`flex flex-col gap-5 lg:gap-8 ${className ?? ''}`}>
             <h3 className='m-0 text-lg font-medium leading-[1.6] tracking-[-0.012em] text-it-white lg:text-xl'>
@@ -150,9 +155,17 @@ function LinkColumn({
                         {link.href ? (
                             <Link
                                 href={localizeHref(locale, link.href)}
-                                className='inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base'>
+                                className={linkCls}>
                                 {link.label}
                             </Link>
+                        ) : link.external ? (
+                            <a
+                                href={link.external}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className={linkCls}>
+                                {link.label}
+                            </a>
                         ) : (
                             <span className='inline-block cursor-default text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
                                 {link.label}
@@ -193,12 +206,20 @@ export async function Footer({
     // Dashboard-managed settings (Settings > Social Media / Company). Cached
     // under the `site-info` tag, so an admin save shows up without a redeploy.
     // Categories/hubs feed the dynamic Explore column (both tour-gated + cached).
-    const [social, company, categories, hubs] = await Promise.all([
+    const [social, company, categories, hubs, siteInfo] = await Promise.all([
         getPublicSocialMedia(),
         getPublicCompanyInfo(),
         getDestinationCategories(EXPLORE_DESTINATION.slug, locale),
         getDestinationHubs(EXPLORE_DESTINATION.slug, locale),
+        getPublicSiteInfo(),
     ]);
+    // Help/contact route to WhatsApp for now (founder 2026-07-31) - the same
+    // dashboard-managed number as every other support entry point. When the
+    // chat is disabled they fall back to the deactivated plain-text state.
+    const whatsappHref = buildWhatsappUrl(
+        siteInfo.whatsappNumber,
+        siteInfo.enableWhatsappChat
+    );
 
     const socials = [
         { ...SOCIAL_ICONS.instagram, href: social.instagramUrl },
@@ -265,8 +286,8 @@ export async function Footer({
     // deactivates them (plain text, no 404) until those pages are built.
     const supportLinks = [
         { label: dict.links.trackBooking, href: '/bookings' },
-        { label: dict.links.help },
-        { label: dict.links.contact },
+        { label: dict.links.help, ...(whatsappHref && { external: whatsappHref }) },
+        { label: dict.links.contact, ...(whatsappHref && { external: whatsappHref }) },
     ];
     const workLinks = [
         { label: dict.links.listTour },

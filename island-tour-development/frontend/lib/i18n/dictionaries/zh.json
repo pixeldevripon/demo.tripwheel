@@ -794,7 +794,8 @@
         "terms": "条款",
         "privacy": "隐私政策",
         "help": "帮助",
-        "tagline": "由岛民打造。"
+        "tagline": "由岛民打造。",
+        "lostUnknown": "未找到使用此邮箱地址的账户。"
     },
     "traveller": {
         "title": "您的预订",
@@ -968,8 +969,9 @@
         "receiptPickup": "接送",
         "receiptSpectator": "随行观看",
         "emailInvalid": "请输入有效的电子邮箱，例如 you@example.com。",
-        "emailUnknown": "未找到与此邮箱关联的预订。请使用预订确认邮件中的邮箱地址。",
-        "liveChip": "在线"
+        "emailUnknown": "未找到使用此邮箱地址的账户。",
+        "liveChip": "在线",
+        "loginHelp": "不确定用哪个邮箱预订的？请查看您的预订确认邮件，或"
     },
     "reviewSubmit": {
         "invalidTitle": "此评价链接已失效。",

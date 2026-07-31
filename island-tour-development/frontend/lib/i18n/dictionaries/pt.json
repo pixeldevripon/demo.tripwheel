@@ -794,7 +794,8 @@
         "terms": "Termos",
         "privacy": "Política de privacidade",
         "help": "Ajuda",
-        "tagline": "Feito por ilhéus."
+        "tagline": "Feito por ilhéus.",
+        "lostUnknown": "Nenhuma conta encontrada com este endereço de e-mail."
     },
     "traveller": {
         "title": "As suas reservas",
@@ -968,8 +969,9 @@
         "receiptPickup": "Recolha",
         "receiptSpectator": "Espectador",
         "emailInvalid": "Introduza um e-mail válido, como voce@exemplo.com.",
-        "emailUnknown": "Não encontrámos reservas com este e-mail. Use o endereço da sua confirmação de reserva.",
-        "liveChip": "Online"
+        "emailUnknown": "Nenhuma conta encontrada com este endereço de e-mail.",
+        "liveChip": "Online",
+        "loginHelp": "Não sabe com que e-mail reservou? Veja o seu e-mail de confirmação, ou"
     },
     "reviewSubmit": {
         "invalidTitle": "Este link de avaliação já não é válido.",

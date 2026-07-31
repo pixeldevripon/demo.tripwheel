@@ -74,6 +74,7 @@ export function TravelerLogin({
     const [lostEmail, setLostEmail] = useState('');
     const [recovering, setRecovering] = useState(false);
     const [recoverySent, setRecoverySent] = useState(false);
+    const [recoveryUnknown, setRecoveryUnknown] = useState(false);
 
     // A previous successful lookup left its search record in the cookie -
     // prefill the form with it (the "My bookings" dropdown item lands here).
@@ -108,8 +109,16 @@ export function TravelerLogin({
         e.preventDefault();
         if (recovering) return;
         setRecovering(true);
-        await recoverReferenceClient(lostEmail);
+        setRecoveryUnknown(false);
+        const result = await recoverReferenceClient(lostEmail);
         setRecovering(false);
+        // No bookings under this address -> no email was sent; say so instead
+        // of promising a reference that can never arrive (founder 2026-07-31).
+        if (result === 'unknown') {
+            setRecoverySent(false);
+            setRecoveryUnknown(true);
+            return;
+        }
         setRecoverySent(true);
     }
 
@@ -358,6 +367,13 @@ export function TravelerLogin({
                                             : dict.lostSubmit}
                                     </button>
                                 </form>
+                                {recoveryUnknown && (
+                                    <p
+                                        role='alert'
+                                        className='mt-3 mb-0 text-[13px] leading-[1.6] text-it-error'>
+                                        {dict.lostUnknown}
+                                    </p>
+                                )}
                                 {recoverySent && (
                                     <div className='mt-4 flex gap-2 rounded-[10px] bg-it-surface px-3.5 py-2.5 text-[13px] text-it-text-muted'>
                                         <Mail
@@ -389,9 +405,20 @@ export function TravelerLogin({
                         className='transition-colors hover:text-it-primary'>
                         {dict.privacy}
                     </Link>
-                    {/* Help page doesn't exist yet - deactivated like the main
-                        footer (plain text, no 404) until it's built. */}
-                    <span className='cursor-default'>{dict.help}</span>
+                    {/* No help page yet, so Help routes to WhatsApp (founder
+                        2026-07-30) - the same dashboard-managed number as the
+                        header pill. Plain text when the chat is disabled. */}
+                    {whatsappHref ? (
+                        <a
+                            href={whatsappHref}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='transition-colors hover:text-it-primary'>
+                            {dict.help}
+                        </a>
+                    ) : (
+                        <span className='cursor-default'>{dict.help}</span>
+                    )}
                 </div>
             </footer>
         </div>

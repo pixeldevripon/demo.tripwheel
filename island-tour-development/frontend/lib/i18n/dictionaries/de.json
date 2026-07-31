@@ -794,7 +794,8 @@
         "terms": "AGB",
         "privacy": "Datenschutz",
         "help": "Hilfe",
-        "tagline": "Von Inselbewohnern gemacht."
+        "tagline": "Von Inselbewohnern gemacht.",
+        "lostUnknown": "Kein Konto mit dieser E-Mail-Adresse gefunden."
     },
     "traveller": {
         "title": "Deine Buchungen",
@@ -968,8 +969,9 @@
         "receiptPickup": "Abholung",
         "receiptSpectator": "Zuschauer",
         "emailInvalid": "Gib eine gültige E-Mail-Adresse ein, z. B. du@beispiel.de.",
-        "emailUnknown": "Unter dieser E-Mail-Adresse finden wir keine Buchungen. Nutze die Adresse aus deiner Buchungsbestätigung.",
-        "liveChip": "Live"
+        "emailUnknown": "Kein Konto mit dieser E-Mail-Adresse gefunden.",
+        "liveChip": "Live",
+        "loginHelp": "Nicht sicher, mit welcher E-Mail du gebucht hast? Sieh in deiner Buchungsbestätigung nach, oder"
     },
     "reviewSubmit": {
         "invalidTitle": "Dieser Bewertungslink ist nicht mehr gültig.",
