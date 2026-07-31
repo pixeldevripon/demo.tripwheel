@@ -1,9 +1,12 @@
+import type { Locale } from '@/types/locale';
 import type {
   MediaItem,
   MediaListResponse,
   MediaSort,
+  MediaTranslation,
   MediaTypeFilter,
   UpdateMediaInput,
+  UpsertMediaTranslationInput,
 } from '@/types/media';
 
 import { apiFetch } from './fetch';
@@ -16,6 +19,7 @@ export const mediaApi = {
     limit: number,
     sort?: MediaSort,
     type?: MediaTypeFilter,
+    untranslated?: Locale | 'none',
   ): Promise<MediaListResponse> {
     const params = new URLSearchParams({ limit: String(limit), page: String(page) });
     if (sort) {
@@ -23,6 +27,12 @@ export const mediaApi = {
       params.set('sortOrder', sort.sortOrder);
     }
     if (type && type !== 'all') params.set('type', type);
+    // 'none' means no filter; 'en' would be meaningless (English lives on the
+    // asset row, so no asset ever has an English translation row) and the
+    // backend ignores it - the picker does not offer it either.
+    if (untranslated && untranslated !== 'none' && untranslated !== 'en') {
+      params.set('untranslated', untranslated);
+    }
     return apiFetch<MediaListResponse>(`/media-gallery?${params.toString()}`);
   },
 
@@ -31,6 +41,49 @@ export const mediaApi = {
       method: 'PATCH',
       body: JSON.stringify(dto),
     });
+  },
+
+  /**
+   * Every stored locale for one asset. No locale param by design - the switcher
+   * needs them all at once, and the backend route deliberately takes none.
+   */
+  getTranslations(id: string): Promise<MediaTranslation[]> {
+    return apiFetch<MediaTranslation[]>(`/media-gallery/${id}/translations`);
+  },
+
+  /**
+   * Save one locale's copy. Empty strings clear the field (the row survives, so
+   * the clear sticks against the AI refresher). `en` is rejected by the backend -
+   * English is edited through `update()` on the asset itself.
+   */
+  upsertTranslation(
+    id: string,
+    locale: Locale,
+    dto: UpsertMediaTranslationInput,
+  ): Promise<MediaTranslation> {
+    return apiFetch<MediaTranslation>(
+      `/media-gallery/${id}/translations/${locale}`,
+      { method: 'PATCH', body: JSON.stringify(dto) },
+    );
+  },
+
+  /**
+   * Translate ONE asset into ONE locale now. Lives under `/media-gallery/...`
+   * rather than the generic content-translation path for two reasons: the
+   * backend checks the media scope there, and the dashboard's path-shaped
+   * cache-revalidation maps `media-gallery` writes to the media tags for free.
+   *
+   * `force` re-translates a human-saved row - only after an explicit confirm.
+   */
+  generateTranslation(
+    id: string,
+    locale: Locale,
+    force = false,
+  ): Promise<{ written: number; skipped: number; reason?: string }> {
+    return apiFetch(
+      `/media-gallery/${id}/translations/${locale}/generate${force ? '?force=true' : ''}`,
+      { method: 'POST' },
+    );
   },
 
   delete(id: string): Promise<void> {

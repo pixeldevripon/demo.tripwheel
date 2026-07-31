@@ -55,6 +55,7 @@ export function CollectionsListView() {
           canEdit={can('EDIT_COLLECTION')}
           canDelete={can('DELETE_COLLECTION')}
           onDeactivate={setTarget}
+          deleteCollection={remove}
           showIsland={destSlug === 'all'}
           filterSlot={
             <Select value={destSlug} onValueChange={setDestSlug}>

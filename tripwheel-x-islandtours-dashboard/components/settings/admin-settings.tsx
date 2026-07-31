@@ -1,7 +1,6 @@
 'use client';
 
 import { EntityTabs } from '@/components/common/entity-tabs';
-import { CalendarFeedsForm } from './calendar-feeds-form';
 import { CustomScriptsForm } from './custom-scripts-form';
 import { IntegrationSettings } from './integration-settings';
 import { ReviewRequestsForm } from './review-requests-form';
@@ -66,11 +65,7 @@ export function AdminSettings() {
                 scripts: 'custom-code',
             }}
             tabs={[
-                {
-                    value: 'site',
-                    label: 'Site',
-                    content: <SiteInfoForm />,
-                },
+                { value: 'site', label: 'Site', content: <SiteInfoForm /> },
                 { value: 'seo', label: 'SEO', content: <SeoForm /> },
                 {
                     value: 'integration',
@@ -87,11 +82,11 @@ export function AdminSettings() {
                         </div>
                     ),
                 },
-                {
+                /*         {
                     value: 'calendar',
                     label: 'iCal',
                     content: <CalendarFeedsForm />,
-                },
+                }, */
                 {
                     value: 'custom-code',
                     label: 'Custom Code',
@@ -101,3 +96,4 @@ export function AdminSettings() {
         />
     );
 }
+

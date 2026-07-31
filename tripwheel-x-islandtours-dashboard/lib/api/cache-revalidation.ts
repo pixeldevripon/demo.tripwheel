@@ -194,8 +194,17 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
     // used to rely on `cacheLife('hours')` alone, so a toggle could sit
     // unapplied for an hour; every write here now busts it. Uploads count too -
     // a new attachment can be created already flagged.
+    // unapplied for an hour; every write here now busts it. Uploads count too -
+    // a new attachment can be created already flagged.
+    //
+    // `media-seo` rides along on the same writes: the attachment panel's Title,
+    // Description and Alt Text fields (and their per-locale translations at
+    // `/media-gallery/:id/translations/:locale`) feed `getMediaSeo`, which
+    // captions og:image, gallery photos and heroes. Both tags on every write
+    // rather than branching on the body - the two are edited from the same panel,
+    // and the cost of an extra tag is one cache generation.
     case 'media-gallery':
-      tags.push('media-indexing');
+      tags.push('media-indexing', 'media-seo');
       break;
 
     // Homepage editorial content (hero copy/image, editorial CTA, section
@@ -206,19 +215,20 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       tags.push('homepage');
       break;
 
-    // Island Tours' own hotels, promoted on the thank-you page (Pages > Hotels):
-    // create, edit, delete, reorder and per-locale copy at
-    // `/hotels/:id/translations/:locale`. One coarse tag covers all of them -
-    // the public read serves whichever hotel wins the promotion order, so
-    // editing hotel B can change the card hotel A was filling.
+    // Island Tours' post-booking recommendations, featured on the thank-you page
+    // (Recommendations): create, edit, delete, reorder, category CRUD and
+    // per-locale copy at `/recommendations/:id/translations/:locale`. One coarse
+    // tag covers all of them - the public read serves whichever recommendation
+    // wins the promotion order for a surface, so editing row B can change the card
+    // row A was filling.
     //
     // This bust is load-bearing in a way the homepage's is not: the same fields
-    // an admin edits here also DECIDE WHETHER THE SECTION RENDERS. Switching a
-    // hotel off, or clearing its photo, English title or booking link, hands the
-    // card to the next one or takes it down - so without this the old promo
-    // would keep showing for a full cacheLife('days').
-    case 'hotels':
-      tags.push('hotels');
+    // an admin edits here also DECIDE WHETHER THE SECTION RENDERS. Switching one
+    // off, or clearing its photo, English title or link, hands the card to the
+    // next one or takes it down - so without this the old promo would keep showing
+    // for a full cacheLife('days').
+    case 'recommendations':
+      tags.push('recommendations');
       break;
 
     // The Pages system (legal/policy permalinks): create/edit/publish/rename/

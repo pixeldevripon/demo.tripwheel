@@ -11,13 +11,26 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useUpdateMedia } from '@/hooks/media/use-media';
+import {
+    useGenerateMediaTranslation,
+    useMediaTranslations,
+    useUpdateMedia,
+    useUpsertMediaTranslation,
+} from '@/hooks/media/use-media';
+import { ALL_LOCALES, LOCALE_LABELS } from '@/lib/constants/locales';
+import type { Locale } from '@/types/locale';
 import { getMediaKind } from '@/lib/media/media-kind';
 import { formatFileSize } from '@/lib/utils';
-import type { MediaItem, UpdateMediaInput } from '@/types/media';
+import type {
+    MediaItem,
+    MediaTranslation,
+    UpdateMediaInput,
+} from '@/types/media';
 import {
+    AiMagicIcon,
     File02Icon,
     InformationCircleIcon,
+    Loading03Icon,
     MusicNote01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -68,32 +81,107 @@ export default function MediaViewer({
         stripExtension(item.fileName || item.originalName || '') ||
         'Untitled';
     const updateMutation = useUpdateMedia();
+    const translationMutation = useUpsertMediaTranslation();
+    const aiMutation = useGenerateMediaTranslation();
 
-    // Editable form state - seeded from the item, reseeded on prev/next
-    const seedForm = (it: MediaItem) => ({
-        title: it.title ?? '',
-        description: it.description ?? '',
-        altText: it.altText ?? '',
+    // Which language the three copy fields are showing. English edits the asset
+    // row itself; the other six edit a per-locale row that falls back to English
+    // field by field, so a blank here means "show the English text".
+    const [locale, setLocale] = useState<Locale>('en');
+    const { data: translations } = useMediaTranslations(item.id);
+    const translation = translations?.find(t => t.locale === locale);
+    const isEn = locale === 'en';
+
+    // Editable form state - seeded from the item (English) or the locale row,
+    // reseeded on prev/next, on a locale switch, and when a save comes back.
+    const seedForm = (
+        it: MediaItem,
+        loc: Locale,
+        t: MediaTranslation | undefined
+    ) => ({
+        title: (loc === 'en' ? it.title : t?.title) ?? '',
+        description: (loc === 'en' ? it.description : t?.description) ?? '',
+        altText: (loc === 'en' ? it.altText : t?.altText) ?? '',
+        // Asset-level, never per-locale - always the base row's values.
         fileName: it.fileName ?? it.originalName ?? '',
         excludeFromIndexing: it.excludeFromIndexing ?? false,
     });
-    const [form, setForm] = useState(() => seedForm(item));
+    const [form, setForm] = useState(() => seedForm(item, 'en', undefined));
     useEffect(() => {
-        setForm(seedForm(item));
-    }, [item.id]); // eslint-disable-line react-hooks/exhaustive-deps
+        setForm(seedForm(item, locale, translation));
+        // Keyed on `updatedAt`, NOT on the `translation` object: the row is
+        // refetched on window focus, and re-seeding on every refetch would throw
+        // away half-typed copy the moment you tabbed away to fetch a phrase and
+        // came back. `updatedAt` only moves when the row really changed, so a
+        // save still re-seeds (which is what makes a cleared field stay empty
+        // instead of snapping back to what was typed) and a no-op refetch does
+        // not.
+    }, [item.id, locale, translation?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // No auto-save: while the form differs from the stored item the Download
-    // button becomes Save; after a successful save the cache-refreshed item
-    // matches the form again and the button reverts to Download.
-    const saved = seedForm(item);
-    const isDirty =
-        form.title.trim() !== saved.title.trim() ||
-        form.description.trim() !== saved.description.trim() ||
-        form.altText.trim() !== saved.altText.trim() ||
-        form.fileName.trim() !== saved.fileName.trim() ||
-        form.excludeFromIndexing !== saved.excludeFromIndexing;
+    // No auto-save: while the form differs from what is stored the Download
+    // button becomes Save; after a successful save the refreshed data matches
+    // the form again and the button reverts to Download.
+    const isSaving = updateMutation.isPending || translationMutation.isPending;
+
+    /**
+     * Does this locale have any copy of its own yet? Drives the pill dot.
+     *
+     * English reads the ASSET row, not a translation row - and it is genuinely
+     * empty on a freshly uploaded file. Treating `en` as always-filled (as this
+     * did) hid exactly the state that matters most: an asset with no English
+     * source cannot be translated into anything.
+     */
+    const hasCopy = (l: Locale) => {
+        if (l === 'en') {
+            return !!(item.title || item.description || item.altText);
+        }
+        const row = translations?.find(t => t.locale === l);
+        return !!(row?.title || row?.description || row?.altText);
+    };
+
+    /** No English source = nothing for the AI to work from, in any locale. */
+    const hasEnglishSource = hasCopy('en');
+
+    const saved = seedForm(item, locale, translation);
+    const isDirty = isEn
+        ? form.title.trim() !== saved.title.trim() ||
+          form.description.trim() !== saved.description.trim() ||
+          form.altText.trim() !== saved.altText.trim() ||
+          form.fileName.trim() !== saved.fileName.trim() ||
+          form.excludeFromIndexing !== saved.excludeFromIndexing
+        : // On a translation tab only the three copy fields are editable, so
+          // filename / indexing can never be dirty here.
+          form.title.trim() !== saved.title.trim() ||
+          form.description.trim() !== saved.description.trim() ||
+          form.altText.trim() !== saved.altText.trim();
 
     function handleSave() {
+        // Keep local state trimmed either way, so it matches what the server
+        // normalizes to and the dirty check settles.
+        setForm(f => ({
+            ...f,
+            title: f.title.trim(),
+            description: f.description.trim(),
+            altText: f.altText.trim(),
+            fileName: f.fileName.trim(),
+        }));
+
+        if (!isEn) {
+            // ONE write per save. Filename and the indexing flag live on the
+            // asset and are disabled on this tab, so there is no second request
+            // to race with this one.
+            translationMutation.mutate({
+                id: item.id,
+                locale,
+                dto: {
+                    title: form.title.trim(),
+                    description: form.description.trim(),
+                    altText: form.altText.trim(),
+                },
+            });
+            return;
+        }
+
         const dto: UpdateMediaInput = {
             title: form.title.trim(),
             description: form.description.trim(),
@@ -101,14 +189,6 @@ export default function MediaViewer({
             fileName: form.fileName.trim(),
             excludeFromIndexing: form.excludeFromIndexing,
         };
-        // Keep local state trimmed so it matches the server-normalized item
-        setForm(f => ({
-            ...f,
-            title: dto.title!,
-            description: dto.description!,
-            altText: dto.altText!,
-            fileName: dto.fileName!,
-        }));
         updateMutation.mutate({ id: item.id, dto });
     }
 
@@ -341,6 +421,116 @@ export default function MediaViewer({
                             <h4 className='m-0 text-sm font-medium text-foreground'>
                                 Attachment details
                             </h4>
+
+                            {/* Language switcher for the three copy fields. Not
+                                the Translation Console: that is a matrix over
+                                every entity of a type plus a page per (entity,
+                                locale), which does not survive a library of
+                                thousands of assets. You translate an asset while
+                                looking at it. */}
+                            <div
+                                className='flex flex-wrap gap-1'
+                                role='group'
+                                aria-label='Copy language'>
+                                {ALL_LOCALES.map(l => {
+                                    const filled = hasCopy(l);
+                                    return (
+                                        <button
+                                            key={l}
+                                            type='button'
+                                            onClick={() => setLocale(l)}
+                                            aria-pressed={l === locale}
+                                            title={
+                                                filled
+                                                    ? LOCALE_LABELS[l]
+                                                    : `${LOCALE_LABELS[l]} - not translated, falls back to English`
+                                            }
+                                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                                                l === locale
+                                                    ? 'border-transparent bg-primary text-primary-foreground font-medium'
+                                                    : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                                            }`}>
+                                            {LOCALE_LABELS[l]}
+                                            {/* A quiet dot, not a warning: an
+                                                untranslated asset is a normal
+                                                state - the page shows English. */}
+                                            {!filled && (
+                                                <span
+                                                    aria-hidden
+                                                    className='size-1 rounded-full bg-current opacity-40'
+                                                />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Two rows, not side by side: the sidebar is narrow,
+                                and sharing a line squeezed the hint into three
+                                ragged lines beside the button. */}
+                            {!isEn && (
+                                <div className='space-y-2'>
+                                    <p className='m-0 text-xs text-muted-foreground'>
+                                        Leave a field empty to show the English
+                                        text on {LOCALE_LABELS[locale]} pages.
+                                    </p>
+                                    {/* Writes server-side, then the panel
+                                        re-seeds from the invalidated query. A
+                                        hand-edited row is never overwritten. */}
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            {/* A disabled button fires no
+                                                pointer events, so the trigger
+                                                has to be this wrapper or the
+                                                tooltip never opens - the same
+                                                pattern the seeded-entity guards
+                                                use. */}
+                                            <span className='block w-full'>
+                                                <Button
+                                                    type='button'
+                                                    variant='outline'
+                                                    size='sm'
+                                                    className='h-7 w-full px-2 text-xs'
+                                                    disabled={
+                                                        aiMutation.isPending ||
+                                                        !hasEnglishSource
+                                                    }
+                                                    onClick={() =>
+                                                        aiMutation.mutate({
+                                                            id: item.id,
+                                                            locale,
+                                                        })
+                                                    }>
+                                                    <HugeiconsIcon
+                                                        icon={
+                                                            aiMutation.isPending
+                                                                ? Loading03Icon
+                                                                : AiMagicIcon
+                                                        }
+                                                        size={12}
+                                                        className={
+                                                            aiMutation.isPending
+                                                                ? 'animate-spin'
+                                                                : undefined
+                                                        }
+                                                    />
+                                                    {aiMutation.isPending
+                                                        ? 'Translating...'
+                                                        : 'Translate with AI'}
+                                                </Button>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                            side='left'
+                                            className='max-w-56'>
+                                            {hasEnglishSource
+                                                ? `Fills the empty ${LOCALE_LABELS[locale]} fields from the English text. Anything you typed yourself is left alone.`
+                                                : 'Nothing to translate from yet - add a title, description or alt text on the EN tab first.'}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
+
                             <Field>
                                 <Label htmlFor='media-title'>Title</Label>
                                 <Input
@@ -352,6 +542,10 @@ export default function MediaViewer({
                                             title: e.target.value,
                                         }))
                                     }
+                                    // The English value as the placeholder makes
+                                    // the fallback visible: you can see what the
+                                    // page will say if you leave this blank.
+                                    placeholder={isEn ? undefined : (item.title ?? '')}
                                     className='h-9'
                                 />
                             </Field>
@@ -368,6 +562,9 @@ export default function MediaViewer({
                                             description: e.target.value,
                                         }))
                                     }
+                                    placeholder={
+                                        isEn ? undefined : (item.description ?? '')
+                                    }
                                     rows={2}
                                 />
                             </Field>
@@ -381,6 +578,9 @@ export default function MediaViewer({
                                             ...f,
                                             altText: e.target.value,
                                         }))
+                                    }
+                                    placeholder={
+                                        isEn ? undefined : (item.altText ?? '')
                                     }
                                     className='h-9'
                                 />
@@ -409,6 +609,11 @@ export default function MediaViewer({
                                         </TooltipContent>
                                     </Tooltip>
                                 </div>
+                                {/* Asset-level, not copy: a filename does not
+                                    differ by language. Read-only outside English
+                                    so one Save is always exactly one write - the
+                                    alternative is two requests racing each
+                                    other. Same for the indexing flag below. */}
                                 <Input
                                     id='media-filename'
                                     value={form.fileName}
@@ -418,11 +623,13 @@ export default function MediaViewer({
                                             fileName: e.target.value,
                                         }))
                                     }
+                                    disabled={!isEn}
                                     className='h-9'
                                 />
                             </Field>
 
-                            <label className='flex items-center gap-2 cursor-pointer'>
+                            <label
+                                className={`flex items-center gap-2 ${isEn ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                                 <Checkbox
                                     checked={form.excludeFromIndexing}
                                     onCheckedChange={checked =>
@@ -432,11 +639,19 @@ export default function MediaViewer({
                                                 checked === true,
                                         }))
                                     }
+                                    disabled={!isEn}
                                 />
                                 <span className='text-sm text-foreground'>
                                     Exclude this attachment from indexing
                                 </span>
                             </label>
+
+                            {!isEn && (
+                                <p className='m-0 text-xs text-muted-foreground'>
+                                    Filename and indexing belong to the file
+                                    itself - switch to EN to change them.
+                                </p>
+                            )}
 
                             {/* Unsaved changes turn Download into Save; a
                                 successful save reverts it to Download. */}
@@ -445,11 +660,13 @@ export default function MediaViewer({
                                     <Button
                                         size='sm'
                                         onClick={handleSave}
-                                        disabled={updateMutation.isPending}
+                                        disabled={isSaving}
                                         className='h-8 flex-1 px-3 text-xs'>
-                                        {updateMutation.isPending
+                                        {isSaving
                                             ? 'Saving...'
-                                            : 'Save'}
+                                            : isEn
+                                              ? 'Save'
+                                              : `Save ${LOCALE_LABELS[locale]}`}
                                     </Button>
                                 ) : (
                                     <Link

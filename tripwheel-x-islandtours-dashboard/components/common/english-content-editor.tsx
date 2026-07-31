@@ -46,9 +46,9 @@ import {
     useUpsertHomePageTranslation,
 } from '@/hooks/home-page/use-home-page';
 import {
-    useHotelTranslations,
-    useUpsertHotelTranslation,
-} from '@/hooks/hotels/use-hotels';
+    useRecommendationTranslations,
+    useUpsertRecommendationTranslation,
+} from '@/hooks/recommendations/use-recommendations';
 import {
     useHubTranslationByLocale,
     useUpsertHubTranslation,
@@ -62,8 +62,8 @@ import {
     COLLECTION_FIELDS,
     DESTINATION_FIELDS,
     HOMEPAGE_FIELDS,
-    HOTEL_FIELDS,
     HUB_FIELDS,
+    RECOMMENDATION_FIELDS,
     type TranslatableEntityType,
     type TranslatableFieldDef,
 } from '@/lib/translatable-schema';
@@ -124,47 +124,77 @@ function EnglishContentForm({
         );
     }
 
+    const renderField = (f: TranslatableFieldDef) => {
+        const disabled = disabledFields.includes(f.name);
+        return (
+            <Field key={f.name}>
+                <Label htmlFor={`en-${f.name}`}>{f.label}</Label>
+                {f.kind === 'input' ? (
+                    <Input
+                        id={`en-${f.name}`}
+                        maxLength={f.maxLength}
+                        placeholder={f.placeholder}
+                        disabled={disabled}
+                        {...register(f.name)}
+                    />
+                ) : (
+                    <Textarea
+                        id={`en-${f.name}`}
+                        rows={f.rows ?? 3}
+                        maxLength={f.maxLength}
+                        placeholder={f.placeholder}
+                        disabled={disabled}
+                        {...register(f.name)}
+                    />
+                )}
+                {disabled ? (
+                    <FieldDescription>
+                        Managed in the Details tab.
+                    </FieldDescription>
+                ) : (
+                    f.description && (
+                        <FieldDescription>{f.description}</FieldDescription>
+                    )
+                )}
+            </Field>
+        );
+    };
+
+    // Opt-in pairing: a `half` field waits for the next `half` field and the two
+    // share one two-column row. Full-width fields keep their order and render
+    // one per row; an unpaired half falls back to full width. Entities with no
+    // `half` fields (every one but recommendations) are untouched.
+    const rows: TranslatableFieldDef[][] = [];
+    let pendingHalf: TranslatableFieldDef | null = null;
+    for (const f of fields) {
+        if (f.half) {
+            if (pendingHalf) {
+                rows.push([pendingHalf, f]);
+                pendingHalf = null;
+            } else {
+                pendingHalf = f;
+            }
+        } else {
+            rows.push([f]);
+        }
+    }
+    if (pendingHalf) rows.push([pendingHalf]);
+
     return (
         <form
             onSubmit={handleSubmit(onSave)}
             className='space-y-6'>
-            {fields.map(f => {
-                const disabled = disabledFields.includes(f.name);
-                return (
-                    <Field key={f.name}>
-                        <Label htmlFor={`en-${f.name}`}>{f.label}</Label>
-                        {f.kind === 'input' ? (
-                            <Input
-                                id={`en-${f.name}`}
-                                maxLength={f.maxLength}
-                                placeholder={f.placeholder}
-                                disabled={disabled}
-                                {...register(f.name)}
-                            />
-                        ) : (
-                            <Textarea
-                                id={`en-${f.name}`}
-                                rows={f.rows ?? 3}
-                                maxLength={f.maxLength}
-                                placeholder={f.placeholder}
-                                disabled={disabled}
-                                {...register(f.name)}
-                            />
-                        )}
-                        {disabled ? (
-                            <FieldDescription>
-                                Managed in the Details tab.
-                            </FieldDescription>
-                        ) : (
-                            f.description && (
-                                <FieldDescription>
-                                    {f.description}
-                                </FieldDescription>
-                            )
-                        )}
-                    </Field>
-                );
-            })}
+            {rows.map(row =>
+                row.length === 2 ? (
+                    <div
+                        key={row[0].name}
+                        className='grid gap-4 sm:grid-cols-2'>
+                        {row.map(renderField)}
+                    </div>
+                ) : (
+                    renderField(row[0])
+                ),
+            )}
             <div className='flex justify-end border-t border-line pt-4'>
                 <Button type='submit' disabled={isSaving || !isDirty}>
                     {isSaving ? 'Saving...' : 'Save English Content'}
@@ -316,18 +346,19 @@ function HomepageEnglishContent() {
 }
 
 /**
- * One hotel's English copy. No field filtering, unlike the homepage: HOTEL_FIELDS
- * has no SEO entries to hold back, because the thank-you page it renders on is
- * `noindex` by design.
+ * One EXTERNAL recommendation's English copy. No field filtering, unlike the
+ * homepage: RECOMMENDATION_FIELDS has no SEO entries to hold back, because the
+ * surfaces it renders on are `noindex` by design. (INTERNAL recommendations never
+ * reach this editor - the edit view drops the Content tab for them.)
  */
-function HotelEnglishContent({ id }: { id: string }) {
-    const { data, isLoading } = useHotelTranslations(id);
-    const upsert = useUpsertHotelTranslation(id);
+function RecommendationEnglishContent({ id }: { id: string }) {
+    const { data, isLoading } = useRecommendationTranslations(id);
+    const upsert = useUpsertRecommendationTranslation(id);
     const english = data?.find(t => t.locale === 'en');
 
     return (
         <EnglishContentForm
-            fields={HOTEL_FIELDS}
+            fields={RECOMMENDATION_FIELDS}
             record={english as never}
             isLoading={isLoading}
             isSaving={upsert.isPending}
@@ -382,8 +413,8 @@ export function EnglishContentEditor({
                 <CardDescription>
                     {type === 'homepage'
                         ? 'Every word on the public homepage, in the order the sections appear. Leave a field empty and the site keeps the copy it ships with - shown greyed in the box.'
-                        : type === 'hotel'
-                          ? 'The words on this hotel\'s card. The name is required: empty it and the hotel stops being promoted. The last two fall back to the label the site ships with, shown greyed in the box.'
+                        : type === 'recommendation'
+                          ? 'The words on this recommendation\'s card. The name is required: empty it and the recommendation stops being promoted. The last two fall back to the label the site ships with, shown greyed in the box.'
                           : 'The source every other language translates from. Required publish fields (like the tour overview) live here.'}
                 </CardDescription>
             </CardHeader>
@@ -394,7 +425,9 @@ export function EnglishContentEditor({
                 {type === 'hub' && <HubEnglishContent id={id} />}
                 {type === 'collection' && <CollectionEnglishContent id={id} />}
                 {type === 'homepage' && <HomepageEnglishContent />}
-                {type === 'hotel' && <HotelEnglishContent id={id} />}
+                {type === 'recommendation' && (
+                    <RecommendationEnglishContent id={id} />
+                )}
             </CardContent>
         </Card>
     );

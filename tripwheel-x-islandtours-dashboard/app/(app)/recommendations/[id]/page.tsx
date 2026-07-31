@@ -4,7 +4,9 @@ interface PageProps {
     params: Promise<{ id: string }>;
 }
 
-export default async function HotelDetailRedirect({ params }: PageProps) {
+export default async function RecommendationDetailRedirect({
+    params,
+}: PageProps) {
     const { id } = await params;
-    redirect(`/hotels/${id}/edit`);
+    redirect(`/recommendations/${id}/edit`);
 }

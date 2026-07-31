@@ -32,11 +32,10 @@ const PATH_SEGMENT: Record<
   hub: 'hubs',
   category: 'categories',
   collection: 'collections',
-  // Hotels are a normal list with real ids, so they take the standard per-id
-  // shape below. They were briefly a singleton and had their own special case
-  // here; leaving it behind pointed this at `/hotel/...`, which no longer
-  // exists, and every "Translate with AI" click answered "Cannot POST".
-  hotel: 'hotels',
+  // Recommendations are a normal list with real ids, so they take the standard
+  // per-id shape below - the backend serves the generate route at
+  // `/recommendations/:id/translations/:locale/generate`.
+  recommendation: 'recommendations',
 };
 
 function pathFor(type: TranslatableEntityType, id: string, locale: Locale): string {

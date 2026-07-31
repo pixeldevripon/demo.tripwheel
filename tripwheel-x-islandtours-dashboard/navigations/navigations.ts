@@ -10,7 +10,6 @@ import {
     FilterHorizontalIcon,
     Globe02Icon,
     Home01Icon,
-    Building06Icon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -20,6 +19,7 @@ import {
     StarIcon,
     Store01Icon,
     Tag01Icon,
+    ThumbsUpIcon,
     TranslateIcon,
     UserGroupIcon,
 } from '@hugeicons/core-free-icons';
@@ -198,15 +198,15 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
             {
-                // Our OWN places to stay, promoted on the thank-you page. They
-                // sit under Pages rather than Curate for the same reason the
-                // homepage does: this is "what does this page say", not "which
-                // marketplace entities do we push". They are also not operator
-                // listings - they never enter search, ranking or booking - so
-                // they belong nowhere near Tours.
-                title: 'Hotels',
-                url: 'hotels',
-                icon: Building06Icon,
+                // Our post-booking recommendations, promoted on the thank-you
+                // page and confirmation email - our own tours/destinations, or
+                // external places to stay, eat and shop. They sit here rather
+                // than Curate for the same reason the homepage does: this is
+                // "what does this surface say", not "which marketplace entities
+                // do we push". They never enter search, ranking or booking.
+                title: 'Recommendations',
+                url: 'recommendations',
+                icon: ThumbsUpIcon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
         ],
@@ -270,20 +270,20 @@ const dashboardNav: NavGroup[] = [
                 permissions: [Permission.MANAGE_STAFF, Permission.MANAGE_TEAM],
             },
             {
-                // Admin-only between 2026-07-28 and 2026-07-29: "Your Business"
-                // (EDIT_OPERATOR_PROFILE) had moved to /profile and Payments
-                // (MANAGE_OPERATOR_PAYMENTS) was parked, so the page had
-                // nothing left for operators and the link was a dead end.
-                // iCal sync (MANAGE_AVAILABILITY) gave it operator content
-                // again, so operators are back. Restore
-                // MANAGE_OPERATOR_PAYMENTS here too when payments ships.
+                // ADMIN / EDITOR ONLY (founder call 2026-07-31): Settings is
+                // hidden from the operator dashboard. It previously listed
+                // MANAGE_AVAILABILITY so operators could reach iCal sync from
+                // here; that permission is removed, so an operator no longer sees
+                // this link. If operators need iCal sync back, surface it under an
+                // operator-visible entry rather than re-adding MANAGE_AVAILABILITY
+                // here.
                 title: 'Settings',
                 url: 'settings',
                 icon: Settings02Icon,
                 permissions: [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
-                    Permission.MANAGE_AVAILABILITY,
+                    Permission.MANAGE_EDITORIAL,
                 ],
             },
             /*             {
@@ -311,5 +311,4 @@ export interface NavigationMap {
 export function getNavigations(): NavigationMap {
     return { dashboard: dashboardNav };
 }
-
 

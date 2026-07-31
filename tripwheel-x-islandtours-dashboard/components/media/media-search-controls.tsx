@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { GridIcon, Menu05Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { ALL_LOCALES, LOCALE_LABELS } from "@/lib/constants/locales";
+import type { Locale } from "@/types/locale";
 import type {
   MediaItem,
   MediaSort,
@@ -60,6 +62,14 @@ interface MediaSearchControlsProps {
   setSort?: (sort: MediaSort) => void;
   typeFilter?: MediaTypeFilter;
   setTypeFilter?: (type: MediaTypeFilter) => void;
+  /**
+   * Locale whose missing alt text to filter down to, or 'none' for no filter.
+   * This is the media library's stand-in for a Translation Console view: the
+   * console is a matrix over every entity of a type, which cannot enumerate a
+   * library of thousands of assets.
+   */
+  untranslated?: Locale | 'none';
+  setUntranslated?: (locale: Locale | 'none') => void;
 }
 
 const MediaSearchControls = ({
@@ -80,6 +90,8 @@ const MediaSearchControls = ({
   setSort,
   typeFilter = "all",
   setTypeFilter,
+  untranslated = "none",
+  setUntranslated,
 }: MediaSearchControlsProps) => {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-4">
@@ -112,6 +124,35 @@ const MediaSearchControls = ({
             {TYPE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {/* Missing-translation worklist. Only offers the six non-English locales:
+          English lives on the asset itself, so "untranslated English" is not a
+          state that exists.
+
+          HIDDEN behind the same flag as the type and sort dropdowns (founder
+          call 2026-07-31, after seeing it in place). The state, the query key and
+          the backend `?untranslated=` filter all stay live, so flipping
+          SHOW_FILTER_CONTROLS brings all three back with no rewiring. Until
+          then, the per-asset locale pills in the media viewer are how you see
+          what is translated. */}
+      {SHOW_FILTER_CONTROLS && setUntranslated && (
+        <Select
+          value={untranslated}
+          onValueChange={(v) => setUntranslated(v as Locale | 'none')}
+        >
+          <SelectTrigger className="w-40 h-9">
+            <SelectValue placeholder="Any language" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Any language</SelectItem>
+            {ALL_LOCALES.filter((l) => l !== 'en').map((l) => (
+              <SelectItem key={l} value={l}>
+                Needs {LOCALE_LABELS[l]} alt
               </SelectItem>
             ))}
           </SelectContent>
