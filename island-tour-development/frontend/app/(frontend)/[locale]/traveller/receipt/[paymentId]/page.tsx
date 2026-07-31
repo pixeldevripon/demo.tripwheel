@@ -51,8 +51,14 @@ export default async function TravellerReceiptPage({
 }: {
     params: Promise<{ locale: string; paymentId: string }>;
 }) {
-    const { locale: rawLocale, paymentId } = await params;
+    const { locale: rawLocale, paymentId: rawPaymentId } = await params;
     const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+    // Next hands dynamic params still PERCENT-ENCODED (verified empirically:
+    // /receipt/abc%3ADEPOSIT arrives as "abc%3ADEPOSIT"). Without this decode,
+    // ids containing reserved characters - e.g. legacy production payments
+    // with "<id>:DEPOSIT" composite ids - get double-encoded on the backend
+    // call and 404 even though the row exists. Plain cuids pass unchanged.
+    const paymentId = decodeURIComponent(rawPaymentId);
 
     return (
         <Suspense
@@ -109,7 +115,7 @@ async function ReceiptBody({
             {/* Page-scoped print rule: the shared navbar/footer stay on
                 screen but never on paper - the printout is the document. */}
             <style>{`@media print { header, footer, [data-print-hide] { display: none !important } }`}</style>
-            <div className='mx-auto w-full max-w-[780px] px-4 print:max-w-none print:px-0'>
+            <div className='mx-auto w-full max-w-195 px-4 print:max-w-none print:px-0'>
                 <div className='rounded-[16px] border border-it-heading/10 bg-it-white p-7 sm:p-10 print:rounded-none print:border-none print:p-0'>
                     {/* ── Document head: logo | RECEIPT + number + date ── */}
                     <div className='flex flex-wrap items-start justify-between gap-6'>
