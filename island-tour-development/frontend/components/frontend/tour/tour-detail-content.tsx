@@ -26,8 +26,9 @@ import { MountReveal } from '../mount-reveal';
 import { Reveal } from '../reveal';
 import { TourBookingCard } from './tour-booking-card/tour-booking-card';
 import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
-import { TourGallery, type TourGalleryMeta } from './tour-gallery';
+import { TourGallery } from './tour-gallery';
 import { TourHeader } from './tour-header';
+import { TourHeaderActions } from './tour-header-actions';
 import { TourMeetingCard } from './tour-meeting-card';
 import { TourReviewsBlock, TourReviewsPreview } from './tour-reviews-blocks';
 import { TourSection } from './tour-section';
@@ -43,16 +44,6 @@ const FALLBACK_GALLERY_IMAGES = [
     '/images/tours/tour-2-1.jpg',
     '/images/tours/tour-2-3.jpg',
 ];
-
-/**
- * Compact language pill from ISO 639-1 codes: "EN", "EN, NL", "EN, NL, +2".
- * (The gallery meta strip, Figma node 47940:12742.)
- */
-function formatLanguageCodes(codes: string[]): string {
-    const upper = codes.map(c => c.toUpperCase());
-    if (upper.length <= 2) return upper.join(', ');
-    return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
-}
 
 // A wall-clock "HH:MM" start time formatted for the locale (12h + AM/PM in en,
 // 24h in most others). Built on a fixed UTC date so only the clock time shows.
@@ -194,27 +185,46 @@ export async function TourDetailContent({
             title,
     }));
 
-    // Meta strip pills - only the applicable ones render (duration / pickup /
-    // languages), all localized.
-    const galleryMeta: TourGalleryMeta[] = [];
+    // Quick-info badges under the gallery (design v2 .quickinfo, LD7: at most
+    // three) - duration / pickup / crew languages, each a bordered card with a
+    // peach icon tile, a bold line and a muted sub-line.
+    const qiDict = tourDict.quickInfo;
     const durationLabel = formatDuration(
         detail.durationMinutesFrom,
         detail.durationMinutesTo,
         dict.search
     );
+    const languageNames = new Intl.DisplayNames(locale, { type: 'language' });
+    const quickInfo: { icon: string; title: string; sub: string }[] = [];
     if (durationLabel) {
-        galleryMeta.push({ icon: '/icons/clock.svg', label: durationLabel });
+        quickInfo.push({
+            icon: '/icons/qi-clock.svg',
+            title: durationLabel,
+            sub: qiDict.durationSub,
+        });
     }
     if (detail.pickupModel !== 'NONE') {
-        galleryMeta.push({
-            icon: '/icons/car.svg',
-            label: dict.destination.listings.pickupAvailable,
+        quickInfo.push({
+            icon: '/icons/qi-car.svg',
+            title: dict.destination.listings.pickupAvailable,
+            sub:
+                detail.pickupModel === 'INCLUDED'
+                    ? qiDict.pickupIncluded
+                    : qiDict.pickupPaid,
         });
     }
     if (detail.languages.length > 0) {
-        galleryMeta.push({
-            icon: '/icons/nav-globe.svg',
-            label: formatLanguageCodes(detail.languages),
+        const names = detail.languages
+            .map(code => {
+                const name = languageNames.of(code.toLowerCase());
+                if (!name) return code.toUpperCase();
+                return name.charAt(0).toUpperCase() + name.slice(1);
+            })
+            .join(', ');
+        quickInfo.push({
+            icon: '/icons/qi-globe.svg',
+            title: names,
+            sub: qiDict.languagesSub,
         });
     }
 
@@ -432,19 +442,13 @@ export async function TourDetailContent({
             />
             <MountReveal>
             <TourHeader
-                tourId={detail.id}
                 title={title}
                 rating={rating}
                 reviewCount={reviewCount}
                 isLocalsFavourite={isLocalsFavourite}
                 locationLabel={locationLabel}
                 locale={locale}
-                dict={{
-                    save: tourDict.save,
-                    share: tourDict.share,
-                    linkCopied: tourDict.linkCopied,
-                    localsFavorite: tourDict.localsFavorite,
-                }}
+                dict={{ localsFavorite: tourDict.localsFavorite }}
             />
             </MountReveal>
 
@@ -471,9 +475,35 @@ export async function TourDetailContent({
                             <TourGallery
                                 images={galleryImages}
                                 title={title}
-                                meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
+                            {quickInfo.length > 0 && (
+                                <div className='mt-[18px] flex flex-wrap gap-2 md:gap-3'>
+                                    {quickInfo.map(qi => (
+                                        <div
+                                            key={qi.sub}
+                                            className='flex items-center gap-[11px] rounded-it-md border border-it-divider bg-it-white px-3 py-[9px] md:px-4 md:py-[11px]'>
+                                            <span className='grid size-[34px] shrink-0 place-items-center rounded-it-sm bg-it-peach'>
+                                                <Image
+                                                    src={qi.icon}
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-[17px]'
+                                                />
+                                            </span>
+                                            <span className='flex flex-col'>
+                                                <b className='text-[13.5px] font-bold leading-[1.5] tracking-[-0.005em] text-it-ink'>
+                                                    {qi.title}
+                                                </b>
+                                                <span className='text-[12px] leading-[1.5] text-it-text-muted'>
+                                                    {qi.sub}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Booking card - right rail, sticky across the whole page
@@ -494,6 +524,19 @@ export async function TourDetailContent({
                                 Real availability (remaining spots, sold-out) still
                                 lands with the availability wiring (checklist §4). */}
                             <MountReveal delay={0.15}>
+                                {/* Save/Share (.wtools) live above the widget
+                                    in the rail (GAP-18), not in the header. */}
+                                <div className='mb-2.5'>
+                                    <TourHeaderActions
+                                        tourId={detail.id}
+                                        title={title}
+                                        dict={{
+                                            save: tourDict.save,
+                                            share: tourDict.share,
+                                            linkCopied: tourDict.linkCopied,
+                                        }}
+                                    />
+                                </div>
                                 <TourBookingCard
                                     dict={tourDict.booking}
                                     data={buildTourBookingData(detail)}

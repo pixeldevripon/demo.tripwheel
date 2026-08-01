@@ -6,12 +6,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { crossFade, springPop } from '@/lib/motion';
 
-export type TourGalleryMeta = {
-    /** Icon path in /public/icons (Figma SVG export). */
-    icon: string;
-    label: string;
-};
-
 /**
  * One gallery photo with the text that describes it.
  *
@@ -40,12 +34,10 @@ export type TourGalleryImage = {
 export function TourGallery({
     images,
     title,
-    meta,
     showAllPhotosLabel,
 }: {
     images: TourGalleryImage[];
     title: string;
-    meta: TourGalleryMeta[];
     showAllPhotosLabel: string;
 }) {
     const [hero, ...rest] = images.slice(0, 5);
@@ -90,13 +82,13 @@ export function TourGallery({
     }, [open, close, prev, next]);
 
     const tileClass =
-        'group relative cursor-pointer overflow-hidden rounded-[16px] border-none bg-it-border p-0';
+        'group relative cursor-pointer overflow-hidden border-none bg-it-bg p-0';
 
     return (
-        <div className='flex flex-col gap-6'>
+        <div className='flex flex-col gap-0'>
             {/* Mobile: swipeable single-image slider (prev/next + dots), like the
                 tour card. Tapping the image opens the full-screen lightbox. */}
-            <div className='relative aspect-396/300 w-full overflow-hidden rounded-[16px] bg-it-border lg:hidden'>
+            <div className='relative aspect-396/300 w-full overflow-hidden rounded-it-lg bg-it-bg lg:hidden'>
                 <button
                     type='button'
                     onClick={() => openAt(slide)}
@@ -194,7 +186,7 @@ export function TourGallery({
                     onClick={() => openAt(slide)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-full border border-it-border bg-it-white px-2.5 py-1.5 font-medium text-[13px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:bg-it-surface'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-1.5 rounded-it-sm border-none bg-it-white/94 px-2.5 py-1.5 text-[12.5px] font-bold leading-[1.4] text-it-ink shadow-it-sm'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -202,12 +194,12 @@ export function TourGallery({
                         height={24}
                         className='size-5 shrink-0'
                     />
-                    {showAllPhotosLabel}
+                    {showAllPhotosLabel} ({images.length})
                 </motion.button>
             </div>
 
             {/* Desktop: 5-tile collage - big tile + 2x2 small tiles. */}
-            <div className='relative hidden gap-2 lg:grid lg:aspect-792/448 lg:grid-cols-[396fr_190fr_190fr] lg:grid-rows-2'>
+            <div className='relative hidden overflow-hidden rounded-it-lg lg:grid lg:grid-cols-[2fr_1fr_1fr] lg:grid-rows-[175px_175px] lg:gap-2.5'>
                 <motion.button
                     type='button'
                     onClick={() => openAt(0)}
@@ -222,7 +214,7 @@ export function TourGallery({
                             fill
                             // Must match the mobile hero's `sizes` - see there.
                             sizes='(min-width: 1024px) 396px, 100vw'
-                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                            className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.03]'
                             // This is the LCP element on desktop. Same URL as
                             // the mobile hero at any viewport, so the browser
                             // dedupes the two preloads into one fetch.
@@ -247,7 +239,7 @@ export function TourGallery({
                             alt=''
                             fill
                             sizes='190px'
-                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                            className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.03]'
                         />
                     </motion.button>
                 ))}
@@ -257,7 +249,7 @@ export function TourGallery({
                     onClick={() => openAt(0)}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-full border border-it-border bg-it-white px-3 py-1.75 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:bg-it-surface'>
+                    className='absolute right-3 bottom-3 z-10 inline-flex cursor-pointer items-center gap-2 rounded-it-sm border-none bg-it-white/94 px-3.5 py-[9px] text-[13px] font-bold leading-[1.4] text-it-ink shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
                     <Image
                         src='/icons/gallery-photos.svg'
                         alt=''
@@ -265,30 +257,8 @@ export function TourGallery({
                         height={24}
                         className='size-6 shrink-0'
                     />
-                    {showAllPhotosLabel}
+                    {showAllPhotosLabel} ({images.length})
                 </motion.button>
-            </div>
-
-            {/* Meta strip: duration / pickup / languages between hairlines. */}
-            <div className='flex flex-col gap-2'>
-                <div className='h-px w-full bg-it-heading/10' />
-                <div className='flex flex-wrap items-center gap-x-10 gap-y-2 py-1.5'>
-                    {meta.map(m => (
-                        <span key={m.label} className='flex items-center gap-2'>
-                            <Image
-                                src={m.icon}
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6 shrink-0'
-                            />
-                            <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                {m.label}
-                            </span>
-                        </span>
-                    ))}
-                </div>
-                <div className='h-px w-full bg-it-heading/10' />
             </div>
 
             {/* Full-screen lightbox */}

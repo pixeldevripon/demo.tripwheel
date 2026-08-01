@@ -353,6 +353,12 @@
             "linkCopied": "Link kopiert",
             "localsFavorite": "Favorit der Einheimischen",
             "showAllPhotos": "Alle Fotos anzeigen",
+            "quickInfo": {
+                "durationSub": "Tourdauer",
+                "pickupIncluded": "Im Preis enthalten",
+                "pickupPaid": "Kostenpflichtiges Extra",
+                "languagesSub": "Crew-Sprachen"
+            },
             "booking": {
                 "from": "Ab",
                 "perPerson": "pro Person",

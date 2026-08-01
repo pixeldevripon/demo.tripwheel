@@ -353,6 +353,12 @@
             "linkCopied": "Link gekopieerd",
             "localsFavorite": "Favoriet van locals",
             "showAllPhotos": "Alle foto's tonen",
+            "quickInfo": {
+                "durationSub": "Duur van de tour",
+                "pickupIncluded": "Bij de prijs inbegrepen",
+                "pickupPaid": "Betaalde extra",
+                "languagesSub": "Talen van de crew"
+            },
             "booking": {
                 "from": "Vanaf",
                 "perPerson": "per persoon",

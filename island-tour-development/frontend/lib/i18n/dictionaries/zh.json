@@ -353,6 +353,12 @@
             "linkCopied": "链接已复制",
             "localsFavorite": "当地人最爱",
             "showAllPhotos": "查看所有照片",
+            "quickInfo": {
+                "durationSub": "行程时长",
+                "pickupIncluded": "已含在价格中",
+                "pickupPaid": "付费加购",
+                "languagesSub": "船员语言"
+            },
             "booking": {
                 "from": "仅需",
                 "perPerson": "每人",
