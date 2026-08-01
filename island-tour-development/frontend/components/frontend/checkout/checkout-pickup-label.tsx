@@ -64,13 +64,13 @@ export function CheckoutSummaryPickupRow({ fallback }: { fallback: string }) {
     const { pickupLabel } = useContext(CheckoutLiveContext);
     return (
         <div className='flex items-center justify-between gap-2.5'>
-            <span className='flex items-center gap-2.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <span className='flex items-center gap-2.5 text-[13.5px] leading-[1.6] text-it-ink'>
                 <Image
                     src='/icons/checkout/location.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4 shrink-0'
                 />
                 {pickupLabel ?? fallback}
             </span>
@@ -123,7 +123,8 @@ export function CheckoutSummaryTotals({
     const lines = totals?.lines ?? fallbackLines ?? [];
     const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
     const row =
-        'flex items-center justify-between gap-1 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
+        'flex items-center justify-between gap-1 text-[14px] leading-[1.6] text-it-ink';
+    const amt = 'font-bold tabular-nums';
     return (
         <>
             {/* Per-line breakdown (participants, extras, pickup) - the same
@@ -133,26 +134,28 @@ export function CheckoutSummaryTotals({
                     {lines.map(line => (
                         <div key={line.id} className={row}>
                             <span>{line.label}</span>
-                            <span>{money(line.amount)}</span>
+                            <span className={amt}>{money(line.amount)}</span>
                         </div>
                     ))}
-                    <div className='h-px w-full bg-it-heading/10' />
+                    <div className='h-px w-full bg-it-divider' />
                 </>
             )}
-            <div className={row}>
+            <div className={`${row} text-[15px] font-bold`}>
                 <span>{labels.total}</span>
-                <span>{money(t.total)}</span>
+                <span className='tabular-nums'>{money(t.total)}</span>
             </div>
             {t.payToday > 0 && (
                 <div className={row}>
                     <span>{labels.payToday}</span>
-                    <span>{money(t.payToday)}</span>
+                    <span className={`${amt} text-it-primary-hover`}>
+                        {money(t.payToday)}
+                    </span>
                 </div>
             )}
             {t.balanceLater > 0 && (
                 <div className={row}>
                     <span>{labels.balanceLater}</span>
-                    <span>{money(t.balanceLater)}</span>
+                    <span className={amt}>{money(t.balanceLater)}</span>
                 </div>
             )}
         </>

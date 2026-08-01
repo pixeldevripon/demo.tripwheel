@@ -36,7 +36,7 @@ interface CheckoutSummaryProps {
     currencySymbol: string;
 }
 
-const rowText = 'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
+const rowText = 'text-[13.5px] leading-[1.6] text-it-ink';
 
 /** A left-icon + label detail row inside the summary card (icon 24, gap 10). */
 function SummaryRow({
@@ -59,11 +59,15 @@ function SummaryRow({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4 shrink-0'
                 />
                 {label}
             </span>
-            {value && <span className={rowText}>{value}</span>}
+            {value && (
+                <span className={`${rowText} font-bold tabular-nums`}>
+                    {value}
+                </span>
+            )}
         </div>
     );
 }
@@ -95,11 +99,11 @@ export function CheckoutSummary({
 }: CheckoutSummaryProps) {
 
     return (
-        <div className='flex flex-col gap-6 rounded-[16px] bg-it-surface p-4'>
+        <div className='flex flex-col gap-4 rounded-it-lg border border-it-divider bg-it-white p-5 shadow-it-sm'>
             {/* Header */}
             <div className='flex flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <span className='font-it-display text-[16px] font-bold leading-[1.4] tracking-[-0.01em] text-it-ink'>
                         {dict.bookingSummary}
                     </span>
                     <Link
@@ -111,32 +115,32 @@ export function CheckoutSummary({
                             alt=''
                             width={24}
                             height={24}
-                            className='size-6 shrink-0'
+                            className='size-[15px] shrink-0'
                         />
                     </Link>
                 </div>
-                <div className='h-px w-full bg-it-heading/10' />
+                <div className='h-px w-full bg-it-divider' />
             </div>
 
             <div className='flex flex-col gap-3'>
                 {/* Tour thumbnail + title */}
                 <div className='flex items-center gap-4'>
-                    <div className='relative h-[76px] w-[112px] shrink-0 overflow-hidden rounded-[8px] bg-[#ededed]'>
+                    <div className='relative size-[60px] shrink-0 overflow-hidden rounded-it-sm bg-it-bg'>
                         {tourImage && (
                             <Image
                                 src={tourImage}
                                 alt=''
                                 fill
-                                sizes='112px'
+                                sizes='60px'
                                 className='object-cover'
                             />
                         )}
                     </div>
-                    <span className={rowText}>{tourTitle}</span>
+                    <span className='text-[13px] font-bold leading-[1.35] text-it-ink'>{tourTitle}</span>
                 </div>
 
                 {/* Detail card */}
-                <div className='flex flex-col gap-3.5 rounded-[8px] bg-it-white px-4 py-[26px]'>
+                <div className='flex flex-col gap-0.5 border-t border-it-divider pt-3'>
                     {dateLabel && (
                         <SummaryRow
                             icon='/icons/booking-calendar.svg'
@@ -164,15 +168,15 @@ export function CheckoutSummary({
                         fallback ("No pickup"). */}
                     <CheckoutSummaryPickupRow fallback={pickupLabel} />
 
-                    <div className='h-px w-full bg-it-heading/10' />
+                    <div className='h-px w-full bg-it-divider' />
 
-                    <div className={`flex items-center gap-2 ${rowText}`}>
+                    <div className='flex items-center gap-2 text-[13px] font-semibold leading-[1.6] text-it-green-text'>
                         <Image
                             src='/icons/booking-check.svg'
                             alt=''
                             width={20}
                             height={20}
-                            className='size-5 shrink-0'
+                            className='size-4 shrink-0'
                         />
                         {dict.freeCancellation.replace(
                             '{hours}',
@@ -180,7 +184,7 @@ export function CheckoutSummary({
                         )}
                     </div>
 
-                    <div className='h-px w-full bg-it-heading/10' />
+                    <div className='h-px w-full bg-it-divider' />
 
                     <div className='flex flex-col gap-2'>
                         {/* Live: a priced pickup chosen in the form re-quotes
@@ -201,7 +205,7 @@ export function CheckoutSummary({
                             currencySymbol={currencySymbol}
                             locale={locale}
                         />
-                        <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                        <span className='text-[12px] leading-[1.6] text-it-text-muted'>
                             {dict.taxesIncluded}
                         </span>
                     </div>

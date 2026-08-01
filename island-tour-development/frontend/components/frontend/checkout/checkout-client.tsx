@@ -36,6 +36,8 @@ interface CheckoutClientProps {
     /** Client-derived totals for the URL selection (initial summary figures). */
     totals: CheckoutTotals;
     currencySymbol: string;
+    /** Composed free-cancellation line shown under the pay CTA (page owns hours). */
+    freeCancelLabel: string;
     /** Server-rendered booking summary (right rail). */
     summary: ReactNode;
 
@@ -54,7 +56,7 @@ interface CheckoutClientProps {
 }
 
 const backBarLabel =
-    'flex w-fit cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors duration-500 hover:text-it-primary';
+    'flex w-fit cursor-pointer items-center gap-1.5 border-none bg-transparent p-0 text-[13.5px] font-semibold leading-[1.6] text-it-ink no-underline hover:underline';
 
 const backCaret = (
     <Image
@@ -62,7 +64,7 @@ const backCaret = (
         alt=''
         width={20}
         height={20}
-        className='size-5 shrink-0 rotate-180'
+        className='size-[15px] shrink-0 rotate-180'
     />
 );
 
@@ -88,6 +90,7 @@ export function CheckoutClient({
     pickupRequired,
     totals,
     currencySymbol,
+    freeCancelLabel,
     summary,
     tourId,
     departureId,
@@ -162,63 +165,56 @@ export function CheckoutClient({
     const hasPayment = payToday > 0;
 
     return (
-        <div className='flex flex-col'>
-            {/* Back bar - "Back to tour" on Contact (Figma 47659:2353),
-                "Back to contact" on Payment (49225:8358). */}
-            <div className='border-b border-it-heading/10 bg-it-white'>
-                <div className='mx-auto w-full max-w-360 px-4 py-5 md:px-8 xl:px-30'>
-                    <AnimatePresence mode='wait' initial={false}>
-                        <motion.div
-                            key={phase}
-                            initial={{ opacity: 0, x: 6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -6 }}
-                            transition={{
-                                duration: 0.15,
-                                ease: [0.4, 0, 0.2, 1],
-                            }}>
-                            {phase === 'payment' ? (
-                                <button
-                                    type='button'
-                                    onClick={() => setPhase('contact')}
-                                    className={backBarLabel}>
-                                    {backCaret}
-                                    {dict.backToContact}
-                                </button>
-                            ) : (
-                                <Link href={tourHref} className={backBarLabel}>
-                                    {backCaret}
-                                    {dict.backToTour}
-                                </Link>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
+        // Design v2 MCK-09: ONE container for the whole surface - the back
+        // row, the step indicator and the form column all share the same left
+        // edge (the steps live INSIDE the form column, above the accordion).
+        <div className='it-container'>
+            {/* Back row - "Back to tour" on Contact, "Back to contact" on
+                Payment (step-aware, master 5.8). */}
+            <div className='pt-3.5'>
+                <AnimatePresence mode='wait' initial={false}>
+                    <motion.div
+                        key={phase}
+                        initial={{ opacity: 0, x: 6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -6 }}
+                        transition={{
+                            duration: 0.15,
+                            ease: [0.4, 0, 0.2, 1],
+                        }}>
+                        {phase === 'payment' ? (
+                            <button
+                                type='button'
+                                onClick={() => setPhase('contact')}
+                                className={backBarLabel}>
+                                {backCaret}
+                                {dict.backToContact}
+                            </button>
+                        ) : (
+                            <Link href={tourHref} className={backBarLabel}>
+                                {backCaret}
+                                {dict.backToTour}
+                            </Link>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
             </div>
 
-            {/* Step-indicator band (116px; steps left-aligned to the grid edge). */}
-            {hasPayment ? (
-                <div className='mx-auto w-full max-w-360 px-4 py-5 md:px-8 xl:px-30'>
-                    <CheckoutSteps
-                        phase={phase}
-                        contactLabel={dict.contact}
-                        paymentLabel={dict.payment}
-                        onGoToContact={() => setPhase('contact')}
-                    />
-                </div>
-            ) : (
-                <div className='h-5' />
-            )}
-
-            {/* Form (left) + summary (right) - aligned by the same grid. */}
-            <div className='it-container'>
-                <CheckoutLiveProvider
-                    value={{ pickupLabel: pickup.label, totals: liveTotals }}>
-                <div className='flex flex-col gap-8 lg:grid lg:grid-cols-[792fr_384fr] lg:items-start lg:gap-6'>
-                    <div className='lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24'>
-                        {summary}
-                    </div>
-                    <div className='min-w-0 lg:col-start-1 lg:row-start-1'>
+            {/* Form (left, with the steps above the accordion) + sticky 340px
+                summary (right). Mobile: one column, summary sheet first. */}
+            <CheckoutLiveProvider
+                value={{ pickupLabel: pickup.label, totals: liveTotals }}>
+                <div className='grid items-start gap-4 pt-5 pb-14 lg:grid-cols-[1fr_340px] lg:gap-7'>
+                    <div className='min-w-0'>
+                        <div className='mb-[18px]'>
+                            <CheckoutSteps
+                                phase={phase}
+                                contactLabel={dict.contact}
+                                paymentLabel={dict.payment}
+                                onGoToContact={() => setPhase('contact')}
+                                paymentStep={hasPayment}
+                            />
+                        </div>
                         <CheckoutForm
                             dict={dict}
                             locale={locale}
@@ -230,6 +226,7 @@ export function CheckoutClient({
                             pickupRequired={pickupRequired}
                             payToday={payToday}
                             currencySymbol={currencySymbol}
+                            freeCancelLabel={freeCancelLabel}
                             tourId={tourId}
                             departureId={departureId}
                             currency={currency}
@@ -241,9 +238,11 @@ export function CheckoutClient({
                             paymentFailed={paymentFailed}
                         />
                     </div>
+                    <div className='max-lg:order-first lg:sticky lg:top-20'>
+                        {summary}
+                    </div>
                 </div>
-                </CheckoutLiveProvider>
-            </div>
+            </CheckoutLiveProvider>
         </div>
     );
 }

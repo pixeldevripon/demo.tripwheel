@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { FaqSection } from '@/components/frontend/faq-section';
-import { HomePageSkeleton } from '@/components/frontend/skeletons/home-page-skeleton';
 import { CtaCard } from '@/components/frontend/home/cta-card';
 import { EditorialBanner } from '@/components/frontend/home/editorial-banner';
 import { ExploreIslands } from '@/components/frontend/home/explore-islands';
@@ -10,17 +9,18 @@ import { Hero } from '@/components/frontend/home/hero';
 import { Testimonials } from '@/components/frontend/home/testimonials';
 import { TopExperiences } from '@/components/frontend/home/top-experiences';
 import { TrustStrip } from '@/components/frontend/home/trust-strip';
+import { HomePageSkeleton } from '@/components/frontend/skeletons/home-page-skeleton';
 import {
     getActiveDestinations,
     getFeaturedExperiences,
     getHomePageContent,
 } from '@/lib/api/public';
+import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { safeRemoteImage } from '@/lib/images/remote-hosts';
 import { buildAlternates } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
-import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 
 /**
  * The homepage's search-engine listing, per locale, from the dashboard's
@@ -45,7 +45,7 @@ export async function generateMetadata({
         ...(await ogImageMeta(
             content.ogImage,
             locale,
-            content.metaTitle || 'Island Tours',
+            content.metaTitle || 'Island Tours'
         )),
         // Self-referencing canonical + hreflang for the 7 locales (homepage = the
         // locale root, so the locale-less path is '').
@@ -177,7 +177,7 @@ async function HomeContent({
                     card.categorySlug && editorialIsland
                         ? localizeHref(
                               locale as Locale,
-                              `/${editorialIsland.slug}/${card.categorySlug}`,
+                              `/${editorialIsland.slug}/${card.categorySlug}`
                           )
                         : null,
             },
@@ -244,3 +244,4 @@ async function HomeContent({
         </>
     );
 }
+

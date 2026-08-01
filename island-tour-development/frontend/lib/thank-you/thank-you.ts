@@ -432,5 +432,5 @@ export function buildOutlookCalendarUrl(booking: ThankYouBooking): string {
  */
 export function buildIcsUrl(booking: ThankYouBooking): string {
     const base = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-    return `${base}/bookings/typ/${booking.publicRef}/calendar.ics`;
+    return `${base}/bookings/typ/${encodeURIComponent(booking.publicRef)}/calendar.ics`;
 }

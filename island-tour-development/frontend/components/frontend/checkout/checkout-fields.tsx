@@ -1,32 +1,127 @@
 'use client';
 
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useId, type ReactNode } from 'react';
 
 /**
- * Shared field primitives + style tokens for the checkout Contact and Payment
- * cards (Figma 47659:2424 / 47667:15365). Extracted so `checkout-form` (contact)
- * and `checkout-payment` (Stripe Card Elements) render identical inputs without a
- * circular import.
+ * Shared field primitives + style tokens for the checkout accordion (design v2
+ * MCK-09). Extracted so `checkout-form` (contact) and `checkout-payment`
+ * (Stripe Card Elements) render identical inputs without a circular import.
+ *
+ * FOUNDER RULE: every control keeps the SUBTLE `border-it-border` - no dark
+ * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass =
-    'font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
-export const helperClass =
-    'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50';
+export const labelClass = 'text-[13px] font-bold leading-[1.5] text-it-ink';
+export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
 export const inputBase =
-    'w-full rounded-[8px] border bg-it-white px-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-heading/30 outline-none transition-colors focus:border-it-primary';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
 export const titleClass =
-    'font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading';
-export const cardClass =
-    'rounded-[16px] border border-it-heading/10 bg-it-white p-6';
+    'font-it-display text-[17px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Green free-cancellation reassurance line under a commit CTA (5.8). */
+export function FreeCancelNote({ label }: { label: string }) {
+    return (
+        <div className='mt-3 flex items-center justify-center gap-[7px] text-center text-[13px] font-semibold leading-[1.5] text-it-green-text'>
+            <Image
+                src='/icons/booking-check.svg'
+                alt=''
+                width={20}
+                height={20}
+                className='size-3.5 shrink-0'
+            />
+            {label}
+        </div>
+    );
+}
+
+/**
+ * 12px centred implied-consent block under a commit CTA: the optional
+ * "payments are secure and encrypted" line, then the terms/privacy sentence
+ * with its {terms}/{privacy} tokens swapped for underlined links. Kept at the
+ * legal/accessibility legibility floor - never lighter or smaller.
+ */
+export function ConsentLine({
+    consent,
+    consentTerms,
+    consentPrivacy,
+    securePayment,
+    locale,
+}: {
+    consent: string;
+    consentTerms: string;
+    consentPrivacy: string;
+    /** Prefix line; omitted on operator_full (no payment is taken). */
+    securePayment?: string;
+    locale: Locale;
+}) {
+    const linkClass =
+        'font-semibold text-it-text-muted underline underline-offset-2';
+    return (
+        <p className='mt-2.5 text-center text-[12px] leading-[1.6] text-it-text-muted'>
+            {securePayment && (
+                <>
+                    {securePayment}.
+                    <br />
+                </>
+            )}
+            {consent.split(/(\{terms\}|\{privacy\})/).map((part, i) => {
+                if (part === '{terms}')
+                    return (
+                        <Link
+                            key={i}
+                            href={localizeHref(locale, '/terms')}
+                            className={linkClass}>
+                            {consentTerms}
+                        </Link>
+                    );
+                if (part === '{privacy}')
+                    return (
+                        <Link
+                            key={i}
+                            // Real legal-page slug (same as the footer), NOT /privacy.
+                            href={localizeHref(locale, '/privacy-policy')}
+                            className={linkClass}>
+                            {consentPrivacy}
+                        </Link>
+                    );
+                return <span key={i}>{part}</span>;
+            })}
+        </p>
+    );
+}
+
+/** Label text + the mockup's orange required star / soft optional note. */
+export function FieldLabel({
+    label,
+    required,
+    note,
+}: {
+    label: string;
+    required?: boolean;
+    /** Soft-gray suffix, e.g. "(From $19 p.p.)". */
+    note?: string;
+}) {
+    return (
+        <>
+            {label}
+            {required && <span className='text-it-primary'> *</span>}
+            {note && (
+                <span className='font-normal text-it-text-muted'> {note}</span>
+            )}
+        </>
+    );
+}
 
 /** Label + text input + optional inline error. */
 export function Field({
     label,
+    required,
     value,
     onChange,
     placeholder,
@@ -36,6 +131,7 @@ export function Field({
     inputMode,
 }: {
     label: string;
+    required?: boolean;
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
@@ -46,9 +142,9 @@ export function Field({
 }) {
     const id = useId();
     return (
-        <div className={`flex flex-col gap-2 ${className ?? ''}`}>
+        <div className={`flex flex-col gap-1.5 ${className ?? ''}`}>
             <label htmlFor={id} className={labelClass}>
-                {label}
+                <FieldLabel label={label} required={required} />
             </label>
             <input
                 id={id}
@@ -58,8 +154,8 @@ export function Field({
                 placeholder={placeholder}
                 onChange={(e) => onChange(e.target.value)}
                 aria-invalid={error ? true : undefined}
-                className={`${inputBase} h-[50px] ${
-                    error ? 'border-it-primary' : 'border-it-heading/20'
+                className={`${inputBase} h-[46px] ${
+                    error ? 'border-it-primary' : 'border-it-border'
                 }`}
             />
             <FieldError error={error} />
@@ -77,7 +173,7 @@ export function FieldError({ error }: { error?: string }) {
                     animate={{ opacity: 1, y: 0, height: 'auto' }}
                     exit={{ opacity: 0, y: -4, height: 0 }}
                     transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
+                    className='text-[13px] leading-[1.5] text-it-primary'>
                     {error}
                 </motion.span>
             )}
@@ -98,11 +194,11 @@ export function FieldShell({
     children: ReactNode;
 }) {
     return (
-        <div className={`flex flex-col gap-2 ${className ?? ''}`}>
+        <div className={`flex flex-col gap-1.5 ${className ?? ''}`}>
             <span className={labelClass}>{label}</span>
             <div
-                className={`${inputBase} flex h-[50px] items-center ${
-                    error ? 'border-it-primary' : 'border-it-heading/20'
+                className={`${inputBase} flex h-[46px] items-center ${
+                    error ? 'border-it-primary' : 'border-it-border'
                 }`}>
                 {children}
             </div>
@@ -122,12 +218,14 @@ export interface SelectGroup {
 }
 
 /**
- * Label + native select styled as the Figma box with a trailing chevron. Pass
+ * Label + native select styled as the mockup box with a trailing chevron. Pass
  * `options` for a flat list or `groups` for `<optgroup>`s (e.g. a "Popular"
  * countries block above the full alphabetical list).
  */
 export function SelectField({
     label,
+    required,
+    note,
     value,
     onChange,
     options,
@@ -136,6 +234,9 @@ export function SelectField({
     placeholderValue,
 }: {
     label: string;
+    required?: boolean;
+    /** Soft-gray label suffix, e.g. the "(From $19 p.p.)" pickup note. */
+    note?: string;
     value: string;
     onChange: (v: string) => void;
     options?: SelectOption[];
@@ -145,17 +246,17 @@ export function SelectField({
 }) {
     const id = useId();
     return (
-        <div className={`flex flex-col gap-2 ${className ?? ''}`}>
+        <div className={`flex flex-col gap-1.5 ${className ?? ''}`}>
             <label htmlFor={id} className={labelClass}>
-                {label}
+                <FieldLabel label={label} required={required} note={note} />
             </label>
             <div className='relative'>
                 <select
                     id={id}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className={`${inputBase} h-[50px] cursor-pointer appearance-none border-it-heading/20 pr-11 ${
-                        value === placeholderValue ? 'text-it-heading/30' : ''
+                    className={`${inputBase} h-[46px] cursor-pointer appearance-none border-it-border pr-11 ${
+                        value === placeholderValue ? 'text-it-ink-muted' : ''
                     }`}>
                     {groups
                         ? groups.map((g) => (
@@ -178,43 +279,41 @@ export function SelectField({
                     alt=''
                     width={16}
                     height={16}
-                    className='pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2'
+                    className='pointer-events-none absolute top-1/2 right-4 size-3.5 -translate-y-1/2'
                 />
             </div>
         </div>
     );
 }
 
-/** 24px radio cell holding the 20px ring (Figma Ellipse 10, 1.5px stroke). */
+/** 18px radio ring (design v2 .pm-radio): subtle border, 9px orange dot. */
 export function Radio({ selected }: { selected: boolean }) {
     return (
-        <span className='grid size-6 shrink-0 place-items-center'>
-            <span
-                className={`grid size-5 place-items-center rounded-full border-[1.5px] transition-colors duration-300 ${
-                    selected ? 'border-it-primary' : 'border-it-heading'
-                }`}>
-                <AnimatePresence>
-                    {selected && (
-                        <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 500,
-                                damping: 30,
-                            }}
-                            className='size-2.5 rounded-full bg-it-primary'
-                        />
-                    )}
-                </AnimatePresence>
-            </span>
+        <span
+            className={`grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px] bg-it-white transition-colors duration-300 ${
+                selected ? 'border-it-primary' : 'border-it-border'
+            }`}>
+            <AnimatePresence>
+                {selected && (
+                    <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        transition={{
+                            type: 'spring',
+                            stiffness: 500,
+                            damping: 30,
+                        }}
+                        className='size-[9px] rounded-full bg-it-primary'
+                    />
+                )}
+            </AnimatePresence>
         </span>
     );
 }
 
-/** Full-width dark commit button (Figma r6, bg #2c2c2c, pad 23/32). */
-export function DarkButton({
+/** Full-width orange commit button (design v2 .cta: r-sm, 16px bold, 15px pad). */
+export function CtaButton({
     onClick,
     disabled,
     type = 'button',
@@ -233,8 +332,8 @@ export function DarkButton({
             aria-busy={disabled || undefined}
             whileTap={disabled ? undefined : { scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className={`flex w-full items-center justify-center gap-2.5 rounded-[6px] border-none bg-it-heading px-8 py-[23px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-opacity hover:opacity-90 ${
-                disabled ? 'cursor-default' : 'cursor-pointer'
+            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[16px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                disabled ? 'cursor-default opacity-90' : 'cursor-pointer'
             }`}>
             {children}
         </motion.button>
