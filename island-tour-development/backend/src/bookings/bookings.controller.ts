@@ -269,10 +269,17 @@ export class BookingsController {
    * `skipIf: isTrustedInternalOrigin` would bypass every limit below if this
    * were ever called from SSR.
    */
+  // Loose enough that a double-click or a reload-and-retry re-RUNS the
+  // handler (an unknown email must answer "no account" CONSISTENTLY - a 1/10s
+  // tier turned the second click into a generic 429 the card could not
+  // interpret). Actual sends stay bounded by the per-EMAIL caps in the
+  // service (1/min, 5/day per inbox); these per-IP tiers only bound
+  // enumeration probing, which the founder-accepted `sent:false` response
+  // already concedes is possible.
   @Throttle({
-    short: { limit: 1, ttl: 10_000 },
-    medium: { limit: 3, ttl: 60_000 },
-    long: { limit: 10, ttl: 3_600_000 },
+    short: { limit: 3, ttl: 10_000 },
+    medium: { limit: 6, ttl: 60_000 },
+    long: { limit: 15, ttl: 3_600_000 },
   })
   @Post('traveller/request-code')
   @Public()
