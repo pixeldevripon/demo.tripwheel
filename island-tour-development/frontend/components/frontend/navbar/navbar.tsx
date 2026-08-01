@@ -116,7 +116,9 @@ export function Navbar({
                     name: c.name,
                     slug: c.slug,
                     tours: c.publishedTourCount,
-                    image: c.heroImage ?? c.ogImage ?? null,
+                    // Only the category's OWN photo - never the generic
+                    // ogImage default. Missing = the grey fallback surface.
+                    image: c.heroImage ?? null,
                 }));
                 categoryCache.current.set(cacheKey, mapped);
                 setCategories(mapped);

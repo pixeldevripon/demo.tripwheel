@@ -105,10 +105,13 @@ export function CategoriesMenu({
                                                         <img
                                                             src={cat.image}
                                                             alt=''
-                                                            className='size-11 shrink-0 rounded-it-md object-cover bg-it-peach'
+                                                            className='size-11 shrink-0 rounded-it-md object-cover bg-it-border'
                                                         />
                                                     ) : (
-                                                        <span className='size-11 shrink-0 rounded-it-md bg-it-peach border border-dashed border-it-peach-border' />
+                                                        // No fallback photo -
+                                                        // just the sitewide
+                                                        // grey image surface.
+                                                        <span className='size-11 shrink-0 rounded-it-md bg-it-border' />
                                                     )}
                                                     <span className='min-w-0'>
                                                         <b className='block truncate text-sm font-bold text-it-ink'>

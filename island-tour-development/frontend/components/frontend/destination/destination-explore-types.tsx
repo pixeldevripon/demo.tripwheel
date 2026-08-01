@@ -125,7 +125,7 @@ export function DestinationExploreTypes({
                                             whileTap={{ scale: 0.98 }}
                                             transition={springPop}
                                             className='group block w-[38vw] sm:w-[196px] shrink-0 rounded-it-md no-underline transition-transform duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-0.5'>
-                                            <div className='relative aspect-4/3 overflow-hidden rounded-it-md bg-it-bg'>
+                                            <div className='relative aspect-4/3 overflow-hidden rounded-it-md bg-it-border'>
                                                 {cat.image && (
                                                     <Image
                                                         src={cat.image}
