@@ -114,7 +114,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
     };
 
     return (
-        <section className='it-section bg-it-white'>
+        <section className='bg-it-white pt-7 pb-16'>
             <div className='it-container'>
                 {/* Sticky scope: the bar's containing block ends here, so it
                     releases when the trailing (Discover) sections begin. */}
@@ -122,7 +122,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
                     {/* Sticky scroll-nav - sits below the fixed navbar. */}
                     <div
                         ref={tabBarRef}
-                        className='sticky top-18 z-40 bg-it-white md:top-20'>
+                        className='sticky top-16 z-40 bg-(--it-frow-bg) backdrop-blur-[8px]'>
                         <HubTripsTabs
                             tabs={dict.tabs}
                             active={active}

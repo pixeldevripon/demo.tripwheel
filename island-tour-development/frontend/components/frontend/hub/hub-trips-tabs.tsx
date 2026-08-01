@@ -28,7 +28,7 @@ export function HubTripsTabs({
         <Reveal>
             <div
                 ref={scrollRef}
-                className='flex overflow-x-auto border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className='flex gap-[26px] overflow-x-auto border-b border-it-divider [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 {tabs.map((tab, i) => {
                     const isActive = i === active;
                     return (
@@ -39,10 +39,10 @@ export function HubTripsTabs({
                             aria-current={isActive ? 'true' : undefined}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-5 py-4 text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 md:px-7.5 md:py-5 md:text-[20px] ${
+                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-0.5 py-3.5 text-[14px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ${
                                 isActive
-                                    ? 'font-medium text-it-heading'
-                                    : 'font-normal text-it-text-muted hover:text-it-heading'
+                                    ? 'text-it-ink'
+                                    : 'text-it-text-muted hover:text-it-ink'
                             }`}>
                             {tab.label}
                             {/* Underline slides between tabs (shared layoutId). */}
@@ -50,7 +50,7 @@ export function HubTripsTabs({
                                 <motion.span
                                     layoutId='hub-trips-tab-underline'
                                     transition={springPop}
-                                    className='absolute inset-x-0 bottom-0 h-0.5 bg-it-primary'
+                                    className='absolute inset-x-0 bottom-0 h-[2.5px] bg-it-primary'
                                 />
                             )}
                         </motion.button>

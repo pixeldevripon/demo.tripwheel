@@ -215,6 +215,9 @@
 
     /* ── Component Tokens ───────────────────────────────────────────────── */
 
+    /* Hub hero scrim (design v2 .hubhero) - side wash + bottom lift */
+    --it-scrim-hub: linear-gradient(90deg, rgba(17, 24, 39, 0.60), rgba(17, 24, 39, 0.30) 46%, rgba(17, 24, 39, 0.08)), linear-gradient(0deg, rgba(17, 24, 39, 0.34), rgba(17, 24, 39, 0) 42%);
+
     /* Collection banner scrim (design v2 .colbanner) */
     --it-scrim-banner: linear-gradient(76deg, rgba(35, 32, 27, 0.66) 0%, rgba(35, 32, 27, 0.34) 46%, rgba(35, 32, 27, 0.06) 72%);
 
