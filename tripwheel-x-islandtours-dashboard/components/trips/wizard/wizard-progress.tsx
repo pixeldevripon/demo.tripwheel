@@ -34,6 +34,7 @@ import {
     WIZARD_STEPS,
     getStepIndex,
     isStepComplete,
+    isStepVacuous,
     type WizardStepId,
 } from '@/lib/trips/wizard-steps';
 import { cn } from '@/lib/utils';
@@ -68,7 +69,7 @@ interface WizardProgressProps {
 }
 
 export function WizardProgress({ trip }: WizardProgressProps) {
-    const { step, visited, goTo, canNavigateTo } = useWizard();
+    const { mode, step, visited, goTo, canNavigateTo } = useWizard();
     const reduceMotion = useReducedMotion();
     // The overview is a publish check but lives on the translation record, not
     // the tour. Cached by the description and review steps, so this is a read,
@@ -85,7 +86,20 @@ export function WizardProgress({ trip }: WizardProgressProps) {
     function stateFor(id: WizardStepId, index: number): StepState {
         if (id === step) return 'current';
         if (!canNavigateTo(id)) return 'locked';
-        if (trip && isStepComplete(id, trip, hasEnOverview)) return 'complete';
+        if (trip && isStepComplete(id, trip, hasEnOverview)) {
+            // A step that owns no readiness check is complete the instant a
+            // draft exists - true, and not what a tick means while you are
+            // still walking the wizard. On a brand-new draft that put ticks on
+            // Booking rules, Location and Reach before the operator had opened
+            // any of them, which read as the tour completing itself (operator
+            // test report 2026-08-01 §01). While CREATING, those three earn
+            // their tick by being visited. Editing is hub-and-spoke, where a
+            // tick correctly means "nothing outstanding here".
+            if (mode === 'create' && isStepVacuous(id) && !visited.has(id)) {
+                return 'incomplete';
+            }
+            return 'complete';
+        }
         return 'incomplete';
     }
 

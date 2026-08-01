@@ -50,6 +50,19 @@ export const bookingsDashboardApi = {
         });
     },
 
+    /**
+     * Admin restore of a mistakenly-cancelled booking (QA 2026-08-01): seats
+     * re-taken (guarded - the backend refuses if they were resold), booking
+     * back to CONFIRMED, settlement reinstated, confirmation email re-sent.
+     * Refused once a refund settled or is in flight.
+     */
+    restore(id: string): Promise<BookingListItem> {
+        return apiFetch<BookingListItem>(`/bookings/${id}/restore`, {
+            method: 'POST',
+            body: JSON.stringify({}),
+        });
+    },
+
     // ── Non-payment forfeit (guide s15) ─────────────────────────────────────
 
     /** Operator reports the OPERATOR_LINK balance unpaid (idempotent stamp). */

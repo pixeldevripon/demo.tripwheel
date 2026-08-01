@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -78,7 +79,7 @@ export function StaffMemberSheet({
                     </div>
                 </SheetHeader>
 
-                <div className='min-h-0 flex-1 overflow-y-auto p-4'>
+                <SheetBody className='py-4'>
                     {accessReadOnly && member ? (
                         <div className='space-y-2'>
                             <p className='m-0 text-sm font-medium'>
@@ -95,7 +96,7 @@ export function StaffMemberSheet({
                     ) : (
                         <StaffAccessFields scope={scope} editor={editor} />
                     )}
-                </div>
+                </SheetBody>
 
                 {!accessReadOnly && (
                     <SheetFooter className='flex-row justify-end gap-2 border-t'>

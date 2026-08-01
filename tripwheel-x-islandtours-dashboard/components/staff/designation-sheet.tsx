@@ -12,6 +12,7 @@ import { STAFF_MEMBER_STATUS } from '@/components/common/status-maps';
 import { Badge } from '@/components/ui/badge';
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetHeader,
@@ -105,7 +106,7 @@ function DesignationSheetBody({
                 </div>
             </SheetHeader>
 
-            <div className='min-h-0 flex-1 space-y-6 overflow-y-auto p-4'>
+            <SheetBody className='space-y-6 py-4'>
                 <section className='space-y-3'>
                     <div className='flex items-baseline justify-between'>
                         <h3 className='text-sm font-medium'>Permissions</h3>
@@ -210,7 +211,7 @@ function DesignationSheetBody({
                         </div>
                     )}
                 </section>
-            </div>
+            </SheetBody>
         </>
     );
 }

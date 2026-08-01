@@ -147,21 +147,24 @@ export function PaymentsTable({
               ))}
             </SelectContent>
           </Select>
+          {/* Says WHICH date it filters. The backend matches payment.createdAt,
+              never the travel date, and "From date / To date" left that to be
+              guessed - which is how the filter got reported as broken. */}
           <div className='flex shrink-0 items-center gap-1'>
-            <div className='w-36'>
+            <div className='w-40'>
               <DatePickerField
                 value={filters.from ?? ''}
                 onChange={(v) => onFilterChange('from', v || undefined)}
-                placeholder='From date'
+                placeholder='Paid from'
                 clearable
               />
             </div>
             <span className='text-xs text-muted-foreground'>to</span>
-            <div className='w-36'>
+            <div className='w-40'>
               <DatePickerField
                 value={filters.to ?? ''}
                 onChange={(v) => onFilterChange('to', v || undefined)}
-                placeholder='To date'
+                placeholder='Paid to'
                 clearable
               />
             </div>

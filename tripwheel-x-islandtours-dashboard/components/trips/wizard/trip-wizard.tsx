@@ -47,6 +47,7 @@ import { useTrip } from '@/hooks/trips/use-trips';
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard';
 import { dashboardPageEnter } from '@/lib/motion';
 import {
+    firstIncompleteStep,
     getStepIndex,
     resolveStepParam,
     REVIEW_STEP,
@@ -86,12 +87,24 @@ export function TripWizard({ tripId }: TripWizardProps) {
     const mode = resolveMode(tripId ? trip : null);
 
     // No trip yet means only step 1 can render - nothing else has anything to
-    // save against. With a trip, an explicit `?step=` wins and a bare URL lands
-    // on the review hub, which is the honest answer to "what is left to do".
+    // save against.
+    //
+    // With a trip, an explicit `?step=` always wins. A BARE url is the
+    // interesting case, and it depends on where the tour is in its life:
+    //
+    //  - edit (published before): the review hub, the honest answer to "what
+    //    is left to do" on a tour that is already out there.
+    //  - create (an unpublished draft): the first step with work left on it.
+    //    Falling through to Review here teleported an operator mid-build to
+    //    step 9 of an empty tour - and `/trips/{id}` redirects WITHOUT a
+    //    `?step=`, as does a reload after an error, so it was easy to hit and
+    //    impossible to explain (operator test report 2026-08-01 §01).
     const rawParam = searchParams.get('step') ?? searchParams.get('tab');
+    const bareFallback =
+        mode === 'create' && trip ? firstIncompleteStep(trip) : REVIEW_STEP;
     const requested = resolveStepParam(
         rawParam,
-        tripId ? REVIEW_STEP : 'basics'
+        tripId ? bareFallback : 'basics'
     );
     const step: WizardStepId = tripId ? requested : 'basics';
     // A legacy tab deep link names a section, not just a step - open it.

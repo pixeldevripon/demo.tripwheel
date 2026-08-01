@@ -135,6 +135,23 @@ export function StepReview({ trip }: StepReviewProps) {
     const canSubmit = can('EDIT_TRIP');
     const isAdmin = role === 'ADMIN';
     const isDraft = trip.status === 'DRAFT';
+    // The statuses from which an operator may ASK Island Tours to act. PAUSED
+    // and ARCHIVED belong here for the same reason as in the row actions: every
+    // exit from them is MANAGE_TRIPS, so gating the request on DRAFT left the
+    // operator with nothing to do but look at it (operator test report
+    // 2026-08-01 §02). Submitting stamps a request; it never moves the status.
+    const canRequestReview =
+        trip.status === 'DRAFT' ||
+        trip.status === 'PAUSED' ||
+        trip.status === 'ARCHIVED';
+    const requestLabel =
+        trip.status === 'PAUSED'
+            ? 'Ask to go live again'
+            : trip.status === 'ARCHIVED'
+              ? 'Ask to bring this back'
+              : trip.approvalStatus === 'REJECTED'
+                ? 'Resubmit for review'
+                : 'Submit for review';
     const statusMeta = TRIP_STATUS[trip.status];
 
     // One definition of "done", shared with the progress rail - a row and a
@@ -457,7 +474,7 @@ export function StepReview({ trip }: StepReviewProps) {
 
                 {/* Lifecycle. The only place these actions live. */}
                 <div className='flex flex-wrap items-center justify-end gap-3 border-t border-line pt-6'>
-                    {isDraft && !canManage && canSubmit && (
+                    {canRequestReview && !canManage && canSubmit && (
                         <>
                             {trip.approvalStatus === 'PENDING' ? (
                                 <p className='text-xs font-medium text-warning-fg'>
@@ -502,9 +519,7 @@ export function StepReview({ trip }: StepReviewProps) {
                                         }>
                                         {isSubmitting
                                             ? 'Submitting...'
-                                            : trip.approvalStatus === 'REJECTED'
-                                              ? 'Resubmit for review'
-                                              : 'Submit for review'}
+                                            : requestLabel}
                                     </Button>
                                 </>
                             )}

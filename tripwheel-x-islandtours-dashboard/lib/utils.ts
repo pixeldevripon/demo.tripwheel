@@ -23,6 +23,22 @@ export function toSlug(value: string): string {
         .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Turn a stored enum token into something a human can read:
+ * `PARTIALLY_REFUNDED` -> `Partially refunded`, `ultra_luxury` -> `Ultra luxury`.
+ *
+ * For DISPLAY only - the underlying value is always stored and submitted raw.
+ * Anywhere a token reaches the screen unconverted it reads as leaked internals
+ * (test report 2026-08-01 filed the tour attribute selects as exactly that).
+ * Deliberately not per-token copy: attribute values are admin-defined at
+ * runtime, so there is no dictionary to look them up in - only a consistent
+ * mechanical transform.
+ */
+export function humanizeEnumValue(value: string): string {
+    const s = value.replace(/_/g, ' ').toLowerCase().trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function formatFileSize(bytes: number | null | undefined): string {
     if (!bytes) return '0 Bytes';
     const k = 1024;

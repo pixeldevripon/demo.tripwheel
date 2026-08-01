@@ -25,6 +25,7 @@ import {
 } from '@hugeicons/core-free-icons';
 
 import { Permission } from '@/lib/config/rbac';
+import { ANY_TRANSLATE_PERMISSIONS } from '@/lib/translatable-schema';
 import type { NavGroup } from '@/lib/rbac-utils';
 
 /**
@@ -144,10 +145,14 @@ const dashboardNav: NavGroup[] = [
             {
                 // The single largest operator workload finally has a home
                 // (04 §1.2, §3): entity × locale matrix + workspace.
+                // Gated on the page's OWN write-permission union, not
+                // VIEW_TRIPS: translating is a write, and a read-only seat
+                // must not see a nav item whose page can only refuse them
+                // (access-roles matrix follow-up 2026-08-02).
                 title: 'Translations',
                 url: 'translations',
                 icon: TranslateIcon,
-                permissions: [Permission.VIEW_TRIPS],
+                permissions: [...ANY_TRANSLATE_PERMISSIONS],
             },
         ],
     },

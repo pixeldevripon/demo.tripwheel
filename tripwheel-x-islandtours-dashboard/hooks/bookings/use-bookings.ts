@@ -113,6 +113,24 @@ export function useDismissCancellationReport() {
     });
 }
 
+/** Admin restore of a mistakenly-cancelled booking (QA 2026-08-01). */
+export function useRestoreBooking() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => bookingsDashboardApi.restore(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+            toast.success(
+                'Booking restored - seats re-booked and the traveller re-sent their confirmation.',
+            );
+        },
+        onError: err =>
+            toast.error(
+                err instanceof Error ? err.message : 'Failed to restore booking.',
+            ),
+    });
+}
+
 /** Admin "mark cancelled" (master 6.4) - invalidates every bookings list. */
 export function useCancelBooking() {
     const queryClient = useQueryClient();

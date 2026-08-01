@@ -95,6 +95,30 @@ function SheetHeader({ className, ...props }: React.ComponentProps<'div'>) {
     );
 }
 
+/**
+ * The scrolling body of a sheet.
+ *
+ * Exists so content lines up with the header. Every sheet used to hand-roll
+ * this div and every one of them reached for `px-4`, against a header and
+ * footer that are `p-8` - so the title sat 16px further in than the content
+ * beneath it, on ten different screens (reported 2026-08-02). The inset is a
+ * property of the sheet, not of whatever happens to be inside it, so it lives
+ * here with the other two.
+ *
+ * Only the HORIZONTAL padding is fixed. Vertical rhythm is the caller's:
+ * detail sheets divide their own `Section`s (which carry `py-4`), forms want a
+ * gap. Pass it in `className`.
+ */
+function SheetBody({ className, ...props }: React.ComponentProps<'div'>) {
+    return (
+        <div
+            data-slot='sheet-body'
+            className={cn('min-h-0 flex-1 overflow-y-auto px-8', className)}
+            {...props}
+        />
+    );
+}
+
 function SheetFooter({ className, ...props }: React.ComponentProps<'div'>) {
     return (
         <div
@@ -136,6 +160,7 @@ function SheetDescription({
 
 export {
     Sheet,
+    SheetBody,
     SheetClose,
     SheetContent,
     SheetDescription,

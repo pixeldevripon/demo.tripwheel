@@ -8,6 +8,7 @@
 
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetHeader,
@@ -101,7 +102,7 @@ function SettlementDetailBody({
                 </div>
             </SheetHeader>
 
-            <div className='flex-1 divide-y overflow-y-auto px-4'>
+            <SheetBody className='divide-y'>
                 <Section label='Payout'>
                     <div className='divide-y rounded-lg border bg-muted/30'>
                         <MoneyRow
@@ -182,7 +183,7 @@ function SettlementDetailBody({
                         />
                     )}
                 </Section>
-            </div>
+            </SheetBody>
         </>
     );
 }

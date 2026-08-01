@@ -21,6 +21,7 @@ import { PencilEdit02Icon } from '@hugeicons/core-free-icons';
 
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -136,9 +137,9 @@ export function QuickEditSheet({
 
                 <form
                     onSubmit={handleSubmit(onSave)}
-                    className='flex flex-1 flex-col overflow-y-auto'
+                    className='flex min-h-0 flex-1 flex-col'
                 >
-                    <div className='flex flex-col gap-4 p-4'>
+                    <SheetBody className='flex flex-col gap-4 py-6'>
                         <Field>
                             <Label>Name</Label>
                             <Input
@@ -184,7 +185,7 @@ export function QuickEditSheet({
                                 </Label>
                             </div>
                         </Field>
-                    </div>
+                    </SheetBody>
 
                     <SheetFooter className='mt-auto flex-row justify-end border-t'>
                         <Button

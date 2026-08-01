@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -96,7 +97,7 @@ export function BookingDetailsSheet({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 divide-y overflow-y-auto px-4">
+        <SheetBody className="divide-y">
           <Section label="Trip">
             <p className="m-0 mb-1.5 text-sm font-medium">{b.tourName}</p>
             <Row
@@ -240,7 +241,11 @@ export function BookingDetailsSheet({
                 }
               />
             )}
-            {b.requestedInFreeWindow != null && (
+            {/* Money, so it follows the same conflict-#7 rule as the Payment
+                block above. Without the gate a withheld amount fell through to
+                "None (outside window)" - which is not "withheld", it is a
+                different and wrong answer. */}
+            {showFinancials && b.requestedInFreeWindow != null && (
               <Row
                 label="Refund due"
                 value={
@@ -252,7 +257,14 @@ export function BookingDetailsSheet({
                 }
               />
             )}
-            {b.refundStatus !== 'NONE' && (
+            {/* The null check is load-bearing, not defensive typing. Refund
+                status is money, so the manifest projection NULLS it for a seat
+                without VIEW_BOOKING_FINANCIALS - and `null !== 'NONE'` is true,
+                so this rendered and then threw on `REFUND_STATUS[null].variant`.
+                That took the whole sheet down for every booking, while the list
+                stayed fine because its column already guards this way
+                (booking-columns.tsx). Test report 2026-08-01 §Admin.3. */}
+            {b.refundStatus && b.refundStatus !== 'NONE' && (
               <Row
                 label="Refund status"
                 value={
@@ -283,7 +295,7 @@ export function BookingDetailsSheet({
               </Button>
             </div>
           </Section>
-        </div>
+        </SheetBody>
       </SheetContent>
     </Sheet>
   );
