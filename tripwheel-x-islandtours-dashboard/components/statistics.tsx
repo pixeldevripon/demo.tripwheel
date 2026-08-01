@@ -25,7 +25,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, humanizeEnumValue } from '@/lib/utils';
 import {
     Airplane01Icon,
     Alert02Icon,
@@ -217,11 +217,12 @@ function formatRate(rate: number | null) {
     return rate === null ? '-' : `${rate.toFixed(1)}%`;
 }
 
-/** Turns an enum value such as `PARTIALLY_REFUNDED` into `Partially refunded`. */
-function humanizeStatus(status: string) {
-    const s = status.replace(/_/g, ' ').toLowerCase();
-    return s.charAt(0).toUpperCase() + s.slice(1);
-}
+/**
+ * Turns an enum value such as `PARTIALLY_REFUNDED` into `Partially refunded`.
+ * Promoted to `lib/utils` once the tour attribute selects needed the same
+ * transform; kept as a local alias so the call sites below stay readable.
+ */
+const humanizeStatus = humanizeEnumValue;
 
 /**
  * A period-over-period movement, or `null` when there is nothing to say.

@@ -22,6 +22,7 @@ import {
 } from '@/hooks/attributes/use-attributes';
 import { useActiveCategories } from '@/hooks/categories/use-categories';
 import { isDerivedAttribute } from '@/lib/config/derived-attributes';
+import { humanizeEnumValue } from '@/lib/utils';
 import type { AttributeDefinition } from '@/types/attribute';
 import type { TripListItem } from '@/types/trip';
 import { useEffect, useMemo, useState } from 'react';
@@ -244,18 +245,24 @@ function AttributeInput({
                 </div>
             )}
 
+            {/* Options are LABELLED, not printed raw. The stored value stays
+                the token (`ultra_luxury`); only the text changes. Shipping the
+                token straight to the trigger showed operators "premium" and
+                "ultra_luxury" and read as leaked internals - test report
+                2026-08-01, tour wizard step 8. */}
             {def.dataType === 'ENUM' && (
                 <Select
                     value={value || '__none__'}
                     onValueChange={v => onChange(v === '__none__' ? '' : v)}>
                     <SelectTrigger>
-                        <SelectValue placeholder='Select…' />
+                        <SelectValue placeholder={`Select ${def.displayName.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value='__none__'>-</SelectItem>
+                        {/* "-" gave no clue that it clears the field. */}
+                        <SelectItem value='__none__'>Not set</SelectItem>
                         {allowed.map(v => (
                             <SelectItem key={v} value={v}>
-                                {v}
+                                {humanizeEnumValue(v)}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -264,7 +271,10 @@ function AttributeInput({
 
             {def.dataType === 'ENUM_MULTI' && (
                 <MultiSelect
-                    options={allowed.map(v => ({ value: v, label: v }))}
+                    options={allowed.map(v => ({
+                        value: v,
+                        label: humanizeEnumValue(v),
+                    }))}
                     value={value ? value.split(',').filter(Boolean) : []}
                     onChange={vals => onChange(vals.join(','))}
                     placeholder='Select values…'
@@ -293,7 +303,7 @@ function AttributeInput({
                 def.dataType !== 'ENUM' &&
                 def.dataType !== 'ENUM_MULTI' && (
                     <FieldDescription>
-                        Allowed: {allowed.join(', ')}
+                        Allowed: {allowed.map(humanizeEnumValue).join(', ')}
                     </FieldDescription>
                 )}
         </Field>

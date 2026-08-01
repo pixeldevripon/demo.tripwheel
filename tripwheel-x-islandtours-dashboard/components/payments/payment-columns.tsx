@@ -104,6 +104,22 @@ export function makePaymentColumns(): ColumnDef<PaymentListItem>[] {
       enableSorting: false,
     },
     {
+      // The date the MONEY moved - and the one the date filter above actually
+      // matches on (payment.createdAt). Test report 2026-08-01 read the filter
+      // as broken because the only date on the row was the TRAVEL date: a
+      // deposit taken on 30 Jul for a tour on 29 Aug looks out of range when
+      // "29 Aug" is all you can see. Reconciliation needs the date it filters
+      // by to be visible next to the amount it is reconciling.
+      id: 'paidOn',
+      header: 'Paid on',
+      cell: ({ row }) => (
+        <span className="text-sm whitespace-nowrap">
+          {formatDate(row.original.createdAt)}
+        </span>
+      ),
+      enableSorting: false,
+    },
+    {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
