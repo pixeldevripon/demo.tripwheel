@@ -29,11 +29,11 @@ export function ThankYouRelatedTours({
     if (tours.length === 0) return null;
 
     return (
-        <section className='it-section bg-it-white'>
+        <section className='bg-it-white pt-14 pb-0'>
             <div className='it-container flex flex-col gap-14'>
                 <div className='flex flex-col gap-12'>
                     <Reveal className='flex flex-col gap-2'>
-                        <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] font-bold leading-[1.2] tracking-[-0.013em] text-it-ink'>
                             {dict.relatedTitle}
                         </h2>
                         <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>

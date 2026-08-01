@@ -53,7 +53,7 @@ export function ThankYouRecommendations({
     const asGrid = recommendations.length > 3;
 
     return (
-        <section className='it-section !pt-0 bg-it-white'>
+        <section className='bg-it-white pt-12 pb-0'>
             <div className='it-container'>
                 {asGrid ? (
                     <div className='grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-8 lg:grid-cols-4'>

@@ -27,10 +27,10 @@ export function ThankYouQuestion({
     const issueAfter = issueAfterRaw.replace('{ref}', booking.displayRef);
 
     return (
-        <section className='it-section bg-it-surface'>
+        <section className='bg-it-white pt-14 pb-[72px]'>
             <div className='it-container flex flex-col gap-12'>
                 <Reveal>
-                    <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='m-0 font-it-display text-[19px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
                         {dict.questionTitle}
                     </h2>
                 </Reveal>

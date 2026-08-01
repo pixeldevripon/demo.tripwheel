@@ -9,9 +9,9 @@ import type { ReactNode } from 'react';
 type ThankYouDict = Dictionary['thankYou'];
 
 const rowValue =
-    'text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading';
+    'text-right text-[14px] font-bold leading-[1.6] text-it-ink';
 const rowLabel =
-    'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
+    'text-[14px] font-semibold leading-[1.6] text-it-text-muted';
 /** Highlighted, tappable contact value (mailto/tel/map) - Figma 47744-9211. */
 const rowLink =
     'text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80';
@@ -45,7 +45,7 @@ function DetailRow({
 function PctChip({ tone, children }: { tone: 'paid' | 'unpaid'; children: ReactNode }) {
     return (
         <span
-            className={`flex h-6 w-[92px] shrink-0 items-center justify-center rounded-full text-[14px] leading-[1.6] tracking-[-0.012em] ${
+            className={`flex h-6 shrink-0 items-center justify-center rounded-full px-2.5 text-[12.5px] font-bold leading-none ${
                 tone === 'paid'
                     ? 'bg-it-green/8 text-it-green'
                     : 'bg-it-primary/8 text-it-primary'
@@ -84,17 +84,17 @@ export function ThankYouSummary({
     // the shared-link view shows non-identifying tour facts only.
 
     return (
-        <section className='it-section bg-it-surface'>
+        <section className='bg-it-bg py-[52px]'>
             <div className='it-container flex flex-col gap-6'>
                 <Reveal>
-                    <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='m-0 font-it-display text-[clamp(21px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {dict.summaryTitle}
                     </h2>
                 </Reveal>
                 <div className='grid gap-6 lg:grid-cols-2'>
                     <Reveal>
-                        <div className='flex h-full flex-col gap-8 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
-                            <h3 className='m-0 font-medium text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <div className='flex h-full flex-col gap-3 rounded-it-lg border border-it-divider bg-it-white px-[26px] py-[22px] shadow-it-sm'>
+                            <h3 className='m-0 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted'>
                                 {dict.tourDetails}
                             </h3>
                             <div className='flex flex-col gap-3.5'>
@@ -203,8 +203,8 @@ export function ThankYouSummary({
                         </div>
                     </Reveal>
                     <Reveal delay={0.3}>
-                        <div className='flex h-full flex-col gap-8 rounded-[16px] border border-it-heading/10 bg-it-white p-6'>
-                            <h3 className='m-0 font-medium text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                        <div className='flex h-full flex-col gap-3 rounded-it-lg border border-it-divider bg-it-white px-[26px] py-[22px] shadow-it-sm'>
+                            <h3 className='m-0 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted'>
                                 {dict.paymentTitle}
                             </h3>
                             <div className='flex flex-col gap-3.5'>

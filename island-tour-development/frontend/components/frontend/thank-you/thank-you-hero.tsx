@@ -23,10 +23,10 @@ export function ThankYouHero({
     dict: ThankYouDict;
 }) {
     return (
-        <section className='bg-it-white pt-12 pb-16 md:pt-[85px] md:pb-[116px]'>
-            <div className='it-container flex flex-col items-center gap-14'>
-                <MountReveal className='flex w-full flex-col items-center gap-8'>
-                    <div className='flex flex-col items-center gap-8'>
+        <section className='bg-it-white pt-10 pb-9 md:pt-14 md:pb-11'>
+            <div className='it-container flex flex-col items-center gap-5'>
+                <MountReveal className='flex w-full flex-col items-center gap-5'>
+                    <div className='flex flex-col items-center gap-[18px]'>
                         <MotionSpan
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
@@ -40,11 +40,11 @@ export function ThankYouHero({
                                 className='size-14'
                             />
                         </MotionSpan>
-                        <div className='flex flex-col items-center gap-1'>
-                            <h1 className='m-0 text-center font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <div className='flex flex-col items-center gap-3'>
+                            <h1 className='m-0 text-center font-it-display text-[clamp(28px,4vw,40px)] font-bold leading-[1.08] tracking-[-0.018em] text-it-ink'>
                                 {dict.title.replace('{name}', booking.guestFirstName)}
                             </h1>
-                            <p className='m-0 text-center text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                            <p className='m-0 text-center text-[16.5px] leading-[1.6] text-it-ink'>
                                 {dict.subtitle
                                     .replace('{tour}', booking.tourTitle)
                                     .replace('{date}', booking.dateLabel)
@@ -52,8 +52,8 @@ export function ThankYouHero({
                             </p>
                         </div>
                     </div>
-                    <div className='flex items-center gap-2'>
-                        <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <div className='flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
+                        <span className='text-it-text-muted'>
                             {dict.bookingRef}
                         </span>
                         <BookingRefChip
@@ -62,15 +62,15 @@ export function ThankYouHero({
                         />
                     </div>
                 </MountReveal>
-                <MountReveal delay={0.15} className='flex flex-col items-center gap-8'>
+                <MountReveal delay={0.15} className='flex flex-col items-center gap-[18px]'>
                     <MotionA
                         href={buildCalendarUrl(booking)}
                         target='_blank'
                         rel='noopener noreferrer'
                         whileTap={{ scale: 0.98 }}
                         transition={springPop}
-                        className='flex items-center gap-2.5 rounded-full bg-it-primary px-10 py-[15px] transition-colors hover:bg-it-primary-hover'>
-                        <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                        className='flex items-center gap-[9px] rounded-it-sm bg-it-primary px-[26px] py-[13px] transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                        <span className='text-[16px] font-bold leading-[1.5] text-it-white'>
                             {dict.addToCalendar}
                         </span>
                         <Image
@@ -81,7 +81,7 @@ export function ThankYouHero({
                             className='size-4'
                         />
                     </MotionA>
-                    <div className='flex flex-col items-center text-center text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                    <div className='flex flex-col items-center text-center text-[13px] leading-[1.6] text-it-text-muted'>
                         <p className='m-0'>
                             {dict.emailSentTo.replace('{email}', booking.guestEmail)}
                         </p>

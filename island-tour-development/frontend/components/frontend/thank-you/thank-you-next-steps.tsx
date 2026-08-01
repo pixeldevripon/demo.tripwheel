@@ -46,34 +46,32 @@ export function ThankYouNextSteps({
             className={`it-section bg-it-white ${flushBottom ? '!pb-0' : ''}`}>
             <div className='it-container flex flex-col items-center gap-12'>
                 <Reveal>
-                    <h2 className='m-0 text-center font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='m-0 text-center font-it-display text-[clamp(20px,2.4vw,26px)] font-bold leading-[1.2] tracking-[-0.013em] text-it-ink'>
                         {dict.nextTitle}
                     </h2>
                 </Reveal>
                 <div className='relative w-full'>
                     <span className='absolute left-1/2 top-8 hidden h-px w-full max-w-[800px] -translate-x-1/2 bg-[#d9d9d9] md:block' />
                     <div
-                        className={`relative grid gap-6 ${
+                        className={`relative grid gap-4 ${
                             steps.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'
                         }`}>
                         {steps.map((step, i) => (
                             <Reveal key={step.title} listItem>
-                                <div className='flex flex-col items-center gap-8'>
-                                    <span className='flex size-16 items-center justify-center rounded-full border border-[#d9d9d9] bg-it-white'>
-                                        <span className='font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                            {i + 1}
-                                        </span>
+                                {/* .stepcard: white bordered card; the number
+                                    rides top-left as the outline circle. */}
+                                <div className='relative flex h-full flex-col gap-1.5 rounded-it-md border border-it-divider bg-it-white py-[18px] pl-[58px] pr-5 text-left shadow-it-sm'>
+                                    <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-extrabold text-it-text-muted tabular-nums'>
+                                        {i + 1}
                                     </span>
-                                    <span className='flex h-[72px] w-full max-w-[352px] flex-col items-center justify-center gap-1.5'>
-                                        <span className='text-center font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
-                                            {step.title}
-                                        </span>
-                                        {step.sub && (
-                                            <span className='text-center font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
-                                                {step.sub}
-                                            </span>
-                                        )}
+                                    <span className='text-[14.5px] font-bold leading-[1.5] text-it-ink'>
+                                        {step.title}
                                     </span>
+                                    {step.sub && (
+                                        <span className='text-[13px] leading-[1.55] text-it-text-muted'>
+                                            {step.sub}
+                                        </span>
+                                    )}
                                 </div>
                             </Reveal>
                         ))}
