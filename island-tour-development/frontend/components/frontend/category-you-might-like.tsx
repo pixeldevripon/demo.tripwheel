@@ -139,7 +139,7 @@ export function CategoryYouMightLike({
                                         whileTap={{ scale: 0.99 }}
                                         transition={springPop}
                                         className={cn(
-                                            'group relative block overflow-hidden rounded-[8px] bg-it-border lg:rounded-[16px]',
+                                            'group relative block overflow-hidden rounded-[8px] bg-it-bg lg:rounded-[16px]',
                                             'aspect-384/361'
                                         )}>
                                         {item.image && (
@@ -151,8 +151,11 @@ export function CategoryYouMightLike({
                                                 className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
                                             />
                                         )}
-                                        {/* Bottom scrim - transparent -> #1a1a1a over the lower 139px (Figma). */}
-                                        <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
+                                        {/* Bottom scrim - photo only; the
+                                            flat fallback stays gradient-free. */}
+                                        {item.image && (
+                                            <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
+                                        )}
                                         <span className='absolute bottom-6 left-6 font-medium tracking-[-0.012em] text-it-white text-[20px] leading-[1.2] md:text-[24px]'>
                                             {item.name}
                                         </span>

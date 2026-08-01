@@ -110,7 +110,11 @@ export function CollectionHero({
                                             ·
                                         </span>
                                         <span>
-                                            {dict.from} {startingPrice}
+                                            {/* Locked stats format (5.6):
+                                                capital F, space, no "per". */}
+                                            {dict.from.charAt(0).toUpperCase() +
+                                                dict.from.slice(1)}{' '}
+                                            {startingPrice}
                                         </span>
                                     </>
                                 )}

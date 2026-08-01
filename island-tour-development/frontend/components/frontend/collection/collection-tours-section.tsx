@@ -22,27 +22,21 @@ export function CollectionToursSection({
     dict,
 }: CollectionToursSectionProps) {
     return (
-        <section className='it-section bg-it-white pt-15!'>
+        // Design v2 (5.6): the intro is BODY text tight under the banner, then
+        // the curated grid - 3-column LOCK (collections never go 4-up), no
+        // sort, no filters, no peach: the editorial order is the product and
+        // the rank circle is the signal.
+        <section className='bg-it-white pb-4'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-10'>
-                    <p className='m-0 max-w-278 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <Reveal className='flex flex-col'>
+                    <p className='m-0 max-w-[660px] pt-[34px] pb-3.5 text-[18px] leading-[1.6] text-it-ink text-pretty'>
                         {intro}
                     </p>
 
-                    <div
-                        aria-hidden='true'
-                        className='h-px w-full bg-it-heading/10'
-                    />
-
-                    {/* Sitewide tour grid: 2-col mobile, 3-col sm, 4-col lg. */}
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
-                        {tours.map((tour, i) => (
+                    <div className='mt-[26px] grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-[18px] sm:gap-y-[22px]'>
+                        {tours.map(tour => (
                             <MountReveal key={tour.id} listItem>
-                                <TourCard
-                                    tour={tour}
-                                    dict={dict}
-                                    highlighted={i === 0}
-                                />
+                                <TourCard tour={tour} dict={dict} mobileRow />
                             </MountReveal>
                         ))}
                     </div>
