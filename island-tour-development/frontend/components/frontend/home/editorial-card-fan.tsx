@@ -27,9 +27,9 @@ const CARDS: { key: CategoryKey; image: string }[] = [
  * would snap instead of turning smoothly during a shuffle).
  */
 const SLOTS = [
-    { position: 'left-[calc(50%-180px)] top-3 lg:left-0', rotate: -8, z: 10 },
-    { position: 'left-[calc(50%-100px)] top-0 lg:left-35', rotate: 0, z: 20 },
-    { position: 'left-[calc(50%-20px)] top-3 lg:left-56.5', rotate: 8, z: 30 },
+    { position: 'left-[calc(50%-140px)] top-3 lg:left-0', rotate: -8, z: 10 },
+    { position: 'left-[calc(50%-78px)] top-0 lg:left-26', rotate: 0, z: 20 },
+    { position: 'left-[calc(50%-16px)] top-3 lg:left-[166px]', rotate: 8, z: 30 },
 ];
 
 /** The front slot (highest z) - the right card, matching the Figma default. */
@@ -79,7 +79,7 @@ export function EditorialCardFan({
         <div
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
-            className='relative -mx-6 h-78 sm:-mx-10 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-100 lg:w-130 lg:-translate-y-1/2'>
+            className='relative -mx-6 h-60 sm:-mx-10 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-70 lg:w-[376px] lg:-translate-y-1/2'>
             {CARDS.map((card, i) => {
                 const slotIndex = (i + shift) % SLOTS.length;
                 const slot = SLOTS[slotIndex];
@@ -96,10 +96,10 @@ export function EditorialCardFan({
                             src={configured?.image || card.image}
                             alt={title}
                             fill
-                            sizes='(max-width: 1024px) 200px, 285px'
+                            sizes='(max-width: 1024px) 158px, 210px'
                             className='object-cover'
                         />
-                        <span className='absolute inset-x-0 bottom-0 flex items-center justify-center bg-it-heading/30 py-4 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white lg:py-5 lg:text-[20px]'>
+                        <span className='absolute inset-x-0 bottom-0 flex items-center justify-center bg-it-heading/30 py-2.5 font-semibold text-[13px] leading-[1.4] text-it-white lg:py-3 lg:text-[15px]'>
                             {title}
                         </span>
                     </>
@@ -119,7 +119,7 @@ export function EditorialCardFan({
                         rotate: { duration: MOVE_DURATION_S, ease: MOVE_EASE },
                         scale: springPop,
                     },
-                    className: `absolute h-71 w-50 overflow-hidden rounded-[8px] border-none bg-it-border p-0 shadow-it-md cursor-pointer lg:h-100 lg:w-71.25 lg:rounded-[15px] ${slot.position}`,
+                    className: `absolute h-[210px] w-[158px] overflow-hidden rounded-[12px] border-none bg-it-border p-0 shadow-it-md cursor-pointer lg:h-[280px] lg:w-[210px] lg:rounded-it-lg ${slot.position}`,
                 } as const;
 
                 /*

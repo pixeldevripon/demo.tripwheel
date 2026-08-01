@@ -143,13 +143,13 @@ function LinkColumn({
     className?: string;
 }) {
     const linkCls =
-        'inline-block text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors duration-300 hover:text-it-white lg:text-base';
+        'inline-block text-[13.5px] leading-[1.6] text-it-soft-on-dark no-underline transition-colors duration-300 hover:text-it-ink-on-dark hover:underline';
     return (
-        <div className={`flex flex-col gap-5 lg:gap-8 ${className ?? ''}`}>
-            <h3 className='m-0 text-lg font-medium leading-[1.6] tracking-[-0.012em] text-it-white lg:text-xl'>
+        <div className={`flex flex-col gap-3.5 ${className ?? ''}`}>
+            <h3 className='m-0 font-it-body text-sm font-semibold leading-[1.6] text-it-ink-on-dark'>
                 {title}
             </h3>
-            <ul className='m-0 flex list-none flex-col gap-2 p-0 lg:gap-3'>
+            <ul className='m-0 flex list-none flex-col gap-2.5 p-0'>
                 {links.map(link => (
                     <li key={link.label}>
                         {link.href ? (
@@ -167,7 +167,7 @@ function LinkColumn({
                                 {link.label}
                             </a>
                         ) : (
-                            <span className='inline-block cursor-default text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                            <span className='inline-block cursor-default text-[13.5px] leading-[1.6] text-it-soft-on-dark'>
                                 {link.label}
                             </span>
                         )}
@@ -304,9 +304,9 @@ export async function Footer({
     ];
 
     return (
-        <footer className='bg-it-ink text-it-white'>
-            <div className='it-container pt-9 pb-5 lg:pt-32.5 lg:pb-3'>
-                <div className='flex flex-col gap-14 lg:gap-27.5'>
+        <footer className='bg-it-dark text-it-ink-on-dark'>
+            <div className='it-container pt-12 pb-6 lg:pt-16 lg:pb-8'>
+                <div className='flex flex-col gap-11'>
                     {/* ── Top section ──
                         Desktop uses justify-between (which naturally yields the ~110px
                         Figma gaps at 1440); only a small min-gap overrides the mobile
@@ -325,17 +325,17 @@ export async function Footer({
                                             alt='Island Tours'
                                             width={176}
                                             height={131}
-                                            className='h-auto w-30.25 object-contain lg:w-44'
+                                            className='h-14 w-auto object-contain lg:h-19'
                                         />
                                     </Link>
-                                    <p className='m-0 text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                                    <p className='m-0 text-[13.5px] leading-[1.6] text-it-soft-on-dark'>
                                         {dict.tagline}
                                     </p>
                                 </div>
 
-                                <div className='flex flex-col gap-2 lg:gap-4'>
+                                <div className='flex flex-col gap-2 lg:gap-3'>
                                     {/* /about doesn't exist yet - plain text until it does. */}
-                                    <span className='inline-block w-fit cursor-default text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                                    <span className='inline-block w-fit cursor-default text-[13.5px] font-semibold leading-[1.6] text-it-ink-on-dark'>
                                         {dict.ourStory}
                                     </span>
                                     {socials.length > 0 && (
@@ -359,7 +359,7 @@ export async function Footer({
                                                             alt={s.alt}
                                                             width={40}
                                                             height={40}
-                                                            className='size-6 lg:size-10'
+                                                            className='size-6 lg:size-8.5'
                                                         />
                                                     </MotionSpan>
                                                 </a>
@@ -433,14 +433,14 @@ export async function Footer({
 
                     {/* ── Bottom bar ── */}
                     <Reveal delay={0.35} yOffset={20}>
-                        <div className='h-px w-full bg-it-white/50' />
-                        <div className='flex flex-col gap-2.5 py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
-                            <div className='flex flex-wrap items-center gap-4 lg:gap-6'>
-                                <span className='text-xs leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                        <div className='h-px w-full bg-it-ink-on-dark/15' />
+                        <div className='flex flex-col gap-2.5 pt-5 lg:flex-row lg:items-center lg:justify-between lg:gap-4'>
+                            <div className='flex flex-wrap items-center gap-3 lg:gap-4'>
+                                <span className='text-xs leading-[1.6] text-it-soft-on-dark'>
                                     {copyrightLine}
                                 </span>
-                                <span className='size-1.25 shrink-0 rounded-full bg-it-ink-muted' />
-                                <span className='text-xs leading-[1.6] tracking-[-0.012em] text-it-footer-muted lg:text-base'>
+                                <span className='size-1 shrink-0 rounded-full bg-it-soft-on-dark/60' />
+                                <span className='text-xs leading-[1.6] text-it-soft-on-dark'>
                                     {registrationLine}
                                 </span>
                             </div>
@@ -448,7 +448,7 @@ export async function Footer({
                                 button reopens the Cookiebot dialog once it ships). */}
                             <Link
                                 href={localizeHref(locale, '/manage-cookies')}
-                                className='w-fit text-sm leading-[1.6] tracking-[-0.012em] text-it-footer-muted no-underline transition-colors hover:text-it-white lg:text-base'>
+                                className='w-fit text-xs leading-[1.6] text-it-soft-on-dark underline underline-offset-2 transition-colors hover:text-it-ink-on-dark'>
                                 {dict.manageCookies}
                             </Link>
                         </div>

@@ -4,19 +4,26 @@
  */
 
 /* ── Colors ─────────────────────────────────────────────────────────────── */
+/* Design v2 contract (technical-doc/homepage/homepage.html, phase-2 locked
+   tokens): warm paper/peach surfaces, grey-blue ink family, locked CTA
+   orange pair, one-job green status family, amber stars. */
 :root {
-    /* Primary — coral orange */
+    /* Primary — locked CTA orange (--cta / --cta-deep) */
     --it-primary:          #e8611a;
-    --it-primary-hover:    color-mix(in oklch, #e8611a, black 12%);
-    --it-primary-active:   color-mix(in oklch, #e8611a, black 22%);
-    --it-primary-subtle:   color-mix(in oklch, #e8611a, white 88%);
+    --it-primary-hover:    #c7500f;
+    --it-primary-active:   color-mix(in oklch, #c7500f, black 8%);
+    --it-primary-subtle:   #fdeee4;   /* --cta-tint */
     --it-primary-fg:       #ffffff;
 
-    /* Green — availability / success */
-    --it-green:            #00c950;
-    --it-green-hover:      color-mix(in oklch, #00c950, black 10%);
-    --it-green-subtle:     color-mix(in oklch, #00c950, white 88%);
+    /* Green — availability / success (status family) */
+    --it-green:            #16a34a;
+    --it-green-hover:      color-mix(in oklch, #16a34a, black 10%);
+    --it-green-subtle:     #effaf3;   /* --green-tint */
+    --it-green-text:       #15803d;   /* readable green for text on tint */
     --it-green-fg:         #ffffff;
+
+    /* WhatsApp brand green (the wa button is brand-locked, not status green) */
+    --it-whatsapp:         #25d366;
 
     /* Red / amber — the other two booking states (cancelled, pending).
        Green alone could only ever say "confirmed". */
@@ -25,34 +32,48 @@
     --it-warning:          #a35200;
     --it-warning-subtle:   color-mix(in oklch, #a35200, white 92%);
 
-    /* Ink — text & strokes */
-    --it-ink:              #1a1a1a;
-    --it-ink-secondary:    #444444;
-    --it-ink-muted:        #a0a3a9;
-    --it-ink-placeholder:  #a6a6a6;
-    --it-footer-muted:     #a3a3a3;   /* footer link/copy + social-ring grey */
+    /* Ink — text & strokes (grey-blue family: ink / soft / faint) */
+    --it-ink:              #1f2937;
+    --it-ink-secondary:    #4b5563;
+    --it-ink-muted:        #9ca3af;   /* --faint */
+    --it-ink-placeholder:  #9ca3af;
+    --it-footer-muted:     #c9c3ba;   /* --soft-on-dark: footer link/copy */
 
-    /* Content text on light surfaces (Figma section copy) */
-    --it-heading:          #2c2c2c;
-    --it-text-muted:       #767676;
+    /* Content text on light surfaces */
+    --it-heading:          #1f2937;   /* --ink */
+    --it-text-muted:       #6b7280;   /* --soft */
+
+    /* Dark surface (footer / dark CTA) + its text pair */
+    --it-dark:             #23201b;
+    --it-ink-on-dark:      #f4f1ec;
+    --it-soft-on-dark:     #c9c3ba;
 
     /* Surfaces */
     --it-white:            #ffffff;
-    --it-bg:               #f9fafb;
-    --it-surface:          #f8f8f8;
-    --it-border:           #ededed;
-    --it-border-dark:      #1a1a1a;
+    --it-bg:               #f7f7f5;   /* --paper */
+    --it-surface:          #f7f7f5;   /* --paper */
+    --it-peach:            #fdf6f0;   /* warm editorial surface */
+    --it-peach-border:     #f2e2d6;
+    --it-border:           #e5e7eb;
+    --it-divider:          #f3f4f6;
+    --it-border-dark:      #1f2937;
     --it-border-white:     #ffffff;
-    --it-border-subtle:    #2c2c2c1a;   /* heading @ 10% — card / divider hairline */
+    --it-border-subtle:    #1f29371a;   /* ink @ 10% — card / divider hairline */
+    --it-card-hover-border:#efe0d4;
 
     /* Overlays */
     --it-scrim-light:      rgba(166, 166, 166, 0.20);
     --it-scrim-dark:       rgba(0, 0, 0, 0.40);
+    /* Card-photo bottom scrim (caption legibility on reels/cards) */
+    --it-scrim-card:       linear-gradient(180deg, rgba(35, 32, 27, 0) 55%, rgba(35, 32, 27, 0.42) 100%);
+    /* Island-tile photo scrim - softer, lower start (design v2 .isl) */
+    --it-scrim-tile:       linear-gradient(180deg, rgba(35, 32, 27, 0) 72%, rgba(35, 32, 27, 0.28) 100%);
+    /* Hero photo scrim - dark at both edges, lighter mid (design v2 .hero) */
+    --it-scrim-hero:       linear-gradient(180deg, rgba(16, 24, 34, 0.44) 0%, rgba(16, 24, 34, 0.26) 46%, rgba(16, 24, 34, 0.5) 100%);
 
     /* Hero — light tropical gradient + dark text */
     --it-hero-bg:          #A6A6A6;
     --it-hero-heading:     #2c2c2c;
-    --it-hero-text:        #767676;
     --it-hero-gradient:
         radial-gradient(120% 120% at 78% 16%, rgba(232, 97, 26, 0.16) 0%, transparent 46%),
         radial-gradient(110% 110% at 14% 88%, rgba(0, 201, 80, 0.12) 0%, transparent 52%),
@@ -75,21 +96,22 @@
         radial-gradient(65% 55% at 6% 98%, rgba(0, 201, 80, 0.09) 0%, transparent 62%),
         linear-gradient(180deg, #ffffff 0%, #ffffff 62%, #f9fafb 100%);
 
-    /* Editorial banner — solid orange base; washes to white toward the right (desktop fan) or bottom (mobile fan) */
-    --it-editorial-orange: linear-gradient(135deg, #f67e01 0%, #f54900 100%);
+    /* Editorial banner — design v2 .edfig band: deep CTA orange washing to
+       white toward the right (desktop fan) or staying orange on mobile. */
     --it-editorial-gradient:
-        linear-gradient(to right, rgba(255, 255, 255, 0) 0%, #ffffff 56%, #ffffff 100%),
-        var(--it-editorial-orange);
+        linear-gradient(90deg, var(--it-primary-hover) 0%, var(--it-primary) 28%, #f59957 50%, #fbe4d1 76%, #ffffff 96%);
     --it-editorial-gradient-v:
-        linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 30%, #ffffff 56%),
-        linear-gradient(to bottom, #f97e0a 0%, #f56210 100%);
+        linear-gradient(158deg, var(--it-primary-hover) 0%, var(--it-primary) 58%, #ee8236 100%);
+    /* Second headline line on the band (mockup h3 span) */
+    --it-editorial-accent: #ffe7d3;
 
 
     /* ── Typography ─────────────────────────────────────────────────────── */
 
-    /* SF Pro system font — resolves to SF Pro on Apple, Helvetica Neue elsewhere */
-    --it-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
-    --it-font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text',    'Helvetica Neue', Arial, sans-serif;
+    /* Design v2 brand fonts (next/font variables from the root layout);
+       the SF Pro system stack stays behind them as the fallback. */
+    --it-font-display: var(--font-bricolage), -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body:    var(--font-source-sans), -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
 
     /* Scale */
     --it-text-xs:      0.75rem;
@@ -104,24 +126,25 @@
     --it-text-display: 3.75rem;
 
     /* Weight */
-    --it-weight-regular:  400;
-    --it-weight-medium:   500;
-    --it-weight-semibold: 600;
-    --it-weight-bold:     700;
+    --it-weight-regular:   400;
+    --it-weight-medium:    500;
+    --it-weight-semibold:  600;
+    --it-weight-bold:      700;
+    --it-weight-extrabold: 800;
 
     /* Line height */
     --it-leading-none:   1;
-    --it-leading-tight:  1.2;
+    --it-leading-tight:  1.1;
     --it-leading-snug:   1.4;
     --it-leading-normal: 1.6;
 
-    /* Letter spacing — negative values from Figma headline measurements */
-    --it-tracking-tightest: -0.03em;
-    --it-tracking-tighter:  -0.022em;
-    --it-tracking-tight:    -0.019em;
+    /* Letter spacing — design v2 headline measurements */
+    --it-tracking-tightest: -0.02em;
+    --it-tracking-tighter:  -0.015em;
+    --it-tracking-tight:    -0.01em;
     --it-tracking-normal:    0em;
     --it-tracking-wide:      0.04em;
-    --it-tracking-widest:    0.08em;
+    --it-tracking-widest:    0.13em;
 
 
     /* ── Spacing ────────────────────────────────────────────────────────── */
@@ -140,31 +163,32 @@
 
 
     /* ── Border Radius ──────────────────────────────────────────────────── */
-    --it-radius-xs:   0.125rem;
-    --it-radius-sm:   0.25rem;
-    --it-radius-md:   0.5rem;
-    --it-radius-lg:   1rem;
-    --it-radius-xl:   1.875rem;
-    --it-radius-2xl:  2.5rem;
-    --it-radius-full: 3.125rem;  /* pill */
+    --it-radius-xs:   6px;
+    --it-radius-sm:   10px;
+    --it-radius-md:   12px;
+    --it-radius-lg:   16px;
+    --it-radius-xl:   22px;   /* reels / oversized cards */
+    --it-radius-2xl:  28px;
+    --it-radius-full: 999px;  /* pill */
 
 
-    /* ── Shadows ────────────────────────────────────────────────────────── */
-    --it-shadow-sm:    0 2px 8px 0 rgba(0, 0, 0, 0.06);
-    --it-shadow-md:    0 11px 14px -9px rgba(0, 0, 0, 0.10);  /* tour cards */
-    --it-shadow-lg:    0 29px 36px -7px rgba(0, 0, 0, 0.10);  /* modals, drawers */
+    /* ── Shadows (design v2 elevation ladder e1/e2/e3) ──────────────────── */
+    --it-shadow-sm:    0 1px 2px rgba(31, 41, 55, 0.05);
+    --it-shadow-md:    0 2px 6px rgba(31, 41, 55, 0.05), 0 12px 28px rgba(31, 41, 55, 0.07);
+    --it-shadow-lg:    0 4px 10px rgba(31, 41, 55, 0.06), 0 24px 56px rgba(31, 41, 55, 0.12);
+    --it-shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
     --it-shadow-glass: 0 4px 24px 0 rgba(0, 0, 0, 0.08);
-    --it-shadow-navbar: 0 1px 0 0 var(--it-border);
+    --it-shadow-navbar: 0 1px 0 0 var(--it-divider);
 
 
     /* ── Layout ─────────────────────────────────────────────────────────── */
-    --it-container-max:   90rem;   /* 1440px */
-    --it-container-px:    7.5rem;  /* 120px desktop */
-    --it-container-px-md: 2rem;    /* 32px  tablet */
-    --it-container-px-sm: 1rem;    /* 16px  mobile */
-    --it-navbar-height:   4rem;
-    --it-section-py:      8.125rem;  /* 130px — Figma section vertical padding */
-    --it-section-py-sm:   4rem;      /* 64px  — mobile */
+    --it-container-max:   75rem;   /* 1200px */
+    --it-container-px:    1.5rem;  /* 24px desktop */
+    --it-container-px-md: 1.5rem;  /* 24px tablet */
+    --it-container-px-sm: 1rem;    /* 16px mobile */
+    --it-navbar-height:   4rem;    /* 64px */
+    --it-section-py:      4rem;    /* 64px — design v2 section rhythm */
+    --it-section-py-sm:   3rem;    /* 48px — mobile */
 
 
     /* ── Z-index ────────────────────────────────────────────────────────── */
@@ -178,23 +202,23 @@
     --it-z-toast:    300;
 
 
-    /* ── Transitions ────────────────────────────────────────────────────── */
-    --it-ease:        cubic-bezier(0.4, 0, 0.2, 1);
+    /* ── Transitions (design v2: fast / std / panel / reveal) ───────────── */
+    --it-ease:        cubic-bezier(0.2, 0.7, 0.3, 1);
     --it-ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
     --it-ease-in:     cubic-bezier(0.4, 0, 1, 1);
     --it-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --it-duration-xs: 100ms;
-    --it-duration-sm: 150ms;
-    --it-duration-md: 250ms;
-    --it-duration-lg: 400ms;
+    --it-duration-xs: 120ms;
+    --it-duration-sm: 180ms;
+    --it-duration-md: 260ms;
+    --it-duration-lg: 420ms;
 
 
     /* ── Component Tokens ───────────────────────────────────────────────── */
 
     /* Navbar */
-    --it-navbar-bg:          rgba(255, 255, 255, 0.92);
+    --it-navbar-bg:          rgba(255, 255, 255, 0.94);
     --it-navbar-bg-scrolled: rgba(255, 255, 255, 1);
-    --it-navbar-border:      var(--it-border);
+    --it-navbar-border:      var(--it-divider);
     --it-navbar-text:        var(--it-ink);
 
     /* Search widget */
@@ -215,28 +239,29 @@
     --it-btn-secondary-text:   var(--it-ink);
     --it-btn-secondary-radius: var(--it-radius-full);
 
-    /* Tour card */
+    /* Tour card — bordered, flat at rest, lifts 2px on hover (design v2) */
     --it-card-bg:         var(--it-white);
     --it-card-radius:     var(--it-radius-lg);
-    --it-card-shadow:     var(--it-shadow-md);
+    --it-card-shadow:     none;
     --it-card-border:     var(--it-border);
     --it-card-img-radius: var(--it-radius-lg) var(--it-radius-lg) 0 0;
 
-    /* Availability badge */
-    --it-badge-available-bg:     var(--it-green);
-    --it-badge-available-text:   var(--it-green-fg);
+    /* Availability badge — green STATUS family on its tint, never solid */
+    --it-badge-available-bg:     var(--it-green-subtle);
+    --it-badge-available-text:   var(--it-green-text);
+    --it-badge-available-border: rgba(22, 163, 74, 0.25);
     --it-badge-available-radius: var(--it-radius-xs);
 
-    /* Category chip */
-    --it-chip-bg:          var(--it-surface);
-    --it-chip-bg-active:   var(--it-primary-subtle);
-    --it-chip-text:        var(--it-ink-secondary);
-    --it-chip-text-active: var(--it-primary);
+    /* Category chip — white pill; active = solid ink (design v2 type tabs) */
+    --it-chip-bg:          var(--it-white);
+    --it-chip-bg-active:   var(--it-ink);
+    --it-chip-text:        var(--it-ink);
+    --it-chip-text-active: var(--it-white);
     --it-chip-border:      var(--it-border);
     --it-chip-radius:      var(--it-radius-full);
 
-    /* Star rating */
-    --it-star-filled: #f5a623;
+    /* Star rating — amber */
+    --it-star-filled: #e5a230;
     --it-star-empty:  var(--it-border);
 
     /* Input */
@@ -251,8 +276,6 @@
     --it-section-bg-1: var(--it-white);
     --it-section-bg-2: var(--it-bg);
     --it-section-bg-3: var(--it-surface);
-
-    --it-divider: var(--it-border);
 }
 
 
@@ -277,10 +300,19 @@
     --color-it-ink-muted:       var(--it-ink-muted);
     --color-it-ink-placeholder: var(--it-ink-placeholder);
     --color-it-footer-muted:    var(--it-footer-muted);
+    --color-it-green-text:      var(--it-green-text);
+    --color-it-whatsapp:        var(--it-whatsapp);
+    --color-it-dark:            var(--it-dark);
+    --color-it-ink-on-dark:     var(--it-ink-on-dark);
+    --color-it-soft-on-dark:    var(--it-soft-on-dark);
     --color-it-white:           var(--it-white);
     --color-it-bg:              var(--it-bg);
     --color-it-surface:         var(--it-surface);
+    --color-it-peach:           var(--it-peach);
+    --color-it-peach-border:    var(--it-peach-border);
     --color-it-border:          var(--it-border);
+    --color-it-divider:         var(--it-divider);
+    --color-it-card-hover-border: var(--it-card-hover-border);
     --color-it-border-dark:     var(--it-border-dark);
     --color-it-border-white:    var(--it-border-white);
     --color-it-border-subtle:   var(--it-border-subtle);
@@ -290,7 +322,7 @@
     --color-it-hero-bg:         var(--it-hero-bg);
     --color-it-hub-hero-bg:     var(--it-hub-hero-bg);
     --color-it-hero-heading:    var(--it-hero-heading);
-    --color-it-hero-text:       var(--it-hero-text);
+    --color-it-editorial-accent: var(--it-editorial-accent);
     --color-it-search-border:     var(--it-search-border);
 
     --radius-it-xs:   var(--it-radius-xs);
@@ -301,10 +333,12 @@
     --radius-it-2xl:  var(--it-radius-2xl);
     --radius-it-full: var(--it-radius-full);
 
-    --shadow-it-sm:    var(--it-shadow-sm);
-    --shadow-it-md:    var(--it-shadow-md);
-    --shadow-it-lg:    var(--it-shadow-lg);
-    --shadow-it-glass: var(--it-shadow-glass);
+    --shadow-it-sm:         var(--it-shadow-sm);
+    --shadow-it-md:         var(--it-shadow-md);
+    --shadow-it-lg:         var(--it-shadow-lg);
+    --shadow-it-card-hover: var(--it-shadow-card-hover);
+    --shadow-it-glass:      var(--it-shadow-glass);
+    --shadow-it-navbar:     var(--it-shadow-navbar);
 
     --font-it-display: var(--it-font-display);
     --font-it-body:    var(--it-font-body);
@@ -328,9 +362,11 @@
 @layer base {
     .frontend-root {
         font-family: var(--it-font-body);
+        font-size: 15px;
+        line-height: var(--it-leading-normal);
         color: var(--it-ink);
-        background-color: var(--it-bg);
-        letter-spacing: var(--it-tracking-tight);
+        background-color: var(--it-white);
+        letter-spacing: var(--it-tracking-normal);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -342,9 +378,9 @@
     .frontend-root h5,
     .frontend-root h6 {
         font-family: var(--it-font-display);
-        font-weight: var(--it-weight-semibold);
+        font-weight: var(--it-weight-bold);
         line-height: var(--it-leading-tight);
-        letter-spacing: var(--it-tracking-tightest);
+        letter-spacing: var(--it-tracking-tighter);
         color: var(--it-ink);
     }
 
@@ -423,16 +459,16 @@
 
     .it-heading {
         font-family: var(--it-font-display);
-        font-weight: var(--it-weight-semibold);
+        font-weight: var(--it-weight-bold);
         line-height: var(--it-leading-tight);
-        letter-spacing: var(--it-tracking-tightest);
+        letter-spacing: var(--it-tracking-tighter);
     }
 
     .it-body {
         font-family: var(--it-font-body);
         font-weight: var(--it-weight-regular);
         line-height: var(--it-leading-normal);
-        letter-spacing: var(--it-tracking-tight);
+        letter-spacing: var(--it-tracking-normal);
     }
 
     .it-glass {
@@ -513,9 +549,11 @@
         padding: 0.125rem 0.5rem;
         background-color: var(--it-badge-available-bg);
         color: var(--it-badge-available-text);
+        border: 1px solid var(--it-badge-available-border);
         border-radius: var(--it-badge-available-radius);
         font-size: var(--it-text-xs);
-        font-weight: var(--it-weight-medium);
+        font-weight: var(--it-weight-bold);
+        font-variant-numeric: tabular-nums;
     }
 
     /* ── Slim hover-reveal scrollbar (modal panels) ─────────────────────────────

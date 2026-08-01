@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Select your Island",
+        "island": "Island",
         "wishlist": "Wishlist",
+        "saved": "Saved",
         "account": "Account",
         "logout": "Log out",
         "menu": "Menu",
@@ -90,8 +92,8 @@
                 "body": "Free cancellation on every tour, no questions asked"
             },
             {
-                "title": "Help when you need it",
-                "body": "Message us on WhatsApp, 08:00 - 20:00"
+                "title": "We're locals. Here to help",
+                "body": "Message us on WhatsApp, 08:00 to 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Explore our islands",
+            "title": "Choose your island",
+            "subtitle": "Three islands, one standard.",
             "tours": "tours",
             "seeMore": "See more islands"
         },
@@ -123,7 +126,7 @@
         "faq": {
             "title": "Need help before booking?",
             "subtitle": "We're locals. We grew up here, we know these tours, and we want you to have the best time on these islands.",
-            "whatsapp": "Chat on WhatsApp",
+            "whatsapp": "WhatsApp us",
             "guarantees": [
                 "Free cancellation, no questions asked",
                 "Pay as little as 20% today, the rest later"
@@ -131,25 +134,29 @@
             "items": [
                 {
                     "q": "Can I cancel if my plans change?",
-                    "a": "Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email."
+                    "a": "Every tour can be cancelled for free. How late you can cancel differs per tour; the exact cut-off is on the tour page and in your confirmation email. No forms, no questions asked."
                 },
                 {
                     "q": "Do I have to pay in full now?",
-                    "a": "No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date."
+                    "a": "Usually not. Most tours reserve with a small deposit and you settle the rest later or on arrival, depending on the tour. A few tours charge in full or take nothing at booking; the tour page always states exactly how it works before you commit."
+                },
+                {
+                    "q": "What happens if the operator has to cancel?",
+                    "a": "Weather and safety calls happen on real islands. When a tour is called off, you choose: your money back in full, or a free move to a new date."
                 },
                 {
                     "q": "Who is behind Island Tours?",
-                    "a": "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted."
+                    "a": "Island Tours is run by ITG B.V., a company registered on Curaçao (KvK 169950). The people building and answering it live and work on the islands."
                 },
                 {
-                    "q": "What if my tour gets cancelled?",
-                    "a": "If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked."
-                },
-                {
-                    "q": "Not sure which tour? We'll help.",
-                    "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations."
+                    "q": "Not sure which tour fits?",
+                    "a": "Message us on WhatsApp with who's coming and what you like. You get a short list of picks that fit, not a catalog dump."
                 }
             ]
+        },
+        "cta": {
+            "title": "Ready when you are.",
+            "body": "Lock your date with a small deposit. Cancel free up to each tour's cut-off."
         }
     },
     "destination": {

@@ -19,7 +19,7 @@ export function ExploreIslands({
     locale,
     islands,
 }: {
-    dict: { title: string; tours: string; seeMore: string };
+    dict: { title: string; subtitle?: string; tours: string; seeMore: string };
     locale: Locale;
     islands: Island[];
 }) {
@@ -28,19 +28,25 @@ export function ExploreIslands({
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-6 md:gap-12'>
-                    <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                        {dict.title}
-                    </h2>
+                <Reveal className='flex flex-col gap-[18px]'>
+                    <div className='flex flex-col gap-1.5'>
+                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                            {dict.title}
+                        </h2>
+                        {dict.subtitle && (
+                            <p className='m-0 max-w-[560px] text-[14px] leading-[1.6] text-it-text-muted'>
+                                {dict.subtitle}
+                            </p>
+                        )}
+                    </div>
 
-                    {/* Peek scroller - bleeds to the right container edge */}
-                    <div className='it-scroll-x overflow-y-hidden gap-4 md:gap-6 pb-1 -mr-4 md:-mr-8 xl:-mr-30'>
+                    {/* Island tiles - photo card with meta block (design v2) */}
+                    <div className='grid gap-5 md:grid-cols-3'>
                         {islands.map(island => (
                             <Reveal
                                 key={island.slug}
                                 width='auto'
-                                listItem
-                                className='shrink-0'>
+                                listItem>
                                 <MotionLink
                                     href={localizeHref(
                                         locale,
@@ -48,25 +54,26 @@ export function ExploreIslands({
                                     )}
                                     whileTap={{ scale: 0.99 }}
                                     transition={springPop}
-                                    className='group relative block h-51 w-40.5 shrink-0 overflow-hidden rounded-it-lg bg-it-border md:h-90.25 md:w-96'>
-                                    {island.image && (
-                                        <Image
-                                            src={island.image}
-                                            alt={island.name}
-                                            fill
-                                            sizes='(max-width: 768px) 162px, 384px'
-                                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
-                                        />
-                                    )}
+                                    className='group block overflow-hidden rounded-it-md border border-it-divider bg-it-white no-underline transition-[box-shadow,border-color] duration-(--it-duration-sm) ease-(--it-ease) hover:border-it-card-hover-border hover:shadow-it-card-hover'>
+                                    <div className='relative aspect-video md:aspect-3/2 overflow-hidden bg-it-border'>
+                                        {island.image && (
+                                            <Image
+                                                src={island.image}
+                                                alt={island.name}
+                                                fill
+                                                sizes='(max-width: 768px) 100vw, 384px'
+                                                className='object-cover transition-transform duration-(--it-duration-lg) ease-(--it-ease) group-hover:scale-[1.03]'
+                                            />
+                                        )}
+                                        {/* Soft bottom scrim over the photo edge */}
+                                        <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-tile)]' />
+                                    </div>
 
-                                    {/* Bottom gradient scrim - transparent → #1a1a1a */}
-                                    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-28.25 bg-linear-to-b from-transparent to-it-ink md:h-61.75' />
-
-                                    <div className='absolute bottom-4 left-4 flex flex-col gap-0.5 md:bottom-6 md:left-6 md:gap-2'>
-                                        <span className='font-medium text-[18px] md:text-[24px] leading-[1.2] tracking-[-0.012em] text-it-white'>
+                                    <div className='flex flex-col px-4 pt-3.5 pb-4'>
+                                        <span className='font-it-display font-bold text-[20px] leading-[1.3] tracking-[-0.01em] text-it-ink'>
                                             {island.name}
                                         </span>
-                                        <span className='text-[12px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
+                                        <span className='text-[13px] font-semibold leading-[1.6] text-it-text-muted tabular-nums'>
                                             {island.tours} {dict.tours}
                                         </span>
                                     </div>

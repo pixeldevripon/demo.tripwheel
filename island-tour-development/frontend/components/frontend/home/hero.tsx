@@ -52,7 +52,7 @@ export function Hero({
     const popular = destinations.slice(0, 4);
 
     return (
-        <section className='relative h-136.75 md:h-150 2xl:h-180 flex items-end justify-center bg-it-hero-bg  pb-12 md:items-center md:pb-0'>
+        <section className='relative min-h-[520px] md:min-h-0 md:h-[clamp(500px,62vh,660px)] flex items-end justify-center bg-it-hero-bg  pb-14 md:items-center md:pb-0'>
             {/* Background clips inside its own wrapper (not the section) so the
                 search typeahead panel can drop below the hero without being cut. */}
             <div className='absolute inset-0 overflow-hidden'>
@@ -67,21 +67,22 @@ export function Hero({
                     quality={100}
                     priority
                     sizes='100vw'
-                    className='object-cover scale-105  object-top md:object-[80%_40%]'
+                    className='object-cover scale-105  object-top md:object-[50%_42%]'
                 />
-                {/* Soft veil so the ink heading/subtitle stay legible on the photo */}
-                <div className='absolute inset-0 bg-black/40' />
+                {/* Design v2 hero scrim: darker at both edges, lighter mid so
+                    the white display type stays legible on any photo. */}
+                <div className='absolute inset-0 bg-[image:var(--it-scrim-hero)]' />
             </div>
 
-            {/* Centered content - 841px max */}
+            {/* Centered content - 680px max (design v2 herocard) */}
             <div className='it-container relative w-full flex justify-center'>
-                <div className='flex flex-col items-center gap-10 w-full max-w-220.25'>
+                <div className='flex flex-col items-center gap-7 w-full max-w-[680px]'>
                     {/* Heading + subtitle */}
-                    <Reveal className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
+                    <Reveal className='flex flex-col items-center gap-3 text-center'>
+                        <h1 className='m-0 font-it-display font-extrabold text-[clamp(31px,3.7vw,48px)] leading-[1.04] tracking-[-0.02em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
                             {dict.title}
                         </h1>
-                        <p className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                        <p className='m-0 text-[16px] md:text-[17px] font-semibold leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)]'>
                             {dict.subtitle}
                         </p>
                     </Reveal>
@@ -89,7 +90,7 @@ export function Hero({
                     {/* Search block */}
                     <Reveal
                         delay={0.3}
-                        className='flex flex-col items-center gap-4 w-full max-w-171.25'>
+                        className='flex flex-col items-center gap-4 w-full max-w-[580px]'>
                         <HeroSearch
                             destinations={destinations}
                             locale={locale}
@@ -99,10 +100,8 @@ export function Hero({
 
                         {/* Popular - clickable destinations (live) */}
                         {popular.length > 0 && (
-                            <p className='m-0 text-sm md:text-base tracking-[-0.012em] text-center'>
-                                <span className='text-it-primary-fg'>
-                                    {dict.popular}:{' '}
-                                </span>
+                            <p className='m-0 text-sm font-semibold text-center text-it-white/90 [text-shadow:0_1px_10px_rgba(0,0,0,0.32)]'>
+                                <span>{dict.popular}: </span>
                                 {popular.map((island, i) => (
                                     <span key={island.slug}>
                                         <Link
@@ -110,11 +109,11 @@ export function Hero({
                                                 locale,
                                                 `/${island.slug}`
                                             )}
-                                            className='text-it-primary-subtle no-underline transition-colors duration-300 hover:text-it-primary'>
+                                            className='text-it-white underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary-subtle'>
                                             {island.name}
                                         </Link>
                                         {i < popular.length - 1 && (
-                                            <span className='text-it-hero-heading'>
+                                            <span className='opacity-60'>
                                                 {' '}
                                                 ·{' '}
                                             </span>

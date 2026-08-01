@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Elige tu isla",
+        "island": "Isla",
         "wishlist": "Lista de deseos",
+        "saved": "Guardados",
         "account": "Cuenta",
         "logout": "Cerrar sesión",
         "menu": "Menú",
@@ -90,8 +92,8 @@
                 "body": "Cancelación gratuita en cada tour, sin preguntas"
             },
             {
-                "title": "Ayuda cuando la necesites",
-                "body": "Escríbenos por WhatsApp, 08:00 - 20:00"
+                "title": "Somos locales. Aquí para ayudarte",
+                "body": "Escríbenos por WhatsApp, de 08:00 a 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Explora nuestras islas",
+            "title": "Elige tu isla",
+            "subtitle": "Tres islas, un mismo estándar.",
             "tours": "tours",
             "seeMore": "Ver más islas"
         },
@@ -123,33 +126,37 @@
         "faq": {
             "title": "¿Necesitas ayuda antes de reservar?",
             "subtitle": "Somos locales. Crecimos aquí, conocemos estos tours y queremos que disfrutes al máximo de estas islas.",
-            "whatsapp": "Chatea por WhatsApp",
+            "whatsapp": "Escríbenos por WhatsApp",
             "guarantees": [
                 "Cancelación gratuita, sin preguntas",
                 "Paga desde el 20% hoy, el resto después"
             ],
             "items": [
                 {
-                    "q": "¿Puedo cancelar si cambian mis planes?",
-                    "a": "La mayoría de los tours se pueden cancelar hasta 24 h antes del inicio con reembolso completo. Sin formularios ni preguntas. Cancela directamente desde tu correo de confirmación."
+                    "q": "¿Puedo cancelar si mis planes cambian?",
+                    "a": "Todos los tours se pueden cancelar gratis. El plazo para cancelar varía según el tour; la fecha límite exacta está en la página del tour y en tu correo de confirmación. Sin formularios ni preguntas."
                 },
                 {
                     "q": "¿Tengo que pagar todo ahora?",
-                    "a": "No — puedes asegurar tu lugar con solo el 20% por adelantado y pagar el resto más cerca de la fecha del tour."
+                    "a": "Normalmente no. La mayoría de los tours se reservan con un pequeño depósito y el resto se paga después o a la llegada, según el tour. Algunos tours cobran el total o no cobran nada al reservar; la página del tour siempre indica exactamente cómo funciona antes de confirmar."
+                },
+                {
+                    "q": "¿Qué pasa si el operador tiene que cancelar?",
+                    "a": "El clima y la seguridad forman parte de las islas reales. Si un tour se cancela, tú eliges: la devolución completa de tu dinero o un cambio gratuito a una nueva fecha."
                 },
                 {
                     "q": "¿Quién está detrás de Island Tours?",
-                    "a": "Somos un equipo de isleños que crecimos en Curaçao, Aruba y Sint Maarten. Cada tour ha sido revisado personalmente por nosotros."
+                    "a": "Island Tours está gestionado por ITG B.V., una empresa registrada en Curazao (KvK 169950). Las personas que lo construyen y te responden viven y trabajan en las islas."
                 },
                 {
-                    "q": "¿Y si cancelan mi tour?",
-                    "a": "Si el operador cancela un tour, recibes un reembolso completo en 24 horas — sin preguntas."
-                },
-                {
-                    "q": "¿No sabes qué tour elegir? Te ayudamos.",
-                    "a": "Chatea con nosotros por WhatsApp cuando quieras. Dinos qué buscas y te daremos recomendaciones locales honestas."
+                    "q": "¿No sabes qué tour elegir?",
+                    "a": "Escríbenos por WhatsApp con quiénes vienen y qué os gusta. Recibirás una lista corta de opciones que encajan, no un catálogo."
                 }
             ]
+        },
+        "cta": {
+            "title": "Listos cuando tú lo estés.",
+            "body": "Asegura tu fecha con un pequeño depósito. Cancela gratis hasta el plazo límite de cada tour."
         }
     },
     "destination": {

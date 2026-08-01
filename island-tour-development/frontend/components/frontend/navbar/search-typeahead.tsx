@@ -264,7 +264,7 @@ export function SearchTypeahead({
     return (
         <motion.div
             {...dropdownMotion}
-            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-lg border border-it-border bg-it-white shadow-it-lg'>
+            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
             {loading && !hasAnything ? (
                 <p className='m-0 px-5 py-4 text-sm text-it-ink-muted'>
                     {dict.searching}

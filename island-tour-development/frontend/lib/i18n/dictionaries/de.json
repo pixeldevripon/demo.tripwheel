@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Insel auswählen",
+        "island": "Insel",
         "wishlist": "Merkliste",
+        "saved": "Gespeichert",
         "account": "Konto",
         "logout": "Abmelden",
         "menu": "Menü",
@@ -90,8 +92,8 @@
                 "body": "Kostenlose Stornierung bei jeder Tour, ohne Wenn und Aber"
             },
             {
-                "title": "Hilfe, wenn du sie brauchst",
-                "body": "Schreib uns auf WhatsApp, 08:00 - 20:00"
+                "title": "Wir sind Locals. Wir helfen gern",
+                "body": "Schreib uns auf WhatsApp, 08:00 bis 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Entdecke unsere Inseln",
+            "title": "Wähle deine Insel",
+            "subtitle": "Drei Inseln, ein Standard.",
             "tours": "Touren",
             "seeMore": "Mehr Inseln ansehen"
         },
@@ -123,7 +126,7 @@
         "faq": {
             "title": "Brauchst du Hilfe vor der Buchung?",
             "subtitle": "Wir sind Einheimische. Wir sind hier aufgewachsen, wir kennen diese Touren und möchten, dass du die beste Zeit auf diesen Inseln hast.",
-            "whatsapp": "Auf WhatsApp chatten",
+            "whatsapp": "Schreib uns auf WhatsApp",
             "guarantees": [
                 "Kostenlose Stornierung, ohne Wenn und Aber",
                 "Zahle heute schon ab 20%, den Rest später"
@@ -131,25 +134,29 @@
             "items": [
                 {
                     "q": "Kann ich stornieren, wenn sich meine Pläne ändern?",
-                    "a": "Die meisten Touren können bis 24 Stunden vor Beginn kostenlos storniert werden – mit voller Rückerstattung. Keine Formulare, keine Rückfragen. Storniere direkt aus deiner Bestätigungs-E-Mail."
+                    "a": "Jede Tour kann kostenlos storniert werden. Bis wann du stornieren kannst, unterscheidet sich je Tour; die genaue Frist steht auf der Tourseite und in deiner Bestätigungs-E-Mail. Keine Formulare, keine Fragen."
                 },
                 {
-                    "q": "Muss ich jetzt den vollen Betrag zahlen?",
-                    "a": "Nein — du kannst deinen Platz mit nur 20% Anzahlung sichern und den Restbetrag näher am Tourdatum zahlen."
+                    "q": "Muss ich jetzt alles bezahlen?",
+                    "a": "Meistens nicht. Die meisten Touren reservierst du mit einer kleinen Anzahlung und zahlst den Rest später oder vor Ort, je nach Tour. Einzelne Touren berechnen den vollen Betrag oder nehmen bei der Buchung nichts; auf der Tourseite steht immer genau, wie es funktioniert, bevor du buchst."
                 },
                 {
-                    "q": "Wer steckt hinter Island Tours?",
-                    "a": "Wir sind ein Team von Inselbewohnern, die auf Curaçao, Aruba und Sint Maarten aufgewachsen sind. Jede Tour haben wir persönlich geprüft."
+                    "q": "Was passiert, wenn der Veranstalter absagen muss?",
+                    "a": "Wetter und Sicherheit gehören zu echten Inseln. Wird eine Tour abgesagt, entscheidest du: dein Geld vollständig zurück oder eine kostenlose Umbuchung auf ein neues Datum."
                 },
                 {
-                    "q": "Was, wenn meine Tour abgesagt wird?",
-                    "a": "Wenn eine Tour vom Anbieter abgesagt wird, erhältst du innerhalb von 24 Stunden eine volle Rückerstattung — ohne Wenn und Aber."
+                    "q": "Wer steht hinter Island Tours?",
+                    "a": "Island Tours wird von der ITG B.V. betrieben, einem auf Curaçao registrierten Unternehmen (KvK 169950). Die Menschen, die es bauen und dir antworten, leben und arbeiten auf den Inseln."
                 },
                 {
-                    "q": "Unsicher, welche Tour? Wir helfen.",
-                    "a": "Chatte jederzeit mit uns auf WhatsApp. Sag uns, wonach du suchst, und wir geben dir ehrliche, lokale Empfehlungen."
+                    "q": "Nicht sicher, welche Tour passt?",
+                    "a": "Schreib uns auf WhatsApp, wer mitkommt und was dir gefällt. Du bekommst eine kurze Liste passender Vorschläge, keinen Katalog."
                 }
             ]
+        },
+        "cta": {
+            "title": "Bereit, wenn du es bist.",
+            "body": "Sichere dir dein Datum mit einer kleinen Anzahlung. Kostenlos stornieren bis zur Frist der jeweiligen Tour."
         }
     },
     "destination": {

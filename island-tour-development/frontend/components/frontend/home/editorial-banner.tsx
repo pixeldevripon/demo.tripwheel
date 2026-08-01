@@ -33,34 +33,35 @@ export function EditorialBanner({
     return (
         <section className='it-section bg-it-white overflow-x-clip'>
             <div className='it-container'>
-                <Reveal className='relative lg:h-[452px]'>
-                    {/* Backdrop - orange washing to white: downward on mobile, rightward on desktop. */}
-                    <div className='absolute inset-0 overflow-hidden rounded-[12px] bg-it-white [background-image:var(--it-editorial-gradient-v)] lg:rounded-3xl lg:[background-image:var(--it-editorial-gradient)]' />
+                <Reveal className='relative lg:min-h-[372px]'>
+                    {/* Backdrop - the mockup .edfig band: deep orange washing to
+                        white toward the fan on desktop, solid wash on mobile. */}
+                    <div className='absolute inset-0 overflow-hidden rounded-it-xl [background-image:var(--it-editorial-gradient-v)] lg:[background-image:var(--it-editorial-gradient)]' />
 
                     {/* Mobile/tablet: stacked column · Desktop: full-height positioning context for the absolute copy + fan */}
-                    <div className='relative flex flex-col gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:h-full lg:p-0'>
-                        {/* Editorial copy */}
-                        <div className='flex flex-col gap-6 sm:gap-8 lg:absolute lg:inset-y-16 lg:left-16 lg:w-115 lg:justify-between lg:gap-0'>
-                            <div className='flex flex-col gap-4'>
-                                <h2 className='m-0 flex flex-col gap-2 font-medium text-[32px] leading-[1.2] tracking-[-0.012em] text-it-white sm:text-[40px]'>
-                                    <span>{dict.titleLine1}</span>
-                                    <span>{dict.titleLine2}</span>
-                                </h2>
-                                <p className='m-0 max-w-[441px] text-[14px] sm:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white/80'>
-                                    {dict.body}
-                                </p>
-                            </div>
+                    <div className='relative flex flex-col gap-6 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:min-h-[372px] lg:p-0'>
+                        {/* Editorial copy (mockup .edfig .txt) */}
+                        <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[432px]'>
+                            <h2 className='m-0 font-it-display font-extrabold text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
+                                <span className='block'>{dict.titleLine1}</span>
+                                <span className='block text-it-editorial-accent'>
+                                    {dict.titleLine2}
+                                </span>
+                            </h2>
+                            <p className='m-0 mt-3.5 max-w-[400px] text-[15px] leading-[1.55] text-it-white/90'>
+                                {dict.body}
+                            </p>
 
                             <MotionLink
                                 href={ctaHref}
-                                className='flex w-full items-center justify-center gap-2.5 rounded-it-full bg-it-white px-12 py-[19px] no-underline cursor-pointer border-none transition-opacity hover:opacity-90 sm:w-auto lg:w-full'
+                                className='mt-[26px] inline-flex w-fit items-center gap-2 rounded-it-full bg-it-white px-6 py-[13px] no-underline cursor-pointer border-none shadow-[0_8px_20px_rgba(0,0,0,0.16)] transition-opacity hover:opacity-90'
                                 initial='rest'
                                 animate='rest'
                                 whileTap='tap'
                                 variants={{ rest: { scale: 1 }, tap: { scale: 0.99 } }}
                                 transition={springPop}
                             >
-                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-primary-hover'>
                                     {dict.cta}
                                 </span>
                                 <MotionSpan
@@ -68,7 +69,7 @@ export function EditorialBanner({
                                     variants={{ rest: { x: 0 }, tap: { x: 6 } }}
                                     transition={springPop}
                                 >
-                                    <ArrowRight className='size-6 text-it-primary' strokeWidth={1.5} />
+                                    <ArrowRight className='size-4 text-it-primary-hover' strokeWidth={2.2} />
                                 </MotionSpan>
                             </MotionLink>
                         </div>

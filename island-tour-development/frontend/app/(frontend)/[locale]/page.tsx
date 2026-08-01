@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { FaqSection } from '@/components/frontend/faq-section';
+import { CtaCard } from '@/components/frontend/home/cta-card';
 import { EditorialBanner } from '@/components/frontend/home/editorial-banner';
 import { ExploreIslands } from '@/components/frontend/home/explore-islands';
 import { Hero } from '@/components/frontend/home/hero';
@@ -213,6 +214,14 @@ export default async function HomePage({
                 cards={editorialCards}
             />
             <FaqSection dict={faqDict} />
+            {/* Dark photo CTA card before the footer (design v2). Reuses the
+                editorial island's CTA label + href so both promos agree. */}
+            <CtaCard
+                dict={home.cta}
+                cta={editorialDict.cta}
+                ctaHref={editorialCtaHref}
+                image={heroImageUrl}
+            />
         </>
     );
 }

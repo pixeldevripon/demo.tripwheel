@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Kies je eiland",
+        "island": "Eiland",
         "wishlist": "Verlanglijst",
+        "saved": "Bewaard",
         "account": "Account",
         "logout": "Uitloggen",
         "menu": "Menu",
@@ -90,8 +92,8 @@
                 "body": "Gratis annuleren bij elke tour, geen vragen"
             },
             {
-                "title": "Hulp wanneer je het nodig hebt",
-                "body": "Stuur ons een bericht op WhatsApp, 08:00 - 20:00"
+                "title": "Wij zijn locals. We helpen je graag",
+                "body": "Stuur ons een bericht op WhatsApp, 08:00 tot 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Ontdek onze eilanden",
+            "title": "Kies je eiland",
+            "subtitle": "Drie eilanden, één standaard.",
             "tours": "tours",
             "seeMore": "Bekijk meer eilanden"
         },
@@ -123,7 +126,7 @@
         "faq": {
             "title": "Hulp nodig voordat je boekt?",
             "subtitle": "Wij zijn locals. We zijn hier opgegroeid, we kennen deze tours en we willen dat je de beste tijd hebt op deze eilanden.",
-            "whatsapp": "Chat op WhatsApp",
+            "whatsapp": "WhatsApp ons",
             "guarantees": [
                 "Gratis annuleren, geen vragen",
                 "Betaal vandaag al vanaf 20%, de rest later"
@@ -131,25 +134,29 @@
             "items": [
                 {
                     "q": "Kan ik annuleren als mijn plannen veranderen?",
-                    "a": "De meeste tours kunnen tot 24 uur voor aanvang kosteloos worden geannuleerd, met volledige terugbetaling. Geen formulieren, geen gedoe. Annuleer direct vanuit je bevestigingsmail."
+                    "a": "Elke tour kan gratis worden geannuleerd. Tot wanneer je kunt annuleren verschilt per tour; de exacte deadline staat op de tourpagina en in je bevestigingsmail. Geen formulieren, geen vragen."
                 },
                 {
-                    "q": "Moet ik nu het volledige bedrag betalen?",
-                    "a": "Nee — je kunt je plek vastleggen met slechts 20% vooraf en het resterende bedrag dichter bij je tourdatum betalen."
+                    "q": "Moet ik nu alles betalen?",
+                    "a": "Meestal niet. De meeste tours reserveer je met een kleine aanbetaling en de rest betaal je later of bij aankomst, afhankelijk van de tour. Een enkele tour rekent het volledige bedrag of vraagt niets bij het boeken; op de tourpagina staat altijd precies hoe het werkt voordat je boekt."
+                },
+                {
+                    "q": "Wat gebeurt er als de operator moet annuleren?",
+                    "a": "Weer en veiligheid horen bij echte eilanden. Als een tour wordt afgelast, kies jij: je geld volledig terug, of gratis verplaatsen naar een nieuwe datum."
                 },
                 {
                     "q": "Wie zit er achter Island Tours?",
-                    "a": "We zijn een team van eilandbewoners die zijn opgegroeid op Curaçao, Aruba en Sint Maarten. Elke tour is er een die we persoonlijk hebben gecontroleerd."
+                    "a": "Island Tours wordt gerund door ITG B.V., een bedrijf geregistreerd op Curaçao (KvK 169950). De mensen die het bouwen en je te woord staan, wonen en werken op de eilanden."
                 },
                 {
-                    "q": "Wat als mijn tour wordt geannuleerd?",
-                    "a": "Als een tour door de aanbieder wordt geannuleerd, krijg je binnen 24 uur een volledige terugbetaling — geen vragen gesteld."
-                },
-                {
-                    "q": "Niet zeker welke tour? Wij helpen.",
-                    "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen."
+                    "q": "Weet je niet welke tour past?",
+                    "a": "Stuur ons een WhatsApp met wie er meegaat en wat je leuk vindt. Je krijgt een korte lijst met passende keuzes, geen catalogus."
                 }
             ]
+        },
+        "cta": {
+            "title": "Klaar wanneer jij het bent.",
+            "body": "Zet je datum vast met een kleine aanbetaling. Annuleer gratis tot de deadline van elke tour."
         }
     },
     "destination": {

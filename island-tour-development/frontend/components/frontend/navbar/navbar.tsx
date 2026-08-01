@@ -125,8 +125,8 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     return (
-        <header className='fixed top-0 left-0 right-0 z-100 h-18 md:h-20 bg-it-white border-b border-it-border'>
-            <div className='it-container h-full flex items-center justify-between gap-6'>
+        <header className='fixed top-0 left-0 right-0 z-100 h-16 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
+            <div className='it-container h-full flex items-center justify-between gap-5'>
                 {/* ── Left: logo + island + categories ── */}
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
                     <Link href={localizeHref(locale, '/')} className='shrink-0'>
@@ -136,7 +136,7 @@ export function Navbar({
                             width={68}
                             height={50}
                             priority
-                            className='h-9 w-auto object-contain md:h-12.5'
+                            className='h-8 w-auto object-contain md:h-10'
                         />
                     </Link>
 
@@ -157,6 +157,18 @@ export function Navbar({
                             categories={categories}
                             currentIsland={currentIsland}
                             show={!isHome}
+                        />
+                    </div>
+
+                    {/* Mobile: the island pill sits LEFT, beside the logo
+                        (mockup nav order), not in the action cluster. */}
+                    <div className='md:hidden'>
+                        <DestinationSelector
+                            variant='mobile'
+                            locale={locale}
+                            dict={dict}
+                            islands={islands}
+                            currentIsland={currentIsland}
                         />
                     </div>
                 </div>
@@ -205,13 +217,6 @@ export function Navbar({
                         </motion.button>
                     )}
 
-                    <DestinationSelector
-                        variant='mobile'
-                        locale={locale}
-                        dict={dict}
-                        islands={islands}
-                        currentIsland={currentIsland}
-                    />
                     <LocaleSelector variant='mobile' locale={locale} dict={dict} />
 
                     <AccountMenu locale={locale} dict={dict} />

@@ -90,7 +90,7 @@ export function CategoriesMenu({
                                 {open && items.length > 0 && (
                                     <motion.div
                                         {...dropdownMotion}
-                                        className='absolute top-[calc(100%+18px)] left-0 min-w-52 origin-top-left bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
+                                        className='absolute top-[calc(100%+18px)] left-0 min-w-52 origin-top-left bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50'>
                                         {items.map(cat => (
                                             <motion.div
                                                 key={cat.slug}

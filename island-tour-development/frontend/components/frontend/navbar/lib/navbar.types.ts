@@ -6,7 +6,11 @@ export type Category = { name: string; slug: string };
 /** Strings the navbar chrome needs (labels, aria text). */
 export type NavDict = {
     selectIsland: string;
+    /** Short island label for the mobile selector pill (mockup .nss). */
+    island: string;
     wishlist: string;
+    /** "Saved" - the wishlist pill's visible label (mockup navpill). */
+    saved: string;
     account: string;
     myAccount: string;
     /**
@@ -26,6 +30,8 @@ export type NavDict = {
 
 /** Strings used by the search typeahead (the `search` dict + a few card labels). */
 export type SearchDict = {
+    /** "Search" - the hero pill's labeled submit button (+ /search page title). */
+    title: string;
     searching: string;
     seeAll: string;
     noResults: string;

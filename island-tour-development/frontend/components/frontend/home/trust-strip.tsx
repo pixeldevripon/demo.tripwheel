@@ -1,32 +1,34 @@
 import Image from 'next/image';
 import { Reveal } from '../reveal';
-import { MobileCarousel } from './trust-strip-carousel';
 
 // Icons stay in the component; the copy comes from the dictionary (same order).
-export const icons = [
-    '/icons/trust-wallet.svg',
-    '/icons/trust-clock.svg',
+// Design v2 microbar set: lock (deposit) · check (free cancel) · chat (locals).
+const icons = [
+    '/icons/trust-lock.svg',
+    '/icons/trust-check.svg',
     '/icons/trust-chat.svg',
 ];
 
 export type TrustItem = { title: string; body: string };
 
-/** Single trust item - shared by the desktop row and the mobile carousel. */
-export function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
+/** Single microbar cell - icon in a 40px peach tile, copy stacked right. */
+function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
     return (
-        <div className='flex flex-col items-center gap-6 text-center'>
-            <Image
-                src={icon}
-                alt=''
-                width={40}
-                height={40}
-                className='size-8 md:size-10'
-            />
-            <div className='flex flex-col items-center gap-0.5 md:gap-1 max-w-73.25'>
-                <h3 className='m-0 font-medium text-[18px] md:text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+        <div className='flex items-start gap-3.5 text-left'>
+            <div className='flex size-10 shrink-0 items-center justify-center rounded-it-md bg-it-peach'>
+                <Image
+                    src={icon}
+                    alt=''
+                    width={40}
+                    height={40}
+                    className='size-5'
+                />
+            </div>
+            <div className='flex flex-col'>
+                <h3 className='m-0 font-it-body font-bold text-[15px] leading-[1.6] tracking-[-0.005em] text-it-ink'>
                     {item.title}
                 </h3>
-                <p className='m-0 text-sm md:text-base leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='m-0 text-[13px] leading-[1.45] text-it-text-muted'>
                     {item.body}
                 </p>
             </div>
@@ -36,24 +38,16 @@ export function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
 
 export function TrustStrip({ items }: { items: TrustItem[] }) {
     return (
-        <section className='bg-it-white pt-8 pb-2 md:pt-32.5 md:pb-0'>
+        <section className='bg-it-white pt-7 pb-1 md:pt-10'>
             <div className='it-container'>
-                {/* Desktop - 3 in a row */}
-                <div className='hidden md:flex md:flex-row md:items-start gap-6'>
+                {/* 3 in a row on desktop; stacked cells on mobile (design v2
+                    microbar - no carousel). */}
+                <div className='grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-[26px] py-0.5 md:py-1.5'>
                     {items.map((item, i) => (
-                        <Reveal
-                            key={item.title}
-                            delay={0}
-                            listItem
-                            className='flex-1'>
+                        <Reveal key={item.title} delay={0} listItem>
                             <TrustCard icon={icons[i]} item={item} />
                         </Reveal>
                     ))}
-                </div>
-
-                {/* Mobile - single-item carousel */}
-                <div className='md:hidden'>
-                    <MobileCarousel items={items} />
                 </div>
             </div>
         </section>

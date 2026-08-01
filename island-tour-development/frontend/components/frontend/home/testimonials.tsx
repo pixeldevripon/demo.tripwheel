@@ -55,60 +55,52 @@ export async function Testimonials() {
     const cards = data.reviews.slice(0, 3);
 
     return (
-        <section className='it-section bg-it-surface'>
+        <section className='bg-it-white border-y border-it-divider py-12 md:py-[54px]'>
             <div className='it-container'>
-                <Reveal className='flex flex-col items-center gap-8 md:gap-12'>
+                <Reveal className='flex flex-col items-center gap-[26px]'>
                     {/* Platform summary (Trustpilot / Google) */}
-                    <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2 md:gap-x-4'>
-                        <Stars className='text-it-green' />
+                    <div className='flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2'>
+                        <Stars className='text-it-star' />
                         <p className='m-0 flex flex-wrap items-baseline gap-x-1.5'>
-                            <span className='text-[15px] md:text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                {data.rating ?? ''} on{' '}
-                                <span className='font-medium text-it-green'>
-                                    {providerLabel}
-                                </span>
+                            <span className='font-bold text-[16px] leading-[1.6] text-it-ink'>
+                                {data.rating ?? ''} on {providerLabel}
                             </span>
-                            <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                {data.reviewCount} reviews
+                            <span className='text-[14px] leading-[1.6] text-it-text-muted tabular-nums'>
+                                · {data.reviewCount} reviews
                             </span>
                         </p>
                     </div>
 
-                    {/* Review cards - peek scroll on mobile, 3-col grid on desktop */}
-                    <div className='flex w-full snap-x gap-4 overflow-x-auto overflow-y-hidden pb-1 -mr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mr-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0'>
+                    {/* Review cards - stacked on mobile, 3-col grid on desktop
+                        (design v2 .quotes). */}
+                    <div className='grid w-full grid-cols-1 gap-4 md:grid-cols-3 md:gap-5'>
                         {cards.map((r, i) => (
                             <Reveal
                                 key={`${r.author}-${i}`}
                                 width='auto'
-                                listItem
-                                className='w-60 shrink-0 snap-start md:w-auto'>
+                                listItem>
                             <article
-                                className='flex h-64.25 flex-col justify-between gap-10 rounded-it-lg bg-it-white p-4 md:h-84.25 md:gap-0 md:p-6'>
-                                <div className='flex flex-col gap-4 md:gap-6'>
+                                className='flex h-full flex-col justify-between gap-6 rounded-it-md border border-it-divider bg-it-bg shadow-it-sm px-5 py-[18px]'>
+                                <div className='flex flex-col gap-2'>
                                     <Stars
-                                        className='text-it-primary'
+                                        className='text-it-star'
                                         count={Math.round(r.rating)}
                                     />
-                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading line-clamp-5 md:line-clamp-7'>
+                                    <p className='m-0 text-[14px] leading-[1.55] text-it-ink line-clamp-5 md:line-clamp-7'>
                                         {r.text}
                                     </p>
                                 </div>
 
                                 <div className='flex flex-col gap-0.5'>
-                                    <div className='flex items-center gap-2 md:gap-2.5'>
-                                        <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
+                                        <span className='font-bold text-it-ink'>
                                             {r.author}
                                         </span>
                                         {r.relativeTime && (
-                                            <>
-                                                <span className='size-1 md:size-1.25 rounded-full bg-it-heading' />
-                                                <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                    {r.relativeTime}
-                                                </span>
-                                            </>
+                                            <span>· {r.relativeTime}</span>
                                         )}
                                     </div>
-                                    <span className='text-[12px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/40'>
+                                    <span className='text-[12px] leading-[1.6] text-it-ink-muted'>
                                         via {providerLabel}
                                     </span>
                                 </div>

@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Choisissez votre île",
+        "island": "Île",
         "wishlist": "Liste de souhaits",
+        "saved": "Enregistrés",
         "account": "Compte",
         "logout": "Se déconnecter",
         "menu": "Menu",
@@ -90,8 +92,8 @@
                 "body": "Annulation gratuite sur chaque excursion, sans condition"
             },
             {
-                "title": "De l'aide quand vous en avez besoin",
-                "body": "Écrivez-nous sur WhatsApp, 08:00 - 20:00"
+                "title": "Nous sommes des locaux. Là pour vous aider",
+                "body": "Écrivez-nous sur WhatsApp, de 08h00 à 20h00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Explorez nos îles",
+            "title": "Choisissez votre île",
+            "subtitle": "Trois îles, un même standard.",
             "tours": "tours",
             "seeMore": "Voir plus d'îles"
         },
@@ -123,7 +126,7 @@
         "faq": {
             "title": "Besoin d'aide avant de réserver ?",
             "subtitle": "Nous sommes des locaux. Nous avons grandi ici, nous connaissons ces tours et nous voulons que vous passiez le meilleur moment sur ces îles.",
-            "whatsapp": "Discuter sur WhatsApp",
+            "whatsapp": "Écrivez-nous sur WhatsApp",
             "guarantees": [
                 "Annulation gratuite, sans condition",
                 "Payez dès 20% aujourd'hui, le reste plus tard"
@@ -131,25 +134,29 @@
             "items": [
                 {
                     "q": "Puis-je annuler si mes plans changent ?",
-                    "a": "La plupart des circuits peuvent être annulés jusqu'à 24 h avant le départ, avec remboursement intégral. Sans formulaire, sans question. Annulez directement depuis votre e-mail de confirmation."
+                    "a": "Chaque excursion peut être annulée gratuitement. Le délai d'annulation varie selon l'excursion ; la date limite exacte figure sur la page de l'excursion et dans votre e-mail de confirmation. Pas de formulaires, pas de questions."
                 },
                 {
                     "q": "Dois-je tout payer maintenant ?",
-                    "a": "Non — vous pouvez réserver votre place avec seulement 20% d'acompte et payer le solde plus près de la date du tour."
+                    "a": "Généralement non. La plupart des excursions se réservent avec un petit acompte et vous réglez le reste plus tard ou sur place, selon l'excursion. Quelques excursions demandent le paiement intégral ou rien à la réservation ; la page de l'excursion indique toujours exactement comment cela fonctionne avant de vous engager."
                 },
                 {
-                    "q": "Qui se cache derrière Island Tours ?",
-                    "a": "Nous sommes une équipe d'insulaires qui ont grandi à Curaçao, Aruba et Sint Maarten. Chaque tour est vérifié personnellement par nos soins."
+                    "q": "Que se passe-t-il si l'opérateur doit annuler ?",
+                    "a": "La météo et la sécurité font partie de la vie insulaire. Si une excursion est annulée, vous choisissez : remboursement intégral ou report gratuit à une nouvelle date."
                 },
                 {
-                    "q": "Et si mon tour est annulé ?",
-                    "a": "Si un tour est annulé par l'opérateur, vous êtes intégralement remboursé sous 24 heures — sans condition."
+                    "q": "Qui est derrière Island Tours ?",
+                    "a": "Island Tours est géré par ITG B.V., une société enregistrée à Curaçao (KvK 169950). Les personnes qui le construisent et vous répondent vivent et travaillent sur les îles."
                 },
                 {
-                    "q": "Vous hésitez sur le tour ? Nous aidons.",
-                    "a": "Discutez avec nous sur WhatsApp à tout moment. Dites-nous ce que vous cherchez et nous vous donnerons des recommandations locales honnêtes."
+                    "q": "Vous hésitez sur l'excursion ?",
+                    "a": "Écrivez-nous sur WhatsApp en indiquant qui vient et ce que vous aimez. Vous recevez une courte sélection adaptée, pas un catalogue."
                 }
             ]
+        },
+        "cta": {
+            "title": "Prêts quand vous l'êtes.",
+            "body": "Bloquez votre date avec un petit acompte. Annulation gratuite jusqu'à la date limite de chaque excursion."
         }
     },
     "destination": {

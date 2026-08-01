@@ -100,14 +100,19 @@ const RAW_CARDS: { key: CardKey; image: string | null; video: string | null }[] 
     },
 ];
 
-// Size arc (reference: Fever-style reel) - the centre card renders at full
-// 250x440, neighbours at ~0.85x, outer cards at ~0.7x. Cards scale
-// PROPORTIONALLY (width + height together) via transform, and a translate
-// correction pulls the shrunken cards inward so the visual gaps stay even
-// instead of growing toward the edges.
-const SLIDE_W = 250;
-const GAP = 18;
-const H_MAX = 440;
+// Size arc (design v2 reels rail) - the centre card renders at full size,
+// neighbours at ~0.85x, outer cards at ~0.7x. Cards scale PROPORTIONALLY
+// (width + height together) via transform, and a translate correction pulls
+// the shrunken cards inward so the visual gaps stay even instead of growing
+// toward the edges.
+//
+// Dimensions follow the mockup's two breakpoints: 250-wide 9:16 cards on
+// desktop, the 172-wide / 330px rail on mobile. The LAYOUT sizes live in
+// Tailwind classes (w/h/gap with max-md: overrides) so the first paint is
+// correct at every viewport with no hydration flash; these constants exist
+// ONLY for the arc math, which runs post-mount, and MUST match the classes.
+const DESKTOP_DIMS = { slideW: 250, gap: 18 };
+const MOBILE_DIMS = { slideW: 172, gap: 12 };
 /** Scale by distance-from-centre in slide units: 1 -> 0.85 -> 0.7, clamped. */
 const SCALE_STEP = 0.15;
 const SCALE_MIN = 0.7;
@@ -118,16 +123,8 @@ const arcScale = (d: number) => Math.max(1 - SCALE_STEP * d, SCALE_MIN);
  * For scale(t)=1-0.15t (floored at 0.7 from t=2): 0.075d² up to d=2, then
  * linear at the 0.3 floor.
  */
-const arcShift = (d: number) =>
-    SLIDE_W * (d <= 2 ? 0.075 * d * d : 0.3 * (d - 2) + 0.3);
-
-/**
- * Exactly five packed cards fill the viewport: centre (1x) + two neighbours
- * (0.85x) + two outer (0.7x) + four gaps. Capping the embla viewport at this
- * width keeps the sixth/seventh loop slides fully outside it - no cropped
- * slivers at the edges.
- */
-const VIEWPORT_W = Math.round(SLIDE_W * (1 + 2 * 0.85 + 2 * 0.7) + 4 * GAP);
+const arcShift = (d: number, slideW: number) =>
+    slideW * (d <= 2 ? 0.075 * d * d : 0.3 * (d - 2) + 0.3);
 
 export function TopExperiences({
     dict,
@@ -181,6 +178,21 @@ export function TopExperiences({
 
     const [selected, setSelected] = useState(START);
     const [paused, setPaused] = useState(false);
+    // Mockup mobile breakpoint (<768px) shrinks the whole arc. Layout sizes
+    // are pure CSS (max-md: classes) - this state only feeds the arc MATH,
+    // which runs post-mount, so no first-paint flash. Embla's built-in resize
+    // watcher re-measures when the CSS dimensions swap.
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px)');
+        const update = () => setIsMobile(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
+    const { slideW, gap } = isMobile ? MOBILE_DIMS : DESKTOP_DIMS;
+    // Centre-card playback progress (0..1) for the mockup's thin bottom bar.
+    const [progress, setProgress] = useState(0);
     // Automatic playback (page load, ended-advance) must start muted or the
     // browser blocks it; the first explicit play click unlocks sound.
     const [soundOn, setSoundOn] = useState(false);
@@ -204,9 +216,9 @@ export function TopExperiences({
             // Undo any transform we applied last frame: measure from the
             // slide's layout box, not its shifted visual box.
             const slideCenter = r.left + r.width / 2;
-            const signed = (slideCenter - center) / (SLIDE_W + GAP);
+            const signed = (slideCenter - center) / (slideW + gap);
             const d = Math.abs(signed);
-            const shift = -Math.sign(signed) * arcShift(d);
+            const shift = -Math.sign(signed) * arcShift(d, slideW);
             card.style.transform = `translateX(${shift.toFixed(2)}px) scale(${arcScale(d).toFixed(4)})`;
             // Stacked-deck feel: the centre card floats highest (big soft
             // shadow, top of the stack); shadows fade and cards slide UNDER
@@ -218,7 +230,7 @@ export function TopExperiences({
             card.style.boxShadow = `0 ${y.toFixed(1)}px ${blur.toFixed(1)}px -12px rgba(0,0,0,${alpha.toFixed(3)})`;
             slide.style.zIndex = String(Math.round(100 - d * 10));
         });
-    }, [emblaApi]);
+    }, [emblaApi, slideW, gap]);
 
     useEffect(() => {
         if (!emblaApi) return;
@@ -226,6 +238,7 @@ export function TopExperiences({
             setSelected(emblaApi.selectedScrollSnap());
             // A fresh centre card always starts playing, never pre-paused.
             setPaused(false);
+            setProgress(0);
         };
         onSelect();
         applyArc();
@@ -295,22 +308,21 @@ export function TopExperiences({
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container'>
-                <Reveal className='flex flex-col items-center gap-10'>
-                    <h2 className='m-0 font-medium text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading text-center'>
+                <Reveal className='flex flex-col items-center gap-8'>
+                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink text-center'>
                         {dict.title}
                     </h2>
 
                     {/* Carousel - drag to swipe (Embla handles pointer + touch) */}
+                    {/* Viewport cap = 5 packed cards (1x + 2×0.85x + 2×0.7x +
+                        4 gaps) so loop slides never crop at the edges. */}
                     <div
-                        className='w-full mx-auto overflow-hidden cursor-grab select-none active:cursor-grabbing'
-                        style={{ maxWidth: VIEWPORT_W }}
+                        className='w-full mx-auto overflow-hidden cursor-grab select-none active:cursor-grabbing max-w-[1097px] max-md:max-w-[753px]'
                         ref={emblaRef}>
-                        <div
-                            className='flex items-center'
-                            // Extra vertical room: the embla viewport is
-                            // overflow-hidden, and without it the centre
-                            // card's drop shadow would clip at the bottom.
-                            style={{ height: H_MAX + 88, gap: GAP }}>
+                        {/* Extra vertical room: the embla viewport is
+                            overflow-hidden, and without it the centre card's
+                            drop shadow would clip at the bottom. */}
+                        <div className='flex items-center h-[528px] gap-[18px] max-md:h-[330px] max-md:gap-3'>
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
                                 // The centre (selected) card is always the one
@@ -321,11 +333,8 @@ export function TopExperiences({
                                 return (
                                     <div
                                         key={`${card.key}-${i}`}
-                                        className='relative shrink-0'
-                                        style={{ width: SLIDE_W }}>
-                                        <div
-                                            className='relative w-full overflow-hidden rounded-it-lg bg-it-border will-change-transform'
-                                            style={{ height: H_MAX }}>
+                                        className='relative shrink-0 w-[250px] max-md:w-[172px]'>
+                                        <div className='relative w-full h-[440px] max-md:h-[306px] overflow-hidden rounded-it-xl bg-it-border will-change-transform'>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in
@@ -385,6 +394,21 @@ export function TopExperiences({
                                                             );
                                                         });
                                                     }}
+                                                    // Drives the mockup's thin
+                                                    // bottom progress bar.
+                                                    onTimeUpdate={e => {
+                                                        const v =
+                                                            e.currentTarget;
+                                                        if (
+                                                            v ===
+                                                                videoRef.current &&
+                                                            v.duration
+                                                        )
+                                                            setProgress(
+                                                                v.currentTime /
+                                                                    v.duration
+                                                            );
+                                                    }}
                                                     // Only the CURRENT video drives the paused state -
                                                     // a departing video fires pause on unmount and
                                                     // would flip the fresh card's icon.
@@ -407,6 +431,25 @@ export function TopExperiences({
                                                     transition={crossFade}
                                                     className='absolute inset-0 size-full object-cover'
                                                 />
+                                            )}
+
+                                            {/* Design v2 card scrim: bottom
+                                                wash so the caption stays
+                                                legible over photo and video. */}
+                                            <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-card)]' />
+
+                                            {/* Thin playback progress line at
+                                                the card's foot (mockup .pb) -
+                                                centre card only. */}
+                                            {isPlaying && (
+                                                <div className='pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3px] bg-it-white/25'>
+                                                    <div
+                                                        className='h-full bg-it-primary'
+                                                        style={{
+                                                            width: `${progress * 100}%`,
+                                                        }}
+                                                    />
+                                                </div>
                                             )}
 
                                             {/* Stretched link covering the card. A sibling
@@ -457,7 +500,7 @@ export function TopExperiences({
                                                     }
                                                     whileTap={{ scale: 0.9 }}
                                                     transition={springPop}
-                                                    className='absolute top-4 right-4 z-20 flex size-9 items-center justify-center rounded-full bg-it-white/30 backdrop-blur-sm cursor-pointer border-none transition-colors hover:bg-it-white/50'>
+                                                    className='absolute top-3 right-3 z-20 flex size-[30px] items-center justify-center rounded-full bg-it-white/35 border border-it-white/55 backdrop-blur-[6px] cursor-pointer transition-colors hover:bg-it-white/50'>
                                                     <AnimatePresence
                                                         mode='wait'
                                                         initial={false}>
@@ -489,8 +532,8 @@ export function TopExperiences({
                                                     </AnimatePresence>
                                                 </motion.button>
                                             ) : (
-                                                <span className='absolute top-4 right-4 z-20 flex size-9 items-center justify-center rounded-full bg-it-white/40'>
-                                                    <Play className='size-3.5 fill-it-ink-muted text-it-ink-muted' />
+                                                <span className='absolute top-3 right-3 z-20 flex size-[30px] items-center justify-center rounded-full bg-it-white/40 border border-it-white/55'>
+                                                    <Play className='size-3 fill-it-ink-muted text-it-ink-muted' />
                                                 </span>
                                             )}
 
@@ -502,9 +545,9 @@ export function TopExperiences({
                                                         exit={{ opacity: 0 }}
                                                         transition={crossFade}
                                                         className={[
-                                                            'absolute bottom-4 inset-x-8 m-0 text-center font-medium text-[20px] leading-[1.6] tracking-[-0.012em]',
+                                                            'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-bold text-[13.5px] leading-[1.2] tracking-[-0.005em]',
                                                             hasMedia
-                                                                ? 'text-it-white'
+                                                                ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
                                                                 : 'text-it-heading',
                                                         ].join(' ')}>
                                                         {title}
@@ -529,9 +572,9 @@ export function TopExperiences({
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
                                 className={[
-                                    'h-1.5 w-8 rounded-full transition-colors duration-300 cursor-pointer border-none',
+                                    'h-1 w-[26px] rounded-[2px] transition-colors duration-300 cursor-pointer border-none',
                                     dot === realIndex
-                                        ? 'bg-it-ink-muted'
+                                        ? 'bg-it-primary'
                                         : 'bg-it-border',
                                 ].join(' ')}
                             />

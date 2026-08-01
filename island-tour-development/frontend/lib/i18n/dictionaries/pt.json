@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Escolha a sua ilha",
+        "island": "Ilha",
         "wishlist": "Lista de desejos",
+        "saved": "Salvos",
         "account": "Conta",
         "logout": "Sair",
         "menu": "Menu",
@@ -90,8 +92,8 @@
                 "body": "Cancelamento gratuito em todos os tours, sem perguntas"
             },
             {
-                "title": "Ajuda quando precisar",
-                "body": "Fale connosco no WhatsApp, 08:00 - 20:00"
+                "title": "Somos locais. Estamos aqui para ajudar",
+                "body": "Fale conosco no WhatsApp, das 08:00 às 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +107,8 @@
             }
         },
         "explore": {
-            "title": "Explore as nossas ilhas",
+            "title": "Escolha a sua ilha",
+            "subtitle": "Três ilhas, um só padrão.",
             "tours": "tours",
             "seeMore": "Ver mais ilhas"
         },
@@ -123,33 +126,37 @@
         "faq": {
             "title": "Precisa de ajuda antes de reservar?",
             "subtitle": "Somos locais. Crescemos aqui, conhecemos estes tours e queremos que tenha a melhor experiência nestas ilhas.",
-            "whatsapp": "Conversar no WhatsApp",
+            "whatsapp": "Fale conosco no WhatsApp",
             "guarantees": [
                 "Cancelamento gratuito, sem perguntas",
                 "Pague a partir de 20% hoje, o resto depois"
             ],
             "items": [
                 {
-                    "q": "Posso cancelar se os meus planos mudarem?",
-                    "a": "A maioria dos tours pode ser cancelada até 24h antes do início, com reembolso total. Sem formulários, sem perguntas. Cancele direto pelo seu e-mail de confirmação."
+                    "q": "Posso cancelar se meus planos mudarem?",
+                    "a": "Todos os passeios podem ser cancelados gratuitamente. O prazo para cancelar varia por passeio; a data limite exata está na página do passeio e no seu e-mail de confirmação. Sem formulários, sem perguntas."
                 },
                 {
-                    "q": "Tenho de pagar tudo agora?",
-                    "a": "Não — pode garantir o seu lugar com apenas 20% adiantado e pagar o restante mais perto da data do tour."
+                    "q": "Preciso pagar tudo agora?",
+                    "a": "Geralmente não. A maioria dos passeios é reservada com um pequeno depósito e o restante é pago depois ou na chegada, dependendo do passeio. Alguns passeios cobram o valor total ou nada na reserva; a página do passeio sempre informa exatamente como funciona antes de você confirmar."
+                },
+                {
+                    "q": "O que acontece se o operador precisar cancelar?",
+                    "a": "Clima e segurança fazem parte de ilhas de verdade. Se um passeio for cancelado, você escolhe: seu dinheiro de volta integralmente ou uma remarcação gratuita para uma nova data."
                 },
                 {
                     "q": "Quem está por trás da Island Tours?",
-                    "a": "Somos uma equipa de ilhéus que cresceu em Curaçao, Aruba e Sint Maarten. Cada tour é verificado pessoalmente por nós."
+                    "a": "A Island Tours é operada pela ITG B.V., uma empresa registrada em Curaçau (KvK 169950). As pessoas que a constroem e respondem a você vivem e trabalham nas ilhas."
                 },
                 {
-                    "q": "E se o meu tour for cancelado?",
-                    "a": "Se um tour for cancelado pelo operador, recebe um reembolso total em 24 horas — sem perguntas."
-                },
-                {
-                    "q": "Não sabe qual tour escolher? Nós ajudamos.",
-                    "a": "Converse connosco no WhatsApp a qualquer momento. Diga-nos o que procura e daremos recomendações locais honestas."
+                    "q": "Não sabe qual passeio combina?",
+                    "a": "Mande uma mensagem no WhatsApp dizendo quem vai e do que vocês gostam. Você recebe uma lista curta de sugestões certeiras, não um catálogo."
                 }
             ]
+        },
+        "cta": {
+            "title": "Prontos quando você estiver.",
+            "body": "Garanta a sua data com um pequeno depósito. Cancele grátis até o prazo de cada passeio."
         }
     },
     "destination": {

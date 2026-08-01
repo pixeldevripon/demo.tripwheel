@@ -138,14 +138,14 @@ export function HeroSearch({
             <form
                 onSubmit={submit}
                 role='search'
-                className='flex items-center justify-between gap-2 w-full bg-it-white rounded-it-full h-15 md:h-20 pl-5 md:pl-9 pr-2.5 md:pr-3'>
+                className='flex items-center justify-between gap-2 w-full bg-it-white border border-it-white/70 rounded-it-full h-14 md:h-[62px] pl-3.5 md:pl-[22px] pr-2 shadow-[0_18px_44px_rgba(0,0,0,0.3)]'>
                 <div className='flex items-center gap-2 flex-1 min-w-0'>
                     <Image
                         src='/icons/hero-location.svg'
                         alt=''
                         width={24}
                         height={24}
-                        className='size-6 shrink-0'
+                        className='size-5 shrink-0'
                     />
                     <input
                         type='text'
@@ -157,30 +157,33 @@ export function HeroSearch({
                         onFocus={() => setFocused(true)}
                         placeholder={placeholder}
                         aria-label={placeholder}
-                        className='flex-1 min-w-0 border-none outline-none bg-transparent text-base tracking-[-0.012em] text-it-ink placeholder:text-it-hero-text'
+                        className='flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] md:text-[16.5px] font-semibold text-it-ink placeholder:font-semibold placeholder:text-it-ink-muted'
                     />
                 </div>
                 <motion.button
                     type='submit'
-                    aria-label='Search'
-                    className='shrink-0 flex items-center justify-center size-10 md:size-12.5 rounded-it-full bg-it-primary hover:bg-it-primary-hover transition-colors border-none cursor-pointer'
+                    aria-label={search.title}
+                    className='shrink-0 flex items-center justify-center gap-2 h-10 md:h-12 px-4 md:px-[26px] rounded-it-full bg-it-primary hover:bg-it-primary-hover transition-colors border-none cursor-pointer'
                     initial='rest'
                     whileTap='tap'
                     animate='rest'
-                    variants={{ rest: { scale: 1 }, tap: { scale: 0.94 } }}
+                    variants={{ rest: { scale: 1 }, tap: { scale: 0.97 } }}
                     transition={springPop}>
                     <motion.span
                         className='inline-flex'
-                        variants={{ rest: { x: 0 }, tap: { x: 6 } }}
+                        variants={{ rest: { x: 0 }, tap: { x: 3 } }}
                         transition={springPop}>
                         <Image
-                            src='/icons/hero-arrow-right.svg'
+                            src='/icons/hero-search-white.svg'
                             alt=''
                             width={24}
                             height={24}
-                            className='size-5 md:size-6'
+                            className='size-4.5'
                         />
                     </motion.span>
+                    <span className='text-[15px] md:text-[16px] font-bold text-it-white'>
+                        {search.title}
+                    </span>
                 </motion.button>
             </form>
 

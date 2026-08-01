@@ -210,13 +210,17 @@
      * This used to resolve by accident: `var(--font-sans)` picked up the
      * property next/font injected on <html>. Removing the unused webfonts
      * removed that definition with them.
+     *
+     * Design v2 contract: Source Sans 3 (body) + Bricolage Grotesque
+     * (display), loaded via next/font in the root layout. The SF Pro system
+     * stack stays behind them as the loading/failure fallback.
      */
     --it-base-sans:
-        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
-        Arial, sans-serif;
+        var(--font-source-sans), -apple-system, BlinkMacSystemFont,
+        'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
     --it-base-display:
-        -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
-        Arial, sans-serif;
+        var(--font-bricolage), -apple-system, BlinkMacSystemFont,
+        'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* ─── Dark mode ───────────────────────────────── */
