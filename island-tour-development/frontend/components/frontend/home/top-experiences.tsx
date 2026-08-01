@@ -334,7 +334,7 @@ export function TopExperiences({
                                     <div
                                         key={`${card.key}-${i}`}
                                         className='relative shrink-0 w-[250px] max-md:w-[172px]'>
-                                        <div className='relative w-full h-[440px] max-md:h-[306px] overflow-hidden rounded-it-xl bg-it-border will-change-transform'>
+                                        <div className='relative w-full h-[440px] max-md:h-[306px] overflow-hidden rounded-it-xl bg-it-bg will-change-transform'>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in
@@ -435,8 +435,12 @@ export function TopExperiences({
 
                                             {/* Design v2 card scrim: bottom
                                                 wash so the caption stays
-                                                legible over photo and video. */}
-                                            <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-card)]' />
+                                                legible over photo and video -
+                                                only with media; the empty
+                                                paper fallback stays flat. */}
+                                            {hasMedia && (
+                                                <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-card)]' />
+                                            )}
 
                                             {/* Thin playback progress line at
                                                 the card's foot (mockup .pb) -
