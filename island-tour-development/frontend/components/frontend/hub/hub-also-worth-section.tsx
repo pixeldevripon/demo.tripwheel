@@ -47,7 +47,7 @@ export function HubAlsoWorthSection({
                                         locale,
                                         `/${destinationSlug}/${item.slug}`
                                     )}
-                                    className='group relative flex aspect-274/210 w-68.5 shrink-0 snap-start items-end overflow-hidden rounded-it-lg bg-it-dark p-[18px] lg:aspect-[3/3.4] lg:w-auto'>
+                                    className='group relative flex aspect-274/210 w-68.5 shrink-0 snap-start items-end overflow-hidden rounded-it-lg bg-it-bg p-[18px] lg:aspect-[3/3.4] lg:w-auto'>
                                     {item.image && (
                                         <Image
                                             src={item.image}
@@ -57,12 +57,14 @@ export function HubAlsoWorthSection({
                                             className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.04]'
                                         />
                                     )}
-                                    {/* Bottom scrim - transparent → #1a1a1a; bottom
-                                    139px on mobile, 247px on desktop (Figma). */}
-                                    <div className='pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-40% to-it-dark/78' />
-                                    {/* Label - bottom-left 16px on mobile, centred
-                                    24px on desktop (Figma). */}
-                                    <span className='relative z-2 font-it-display text-[18px] font-bold leading-[1.3] tracking-[-0.01em] text-it-white'>
+                                    {/* Scrim over real photos only - the flat
+                                        paper fallback stays gradient-free, and
+                                        the label flips to ink on it. */}
+                                    {item.image && (
+                                        <div className='pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-40% to-it-dark/78' />
+                                    )}
+                                    <span
+                                        className={`relative z-2 font-it-display text-[18px] font-bold leading-[1.3] tracking-[-0.01em] ${item.image ? 'text-it-white' : 'text-it-ink'}`}>
                                         {item.name}
                                     </span>
                                 </Link>
