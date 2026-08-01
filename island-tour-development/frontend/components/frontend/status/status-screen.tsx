@@ -145,7 +145,7 @@ export function StatusScreen({
  * `whileTap` on the caller's MotionLink/MotionButton.
  */
 export const statusPrimaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-it-full border-none bg-it-primary px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover md:px-10';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-it-full border border-subtle bg-transparent px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';

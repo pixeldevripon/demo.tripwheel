@@ -128,13 +128,12 @@ function CompareTableCard({
     // Shared cell box: vertical centering + Figma paddings (mobile 8/16,
     // desktop 15/32). A trailing `border-r` (skipped on the last column) draws
     // the continuous vertical dividers.
+    // Mockup .cmp metrics: 13.5px cells, 11/16 padding, divider hairlines.
     const cell =
-        'flex items-center px-4 py-2 lg:px-8 lg:py-[15px] border-it-heading/10';
+        'flex items-center px-4 py-[11px] text-[13.5px] leading-[1.6] border-it-divider';
 
     return (
-        <div
-            className='overflow-hidden rounded-it-lg! border border-it-divider bg-it-white shadow-it-sm rounded-[8px]!
-         border border-it-heading/10'>
+        <div className='overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Category bar */}
             <div className='border-b border-it-peach-border bg-it-primary-subtle px-4 py-2.5 lg:px-4'>
                 <span className='text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-primary-hover'>
@@ -182,7 +181,7 @@ function CompareTableCard({
                                         isLead ? 'hidden lg:block' : ''
                                     }`}
                                 />
-                                <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                <span className='text-[13.5px] font-bold leading-[1.5]'>
                                     {boat.name}
                                 </span>
                             </div>
@@ -193,7 +192,7 @@ function CompareTableCard({
                     {rows.map((row, r) => (
                         <Fragment key={r}>
                             <span
-                                className={`${cell} border-r sticky left-0 z-10 bg-it-white text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted`}>
+                                className={`${cell} border-r sticky left-0 z-10 min-w-[130px] bg-it-white font-bold text-it-ink`}>
                                 {row.label}
                             </span>
                             {row.cells.map((value, b) => {
@@ -221,7 +220,7 @@ function CompareTableCard({
                         return (
                             <div
                                 key={b}
-                                className={`hidden items-center justify-between gap-4 px-8 py-[22px] border-t border-it-heading/10 lg:flex ${
+                                className={`hidden items-center justify-between gap-3 px-4 py-3.5 border-t border-it-divider lg:flex ${
                                     last ? '' : 'border-r'
                                 }`}>
                                 <PriceLabel boat={boat} from={dict.from} />
@@ -274,7 +273,7 @@ function CompareValue({ value }: { value: CompareCell }) {
 /** "from $150" - "from" muted, price bold. */
 function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
     return (
-        <span className='flex items-center gap-2 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em]'>
+        <span className='flex items-center gap-2 text-[12.5px] leading-[1.6] tabular-nums'>
             {boat.priceCheck && (
                 <Image
                     src={CHECK_ICON}
@@ -286,7 +285,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
             )}
             <span className='text-it-text-muted'>
                 {from}{' '}
-                <span className='font-bold text-it-heading'>
+                <span className='text-[15px] font-extrabold tracking-[-0.01em] text-it-ink'>
                     {boat.priceDisplay}
                 </span>
                 {boat.priceUnit ? ` ${boat.priceUnit}` : ''}
@@ -308,8 +307,8 @@ function BookButton({
     href?: string;
     full?: boolean;
 }) {
-    const className = `inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 rounded-it-full bg-it-primary font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover ${
-        full ? 'h-[46px] w-full px-10' : 'h-[34px] px-5'
+    const className = `inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-it-full bg-it-primary text-[12.5px] font-bold leading-none text-it-white no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+        full ? 'h-[42px] w-full px-8' : 'h-[33px] px-[18px]'
     }`;
     if (href) {
         return (

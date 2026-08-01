@@ -1,6 +1,5 @@
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
-import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MotionLink } from './motion-link';

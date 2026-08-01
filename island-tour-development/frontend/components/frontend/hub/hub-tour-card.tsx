@@ -87,7 +87,7 @@ export function HubTourCard({
     const card = (
         <article
             aria-label={tour.title}
-            className={`group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover max-sm:flex-row max-sm:min-h-[170px] ${
+            className={`@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover max-sm:flex-row max-sm:min-h-[170px] ${
                 highlighted
                     ? 'bg-it-peach border-it-peach-border'
                     : 'bg-it-white border-transparent hover:border-it-card-hover-border max-sm:border-it-divider'
@@ -144,7 +144,7 @@ export function HubTourCard({
             {/* Content - PERMANENT inset (mirrors the latest <TourCard>): the
                 padding never animates, so hover only tints the card and nothing
                 re-wraps or shifts. */}
-            <div className='@container flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
+            <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
                 {/* Rating - only when the tour actually has one. Rendering a
                     defaulted 0 here advertised a brand-new tour as "0 (0)",
                     which reads as a terrible tour rather than a new one. */}
