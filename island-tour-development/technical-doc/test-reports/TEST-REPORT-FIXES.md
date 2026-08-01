@@ -15,6 +15,7 @@ locale's route payload was fetched from the server after the click - a full
 RSC roundtrip on the live site, so the UI sat dimmed for seconds.
 
 **Fix.**
+
 - New shared hook `frontend/lib/i18n/use-locale-switch.ts` - owns the
   path-segment swap, the `NEXT_LOCALE` cookie write, and the transition push.
 - `prefetchLocales()` warms the other 6 locale variants of the current page
@@ -43,6 +44,7 @@ baseline (the tester's red line). The design mockup's nav-right icons are a
 uniform 18px.
 
 **Fix (two parts).** `components/frontend/navbar/navbar.tsx`:
+
 1. Size: mobile search icon `size-6 -> size-5`, hamburger/close
    `size={24} -> size={20}` (20px matches the optical weight of the 18px
    stroked icons beside them; mockup has no hamburger to mirror exactly).
@@ -59,6 +61,7 @@ cluster now centers at exactly cy=32.
 ## 3. Tour page "Photos from Guests" - cropped, no lightbox, not draggable
 
 **Root cause.**
+
 - Strip tiles were 80px **circles** (`rounded-it-full` + `object-cover`) - a
   circle crop hides roughly half of every photo.
 - Tiles were plain `<div>`s - nothing opened a full-size view (only photos
@@ -70,6 +73,7 @@ cluster now centers at exactly cy=32.
 
 **Fix.** All in `components/frontend/tour/tour-reviews-section.tsx` +
 `hooks/use-drag-scroll.ts`:
+
 - Strip tiles are now 4:3 rounded tiles (`aspect-[4/3] h-20 rounded-it-md`,
   same vocabulary as the review-card tiles) - minimal crop, and each is a
   button that opens the photo full-size.
@@ -92,6 +96,21 @@ that follows), tile click opens the lightbox, Next click -> "2 / 9",
 ArrowRight -> "3 / 9", ArrowLeft -> back, Escape closes. Touch swipe is native
 scrolling and was left untouched.
 
+**Follow-up (founder, 2026-08-02).** Two revisions on review:
+
+- Tiles back to **80px circles** (`rounded-it-full`) - the founder prefers the
+  circle look; the lightbox showing the full uncropped photo answers the
+  original cropping complaint. Slide + click-to-open stay exactly as built.
+- The strip now shows **every** guest photo for the tour, not just those on
+  the first loaded page of reviews: `TourReviewsBlock` runs a parallel
+  `withPhotos: true` fetch (new param on the cached `getTourReviews` loader)
+  and passes the aggregated `stripPhotos` down; the loaded-page aggregate is
+  only the fallback. `PHOTO_STRIP_LIMIT` (12) moved to `lib/api/reviews.ts` -
+  importing it from the 'use client' component gave the server a
+  client-reference proxy instead of a number, which broke the whole section.
+  Verified: 12 circle tiles render on a tour whose first page held only 2
+  photos; lightbox counter reads "1 / 12".
+
 ---
 
 ## 4. Destination page - "NO bottom-padding" under Curated Collections
@@ -103,6 +122,7 @@ the feed is disabled it renders `null`, leaving the Curated Collections cards
 flush against the grey band.
 
 **Fix.**
+
 - `components/frontend/destination/destination-collections.tsx`: the section
   now carries `pb-11 md:pb-16` and closes the white zone itself.
 - `components/frontend/instagram/instagram-section.tsx`: drops its own top
@@ -132,6 +152,7 @@ not withdraw a pending request, and the admin could not reverse an executed
 cancellation.
 
 **Fix - traveller can withdraw a pending request.**
+
 - Backend `POST /bookings/typ/:publicRef/cancellation-request/withdraw`
   (`withdrawCancellationRequest`): same traveler-session ownership gate and
   human-pace throttle as the request; clears `utcCancellationRequestedAt`
@@ -149,6 +170,7 @@ cancellation.
   `cancelWithdrawing` in all 7 locales.
 
 **Fix - admin can restore an executed cancellation.**
+
 - Backend `POST /bookings/:id/restore` (`MANAGE_BOOKINGS` route gate + an
   in-service ADMIN re-check, mirroring cancel's conflict-#2 boundary):
   re-takes the seats with the same guarded conditional update the reserve
@@ -178,6 +200,7 @@ rapid repeat hits the 1-per-10s throttle; request -> stamp set -> withdraw ->
 cleared; restore without auth 401s. All three repos type-check clean.
 
 **Security review (2026-08-01) - findings fixed before commit:**
+
 - [High] Double-restore race: two racing restores could both pass the
   pre-transaction status check and double-count the departure's seats. Fixed
   with a guarded `updateMany({ where: { id, status: CANCELLED } })` status
@@ -188,11 +211,12 @@ cleared; restore without auth 401s. All three repos type-check clean.
 - [Low] Client-side locale cookie writers now append `;secure` on https
   (`use-locale-switch.ts` + the pre-existing `login-locale-switch.tsx`),
   matching the server-side setter in `proxy.ts`.
-No auth-layer findings: ownership gates, admin double-gating and the
-refund/departed/forfeited refusals were all confirmed correct.
+  No auth-layer findings: ownership gates, admin double-gating and the
+  refund/departed/forfeited refusals were all confirmed correct.
 
 **Code review (2026-08-01) - findings addressed before commit:**
-- [Critical] An external formatter/session sweep had demoted `font-bold` /
+
+- [Critical] An external formatter/session sweep had demoted `font-normal` /
   `font-medium` / `font-extrabold` to `font-normal` across the working tree.
   Every demotion inside this wave's files was reverted to the design-v2
   weights (reviews h2/rating/names, Instagram handle + link, cancel-strip
@@ -212,3 +236,4 @@ refund/departed/forfeited refusals were all confirmed correct.
   (generic "try again" even for permanent refusals; needs an i18n decision to
   fix properly), and dashboard booking mutations type their responses as
   `BookingListItem` while the backend returns the narrower `mapBooking` shape.
+

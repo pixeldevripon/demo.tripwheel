@@ -2,7 +2,7 @@
 
 import { MotionButton } from '@/components/frontend/motion-primitives';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
-import { fetchTourReviews } from '@/lib/api/reviews';
+import { fetchTourReviews, PHOTO_STRIP_LIMIT } from '@/lib/api/reviews';
 import { type Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
 import { toFullReview } from '@/lib/reviews/review-view';
@@ -107,8 +107,6 @@ const SORT_OPTIONS: {
     { value: 'rating_asc', labelKey: 'sortRatingLow' },
 ];
 
-// Cap the customer-photo strip so a long review set doesn't render hundreds of tiles.
-const PHOTO_STRIP_LIMIT = 12;
 
 /** LD31: the star distribution chart renders at 3 or more reviews. */
 const MIN_REVIEWS_FOR_CHART = 3;
@@ -171,6 +169,7 @@ export function TourReviewsSection({
     guestTypes,
     languages,
     photoCount,
+    stripPhotos,
     initialReviews,
     total,
     pageSize,
@@ -201,6 +200,13 @@ export function TourReviewsSection({
     languages: ReviewFacet[];
     /** Approved reviews carrying photos - the FE-10 carousel gate. */
     photoCount: number;
+    /**
+     * EVERY guest photo for the tour (server-fetched withPhotos, capped at
+     * PHOTO_STRIP_LIMIT) - so the strip is not limited to whatever page of
+     * reviews happens to be loaded. Falls back to aggregating the loaded
+     * reviews when absent.
+     */
+    stripPhotos?: string[];
     initialReviews: FullReview[];
     total: number;
     pageSize: number;
@@ -274,8 +280,13 @@ export function TourReviewsSection({
      * advertised itself as zero-rated.
      */
     const isEarly = ratingSource === 'none' && ownReviewCount > 0;
+    // Prefer the server-fetched full photo set (every review's photos, not just
+    // the loaded page's); the loaded-page aggregate is only the fallback.
     const photoStrip = showPhotoStrip
-        ? reviews.flatMap(r => r.photos ?? []).slice(0, PHOTO_STRIP_LIMIT)
+        ? (stripPhotos && stripPhotos.length > 0
+              ? stripPhotos
+              : reviews.flatMap(r => r.photos ?? [])
+          ).slice(0, PHOTO_STRIP_LIMIT)
         : [];
 
     /**
@@ -447,7 +458,7 @@ export function TourReviewsSection({
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
                         <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[44px] font-extrabold leading-none tracking-[-0.02em] text-it-ink'>
+                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.02em] text-it-ink'>
                                 <span className='align-[6px] text-[26px] text-it-star'>
                                     ★
                                 </span>{' '}
@@ -695,12 +706,12 @@ export function TourReviewsSection({
                 this filter" under a heading that says otherwise. */}
             {photoStrip.length > 0 && !isFiltered && (
                 <div className='flex flex-col gap-3'>
-                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <h3 className='m-0 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {dict.photosTitle}
                     </h3>
-                    {/* 4:3 tiles rather than circles: a circle crop hides half
-                        the photo, and these exist to be looked at. Click opens
-                        the full image; drag/swipe scrolls the strip. */}
+                    {/* Circle tiles (founder call 2026-08-02): the strip is a
+                        teaser, and the lightbox shows the full uncropped
+                        photo. Click opens it; drag/swipe scrolls the strip. */}
                     {/* No scroll-smooth here: the drag-to-scroll hook assigns
                         scrollLeft directly, and smooth behaviour turns each
                         assignment into a competing animation the snap then
@@ -714,12 +725,12 @@ export function TourReviewsSection({
                                 type='button'
                                 onClick={() => setStripLightbox(i)}
                                 aria-label={dict.photoOpen}
-                                className='relative aspect-[4/3] h-20 shrink-0 cursor-pointer snap-start overflow-hidden rounded-it-md border-0 bg-it-border p-0'>
+                                className='relative size-20 shrink-0 cursor-pointer snap-start overflow-hidden rounded-it-full border-0 bg-it-border p-0'>
                                 <Image
                                     src={src}
                                     alt=''
                                     fill
-                                    sizes='107px'
+                                    sizes='80px'
                                     className='object-cover transition-opacity duration-300 hover:opacity-90'
                                 />
                             </button>
@@ -778,7 +789,7 @@ export function TourReviewsSection({
                     disabled={loading}
                     whileTap={{ scale: 0.98 }}
                     transition={springPop}
-                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
+                    className='flex w-fit cursor-pointer items-center justify-center self-center rounded-it-full border border-it-primary bg-transparent px-10 py-[10px] font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors hover:bg-it-primary/5 disabled:cursor-default disabled:opacity-60'>
                     {loading ? dict.loading : dict.showMore}
                 </MotionButton>
             )}
@@ -826,7 +837,7 @@ function ReviewCard({
                 <div className='flex items-center gap-2.5'>
                     <span
                         aria-hidden='true'
-                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-extrabold text-it-primary-hover'>
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-medium text-it-primary-hover'>
                         {review.name
                             .split(/\s+/)
                             .map(part => part[0])
@@ -929,7 +940,7 @@ function ReviewCard({
                             {review.response.text}
                         </p>
                         <div className='flex flex-col'>
-                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                 {review.response.name}
                             </span>
                             <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
@@ -1037,7 +1048,7 @@ function PhotoLightbox({
                 type='button'
                 aria-label={dict.photoClose}
                 onClick={onClose}
-                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading'>
+                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-normal text-it-heading'>
                 {dict.photoClose}
             </button>
         </div>

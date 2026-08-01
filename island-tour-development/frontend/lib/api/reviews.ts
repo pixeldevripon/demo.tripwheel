@@ -13,6 +13,15 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:505
 /** Reviews page size - shared by the server's initial load and client paging. */
 export const REVIEWS_PAGE_SIZE = 10;
 
+/**
+ * Cap for the guest-photo strip on the tour page, so a long review set never
+ * renders hundreds of tiles. Lives here (a shared, non-client module) because
+ * both the server block that fetches the photos and the client section that
+ * renders them need it - importing it from the 'use client' component would
+ * hand the server a client-reference proxy instead of a number.
+ */
+export const PHOTO_STRIP_LIMIT = 12;
+
 /** One page of approved reviews for a tour (by id). Throws on a non-2xx. */
 export async function fetchTourReviews(params: {
   tourId: string;

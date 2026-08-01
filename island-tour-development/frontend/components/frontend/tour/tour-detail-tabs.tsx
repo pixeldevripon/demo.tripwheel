@@ -93,7 +93,19 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                                     ? 'font-bold text-it-primary-hover'
                                     : 'font-semibold text-it-text-muted hover:text-it-ink'
                             }`}>
-                            {t.label}
+                            {/* One-cell grid: the invisible bold twin reserves
+                                the ACTIVE width, so the bold/semibold toggle
+                                never resizes a tab (no row layout shift). */}
+                            <span className='inline-grid justify-items-center'>
+                                <span className='col-start-1 row-start-1'>
+                                    {t.label}
+                                </span>
+                                <span
+                                    aria-hidden
+                                    className='invisible col-start-1 row-start-1 font-bold'>
+                                    {t.label}
+                                </span>
+                            </span>
                             {/* Underline slides between tabs (shared layoutId). */}
                             {isActive && (
                                 <motion.span
