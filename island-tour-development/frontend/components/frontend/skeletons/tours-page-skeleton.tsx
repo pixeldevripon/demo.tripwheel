@@ -107,18 +107,21 @@ export function ToursListingSkeleton() {
     );
 }
 
-/** Trust strip - four icon + two-line items (mirrors ToursTrustStrip). */
+/** Compact trust strip - four checkmark lines + WhatsApp link (mirrors ToursTrustStrip). */
 export function ToursTrustStripSkeleton() {
     return (
-        <section className='bg-it-bg'>
+        <section className='mt-14 mb-20 bg-it-bg py-7'>
             <div className='it-container'>
-                <div className='grid grid-cols-2 gap-x-4 gap-y-4 py-7 md:flex md:items-center md:justify-between md:gap-x-6'>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className='flex items-start gap-3'>
-                            <Bar className='size-5 shrink-0 rounded-md [--it-skeleton-bg:var(--it-white)]' />
-                            <Bar className='h-5 w-28 [--it-skeleton-bg:var(--it-white)]' />
-                        </div>
-                    ))}
+                <div className='flex flex-wrap items-center justify-between gap-[18px]'>
+                    <div className='flex flex-wrap gap-x-[22px] gap-y-2.5 max-md:flex-col'>
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className='flex items-center gap-2'>
+                                <Bar className='size-4 shrink-0 rounded-md [--it-skeleton-bg:var(--it-white)]' />
+                                <Bar className='h-[22px] w-44 [--it-skeleton-bg:var(--it-white)]' />
+                            </div>
+                        ))}
+                    </div>
+                    <Bar className='h-[22px] w-48 [--it-skeleton-bg:var(--it-white)]' />
                 </div>
             </div>
         </section>
@@ -135,7 +138,9 @@ export function ToursPageSkeleton() {
     return (
         <>
             <ToursBreadcrumbSkeleton />
-            <section className='bg-it-white pb-8 md:pb-14'>
+            {/* No bottom padding - matches the real page: the trust strip's
+                own 56px top margin sets the gap below the pager. */}
+            <section className='bg-it-white'>
                 <div className='it-container'>
                     <ToursHeaderSkeleton />
                 </div>

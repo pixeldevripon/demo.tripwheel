@@ -170,7 +170,7 @@
             "heading": {
                 "title": "Alle {destination} tours & activiteiten in {year}",
                 "categoryTitle": "{category} in {destination}",
-                "subtitle": "Alle tours die we op {destination} aanbieden, bij elkaar.",
+                "subtitle": "Van dagtochten tot buggy-avonturen. Elke tour die we op {destination} aanbieden.",
                 "availableCount": "{count} tours",
                 "availableLabel": "beschikbaar"
             },
@@ -211,22 +211,13 @@
                 "priceHighLow": "Prijs: hoog naar laag"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Gebouwd door locals",
-                    "subtitle": "Die hier zijn opgegroeid"
-                },
-                "freeCancellation": {
-                    "title": "Gratis annuleren",
-                    "subtitle": "Geen vragen"
-                },
-                "message": {
-                    "title": "Wij zijn locals",
-                    "subtitle": "Stuur ons een bericht op WhatsApp"
-                },
-                "pay": {
-                    "title": "Betaal vanaf 20%",
-                    "subtitle": "Vandaag, de rest later"
-                }
+                "checks": [
+                    "Gratis annuleren, zonder vragen",
+                    "Betaal vandaag slechts 20%, de rest later",
+                    "Binnen seconden bevestigd",
+                    "Veilig afrekenen"
+                ],
+                "whatsapp": "Vragen? Chat via WhatsApp →"
             },
             "filterModal": {
                 "title": "Filters",

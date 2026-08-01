@@ -170,7 +170,7 @@
             "heading": {
                 "title": "{year}年{destination}的所有行程与活动",
                 "categoryTitle": "{destination}的{category}",
-                "subtitle": "我们在{destination}提供的所有行程，尽在于此。",
+                "subtitle": "从一日游到越野车探险。我们在{destination}提供的所有行程。",
                 "availableCount": "{count} 个行程",
                 "availableLabel": "可预订"
             },
@@ -211,22 +211,13 @@
                 "priceHighLow": "价格：从高到低"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "由当地人打造",
-                    "subtitle": "在这里长大"
-                },
-                "freeCancellation": {
-                    "title": "免费取消",
-                    "subtitle": "无需理由"
-                },
-                "message": {
-                    "title": "我们是当地人",
-                    "subtitle": "通过 WhatsApp 联系我们"
-                },
-                "pay": {
-                    "title": "最低支付 20%",
-                    "subtitle": "今天，余款稍后再付"
-                }
+                "checks": [
+                    "免费取消，无需理由",
+                    "今天只需支付 20%，其余稍后支付",
+                    "秒速确认",
+                    "安全支付"
+                ],
+                "whatsapp": "有疑问？在 WhatsApp 上聊 →"
             },
             "filterModal": {
                 "title": "筛选",

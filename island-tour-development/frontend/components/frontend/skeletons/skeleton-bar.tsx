@@ -33,10 +33,10 @@ export const HUB_GRID =
     'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
 
 /**
- * Cards a full paginated page renders - kept equal to the real page limits
- * (`TOURS_LIMIT` in `tours-listing-section`, `PAGE_SIZE` in
- * `search-results-section`), so a skeleton grid is the same height as a full
- * first page and doesn't shift when the tours stream in.
+ * Cards a full paginated page renders - kept equal to `PAGE_SIZE` in
+ * `search-results-section`, so a skeleton grid is the same height as a full
+ * first page and doesn't shift when the results stream in. (The tours listing
+ * pages use their own 8-block mockup skeleton - see `tours-page-skeleton`.)
  */
 export const GRID_PAGE_SIZE = 12;
 

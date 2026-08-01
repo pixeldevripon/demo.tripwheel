@@ -165,12 +165,12 @@
         "allTours": {
             "breadcrumb": {
                 "home": "Home",
-                "current": "All Tours"
+                "current": "All tours"
             },
             "heading": {
                 "title": "All {destination} tours & activities in {year}",
                 "categoryTitle": "{category} in {destination}",
-                "subtitle": "Every tour we offer on {destination}, in one place.",
+                "subtitle": "From day trips to buggy adventures. Every tour we offer on {destination}.",
                 "availableCount": "{count} tours",
                 "availableLabel": "available"
             },
@@ -211,22 +211,13 @@
                 "priceHighLow": "Price: high to low"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Built by locals",
-                    "subtitle": "Who grew up here"
-                },
-                "freeCancellation": {
-                    "title": "Free cancellation",
-                    "subtitle": "No questions asked"
-                },
-                "message": {
-                    "title": "We're locals",
-                    "subtitle": "Message us on WhatsApp"
-                },
-                "pay": {
-                    "title": "Pay as little as 20%",
-                    "subtitle": "today, the rest later"
-                }
+                "checks": [
+                    "Free cancellation, no questions asked",
+                    "Pay as little as 20% today, the rest later",
+                    "Confirmed in seconds",
+                    "Safe & secure checkout"
+                ],
+                "whatsapp": "Questions? Chat on WhatsApp →"
             },
             "filterModal": {
                 "title": "Filters",

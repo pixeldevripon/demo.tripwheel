@@ -170,7 +170,7 @@
             "heading": {
                 "title": "Todos os tours e atividades em {destination} em {year}",
                 "categoryTitle": "{category} em {destination}",
-                "subtitle": "Todos os passeios que oferecemos em {destination}, num só lugar.",
+                "subtitle": "De passeios de um dia a aventuras de buggy. Todos os tours que oferecemos em {destination}.",
                 "availableCount": "{count} tours",
                 "availableLabel": "disponíveis"
             },
@@ -211,22 +211,13 @@
                 "priceHighLow": "Preço: do maior ao menor"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Feito por locais",
-                    "subtitle": "Que cresceram aqui"
-                },
-                "freeCancellation": {
-                    "title": "Cancelamento gratuito",
-                    "subtitle": "Sem perguntas"
-                },
-                "message": {
-                    "title": "Somos locais",
-                    "subtitle": "Fale connosco no WhatsApp"
-                },
-                "pay": {
-                    "title": "Pague a partir de 20%",
-                    "subtitle": "Hoje, o resto depois"
-                }
+                "checks": [
+                    "Cancelamento grátis, sem perguntas",
+                    "Pague apenas 20% hoje, o resto depois",
+                    "Confirmado em segundos",
+                    "Checkout seguro"
+                ],
+                "whatsapp": "Dúvidas? Fale no WhatsApp →"
             },
             "filterModal": {
                 "title": "Filtros",

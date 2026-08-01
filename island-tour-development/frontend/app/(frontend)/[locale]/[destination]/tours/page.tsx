@@ -143,7 +143,9 @@ export default async function AllToursPage({
                 dict={dict.destination.allTours.breadcrumb}
             />
 
-            <section className='bg-it-white pb-8 md:pb-14'>
+            {/* No bottom padding: the trust strip's own 56px top margin sets
+                the gap below the pager (mockup .truststrip). */}
+            <section className='bg-it-white'>
                 {/* Page header (.pagehead) in the container; the sticky filter
                     row + grid stream below at FULL WIDTH (the toolbar owns its
                     own containers so its sticky band bleeds edge to edge). */}
