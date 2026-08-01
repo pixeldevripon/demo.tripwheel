@@ -296,22 +296,24 @@ export function TourReviewsSectionSkeleton({
     );
 }
 
-/** Related-tours block: two heading + 3-card grids (mirrors TourRelatedSection). */
+/** Related-tours block: two heading + 3-card grids (mirrors TourRelatedTours,
+ *  which renders INSIDE the detail column - plain block, no own container). */
 export function TourRelatedSkeleton() {
     return (
-        <section className='it-section pt-0! bg-it-white'>
-            <div className='it-container flex flex-col gap-16 md:gap-24'>
-                {Array.from({ length: 2 }).map((_, g) => (
-                    <div key={g} className='flex flex-col gap-6 md:gap-12'>
-                        <Bar className='h-8 w-2/3 max-w-md md:h-12' />
-                        <div className={CARD_GRID}>
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <TourCardSkeleton key={i} />
-                            ))}
-                        </div>
+        <div className='flex flex-col gap-8 pt-2.5'>
+            {Array.from({ length: 2 }).map((_, g) => (
+                <div key={g} className='flex flex-col gap-3.5'>
+                    <Bar className='h-6 w-2/3 max-w-sm' />
+                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4'>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <TourCardSkeleton
+                                key={i}
+                                className='max-sm:aspect-auto max-sm:h-[170px]'
+                            />
+                        ))}
                     </div>
-                ))}
-            </div>
-        </section>
+                </div>
+            ))}
+        </div>
     );
 }

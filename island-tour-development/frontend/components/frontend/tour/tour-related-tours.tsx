@@ -97,8 +97,7 @@ export async function TourRelatedTours({
     );
 
     return (
-        <section className='bg-it-white pb-20'>
-            <div className='it-container flex flex-col gap-8 pt-11'>
+        <div className='flex flex-col gap-8 pt-2.5'>
                 <TourRelatedSection
                     title={similarTitle}
                     tours={similarTours}
@@ -109,7 +108,6 @@ export async function TourRelatedTours({
                     tours={moreTours}
                     dict={dict.destination.listings}
                 />
-            </div>
-        </section>
+        </div>
     );
 }

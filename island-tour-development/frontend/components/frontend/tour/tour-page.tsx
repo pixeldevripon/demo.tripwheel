@@ -2,11 +2,7 @@ import { Suspense } from 'react';
 import { type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { TourDetailContent } from './tour-detail-content';
-import { TourRelatedTours } from './tour-related-tours';
-import {
-    TourDetailSkeleton,
-    TourRelatedSkeleton,
-} from '@/components/frontend/skeletons/tour-page-skeleton';
+import { TourDetailSkeleton } from '@/components/frontend/skeletons/tour-page-skeleton';
 
 /**
  * Tour detail page - the TOUR branch of the polymorphic `[slug]` route
@@ -53,15 +49,6 @@ export function TourPage({
         <>
             <Suspense fallback={<TourDetailSkeleton />}>
                 <TourDetailContent
-                    destinationSlug={destinationSlug}
-                    slug={slug}
-                    destinationName={destinationName}
-                    locale={locale}
-                    dict={dict}
-                />
-            </Suspense>
-            <Suspense fallback={<TourRelatedSkeleton />}>
-                <TourRelatedTours
                     destinationSlug={destinationSlug}
                     slug={slug}
                     destinationName={destinationName}

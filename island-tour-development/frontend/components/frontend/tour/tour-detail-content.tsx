@@ -1,4 +1,5 @@
 import {
+    TourRelatedSkeleton,
     TourReviewsPreviewSkeleton,
     TourReviewsSectionSkeleton,
 } from '@/components/frontend/skeletons/tour-page-skeleton';
@@ -30,6 +31,7 @@ import { TourGallery } from './tour-gallery';
 import { TourHeader } from './tour-header';
 import { TourHeaderActions } from './tour-header-actions';
 import { TourMeetingCard } from './tour-meeting-card';
+import { TourRelatedTours } from './tour-related-tours';
 import { TourReviewsBlock, TourReviewsPreview } from './tour-reviews-blocks';
 import { TourSection } from './tour-section';
 import { ToursBreadcrumb, type BreadcrumbAnchor } from '../tours/tours-breadcrumb';
@@ -866,6 +868,22 @@ export async function TourDetailContent({
                                 </p>
                             )}
                         </div>
+
+                        {/* Related tours (LD33) - INSIDE the detail column so
+                            the grids keep the content width, and the sticky
+                            rail (row-span-2) keeps sticking past them until
+                            the section ends at the footer. Own boundary: it
+                            fetches the destination listings and must not hold
+                            the sections above hostage. */}
+                        <Suspense fallback={<TourRelatedSkeleton />}>
+                            <TourRelatedTours
+                                destinationSlug={destinationSlug}
+                                slug={slug}
+                                destinationName={destinationName}
+                                locale={locale}
+                                dict={dict}
+                            />
+                        </Suspense>
                         </div>
                     </div>
                 </div>
