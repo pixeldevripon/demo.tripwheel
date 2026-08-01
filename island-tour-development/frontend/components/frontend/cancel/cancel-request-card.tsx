@@ -30,7 +30,12 @@ export function CancelRequestCard({
     publicRef: string;
     /** Master-format title, already substituted: "Cancel {tour}, {date}?" */
     title: string;
-    displayRef: string;
+    /**
+     * Null only in theory: this card renders behind the page's verified gate,
+     * and the reference is withheld from unverified payloads. Typed honestly
+     * so the reference row is skipped rather than printing "Reference null".
+     */
+    displayRef: string | null;
     /** "Refund $48" - null when nothing was paid to Island Tours (C23). */
     refundLabel: string | null;
     /** "Keep my booking" returns the traveller to their TYP. */
@@ -87,9 +92,11 @@ export function CancelRequestCard({
                         <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </span>
-                        <span className='mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
-                            {dict.reference} {displayRef}
-                        </span>
+                        {displayRef && (
+                            <span className='mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                                {dict.reference} {displayRef}
+                            </span>
+                        )}
 
                         {refundLabel && (
                             <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-green'>

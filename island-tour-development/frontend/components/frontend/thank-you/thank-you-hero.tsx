@@ -93,20 +93,26 @@ export function ThankYouHero({
                             ))}
                         </div>
                     )}
-                    <div className='mt-5 flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
-                        <span className='text-it-text-muted'>
-                            {dict.bookingRef}
-                        </span>
-                        <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
-                            {booking.displayRef}
-                        </code>
-                        <BookingRefCopy
-                            displayRef={booking.displayRef}
-                            copyLabel={dict.copy}
-                            copiedLabel={dict.copied}
-                            ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
-                        />
-                    </div>
+                    {/* Only for a viewer who proved they own this booking. The
+                        reference is what support identifies a traveller by, so
+                        the masked (shared-link) view does not carry it - and
+                        the real owner already has it in their email. */}
+                    {booking.displayRef && (
+                        <div className='mt-5 flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
+                            <span className='text-it-text-muted'>
+                                {dict.bookingRef}
+                            </span>
+                            <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
+                                {booking.displayRef}
+                            </code>
+                            <BookingRefCopy
+                                displayRef={booking.displayRef}
+                                copyLabel={dict.copy}
+                                copiedLabel={dict.copied}
+                                ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
+                            />
+                        </div>
+                    )}
                 </MountReveal>
                 <MountReveal
                     delay={0.15}

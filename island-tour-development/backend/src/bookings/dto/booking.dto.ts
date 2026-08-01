@@ -371,7 +371,15 @@ export class ThankYouResponseDto {
   review!: ThankYouReviewStateDto | null;
 
   @ApiProperty() publicRef!: string;
-  @ApiProperty({ example: 'IT-2026-0A1B2C' }) displayRef!: string;
+  @ApiProperty({
+    example: 'IT-2026-0A1B2C',
+    nullable: true,
+    description:
+      'Null on an unverified payload: the reference identifies the traveller ' +
+      'to support and is half of the /bookings pair login, so a forwarded ' +
+      'link never carries it.',
+  })
+  displayRef!: string | null;
   @ApiProperty({ enum: BookingStatus }) status!: BookingStatus;
   @ApiProperty({
     enum: BOOKING_DISPLAY_STATUSES,

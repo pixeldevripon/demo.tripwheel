@@ -107,20 +107,25 @@ export function BookingManageHeader({
                                 .replace('{time}', booking.startTimeLabel)}
                         </p>
                     </div>
-                    <div className='mt-1 flex items-center gap-2.5 self-start rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
-                        <span className='text-it-text-muted'>
-                            {dict.bookingRef}
-                        </span>
-                        <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
-                            {booking.displayRef}
-                        </code>
-                        <BookingRefCopy
-                            displayRef={booking.displayRef}
-                            copyLabel={dict.copy}
-                            copiedLabel={dict.copied}
-                            ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
-                        />
-                    </div>
+                    {/* Verified viewers only - see the hero. In practice this
+                        header is reached with a session, so the chip is
+                        normally present. */}
+                    {booking.displayRef && (
+                        <div className='mt-1 flex items-center gap-2.5 self-start rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
+                            <span className='text-it-text-muted'>
+                                {dict.bookingRef}
+                            </span>
+                            <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
+                                {booking.displayRef}
+                            </code>
+                            <BookingRefCopy
+                                displayRef={booking.displayRef}
+                                copyLabel={dict.copy}
+                                copiedLabel={dict.copied}
+                                ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
+                            />
+                        </div>
+                    )}
                     {/* Says what is happening, so a traveller whose request is
                         pending is not left guessing whether it registered -
                         the reason the cancel form kept getting re-submitted. */}

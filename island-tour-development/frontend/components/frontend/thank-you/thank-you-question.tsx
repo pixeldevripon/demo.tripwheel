@@ -26,7 +26,16 @@ export function ThankYouQuestion({
     // becomes a mailto link and the ref renders mono, inside the sentence.
     const [issueBefore, issueAfterRaw = ''] = dict.issueBody.split('{email}');
     const [afterBeforeRef, afterAfterRef = ''] = issueAfterRaw.split('{ref}');
+    // "...and include your ref (X)" only makes sense for someone who HAS a
+    // reference. The masked (shared-link) payload withholds it, so the whole
+    // clause goes - printing the copy around an absent ref would leave an
+    // empty pair of brackets. The sentence still reads as a sentence: it just
+    // ends at the support address.
     const hasRefToken = issueAfterRaw.includes('{ref}');
+    const showRef = hasRefToken && Boolean(booking.displayRef);
+    const dropRefClause = hasRefToken && !showRef;
+    const tailBefore = dropRefClause ? '' : afterBeforeRef;
+    const tailAfter = dropRefClause ? '' : afterAfterRef;
 
     return (
         <section className='bg-it-white pt-14 pb-[72px]'>
@@ -90,13 +99,13 @@ export function ThankYouQuestion({
                                 className={contactLink}>
                                 {booking.supportEmail}
                             </a>
-                            {afterBeforeRef}
-                            {hasRefToken && (
+                            {tailBefore}
+                            {showRef && (
                                 <code className='font-mono text-[12.5px] font-bold text-it-ink'>
                                     {booking.displayRef}
                                 </code>
                             )}
-                            {afterAfterRef}
+                            {tailAfter}
                         </p>
                         <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
                             {dict.replyTime}

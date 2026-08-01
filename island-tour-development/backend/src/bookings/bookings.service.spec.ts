@@ -2343,6 +2343,11 @@ describe('BookingsService', () => {
       expect(res.pickupAddress).toBeNull();
       expect(res.paymentMethodBrand).toBeNull();
       expect(res.paymentMethodLast4).toBeNull();
+      // The booking REFERENCE (pentest 2026-08-01): support identifies a
+      // traveller by it and the pair login uses it, so a forwarded link must
+      // not carry it. `publicRef` is already in the URL, so it stays.
+      expect(res.displayRef).toBeNull();
+      expect(res.publicRef).toBeDefined();
       // Non-identifying tour facts still present.
       expect(res.tourName).toBe('T');
       expect(res.partySize).toBeGreaterThan(0);
@@ -2377,6 +2382,8 @@ describe('BookingsService', () => {
       expect(res.operator.phone).toBe('+100000000');
       expect(res.pickupAddress).toBe('Marriott Beach Resort, Piscadera Bay');
       expect(res.paymentMethodLast4).toBe('4242');
+      // The owner gets their reference - it is the one they quote to support.
+      expect(res.displayRef).toBeTruthy();
     });
   });
 

@@ -4616,7 +4616,14 @@ export class BookingsService {
           : null,
       },
       publicRef: booking.publicRef,
-      displayRef: booking.displayRef,
+      // WITHHELD unverified (pentest 2026-08-01). The reference is not a tour
+      // fact, it is the identifier a traveller quotes to support - so handing
+      // it to anyone holding a forwarded link turns a read-only capability
+      // into the makings of an impersonation ("hi, it's IT-2026-MADK2, please
+      // refund me"). It is also half of the `/bookings` pair login. Nobody who
+      // cannot prove ownership has a use for it: the owner already has it in
+      // their confirmation email.
+      displayRef: verified ? booking.displayRef : null,
       status: booking.status,
       displayStatus: deriveBookingDisplayStatus(booking),
       tourId: booking.tourId,
