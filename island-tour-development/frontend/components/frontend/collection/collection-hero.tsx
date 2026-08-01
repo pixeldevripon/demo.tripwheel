@@ -51,7 +51,7 @@ export function CollectionHero({
         // vertically, over the 76deg banner scrim.
         <section
             aria-label={title}
-            className='relative h-[300px] w-full overflow-hidden bg-it-dark'>
+            className={`relative h-[300px] w-full overflow-hidden ${heroImage ? 'bg-it-dark' : 'bg-it-bg'}`}>
             {heroImage && (
                 <>
                     <Image
@@ -80,15 +80,15 @@ export function CollectionHero({
                     <MountReveal delay={0.1} yOffset={28}>
                         <div className='flex flex-col'>
                             {eyebrow && (
-                                <p className='m-0 text-[11.5px] font-bold uppercase tracking-[0.14em] text-it-white/85'>
+                                <p className={`m-0 text-[11.5px] font-bold uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85' : 'text-it-primary-hover'}`}>
                                     {eyebrow}
                                 </p>
                             )}
-                            <h1 className='m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] text-it-white'>
+                            <h1 className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white' : 'text-it-ink'}`}>
                                 {title}
                             </h1>
                             {subtitle && (
-                                <p className='m-0 mt-2.5 text-[15px] font-semibold leading-[1.6] text-it-white/92'>
+                                <p className={`m-0 mt-2.5 text-[15px] font-semibold leading-[1.6] ${heroImage ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                                     {subtitle}
                                 </p>
                             )}
@@ -98,7 +98,7 @@ export function CollectionHero({
                     {/* Meta row: "{N} tours · From ${price}" - gap 16px */}
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
-                            <div className='mt-2 flex items-center gap-2 text-[13px] font-semibold leading-[1.6] text-it-white/85 tabular-nums'>
+                            <div className={`mt-2 flex items-center gap-2 text-[13px] font-semibold leading-[1.6] tabular-nums ${heroImage ? 'text-it-white/85' : 'text-it-text-muted'}`}>
                                 <span>
                                     {tourCount} {dict.tours}
                                 </span>
@@ -106,7 +106,7 @@ export function CollectionHero({
                                     <>
                                         <span
                                             aria-hidden='true'
-                                            className='text-it-white/55'>
+                                            className={heroImage ? 'text-it-white/55' : 'text-it-ink-muted'}>
                                             ·
                                         </span>
                                         <span>

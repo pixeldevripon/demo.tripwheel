@@ -91,7 +91,7 @@ export function HubCompareSection({
     dict: HubCompareDict;
 }) {
     return (
-        <Reveal className='flex flex-col gap-6 md:gap-12'>
+        <Reveal className='flex flex-col gap-[22px]'>
             {/* Header */}
             <header className='flex flex-col gap-1'>
                 <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
@@ -103,7 +103,7 @@ export function HubCompareSection({
             </header>
 
             {/* Tables */}
-            <div className='flex flex-col gap-4 md:gap-8'>
+            <div className='flex flex-col gap-6'>
                 {tables.map((table, i) => (
                     <Reveal key={i} delay={0.02} listItem>
                         <CompareTableCard table={table} dict={dict} />

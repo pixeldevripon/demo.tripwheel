@@ -94,7 +94,8 @@ export function HubHero({
         // reproduces the exact 152/154px top gaps at each breakpoint.
         // Design v2 .hubhero: a 400px photo band, content LEFT-aligned and
         // vertically centred, under the side-wash hub scrim.
-        <section className='relative flex min-h-[400px] items-center overflow-hidden bg-it-dark'>
+        <section
+            className={`relative flex min-h-[400px] items-center overflow-hidden ${image ? 'bg-it-dark' : 'bg-it-bg'}`}>
             {image && (
                 <Image
                     src={image}
@@ -104,7 +105,9 @@ export function HubHero({
                     className='object-cover object-[center_55%]'
                 />
             )}
-            <div className='absolute inset-0 bg-[image:var(--it-scrim-hub)]' />
+            {image && (
+                <div className='absolute inset-0 bg-[image:var(--it-scrim-hub)]' />
+            )}
 
             <div className='it-container relative z-10 w-full py-14'>
                 {/* Smooth hero entry: the hub page arrives via the entity
@@ -114,10 +117,10 @@ export function HubHero({
                 <div className='flex w-full flex-col items-start'>
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
-                        <h1 className='m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] text-it-white'>
+                        <h1 className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white' : 'text-it-ink'}`}>
                             {title}
                         </h1>
-                        <p className='m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] text-it-white/92'>
+                        <p className={`m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -138,18 +141,25 @@ export function HubHero({
                                         {i > 0 && (
                                             <li
                                                 aria-hidden='true'
-                                                className='hidden h-[15px] w-px shrink-0 bg-it-white/42 md:block'
+                                                className={`hidden h-[15px] w-px shrink-0 md:block ${image ? 'bg-it-white/42' : 'bg-it-border'}`}
                                             />
                                         )}
                                         <li className='flex items-center gap-2 py-0.5 md:px-[18px] md:first:pl-0'>
                                             <Image
-                                                src={item.icon}
+                                                src={
+                                                    image
+                                                        ? item.icon
+                                                        : item.icon.replace(
+                                                              '.svg',
+                                                              '-soft.svg'
+                                                          )
+                                                }
                                                 alt=''
                                                 width={24}
                                                 height={24}
                                                 className='size-4 shrink-0 opacity-92'
                                             />
-                                            <span className='whitespace-nowrap text-[14px] font-semibold leading-[1.6] text-it-white'>
+                                            <span className={`whitespace-nowrap text-[14px] font-semibold leading-[1.6] ${image ? 'text-it-white' : 'text-it-ink'}`}>
                                                 {item.label}
                                             </span>
                                         </li>
@@ -171,7 +181,7 @@ export function HubHero({
                                     a button's descendants are presentational
                                     to the accessibility tree, so a nested
                                     control would be unreachable. */}
-                                <div className='flex min-w-0 flex-1 items-center gap-1.5 rounded-it-sm bg-it-white px-4'>
+                                <div className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-it-sm bg-it-white px-4 ${image ? '' : 'border border-it-border'}`}>
                                     <PopoverTrigger asChild>
                                         <motion.button
                                             type='button'
