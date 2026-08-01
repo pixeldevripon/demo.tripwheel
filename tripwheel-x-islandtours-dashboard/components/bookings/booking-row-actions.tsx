@@ -3,6 +3,7 @@
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Alert02Icon,
+  ArrowTurnBackwardIcon,
   CancelCircleIcon,
   CheckmarkCircle02Icon,
   Copy01Icon,
@@ -39,6 +40,7 @@ import {
   useDismissNonPayment,
   useReportCancellation,
   useReportNonPayment,
+  useRestoreBooking,
 } from '@/hooks/bookings/use-bookings';
 import { reviewUrl } from '@/lib/public-site';
 import type { BookingListItem } from '@/types/booking';
@@ -61,11 +63,14 @@ export function BookingRowActions({
 }) {
   const { can } = useRole();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [forfeitOpen, setForfeitOpen] = useState(false);
   const [reportCancelOpen, setReportCancelOpen] = useState(false);
   const [reportCancelReason, setReportCancelReason] = useState('');
   const { mutate: cancelBooking, isPending } = useCancelBooking();
+  const { mutate: restoreBooking, isPending: isRestoring } =
+    useRestoreBooking();
   const { mutate: reportNonPayment, isPending: isReporting } =
     useReportNonPayment();
   const { mutate: confirmForfeit, isPending: isForfeiting } =
@@ -85,6 +90,17 @@ export function BookingRowActions({
   // 403s any non-admin regardless of what renders here.
   const canCancel =
     can('MANAGE_BOOKINGS') && CANCELLABLE.includes(booking.status);
+  // Restore (QA 2026-08-01): the admin's way back from a mistaken
+  // cancellation. Forfeited bookings are terminal (deposit kept), and a
+  // CANCELLED row that never confirmed was only an abandoned checkout hold -
+  // nothing to restore, so no action is offered. Every other refusal (refund
+  // issued, departure ran, seats resold) is the backend's call - it explains
+  // itself in the error toast.
+  const canRestore =
+    can('MANAGE_BOOKINGS') &&
+    booking.status === 'CANCELLED' &&
+    booking.utcForfeitedAt == null &&
+    booking.utcConfirmedAt != null;
   const cancelReported = booking.utcOperatorCancellationReportedAt != null;
   // The operator-side report: any EDIT_BOOKING holder without the admin
   // cancel power, on a confirmed booking not yet reported.
@@ -214,6 +230,14 @@ export function BookingRowActions({
               </DropdownMenuItem>
             </>
           )}
+          {canRestore && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
+                <HugeiconsIcon icon={ArrowTurnBackwardIcon} /> Restore booking
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -238,6 +262,20 @@ export function BookingRowActions({
             { id: booking.id, payload: cancelReported ? { force: true } : {} },
             { onSuccess: () => setCancelOpen(false) },
           )
+        }
+      />
+
+      <ConfirmDialog
+        open={restoreOpen}
+        onOpenChange={setRestoreOpen}
+        title={`Restore booking ${booking.displayRef}?`}
+        description="Reverses the cancellation: the seats are booked again (refused if they were resold meanwhile), the operator's settlement obligation is reinstated and the traveller is re-sent their confirmation email. Not possible once a refund was issued - ask the traveller to rebook in that case."
+        confirmLabel="Restore booking"
+        loading={isRestoring}
+        onConfirm={() =>
+          restoreBooking(booking.id, {
+            onSuccess: () => setRestoreOpen(false),
+          })
         }
       />
 
