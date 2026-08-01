@@ -1,6 +1,6 @@
+import { springPop } from '@/lib/motion';
 import Image from 'next/image';
 import { Fragment } from 'react';
-import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
 
@@ -224,7 +224,10 @@ function CompareTableCard({
                                     last ? '' : 'border-r'
                                 }`}>
                                 <PriceLabel boat={boat} from={dict.from} />
-                                <BookButton label={dict.book} href={boat.href} />
+                                <BookButton
+                                    label={dict.book}
+                                    href={boat.href}
+                                />
                             </div>
                         );
                     })}
@@ -285,7 +288,7 @@ function PriceLabel({ boat, from }: { boat: CompareBoat; from: string }) {
             )}
             <span className='text-it-text-muted'>
                 {from}{' '}
-                <span className='text-[15px] font-extrabold tracking-[-0.01em] text-it-ink'>
+                <span className='text-[15px] font-medium tracking-[-0.01em] text-it-ink'>
                     {boat.priceDisplay}
                 </span>
                 {boat.priceUnit ? ` ${boat.priceUnit}` : ''}

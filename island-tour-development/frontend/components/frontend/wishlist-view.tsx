@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 
+import { WishlistSkeleton } from '@/components/frontend/skeletons/wishlist-skeleton';
 import { TourCard, type TourCardDict } from '@/components/frontend/tour-card';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
-import { WishlistSkeleton } from '@/components/frontend/skeletons/wishlist-skeleton';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
 import type { Locale } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
@@ -53,7 +53,7 @@ export function WishlistView({
         const currency = currencyFromCookie(document.cookie, locale);
         wishlistApi
             .resolve(ids, locale, currency)
-            .then((rows) => {
+            .then(rows => {
                 if (!ignore) setTours(rows);
             })
             .catch(() => {
@@ -69,12 +69,12 @@ export function WishlistView({
     }, [ready, locale]);
 
     // Reflect optimistic removals (un-hearting a card drops it immediately).
-    const visible = tours.filter((t) => isSaved(t.id));
+    const visible = tours.filter(t => isSaved(t.id));
 
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container flex flex-col gap-8'>
-                <h1 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 font-normal text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                     {dict.title}
                 </h1>
 
@@ -84,7 +84,7 @@ export function WishlistView({
                     <Prompt title={dict.empty} hint={dict.emptyHint} />
                 ) : (
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
-                        {visible.map((hit) => (
+                        {visible.map(hit => (
                             <TourCard
                                 key={hit.id}
                                 tour={searchHitToListing(
@@ -94,7 +94,7 @@ export function WishlistView({
                                         isSponsored: hit.isSponsored ?? false,
                                     } as SearchHit,
                                     locale,
-                                    durationDict,
+                                    durationDict
                                 )}
                                 dict={cardDict}
                                 wishlistVariant='remove'
@@ -110,7 +110,7 @@ export function WishlistView({
 function Prompt({ title, hint }: { title: string; hint: string }) {
     return (
         <div className='flex flex-col items-center gap-3 py-16 text-center'>
-            <p className='m-0 font-medium text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
+            <p className='m-0 font-normal text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
                 {title}
             </p>
             <p className='m-0 max-w-md text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
@@ -119,3 +119,4 @@ function Prompt({ title, hint }: { title: string; hint: string }) {
         </div>
     );
 }
+

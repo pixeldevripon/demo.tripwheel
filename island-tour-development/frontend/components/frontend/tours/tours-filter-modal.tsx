@@ -1,8 +1,8 @@
 'use client';
 
-import { springPop } from '@/lib/motion';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
+import { springPop } from '@/lib/motion';
 import { PRICE_MAX, PRICE_MIN } from '@/lib/tours/filters';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
@@ -340,7 +340,6 @@ export function ToursFilterModal({
                             ease: [0.21, 0.47, 0.32, 0.98],
                         }}
                         className='relative flex max-h-[88vh] w-full max-w-[560px] flex-col rounded-it-lg bg-it-white'>
-
                         {/* Header (.mhead) — never scrolls */}
                         <div className='flex shrink-0 items-center justify-between border-b border-it-divider px-6 py-[18px]'>
                             <h2 className='m-0 font-it-display text-[19px] font-bold leading-[1.2] text-it-ink'>
@@ -360,7 +359,6 @@ export function ToursFilterModal({
                         {/* Scrollable body — flex-1 + min-h-0 is required for
                              overflow-y:auto to trigger inside a flex-col parent. */}
                         <div className='it-modal-scroll min-h-0 flex-1 px-6 pb-1 pt-2'>
-
                             {/* Price */}
                             <Section title={dict.price}>
                                 <PriceRange
@@ -435,9 +433,7 @@ export function ToursFilterModal({
                                     {cancellationItems.map(item => (
                                         <OptChip
                                             key={item.key}
-                                            on={
-                                                draft.cancellation === item.key
-                                            }
+                                            on={draft.cancellation === item.key}
                                             onClick={() =>
                                                 setDraft(d => ({
                                                     ...d,
@@ -529,3 +525,4 @@ export function ToursFilterModal({
         </AnimatePresence>
     );
 }
+

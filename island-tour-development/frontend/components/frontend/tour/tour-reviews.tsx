@@ -1,5 +1,5 @@
-import { Reveal } from '../reveal';
 import { ExpandableText } from '../expandable-text';
+import { Reveal } from '../reveal';
 
 export type TourReview = {
     id: string;
@@ -67,7 +67,11 @@ function ReviewCard({
                     ★ {review.rating.toFixed(1)}
                 </span>
                 <span>
-                    {[review.name, review.date, review.verified ? dict.verified : null]
+                    {[
+                        review.name,
+                        review.date,
+                        review.verified ? dict.verified : null,
+                    ]
                         .filter(Boolean)
                         .join(' · ')}
                 </span>
@@ -82,3 +86,4 @@ function ReviewCard({
         </article>
     );
 }
+

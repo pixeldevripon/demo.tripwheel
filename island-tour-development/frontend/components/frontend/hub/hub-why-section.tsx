@@ -49,8 +49,8 @@ export function HubWhySection({
                         {/* Learn More - mobile only (desktop shows the full body). */}
                         <button
                             type='button'
-                            onClick={() => setExpanded((v) => !v)}
-                            className='self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
+                            onClick={() => setExpanded(v => !v)}
+                            className='self-start cursor-pointer border-none bg-transparent p-0 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
                             {expanded ? readLessLabel : learnMoreLabel}
                         </button>
                     </div>
@@ -59,3 +59,4 @@ export function HubWhySection({
         </section>
     );
 }
+

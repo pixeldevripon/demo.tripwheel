@@ -1,8 +1,8 @@
 'use client';
 
+import { springPop } from '@/lib/motion';
 import Image from 'next/image';
 import { useState } from 'react';
-import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
 import { TourCardCarousel } from '../tour-card-carousel';
 
@@ -98,7 +98,8 @@ export function HubPickCard({
                                             />
                                             <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
                                                 {pick.rating}
-                                                {pick.reviewCount !== undefined &&
+                                                {pick.reviewCount !==
+                                                    undefined &&
                                                     ` (${pick.reviewCount.toLocaleString()})`}
                                             </span>
                                         </span>
@@ -124,7 +125,7 @@ export function HubPickCard({
                             <button
                                 type='button'
                                 onClick={() => setExpanded(v => !v)}
-                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
+                                className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors hover:text-it-primary md:hidden'>
                                 {expanded ? dict.readLess : dict.learnMore}
                             </button>
 
@@ -135,7 +136,7 @@ export function HubPickCard({
                                 <span className='size-[3px] shrink-0 rounded-full bg-it-ink-muted' />
                                 <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                                     {dict.from}{' '}
-                                    <b className='text-[15px] font-extrabold tracking-[-0.01em] text-it-ink'>
+                                    <b className='text-[15px] font-medium tracking-[-0.01em] text-it-ink'>
                                         {pick.priceDisplay}
                                     </b>
                                     {pick.priceUnit ? ` ${pick.priceUnit}` : ''}

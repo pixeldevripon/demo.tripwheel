@@ -1,8 +1,8 @@
-import { MountReveal } from '@/components/frontend/mount-reveal';
 import { MotionA } from '@/components/frontend/motion-primitives';
+import { MountReveal } from '@/components/frontend/mount-reveal';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Lock } from 'lucide-react';
 
 type ThankYouDict = Dictionary['thankYou'];
@@ -31,7 +31,7 @@ export function ThankYouVerifyNotice({
                                 <Lock className='size-5 text-it-primary' />
                             </span>
                             <div className='flex flex-col gap-1'>
-                                <p className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <p className='m-0 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                     {dict.verifyTitle}
                                 </p>
                                 <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -43,7 +43,7 @@ export function ThankYouVerifyNotice({
                             href={localizeHref(locale, '/bookings')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='shrink-0 rounded-full bg-it-primary px-7 py-3 font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
+                            className='shrink-0 rounded-full bg-it-primary px-7 py-3 font-normal text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
                             {dict.verifyCta}
                         </MotionA>
                     </div>
@@ -52,3 +52,4 @@ export function ThankYouVerifyNotice({
         </section>
     );
 }
+

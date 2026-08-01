@@ -54,3 +54,4 @@ export function LegalPageShell({
 // The old `LegalTableScroller` (horizontal-scroll guard for wide tables) is
 // gone with the hand-authored pages: `PageBody` now wraps EVERY table in the
 // same guard at render time, so the concern lives with the CMS renderer.
+

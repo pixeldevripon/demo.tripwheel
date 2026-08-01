@@ -50,7 +50,7 @@ export function HubPicks({ data }: { data: HubPicksData }) {
                 {data.footerNote}{' '}
                 <Link
                     href={data.seeAllHref}
-                    className='font-medium text-it-primary underline decoration-1 underline-offset-4 transition-colors hover:text-it-heading'>
+                    className='font-normal text-it-primary underline decoration-1 underline-offset-4 transition-colors hover:text-it-heading'>
                     {data.seeAllLabel}
                 </Link>
             </p>

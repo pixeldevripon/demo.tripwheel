@@ -96,7 +96,13 @@ export function CheckoutLiveAmount({
 }) {
     const { totals } = useContext(CheckoutLiveContext);
     return (
-        <>{formatCheckoutMoney(totals?.[kind] ?? fallback, currencySymbol, locale)}</>
+        <>
+            {formatCheckoutMoney(
+                totals?.[kind] ?? fallback,
+                currencySymbol,
+                locale
+            )}
+        </>
     );
 }
 
@@ -161,3 +167,4 @@ export function CheckoutSummaryTotals({
         </>
     );
 }
+

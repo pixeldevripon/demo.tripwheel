@@ -1,15 +1,15 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
-import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { crossFade } from '@/lib/motion';
 import {
     requestTravellerCodeClient,
     verifyTravellerCodeClient,
 } from '@/lib/api/traveller-login';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { crossFade } from '@/lib/motion';
 import {
     saveTravellerAccount,
     storeTravelerSession,
@@ -238,14 +238,16 @@ export function TravellerLoginCard({
                     transition={crossFade}>
                     {step === 'email' ? (
                         <form onSubmit={sendCode} noValidate>
-                            <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-normal text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.loginTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
                                 {dict.loginSubtitle}
                             </p>
                             {error && <ErrorNote>{error}</ErrorNote>}
-                            <Field label={dict.emailLabel} htmlFor='traveller-email'>
+                            <Field
+                                label={dict.emailLabel}
+                                htmlFor='traveller-email'>
                                 <input
                                     ref={emailRef}
                                     id='traveller-email'
@@ -285,11 +287,14 @@ export function TravellerLoginCard({
                         </form>
                     ) : (
                         <div>
-                            <h1 className='mb-2 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-normal text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.codeTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
-                                {dict.codeSentNote.replace('{email}', email.trim())}
+                                {dict.codeSentNote.replace(
+                                    '{email}',
+                                    email.trim()
+                                )}
                             </p>
                             {error && <ErrorNote>{error}</ErrorNote>}
                             <div ref={codeRef} className='mb-4'>
@@ -305,7 +310,8 @@ export function TravellerLoginCard({
                                     autoFocus
                                     onChange={value => {
                                         setCode(value);
-                                        if (value.length === 6) void submitCode(value);
+                                        if (value.length === 6)
+                                            void submitCode(value);
                                     }}
                                 />
                                 <p className='mt-2.5 text-[13px] leading-[1.6] text-it-text-muted'>
@@ -362,7 +368,7 @@ export function TravellerLoginCard({
                             href={whatsappHref}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='font-medium text-it-primary no-underline hover:opacity-80'>
+                            className='font-normal text-it-primary no-underline hover:opacity-80'>
                             {dict.whatsappUs}
                         </a>
                     </>
@@ -371,3 +377,4 @@ export function TravellerLoginCard({
         </div>
     );
 }
+

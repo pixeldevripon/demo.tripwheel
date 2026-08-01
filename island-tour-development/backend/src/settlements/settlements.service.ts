@@ -27,7 +27,10 @@ import {
 import { dashboardAppBase } from '@/common/utils/app-urls.util';
 import { localWallClockToUtc } from '@/common/utils/timezone.util';
 import { assertDateRangeOrder } from '@/common/utils/date-range.util';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import {
+  isPlatformWideRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import type {
   ListSettlementsQueryDto,
   ListSettlementsResponseDto,
@@ -506,8 +509,12 @@ export class SettlementsService {
     const limit = query.limit ?? 20;
 
     const where: Prisma.SettlementWhereInput = {};
-    // Non-admins only ever see their own operator's settlements.
-    if (actor.role !== Role.ADMIN) {
+    // Operator-scoped callers only ever see their own settlements. The test is
+    // "is this actor platform-wide", NOT "is this actor an ADMIN": platform
+    // staff have no operator record, so the ADMIN-only version threw them into
+    // resolution and 400'd the whole payout ledger (test report 2026-08-01
+    // §Admin.4).
+    if (!isPlatformWideRole(actor.role)) {
       where.operatorId = await resolveOperatorId(
         this.prisma,
         actor.id,
@@ -643,7 +650,9 @@ export class SettlementsService {
     role: Role;
   }): Promise<SettlementSummaryDto> {
     const scope: Prisma.SettlementWhereInput = {};
-    if (actor.role !== Role.ADMIN) {
+    // Same platform-wide test as the list above - the summary card and the
+    // rows under it must never disagree about whose money they are counting.
+    if (!isPlatformWideRole(actor.role)) {
       scope.operatorId = await resolveOperatorId(
         this.prisma,
         actor.id,

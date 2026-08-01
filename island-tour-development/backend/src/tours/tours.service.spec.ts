@@ -245,6 +245,53 @@ describe('ToursService', () => {
     });
   });
 
+  // ── findMyTours scope (test report 2026-08-01 §Admin.4) ──────────────────────
+
+  describe('findMyTours - who gets whose catalogue', () => {
+    beforeEach(() => {
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+    });
+
+    // The regression: platform staff have no operator record, so resolution
+    // threw and the dashboard's Tours screen came back empty for them.
+    it.each([
+      ['STAFF', Role.STAFF],
+      ['EDITOR', Role.EDITOR],
+      ['ADMIN', Role.ADMIN],
+    ])(
+      'lists the whole catalogue for %s, resolving no operator',
+      async (_label, role) => {
+        await service.findMyTours('platform-user', role, {});
+
+        expect(prisma.tour.findMany.mock.calls[0][0].where).toEqual({});
+        // Never routed through resolution - that is what used to throw, and for
+        // ADMIN it would silently auto-provision a junk operator record.
+        expect(prisma.operator.findUnique).not.toHaveBeenCalled();
+        expect(prisma.operator.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still scopes a TOUR_OPERATOR to their own tours', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+
+      await service.findMyTours('operator-user', Role.TOUR_OPERATOR, {});
+
+      expect(prisma.tour.findMany.mock.calls[0][0].where).toEqual({
+        operatorId: 'op-1',
+      });
+    });
+
+    it('still 400s a TOUR_OPERATOR with no operator profile', async () => {
+      prisma.operator.findUnique.mockResolvedValue(null);
+      prisma.staffMember.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.findMyTours('user-x', Role.TOUR_OPERATOR, {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   // ── resolveUniqueSlug (via create) ────────────────────────────────────────────
 
   describe('create - slug resolution', () => {
@@ -1189,6 +1236,67 @@ describe('ToursService', () => {
       await expect(
         service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
       ).rejects.toThrow(ConflictException);
+    });
+
+    // Operator test report 2026-08-01 §02: every exit from PAUSED and ARCHIVED
+    // is MANAGE_TRIPS, so gating the REQUEST on DRAFT left an operator with a
+    // paused tour able to archive it and nothing else, and one with an archived
+    // tour able to do nothing at all.
+    describe('submitForReview from a parked tour', () => {
+      it.each([
+        ['PAUSED', TourStatus.PAUSED],
+        ['ARCHIVED', TourStatus.ARCHIVED],
+      ])(
+        'accepts a %s tour and only stamps the request',
+        async (_l, status) => {
+          prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+          prisma.tour.findUnique.mockResolvedValue(ready({ status }));
+          prisma.tour.update.mockResolvedValue(
+            makeTour({ status, approvalStatus: TourApprovalStatus.PENDING }),
+          );
+
+          await service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR);
+
+          const { data } = prisma.tour.update.mock.calls[0][0];
+          expect(data.approvalStatus).toBe(TourApprovalStatus.PENDING);
+          // THE boundary: asking never moves the tour. Going live stays an
+          // admin's call (unpause / restore / publish are all MANAGE_TRIPS).
+          expect(data.status).toBeUndefined();
+        },
+      );
+
+      it('still refuses a LIVE tour - it is already published', async () => {
+        prisma.operator.findUnique.mockResolvedValue({ id: 'op-1' });
+        prisma.tour.findUnique.mockResolvedValue(
+          ready({ status: TourStatus.LIVE }),
+        );
+
+        await expect(
+          service.submitForReview('tour-1', 'user-1', Role.TOUR_OPERATOR),
+        ).rejects.toThrow(BadRequestException);
+        expect(prisma.tour.update).not.toHaveBeenCalled();
+      });
+
+      it('lets an admin decide the request on a parked tour', async () => {
+        prisma.tour.findUnique.mockResolvedValue(
+          makeTour({
+            status: TourStatus.PAUSED,
+            approvalStatus: TourApprovalStatus.PENDING,
+          }),
+        );
+        prisma.tour.update.mockResolvedValue(
+          makeTour({
+            status: TourStatus.PAUSED,
+            approvalStatus: TourApprovalStatus.APPROVED,
+          }),
+        );
+
+        await service.approveTour('tour-1', 'admin-1');
+
+        expect(prisma.tour.update.mock.calls[0][0].data.approvalStatus).toBe(
+          TourApprovalStatus.APPROVED,
+        );
+      });
     });
 
     it('approve requires PENDING; reject stores the actionable note', async () => {

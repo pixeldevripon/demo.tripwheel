@@ -12,7 +12,6 @@ import { crossFade } from '@/lib/motion';
 import { paymentChipFor } from './traveller-booking-card';
 import { TravellerBookingPanel } from './traveller-booking-panel';
 import { bookingTone, TravellerChip } from './traveller-chip';
-import { daysUntil } from './traveller-groups';
 import {
     formatDay,
     formatDeadline,
@@ -21,6 +20,7 @@ import {
     money,
     partyLabel,
 } from './traveller-format';
+import { daysUntil } from './traveller-groups';
 
 const BACKEND_BASE = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
@@ -151,7 +151,7 @@ export function TravellerNextTrip({
                     <p className='m-0 text-[12.5px] font-semibold tracking-[0.08em] text-it-primary uppercase'>
                         {dict.nextTripKicker} · {when}
                     </p>
-                    <h2 className='mt-2 mb-0 font-medium text-[22px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[24px]'>
+                    <h2 className='mt-2 mb-0 font-normal text-[22px] leading-[1.3] tracking-[-0.012em] text-it-heading md:text-[24px]'>
                         {booking.tourName}
                     </h2>
                     <p className='mt-1 mb-0 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -187,7 +187,7 @@ export function TravellerNextTrip({
                                             href={maps}
                                             target='_blank'
                                             rel='noopener noreferrer'
-                                            className='font-medium text-it-primary no-underline hover:opacity-80'>
+                                            className='font-normal text-it-primary no-underline hover:opacity-80'>
                                             {dict.mapsLink}
                                         </a>
                                     </>
@@ -260,3 +260,4 @@ export function TravellerNextTrip({
         </section>
     );
 }
+

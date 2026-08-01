@@ -4,6 +4,7 @@
 
 import { OperatorVerificationStatus, Role } from '@prisma/client';
 import { auth } from '@/auth/auth.instance';
+import { defaultTeamDesignationRows } from '@/config/team-designations.config';
 import {
   DEMO_EMAIL_DOMAIN,
   DEMO_PASSWORD,
@@ -106,18 +107,114 @@ export interface DemoTravelerDef {
 }
 
 export const TRAVELERS: DemoTravelerDef[] = [
-  { key: 't01', name: 'Anna Meijer', firstName: 'Anna', initial: 'Anna M.', country: 'Netherlands', locale: 'nl', timezone: 'UTC+01:00' },
-  { key: 't02', name: 'James Carter', firstName: 'James', initial: 'James C.', country: 'United States', locale: 'en', timezone: 'UTC-05:00' },
-  { key: 't03', name: 'Sophie Dubois', firstName: 'Sophie', initial: 'Sophie D.', country: 'France', locale: 'fr', timezone: 'UTC+01:00' },
-  { key: 't04', name: 'Lukas Schmidt', firstName: 'Lukas', initial: 'Lukas S.', country: 'Germany', locale: 'de', timezone: 'UTC+01:00' },
-  { key: 't05', name: 'Maria Santos', firstName: 'Maria', initial: 'Maria S.', country: 'Portugal', locale: 'pt', timezone: 'UTC+00:00' },
-  { key: 't06', name: 'Carlos Ruiz', firstName: 'Carlos', initial: 'Carlos R.', country: 'Spain', locale: 'es', timezone: 'UTC+01:00' },
-  { key: 't07', name: 'Emily Brown', firstName: 'Emily', initial: 'Emily B.', country: 'United Kingdom', locale: 'en', timezone: 'UTC+00:00' },
-  { key: 't08', name: 'Wei Chen', firstName: 'Wei', initial: 'Wei C.', country: 'China', locale: 'zh', timezone: 'UTC+08:00' },
-  { key: 't09', name: 'Isabella Rossi', firstName: 'Isabella', initial: 'Isabella R.', country: 'Italy', locale: 'en', timezone: 'UTC+01:00' },
-  { key: 't10', name: 'Noah Jansen', firstName: 'Noah', initial: 'Noah J.', country: 'Netherlands', locale: 'nl', timezone: 'UTC+01:00' },
-  { key: 't11', name: 'Olivia Wilson', firstName: 'Olivia', initial: 'Olivia W.', country: 'Canada', locale: 'en', timezone: 'UTC-04:00' },
-  { key: 't12', name: 'Lucas Almeida', firstName: 'Lucas', initial: 'Lucas A.', country: 'Brazil', locale: 'pt', timezone: 'UTC-03:00' },
+  {
+    key: 't01',
+    name: 'Anna Meijer',
+    firstName: 'Anna',
+    initial: 'Anna M.',
+    country: 'Netherlands',
+    locale: 'nl',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't02',
+    name: 'James Carter',
+    firstName: 'James',
+    initial: 'James C.',
+    country: 'United States',
+    locale: 'en',
+    timezone: 'UTC-05:00',
+  },
+  {
+    key: 't03',
+    name: 'Sophie Dubois',
+    firstName: 'Sophie',
+    initial: 'Sophie D.',
+    country: 'France',
+    locale: 'fr',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't04',
+    name: 'Lukas Schmidt',
+    firstName: 'Lukas',
+    initial: 'Lukas S.',
+    country: 'Germany',
+    locale: 'de',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't05',
+    name: 'Maria Santos',
+    firstName: 'Maria',
+    initial: 'Maria S.',
+    country: 'Portugal',
+    locale: 'pt',
+    timezone: 'UTC+00:00',
+  },
+  {
+    key: 't06',
+    name: 'Carlos Ruiz',
+    firstName: 'Carlos',
+    initial: 'Carlos R.',
+    country: 'Spain',
+    locale: 'es',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't07',
+    name: 'Emily Brown',
+    firstName: 'Emily',
+    initial: 'Emily B.',
+    country: 'United Kingdom',
+    locale: 'en',
+    timezone: 'UTC+00:00',
+  },
+  {
+    key: 't08',
+    name: 'Wei Chen',
+    firstName: 'Wei',
+    initial: 'Wei C.',
+    country: 'China',
+    locale: 'zh',
+    timezone: 'UTC+08:00',
+  },
+  {
+    key: 't09',
+    name: 'Isabella Rossi',
+    firstName: 'Isabella',
+    initial: 'Isabella R.',
+    country: 'Italy',
+    locale: 'en',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't10',
+    name: 'Noah Jansen',
+    firstName: 'Noah',
+    initial: 'Noah J.',
+    country: 'Netherlands',
+    locale: 'nl',
+    timezone: 'UTC+01:00',
+  },
+  {
+    key: 't11',
+    name: 'Olivia Wilson',
+    firstName: 'Olivia',
+    initial: 'Olivia W.',
+    country: 'Canada',
+    locale: 'en',
+    timezone: 'UTC-04:00',
+  },
+  {
+    key: 't12',
+    name: 'Lucas Almeida',
+    firstName: 'Lucas',
+    initial: 'Lucas A.',
+    country: 'Brazil',
+    locale: 'pt',
+    timezone: 'UTC-03:00',
+  },
 ];
 
 export function operatorEmail(key: string): string {
@@ -134,12 +231,19 @@ async function ensureAuthUser(
   role: Role,
   extra: { phone?: string; location?: string; timezone?: string } = {},
 ): Promise<string> {
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
   if (existing) return existing.id;
 
   const authCtx = await auth.$context;
   const hashed = await authCtx.password.hash(DEMO_PASSWORD);
-  const user = await authCtx.internalAdapter.createUser({ email, name, emailVerified: true });
+  const user = await authCtx.internalAdapter.createUser({
+    email,
+    name,
+    emailVerified: true,
+  });
   await authCtx.internalAdapter.linkAccount({
     userId: user.id,
     providerId: 'credential',
@@ -168,9 +272,14 @@ export async function seedUsersAndOperators(): Promise<void> {
   // Operators (+ profile + configs)
   for (const op of OPERATORS) {
     const email = operatorEmail(op.key);
-    const userId = await ensureAuthUser(email, op.ownerName, Role.TOUR_OPERATOR, {
-      location: `${op.city}, ${op.country}`,
-    });
+    const userId = await ensureAuthUser(
+      email,
+      op.ownerName,
+      Role.TOUR_OPERATOR,
+      {
+        location: `${op.city}, ${op.country}`,
+      },
+    );
 
     const operator = await prisma.operator.upsert({
       where: { userId },
@@ -240,8 +349,18 @@ export async function seedUsersAndOperators(): Promise<void> {
         isActive: false,
       },
     });
+
+    // Default team designation templates - the same rows the operators
+    // service provisions on real operator creation. skipDuplicates on the
+    // (operatorId, name) unique keeps the demo seed re-runnable.
+    await prisma.staffDesignation.createMany({
+      data: defaultTeamDesignationRows(operator.id),
+      skipDuplicates: true,
+    });
   }
-  log(`Operators ready (${OPERATORS.length}) with company/social/payment configs.`);
+  log(
+    `Operators ready (${OPERATORS.length}) with company/social/payment configs.`,
+  );
 }
 
 // ── Loaders for downstream modules ───────────────────────────────────────────────

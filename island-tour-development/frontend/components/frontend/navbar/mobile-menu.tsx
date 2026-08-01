@@ -48,10 +48,13 @@ export function MobileMenu({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.28, ease: [0.04, 0.62, 0.23, 0.98] }}
+                    transition={{
+                        duration: 0.28,
+                        ease: [0.04, 0.62, 0.23, 0.98],
+                    }}
                     className='absolute top-18 left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50 md:hidden'>
                     <div className='border-t border-it-border px-4 py-6 flex flex-col gap-1'>
-                        <span className='px-1 pb-1 text-xs font-medium text-it-ink-muted'>
+                        <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
                             {dict.selectIsland}
                         </span>
                         {islands.map((island, i) => (
@@ -59,12 +62,20 @@ export function MobileMenu({
                                 key={island.slug}
                                 initial={{ opacity: 0, x: -12 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.06 + i * 0.05, duration: 0.25 }}>
+                                transition={{
+                                    delay: 0.06 + i * 0.05,
+                                    duration: 0.25,
+                                }}>
                                 <Link
-                                    href={localizeHref(locale, `/${island.slug}`)}
+                                    href={localizeHref(
+                                        locale,
+                                        `/${island.slug}`
+                                    )}
                                     onClick={onClose}
-                                    aria-current={island.slug === currentIsland?.slug}
-                                    className={`block text-base no-underline py-2 ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                    aria-current={
+                                        island.slug === currentIsland?.slug
+                                    }
+                                    className={`block text-base no-underline py-2 ${island.slug === currentIsland?.slug ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
                                     {island.name}
                                 </Link>
                             </motion.div>
@@ -73,7 +84,7 @@ export function MobileMenu({
                         {!isHome && categories.length > 0 && (
                             <>
                                 <div className='my-3 h-px bg-it-border' />
-                                <span className='px-1 pb-1 text-xs font-medium text-it-ink-muted'>
+                                <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
                                     {dict.categories}
                                 </span>
                                 {categories.map((cat, i) => (
@@ -81,7 +92,10 @@ export function MobileMenu({
                                         key={cat.slug}
                                         initial={{ opacity: 0, x: -12 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: 0.1 + i * 0.05, duration: 0.25 }}>
+                                        transition={{
+                                            delay: 0.1 + i * 0.05,
+                                            duration: 0.25,
+                                        }}>
                                         <Link
                                             href={categoryHref(cat.slug)}
                                             onClick={onClose}
@@ -118,3 +132,4 @@ export function MobileMenu({
         </AnimatePresence>
     );
 }
+

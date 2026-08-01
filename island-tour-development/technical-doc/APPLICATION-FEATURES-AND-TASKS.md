@@ -22,33 +22,33 @@ than the code shows, the code wins and the doc's claim is recorded inline as
 
 ### Sources
 
-| Source | Scope |
-|---|---|
-| `island-tours-platform-master.html` v1.9 | Canonical spec — settles every conflict |
-| `island-tours-booking-confirmation-email-wireframe.html` | Client-provided; binding for all booking email |
-| `island-tours-login-pages.html` + login spec/rationale | Client-provided; 3 auth surfaces |
-| `technical-doc/**` (~90 files) | Architecture, implementation, access, deployment, OCTO, dashboard extraction |
-| `island-tour-development/backend` | NestJS 11 + Prisma/Postgres |
-| `island-tour-development/frontend` | Next.js 16 public site |
-| `tripwheel-x-islandtours-dashboard` | Standalone Next.js admin/operator dashboard |
+| Source                                                   | Scope                                                                        |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `island-tours-platform-master.html` v1.9                 | Canonical spec — settles every conflict                                      |
+| `island-tours-booking-confirmation-email-wireframe.html` | Client-provided; binding for all booking email                               |
+| `island-tours-login-pages.html` + login spec/rationale   | Client-provided; 3 auth surfaces                                             |
+| `technical-doc/**` (~90 files)                           | Architecture, implementation, access, deployment, OCTO, dashboard extraction |
+| `island-tour-development/backend`                        | NestJS 11 + Prisma/Postgres                                                  |
+| `island-tour-development/frontend`                       | Next.js 16 public site                                                       |
+| `tripwheel-x-islandtours-dashboard`                      | Standalone Next.js admin/operator dashboard                                  |
 
 ### Codebase split
 
-| Codebase | Path | Covered in |
-|---|---|---|
-| Backend | `island-tour-development/backend` | Part II |
-| Public site | `island-tour-development/frontend` | Part III |
-| Dashboard | `tripwheel-x-islandtours-dashboard` | Part IV |
+| Codebase    | Path                                | Covered in |
+| ----------- | ----------------------------------- | ---------- |
+| Backend     | `island-tour-development/backend`   | Part II    |
+| Public site | `island-tour-development/frontend`  | Part III   |
+| Dashboard   | `tripwheel-x-islandtours-dashboard` | Part IV    |
 
 ---
 
 ## Status legend
 
-| Mark | Meaning |
-|---|---|
-| `- [x]` | **Done** — code audit confirms built and wired |
+| Mark    | Meaning                                                                                       |
+| ------- | --------------------------------------------------------------------------------------------- |
+| `- [x]` | **Done** — code audit confirms built and wired                                                |
 | `- [~]` | **Ongoing** — exists but partial, stubbed, or has known defects; the bullet says what remains |
-| `- [ ]` | **Pending** — not built |
+| `- [ ]` | **Pending** — not built                                                                       |
 
 `⚠️ CONFLICT` marks a point where sources disagree. Per project rule, the master doc is the
 arbiter; where it is silent the item is escalated in Part V rather than silently resolved.
@@ -57,12 +57,12 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 ## Status roll-up
 
-| Codebase | Done | Ongoing | Pending | Total |
-|---|---:|---:|---:|---:|
-| Backend (Part II) | 243 | 19 | 110 | 372 |
-| Public frontend (Part III) | 224 | 38 | 191 | 453 |
-| Dashboard (Part IV) | 187 | 15 | 122 | 324 |
-| **Total** | **684** | **70** | **438** | **1,192** |
+| Codebase                   |    Done | Ongoing | Pending |     Total |
+| -------------------------- | ------: | ------: | ------: | --------: |
+| Backend (Part II)          |     243 |      19 |     110 |       372 |
+| Public frontend (Part III) |     224 |      38 |     191 |       453 |
+| Dashboard (Part IV)        |     187 |      15 |     122 |       324 |
+| **Total**                  | **684** |  **70** | **438** | **1,192** |
 
 > The `MASTER-CHECKLIST.md` progress table reports ~23% complete (46/157/15 of 203). That figure
 > is stale on both axes — it undercounts shipped work and its own per-section Done counts read 0
@@ -70,29 +70,29 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 ### Highest-severity findings
 
-| # | Finding | Where |
-|---|---|---|
-| 1 | ~~Mollie-paid bookings stay `ON_HOLD` forever~~ **STALE, fixed 2026-07-25** — full Mollie integration shipped as a switchable PSP (`@mollie/api-client` installed; webhook fetch-and-reconcile confirms; hosted-redirect checkout; refunds route by the Payment row's provider; admin switch at `/settings/payment/provider` + dashboard Payments tab) | Part II |
-| 2 | ~~No analytics/tracking layer at all on the public site~~ **STALE, fixed 2026-07-25** — `booking_complete` pushes to `dataLayer` and the TYP conversion push is wired; the **GTM container now actually loads** (`google-tag-manager.tsx`, gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID) and fans out to GA4/Ads/Pixel + the server-side container; backend Meta CAPI already fires server-side | Part III |
-| 3 | `StaticFxProvider` is bound in every environment, so production never truly fails closed | Part II |
-| 4 | Nightly jobs run on in-process `@nestjs/schedule` — will double-run under a second replica | Part II |
-| 5 | ~~No `sitemap.ts`, `robots.ts`, or JSON-LD; hreflang/canonical only on the tour-detail route~~ **STALE, fixed 2026-07-25** — `/robots.txt` + `/sitemap.xml` (backed by `GET /sitemap/entries`), Organization/WebSite/BreadcrumbList/FAQPage/TouristDestination/TouristTrip JSON-LD, and canonical+hreflang extended to the homepage and legal pages. See A6.8 | Part III |
-| 6 | ~~Homepage CMS loaders have zero callers~~ **STALE, fixed** — `app/(frontend)/[locale]/page.tsx` calls `getHomePageContent` (verified 2026-07-21) | Part III |
-| 7 | `operator_full` specced as live in 5 docs, dropped from v1 by the 2026-07-15 locked decision | Part V |
-| 8 | Category gating built at ≥1 published tour; canonical rule is ≥3 | Part II / V |
-| 9 | Dashboard e2e suite ships ~80 checked-in failing directories — do not read as green | Part IV |
-| 10 | Public frontend has zero test coverage (its only specs target the extracted dashboard) | Part III |
+| #   | Finding                                                                                                                                                                                                                                                                                                                                                                                              | Where       |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | ~~Mollie-paid bookings stay `ON_HOLD` forever~~ **STALE, fixed 2026-07-25** — full Mollie integration shipped as a switchable PSP (`@mollie/api-client` installed; webhook fetch-and-reconcile confirms; hosted-redirect checkout; refunds route by the Payment row's provider; admin switch at `/settings/payment/provider` + dashboard Payments tab)                                               | Part II     |
+| 2   | ~~No analytics/tracking layer at all on the public site~~ **STALE, fixed 2026-07-25** — `booking_complete` pushes to `dataLayer` and the TYP conversion push is wired; the **GTM container now actually loads** (`google-tag-manager.tsx`, gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID) and fans out to GA4/Ads/Pixel + the server-side container; backend Meta CAPI already fires server-side | Part III    |
+| 3   | `StaticFxProvider` is bound in every environment, so production never truly fails closed                                                                                                                                                                                                                                                                                                             | Part II     |
+| 4   | Nightly jobs run on in-process `@nestjs/schedule` — will double-run under a second replica                                                                                                                                                                                                                                                                                                           | Part II     |
+| 5   | ~~No `sitemap.ts`, `robots.ts`, or JSON-LD; hreflang/canonical only on the tour-detail route~~ **STALE, fixed 2026-07-25** — `/robots.txt` + `/sitemap.xml` (backed by `GET /sitemap/entries`), Organization/WebSite/BreadcrumbList/FAQPage/TouristDestination/TouristTrip JSON-LD, and canonical+hreflang extended to the homepage and legal pages. See A6.8                                        | Part III    |
+| 6   | ~~Homepage CMS loaders have zero callers~~ **STALE, fixed** — `app/(frontend)/[locale]/page.tsx` calls `getHomePageContent` (verified 2026-07-21)                                                                                                                                                                                                                                                    | Part III    |
+| 7   | `operator_full` specced as live in 5 docs, dropped from v1 by the 2026-07-15 locked decision                                                                                                                                                                                                                                                                                                         | Part V      |
+| 8   | Category gating built at ≥1 published tour; canonical rule is ≥3                                                                                                                                                                                                                                                                                                                                     | Part II / V |
+| 9   | Dashboard e2e suite ships ~80 checked-in failing directories — do not read as green                                                                                                                                                                                                                                                                                                                  | Part IV     |
+| 10  | Public frontend has zero test coverage (its only specs target the extracted dashboard)                                                                                                                                                                                                                                                                                                               | Part III    |
 
 ---
 
 ## Document structure
 
 - **Part I — Feature & requirement inventory** (A–E): every feature and rule found in the docs
-  - A. Platform foundation, IA, routing, SEO & rendering
-  - B. Catalog entities, commercial model, ranking & badges
-  - C. Availability, booking, payments, settlement, FX & transactional email
-  - D. Public site pages, discovery, accounts, auth & tracking
-  - E. Roles & access, dashboard, operations, infrastructure & OCTO
+    - A. Platform foundation, IA, routing, SEO & rendering
+    - B. Catalog entities, commercial model, ranking & badges
+    - C. Availability, booking, payments, settlement, FX & transactional email
+    - D. Public site pages, discovery, accounts, auth & tracking
+    - E. Roles & access, dashboard, operations, infrastructure & OCTO
 - **Part II — Backend task checklist**
 - **Part III — Public frontend task checklist**
 - **Part IV — Dashboard task checklist**
@@ -112,6 +112,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A1. Platform positioning & business model
 
 #### A1.1 What Island Tours is
+
 - Island Tours is a **Caribbean tour marketplace** built on the **"Built by Islanders"** ethos: local curation as the ethical, locally owned alternative to global OTAs.
 - Named competitor OTAs: **Viator, GetYourGuide, Klook, Headout**.
 - **Three-sided model**: travelers discover and book tours/activities; local operators supply them; Island Tours earns a **commission per booking**.
@@ -123,20 +124,22 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Tagline usage: full form beneath the logo and in brand contexts; closing form as sign-off in the global footer, email sign-offs, and end of long-form copy.
 
 #### A1.2 The four positioning pillars
+
 - **Pillar 1 — Local curation, not an algorithmic catalog.** Editorial picks are made by people who live on the islands.
 - **Pillar 2 — Ethical CRO.** No fake urgency, no fake scarcity, no badge inflation, no dark patterns, no pre-checked add-ons. Paid placement is **always labeled `Sponsored`**.
 - **Pillar 3 — Transparency.** Total price before checkout, no hidden fees, clear cancellation, claims always verifiable.
 - **Pillar 4 — Caribbean-proud voice.** Warm, direct, first-person plural, never corporate.
 
 #### A1.3 Commercial model (commission-based marketplace)
+
 - Operators pay a **tiered commission**, **locked/snapshotted at booking time** as `commission_amount` on the booking record.
 - Commission tiers (tier key — commission — `tier_rank`):
-  - `premium` — **30%** — rank **1**
-  - `featured` — **27.5%** — rank **2**
-  - `boosted` — **25%** — rank **3**
-  - `organic` — **22.5%** — rank **4**
-  - `standard` (default) — **20%** — rank **5**
-  - **Destination Spotlight** — **35%** — separate placement block, **never interleaved**; **max 3 simultaneous per destination**; **manual approval** (operator requests, Island Tours approves).
+    - `premium` — **30%** — rank **1**
+    - `featured` — **27.5%** — rank **2**
+    - `boosted` — **25%** — rank **3**
+    - `organic` — **22.5%** — rank **4**
+    - `standard` (default) — **20%** — rank **5**
+    - **Destination Spotlight** — **35%** — separate placement block, **never interleaved**; **max 3 simultaneous per destination**; **manual approval** (operator requests, Island Tours approves).
 - `standard` is the default tier for new tours **and** the locked rate for operators on a negotiated 20% agreement.
 - `standard` **deliberately ranks below `organic`**, so a 20% operator who wants to outrank other base-rate tours moves up to `organic` at 22.5%.
 - **Tier mechanics are internal commercial logic, never user-facing.**
@@ -146,10 +149,10 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Ranking order: `ORDER BY tier_rank ASC, quality_score DESC, id ASC`.
 - Free cancellation window per tour, **default 48h**; it is a **listing requirement**.
 - **Four payment models** govern the balance (canonical set, confirmed June 10, 2026): `operator_link` (default), `on_arrival`, `paid_in_full`, `operator_full`.
-  - `operator_link` — operator emails a secure payment link; balance paid online before the deadline; deposit `deposit_pct`% via Stripe at booking.
-  - `on_arrival` — balance paid in person on arrival (card or cash, or cash only, per tour); deposit `deposit_pct`% via Stripe.
-  - `paid_in_full` — traveler pays **100% at booking** via Island Tours.
-  - `operator_full` — operator collects the full amount; **checkout takes no payment**; booking created confirmed at commit, bypasses Stripe + webhook.
+    - `operator_link` — operator emails a secure payment link; balance paid online before the deadline; deposit `deposit_pct`% via Stripe at booking.
+    - `on_arrival` — balance paid in person on arrival (card or cash, or cash only, per tour); deposit `deposit_pct`% via Stripe.
+    - `paid_in_full` — traveler pays **100% at booking** via Island Tours.
+    - `operator_full` — operator collects the full amount; **checkout takes no payment**; booking created confirmed at commit, bypasses Stripe + webhook.
 - The earlier LD24 statement "balance online, not cash on tour day" describes the `operator_link` default and is **superseded** as a platform-wide rule by this four-model set.
 - **Two-phase operator visibility (platform principle):** before payment, all copy is **agentless** — the widget and modals say "You'll get a secure link to pay the rest" and never name or spotlight the operator (disintermediation control).
 - After booking, the operator is named **deliberately**: on `operator_link` tours the Thank You page and confirmation email say the operator will send the balance link, so that email is **expected and not mistaken for phishing** (the C2 mitigation).
@@ -158,6 +161,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - ⚠️ **CONFLICT — `operator_full` v1 status:** PROJECT-SCOPE §5, BOOKING-AND-PAYMENTS, DATA-MODEL and TRACKING treat `operator_full` as a **live fourth model**; SETTLEMENT-AND-PAYOUTS Part 2 (founder decision, 2026-07-15) **drops it from v1** (returns in v2). The settlement decision is the later, locked one.
 
 #### A1.4 Launch destinations (LOCKED, confirmed June 10, 2026)
+
 - Three **live** destinations in rollout order; Saint Lucia and Bahamas exist as **seeded pipeline rows only**.
 - Destination 1 — **Curaçao** — slug `/curacao/` — status **Launch**.
 - Destination 2 — **Aruba** — slug `/aruba/` — status **Rollout 2**.
@@ -171,13 +175,14 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Destinations with `is_seeded = true` **cannot be deleted** (403 in the service).
 
 #### A1.5 Languages & currency model
+
 - **Seven locales from launch, English primary: EN, NL, DE, FR, ES, PT, ZH.**
 - DB `Locale` enum ordering is `en, es, nl, pt, fr, de, zh` — the same set.
 - Overrules `Island-Tours-platform-architecture-v3.md` partially; B.13: six-locale switcher (UI/UX V2) → **seven locales including ZH**.
 - **Slugs are English in every locale** (one slug worldwide per page); the locale prefix alone switches language.
 - **Display currency defaults per locale (LOCKED June 10, 2026):**
-  - Locales **EN, ZH → USD**
-  - Locales **NL, DE, FR, ES, PT → EUR**
+    - Locales **EN, ZH → USD**
+    - Locales **NL, DE, FR, ES, PT → EUR**
 - The locale sets the default currency; a **currency selector in the global footer** lets the user override it.
 - The currency override **persists for the session**.
 - Decided June 10, 2026, reversing the Section4_7 §6.3 removal and partially restoring the UI/UX Structure V2 footer selector (conflict log 51; B.51).
@@ -188,6 +193,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - ⚠️ **CONFLICT (resolved):** B.12 — display currency destination-based + footer selector (architecture, UI/UX V2) → locale-fixed, no selector (Section4_7 §6.3, twice) (C6) → **reversed again by B.51 to locale-default + footer selector, session-persistent** (veto round June 10, 2026). B.51 is the current lock.
 
 #### A1.6 Infrastructure (master §1.5)
+
 - **Next.js** frontend; **Node.js / NestJS 11** backend on **TripWheel infrastructure**; strict TypeScript; modules follow the `src/users/` pattern.
 - **`next-intl`** for all UI strings — **no hardcoded English anywhere**.
 - Database — **PostgreSQL via Prisma 7 ORM**, **split schema** in `backend/prisma/*.prisma` (Prisma 7 merges all files). (Master §1.5 also names **Supabase** for bookings, tours, operators.)
@@ -210,6 +216,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - ⚠️ **CONFLICT — TOUR_OPERATOR account creation:** PROJECT-SCOPE §3 and ARCHITECTURE-OVERVIEW §4 say **self-registration** (Better Auth email verification + Google); repo `CLAUDE.md` says **admin-invited (set-password email)**. Unresolved between docs.
 
 #### A1.7 Scope of the master document
+
 - **IN SCOPE:** consumer-facing platform, booking flow and payment models, transactional email, commercial model including the affiliate program, conversion-tracking architecture.
 - **OUT OF SCOPE:** Google Ads operational roadmap (founder's personal planning doc), operator/admin tooling, the Meta creative production system.
 - The master carries the consolidated data model (Appendix E) and a build map (Appendix F) routing developers to deep source sections per build block.
@@ -222,6 +229,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A2. Information architecture
 
 #### A2.1 Core hierarchy
+
 - `Homepage → Destinations (Curaçao, Aruba, Sint Maarten live; expansion-ready) → Discovery layer: Categories | Activity Hubs | Collections | All Tours → Tour detail pages → Booking widget → Checkout → Thank You page`.
 - **Categories are global** — one set of 19, reused per destination.
 - **Destinations scale without structural change.**
@@ -231,15 +239,17 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Cannibalization between layers is prevented by the slug registry: one slug, one page type, per destination.**
 
 #### A2.2 The three parallel discovery layers (+ All Tours)
-- **Category** — anchored to a *type of activity* (taxonomy); carries the **19 global categories**; purpose: browse by activity; the **SEO workhorse**.
-- **Activity Hub** — anchored to *a place or product reality* (Klein Curaçao, Willemstad, sunset cruises as an experience cluster); carries **comparison logic** and rich informational SEO content (what it is, best time to visit, how to get there).
-- **Collection** — anchored to *a persona or intent* (best things to do, couples, families, day trips); carries **editorial ranking**; primarily a curated tour listing with a short intro.
+
+- **Category** — anchored to a _type of activity_ (taxonomy); carries the **19 global categories**; purpose: browse by activity; the **SEO workhorse**.
+- **Activity Hub** — anchored to _a place or product reality_ (Klein Curaçao, Willemstad, sunset cruises as an experience cluster); carries **comparison logic** and rich informational SEO content (what it is, best time to visit, how to get there).
+- **Collection** — anchored to _a persona or intent_ (best things to do, couples, families, day trips); carries **editorial ranking**; primarily a curated tour listing with a short intro.
 - **All Tours** — the destination's **full catalog**; carries **filters + sort**; served from the reserved `tours` slug.
 - **Hub vs Collection decision rule:** a Hub is anchored to a place or product reality and carries **comparison logic**; a Collection is anchored to a persona or intent and carries **editorial ranking**.
 - **Rule of thumb:** rich informational content deserving its own SEO page → **Hub**. Primarily a curated tour list cutting across categories → **Collection**.
 - Ranking/ordering within listing pages (tier rank, quality score, bookability, Sponsored labeling, the "Locals' favorites" sort label) is owned by the placement engine.
 
 #### A2.3 All page types (master §2.1 — 9 specced page types + Help Center = 10 rows)
+
 - **Homepage** — job: destination selection, nothing else — `/` (per-locale `/{locale}/`).
 - **Destination** — job: island overview, entry to all discovery layers — `/en/curacao/`.
 - **All Tours** — job: full filterable catalog per destination — `/en/curacao/tours/`.
@@ -253,6 +263,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Tours live **flat directly under the destination** — **no `/tour/` segment, no hub nesting**.
 
 #### A2.4 Entity ownership (who controls what)
+
 - **Destinations** — Admin. Islands; pre-seeded; `is_seeded` protects from delete; grouped by region (data attribute, no URL).
 - **Categories** — Admin. **19 global** categories; page renders only at **≥3 published tours per destination**.
 - **Hubs** — Admin. Destination-specific; `hub_type` = **location / highlight / area**.
@@ -266,6 +277,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **`is_locals_favourite`** — editorial flag, **never operator-set**; admin-only with `MANAGE_EDITORIAL`, target ~30% coverage.
 
 #### A2.5 The three user roles
+
 - **USER (traveler)** — created **auto on first booking** — browse, book, pay, review, wishlist.
 - **TOUR_OPERATOR** — list tours, pick a commission tier, manage availability, request Spotlight. ⚠️ **CONFLICT** on creation path (self-registration vs admin-invited) — see A1.6.
 - **ADMIN** — created by **database seed only** — full platform management + Spotlight approval + force-majeure pardons + confirming operator non-payment reports.
@@ -274,6 +286,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Roles are set server-side only** — the frontend never sends a `role` field.
 
 #### A2.6 Edge cases the system must handle (EC-01 … EC-10)
+
 - **EC-01** — tour drops below an eligible tier → nightly check notifies, opens a **30-day grace**, then auto-demotes to the highest still-qualifying tier; existing bookings keep snapshotted commission.
 - **EC-02** — operator changes tier within the 30-day lock → **rejected** while `tier_locked_until` is in the future.
 - **EC-03** — tour has no open departure in the next 30 days → excluded from every ranked result set; **not billed for its tier** during the unbookable period.
@@ -290,6 +303,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A3. URL structure, routing & resolution
 
 #### A3.1 The URL model — exactly two public content URL shapes, both locale-prefixed
+
 - `/{locale}/{destination}/` → **Destination page** (2 segments).
 - `/{locale}/{destination}/{slug}/` → **Category | Hub | Collection | Tour | reserved `tours`** (3 segments).
 - **There is no fourth segment.** Tours are flat — never nested under a category or hub — and **there is no `/tour/` path segment**. Any deeper path that is not an explicitly-defined route is a **404**.
@@ -301,12 +315,14 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Help Center:** `/help`.
 
 #### A3.2 The three URL-model invariants
+
 - **1. One canonical URL per tour.** Discovered via many pages, but every link points to the single flat URL. Correct: `/en/curacao/klein-curacao-catamaran-day-trip/`; **Wrong: `/en/curacao/boat-tours/klein-curacao-catamaran/`**.
 - **2. All third-segment entities share one namespace.** Category, hub, collection, tour and the reserved `tours` slug all compete for the same `(destination, slug)` slot — uniqueness enforced **per destination** by the slug registry.
-- **3. Slugs are English at every locale.** The locale prefix selects the *translation*; it never changes the slug. `/en/curacao/boat-tours/` and `/nl/curacao/boat-tours/` are the **same entity with different rendered content**.
+- **3. Slugs are English at every locale.** The locale prefix selects the _translation_; it never changes the slug. `/en/curacao/boat-tours/` and `/nl/curacao/boat-tours/` are the **same entity with different rendered content**.
 - B.20 override: the tour-card doc's `/tour/{slug}` URL → `/{locale}/{destination}/{slug}/`.
 
 #### A3.3 Segment 1 — `{locale}` (middleware, never the registry)
+
 - Config: `createMiddleware({ locales: ['en','es','nl','pt','fr','de','zh'], defaultLocale: 'en', localePrefix: 'always' })` in `middleware.ts` (next-intl).
 - **Supported locales:** `en, nl, de, fr, es, pt, zh` — all 7 active from launch (EN primary).
 - **Default locale:** `en`. **Prefix policy:** `always` — every public content URL carries a locale prefix.
@@ -314,63 +330,71 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Effect on resolution: NONE.** The resolver ignores locale; `(destination, slug)` → the same entity for every locale. Locale only selects **which translation row is read**.
 
 #### A3.4 Segment 2 — `{destination}` (resolved directly, no registry lookup)
+
 - The destination slug **is** the route segment; validated against **`Destination.slug`, NOT the slug registry**.
 - Route: `app/(frontend)/[locale]/[destination]/page.tsx`; data ← `GET /api/v1/destinations/slug/{destination}?locale=` (**404 if missing or inactive**).
 - Launch destination slugs (rollout order): `curacao` (launch), `aruba`, `sint-maarten`; pipeline (seeded, not live): `saint-lucia`, `bahamas`.
 
 #### A3.5 Segment 3 — `{slug}` (polymorphic, resolved by the registry)
+
 - The third segment is **ambiguous** — from the URL alone Next.js cannot tell a category from a hub from a collection from a tour; they share **one route file and one namespace**. The **slug registry disambiguates it**.
 
 #### A3.6 Depth & disambiguation rules
+
 - `/{locale}/` → Homepage.
 - `/{locale}/{destination}/` (2 segments) → Destination page — **direct match on `Destination.slug`, no registry lookup**. **There is no 2-segment tour URL.**
 - `/{locale}/{destination}/{slug}/` (3 segments) → **always one `slug-registry/resolve` call, then switch on `entityType`**.
-- **4+ segments → 404** unless an explicitly-defined route exists. **No nested tour URL** — hubs add a discovery *tag*, never a URL prefix.
+- **4+ segments → 404** unless an explicitly-defined route exists. **No nested tour URL** — hubs add a discovery _tag_, never a URL prefix.
 
 #### A3.7 The resolution algorithm
+
 - **Resolve endpoint:** `GET /api/v1/slug-registry/resolve?destinationSlug={dest}&slug={slug}` — `@Public()`, no auth, **locale-independent, cacheable**.
 - Implementation (`slug-registry.service.ts → resolve()`): `prisma.slugRegistry.findUnique({ where: { destinationSlug_slug: { destinationSlug, slug } }, select: { destinationSlug, slug, entityType, entityId, isActive } })`; if `!entry || !entry.isActive` → `NotFoundException("No active slug \"{slug}\" found for destination \"{destinationSlug}\"")`.
 - **200** → `{ destinationSlug, slug, entityType, entityId }`.
 - **404** → slug is **unknown** OR **inactive (tombstoned)**. **The public router treats both identically.**
-- **Renames:** a request for the *old* slug must resolve to a **301** to the new flat URL via the redirect table **before** the registry 404s.
+- **Renames:** a request for the _old_ slug must resolve to a **301** to the new flat URL via the redirect table **before** the registry 404s.
 - **Frontend routing switch** (`app/(frontend)/[locale]/[destination]/[slug]/page.tsx`): resolve first, then branch —
-  - `CATEGORY` → `<CategoryPage destination categoryId={r.entityId} locale />`
-  - `HUB` → `<HubPage destination hubId={r.entityId} locale />`
-  - `COLLECTION` → `<CollectionPage destination collectionId={r.entityId} locale />`
-  - `TOUR` → `<TourPage destination slug={slug} locale />`
-  - `RESERVED` → `<AllToursListing destination locale />`
-  - `default` → `notFound()`
-- **TOUR** fetches by the *flat slug* it already has and does **not** need `entityId`: `GET /api/v1/trips/slug/{slug}?destinationSlug={destination}&locale=` (**no `hubSlug` — flat resolution**).
+    - `CATEGORY` → `<CategoryPage destination categoryId={r.entityId} locale />`
+    - `HUB` → `<HubPage destination hubId={r.entityId} locale />`
+    - `COLLECTION` → `<CollectionPage destination collectionId={r.entityId} locale />`
+    - `TOUR` → `<TourPage destination slug={slug} locale />`
+    - `RESERVED` → `<AllToursListing destination locale />`
+    - `default` → `notFound()`
+- **TOUR** fetches by the _flat slug_ it already has and does **not** need `entityId`: `GET /api/v1/trips/slug/{slug}?destinationSlug={destination}&locale=` (**no `hubSlug` — flat resolution**).
 - **CATEGORY / HUB / COLLECTION** use `entityId` to fetch the page payload + filtered/ranked tour list.
 - **End-to-end flow (category example, `/nl/curacao/boat-tours/`):** middleware extracts `locale=nl, destination=curacao, slug=boat-tours` → `resolve` returns `{ entityType: CATEGORY, entityId: abc-123 }` (404 if missing/inactive → `notFound()`) → `<CategoryPage>` fetches **in parallel** `GET /categories/destination/curacao/boat-tours?locale=nl` (**404 if <3 published tours**), `GET /categories/abc-123/page-content?locale=nl`, `GET /categories/abc-123/faqs?locale=nl` → render with tours ordered by `tier_rank ASC, quality_score DESC, id ASC`.
 
 #### A3.8 The two independent 404 layers (category gating)
+
 - A successful `CATEGORY` resolve is **necessary but not sufficient** to render.
 - **1. Registry 404** — the slug is unknown or `isActive = false`.
 - **2. Gating 404** — the category resolves fine, but has **fewer than 3 published tours** at this destination+category combination; **`categories.service.ts` returns 404 when `publishedTourCount < 3`**.
-- The registry answers *"what is this slug?"*; the category service answers *"is this page allowed to render right now?"*. **Both map to `notFound()` on the frontend.**
+- The registry answers _"what is this slug?"_; the category service answers _"is this page allowed to render right now?"_. **Both map to `notFound()` on the frontend.**
 - **Gating applies to CATEGORIES ONLY.** Hubs, collections and tours render whenever their resolve succeeds and `isActive = true`.
 
 #### A3.9 Frontend caching guidance for resolution
+
 - Resolve results are **cacheable per `(destination, slug)`** with revalidation.
 - Because slugs can change, **cache invalidation must also fire on a rename** (write the 301, bust the old key) **and on an `isActive` toggle**, not only on hard delete.
 - The resolver is **locale-independent** — one cached resolution serves all 7 locales for a given `(destination, slug)`.
 - **Treat a `404` from resolve as authoritative:** render `notFound()`. **Never fall back to guessing the entity type.** **Check the redirect table for a 301 BEFORE deciding a slug is gone.**
 
 #### A3.10 Breadcrumbs (master §2.7)
+
 - **Separator: `›` exclusively** (Tier 3 of the separator system, §A9.4).
 - **Final crumb is the current page and is NOT clickable.**
 - **JSON-LD `BreadcrumbList` on every page with breadcrumbs.**
 - **Tour pages have three path variants**, chosen by the tour's **primary attachment**:
-  - **Hub-anchored** — `Home › Destination › Hub › Tour` (primary attachment is an activity hub)
-  - **Category-anchored** — `Home › Destination › Category › Tour` (primary attachment is its `isPrimary` category)
-  - **Flat** — `Home › Destination › Tour` (no hub/category anchor applies)
+    - **Hub-anchored** — `Home › Destination › Hub › Tour` (primary attachment is an activity hub)
+    - **Category-anchored** — `Home › Destination › Category › Tour` (primary attachment is its `isPrimary` category)
+    - **Flat** — `Home › Destination › Tour` (no hub/category anchor applies)
 - This **supersedes the architecture document's "first assigned category" rule**.
 - **Non-tour breadcrumb paths:** Destination → `Home › Destination`; Category → `Home › Destination › Category`; Activity Hub → `Home › Destination › Activity Hub`; Collection → `Home › Destination › Collection`.
 - **Mobile visibility is a deliberate per-page divergence (LD8):** **visible on tour detail pages, hidden on destination pages** (replaced by the nav back-arrow).
 - **The URL stays flat regardless of which breadcrumb variant renders** — the breadcrumb reflects **discovery context, not the URL**.
 
 #### A3.11 Routing implementation status (as of 2026-06-20)
+
 - Backend `GET /api/v1/slug-registry/resolve` — **Built**.
 - Backend registry writes (destination/category/hub/collection/tour) — **Built**.
 - Flat tour URLs (no hub-nested route, no `hubSlug` param) — **Built**.
@@ -385,12 +409,14 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A4. Slug registry
 
 #### A4.1 Why it exists
+
 - Every public page other than the destination root lives under one ambiguous shape `/{locale}/{destination}/{slug}/`, where `{slug}` is **polymorphic** (Category / Activity Hub / Collection / Tour / reserved "all tours" listing).
 - The registry maps `{destination} + {slug}` → `{ entityType, entityId }` so the frontend knows **which page component to render and which API to call**.
 - The registry resolves the page type **at request time**; **linking components never need to know the type** (a quick link simply navigates to `/{locale}/{destination}/{slug}/`).
 - **Design rule:** a tour has **one** canonical flat URL; the categories and hubs a tour belongs to are **discovery tags** — they affect listing/filtering, **not** the URL. No hub-nested tour URL; no `/tour/` segment.
 
 #### A4.2 Schema — `SlugRegistry` (`@@map("slug_registry")`)
+
 - `id String @id @default(uuid())`
 - `destinationSlug String` — e.g. `'curacao'`; **denormalized copy of `Destination.slug`** so resolution is a **single-table lookup with no join**; the island namespace.
 - `slug String` — the **English URL segment**; always English, never translated; normalized via `generateSlug()`.
@@ -403,6 +429,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Entity type → example URL: `CATEGORY` → `/en/curacao/boat-tours/`; `HUB` → `/en/curacao/klein-curacao/`; `COLLECTION` → `/en/curacao/top-10-tours/`; `TOUR` → `/en/curacao/sunset-catamaran-cruise/`; `RESERVED` → `/en/curacao/tours/`.
 
 #### A4.3 The registry invariants
+
 - **1. Uniqueness** — `@@unique([destinationSlug, slug])`; within one destination a slug maps to exactly one entity. The same slug under different destinations is **independent** (`curacao/boat-tours` ≠ `aruba/boat-tours`).
 - **2. Transactional integrity** — **every registry row is written in the same Prisma `$transaction` as the entity it represents.** A failed entity create rolls back its registry row and vice-versa — **never orphan rows or unrouteable entities** (CLAUDE.md Critical Rule #4).
 - **3. `isActive` is a tombstone, not a delete** — the row stays with `isActive=false`: the page 404s but the slug **remains claimed**, so no other entity can silently steal a bookmarked/indexed URL.
@@ -411,12 +438,14 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **No code path writes a registry row on a translation or a page-content edit.**
 
 #### A4.4 The 20 protected slugs per destination
+
 - At destination creation the registry is pre-seeded with **20 protected slugs**: **19 global category slugs** (one `CATEGORY` row each) + the reserved **`tours`** slug (one `RESERVED` row, `entityId = null`).
 - The reserved `tours` slug protects `/{destination}/tours/` so **no category/hub/collection/tour can ever claim it**, and lets the frontend render the "all tours in this destination" listing from a **known, stable URL**.
 - **`RESERVED` is the only `entityType` whose `entityId` is `null`.**
 - Categories are **global** — the same 19-slug set is reused for every destination; a new category **fans a row out to every active destination**, and a new destination **backfills a row for every existing active category**.
 
 #### A4.5 Write-on-create rules (quick reference)
+
 - **Destination create** → **1 `RESERVED` row** (`tours`, `entityId = null`) **+ 1 `CATEGORY` row per existing active category** — backfills every existing category into the new island.
 - **Category create** → **1 `CATEGORY` row per existing active destination** (`entityId` = category id) — fans out across all islands; **writes slug rows only — NO FeaturedSlot rows**.
 - **Hub create** → exactly **1 `HUB` row** (`entityId` = hub id), scoped to its one destination.
@@ -428,46 +457,48 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **CRITICAL CHANGE — no FeaturedSlot seeding.** The earlier rule "Category create seeds exactly 3 FeaturedSlot rows in the same transaction" is **removed**; FeaturedSlot / SlotLock / SlotHistory / Waitlist do **not** exist in the target architecture. The category-create service **must drop the `featuredSlot.createMany([...])` call** (it still exists in code as of 2026-06-20).
 
 #### A4.6 Step-by-step create cycles (each inside a single Prisma `$transaction`; any throw rolls everything back and no slug is claimed)
+
 - **Create a DESTINATION** (`destinations.service.ts create()`):
-  1. `slug = generateSlug(dto.slug ?? dto.name)` ("Curaçao" → "curacao")
-  2. BEGIN TRANSACTION
-  3. `destination.create({ name, slug, region, …, createdBy })` — **P2002 on slug → 409 "already exists"**
-  4. `slugRegistry.create({ destinationSlug:"curacao", slug:"tours", entityType: RESERVED, entityId: null })` — reserve the listing URL
-  5. `categories = category.findMany({ isActive: true })`
-  6. If `categories.length > 0`: `slugRegistry.createMany(categories.map(c => ({ destinationSlug:"curacao", slug:c.slug, entityType: CATEGORY, entityId:c.id })))`
-  7. COMMIT → log "seeded N category slug(s) + 1 reserved"
+    1. `slug = generateSlug(dto.slug ?? dto.name)` ("Curaçao" → "curacao")
+    2. BEGIN TRANSACTION
+    3. `destination.create({ name, slug, region, …, createdBy })` — **P2002 on slug → 409 "already exists"**
+    4. `slugRegistry.create({ destinationSlug:"curacao", slug:"tours", entityType: RESERVED, entityId: null })` — reserve the listing URL
+    5. `categories = category.findMany({ isActive: true })`
+    6. If `categories.length > 0`: `slugRegistry.createMany(categories.map(c => ({ destinationSlug:"curacao", slug:c.slug, entityType: CATEGORY, entityId:c.id })))`
+    7. COMMIT → log "seeded N category slug(s) + 1 reserved"
 - **Create a CATEGORY** (`categories.service.ts create()`; categories are **global**, one category spans every island):
-  1. `slug = generateSlug(dto.slug ?? dto.name)` → "boat-tours"
-  2. BEGIN TRANSACTION
-  3. `category.create({ name, slug, …, createdBy })` — **P2002 → 409**
-  4. `destinations = destination.findMany({ isActive: true })`
-  5. If `destinations.length > 0`: `slugRegistry.createMany(destinations.map(d => ({ destinationSlug:d.slug, slug:"boat-tours", entityType: CATEGORY, entityId: category.id })))`
-  6. COMMIT → log "seeded N slug_registry row(s)"
-  - Result: `/curacao/boat-tours/`, `/aruba/boat-tours/`, … all resolve to this one category. **The page does not render until that destination has ≥3 published tours in the category.**
+    1. `slug = generateSlug(dto.slug ?? dto.name)` → "boat-tours"
+    2. BEGIN TRANSACTION
+    3. `category.create({ name, slug, …, createdBy })` — **P2002 → 409**
+    4. `destinations = destination.findMany({ isActive: true })`
+    5. If `destinations.length > 0`: `slugRegistry.createMany(destinations.map(d => ({ destinationSlug:d.slug, slug:"boat-tours", entityType: CATEGORY, entityId: category.id })))`
+    6. COMMIT → log "seeded N slug_registry row(s)"
+    - Result: `/curacao/boat-tours/`, `/aruba/boat-tours/`, … all resolve to this one category. **The page does not render until that destination has ≥3 published tours in the category.**
 - **Create an ACTIVITY HUB** (`hubs.service.ts create()`; destination-scoped; **the hub does NOT accept an explicit slug — always derived from name**):
-  1. `slug = generateSlug(dto.name)` → "klein-curacao"
-  2. BEGIN TRANSACTION
-  3. `destination.findUnique({ id: destinationId })` — **404 if missing**
-  4. `hub.create({ destinationId, name, slug, hubType, …, createdBy })` — **P2002 → 409**
-  5. `slugRegistry.create({ destinationSlug: destination.slug, slug: "klein-curacao", entityType: HUB, entityId: hub.id })` — **P2002 → 409**
-  6. COMMIT
+    1. `slug = generateSlug(dto.name)` → "klein-curacao"
+    2. BEGIN TRANSACTION
+    3. `destination.findUnique({ id: destinationId })` — **404 if missing**
+    4. `hub.create({ destinationId, name, slug, hubType, …, createdBy })` — **P2002 → 409**
+    5. `slugRegistry.create({ destinationSlug: destination.slug, slug: "klein-curacao", entityType: HUB, entityId: hub.id })` — **P2002 → 409**
+    6. COMMIT
 - **Create a COLLECTION** (`collections.service.ts create()`; destination-scoped, manual or dynamic/filtered):
-  1. `slug = generateSlug(dto.slug ?? dto.name)` → 2. BEGIN → 3. `collection.create({ destinationId, name, slug, … })` (**P2002 → 409**) → 4. `slugRegistry.create({ destinationSlug, slug, entityType: COLLECTION, entityId: collection.id })` → 5. COMMIT
-  - **Collection slugs must be semantically distinct from category slugs** (`top-10-tours` correct, never `boat-tours-private` — that should be a filtered category URL instead).
+    1. `slug = generateSlug(dto.slug ?? dto.name)` → 2. BEGIN → 3. `collection.create({ destinationId, name, slug, … })` (**P2002 → 409**) → 4. `slugRegistry.create({ destinationSlug, slug, entityType: COLLECTION, entityId: collection.id })` → 5. COMMIT
+    - **Collection slugs must be semantically distinct from category slugs** (`top-10-tours` correct, never `boat-tours-private` — that should be a filtered category URL instead).
 - **Create a TOUR** (`trips.service.ts create()`) — **the most defensive cycle** (tour slugs share the destination namespace with categories, hubs, collections and the reserved `tours` slug):
-  1. `operatorId = resolveOperatorId(userId, role)` — `user.id → operator.id` (**admin auto-provisions**)
-  2. `baseSlug = generateSlug(dto.slug ?? dto.name)`
-  3. Validate destination → **must exist AND `isActive`**, else **400**
-  4. Validate categories: **dedupe; require ≥1; `primaryCategoryId ∈ categoryIds`; each exists + `isActive`**
-  5. `slug = resolveUniqueSlug(baseSlug, destinationId, destinationSlug, operatorId)`
-  6. BEGIN TRANSACTION
-  7. Validate each `hubId` (**TOCTOU-safe, inside tx**): exists + `isActive`; **same destination**; **allowed-category match**
-  8. `trip.create({ … categories:{create: … (one isPrimary)}, hubs:{create: …} })` — **P2002 on slug → 409 (race)**
-  9. `slugRegistry.create({ destinationSlug, slug: trip.slug, entityType: TOUR, entityId: trip.id, isActive:true })`
-  10. COMMIT
-  - Rows written: 1 `Trip` + N `TourCategory` (one `isPrimary`) + M `TourHub` + **always** 1 `TOUR` registry row.
+    1. `operatorId = resolveOperatorId(userId, role)` — `user.id → operator.id` (**admin auto-provisions**)
+    2. `baseSlug = generateSlug(dto.slug ?? dto.name)`
+    3. Validate destination → **must exist AND `isActive`**, else **400**
+    4. Validate categories: **dedupe; require ≥1; `primaryCategoryId ∈ categoryIds`; each exists + `isActive`**
+    5. `slug = resolveUniqueSlug(baseSlug, destinationId, destinationSlug, operatorId)`
+    6. BEGIN TRANSACTION
+    7. Validate each `hubId` (**TOCTOU-safe, inside tx**): exists + `isActive`; **same destination**; **allowed-category match**
+    8. `trip.create({ … categories:{create: … (one isPrimary)}, hubs:{create: …} })` — **P2002 on slug → 409 (race)**
+    9. `slugRegistry.create({ destinationSlug, slug: trip.slug, entityType: TOUR, entityId: trip.id, isActive:true })`
+    10. COMMIT
+    - Rows written: 1 `Trip` + N `TourCategory` (one `isPrimary`) + M `TourHub` + **always** 1 `TOUR` registry row.
 
 #### A4.7 Slug normalization (`generateSlug()`) — applies to every slug
+
 - **Lowercase only** (`Curaçao` → `curacao`, `Boat Tours` → `boat-tours`).
 - **ASCII only** — diacritics folded (`ç`→`c`, `ü`→`u`, `é`→`e`); NFD strip.
 - **Separators** — spaces and underscores → single hyphens.
@@ -477,18 +508,20 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Backend `CreateXxxDto` accepts an optional `slug?`; the service uses `dto.slug ?? generateSlug(dto.name)` and always normalizes via `generateSlug`. The frontend `toSlug()` must stay in sync with the backend util.
 
 #### A4.8 `resolveUniqueSlug` — slug collision resolution algorithm
+
 - **Step 1 — normalize.** `generateSlug()` lowercases, ASCII-folds, strips punctuation, hyphen-joins → the **base slug** (`"Klein Curaçao Boat Trip"` → `klein-curacao-boat-trip`).
-- **Step 2 — own-duplicate guard.** If *this same operator* already has the base slug at this destination → **`409` immediately** (they are duplicating their own listing; **no auto-rename**).
+- **Step 2 — own-duplicate guard.** If _this same operator_ already has the base slug at this destination → **`409` immediately** (they are duplicating their own listing; **no auto-rename**).
 - **Step 3 — cross-entity collision check.** **In parallel**, look for any **trip** (any operator) with that slug at this destination, and any **`slug_registry`** row at `(destinationSlug, baseSlug)`. If **both empty** → the base slug is free, use it as-is. **This check must also treat a slug still inside its 90-day cooldown as taken** (and a slug with an outstanding 301 source).
-- **Step 4 — suffix with operator identity (one attempt, NEVER numeric).** If claimed by *another* entity: `suffix = generateSlug(companyName ?? userName ?? operatorId[:8])` (e.g. "bluefin-charters"); `candidate = "klein-curacao-boat-trip-bluefin-charters"`. Re-check the candidate against **both** the trips table and the registry:
-  - free → **use it**
-  - taken by *this* operator → **409 (own duplicate)**
-  - taken by *another* entity → **409 "choose a different tour name or slug"**
-  - **No numeric suffix is ever tried (`-2`, `-3`, …)** — numbers are confusing for users and poor for SEO. The operator-name suffix is the **single** fallback; a further collision is rejected.
+- **Step 4 — suffix with operator identity (one attempt, NEVER numeric).** If claimed by _another_ entity: `suffix = generateSlug(companyName ?? userName ?? operatorId[:8])` (e.g. "bluefin-charters"); `candidate = "klein-curacao-boat-trip-bluefin-charters"`. Re-check the candidate against **both** the trips table and the registry:
+    - free → **use it**
+    - taken by _this_ operator → **409 (own duplicate)**
+    - taken by _another_ entity → **409 "choose a different tour name or slug"**
+    - **No numeric suffix is ever tried (`-2`, `-3`, …)** — numbers are confusing for users and poor for SEO. The operator-name suffix is the **single** fallback; a further collision is rejected.
 - **Step 5 — atomic claim.** The winning slug is written as `Trip.slug` **and** the `TOUR` registry row **in the same transaction**. A unique-constraint race between the pre-check and the write is caught as **`409 "taken concurrently, retry"`**.
 - **Worked example:** Operator A → `klein-curacao-boat-trip`. Operator B (Bluefin Charters), same name → `klein-curacao-boat-trip-bluefin-charters`. Operator C whose suffix also collides → **rejected with 409; must rename**. No `-1`/`-2` is ever generated.
 
 #### A4.9 Deactivate / reactivate cascades (soft disable → `isActive = false` tombstone)
+
 - All flips happen **in the same transaction** as the entity change; the row stays, the page 404s, the slug stays claimed.
 - **Destination deactivate** → `updateMany` **ALL** rows `WHERE destinationSlug = <slug>` → `isActive:false` (reserved row + categories + hubs + collections + tours).
 - **Destination reactivate** → `updateMany` all rows for that `destinationSlug` → `isActive:true`.
@@ -499,6 +532,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Guarded deactivation:** **destinations and categories refuse to deactivate while active non-draft trips are still assigned (throws `409`)** — prevents stranding live, bookable tours behind a 404 parent.
 
 #### A4.10 Hard-delete cascades → row removed, then 90-day cooldown
+
 - Permanent deletes `deleteMany` the registry rows **in the same transaction** as the entity delete.
 - **Destination force-delete** → `deleteMany WHERE destinationSlug = <slug>`. **Blocked if `isSeeded`.**
 - **Category force-delete** → `deleteMany WHERE entityType=CATEGORY AND entityId=<id>` (**all islands**). **Blocked if `isSeeded`.**
@@ -507,28 +541,32 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - After a hard delete the slug is **not immediately reusable** — it enters a **90-day soft-delete cooldown** before any new entity can claim it, **protecting against stale external links and search-index confusion**.
 
 #### A4.11 Slug state machine
+
 - `∅ --create()--> isActive:true --deactivate()--> isActive:false --forceDelete()--> cooldown --(+90 days)--> ∅ (free)`
 - `isActive:false --reactivate()--> isActive:true`
 - `rename → 301` writes a redirect and loops back into the active state.
 - `isActive:false` is the **tombstone state**: routable lookups 404, the unique `(destinationSlug, slug)` pair is **still occupied**. **A hard delete frees the pair only after the cooldown window expires.**
 
 #### A4.12 301 redirects on rename
+
 - **Slugs are NOT immutable** (master §2.3) — this **supersedes the older "immutable, no 301" stance**.
 - **Create mode (frontend):** slug field shown, auto-generates from name as the user types; once manually edited (`slugTouched`), auto-generation stops.
 - **Edit mode (frontend):** slug is editable with a note that renaming issues a 301 redirect.
 - Rename sequence:
-  1. In the same transaction the registry row's `slug` is updated to the new value.
-  2. A **redirect entry** is written mapping the old `(destinationSlug, oldSlug)` → the new flat URL, with **`status = 301`**.
-  3. **The public resolver checks the redirect table BEFORE returning a 404**; a request for the old slug issues a permanent redirect to the new canonical URL.
+    1. In the same transaction the registry row's `slug` is updated to the new value.
+    2. A **redirect entry** is written mapping the old `(destinationSlug, oldSlug)` → the new flat URL, with **`status = 301`**.
+    3. **The public resolver checks the redirect table BEFORE returning a 404**; a request for the old slug issues a permanent redirect to the new canonical URL.
 - **Suggested redirect table (target schema, NOT yet built)** — `model SlugRedirect` (`@@map("slug_redirects")`): `id String @id @default(uuid())`; `destinationSlug String`; `fromSlug String` (old slug being vacated); `toSlug String` (new slug, or full target path for cross-type moves); `statusCode Int @default(301)`; `createdAt DateTime @default(now())`; `@@unique([destinationSlug, fromSlug])`.
 
 #### A4.13 The 90-day reuse cooldown
+
 - A hard-deleted slug is **not immediately available** to a new entity; the freed `(destinationSlug, slug)` pair is **held for 90 days** so stale external links and indexed URLs are **not silently rebound to an unrelated page**. After the cooldown the slug may be reclaimed.
 - **Implementation options (target):** keep a **tombstone row with a `deletedAt` timestamp** and refuse reuse until `now > deletedAt + 90 days`, **or** carry the cooldown in the redirect/registry table.
 - **`resolveUniqueSlug` step 3 must treat an in-cooldown slug as taken.**
 - Reconciling collisions with 301/cooldown: the operator-name-suffix logic is unchanged for concurrent live entities; the 301/cooldown rules add **two extra "taken" conditions** — a slug with an outstanding 301 source, and a slug inside its 90-day cooldown.
 
 #### A4.14 Registry invariants checklist (for reviewers)
+
 - Every registry write is inside the entity's create/update `$transaction`.
 - Category create → one row **per active destination**; **no FeaturedSlot rows**.
 - Destination create → one `RESERVED 'tours'` row (+ one row per existing active category); **20 protected slugs per destination once all 19 categories exist**.
@@ -541,6 +579,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Public `resolve()` treats `isActive:false` as **404 (after checking the 301 redirect table)**.
 
 #### A4.15 Registry implementation status (as of 2026-06-20)
+
 - `SlugRegistry` table + `resolve()` endpoint — **Built**.
 - Transactional write sites (destination/category/hub/collection/tour) — **Built**.
 - `resolveUniqueSlug()` (operator-name suffix, no numerics) — **Built**.
@@ -555,45 +594,49 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A5. The 19 global categories & the category gating rule
 
 #### A5.1 The 19 categories (one global set reused across every destination)
-| # | Category name | Slug | Examples |
-|---|---|---|---|
-| 1 | Boat Tours & Cruises | `boat-tours` | catamaran, sailing |
-| 2 | Snorkeling Tours | `snorkeling` | reef snorkel |
-| 3 | Scuba Diving | `scuba-diving` | dive trips |
-| 4 | Sunset Cruises | `sunset-cruises` | sunset sailing |
-| 5 | Sightseeing Tours | `sightseeing-tours` | island highlights, city tours |
-| 6 | Day Trips | `day-trips` | remote island trips |
-| 7 | Off-Road Tours | `off-road-tours` | buggy, ATV, quad, jeep safari, 4x4, UTV |
-| 8 | Jet Ski Tours | `jet-ski` | jetski trips |
-| 9 | Parasailing | `parasailing` | parasail flights |
-| 10 | Water Sports | `water-sports` | kayaking, paddleboard, SUP |
-| 11 | Fishing Trips | `fishing-trips` | deep sea fishing, sport fishing |
-| 12 | Nature & Wildlife Tours | `nature-wildlife-tours` | dolphins, parks |
-| 13 | Hiking Tours | `hiking-tours` | volcano hikes |
-| 14 | Adventure Tours | `adventure-tours` | zipline, bungee, skydiving |
-| 15 | Cultural & Historical Tours | `cultural-tours` | heritage, art tours |
-| 16 | Food & Drink Tours | `food-tours` | street food, rum tours |
-| 17 | Attraction Tickets | `attraction-tickets` | museums, parks |
-| 18 | Luxury Experiences | `luxury-experiences` | yacht experiences |
-| 19 | Workshops & Classes | `workshops-classes` | cooking class |
+
+| #   | Category name               | Slug                    | Examples                                |
+| --- | --------------------------- | ----------------------- | --------------------------------------- |
+| 1   | Boat Tours & Cruises        | `boat-tours`            | catamaran, sailing                      |
+| 2   | Snorkeling Tours            | `snorkeling`            | reef snorkel                            |
+| 3   | Scuba Diving                | `scuba-diving`          | dive trips                              |
+| 4   | Sunset Cruises              | `sunset-cruises`        | sunset sailing                          |
+| 5   | Sightseeing Tours           | `sightseeing-tours`     | island highlights, city tours           |
+| 6   | Day Trips                   | `day-trips`             | remote island trips                     |
+| 7   | Off-Road Tours              | `off-road-tours`        | buggy, ATV, quad, jeep safari, 4x4, UTV |
+| 8   | Jet Ski Tours               | `jet-ski`               | jetski trips                            |
+| 9   | Parasailing                 | `parasailing`           | parasail flights                        |
+| 10  | Water Sports                | `water-sports`          | kayaking, paddleboard, SUP              |
+| 11  | Fishing Trips               | `fishing-trips`         | deep sea fishing, sport fishing         |
+| 12  | Nature & Wildlife Tours     | `nature-wildlife-tours` | dolphins, parks                         |
+| 13  | Hiking Tours                | `hiking-tours`          | volcano hikes                           |
+| 14  | Adventure Tours             | `adventure-tours`       | zipline, bungee, skydiving              |
+| 15  | Cultural & Historical Tours | `cultural-tours`        | heritage, art tours                     |
+| 16  | Food & Drink Tours          | `food-tours`            | street food, rum tours                  |
+| 17  | Attraction Tickets          | `attraction-tickets`    | museums, parks                          |
+| 18  | Luxury Experiences          | `luxury-experiences`    | yacht experiences                       |
+| 19  | Workshops & Classes         | `workshops-classes`     | cooking class                           |
 
 - Together with the reserved `tours` slug these form the **20 pre-seeded protected slugs per destination**.
 - The **curated discovery list per destination** draws from this set.
 
 #### A5.2 Multi-category tagging
+
 - A tour carries **1+ categories** via `TourCategory`, exactly one flagged **`isPrimary`** (which drives the breadcrumb).
 - **Key overlaps are intentional:**
-  - Sunset catamaran → `boat-tours` + `sunset-cruises`
-  - Klein Curaçao trip by boat → `boat-tours` + `day-trips`
-  - Jet ski + snorkel combo → `jet-ski` + `snorkeling` + `water-sports` (carries all three relevant slugs)
+    - Sunset catamaran → `boat-tours` + `sunset-cruises`
+    - Klein Curaçao trip by boat → `boat-tours` + `day-trips`
+    - Jet ski + snorkel combo → `jet-ski` + `snorkeling` + `water-sports` (carries all three relevant slugs)
 - **Day Trips is the one duration-based category**: it groups tours of **roughly 6 hours or more** regardless of activity, and is **almost always paired with the activity category**.
 
 #### A5.3 "Luxury Experiences" naming lock
+
 - **LOCKED, confirmed June 10, 2026:** "Luxury Experiences" stands.
 - The category label **and its category-page H1** are the **single sanctioned use of "luxury" platform-wide**.
 - **In running copy the word "luxury" stays banned**; copy under this category states what makes a tour premium instead: **private skipper, small group, champagne**.
 
 #### A5.4 Category page visibility gate
+
 - **Canonical rule: a category page is publicly live only when it has at least 3 published tours** in that category-and-destination combination.
 - Below the threshold the page is automatically **`status: draft`** — excluded from **navigation, sitemaps, internal links, and search**; **404 to crawlers**.
 - The check runs on **every tour status change in both directions** (publish can flip a category live; unpublish can flip it back to draft).
@@ -607,6 +650,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A6. SEO
 
 #### A6.1 SEO ownership lock (master conflict log 67) — no page duplicates another's keyword territory
+
 - **The destination page owns destination-level keywords and About content.**
 - **Each category page owns its own vertical's About content** (boat-tour specifics, safety, best season).
 - **The All Tours page owns long-tail filter queries** — it is a **transactional utility page**, not an SEO hub, and carries **no About content block**.
@@ -614,15 +658,17 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - The **Activity Hub is the primary Google Ads landing page** for its place/highlight.
 
 #### A6.2 Metadata storage & the fallback chain
+
 - Per-entity, per-locale meta lives in **`*PageContent` tables** with fields **`metaTitle`, `metaDescription`, `aboutText`**, keyed **`(entityId, locale)`**. Already built for destinations, categories, hubs, collections.
 - **Tour meta is derived at render:** title from the translated name (**LD15 H1 pattern**), description from the overview, `og:image` from the hero image.
 - **Global defaults live in the `SiteSEO` singleton.**
 - **Fallback chain:**
-  - A missing translation → **falls back to English**.
-  - A missing `metaTitle` → **falls back to the template `"{name} | Island Tours"`**.
-  - A missing description → **falls back to empty rather than a bad guess**.
+    - A missing translation → **falls back to English**.
+    - A missing `metaTitle` → **falls back to the template `"{name} | Island Tours"`**.
+    - A missing description → **falls back to empty rather than a bad guess**.
 
 #### A6.3 Canonicals, locale & hreflang
+
 - **One canonical URL per tour:** flat `/{locale}/{destination}/{tour-slug}/`, **per-locale, trailing slash**.
 - Each locale version has its **own canonical** URL.
 - **`hreflang` pairs across all 7 locales (EN, NL, DE, FR, ES, PT, ZH) plus `x-default → EN`** on every content page.
@@ -633,14 +679,15 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Filtered pages use query params, never new slugs.** Prefer a filtered category URL over a dedicated collection page when the "collection" is really just a filtered category. **Collection slugs must be semantically distinct from category slugs** (`top-10-tours` correct, never `boat-tours-private`).
 
 #### A6.4 The full JSON-LD matrix per surface (master §2.6)
+
 - **Every page with breadcrumbs → `BreadcrumbList`.**
 - **Tour detail → `Product`/`Offer`**, with:
-  - `acceptedPaymentMethod` **including ApplePay and GooglePay**
-  - `audience.suggestedMinAge` from **`tour.min_age_years`**
-  - **accessibility fields** from the LD27 data set
-  - `refundPolicy` from **`tour.cancellation_hours`**
-  - **`includes` and `excludes` arrays** mirroring LD18
-  - **`Review` + `AggregateRating`** from §4.7.18 and the LD29 preview cards
+    - `acceptedPaymentMethod` **including ApplePay and GooglePay**
+    - `audience.suggestedMinAge` from **`tour.min_age_years`**
+    - **accessibility fields** from the LD27 data set
+    - `refundPolicy` from **`tour.cancellation_hours`**
+    - **`includes` and `excludes` arrays** mirroring LD18
+    - **`Review` + `AggregateRating`** from §4.7.18 and the LD29 preview cards
 - **Help Center `/help` → `FAQPage`.**
 - **Collection and Activity Hub → `FAQPage`** on their FAQ sections.
 - **Destination → `FAQPage`** on the NeedHelp FAQ column (SEO ownership lock, conflict log 67).
@@ -649,17 +696,20 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - The dedicated tour-page schema spec (Round 7) is **still to be written (C16)**.
 
 #### A6.5 Sitemaps & robots
+
 - **`/sitemap.xml` index** plus **per-locale and per-page-type sitemap files**.
 - **Published entities only**; **categories below the ≥3 threshold excluded**; **`lastmod` on change**.
 - **`robots.txt`:** **disallow `/admin`, `/api`, `/dashboard`; allow `/`; declare the sitemap.**
 
 #### A6.6 TYP noindex & transactional surfaces
+
 - The Thank You page `/{destination}/thank-you/{public_ref}` is **noindex** and carries **no locale prefix** (transactional surface) — B.48 confirmed.
 - Because it is `noindex`, the locale-prefix rule for content pages does not apply to it.
 - **Search results** are `noindex, follow` and SSR, not cached.
 - The **wishlist page** sets `robots: { index: false }`.
 
 #### A6.7 Ethical CRO signals (no dark patterns)
+
 - Transparency is a brand pillar: **no fake urgency, no fake scarcity, no badge inflation, no pre-checked add-ons.**
 - **Paid placement always carries the `Sponsored` badge.**
 - **The only demand signal is the single sell-out trigger** (master §3.7), driven by real `recent_sellouts` data.
@@ -668,13 +718,14 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **`Most popular` is editorial/quality-based** — organic tour, `review_count ≥ 10`, rating `≥ 4.5`, **max 1 per category** — **never commission-driven**.
 
 #### A6.8 SEO implementation status
+
 - Backend SEO data (meta tables, `aboutText`, derivable tour fields) is **largely in place**.
 - **EXECUTED (2026-07-25) — the frontend SEO rendering layer is now built:**
-  - **`/robots.txt`** — `app/robots.txt/route.ts`; serves the admin's custom `robotsTxt` verbatim when set, else generates a default that disallows the private/noindex flows (checkout, thank-you, cancel, review, bookings, wishlist, search, `/account`, `/api`) and declares the sitemap (gated on `autoGenerateSitemap`).
-  - **`/sitemap.xml`** — `app/sitemap.ts` + cached loader `lib/api/public/sitemap.ts`, fed by the new **backend `GET /sitemap/entries`** (`src/sitemap/`). Published entities only, mirroring each page's 404 gate (active destinations, LIVE tours, ≥1-LIVE-tour categories/hubs, published collections); `lastmod` from `updatedAt`; every URL carries the 7-locale hreflang set + `x-default`; the loader rides the coarse entity tags so any publish/unpublish busts it.
-  - **Tracking** — GTM container now actually loads (`components/frontend/tracking/google-tag-manager.tsx`, mounted in `(frontend)/layout.tsx`), gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID; it consumes the existing `booking_complete` `dataLayer` push and fans out to GA4/Ads/Meta Pixel + the server-side container. GA4/GTM/Pixel IDs are now exposed on `GET /settings/public/seo`.
-  - **Structured data** — `Organization` + `WebSite`(SearchAction) sitewide; `BreadcrumbList` on destination/category/hub/collection/tour/all-tours; `FAQPage` wherever FAQs render; `TouristDestination` (island) and `TouristTrip` (tour) alongside the existing review `Product`. Builders in `lib/seo/jsonld.ts`, emitted via `components/frontend/seo/json-ld.tsx`.
-  - **Metadata** — root `metadataBase` now always resolves (`lib/seo/site-url.ts`: admin Canonical URL → `NEXT_PUBLIC_SITE_URL` → `tripwheel.app`); root OG `type/url/siteName` + `twitter:site/creator`; `<html lang>` synced per-locale client-side (root sits above `[locale]`; SEO signal carried by hreflang); canonical/hreflang added to the homepage and all legal pages; self-canonical on search.
+    - **`/robots.txt`** — `app/robots.txt/route.ts`; serves the admin's custom `robotsTxt` verbatim when set, else generates a default that disallows the private/noindex flows (checkout, thank-you, cancel, review, bookings, wishlist, search, `/account`, `/api`) and declares the sitemap (gated on `autoGenerateSitemap`).
+    - **`/sitemap.xml`** — `app/sitemap.ts` + cached loader `lib/api/public/sitemap.ts`, fed by the new **backend `GET /sitemap/entries`** (`src/sitemap/`). Published entities only, mirroring each page's 404 gate (active destinations, LIVE tours, ≥1-LIVE-tour categories/hubs, published collections); `lastmod` from `updatedAt`; every URL carries the 7-locale hreflang set + `x-default`; the loader rides the coarse entity tags so any publish/unpublish busts it.
+    - **Tracking** — GTM container now actually loads (`components/frontend/tracking/google-tag-manager.tsx`, mounted in `(frontend)/layout.tsx`), gated on `NEXT_PUBLIC_ENABLE_TRACKING` + a GTM ID; it consumes the existing `booking_complete` `dataLayer` push and fans out to GA4/Ads/Meta Pixel + the server-side container. GA4/GTM/Pixel IDs are now exposed on `GET /settings/public/seo`.
+    - **Structured data** — `Organization` + `WebSite`(SearchAction) sitewide; `BreadcrumbList` on destination/category/hub/collection/tour/all-tours; `FAQPage` wherever FAQs render; `TouristDestination` (island) and `TouristTrip` (tour) alongside the existing review `Product`. Builders in `lib/seo/jsonld.ts`, emitted via `components/frontend/seo/json-ld.tsx`.
+    - **Metadata** — root `metadataBase` now always resolves (`lib/seo/site-url.ts`: admin Canonical URL → `NEXT_PUBLIC_SITE_URL` → `tripwheel.app`); root OG `type/url/siteName` + `twitter:site/creator`; `<html lang>` synced per-locale client-side (root sits above `[locale]`; SEO signal carried by hreflang); canonical/hreflang added to the homepage and all legal pages; self-canonical on search.
 - **Dashboard** — Settings > SEO now exposes `robotsTxt` (textarea) + `autoGenerateSitemap` (checkbox).
 
 ---
@@ -682,6 +733,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A7. Multilingual & localization
 
 #### A7.1 Locales
+
 - **Seven locales from launch, English primary: `EN, NL, DE, FR, ES, PT, ZH`.**
 - DB `Locale` enum ordering is `en, es, nl, pt, fr, de, zh` — the same set.
 - **All UI strings go through `next-intl`; no hardcoded English anywhere.**
@@ -690,42 +742,49 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Latin locales share one type scale; **ZH may adjust**; **ZH may render the full-width comma**.
 
 #### A7.2 The English-slug rule
+
 - **Slugs are always English, never translated** — one slug worldwide per page; the locale prefix alone switches language (`/en/…`, `/nl/…`, `/zh/…`).
 - **Why English slugs:** avoids **7× registry multiplication**; tourists predominantly search in English; **SEO value lives in translated titles/meta/H1/body, not the slug**; keeps the registry to **one row per entity per destination**.
 - `/nl/curacao/boottochten/` is **wrong** — translated slugs are never used.
 
 #### A7.3 Translation storage model — typed translation tables (not EAV)
+
 - Each translatable entity has a **typed child table keyed `(entityId, locale)` unique**:
-  - **Destination** → `DestinationTranslation` — `name, overview, h1Override, breadcrumbLabel, isMachineTranslated`
-  - **Category** → `CategoryTranslation` — same shape
-  - **Hub** → `HubTranslation` — same shape
-  - **Trip** → `TripTranslation` — `title, overview, description, isMachineTranslated`
-  - **Collection** → `CollectionTranslation` — `name, overview, h1Override, breadcrumbLabel, isMachineTranslated`
-  - **Tour highlights / inclusions / exclusions** → `Tour*Translation` — `text/label, isMachineTranslated`
+    - **Destination** → `DestinationTranslation` — `name, overview, h1Override, breadcrumbLabel, isMachineTranslated`
+    - **Category** → `CategoryTranslation` — same shape
+    - **Hub** → `HubTranslation` — same shape
+    - **Trip** → `TripTranslation` — `title, overview, description, isMachineTranslated`
+    - **Collection** → `CollectionTranslation` — `name, overview, h1Override, breadcrumbLabel, isMachineTranslated`
+    - **Tour highlights / inclusions / exclusions** → `Tour*Translation` — `text/label, isMachineTranslated`
 - **SEO meta is stored separately per locale** in the `*PageContent` tables (`metaTitle`, `metaDescription`, `aboutText`).
 - **FAQ is a polymorphic table** (`pageType` + `entityId` + `locale`).
 - `name` overrides are optional; **a null translated `name` falls back to the canonical base value**.
 
 #### A7.4 Fetch & fallback
+
 - **All content API endpoints accept a `locale` query parameter defaulting to `en`.**
 - The service fetches the requested locale and **falls back to English field-by-field** when a translation row or field is missing — **never a blank render**. Applies to names, overviews and meta alike.
 
 #### A7.5 Translation upsert payload contract
+
 - Translation upserts **wrap fields in a `fields` key** plus an `isMachineTranslated` flag.
 - **Sending fields flat fails the global `ValidationPipe`** (`forbidNonWhitelisted` → **400**).
 - Correct shape: `{ "fields": { "name": "…", "overview": "…", "h1Override": null, "breadcrumbLabel": null }, "isMachineTranslated": false }`.
 
 #### A7.6 English (base-locale) tab rules
+
 - `name` is **read-only on the English tab** (canonical value, edited in the Details tab); all other fields editable (via `LocaleTab` with the `disableNameField` prop).
 - The English **"Delete translation" action does NOT call the delete endpoint** (the backend blocks it). It **upserts the editable fields as `null`** — label it **"Clear Fields"**; branch `handleDelete` on `disableNameField`.
 
 #### A7.7 Machine translation & the `isMachineTranslated` flag
+
 - A **BullMQ background job** translates content to the other six locales after the English source is saved, setting **`isMachineTranslated = true`**.
 - **Proper nouns (destination and hub names) are never machine-translated.**
 - **Reviews use the LD32 path** — Google Translate per card with a show-original toggle — **cached per locale**.
 - AI translation is one of the master's sanctioned BullMQ async workloads.
 
 #### A7.8 SEO i18n
+
 - **`hreflang` across all 7 locales plus `x-default → EN`** on every content page.
 - **On slug rename a `301` is issued** (slugs are not immutable).
 - **On admin content update, on-demand ISR revalidation fires for all 7 locale URLs.**
@@ -736,16 +795,17 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A8. Rendering, caching & revalidation
 
 #### A8.1 Canonical ISR/revalidation per page type (master §2.5)
-| Page type | Rendering | Revalidation |
-|---|---|---|
-| Homepage | ISR | **60 s** |
-| Destination | ISR | **60 s** |
-| All Tours | ISR | **60 s** |
-| Category | ISR | **60 s** |
-| Collection | ISR | **60 s** |
-| Activity Hub | ISR | **300 s** |
-| Tour detail | ISR | **30 s** |
-| Search results | **SSR** | **not cached** |
+
+| Page type            | Rendering           | Revalidation      |
+| -------------------- | ------------------- | ----------------- |
+| Homepage             | ISR                 | **60 s**          |
+| Destination          | ISR                 | **60 s**          |
+| All Tours            | ISR                 | **60 s**          |
+| Category             | ISR                 | **60 s**          |
+| Collection           | ISR                 | **60 s**          |
+| Activity Hub         | ISR                 | **300 s**         |
+| Tour detail          | ISR                 | **30 s**          |
+| Search results       | **SSR**             | **not cached**    |
 | Thank You page (TYP) | **Server-rendered** | n/a (**noindex**) |
 
 - **Rationale:** tour detail uses the shortest revalidation (30 s) because **availability and pricing must stay current**; Activity Hubs cache longest (300 s) — predominantly static SEO content; Search is fully dynamic SSR.
@@ -754,92 +814,97 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Tour detail performance budget per Section4_7 §1.3.
 
 #### A8.2 The shipped Next.js 16 Cache Components model (`cacheComponents: true`, PPR)
+
 - Framework: **Next.js 16 with `cacheComponents: true` (Partial Prerendering)** — `next.config.ts:5`.
 - **No route file declares any segment config** (`dynamic`, `revalidate`, `fetchCache`, `runtime`, `dynamicParams`); all rely on defaults (`dynamicParams = true`) plus **per-loader `cacheLife`/`cacheTag`**.
 - Content on a route falls into **three buckets**:
-  1. **Static** — synchronous JSX and pure computation; **prerendered at build, served instantly, changes only on redeploy**.
-  2. **Cached (`'use cache'`)** — async data that need not be fresh every request; **stored keyed by function id + serialized args + closure**, governed by `cacheLife` (lifetime) and `cacheTag` (event invalidation); part of the prerender, regenerated when its tag is busted or lifetime expires.
-  3. **Dynamic (Suspense)** — request-time data (`cookies`, `headers`, `searchParams`, `connection()`, randomness, current time); **must be wrapped in `<Suspense>`**, excluded from the static prerender, streamed at request time.
+    1. **Static** — synchronous JSX and pure computation; **prerendered at build, served instantly, changes only on redeploy**.
+    2. **Cached (`'use cache'`)** — async data that need not be fresh every request; **stored keyed by function id + serialized args + closure**, governed by `cacheLife` (lifetime) and `cacheTag` (event invalidation); part of the prerender, regenerated when its tag is busted or lifetime expires.
+    3. **Dynamic (Suspense)** — request-time data (`cookies`, `headers`, `searchParams`, `connection()`, randomness, current time); **must be wrapped in `<Suspense>`**, excluded from the static prerender, streamed at request time.
 - **A `<Suspense>` boundary only actually streams (and shows its fallback skeleton) if the component inside it reads request-time data.** A purely cached component wrapped in `<Suspense>` **does not stream** — it resolves at prerender time and is baked into the static shell, and **its fallback effectively never renders** ("inert Suspense").
 - **`await connection()` opts a subtree into dynamic rendering** — using it on entirely-cached data **deliberately converts prerenderable content into a per-request streamed hole (with a skeleton flash) for no freshness benefit**. It is a **perceived-performance lever, not a correctness requirement**.
 - **Cannot read `cookies()`, `headers()` or `searchParams` inside a `'use cache'` function** — request-time inputs are always read outside the cached scope and passed in, or deferred to client islands.
 - **No route awaits uncached data outside a `<Suspense>` boundary** — every `searchParams` is kept as an un-awaited Promise until inside a boundary. This is why the production build is green (**awaiting `searchParams` outside Suspense throws the Next 16 Blocking Route error**).
 
 #### A8.3 Per-route render mode (as reviewed 2026-07-12)
-| Route | Render mode | Prerendered params | `loading.tsx` | Streamed holes |
-|---|---|---|---|---|
-| `app/(frontend)/layout.tsx` | Fully static | n/a | n/a | none |
-| `[locale]/layout.tsx` | Fully static shell | **all 7 locales** | No | none (`WishlistProvider` is a client island) |
-| `[locale]/page.tsx` (home) | **Fully static** | inherits locale | No | none |
-| `[locale]/[destination]/page.tsx` | Partial prerender | active destinations + launch fallback | **Yes (added)** | Hero, Local Favourites, Collections (later baked static) |
-| `[locale]/[destination]/tours/page.tsx` | Partial prerender | active destinations + launch fallback | **Yes (added)** | Header (baked), Listing (streams) |
-| `[locale]/[destination]/[slug]/page.tsx` | Partial prerender | destination × category + fallback; tours/hubs/collections on-demand | **Yes** | owned by each entity component |
-| `[locale]/search/page.tsx` | Partial prerender (body) | none | No | Results (`generateMetadata` reads `searchParams` → dynamic metadata) |
-| `[locale]/wishlist/page.tsx` | Fully static shell | none | No | none (client `WishlistView`) |
+
+| Route                                    | Render mode              | Prerendered params                                                  | `loading.tsx`   | Streamed holes                                                       |
+| ---------------------------------------- | ------------------------ | ------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------- |
+| `app/(frontend)/layout.tsx`              | Fully static             | n/a                                                                 | n/a             | none                                                                 |
+| `[locale]/layout.tsx`                    | Fully static shell       | **all 7 locales**                                                   | No              | none (`WishlistProvider` is a client island)                         |
+| `[locale]/page.tsx` (home)               | **Fully static**         | inherits locale                                                     | No              | none                                                                 |
+| `[locale]/[destination]/page.tsx`        | Partial prerender        | active destinations + launch fallback                               | **Yes (added)** | Hero, Local Favourites, Collections (later baked static)             |
+| `[locale]/[destination]/tours/page.tsx`  | Partial prerender        | active destinations + launch fallback                               | **Yes (added)** | Header (baked), Listing (streams)                                    |
+| `[locale]/[destination]/[slug]/page.tsx` | Partial prerender        | destination × category + fallback; tours/hubs/collections on-demand | **Yes**         | owned by each entity component                                       |
+| `[locale]/search/page.tsx`               | Partial prerender (body) | none                                                                | No              | Results (`generateMetadata` reads `searchParams` → dynamic metadata) |
+| `[locale]/wishlist/page.tsx`             | Fully static shell       | none                                                                | No              | none (client `WishlistView`)                                         |
 
 - `generateStaticParams` for `[destination]` uses `getActiveDestinations()`; **on throw or empty it falls back to `LAUNCH_DESTINATION_SLUGS` (5 slugs) — backend-down safe**. `notFound()` gate on `!island.isActive`.
 - `[slug]/page.tsx` `generateStaticParams` builds destination × category combos; **on throw or empty falls back to launch destinations × launch categories + `'tours'` + `klein-curacao`**.
 - **Every `(frontend)` route needs `generateStaticParams` with ≥1 entry or the layout throws a Blocking Route error.**
 
 #### A8.4 `'use cache'` loader policy & the cached-loader ledger
+
 - **Every public data loader is a `'use cache'` function with an explicit `cacheLife` and (almost always) a `cacheTag`. No loader is silently uncached.**
 - **EXECUTED 2026-07-19 (ISR-cost pass):** all **event-covered entity/meta loaders moved from `hours` (revalidate 1 h, expire 1 d) to the built-in `days` profile (stale 300 s, revalidate 1 d, expire 1 w)**; the slug-registry's inline `{300,300,3600}` moved to `days` (it had been revalidating every 5 minutes). Rationale: these loaders are already invalidated on demand by the dashboard write bridge (`updateTag`), so short timers only burned ISR writes.
 - **Deliberately NOT switched:** `getDestinationTours` and `searchTours` (**nightly quality-score/eligibility re-rank has no tag-bust event; hourly/minutes windows are the freshness mechanism**) and `getPlatformReviews` (external provider aggregate, no change event, single cache entry).
 - Loader ledger (loader — `cacheLife` — `cacheTag`s):
-  - `getDestinationCategories` — `days` — `categories`, `tours`
-  - `getCategoryBySlugForDestination` — `days` — `tours` + `category:${id}` when found, else `categories`
-  - `getCategoryPageContent` — `days` — `category:${categoryId}`
-  - `getCategoryFaqs` — `days` — `category:${categoryId}`
-  - `getActiveCollectionsForDestination` — `days` — `collections`
-  - `getCollectionRender` — `days` — `tours` + `collection:${id}` when found, else `collections`
-  - `getCollectionPageContent` — `days` — `collection:${collectionId}`
-  - `getActiveDestinations` — `days` — `destinations`
-  - `getDestinationBySlug` — `days` — `destination:${id}` when found, else `destinations`
-  - `getDestinationFacets` / `getCategoryFacets` — `days` — `tours`, `categories`
-  - `getDestinationHubs` — `days` — `hubs`, `tours`
-  - `getHubRender` — `days` — `tours` + `hub:${id}` when found, else `hubs`
-  - `getHubPageContent` — `days` — `hub:${hubId}`
-  - `getTourReviews` — `days` — `reviews`, `tour:${tourId}`
-  - `searchTours` — **`minutes`** — `search`
-  - `getDestinationTours` — **`hours`** (kept short: nightly re-rank without tag bust) — `tours`
-  - `getTourBySlug` — `days` — `tour:${id}`, `operator:${operatorId}` when found, else `tours`
-  - `resolveSlug` — `days` — `slug:${destinationSlug}:${slug}`, `slug-registry`
-  - `getDictionary` — **`max`** — **no tag, untagged by design** (UI chrome strings ship with the build; editing dictionary JSON requires a redeploy)
+    - `getDestinationCategories` — `days` — `categories`, `tours`
+    - `getCategoryBySlugForDestination` — `days` — `tours` + `category:${id}` when found, else `categories`
+    - `getCategoryPageContent` — `days` — `category:${categoryId}`
+    - `getCategoryFaqs` — `days` — `category:${categoryId}`
+    - `getActiveCollectionsForDestination` — `days` — `collections`
+    - `getCollectionRender` — `days` — `tours` + `collection:${id}` when found, else `collections`
+    - `getCollectionPageContent` — `days` — `collection:${collectionId}`
+    - `getActiveDestinations` — `days` — `destinations`
+    - `getDestinationBySlug` — `days` — `destination:${id}` when found, else `destinations`
+    - `getDestinationFacets` / `getCategoryFacets` — `days` — `tours`, `categories`
+    - `getDestinationHubs` — `days` — `hubs`, `tours`
+    - `getHubRender` — `days` — `tours` + `hub:${id}` when found, else `hubs`
+    - `getHubPageContent` — `days` — `hub:${hubId}`
+    - `getTourReviews` — `days` — `reviews`, `tour:${tourId}`
+    - `searchTours` — **`minutes`** — `search`
+    - `getDestinationTours` — **`hours`** (kept short: nightly re-rank without tag bust) — `tours`
+    - `getTourBySlug` — `days` — `tour:${id}`, `operator:${operatorId}` when found, else `tours`
+    - `resolveSlug` — `days` — `slug:${destinationSlug}:${slug}`, `slug-registry`
+    - `getDictionary` — **`max`** — **no tag, untagged by design** (UI chrome strings ship with the build; editing dictionary JSON requires a redeploy)
 - **The complete tag universe.** Coarse (literal): `categories`, `tours`, `collections`, `destinations`, `hubs`, `reviews`, `search`, `slug-registry`. Granular (templated): `category:${id}`, `collection:${id}`, `destination:${id}`, `hub:${id}`, `tour:${id}`, `operator:${id}`, `slug:${destinationSlug}:${slug}`.
 
 #### A8.5 The four data-fetch entrypoints and the two error contracts
+
 - **`apiFetch`** — client + cookie; **throws**; used for authenticated dashboard calls; fires public cache revalidation on success.
 - **`publicFetch`** — returns the raw Response regardless of status; **retries only on HTTP 429/503 with fixed backoff `[300, 800]` ms (no jitter, since it runs inside `'use cache'`)**.
 - **`publicGet<T>`** — **throw-free: `null` on any failure** (network, non-2xx, bad JSON). **Use ONLY for soft-fallback data** (lists that render empty, optional sections).
 - **`publicGetStrict<T>`** — for data a page gates with `notFound()`: **`null` ONLY on a backend 404** (genuine not-found); **THROWS `BackendUnavailableError` on network error / 5xx / 429-after-retries / bad JSON**. **The throw makes an ISR background revalidation FAIL, so Next keeps serving the last good prerendered page instead of caching a 404 over it.**
-  - Before this split, a backend outage during the 5-minute stale-window revalidation **replaced every destination/entity page with a cached 404** (observed in production 2026-07-19 as `/en/curacao` + `/en/aruba` 404s).
-  - **Strict callers:** `getDestinationBySlug`, `resolveSlug`, `getTourBySlug`, `getCategoryBySlugForDestination`, `getHubRender`, `getCollectionRender`, `getTypByRef`. Everything else stays on `publicGet`.
-  - **Trade-off:** `next build` now **requires the backend to be reachable for prerendered entity routes** (it fails loudly instead of silently baking 404s). **Soft contexts embedding a strict loader must `.catch(() => null)` locally.**
+    - Before this split, a backend outage during the 5-minute stale-window revalidation **replaced every destination/entity page with a cached 404** (observed in production 2026-07-19 as `/en/curacao` + `/en/aruba` 404s).
+    - **Strict callers:** `getDestinationBySlug`, `resolveSlug`, `getTourBySlug`, `getCategoryBySlugForDestination`, `getHubRender`, `getCollectionRender`, `getTypByRef`. Everything else stays on `publicGet`.
+    - **Trade-off:** `next build` now **requires the backend to be reachable for prerendered entity routes** (it fails loudly instead of silently baking 404s). **Soft contexts embedding a strict loader must `.catch(() => null)` locally.**
 - `serverHeaders()` sets `Content-Type: application/json` and, when `INTERNAL_API_SECRET` is set, adds **`x-internal-api-key: <secret>`** to identify the SSR/build server as a trusted origin so the backend **skips its per-IP rate limiter** (server-only secret, never `NEXT_PUBLIC_`).
 - Base URL: `${NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`.
 
 #### A8.6 Cache-tag revalidation (mutation → public cache bust)
+
 - Mechanism:
-  1. A dashboard mutation (TanStack Query `useMutation`) calls a `lib/api/<module>.ts` method → `apiFetch(path, init)`.
-  2. On a successful (`res.ok`) response `apiFetch` calls **`revalidatePublicForPath(path, method)`**.
-  3. `revalidatePublicForPath` **short-circuits for non-mutating verbs** (`MUTATING_METHODS = POST/PATCH/PUT/DELETE`), maps path → tags via `tagsForMutation`, and if non-empty fires the Server Action **fire-and-forget: `void revalidateCacheTags(tags).catch(() => {})`**. **A failure is swallowed; stale cache self-heals at the next `cacheLife`.**
-  4. `revalidateCacheTags` (a `'use server'` action) loops the tags and calls **`updateTag(tag)`**.
-  5. **`updateTag` immediately expires those tags**; the next request regenerates any `'use cache'` read carrying a matching `cacheTag`.
+    1. A dashboard mutation (TanStack Query `useMutation`) calls a `lib/api/<module>.ts` method → `apiFetch(path, init)`.
+    2. On a successful (`res.ok`) response `apiFetch` calls **`revalidatePublicForPath(path, method)`**.
+    3. `revalidatePublicForPath` **short-circuits for non-mutating verbs** (`MUTATING_METHODS = POST/PATCH/PUT/DELETE`), maps path → tags via `tagsForMutation`, and if non-empty fires the Server Action **fire-and-forget: `void revalidateCacheTags(tags).catch(() => {})`**. **A failure is swallowed; stale cache self-heals at the next `cacheLife`.**
+    4. `revalidateCacheTags` (a `'use server'` action) loops the tags and calls **`updateTag(tag)`**.
+    5. **`updateTag` immediately expires those tags**; the next request regenerates any `'use cache'` read carrying a matching `cacheTag`.
 - **Only `updateTag` (immediate) is used. There is no `revalidateTag` (background) and no `revalidatePath` anywhere in the app** — chosen so the **next visitor** sees the change.
 - **`updateTag` throws in Route Handlers** — it must be called from a Server Action.
 - **Trigger → tag mapping** (the `switch (seg0)` in `tagsForMutation`; `slug` = `['slug-registry']` only when `affectsSlugRegistry(parts, method)`):
-  - `tours` with seg1 present and seg1 != `slug` → `tour:<seg1>`, `tours`, `search` (+ `slug-registry` if slug-affecting)
-  - `tours` bare (`POST /tours`, or `/tours/slug/...`) → `tours`, `search` (+ `slug-registry` on `POST /tours`)
-  - `availability` (any mutation) → `tours`, `search`
-  - `tiers` with seg1=`tours` and seg2 → `tour:<seg2>`, `tours`, `search`; `tiers` otherwise → `tours`, `search`
-  - `attributes` → `tours`, `search`
-  - `operators` with seg1 → `operator:<seg1>`, `tours`, `search`, `user-profile`; bare → `tours`, `search`, `user-profile`
-  - `destinations` with seg1 → `destination:<seg1>`, `destinations` (+ `slug-registry`); bare → `destinations` (+ `slug-registry` on POST)
-  - `categories` with seg1 → `category:<seg1>`, `categories` (+ `slug-registry`); bare → `categories` (+ `slug-registry` on POST)
-  - `collections` with seg1 → `collection:<seg1>`, `collections` (+ `slug-registry`); bare → `collections` (+ `slug-registry` on POST)
-  - `hubs` with seg1 → `hub:<seg1>`, `hubs` (+ `slug-registry`); bare → `hubs` (+ `slug-registry` on POST)
-  - `users` (e.g. `/users/me`) → `user-profile`; `settings` (e.g. `/settings/social-media`) → `user-profile`
-  - **anything else** (media-gallery, operator-settings, wishlist, read-only lookups) → **`[]` no-op**
+    - `tours` with seg1 present and seg1 != `slug` → `tour:<seg1>`, `tours`, `search` (+ `slug-registry` if slug-affecting)
+    - `tours` bare (`POST /tours`, or `/tours/slug/...`) → `tours`, `search` (+ `slug-registry` on `POST /tours`)
+    - `availability` (any mutation) → `tours`, `search`
+    - `tiers` with seg1=`tours` and seg2 → `tour:<seg2>`, `tours`, `search`; `tiers` otherwise → `tours`, `search`
+    - `attributes` → `tours`, `search`
+    - `operators` with seg1 → `operator:<seg1>`, `tours`, `search`, `user-profile`; bare → `tours`, `search`, `user-profile`
+    - `destinations` with seg1 → `destination:<seg1>`, `destinations` (+ `slug-registry`); bare → `destinations` (+ `slug-registry` on POST)
+    - `categories` with seg1 → `category:<seg1>`, `categories` (+ `slug-registry`); bare → `categories` (+ `slug-registry` on POST)
+    - `collections` with seg1 → `collection:<seg1>`, `collections` (+ `slug-registry`); bare → `collections` (+ `slug-registry` on POST)
+    - `hubs` with seg1 → `hub:<seg1>`, `hubs` (+ `slug-registry`); bare → `hubs` (+ `slug-registry` on POST)
+    - `users` (e.g. `/users/me`) → `user-profile`; `settings` (e.g. `/settings/social-media`) → `user-profile`
+    - **anything else** (media-gallery, operator-settings, wishlist, read-only lookups) → **`[]` no-op**
 - **`affectsSlugRegistry` is true for:** `POST /entity` (1 segment); `DELETE`/`PATCH /entity/:id` (2 segments); `/entity/:id/<verb>` where verb ∈ **`LIFECYCLE_VERBS = {status, publish, pause, unpause, archive, restore}`**.
 - **Tags are de-duped via `[...new Set(tags)]`.** The `tours` branch **guards `seg1 !== 'slug'`** so `/tours/slug/:slug` read paths never produce a bogus `tour:slug` tag.
 - **Special rules:** slug-registry busting is appended **only** for slug-affecting writes — **content-only sub-routes (translations, page-content, FAQs, images) do NOT bust `slug-registry`**. `user-profile` is busted by `users`, `settings` **and** `operators` (the last because `getUserProfile` reads operator company/social info). wishlist, media-gallery, operator-settings and read-only slug lookups are **intentionally unmapped no-ops**.
@@ -848,6 +913,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Backend-driven bust:** `NightlyJobsService.run()` ends by calling `PublicCacheService.revalidateTags(['tours','search'])`, which **POSTs the frontend `POST /api/revalidate`** (header `x-revalidate-secret`; backend env `REVALIDATE_SECRET` + `ISLAND_TOURS_URL`; **no-ops with a warning when unset**), so listings pick up the **03:00 UTC re-rank** on the next visit instead of waiting out the daily timer.
 
 #### A8.7 Streaming / PPR policy (the coherent policy applied)
+
 - **Prerendered content routes** (home, `[destination]`, `[destination]/tours`, category): **cached sections bake into the static shell** — instant LCP, SEO content in the initial HTML, no skeleton flash — kept fresh via cache tags. **Streamed holes only for `searchParams`** (tours-listing, search-results). **Route `loading.tsx` covers client navigation and cold on-demand param misses.**
 - **On-demand entity routes (`tour`, `hub`) under `[slug]`:** **instant cached shell + stream the heavy/secondary fetch via `await connection()` behind its skeleton.** Tour detail already did this; `hub-trips` was changed to do it too. **Collection has no secondary fetch, so it stays fully static and relies on `[slug]/loading.tsx`.**
 - **Net rule: every `<Suspense>` boundary must either genuinely stream or be removed, and every section skeleton must have a defined home** (streamed fallback for on-demand sections; `loading.tsx` composition for prerendered ones).
@@ -857,6 +923,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Entrance animation by render path:** Suspense-**streamed** content → `MountReveal`; **static-shell (prerendered)** content → **no self-animation** (`PageTransition` owns page-enter; a hydration-started `MountReveal` on SSR content flashes/"shakes"); below-fold → `Reveal`.
 
 #### A8.8 Known rendering gaps & fixes (review 2026-07-12, executed)
+
 - **🔴 G1 — `reviews` was unbustable.** `getTourReviews` tags `reviews` + `tour:${id}` but `cache-revalidation.ts` had **no `case 'reviews'`**. Latent (no review-mutation client yet). Impact when review moderation ships: review list **and** the tour rating/count aggregate (`getTourBySlug`, tagged `tour:${id}`) stale up to 1 hour. **Fix: add `case 'reviews'` busting `['reviews', tour:${id}, 'tours', 'search']`** (tours/search included because tour cards display the rating). **Executed.**
 - **🟠 G2 — no `loading.tsx` on on-demand-capable content routes.** Only `[slug]` had one; `[destination]` and `[destination]/tours` had none, so a non-prerendered destination could hang on a blank body. **Fix executed: `loading.tsx` added at both segments composing the existing section skeletons.**
 - **G2b (minor) — `getDictionary` is untagged** (`cacheLife('max')`, no `cacheTag`). Fine while locale copy ships with the build; add a `translations` tag only if the dictionary becomes backend-editable. **Left open by design.**
@@ -874,6 +941,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 > Depth reference: `Island_Tours_UI_UX_Structure_V2.md` — partially overruled, master wins (5 conflict-log notes). Brand voice deep reference: `Island_Tours_Brand_Voice_Bible.md` v1.1 (§4 is the operative digest).
 
 #### A9.1 Color (§3.1)
+
 - **Brand orange** (primary CTAs, active states, highlighted icons only): **`#E8611A`**.
 - **Peach tint** (card #1 on curated persona lists only): **`#FBF1EA` family**; the card-spec range is **`#FDF6F0` to `#FFF5EE`**, designer-final within palette.
 - **Body text:** near-black **`#1F2937`**.
@@ -888,6 +956,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Every photo container gets `bg-it-border` (#ededed)** as the image fallback background — on the container, never on cross-fade layers.
 
 #### A9.2 Typography & spacing (§3.2)
+
 - The typography scale is a **design-team deliverable** (locked during the v2 design phase) within the stated rules.
 - **H1 largest and semibold.**
 - **H2 consistent across all sections of a page.**
@@ -904,6 +973,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Sitewide tour-grid standard: `grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4` for every tour-card grid (tours/collection/hub/related/search/wishlist); **mobile carousels stay carousels**.
 
 #### A9.3 Icons (LD20, §3.3)
+
 - **One SVG library platform-wide** — **Lucide recommended, Heroicons alternative**; design picks and locks one.
 - **Icon size 18 to 20px, ~1.5px line stroke, monochrome.**
 - **Default icon color gray `#6B7280`; brand orange for active states only.**
@@ -914,6 +984,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Frontend implementation: Figma icons are **SVG files in `public/icons/`, rendered via `next/image`** — never inline `<svg>` or a lucide stand-in for a Figma icon; section-prefix filenames (`nav-*`, `hero-*`, `footer/*`); keep the Figma colour baked in; `alt=''` for decorative icons. `lucide-react` is allowed only for generic affordances not in Figma (hamburger, chevrons, back arrow).
 
 #### A9.4 Typographic separator system (LOCKED, confirmed June 10, 2026 — §3.4)
+
 - **Three tiers, platform-wide.** The earlier four-tier system that used a pipe between info categories was reversed; **the pipe is retired everywhere** (B.14, C12).
 - **Tier 1 — `·` middot** — between inline items and info categories in a single row. Examples: `★ 4.8 (1,738) · ✦ Locals' favorite · 📍 Willemstad, Curaçao` and `Full day · 8 to 9h · From $120`.
 - **Tier 2 — `,` comma** — inside one geographic reference only. Example: `Willemstad, Curaçao`. (The comma is grammatical notation, not a separator tier.)
@@ -922,6 +993,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Hub fast-facts rows that previously mixed pipes normalize to middots.**
 
 #### A9.5 Badges (§3.6)
+
 - **Sponsored** — rounded rectangle, **gray** — trigger: **paid tier P1–P3 placements**; always shown on paid placement (transparency is a brand pillar).
 - **Most popular** — rounded rectangle, **brand orange** — trigger: **organic tour, `review_count >= 10` and rating `>= 4.5`; max 1 per category** — **never awarded on commission-tier grounds**. (B.33: "Bestseller" → "Most popular".)
 - **Likely to sell out** — rounded rectangle — **single platform trigger** (§3.7).
@@ -932,6 +1004,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Diversity pass:** after ranking, listings apply a diversity pass — **never more than 2 tours of the same subtype consecutively**.
 
 #### A9.6 Navigation bar (§3.9)
+
 - **Nav is sticky.**
 - **Destination-context state** contains: logo, **location selector showing the current island**, **Categories dropdown**, **search**, **language switcher**, **wishlist**, **account**.
 - Categories dropdown shows the **curated discovery list**, items with **40 to 48px rounded thumbnails** per the Fever pattern.
@@ -940,6 +1013,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **The currency selector lives in the footer only, never the nav.**
 
 #### A9.7 Footer (§3.10)
+
 - **Global footer on every page.**
 - Contains: **destination links (Curaçao · Aruba · Sint Maarten)**, **support (WhatsApp link**, deep-link behavior per §6.6**)**, **legal**, **language switcher**, **currency selector** (locale-defaulted), **payment logos in white/monochrome**, and the brand sign-off **"Built by Islanders."** at display size.
 - The footer sign-off is the tagline's **one persistent on-page home** (the tour-page closing trust block was dropped).
@@ -949,6 +1023,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Payment logo set:** VISA, Mastercard, PayPal, iDEAL, Apple Pay, Google Pay, Klarna, Amex. **Footer renders them monochrome; in-section renders full color.**
 
 #### A9.8 Brand voice (§4.1)
+
 - Voice is **warm, plain, confident, understated**.
 - **First-person plural where natural** ("We confirm your booking in seconds").
 - **Specific over vague** ("Reef-safe sunscreen protects coral and your skin", not "appropriate sun protection").
@@ -958,6 +1033,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Power-word register:** spot, works, locals, picked, plans.
 
 #### A9.9 Hard voice rules (§4.2)
+
 - **Operator names never appear in discovery-layer copy** (cards, hub comparison tables, Our Pick, collections).
 - **Hub comparison columns and Our Pick reference tour titles, not operator names.**
 - Operators are named in **exactly two contexts**: (a) the tour detail page **"Supplied by {operatorName}"** line (LD14), and (b) **post-booking surfaces** (TYP, confirmation email), per the two-phase principle.
@@ -966,25 +1042,29 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **No em-dashes anywhere in platform copy.** Use periods, commas, colons, occasional semicolons. Source strings containing em-dashes have been rewritten (before/after list in Appendix C item C13).
 
 #### A9.10 Banned words (LD9, platform-wide)
+
 - **Banned:** paradise, luxury, exclusive, seamless, world-class, **"discover" as a verb opener**, unlock, adventure-awaits, committed-to, magical, amazing, incredible (without specifics), hassle-free, curated by experts, premium (without justification), don't miss out, hurry.
 - **Also banned:** **"Subscribe"** (use **"Email me"**), **"Submit"**, **"Customer support"** (use **"WhatsApp us"**), and **"cart"** and **"checkout"** in customer-facing labels.
 - **Two sanctioned exceptions:**
-  1. The category label **"Luxury Experiences"** with its category-page H1 (§2.4).
-  2. The **homepage hero H1, which subverts "discover" instead of using it** — "We didn't discover the Caribbean. We grew up in it." (conflict log 71; requires a translation test per locale).
+    1. The category label **"Luxury Experiences"** with its category-page H1 (§2.4).
+    2. The **homepage hero H1, which subverts "discover" instead of using it** — "We didn't discover the Caribbean. We grew up in it." (conflict log 71; requires a translation test per locale).
 - **Every editorial-H2 override (e.g. a hub's "Our {hub}" heading) passes the LD9 banned-list check.**
 
 #### A9.11 US-English lock (§4.3, LOCKED June 10, 2026)
+
 - **US English platform-wide** — "travelers" is locked in multiple strings.
 - The earlier British-spelling exception for the brand term is **reversed**: the term is **"Locals' favorite(s)"** in all copy (badge, sort label, section headers, Top 10 page; conflict log 54, B.54).
 - **The internal CMS field `is_locals_favourite` keeps its existing spelling** — field names are not user-facing and a rename has no migration value.
 
 #### A9.12 Time & deadline copy rules (§4.4)
+
 - **24-hour clock in all transactional and deadline copy.**
 - **"(local time)" is retained wherever a money-relevant deadline is stated** (cancellation cutoff, balance deadline).
 - **Never "Curaçao time" in customer-facing deadline copy** — it breaks on Aruba and Sint Maarten expansion.
 - **Arrival buffer language is dynamic:** default **"arrive 5 minutes early" for pickup**, **"arrive 30 minutes early" for meeting-point tours**, **overridable per tour**.
 
 #### A9.13 Duration formatter (locked rules, locale-aware — §3.5)
+
 - Based on **`duration_minutes`**, with optional **`duration_minutes_max`** for ranges.
 - **Unit words and "to" translate per locale via a locale-aware formatter, never string concatenation.**
 - **Same format on mobile and desktop.**
@@ -996,6 +1076,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - Mixed range → **`2 hours 30 minutes to 3 hours`** — **endpoints in full, never decimals**.
 
 #### A9.14 Motion standard (sitewide, 2026-07-14)
+
 - Every page/component gets **page transitions, micro-interactions, and reveal animations** (`MountReveal` / `Reveal` reuse).
 - **HARD RULE: no `whileHover` motion at all** (no scale-ups, lifts or nudges) — hovers are strictly **color/opacity CSS transitions**; press = **`whileTap` scale DOWN (0.9–0.98)**.
 - **HARD RULE: canonical animation constants live in `frontend/lib/motion.ts`** (`springPop` 500/30, `swapFade` 0.15/y±6, `crossFade` 0.2/y±8, `pageEnter` 0.5/y16) — import them, never re-declare inline.
@@ -1008,11 +1089,13 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A10. Soft-delete strategy & hard-delete preconditions
 
 #### A10.1 The principle
+
 - **Deactivate, do not destroy.** Setting **`isActive = false`** (or entity **`status = archived`**) **hides an entity from the public site and navigation while keeping its row, its slug claim, and its relationships intact**.
 - **Reversible with one toggle.**
 - **Hard deletes are reserved for the narrow, guarded cases below.**
 
 #### A10.2 Why soft delete is load-bearing (4 reasons)
+
 - **1. Slug + URL protection.** The slug registry maps every public URL to one entity. **Removing a row frees the slug and risks a future entity claiming the same URL**, breaking external links and confusing the search index. A deactivated entity **keeps its `slug_registry` row with `is_active = false`**: the URL stays claimed and the page returns **404**.
 - **2. Booking + financial records.** Bookings reference the **tour → operator → destination** chain and **snapshot the commission at booking time** (`commission_rate`, `commission_amount`). **Hard-deleting any link would violate foreign keys or cascade-destroy immutable financial history.**
 - **3. Seeded entities.** The launch destinations and the 19 global categories are seeded (**`isSeeded = true`**) and **must never be deleted**. **Services throw `403 Forbidden` on any delete of a seeded entity, even a force delete.**
@@ -1020,6 +1103,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **What changed from the prior design:** the featured-slot economy is removed, so the previous **"FeaturedSlot rows are permanent / SlotHistory audit trail"** rationale for soft delete **no longer applies and has been dropped**. The remaining four reasons still make soft delete **non-negotiable**.
 
 #### A10.3 Per-entity soft-delete / reactivate behavior (registry cascades)
+
 - **Destination deactivate** → **ALL** registry rows `WHERE destinationSlug = <slug>` → `isActive:false` (reserved row + categories + hubs + collections + tours). **Reactivate** flips them all back to `true`.
 - **Category deactivate / reactivate** → `WHERE entityType=CATEGORY AND entityId=<id>` — **flips that category's row on every island at once**.
 - **Hub deactivate / reactivate** → `WHERE entityType=HUB AND entityId=<id>`.
@@ -1030,17 +1114,18 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - All flips are **transactional with the entity change**.
 
 #### A10.4 Hard-delete preconditions (guarded force delete)
+
 - A force-delete endpoint exists under permission **`MANAGE_SYSTEM`**, for genuine cleanup of entities that **were never public and have no bookings**.
 - It **must**:
-  - **refuse seeded entities** (`isSeeded = true` → **403**),
-  - **refuse entities with any booking history**,
-  - **remove the `slug_registry` row only after honoring the 90-day cooldown rule**,
-  - **run inside a transaction with the entity removal**.
+    - **refuse seeded entities** (`isSeeded = true` → **403**),
+    - **refuse entities with any booking history**,
+    - **remove the `slug_registry` row only after honoring the 90-day cooldown rule**,
+    - **run inside a transaction with the entity removal**.
 - Per-entity hard-delete registry cascades:
-  - **Destination force-delete** → `deleteMany WHERE destinationSlug = <slug>`; **blocked if `isSeeded`**.
-  - **Category force-delete** → `deleteMany WHERE entityType=CATEGORY AND entityId=<id>` (all islands); **blocked if `isSeeded`**.
-  - **Collection force-delete** → `deleteMany WHERE entityType=COLLECTION AND entityId=<id>`.
-  - **Tour remove (hard)** → `deleteMany WHERE entityType=TOUR AND entityId=<id>`.
+    - **Destination force-delete** → `deleteMany WHERE destinationSlug = <slug>`; **blocked if `isSeeded`**.
+    - **Category force-delete** → `deleteMany WHERE entityType=CATEGORY AND entityId=<id>` (all islands); **blocked if `isSeeded`**.
+    - **Collection force-delete** → `deleteMany WHERE entityType=COLLECTION AND entityId=<id>`.
+    - **Tour remove (hard)** → `deleteMany WHERE entityType=TOUR AND entityId=<id>`.
 - **After a hard delete the freed `(destinationSlug, slug)` pair enters the 90-day cooldown** before any new entity can claim it.
 - **A slug is genuinely freed only after the cooldown**, and even then the old URL still resolves via its 301 if a rename was involved.
 
@@ -1049,26 +1134,28 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### A11. Date, time & timezone rules
 
 #### A11.1 The core rule
+
 - **Use destination-local time for "when the customer experiences the tour." Use UTC for "when the system event happened."**
 
-| Area | Correct time model |
-|---|---|
-| Weekly schedule ("Every Tuesday 09:00") | **Destination-local wall time** |
-| Availability exception ("Closed on 2026-08-12") | **Destination-local date** |
-| Departure inventory ("2026-08-12 at 09:00") | **Destination-local date + local time** |
-| Booking cutoff ("stop booking 2 hours before 09:00") | **Compare against destination-local now** |
-| Cancellation window ("free until 48 hours before start") | **Compare against destination-local tour start** |
-| Booking confirmation / payment / webhook timestamps | **UTC instant** |
-| Hold expiry | **UTC instant** |
-| Invoice / payment issue timestamp | **UTC or business/accounting timezone**, but show tour date locally |
-| Customer invoice / receipt tour date | **Destination-local date/time** |
-| Email reminders | **Compute from destination-local tour time; schedule the job on a real UTC instant** |
-| Tracking conversion time | **UTC instant** |
-| Reviews ("can review after tour happened") | **Compare destination-local tour start/end against destination-local now** |
+| Area                                                     | Correct time model                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Weekly schedule ("Every Tuesday 09:00")                  | **Destination-local wall time**                                                      |
+| Availability exception ("Closed on 2026-08-12")          | **Destination-local date**                                                           |
+| Departure inventory ("2026-08-12 at 09:00")              | **Destination-local date + local time**                                              |
+| Booking cutoff ("stop booking 2 hours before 09:00")     | **Compare against destination-local now**                                            |
+| Cancellation window ("free until 48 hours before start") | **Compare against destination-local tour start**                                     |
+| Booking confirmation / payment / webhook timestamps      | **UTC instant**                                                                      |
+| Hold expiry                                              | **UTC instant**                                                                      |
+| Invoice / payment issue timestamp                        | **UTC or business/accounting timezone**, but show tour date locally                  |
+| Customer invoice / receipt tour date                     | **Destination-local date/time**                                                      |
+| Email reminders                                          | **Compute from destination-local tour time; schedule the job on a real UTC instant** |
+| Tracking conversion time                                 | **UTC instant**                                                                      |
+| Reviews ("can review after tour happened")               | **Compare destination-local tour start/end against destination-local now**           |
 
 - **The clean rule:** store and return tour schedule as **`{ localDate, startTime, endTime, timeZone }`**; store **UTC only for real system events**; derive real UTC instants **only** when a scheduler, webhook, tracking event, or external calendar needs an absolute moment.
 
 #### A11.2 The platform time contract (Phase 1 of the 12-phase plan)
+
 - `localDate` = **`YYYY-MM-DD` destination-local calendar date**.
 - `startTime` / `endTime` = **`HH:mm` destination-local wall-clock**.
 - `timeZone` = **IANA**.
@@ -1078,6 +1165,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Customer-facing tour dates must render from `{ localDate, startTime, timeZone }`, never from a fake `DateTime` field.**
 
 #### A11.3 What the current implementation gets right
+
 - `AvailabilitySchedule.weekday` and `startTime` are **tour-local**.
 - `AvailabilityException.date` and `Departure.date/startTime` use **`@db.Date` and `@db.Time`** — the right shape for local calendar inventory.
 - **Explicit local-time helpers** treat date/time as **local wall-clock values instead of converting to UTC** (`timezone.util.ts`).
@@ -1088,6 +1176,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Verdict:** the availability/departure implementation is conceptually mostly right. **The risky part is the API boundary — local wall-clock `Date` values serialized as UTC-looking ISO strings.**
 
 #### A11.4 Timezone source-of-truth rules
+
 - **Destination timezone must be required platform data** (currently `timezone String?` — nullable).
 - **Validate timezone strings as real IANA zones** via `Intl.DateTimeFormat(undefined, { timeZone: value })`; **reject offset strings (`UTC-04:00`) and labels (`Curacao`, `Curaçao time`, `AST`)**.
 - **Valid launch zones:** `America/Curacao`, `America/Aruba`, `America/Lower_Princes` (Sint Maarten), `America/St_Lucia`, `America/Nassau`.
@@ -1098,11 +1187,13 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Never reuse browser timezone detection for tour/destination timezone.**
 
 #### A11.5 Local-date validation rules
+
 - **Replace `@IsDateString()` with strict `YYYY-MM-DD` validation** (`@Matches(/^\d{4}-\d{2}-\d{2}$/)` or a custom `@IsLocalDate()`) for date-only business fields: availability `from`/`to`, schedule `validFrom`/`validUntil`, exception `date`, public availability `dateFrom`/`dateTo`, booking list `from`/`to`. `@IsDateString()` wrongly accepts full ISO timestamps.
 - **Keep `@IsDateString()` only for real UTC instants.**
 - **Validate local date range ordering:** `validUntil >= validFrom`, `dateTo >= dateFrom`, `to >= from`.
 
 #### A11.6 Serialization & display rules
+
 - **Stop exposing fake local wall-clock `Date` as UTC-looking ISO.** `tourStartDateTime.toISOString()` returning `2026-07-01T09:00:00.000Z` **does not mean 09:00 UTC — it means 09:00 Curaçao local**. Preferred response shape: `localDate: "2026-07-01"`, `startTime: "09:00"`, `endTime: "13:00"`, `timeZone: "America/Curacao"`, plus `startsAtUtc` **only if an actual instant is needed**.
 - **Emails/invoices/receipts/TYP/ICS must label the timezone:** `2026-07-01 at 09:00 Curaçao local time` or `(America/Curacao)`. **Never print a fake UTC ISO string as the tour time.**
 - Invoices need **two separate concepts**: payment/invoice timestamp = UTC/accounting time; **booked experience date/time = destination-local** (`Tour date: Tuesday, July 1, 2026 / Time: 9:00 AM / Timezone: Curaçao local time`).
@@ -1113,6 +1204,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Public/customer UI must prefer `localDate` / `startTime` / `timeZone` over `tourStartDateTime`** until the backend response shape is fixed.
 
 #### A11.7 Booking, cutoff and cancellation time rules
+
 - **Add `Booking.tourTimeZone` snapshot.** On reserve, snapshot `localDate`, `startTime`, `endTime`, `tourTimeZone`, cancellation hours, payment model and commission fields; **backfill existing bookings**. Use the snapshotted timezone for **cancellation deadline computation, review eligibility, booking emails, TYP display, invoice/receipt display** — so historical bookings stay stable if a tour/destination timezone changes later.
 - **One shared backend helper for live departure bookability** (status open; remaining capacity sufficient; **current destination-local time has not passed `bookingCutoffMinutes`**), used by the public availability month map, tour listing date filters, full-text search date filters, and booking reserve pre-check.
 - **`Tour.isBookable` can go stale during the day** — cutoff passing is time-based, with no DB row change. Decide officially: **Option A = coarse cached flag, allowed to be stale (then never use it alone for exact date/guest/time search); Option B = live-computed for user-facing endpoints.**
@@ -1121,18 +1213,11 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Reminder emails must be scheduled from the local tour start converted to a real UTC instant**, never from fake `Z` wall-clock values; copy switches "Tomorrow:" / "Today:" based on **destination-local** date.
 
 #### A11.8 Analytics & counter time rules
+
 - **Tracking event timestamps stay UTC instants.** Conversion value stays **`commission_amount` in EUR**.
 - **`bookingCountToday`** is timezone-sensitive and currently not maintained; when implemented, "today" should mean **destination-local today** (preferred, supports CRO copy) or clearly platform-business today — **if UTC analytics day is chosen, it must not be used for customer-facing "today" copy**.
 - **Demand-signal windows** ("past 60 days", "next 30 days") currently use **UTC day windows** — acceptable for an analytics/ranking signal; **destination-local is required if the value ever appears as customer-facing "today"/"tomorrow"/date-specific copy**.
 - **Spotlight / commercial campaign windows** (`startsAt`/`endsAt`) — **recommendation: keep them as absolute UTC instants** for admin/commercial logic (they are campaign windows, not tour departures).
-
-
-
-
-
-
-
-
 
 ---
 
@@ -1142,11 +1227,11 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 - **Destinations** — created by **Admin** only. Islands, pre-seeded. `is_seeded = true` rows are **delete-protected** (403 in the service). Grouped by `region` (a **data attribute with no URL effect**).
 - **Categories** — created by **Admin** only. **19 global** categories, one set reused across every destination; slug is **global**.
-- **Activity Hubs** — created by **Admin only (editorial)**. **Operators never create hubs**; operators only *attach* their tours to an allowed hub during tour creation (`TourHub`, gated by `HubAllowedCategory`). Permission: `MANAGE_HUBS`.
+- **Activity Hubs** — created by **Admin only (editorial)**. **Operators never create hubs**; operators only _attach_ their tours to an allowed hub during tour creation (`TourHub`, gated by `HubAllowedCategory`). Permission: `MANAGE_HUBS`.
 - **Collections** — created by **Admin only (editorial)**. **Operators never touch collections.** Permissions: `CREATE_COLLECTION` / `EDIT_COLLECTION` / `DELETE_COLLECTION`.
 - **Tours** — created by **Operators** (`trips.operatorId` FK → `operators.id`). One destination → **1+ categories** (exactly one `isPrimary`) → **0–n hubs**. Permissions: `CREATE_TRIP` / `EDIT_TRIP` / `DELETE_TRIP` / `MANAGE_TRIPS`.
-  - `ADMIN` bypasses tour ownership and is auto-provisioned an operator record on first create; a `TOUR_OPERATOR` with no operator record gets a **400**.
-  - The service resolves caller `user.id` → `operator.id` (`resolveOperatorId`) **before any write or ownership check**.
+    - `ADMIN` bypasses tour ownership and is auto-provisioned an operator record on first create; a `TOUR_OPERATOR` with no operator record gets a **400**.
+    - The service resolves caller `user.id` → `operator.id` (`resolveOperatorId`) **before any write or ownership check**.
 - **Commission tier** — chosen by the **Operator**, **per tour**, eligibility-gated, with a 30-day lock. `tierKey` is operator-writable; `tierRank` / `commissionTier` / `tierLockedUntil` / `qualityScore` / `eligibilityState` are **server-set only**.
 - **Destination Spotlight** — **Operator requests → Admin approves** (manual, never self-serve). Operator request via `EDIT_TRIP` (own tour) or a dedicated permission; approval via `APPROVE_SPOTLIGHT` (admin).
 - **Top Island Experiences / Featured Experiences** — **Admin only**; **categories and hubs only, never individual tours** (see B.15).
@@ -1161,15 +1246,15 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### B.2 Destinations (master E.1)
 
 - **Fields (master canonical names):**
-  - `id` uuid · `name` string · `slug` string — **slug is locale-independent** (§2.2).
-  - `region` enum · `country` string — region is **Caribbean at launch**.
-  - `description` text · `long_description` text — `long_description` drives the **350–500 word SEO section** (§5.2).
-  - `hero_image` · `gallery_images[]` · `og_image` — URLs.
-  - `latitude` float · `longitude` float · `timezone` IANA string — **timezone drives every "(local time)" computation** platform-wide.
-  - `currency` · `language` string — **operator and payout context only**; display currency is locale-driven, not destination-driven (§1.3).
-  - `meta_title` · `meta_description` string.
-  - `parent_destination_id` uuid nullable — future sub-destinations; **unused at launch**.
-  - `status` enum (`draft` / `published` / `archived`) · `created_at` · `updated_at`.
+    - `id` uuid · `name` string · `slug` string — **slug is locale-independent** (§2.2).
+    - `region` enum · `country` string — region is **Caribbean at launch**.
+    - `description` text · `long_description` text — `long_description` drives the **350–500 word SEO section** (§5.2).
+    - `hero_image` · `gallery_images[]` · `og_image` — URLs.
+    - `latitude` float · `longitude` float · `timezone` IANA string — **timezone drives every "(local time)" computation** platform-wide.
+    - `currency` · `language` string — **operator and payout context only**; display currency is locale-driven, not destination-driven (§1.3).
+    - `meta_title` · `meta_description` string.
+    - `parent_destination_id` uuid nullable — future sub-destinations; **unused at launch**.
+    - `status` enum (`draft` / `published` / `archived`) · `created_at` · `updated_at`.
 - **Translations & page content (current code, `destinations.prisma`):** `description` / `long_description` and SEO `meta_*` live on `DestinationTranslation` / `DestinationPageContent`, **not on the base row**.
 - **Seeded guard:** `is_seeded` present in code; seeded destinations cannot be deleted.
 - **Code divergence from master:** status is modeled as boolean `isActive` (+ `isSeeded`) rather than the 3-value enum. Everything else (`region` required, `country`, `latitude`, `longitude`, `timezone`, `currency`, `galleryImages`, `ogImage`, `parentDestinationId`) is aligned.
@@ -1203,57 +1288,57 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Hub vs Collection:** Hub = anchored to a **place/landmark**, rich informational content + comparison logic. Collection = anchored to a **persona/intent**, mostly a curated list. Slug registry enforces one slug → one page type per destination.
 - **Tour link:** a tour attaches to **0–n hubs** (`TourHub`); hubs are **discovery tags with NO URL effect**. A hub shows only tours whose category is in its allowed-category list.
 - **Every field:**
-  - `id` uuid (SYS) · `destinationId` FK (ADM, mandatory) · `name` (ADM) · `slug` (ADM, unique per destination) · `description` string? (ADM; master `short_description`, card/meta blurb) · `hubType` `HubType?` (ADM; **nullable today**, master treats it as set) · `latitude` / `longitude` Float? (ADM; location-type hubs) · `isSeeded` / `isActive` bool · `createdBy` + timestamps.
-  - **`heroImage` string? — `+ TO ADD`, GAP G1 (High).** Master E.4 `hero_image`; the hub's defining feature, full-bleed hero. Not on schema today.
-  - **`ogImage` string? — `+ TO ADD`, GAP G7 (Low-Medium).** Master E.4 `og_image` (Destination has it, Hub does not).
-  - **`status` enum — `+ TO ADD`, GAP G6 (Medium).** Master lists `status`; today only `isActive`. Decide `HubStatus { DRAFT, PUBLISHED, ARCHIVED }` vs `isActive` + publish guard.
-  - `meta_title` / `meta_description` (on `HubPageContent`, per locale) — present.
+    - `id` uuid (SYS) · `destinationId` FK (ADM, mandatory) · `name` (ADM) · `slug` (ADM, unique per destination) · `description` string? (ADM; master `short_description`, card/meta blurb) · `hubType` `HubType?` (ADM; **nullable today**, master treats it as set) · `latitude` / `longitude` Float? (ADM; location-type hubs) · `isSeeded` / `isActive` bool · `createdBy` + timestamps.
+    - **`heroImage` string? — `+ TO ADD`, GAP G1 (High).** Master E.4 `hero_image`; the hub's defining feature, full-bleed hero. Not on schema today.
+    - **`ogImage` string? — `+ TO ADD`, GAP G7 (Low-Medium).** Master E.4 `og_image` (Destination has it, Hub does not).
+    - **`status` enum — `+ TO ADD`, GAP G6 (Medium).** Master lists `status`; today only `isActive`. Decide `HubStatus { DRAFT, PUBLISHED, ARCHIVED }` vs `isActive` + publish guard.
+    - `meta_title` / `meta_description` (on `HubPageContent`, per locale) — present.
 - **`HubTranslation` (per locale):** `name` string? (falls back to `Hub.name`) · `overview` string? (**the editorial lead**, "Why Klein Curaçao", **max 150 words, no visible header** — directive G9) · `h1Override` string? (hero H1, per hub per locale, **never templated**) · `breadcrumbLabel` string? · **`heroTagline` string? — `+ TO ADD`, GAP G5 (Medium)** (hero subtitle under H1, e.g. "Where islanders send their visitors") · `isMachineTranslated` bool.
 - **`HubPageContent` (per locale):** `aboutText` string? (currently the only long-copy slot — **insufficient** for multi-block Discover + Local Tips) · `metaTitle` · `metaDescription`.
 - **Allowed categories:** `HubAllowedCategory(hubId, categoryId)` gates which category of tours an operator may attach. **No gap.**
 - **Our Picks:** `HubOurPick(hubId, tourId, pickType, description, displayOrder)` with `HubPickType { BEST_OVERALL, MOST_POPULAR, BEST_FOR_FAMILIES, BEST_VALUE }`. Figma shows 3 picks (`BEST OVERALL` / `MOST POPULAR` / `BEST FOR FAMILIES`).
-  - **Tour titles, never operator names** (master 5.5 / LD14). Card facts (rating, boat type, from $X) come from the Tour.
-  - Editorial line **"Our honest picks, not paid placements"** is static copy.
-  - **GAP G8 (Medium):** `description` is a single `String` — must be per locale (`HubOurPickTranslation(ourPickId, locale, description)`).
+    - **Tour titles, never operator names** (master 5.5 / LD14). Card facts (rating, boat type, from $X) come from the Tour.
+    - Editorial line **"Our honest picks, not paid placements"** is static copy.
+    - **GAP G8 (Medium):** `description` is a single `String` — must be per locale (`HubOurPickTranslation(ourPickId, locale, description)`).
 - **Comparison groups:** `HubComparisonGroup(groupName, displayOrder)` + `HubComparisonTour(groupId, tourId, displayOrder)` model the two groups (Figma: **Comfort trips** / **Adventure trips**) and which tours sit in each column. Frozen first column, booking buttons in the header, tour-title columns.
-  - Rows in Figma: *What stands out · On the island · Breakfast · Open bar · Crossing · Boat & group · Free cancel · from $X*.
-  - **Derived from the Tour:** Free cancel (`cancellationHours`), from $X (`fromPrice`), Boat & group (`wholeUnitType` + capacity).
-  - **Likely Tour attributes** (`attributes.prisma` dictionary): Crossing (1 hour), Breakfast (Included/-), Open bar (Premium/Optional).
-  - **Curated, not modeled:** "What stands out" free text (e.g. "Dive school, massage with a view").
-  - **GAP G3 (Medium-High):** no store for curated cells and `groupName` is not per locale. Fixes: (a) `HubComparisonGroupTranslation(groupId, locale, groupName)`; (b) `HubComparisonTour.standoutNote` (+ translation child) **or** `HubComparisonCell(comparisonTourId, attributeKey, value)`.
+    - Rows in Figma: _What stands out · On the island · Breakfast · Open bar · Crossing · Boat & group · Free cancel · from $X_.
+    - **Derived from the Tour:** Free cancel (`cancellationHours`), from $X (`fromPrice`), Boat & group (`wholeUnitType` + capacity).
+    - **Likely Tour attributes** (`attributes.prisma` dictionary): Crossing (1 hour), Breakfast (Included/-), Open bar (Premium/Optional).
+    - **Curated, not modeled:** "What stands out" free text (e.g. "Dive school, massage with a view").
+    - **GAP G3 (Medium-High):** no store for curated cells and `groupName` is not per locale. Fixes: (a) `HubComparisonGroupTranslation(groupId, locale, groupName)`; (b) `HubComparisonTour.standoutNote` (+ translation child) **or** `HubComparisonCell(comparisonTourId, attributeKey, value)`.
 - **All Figma sections — 12 sections of the hub page:**
-  1. **Nav + breadcrumb** (`Home / Curaçao / Klein Curaçao`) — global nav + `breadcrumbLabel`. ✓
-  2. **Full hero** — H1 `Klein Curaçao day trips`, tagline `Where islanders send their visitors`, **fast facts** `Full day (8-9h) · From $120 · BBQ lunch · Daily`, date picker `Select date` / `Check Availability`. **Partial** (heroImage GAP, tagline GAP, fast facts GAP).
-  2b. **Sticky anchor nav — 5 locked items:** `Why Klein Curaçao` · `Trips` · `Private charters` · `Compare` · `Discover`. Template-driven from sections present; **derived**.
-  3. **Editorial lead** `Why Klein Curaçao` — max 150 words, **no visible header**. ✓
-  4. **Shared tours grid** — `9 Klein Curaçao day trips. Pick yours.`; filter chips + date; cards carry a **`Sponsored` badge (hubs DO show it, unlike collections)**. ✓ derived.
-  5. **Private charters** — `14 private charters. Yours alone.`, split `Day charters (11)` + `Overnight charters (3)`. Derived: hub tours where `bookingType = PRIVATE`; day-vs-overnight split by duration. ✓ derived.
-  6. **Our Pick** — `We've been on every boat`, 3 picks, editorial blurb each. **Partial** (per-locale blurb GAP).
-  7. **Comparison table** — `Which trip is right for you?`. **Partial** (cell/row values not modeled).
-  8. **Discover deep-dive** — `Discover Klein Curaçao`, 6 named subsections: *The White Beach · History · Sea Turtles · Snorkeling & Diving · The Pink Lighthouse · Shipwrecks*. **GAP**.
-  9. **Local tips** — `What we tell first-timers…`, ~8 titled tip cards (Take water shoes, Sit at the back, No need to rush ashore, Bring reef-safe sunscreen, Book weeks ahead, Mind the lighthouse stairs…). **GAP**.
-  10. **FAQ** — **7 AEO questions**, FAQPage schema (Figma shows 9 — count is editorial, not a schema constraint). Polymorphic `Faq`, `pageType='hub'`. ✓ wired.
-  11. **Related hubs** — `Also worth your time on Curaçao`, 3 cross-hub cards. **Derived**: other active hubs in the same destination excluding self, **cap 3**.
-  12. **Footer** — global. ✓
+    1. **Nav + breadcrumb** (`Home / Curaçao / Klein Curaçao`) — global nav + `breadcrumbLabel`. ✓
+    2. **Full hero** — H1 `Klein Curaçao day trips`, tagline `Where islanders send their visitors`, **fast facts** `Full day (8-9h) · From $120 · BBQ lunch · Daily`, date picker `Select date` / `Check Availability`. **Partial** (heroImage GAP, tagline GAP, fast facts GAP).
+       2b. **Sticky anchor nav — 5 locked items:** `Why Klein Curaçao` · `Trips` · `Private charters` · `Compare` · `Discover`. Template-driven from sections present; **derived**.
+    3. **Editorial lead** `Why Klein Curaçao` — max 150 words, **no visible header**. ✓
+    4. **Shared tours grid** — `9 Klein Curaçao day trips. Pick yours.`; filter chips + date; cards carry a **`Sponsored` badge (hubs DO show it, unlike collections)**. ✓ derived.
+    5. **Private charters** — `14 private charters. Yours alone.`, split `Day charters (11)` + `Overnight charters (3)`. Derived: hub tours where `bookingType = PRIVATE`; day-vs-overnight split by duration. ✓ derived.
+    6. **Our Pick** — `We've been on every boat`, 3 picks, editorial blurb each. **Partial** (per-locale blurb GAP).
+    7. **Comparison table** — `Which trip is right for you?`. **Partial** (cell/row values not modeled).
+    8. **Discover deep-dive** — `Discover Klein Curaçao`, 6 named subsections: _The White Beach · History · Sea Turtles · Snorkeling & Diving · The Pink Lighthouse · Shipwrecks_. **GAP**.
+    9. **Local tips** — `What we tell first-timers…`, ~8 titled tip cards (Take water shoes, Sit at the back, No need to rush ashore, Bring reef-safe sunscreen, Book weeks ahead, Mind the lighthouse stairs…). **GAP**.
+    10. **FAQ** — **7 AEO questions**, FAQPage schema (Figma shows 9 — count is editorial, not a schema constraint). Polymorphic `Faq`, `pageType='hub'`. ✓ wired.
+    11. **Related hubs** — `Also worth your time on Curaçao`, 3 cross-hub cards. **Derived**: other active hubs in the same destination excluding self, **cap 3**.
+    12. **Footer** — global. ✓
 - **Mandatory sections (master 5.5):** **Discover ("Our {hub}"), Local Tips, Related Hubs.** The editorial H2 defaults to **"Our {hub}"** via i18n template; a hub may override it per hub per locale and the override passes the **LD9 banned-list check** (C18; the earlier "Discover {hub}" default is retired — conflict log B.55).
 - **Display & business rules (locked, master 5.5):**
-  - **Full hero image is mandatory** and must show the **specific** place/attraction, not the generic destination (hero-specificity rule). **Operator-sourced photos preferred.**
-  - **Anchor nav = 5 locked items**, sticky on scroll, derived from sections present.
-  - **No trust bar on hubs** (unlike the tour page). Share pill matches the tour page.
-  - Hub shared grid **does** rank by tier/quality and **does** show the `Sponsored` badge.
+    - **Full hero image is mandatory** and must show the **specific** place/attraction, not the generic destination (hero-specificity rule). **Operator-sourced photos preferred.**
+    - **Anchor nav = 5 locked items**, sticky on scroll, derived from sections present.
+    - **No trust bar on hubs** (unlike the tour page). Share pill matches the tour page.
+    - Hub shared grid **does** rank by tier/quality and **does** show the `Sponsored` badge.
 - **Publish guard (tied to G6):** a hub may go `PUBLISHED` only when — `heroImage` is set **AND** base-locale H1 + editorial lead exist **AND** `hubType` is set **AND** the mandatory sections (Discover, Local Tips) have at least one base-locale block.
 - **Write & ownership:** admin-only create/edit/delete (`MANAGE_HUBS`); create/rename/disable transactional with `slug_registry` (create writes one `HUB` row for the destination; rename issues a **301 + 90-day cooldown**; `isActive=false` flips the registry row and the page 404s); `isSeeded=true` rows are delete-protected.
 - **G1–G10 gap ledger (apply order):**
-  - **G1** `heroImage` — the hub's defining element, master E.4 → `Hub`. **High.**
-  - **G2** `content_sections` — Discover deep-dive + Local Tips, titled/ordered/per-locale; only `aboutText` today → new `HubContentSection` + `HubSectionType { DISCOVER, LOCAL_TIP, EDITORIAL }`. **High.**
-  - **G3** Comparison cell content ("what stands out") + per-locale `groupName`; cells otherwise undefined → `HubComparison*` extensions. **Medium-High.**
-  - **G4** Fast-facts bar store (editorial facts like crossing time / inclusion note) → `HubContentSection` `FAST_FACT` type or `fastFacts Json?` per locale on `HubPageContent`. **Medium.**
-  - **G5** `heroTagline` (hero subtitle, per locale) → `HubTranslation`. **Medium.**
-  - **G6** `status` — master lists it; today only `isActive` → `Hub` + `HubStatus` enum. **Medium.**
-  - **G7** `ogImage` (E.4) → `Hub`. **Low-Medium.**
-  - **G8** `HubOurPick.description` must be per locale → `HubOurPickTranslation`. **Medium.**
-  - **G9** `overview` directive: editorial lead max 150 words, no visible header (no new field) → `HubTranslation`. **Low.**
-  - **G10** `hubType` nullable → tighten to required after the Stage-2 backfill → `Hub`. **Low.**
+    - **G1** `heroImage` — the hub's defining element, master E.4 → `Hub`. **High.**
+    - **G2** `content_sections` — Discover deep-dive + Local Tips, titled/ordered/per-locale; only `aboutText` today → new `HubContentSection` + `HubSectionType { DISCOVER, LOCAL_TIP, EDITORIAL }`. **High.**
+    - **G3** Comparison cell content ("what stands out") + per-locale `groupName`; cells otherwise undefined → `HubComparison*` extensions. **Medium-High.**
+    - **G4** Fast-facts bar store (editorial facts like crossing time / inclusion note) → `HubContentSection` `FAST_FACT` type or `fastFacts Json?` per locale on `HubPageContent`. **Medium.**
+    - **G5** `heroTagline` (hero subtitle, per locale) → `HubTranslation`. **Medium.**
+    - **G6** `status` — master lists it; today only `isActive` → `Hub` + `HubStatus` enum. **Medium.**
+    - **G7** `ogImage` (E.4) → `Hub`. **Low-Medium.**
+    - **G8** `HubOurPick.description` must be per locale → `HubOurPickTranslation`. **Medium.**
+    - **G9** `overview` directive: editorial lead max 150 words, no visible header (no new field) → `HubTranslation`. **Low.**
+    - **G10** `hubType` nullable → tighten to required after the Stage-2 backfill → `Hub`. **Low.**
 - **Fast-facts detail (G4):** master locks a **4-fact** hero bar. Some facts are **derived** (Price from = `min(fromPrice)` across hub tours; "Daily" from departures); others are **hub-specific editorial** (`45min-1.5h crossing · 10km offshore`, `BBQ lunch included`) and are **not stored anywhere today**. At minimum **"getting there"** and the **inclusion note** must be editable.
 - **Already present and correct:** `id`, `name`, `slug`, `destination_id`, `hub_type`, `short_description`, `latitude`/`longitude`, `meta_title`/`meta_description`, timestamps, allowed categories, Our Pick structure, comparison group/tour links, FAQ wiring.
 
@@ -1264,49 +1349,49 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Definition / job:** a **persona- or intent-driven curated list** (best things to do, couples, families, day trips). The only page type that cuts **across** activity categories on a persona/intent basis.
 - **URL:** `/{locale}/{destination}/{collection-slug}/` — flat, one slug per destination.
 - **Two kinds:**
-  - **MANUAL** — an ordered `tourIds[]` list; **the order IS the product**.
-  - **DYNAMIC** — a saved `filterQuery` (JSON) resolved at read time.
+    - **MANUAL** — an ordered `tourIds[]` list; **the order IS the product**.
+    - **DYNAMIC** — a saved `filterQuery` (JSON) resolved at read time.
 - **Commission never influences curation or order. No Sponsored badge ever appears on a collection card.**
 - **Cannibalization guard:** the collection slug **must not collide with a category slug**; enforced by the unique `slug_registry` row (one slug → one page type per destination).
 - **Every field:**
-  - `id` uuid (SYS) · `destinationId` FK (ADM) · `name` (ADM) · `slug` (ADM, unique per destination, no category collision) · `collectionType` `CollectionType { MANUAL, DYNAMIC }` (ADM) · `tourIds[]` String[] (ADM; ordered editorial list, MANUAL) · `filterQuery` Json? (ADM; DYNAMIC) · `heroImage` string? (ADM; banner image) · `sortOrder` string (ADM; **applies to DYNAMIC only** — MANUAL order = `tourIds[]`) · `isActive` bool (toggles slug-registry `is_active`; page 404s when false) · `isSeeded` bool (delete-protected) · `createdBy` string? · `createdAt` / `updatedAt`.
-  - **`status` enum — `+ TO ADD`, GAP G5 (Medium).** Master E.5 lists `status`; today only `isActive`. "Rationale required before publish" implies a real draft state → `CollectionStatus { DRAFT, PUBLISHED, ARCHIVED }` or `isActive` + publish guard.
-  - **`displayStyle` enum — `+ TO ADD`, GAP G6 (Medium).** `CollectionDisplayStyle { NUMBERED, PERSONA }`.
+    - `id` uuid (SYS) · `destinationId` FK (ADM) · `name` (ADM) · `slug` (ADM, unique per destination, no category collision) · `collectionType` `CollectionType { MANUAL, DYNAMIC }` (ADM) · `tourIds[]` String[] (ADM; ordered editorial list, MANUAL) · `filterQuery` Json? (ADM; DYNAMIC) · `heroImage` string? (ADM; banner image) · `sortOrder` string (ADM; **applies to DYNAMIC only** — MANUAL order = `tourIds[]`) · `isActive` bool (toggles slug-registry `is_active`; page 404s when false) · `isSeeded` bool (delete-protected) · `createdBy` string? · `createdAt` / `updatedAt`.
+    - **`status` enum — `+ TO ADD`, GAP G5 (Medium).** Master E.5 lists `status`; today only `isActive`. "Rationale required before publish" implies a real draft state → `CollectionStatus { DRAFT, PUBLISHED, ARCHIVED }` or `isActive` + publish guard.
+    - **`displayStyle` enum — `+ TO ADD`, GAP G6 (Medium).** `CollectionDisplayStyle { NUMBERED, PERSONA }`.
 - **`CollectionTranslation` (per locale):** `name` string? (falls back to `Collection.name`) · `overview` string? (**the section-3 intro — one sentence, max 30 words, AEO "include" structure**) · `h1Override` string? (banner H1 — `The 10 best things to do in Curaçao.`, **period required** on Best Things to Do) · `breadcrumbLabel` string? · **`eyebrowLabel` string? — `+ TO ADD`, GAP G3 (Low)** (banner eyebrow / persona label `BEST THINGS TO DO`; or derive by upper-casing `name` — flag the choice) · **`curationNote` string? — `+ TO ADD`, GAP G2 (Medium)** (banner subtitle `Chosen by Islanders - in the order we'd book them`) · `isMachineTranslated` bool.
 - **`CollectionPageContent` (per locale):** `aboutText` string? (optional long-form editorial body) · `metaTitle` · `metaDescription`. **No gap here.**
 - **Per-tour rationale — `collection_rationale` (MAIN GAP, G1, High):**
-  - Master E.5: **per tour, per locale**; *"required CMS field before publish, max 20 words"* (§3.5, §5.6).
-  - It is the sentence under every card title in Figma (e.g. *"An uninhabited island, 10km offshore, sea turtles, no signal. The day Curaçao is famous for."*) — **per-collection, per-tour, per-locale editorial copy, NOT a Tour field**.
-  - **Not modeled anywhere in the schema today.** `tourIds String[]` stores order but cannot hang per-tour-per-locale copy off it.
-  - Recommended fix: promote to a join table — `CollectionTour(id, collectionId, tourId, position)` with `@@unique([collectionId, tourId])` + `@@index([collectionId, position])`, plus `CollectionTourRationale(id, collectionTourId, locale, rationale)` with `@@unique([collectionTourId, locale])`.
-  - **Validation:** `rationale` ≤ 20 words; **required for the base locale before a MANUAL collection can be published**.
-  - **DYNAMIC collections: rationale is optional** (cards come from a live query, not curated copy).
-  - Lighter alternative (keeping `tourIds[]`): a standalone `CollectionRationale(collectionId, tourId, locale, text)` table — join table preferred (co-locates order + membership + copy).
+    - Master E.5: **per tour, per locale**; _"required CMS field before publish, max 20 words"_ (§3.5, §5.6).
+    - It is the sentence under every card title in Figma (e.g. _"An uninhabited island, 10km offshore, sea turtles, no signal. The day Curaçao is famous for."_) — **per-collection, per-tour, per-locale editorial copy, NOT a Tour field**.
+    - **Not modeled anywhere in the schema today.** `tourIds String[]` stores order but cannot hang per-tour-per-locale copy off it.
+    - Recommended fix: promote to a join table — `CollectionTour(id, collectionId, tourId, position)` with `@@unique([collectionId, tourId])` + `@@index([collectionId, position])`, plus `CollectionTourRationale(id, collectionTourId, locale, rationale)` with `@@unique([collectionTourId, locale])`.
+    - **Validation:** `rationale` ≤ 20 words; **required for the base locale before a MANUAL collection can be published**.
+    - **DYNAMIC collections: rationale is optional** (cards come from a live query, not curated copy).
+    - Lighter alternative (keeping `tourIds[]`): a standalone `CollectionRationale(collectionId, tourId, locale, text)` table — join table preferred (co-locates order + membership + copy).
 - **The 6 locked FAQ questions (Best Things to Do, verbatim in Figma), FAQPage schema:**
-  1. What are the best things to do in Curaçao?
-  2. How far in advance should I book these tours?
-  3. When is the best time to visit Curaçao?
-  4. Do these tours include hotel pickup?
-  5. Can I combine multiple tours in one trip?
-  6. How does Island Tours choose which tours to feature? *(conflict log B.23: was "Are these paid placements?")*
-  - **Directive:** reuse the polymorphic `Faq` with `pageType='collection'`; extend the comment list in `faq.prisma` (currently `'category' | 'hub' | 'destination' | 'tour'`). **Do NOT add a JSON blob on `Collection`** — GAP G7 (Medium) is the wire-up.
+    1. What are the best things to do in Curaçao?
+    2. How far in advance should I book these tours?
+    3. When is the best time to visit Curaçao?
+    4. Do these tours include hotel pickup?
+    5. Can I combine multiple tours in one trip?
+    6. How does Island Tours choose which tours to feature? _(conflict log B.23: was "Are these paid placements?")_
+    - **Directive:** reuse the polymorphic `Faq` with `pageType='collection'`; extend the comment list in `faq.prisma` (currently `'category' | 'hub' | 'destination' | 'tour'`). **Do NOT add a JSON blob on `Collection`** — GAP G7 (Medium) is the wire-up.
 - **NUMBERED vs PERSONA display rules (master 5.6, locked):**
-  - **NUMBERED** — numbered badges `01`–`10` appear **only** on **Best Things to Do** and **Top 10** collections → `displayStyle = NUMBERED`. Numbered badges **never** appear on destination sections (conflict log B.21).
-  - **PERSONA** — persona collections (couples / families / day trips) get **no numbers**; a **peach highlight marks card #1** → `displayStyle = PERSONA`.
-  - **No Sponsored badge on collection cards, ever.**
-  - Card price label is always **"from $X"**.
+    - **NUMBERED** — numbered badges `01`–`10` appear **only** on **Best Things to Do** and **Top 10** collections → `displayStyle = NUMBERED`. Numbered badges **never** appear on destination sections (conflict log B.21).
+    - **PERSONA** — persona collections (couples / families / day trips) get **no numbers**; a **peach highlight marks card #1** → `displayStyle = PERSONA`.
+    - **No Sponsored badge on collection cards, ever.**
+    - Card price label is always **"from $X"**.
 - **The 7 Figma sections:** (1) Nav + breadcrumb `Home / Curaçao / Collections / Best things to do`; (2) **thin editorial banner** (~300px, text on gradient) with eyebrow / H1 / curation note / fast stats `10 tours · From $36` / Share pill; (3) one-sentence intro (max 30 words); (4) curated **3-column grid — no sort, no filter chips**, each card numbered `01`–`10` + rating `4.8 (1,738)` + title + **rationale sentence** + duration + `From $X` + `Free cancellation`; (5) **Need help before booking?** (Chat on WhatsApp, trust lines) with the collection FAQ as the right column; (6) FAQ (6 AEO questions); (7) **Keep exploring** (`Best for couples` / `Best for families` / `Day trips`) + recovery CTA `Not sure yet? See all Curaçao tours →`.
 - **Derived (no schema change):** fast stats `10 tours · From $36` = count of resolved tours + `min(fromPrice)` in the active currency; card facts read from each resolved Tour; "Keep exploring" = other active collections in the same destination excluding self (**cap 3**); recovery CTA links to `/{locale}/{destination}/`.
 - **Publish guard (G5):** a **MANUAL** collection may go `PUBLISHED` only when every member tour has a base-locale rationale (≤20 words) **AND** `heroImage` is set **AND** base-locale H1 + overview exist. **DYNAMIC collections skip the per-tour rationale requirement.**
 - **G1–G8 gap ledger (apply order):**
-  - **G1** Collection Rationale per tour/locale (required before publish, max 20 words) — not modeled → `CollectionTour` + `CollectionTourRationale`. **High** (on every card in Figma + master E.5).
-  - **G2** `curationNote` (banner subtitle) per locale → `CollectionTranslation`. **Medium.**
-  - **G3** `eyebrowLabel` / persona label per locale (or derive from `name`) → `CollectionTranslation`. **Low** (decide store vs derive).
-  - **G4** `overview` directive: max 30 words + AEO "include" structure (validation/doc only) → `CollectionTranslation`. **Low.**
-  - **G5** `status` — needed for the "rationale required before publish" gate → `Collection` + `CollectionStatus`. **Medium.**
-  - **G6** `displayStyle` (NUMBERED vs PERSONA) for badge/peach rules → `Collection` + enum. **Medium.**
-  - **G7** FAQ wire-up: add `'collection'` to `Faq.pageType`; do not use a JSON blob → `faq.prisma`. **Medium.**
-  - **G8** `sortOrder` directive: applies to DYNAMIC only; MANUAL order = `tourIds[]` / `CollectionTour.position` → service rule. **Low.**
+    - **G1** Collection Rationale per tour/locale (required before publish, max 20 words) — not modeled → `CollectionTour` + `CollectionTourRationale`. **High** (on every card in Figma + master E.5).
+    - **G2** `curationNote` (banner subtitle) per locale → `CollectionTranslation`. **Medium.**
+    - **G3** `eyebrowLabel` / persona label per locale (or derive from `name`) → `CollectionTranslation`. **Low** (decide store vs derive).
+    - **G4** `overview` directive: max 30 words + AEO "include" structure (validation/doc only) → `CollectionTranslation`. **Low.**
+    - **G5** `status` — needed for the "rationale required before publish" gate → `Collection` + `CollectionStatus`. **Medium.**
+    - **G6** `displayStyle` (NUMBERED vs PERSONA) for badge/peach rules → `Collection` + enum. **Medium.**
+    - **G7** FAQ wire-up: add `'collection'` to `Faq.pageType`; do not use a JSON blob → `faq.prisma`. **Medium.**
+    - **G8** `sortOrder` directive: applies to DYNAMIC only; MANUAL order = `tourIds[]` / `CollectionTour.position` → service rule. **Low.**
 - **Everything else in master E.5 already present:** `id`, `name`, `slug`, `destination_id`, `collection_type`, `tour_ids[]`, `filter_query`, `hero_image`, `meta_title`, `meta_description`, timestamps.
 - **Write & ownership:** admin-only; create/rename/disable transactional with `slug_registry` (create writes one `COLLECTION` row for the destination; rename → **301 + 90-day cooldown**; `isActive=false` flips `is_active` and the page 404s); `isSeeded=true` delete-protected.
 
@@ -1442,7 +1527,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **`TourCategory`** ✓ — `tourId`, `categoryId`, `isPrimary`; unique `(tripId, categoryId)`; **exactly one `isPrimary = true` per tour**; required ≥1 row. Drives the breadcrumb and the canonical's category variant. Multi-category overlaps are intentional (sunset catamaran = `boat-tours` + `sunset-cruises`).
 - **`TourHub`** ✓ — `tourId`, `hubId`. **Validation: the hub must belong to the tour's destination AND at least one of the tour's categories must be in the hub's `HubAllowedCategory` set.** No URL effect.
 - **`TourAgeBand`** (`@@map("tour_age_bands")`, cascade delete) — **this IS the pricing model, not columns on Tour.** Fields: `id` (SYS) · `tourId` (SYS) · **`bandType` `AgeBandType` — `+ TO ADD` (gap #8)** `ADULT | CHILD | INFANT | YOUTH | SENIOR` · **`participation` `BandParticipation` — `+ TO ADD` (gap #11)** `PARTICIPANT` (default) / `SPECTATOR` · `label` (e.g. "Adult (age 13+)", "Child (age 4-12)", "Infant (age 0-3)") · `minAge` / `maxAge` int? (inclusive; null = no bound; design: Adult 13+, Child 4-12, Infant 0-3) · `price` Decimal(10,2) (0 = "Free") · `priceOriginal` Decimal? (strikethrough) · `priceNet` Decimal? (operator net) · `isDefault` bool (the band the widget defaults to, usually Adult) · `displayOrder` int.
-  - **Rules:** all bands count toward capacity (participants AND spectators board the vessel); publish needs ≥1 `PARTICIPANT` band (or `basePrice`); `Tour.priceFrom = min(price)` across **participant** bands; API composes a typed `pricing` object keyed by `bandType`, spectator bands under `pricing.spectators`; **`Tour.allowsSpectators` is derived** (`EXISTS a SPECTATOR band`) — no extra column.
+    - **Rules:** all bands count toward capacity (participants AND spectators board the vessel); publish needs ≥1 `PARTICIPANT` band (or `basePrice`); `Tour.priceFrom = min(price)` across **participant** bands; API composes a typed `pricing` object keyed by `bandType`, spectator bands under `pricing.spectators`; **`Tour.allowsSpectators` is derived** (`EXISTS a SPECTATOR band`) — no extra column.
 - **`TourImage`** ✓ — `url`, `urlAvif?`, `urlWebp?`, `isHero`, `focalX` (0.5), `focalY` (0.5), `altText?`, `displayOrder`, `width`, `height`. **Publish: ≥5 images, exactly one `isHero`.**
 - **`TourAddOn`** ✓ — `name`, `description?`, `price` Decimal(10,2), `unit` (`PER_PERSON` / `FLAT`), `maxQuantity` (1), `displayOrder`, `isActive`. **EU Digital Fairness Act: never pre-checked in the frontend.**
 - **`TourLanguage`** ✓ — `language` (ISO 639-1), unique `(tourId, language)`. Drives the third quick-info badge (LD7).
@@ -1465,6 +1550,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 4. **A price** — ≥1 `TourAgeBand` **or** `basePrice`.
 5. **Free-cancellation window present** (`cancellationHours` set; always is, NOT NULL) — listing requirement per master §6.2.
 6. **≥1 category** with exactly one `isPrimary`.
+
 - **Per-pricing-model publish gate (built):** `UNIT` additionally requires `basePrice` + `wholeUnitType`; `PER_PERSON` requires ≥1 age band **OR** `basePrice`. (The full "UNIT requires basePrice + wholeUnitType" rule is enforced **at publish, not at create** — draft-friendly.)
 - **Lifecycle:** `DRAFT → LIVE ⇄ PAUSED → ARCHIVED` (+ restore). Status changes re-run the category ≥3 gating in both directions.
 
@@ -1492,20 +1578,20 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Dictionary:** `AttributeDefinition` (`attributes.prisma`) — **admin-owned**; built.
 - **Per-tour values:** `TourAttribute` — **operator-set**; built. Drives **faceted filters, badges, and JSON-LD**.
 - **Public filters endpoint** — built (Stage 1 DONE).
-- **Derived / computed attributes (compute-on-read SSOT):** a set of tour attributes that duplicate first-class tour fields is **never stored or operator-editable** — the dashboard mirrors the backend's list in `lib/config/derived-attributes.ts`, and the **backend rejects setting them**. A contract test (dashboard risk **B4**) guards the two lists against drift; without it the dashboard would offer an attribute the backend rejects. *(Detail of the individual derived keys lives outside the fragments assembled for this section.)*
+- **Derived / computed attributes (compute-on-read SSOT):** a set of tour attributes that duplicate first-class tour fields is **never stored or operator-editable** — the dashboard mirrors the backend's list in `lib/config/derived-attributes.ts`, and the **backend rejects setting them**. A contract test (dashboard risk **B4**) guards the two lists against drift; without it the dashboard would offer an attribute the backend rejects. _(Detail of the individual derived keys lives outside the fragments assembled for this section.)_
 - **Hub comparison rows are a consumer of the dictionary:** Crossing (`1 hour`), Breakfast (Included / -), Open bar (Premium / Optional) are **likely Tour attributes** — reuse the dictionary if defined; model only the curated remainder.
 - **The public filter modal (locked, B.59 / dtpl-11) — six sections, every one actually filters, in order:**
-  1. **Price** — slider, $0 to max. (**Backend: the price min/max filter uses `priceFrom`, not `basePrice`.**)
-  2. **Duration** — 4 multi-select bands.
-  3. **Time of day** — morning / afternoon / evening, multi-select.
-  4. **Free cancellation window** — 24h / 48h / 72h, single-select (**replaced the dead free-cancellation toggle**).
-  5. **Pickup available** — toggle.
-  6. **Ratings** — 3.0+ / 4.0+ / 4.5+, single-select, **hidden until reviews exist**.
-  - **Removed: Booking type (a no-op)** — `booking_type` was dropped as a filter (decision D3).
-  - **Category navigation chips in the filter row are links, not facets** (B.60); "Explore by type" removed from All Tours.
-  - Filter state lives in **query params with self-referencing canonicals to the clean URL**; ItemList + BreadcrumbList schema; **server-rendered crawlable list** (B.61).
-  - **Dual results counter** (B.62): static "{Y} tours available" in the page header + dynamic "{X} of {Y} tours" with applied pills and Clear all in the grid header.
-  - Sidebar filters (architecture doc) are **superseded by horizontal chips** (B.18).
+    1. **Price** — slider, $0 to max. (**Backend: the price min/max filter uses `priceFrom`, not `basePrice`.**)
+    2. **Duration** — 4 multi-select bands.
+    3. **Time of day** — morning / afternoon / evening, multi-select.
+    4. **Free cancellation window** — 24h / 48h / 72h, single-select (**replaced the dead free-cancellation toggle**).
+    5. **Pickup available** — toggle.
+    6. **Ratings** — 3.0+ / 4.0+ / 4.5+, single-select, **hidden until reviews exist**.
+    - **Removed: Booking type (a no-op)** — `booking_type` was dropped as a filter (decision D3).
+    - **Category navigation chips in the filter row are links, not facets** (B.60); "Explore by type" removed from All Tours.
+    - Filter state lives in **query params with self-referencing canonicals to the clean URL**; ItemList + BreadcrumbList schema; **server-rendered crawlable list** (B.61).
+    - **Dual results counter** (B.62): static "{Y} tours available" in the page header + dynamic "{X} of {Y} tours" with applied pills and Clear all in the grid header.
+    - Sidebar filters (architecture doc) are **superseded by horizontal chips** (B.18).
 
 ---
 
@@ -1515,13 +1601,13 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Tier mechanics are internal commercial logic, never user-facing** — travelers never see "tier", commission, or `tier_rank`.
 - **The five tiers** (source of truth: `TIER_MAP` in `backend/src/tiers/tiers.service.ts`):
 
-  | Tier key | `tier_rank` | Commission | How a tour qualifies | Default? |
-  |---|---|---|---|---|
-  | `premium` | **1** (top) | **30.0%** | Flat eligibility bar | — |
-  | `featured` | **2** | **27.5%** | Flat eligibility bar | — |
-  | `boosted` | **3** | **25.0%** | Flat eligibility bar | — |
-  | `organic` | **4** | **22.5%** | Open (no bar) | — |
-  | `standard` | **5** (bottom) | **20.0%** | Open (no bar) | ✅ new tours |
+    | Tier key   | `tier_rank`    | Commission | How a tour qualifies | Default?     |
+    | ---------- | -------------- | ---------- | -------------------- | ------------ |
+    | `premium`  | **1** (top)    | **30.0%**  | Flat eligibility bar | —            |
+    | `featured` | **2**          | **27.5%**  | Flat eligibility bar | —            |
+    | `boosted`  | **3**          | **25.0%**  | Flat eligibility bar | —            |
+    | `organic`  | **4**          | **22.5%**  | Open (no bar)        | —            |
+    | `standard` | **5** (bottom) | **20.0%**  | Open (no bar)        | ✅ new tours |
 
 - `boosted` / `featured` / `premium` are the three **paid (eligibility-gated)** tiers; `organic` / `standard` are the **open baseline**. Higher commission "buys" a lower `tier_rank`.
 - **`standard` deliberately ranks BELOW `organic`** (5 vs 4) even though both are open — `organic` is the "good citizen" baseline, `standard` the floor. A 20% operator who wants to outrank other base-rate tours must move up to `organic` at 22.5%. **Intentional, not a bug.** `standard` is also the locked rate for operators on a negotiated 20% agreement.
@@ -1531,8 +1617,8 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Tier change + 30-day lock:** on any change **all three tier columns update together** — `tier_key = <new tier>`, `commission_tier = <new commission %>`, `tier_rank = <new rank>` (server-set) — **and `tier_locked_until = now() + 30 days`**. Further tier changes are **rejected while `tier_locked_until` is in the future**.
 - Tier selection is **additionally gated by the eligibility engine** — the requested tier must be one the tour currently qualifies for (see B.10).
 - **Non-retroactive rule:** `commission_rate` and `commission_amount` **snapshot onto every booking at creation and never change retroactively** (master §7.1). A later tier change, demotion, spotlight activation/expiry, or rate edit does **not** touch existing bookings. Demotion only changes future bookings' rate and the tour's `tier_rank`.
-  - `commission_rate` `decimal(5,4)` — e.g. `0.20` for 20%.
-  - `commission_amount` `decimal(10,2)` — **in EUR; the conversion value on every analytics platform (Google Ads, GA4, Meta) — never GMV.**
+    - `commission_rate` `decimal(5,4)` — e.g. `0.20` for 20%.
+    - `commission_amount` `decimal(10,2)` — **in EUR; the conversion value on every analytics platform (Google Ads, GA4, Meta) — never GMV.**
 - **Deposit percentage is tier-driven** (LD24): `tour.deposit_pct` = **20 to 30 in 2.5 steps** → allowed values **20, 22.5, 25, 27.5, 30**. It governs how much of the booking is taken to Island Tours via Stripe on the deposit payment models.
 - **Revenue is recognized on tour completion.**
 - **A tour excluded by the bookability filter is not billed for its tier** during the unbookable period.
@@ -1543,67 +1629,70 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 ### B.9 Ranking
 
 - **The canonical order (master §7.2 + the 2026-07-18 spotlight-first product decision):**
-  ```
-  is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC
-  ```
-  - Shown to travelers as the default sort **"Locals' favorites"** (a.k.a. "Recommended") — **"Locals' favorites" is the UI label for the tier ordering, not a separate formula.**
-  - ⚠️ **CONFLICT (documented, resolved by date):** the master §7.2 and `COMMERCIAL-MODEL.md` state the order as **`tier_rank ASC, quality_score DESC, id ASC`** (three keys, no `is_sponsored`); `TOUR-RANKING.md` / `TOUR-BADGES-AND-RANKING.md` (Jul 19, product decision 2026-07-18) prepend **`is_sponsored DESC`** as sort key #1, realizing the master's "separate labeled block, never interleaved" as **spotlight-first within the single grid**. Below the spotlight block the pure master §7.2 order applies.
+    ```
+    is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC
+    ```
+
+    - Shown to travelers as the default sort **"Locals' favorites"** (a.k.a. "Recommended") — **"Locals' favorites" is the UI label for the tier ordering, not a separate formula.**
+    - ⚠️ **CONFLICT (documented, resolved by date):** the master §7.2 and `COMMERCIAL-MODEL.md` state the order as **`tier_rank ASC, quality_score DESC, id ASC`** (three keys, no `is_sponsored`); `TOUR-RANKING.md` / `TOUR-BADGES-AND-RANKING.md` (Jul 19, product decision 2026-07-18) prepend **`is_sponsored DESC`** as sort key #1, realizing the master's "separate labeled block, never interleaved" as **spotlight-first within the single grid**. Below the spotlight block the pure master §7.2 order applies.
 - **Key-by-key:**
-  - **`is_sponsored`** — ACTIVE Destination Spotlight (max 3 per destination). The **spotlight FLAG** is the sort key; the Sponsored **badge** is cosmetic and **never reorders anything**.
-  - **`tier_rank`** — 1 = premium … 5 = standard, denormalized from the operator's commission tier. **The dominant key** — a higher commission buys a better shelf.
-  - **`quality_score`** — 0–100, nightly job, **read-only at query time**; **only a tie-breaker WITHIN a tier** — it can never lift a tour over a better-paying one.
-  - **`id ASC`** — stable final tie-break; same tier + same quality → fixed order, no shuffling between visits. **Same-tier collisions are expected and valid; there is no per-category tier cap.**
+    - **`is_sponsored`** — ACTIVE Destination Spotlight (max 3 per destination). The **spotlight FLAG** is the sort key; the Sponsored **badge** is cosmetic and **never reorders anything**.
+    - **`tier_rank`** — 1 = premium … 5 = standard, denormalized from the operator's commission tier. **The dominant key** — a higher commission buys a better shelf.
+    - **`quality_score`** — 0–100, nightly job, **read-only at query time**; **only a tie-breaker WITHIN a tier** — it can never lift a tour over a better-paying one.
+    - **`id ASC`** — stable final tie-break; same tier + same quality → fixed order, no shuffling between visits. **Same-tier collisions are expected and valid; there is no per-category tier cap.**
 - **Quality-score formula (master §7.2), range 0–100, nightly, read-only at query time:**
-  ```
-  quality_score = (avg_rating / 5)               * 40
-                + (min(review_count, 100) / 100) * 25
-                + (listing_completeness / 100)   * 20
-                + (conversion_rate / max_conv)   * 15
-  ```
-  - **Rating — weight 40** — `avg_rating / 5`; **approved reviews only**; range 0 (no/low rating) → 40 (5.0★).
-  - **Review volume — weight 25** — `min(review_count, 100) / 100`; **caps at 100 reviews**; range 0 → 25 (≥100 reviews).
-  - **Listing completeness — weight 20** — fraction of the listing spec filled (images, description, attributes, meeting point, …), 0–100; range 0 → 20 (fully complete). Operator-facing guidance: **4+ photos**, description, highlights, inclusions, meeting point.
-  - **Conversion — weight 15** — `conversion_rate / max_conv`; **`max_conv` = the highest conversion rate among ACTIVE tours in the SAME category, recomputed per run** (so relative). Range 0 → 15 (category leader). Category-relative so a niche category is not penalised.
-  - **The nightly job is the only writer**; the score is **never computed at query time**. Built as `src/tours/quality-score.ts`, run by `ToursService.recomputeQualityScores()`.
-  - **Known caveat:** the conversion term **contributes 0 until pageview tracking lands**.
-  - **Demo caveat:** the seed sets `quality_score = 60 + tier_rank*5` (65/70/75/80/85, and 0 on just-published tours); these look inverted across tiers but are harmless (quality only compares within a tier) and the **real nightly job overwrites them on its next 3:00 UTC run**.
-  - **Supersedes** the earlier weighted formulas — architecture doc and All Tours spec (**bookings 0.4 / rating 0.3 / recency 0.2 / reviews 0.1**) per conflict log **B.17** and **B.46**.
+    ```
+    quality_score = (avg_rating / 5)               * 40
+                  + (min(review_count, 100) / 100) * 25
+                  + (listing_completeness / 100)   * 20
+                  + (conversion_rate / max_conv)   * 15
+    ```
+
+    - **Rating — weight 40** — `avg_rating / 5`; **approved reviews only**; range 0 (no/low rating) → 40 (5.0★).
+    - **Review volume — weight 25** — `min(review_count, 100) / 100`; **caps at 100 reviews**; range 0 → 25 (≥100 reviews).
+    - **Listing completeness — weight 20** — fraction of the listing spec filled (images, description, attributes, meeting point, …), 0–100; range 0 → 20 (fully complete). Operator-facing guidance: **4+ photos**, description, highlights, inclusions, meeting point.
+    - **Conversion — weight 15** — `conversion_rate / max_conv`; **`max_conv` = the highest conversion rate among ACTIVE tours in the SAME category, recomputed per run** (so relative). Range 0 → 15 (category leader). Category-relative so a niche category is not penalised.
+    - **The nightly job is the only writer**; the score is **never computed at query time**. Built as `src/tours/quality-score.ts`, run by `ToursService.recomputeQualityScores()`.
+    - **Known caveat:** the conversion term **contributes 0 until pageview tracking lands**.
+    - **Demo caveat:** the seed sets `quality_score = 60 + tier_rank*5` (65/70/75/80/85, and 0 on just-published tours); these look inverted across tiers but are harmless (quality only compares within a tier) and the **real nightly job overwrites them on its next 3:00 UTC run**.
+    - **Supersedes** the earlier weighted formulas — architecture doc and All Tours spec (**bookings 0.4 / rating 0.3 / recency 0.2 / reviews 0.1**) per conflict log **B.17** and **B.46**.
 - **Sort options at launch — exactly 3 (conflict log B.68 / `LAUNCH_TOUR_SORTS`):**
 
-  | UI label | Logic |
-  |---|---|
-  | **Locals' favorites (default)** | `is_sponsored DESC, tier_rank ASC, quality_score DESC, id` |
-  | **Price: low to high** | `price_from ASC` (then `base_price`) |
-  | **Price: high to low** | `price_from DESC` |
-  - "Highest rated" / "Most booked" return once review/booking volume is meaningful; **"Newest" stays out** — the New badge covers recency. The public DTO **rejects** `rating` / `newest`. API: `GET /api/v1/tours?sort=recommended|price_asc|price_desc` (default `recommended`).
+    | UI label                                                                                                                                                                                                                           | Logic                                                      |
+    | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------- |
+    | **Locals' favorites (default)**                                                                                                                                                                                                    | `is_sponsored DESC, tier_rank ASC, quality_score DESC, id` |
+    | **Price: low to high**                                                                                                                                                                                                             | `price_from ASC` (then `base_price`)                       |
+    | **Price: high to low**                                                                                                                                                                                                             | `price_from DESC`                                          |
+    | - "Highest rated" / "Most booked" return once review/booking volume is meaningful; **"Newest" stays out** — the New badge covers recency. The public DTO **rejects** `rating` / `newest`. API: `GET /api/v1/tours?sort=recommended | price_asc                                                  | price_desc`(default`recommended`). |
+
 - **Bookability filter (master §7.2)** — a tour is excluded from **every** ranked result set, **regardless of tier**, when:
-  - `status != LIVE` (master: `status != 'active'`), **OR**
-  - `is_active = false`, **OR**
-  - `is_bookable = false`, **OR**
-  - it has **no availability / no open departure in the next 30 days**.
-  - An excluded tour **does NOT occupy a position** — the next eligible tour moves up — and is **not billed for its tier** during the unbookable period. **Bookability removes, never reorders.**
-  - **Bookability = EXISTS an open departure within 30 days**, carried by the `isBookable` column and recomputed by the nightly availability job to avoid a per-request departures join.
-  - **Enforced in all four paths:** `findAll`, `search()`, the `suggest()` tour hits, and `findPublicByIds` (manual collections). `total` reflects the bookability-filtered set, so pagination counts are honest.
+    - `status != LIVE` (master: `status != 'active'`), **OR**
+    - `is_active = false`, **OR**
+    - `is_bookable = false`, **OR**
+    - it has **no availability / no open departure in the next 30 days**.
+    - An excluded tour **does NOT occupy a position** — the next eligible tour moves up — and is **not billed for its tier** during the unbookable period. **Bookability removes, never reorders.**
+    - **Bookability = EXISTS an open departure within 30 days**, carried by the `isBookable` column and recomputed by the nightly availability job to avoid a per-request departures join.
+    - **Enforced in all four paths:** `findAll`, `search()`, the `suggest()` tour hits, and `findPublicByIds` (manual collections). `total` reflects the bookability-filtered set, so pagination counts are honest.
 - **Diversity pass (master §3.8):**
-  - Runs **AFTER ranking**, on the **default sort only**: *never more than 2 tours of the same subtype consecutively*. Subtype = `primaryCategoryId`.
-  - Implemented in `applyDiversityPass` over the fetched page. Default behaviour: keep strict rank order, taking the earliest-ranked tour that will not form a 3-run; when a 3rd same-subtype tour would land back-to-back-to-back, the next tour of a different subtype is pulled up to break the run; if none is available it keeps strict rank order.
-  - Deviates **only** when the most-abundant remaining subtype is *tight* (`count*2 - 1 ≥ remaining`, i.e. it needs an every-other slot to stay interleavable) — then it leads with that subtype so it is not stranded into a tail 3-run.
-  - **Page-local** (operates on the returned page, not across pagination). **Explicit price/rating sorts are never reordered.**
-  - **Diversity never sacrifices a paid tier for cosmetic spacing** — `tier_rank` order stays intact except where §3.8 forces a minimal change. Positions wobble ±1 by design.
-  - Purpose per COMMERCIAL-MODEL: avoid one operator dominating the top of a result set; reorders within the already-ranked, already-filtered set and **does not change tier economics**.
+    - Runs **AFTER ranking**, on the **default sort only**: _never more than 2 tours of the same subtype consecutively_. Subtype = `primaryCategoryId`.
+    - Implemented in `applyDiversityPass` over the fetched page. Default behaviour: keep strict rank order, taking the earliest-ranked tour that will not form a 3-run; when a 3rd same-subtype tour would land back-to-back-to-back, the next tour of a different subtype is pulled up to break the run; if none is available it keeps strict rank order.
+    - Deviates **only** when the most-abundant remaining subtype is _tight_ (`count*2 - 1 ≥ remaining`, i.e. it needs an every-other slot to stay interleavable) — then it leads with that subtype so it is not stranded into a tail 3-run.
+    - **Page-local** (operates on the returned page, not across pagination). **Explicit price/rating sorts are never reordered.**
+    - **Diversity never sacrifices a paid tier for cosmetic spacing** — `tier_rank` order stays intact except where §3.8 forces a minimal change. Positions wobble ±1 by design.
+    - Purpose per COMMERCIAL-MODEL: avoid one operator dominating the top of a result set; reorders within the already-ranked, already-filtered set and **does not change tier economics**.
 - **`mostPopular` cap:** the master caps "Most popular" at **max 1 per category**. Implemented **page-local** as `applyMostPopularCap`, run **after final ordering** in `findAll`, `search`, and the typeahead strips: the first-ranked tour of each primary category keeps the badge; later ones drop to no badge (or fall back to Sponsored when paid). ⚠️ `TOUR-BADGES.md` (Jun 30) still calls this a "Known simplification" and says `deriveTourBadge` returns per-tour eligibility only — **stale**; it was built 2026-07-18.
 - **Peach tint (master §B.63) — presentation only, no effect on order:** peach `#FFF5EE` on **card #1 of the All Tours page, page 1, default sort only**; dropped during price sorts. **Excluded:** hub pages, numbered collections, search results, related tours, category pages, and the destination "Locals' favorites" grid. Tint range quoted as `#FDF6F0` to `#FFF5EE`. Built 2026-07-18 (`ToursListingSection → peachFirst → TourCard tinted`).
 - **First-card cream highlight (product decision 2026-07-18, beyond master):** the FIRST card of each main tour listing (All Tours page 1, destination grid, collection tours, hub trips panel) renders the hover treatment statically — cream `#fdf6f0` fill, image corners merged, inset content. **Position-based** via a `highlighted` prop (`i === 0`), **NOT badge- or spotlight-based**. **No-layout-shift rule:** content inset is static-only and hover animates ONLY background + corner radius (animating horizontal padding shrinks the text box, re-wraps titles and shifts the grid — bug fixed 2026-07-18). The cream highlight visually overrides the peach tint on card #1.
 - **Single code path:** every listing surface (destination "Locals' favorites", All Tours, category, hub tours, search-within-bucket) orders through `ToursService.findAll` → `buildOrderBy` (DB sort) → `applyDiversityPass` (in-memory reorder). **Search results are one flat set ordered by the same canonical sort — there are no relevance buckets; ILIKE matching only decides membership.**
 - **End-to-end listing request:** `WHERE status=LIVE ∧ isActive ∧ isBookable (+ destination/category/hub filters)` → `ORDER BY is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC` → `flattenTour` (localized title, destinationSlug, primaryCategoryId) → `deriveTourBadge` → `applyDiversityPass` (recommended sort only) → JSON `{ total, data: [{ …tour, title, badge, … }] }`.
 - **The nightly scheduler** (`@nestjs/schedule` in-process cron — idempotent recomputes, not retry/concurrency queues, so **no Redis/BullMQ needed** for these; `NightlyJobsService.nightly()`, `@Cron(EVERY_DAY_AT_3AM, tz: UTC)`), in order:
-  1. `TiersService.runSpotlightLifecycle()` — activate/expire spotlights + mirror `isSponsored`.
-  2. `ToursService.recomputeLikelyToSellOut()` — §3.7 demand signal for every LIVE tour.
-  3. `AvailabilityService.materializeAllLive()` + `recomputeAllBookable()` — departures + the §7.2 bookability gate.
-  4. `ToursService.recomputeQualityScores()` — the §7.2 formula.
-  5. `TiersService.runEligibilityLifecycle()` — provisional → flat bar → 30-day grace → demotion (+ refresh `operator.cancellationRate90d`).
-  - Each is also a plain method callable on demand (admin endpoint / tests / seed) via `NightlyJobsService.run()`.
-  - ⚠️ **CONFLICT (mechanism):** `EVENT-DRIVEN-AND-QUEUES.md` lists `commercial.quality-score`, `commercial.eligibility-enforce`, and `availability.materialization` as **BullMQ repeatable (cron) jobs, run-date guarded** (`upsertJobScheduler`, e.g. pattern `0 15 3 * * *`); the built implementation uses **in-process `@nestjs/schedule`** instead.
+    1. `TiersService.runSpotlightLifecycle()` — activate/expire spotlights + mirror `isSponsored`.
+    2. `ToursService.recomputeLikelyToSellOut()` — §3.7 demand signal for every LIVE tour.
+    3. `AvailabilityService.materializeAllLive()` + `recomputeAllBookable()` — departures + the §7.2 bookability gate.
+    4. `ToursService.recomputeQualityScores()` — the §7.2 formula.
+    5. `TiersService.runEligibilityLifecycle()` — provisional → flat bar → 30-day grace → demotion (+ refresh `operator.cancellationRate90d`).
+    - Each is also a plain method callable on demand (admin endpoint / tests / seed) via `NightlyJobsService.run()`.
+    - ⚠️ **CONFLICT (mechanism):** `EVENT-DRIVEN-AND-QUEUES.md` lists `commercial.quality-score`, `commercial.eligibility-enforce`, and `availability.materialization` as **BullMQ repeatable (cron) jobs, run-date guarded** (`upsertJobScheduler`, e.g. pattern `0 15 3 * * *`); the built implementation uses **in-process `@nestjs/schedule`** instead.
 
 ---
 
@@ -1611,34 +1700,34 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 - **A flat bar was chosen over the earlier "March ladder" draft:** one threshold proves base quality, after which tier is a **purely commercial visibility choice**. Only Spotlight carries a higher bar plus manual approval.
 - **The flat bar — opens `boosted`, `featured`, AND `premium` (one bar, no per-tier ladder). All three must hold:**
-  - **≥ 5 reviews** — **approved reviews only** (review moderation); the same `review_count` the tour page renders.
-  - **rating ≥ 4.0** — the same `aggregate_rating` the tour page renders.
-  - **operator cancellation rate ≤ 10%** — operator-initiated cancellations ÷ confirmed bookings, **trailing 90 days, across ALL the operator's tours**.
-  - `organic` and `standard` have **no bar**.
-  - **Enforced:** `evaluateFlatBar` gates `changeTier` (unless inside the provisional window; **admins bypass**) plus the nightly `runEligibilityLifecycle`.
+    - **≥ 5 reviews** — **approved reviews only** (review moderation); the same `review_count` the tour page renders.
+    - **rating ≥ 4.0** — the same `aggregate_rating` the tour page renders.
+    - **operator cancellation rate ≤ 10%** — operator-initiated cancellations ÷ confirmed bookings, **trailing 90 days, across ALL the operator's tours**.
+    - `organic` and `standard` have **no bar**.
+    - **Enforced:** `evaluateFlatBar` gates `changeTier` (unless inside the provisional window; **admins bypass**) plus the nightly `runEligibilityLifecycle`.
 - **Cancellation-rate details:**
-  - **Traveler cancellations never count** — only **operator-initiated** cancellations.
-  - The gate applies **only at ≥ 10 confirmed bookings** in the trailing-90-day window; below that the denominator is too thin to be fair (`operator.cancellation_rate_90d` is **null under 10 bookings**).
-  - **Force-majeure pardons:** an admin marks an event as a **date range + destination** (e.g. a hurricane day); operator cancellations inside a pardoned range are **excluded for everyone at once**. Modeled as `ForceMajeurePardon` in `tiers.prisma` — fields `destinationId`, `startDate`, `endDate`, `reason`, `createdBy`; **no per-tour data**. Feeds both the tier flat bar and the Spotlight bar.
-  - **Weather is otherwise an ordinary cancellation** — customer harm is identical; weather resilience is operator quality.
+    - **Traveler cancellations never count** — only **operator-initiated** cancellations.
+    - The gate applies **only at ≥ 10 confirmed bookings** in the trailing-90-day window; below that the denominator is too thin to be fair (`operator.cancellation_rate_90d` is **null under 10 bookings**).
+    - **Force-majeure pardons:** an admin marks an event as a **date range + destination** (e.g. a hurricane day); operator cancellations inside a pardoned range are **excluded for everyone at once**. Modeled as `ForceMajeurePardon` in `tiers.prisma` — fields `destinationId`, `startDate`, `endDate`, `reason`, `createdBy`; **no per-tour data**. Feeds both the tier flat bar and the Spotlight bar.
+    - **Weather is otherwise an ordinary cancellation** — customer harm is identical; weather resilience is operator quality.
 - **The Spotlight bar (on TOP of the flat bar), opens Destination Spotlight:**
-  - **≥ 10 reviews**
-  - **rating ≥ 4.5**
-  - **cancellation rate ≤ 10%**
-  - **manual admin approval** (operator requests, Island Tours approves)
-  - **< 3 active in the destination** (hard cap)
-  - **Enforced:** `assertSpotlightEligible` + `SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION`. Checked at **request AND approve**.
+    - **≥ 10 reviews**
+    - **rating ≥ 4.5**
+    - **cancellation rate ≤ 10%**
+    - **manual admin approval** (operator requests, Island Tours approves)
+    - **< 3 active in the destination** (hard cap)
+    - **Enforced:** `assertSpotlightEligible` + `SPOTLIGHT_MAX_ACTIVE_PER_DESTINATION`. Checked at **request AND approve**.
 - **Lifecycle: provisional window → notify → grace → auto-demote (`EligibilityState`):**
-  - Every tour gets a **one-time 90-day PROVISIONAL window from first publish** (`first_published_at` is the anchor) during which **ANY tier may be held, ungated** — no tour has history at launch. **It does not reset.**
-  - **After the window:** a **nightly check** enforces the bar — "does the tour still meet the bar for its held tier?"
-    - **Yes** → keep tier.
-    - **No** → **NOTIFY the operator** → **30-day GRACE period** → if still failing at the end of grace → **AUTOMATIC DEMOTION to the highest tier the tour still qualifies for** (= `organic`, since the flat bar gates all three paid tiers).
-  - **States:** master enum `eligible` / `provisional` / `grace` / `demoted`; code `EligibilityState` = `LOCKED` · `PROVISIONAL` · `ELIGIBLE` · `GRACE` · `DEMOTED`, with `graceStartedAt` and `graceMetric` (the failed metric: rating / review_count / cancellation_rate).
-  - **Existing bookings keep their snapshotted commission through any demotion** — tier changes are never retroactive.
-  - `DEMOTED` stays visible on the (now open-tier) tour until the bar passes again.
-  - **Built:** `TiersService.runEligibilityLifecycle` runs in the nightly job and also refreshes `operator.cancellationRate90d`. Grace entry and demotion are **logged**.
-  - **TODO:** the **operator email notice for grace/demotion is wireframe-gated** and not yet sent.
-- **Three levers for a tour to climb (in order of impact):** (1) **win a Destination Spotlight** — biggest jump, leads every listing at 35%; (2) **upgrade the commission tier** — sustained placement, subject to the flat bar, 30-day lock, grace/demotion; (3) **raise the quality score** — decides who stands first *among equals*, never across tiers.
+    - Every tour gets a **one-time 90-day PROVISIONAL window from first publish** (`first_published_at` is the anchor) during which **ANY tier may be held, ungated** — no tour has history at launch. **It does not reset.**
+    - **After the window:** a **nightly check** enforces the bar — "does the tour still meet the bar for its held tier?"
+        - **Yes** → keep tier.
+        - **No** → **NOTIFY the operator** → **30-day GRACE period** → if still failing at the end of grace → **AUTOMATIC DEMOTION to the highest tier the tour still qualifies for** (= `organic`, since the flat bar gates all three paid tiers).
+    - **States:** master enum `eligible` / `provisional` / `grace` / `demoted`; code `EligibilityState` = `LOCKED` · `PROVISIONAL` · `ELIGIBLE` · `GRACE` · `DEMOTED`, with `graceStartedAt` and `graceMetric` (the failed metric: rating / review_count / cancellation_rate).
+    - **Existing bookings keep their snapshotted commission through any demotion** — tier changes are never retroactive.
+    - `DEMOTED` stays visible on the (now open-tier) tour until the bar passes again.
+    - **Built:** `TiersService.runEligibilityLifecycle` runs in the nightly job and also refreshes `operator.cancellationRate90d`. Grace entry and demotion are **logged**.
+    - **TODO:** the **operator email notice for grace/demotion is wireframe-gated** and not yet sent.
+- **Three levers for a tour to climb (in order of impact):** (1) **win a Destination Spotlight** — biggest jump, leads every listing at 35%; (2) **upgrade the commission tier** — sustained placement, subject to the flat bar, 30-day lock, grace/demotion; (3) **raise the quality score** — decides who stands first _among equals_, never across tiers.
 
 ---
 
@@ -1647,46 +1736,46 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **Rendering contract:** at most **one badge per card**, **top-left**, derived once on the backend and served identically to every surface (see B.6.13).
 - **The four card badges (`TourBadge` keys), triggers and colours:**
 
-  | Badge | Trigger | Colour |
-  |---|---|---|
-  | **`likelyToSellOut`** | §3.7 demand signal true (`likelyToSellOut` / `likelyToSellOutOverride`) — all three conditions below. ~5–10% of catalog; selectivity is the feature. | Navy **`#193c5e`** |
-  | **`mostPopular`** | `aggregateReviewCount ≥ 10` **AND** `aggregateRating ≥ 4.5`. **Never granted on commission-tier grounds.** Capped **max 1 per category per page**. | Brand orange **`#e8611a`** |
-  | **`new`** | `publishedAt` < **30 days** ago **AND** `aggregateReviewCount == 0`. **Replaces the rating row** on the card. Auto-expires on first review or at 30 days. | Cream **`#fdf6f0`** |
-  | **`sponsored`** | See the ⚠️ conflict below. | Gray (`bg-it-surface`); explainer gives **`#efece7` light / `#33373b` dark** |
+    | Badge                 | Trigger                                                                                                                                                   | Colour                                                                       |
+    | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+    | **`likelyToSellOut`** | §3.7 demand signal true (`likelyToSellOut` / `likelyToSellOutOverride`) — all three conditions below. ~5–10% of catalog; selectivity is the feature.      | Navy **`#193c5e`**                                                           |
+    | **`mostPopular`**     | `aggregateReviewCount ≥ 10` **AND** `aggregateRating ≥ 4.5`. **Never granted on commission-tier grounds.** Capped **max 1 per category per page**.        | Brand orange **`#e8611a`**                                                   |
+    | **`new`**             | `publishedAt` < **30 days** ago **AND** `aggregateReviewCount == 0`. **Replaces the rating row** on the card. Auto-expires on first review or at 30 days. | Cream **`#fdf6f0`**                                                          |
+    | **`sponsored`**       | See the ⚠️ conflict below.                                                                                                                                | Gray (`bg-it-surface`); explainer gives **`#efece7` light / `#33373b` dark** |
 
 - **⚠️ CONFLICT — sponsored badge PRECEDENCE (two docs disagree):**
-  - **Claim A — `TOUR-BADGES.md` (Jun 30):** priority is **1 `sponsored` → 2 `likelyToSellOut` → 3 `mostPopular` → 4 `new`**. Rationale quoted from the master: *"always shown on paid placement; transparency is a brand pillar"*, so sponsored **outranks every earned badge**.
-  - **Claim B — `TOUR-BADGES-AND-RANKING.md` §2.2 (Jul 19, "FINAL, product decision 2026-07-18", after two iterations):** priority is **1 `likelyToSellOut` → 2 `mostPopular` → 3 `new` → 4 `sponsored` (fallback)**. Earned badges lead; Sponsored is the **fallback label for any paid placement with no earned badge** — it answers "why is this unrated tour at the top?", and a card with an earned badge already explains itself.
-  - **Status:** the Jul 19 doc is newer and self-describes as FINAL; `TOUR-BADGES.md` appears **stale on this point**. Both are recorded here; the master HTML is the arbiter.
+    - **Claim A — `TOUR-BADGES.md` (Jun 30):** priority is **1 `sponsored` → 2 `likelyToSellOut` → 3 `mostPopular` → 4 `new`**. Rationale quoted from the master: _"always shown on paid placement; transparency is a brand pillar"_, so sponsored **outranks every earned badge**.
+    - **Claim B — `TOUR-BADGES-AND-RANKING.md` §2.2 (Jul 19, "FINAL, product decision 2026-07-18", after two iterations):** priority is **1 `likelyToSellOut` → 2 `mostPopular` → 3 `new` → 4 `sponsored` (fallback)**. Earned badges lead; Sponsored is the **fallback label for any paid placement with no earned badge** — it answers "why is this unrated tour at the top?", and a card with an earned badge already explains itself.
+    - **Status:** the Jul 19 doc is newer and self-describes as FINAL; `TOUR-BADGES.md` appears **stale on this point**. Both are recorded here; the master HTML is the arbiter.
 - **⚠️ CONFLICT — sponsored badge TRIGGER (same two docs):**
-  - **Claim A — `TOUR-BADGES.md` (Jun 30):** sponsored = **an ACTIVE Destination Spotlight ONLY** (mirrored onto `tour.isSponsored`). *"Commission tier alone does NOT make a tour sponsored."* "Paid placements P1–P3" are read as the max-3 Spotlight slots, not the self-serve tiers.
-  - **Claim B — `TOUR-BADGES-AND-RANKING.md` §2.1 (Jul 19):** sponsored = **ACTIVE Destination Spotlight (`isSponsored = true`) OR a paid tier P1–P3 (`tier_rank <= 3`)** — citing master §3.6 "Paid tiers P1 to P3 placements". **Open tiers (organic/standard) are never labeled Sponsored.**
-  - Master §7.2 itself says: **"Sponsored badge (gray) on paid placements P1 to P3."** COMMERCIAL-MODEL restates: "Sponsored badge — on paid placements P1–P3 (gray)."
+    - **Claim A — `TOUR-BADGES.md` (Jun 30):** sponsored = **an ACTIVE Destination Spotlight ONLY** (mirrored onto `tour.isSponsored`). _"Commission tier alone does NOT make a tour sponsored."_ "Paid placements P1–P3" are read as the max-3 Spotlight slots, not the self-serve tiers.
+    - **Claim B — `TOUR-BADGES-AND-RANKING.md` §2.1 (Jul 19):** sponsored = **ACTIVE Destination Spotlight (`isSponsored = true`) OR a paid tier P1–P3 (`tier_rank <= 3`)** — citing master §3.6 "Paid tiers P1 to P3 placements". **Open tiers (organic/standard) are never labeled Sponsored.**
+    - Master §7.2 itself says: **"Sponsored badge (gray) on paid placements P1 to P3."** COMMERCIAL-MODEL restates: "Sponsored badge — on paid placements P1–P3 (gray)."
 - **Mutual exclusivity:** most pairs are mutually exclusive by definition — `new` needs 0 reviews so it cannot also be `mostPopular`; `likelyToSellOut` needs age ≥ 90d while `new` needs < 30d. The only real overlaps are **sponsored vs any earned badge** (resolved by the precedence conflict above) and **`likelyToSellOut` vs `mostPopular`** (sell-out wins in both docs).
 - **Every badge is independent of position.** No badge ever reorders a card. The only correlation (Sponsored often first) is because the ACTIVE Spotlight tends to sit on a high-tier tour — and because `is_sponsored` is a sort key — **not because the badge sorts**.
 - **How each badge is earned (input owner / timing / position effect):**
-  - `sponsored` — operator tier pick / admin spotlight approval + lifecycle; **immediate on tier change, spotlight on approve or nightly**; position effect **none**.
-  - `likelyToSellOut` — nightly demand recompute (or manual override); **nightly**; position effect **none**.
-  - `mostPopular` — reviews module (`ReviewsService.recomputeAggregates` on approve/edit/remove); **real-time, no job**; position effect **none**.
-  - `new` — publish + reviews; **real-time, no job**; position effect **none**.
+    - `sponsored` — operator tier pick / admin spotlight approval + lifecycle; **immediate on tier change, spotlight on approve or nightly**; position effect **none**.
+    - `likelyToSellOut` — nightly demand recompute (or manual override); **nightly**; position effect **none**.
+    - `mostPopular` — reviews module (`ReviewsService.recomputeAggregates` on approve/edit/remove); **real-time, no job**; position effect **none**.
+    - `new` — publish + reviews; **real-time, no job**; position effect **none**.
 - **§3.7 demand signal — "Likely to sell out" — ONE algorithm** powers both the card badge and the tour-page demand card (C7: one three-condition algorithm plus a manual CMS launch flag, replacing four competing definitions — conflict log B.44). **All three conditions must hold, evaluated daily:**
-  1. `tour_age_days >= 90` (from `firstPublishedAt`, falling back to `publishedAt`).
-  2. `recent_sellouts >= 3` in the past **60 days** — from `departures.sold_out_at` (E.9).
-  3. `upcoming_availability_ratio < 0.40` over the next **30 days** — `Σ remaining_seats / Σ capacity` across non-cancelled departures in `[today, today+30]`.
-  - Implemented in `backend/src/tours/demand-signal.ts` (`evaluateLikelyToSellOut`) — the **single source of truth** shared by the production recompute job and the demo seed so they cannot drift. Result stored on `tour.likelyToSellOut`; **nullable `tour.likelyToSellOutOverride` is the manual CMS launch override** (no tour has 90 days of history at launch). **Read-time logic: `override ?? computed`.**
-  - Recompute entry points: nightly cron; admin `POST /api/v1/tours/admin/recompute-demand?tourId=` (`MANAGE_TRIPS`); or setting the override.
+    1. `tour_age_days >= 90` (from `firstPublishedAt`, falling back to `publishedAt`).
+    2. `recent_sellouts >= 3` in the past **60 days** — from `departures.sold_out_at` (E.9).
+    3. `upcoming_availability_ratio < 0.40` over the next **30 days** — `Σ remaining_seats / Σ capacity` across non-cancelled departures in `[today, today+30]`.
+    - Implemented in `backend/src/tours/demand-signal.ts` (`evaluateLikelyToSellOut`) — the **single source of truth** shared by the production recompute job and the demo seed so they cannot drift. Result stored on `tour.likelyToSellOut`; **nullable `tour.likelyToSellOutOverride` is the manual CMS launch override** (no tour has 90 days of history at launch). **Read-time logic: `override ?? computed`.**
+    - Recompute entry points: nightly cron; admin `POST /api/v1/tours/admin/recompute-demand?tourId=` (`MANAGE_TRIPS`); or setting the override.
 - **Data sources per badge:** `sponsored` ← `tour.isSponsored` (← ACTIVE `SpotlightRequest`) [+ `tier_rank` under Claim B]; `likelyToSellOut` ← `tour.likelyToSellOut` / `Override` (← `departures.soldOutAt`, capacity vs bookedCount, `firstPublishedAt`); `mostPopular` ← `aggregateReviewCount`, `aggregateRating`, `isSponsored`; `new` ← `publishedAt`, `aggregateReviewCount`.
 - **NOT card badges (intentionally not in `deriveTourBadge`):**
-  - **Numbered rank `01`–`10`** — circle; **Best Things to Do / Top 10 collections only**; never on destination sections.
-  - **Locals' favorite ✦** — a **meta-row element on the tour page**; manual `tour.isLocalsFavourite`; it also selects the destination featured grid.
+    - **Numbered rank `01`–`10`** — circle; **Best Things to Do / Top 10 collections only**; never on destination sections.
+    - **Locals' favorite ✦** — a **meta-row element on the tour page**; manual `tour.isLocalsFavourite`; it also selects the destination featured grid.
 - **Hub variant** `hub-tour-card.tsx` (`HubTourBadge`) — **no `new` badge by design**; it keeps a rating row instead.
 - **Collections: no Sponsored badge, ever.** Hubs **do** show it.
 - **Legacy badge guidance (superseded / lineage):** "Bestseller" → renamed **"Most popular"** (B.33). Earlier color hierarchy (dtpl-7): Likely to sell out = urgency red/deep-orange bg + white text; Bestseller = authority near-black/deep-navy bg + white text; New = neutral off-white/ivory bg + dark text; **green reserved for a future "Special Offer" badge**; badge shape = small rounded pill (not flag/ribbon); top-left on image (desktop) / top of the right half (mobile). The **New badge itself was added** by conflict log B.64 (badge set previously had no recency badge).
 - **Sponsored lifecycle → badge:** `requestSpotlight()` → `REQUESTED` → admin `approveSpotlight(window)` → `APPROVED` (or `→ ACTIVE` immediately if the window is already open, setting `tour.isSponsored = true`) → nightly `runSpotlightLifecycle()` flips `APPROVED → ACTIVE` at `startsAt` (`isSponsored = true`) and `ACTIVE → EXPIRED` past `endsAt` (`isSponsored = false`) → `deriveTourBadge` paints the gray chip while `isSponsored` is true, clearing automatically on the next lifecycle run.
-  - `isSponsored` is **denormalized** (like `tier_rank`) so listings never join the spotlight table per card, and is **recomputed from ground truth** (true iff the tour has ≥1 ACTIVE spotlight), so multi-request cases are correct.
-  - **TODO (the only explicit one in §2.3):** clear `isSponsored` when an ACTIVE spotlight is **cancelled** (today it only clears when the window closes).
+    - `isSponsored` is **denormalized** (like `tier_rank`) so listings never join the spotlight table per card, and is **recomputed from ground truth** (true iff the tour has ≥1 ACTIVE spotlight), so multi-request cases are correct.
+    - **TODO (the only explicit one in §2.3):** clear `isSponsored` when an ACTIVE spotlight is **cancelled** (today it only clears when the window closes).
 - **Demo coverage:** the demo seed surfaces **all four badges in every live destination** (Curaçao, Aruba, Sint Maarten), each on an `isLocalsFavourite` tour so it appears in the destination "Locals' favorites" grid — `sponsored` via an ACTIVE Spotlight on the per-destination lead; `mostPopular` via `SHOWCASE_MOST_POPULAR` tours with ≥10 redeemed bookings → forced-approved 5★ reviews; `new` via `SHOWCASE_NEW` tours (`publishedDaysAgo: -8`, zero bookings); `likelyToSellOut` via `SHOWCASE_LIKELY_TO_SELL_OUT` tours aged 100 days with 3 past SOLD_OUT departures + filled upcoming, then the **real evaluator** runs. Re-seed: `pnpm prisma:seed:demo:clean && pnpm prisma:seed:demo`. **Demo helpers are not production code** — only the seeded data is demo; the evaluator/recompute they call are production.
-- **Worked example (the explainer's headline):** *"Why is the 'Most popular' tour ranked 12th? Because badges describe — rank is bought."* West Point Snorkel & Beach Hop is the best-reviewed tour on Curaçao (★5.0 · 14 reviews → earns **Most popular**) but its operator pays **Boosted** (25%, rank 3); eleven tours ahead pay more (1 Spotlight at 35% + Premium 30% + Featured 27.5%). **"Ratings never compete across tiers — they only break ties inside the same tier."** Verdict: **no logic mismatch — the commercial model working as designed.**
+- **Worked example (the explainer's headline):** _"Why is the 'Most popular' tour ranked 12th? Because badges describe — rank is bought."_ West Point Snorkel & Beach Hop is the best-reviewed tour on Curaçao (★5.0 · 14 reviews → earns **Most popular**) but its operator pays **Boosted** (25%, rank 3); eleven tours ahead pay more (1 Spotlight at 35% + Premium 30% + Featured 27.5%). **"Ratings never compete across tiers — they only break ties inside the same tier."** Verdict: **no logic mismatch — the commercial model working as designed.**
 
 ---
 
@@ -1694,34 +1783,34 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 - **Not a tier** — a separate, **manually-approved placement overlay**, modeled **per tour** by `SpotlightRequest` (`backend/prisma/tiers.prisma`).
 - **The rules:**
-  - **Commission: 35%**, only while active.
-  - **Placement: a separate labeled block, never interleaved** with the ranked list (master). Realized in code (2026-07-18) as **spotlight-first within the single grid** via `is_sponsored DESC`.
-  - **Cap: max 3 simultaneous per destination** — hard, across all operators.
-  - **Approval: manual** — operator requests, Island Tours approves. **Not self-serve.**
-  - **Extra eligibility on top of the flat bar: ≥10 reviews · rating ≥4.5 · `cancellation_rate_90d` ≤10%.**
-  - Spotlight does **NOT** change `tierKey` / `commissionTier` / `tierRank` — those stay at the operator's chosen tier. It is an **overlay** that wins on commission + placement while active.
+    - **Commission: 35%**, only while active.
+    - **Placement: a separate labeled block, never interleaved** with the ranked list (master). Realized in code (2026-07-18) as **spotlight-first within the single grid** via `is_sponsored DESC`.
+    - **Cap: max 3 simultaneous per destination** — hard, across all operators.
+    - **Approval: manual** — operator requests, Island Tours approves. **Not self-serve.**
+    - **Extra eligibility on top of the flat bar: ≥10 reviews · rating ≥4.5 · `cancellation_rate_90d` ≤10%.**
+    - Spotlight does **NOT** change `tierKey` / `commissionTier` / `tierRank` — those stay at the operator's chosen tier. It is an **overlay** that wins on commission + placement while active.
 - **Lifecycle and statuses — `SpotlightStatus = REQUESTED | APPROVED | REJECTED | ACTIVE | EXPIRED`:**
-  - Operator requests → service checks the extra eligibility bar → **`REQUESTED`**.
-  - Admin approves (manual; verifies the destination's active count < 3; sets `approvedBy`, `startsAt`, `endsAt`) → **`APPROVED`** (or straight to `ACTIVE` if the window is already open).
-  - `startsAt` reached → **`ACTIVE`**; `endsAt` reached → **`EXPIRED`** (frees a cap slot).
-  - Admin rejects → **`REJECTED`** (with `note` / `rejectionReason`).
-  - Timeline example: day -7 request `REQUESTED` → day -7 approve window (-5…+25) `APPROVED` → day -5 `ACTIVE` (`isSponsored = true`, badge ON) → day +25 `EXPIRED` (`isSponsored = false`, badge OFF).
+    - Operator requests → service checks the extra eligibility bar → **`REQUESTED`**.
+    - Admin approves (manual; verifies the destination's active count < 3; sets `approvedBy`, `startsAt`, `endsAt`) → **`APPROVED`** (or straight to `ACTIVE` if the window is already open).
+    - `startsAt` reached → **`ACTIVE`**; `endsAt` reached → **`EXPIRED`** (frees a cap slot).
+    - Admin rejects → **`REJECTED`** (with `note` / `rejectionReason`).
+    - Timeline example: day -7 request `REQUESTED` → day -7 approve window (-5…+25) `APPROVED` → day -5 `ACTIVE` (`isSponsored = true`, badge ON) → day +25 `EXPIRED` (`isSponsored = false`, badge OFF).
 - **`SpotlightRequest` entity** (`@@map("spotlight_requests")`, `Tour ──< SpotlightRequest`, `onDelete: Cascade`; a tour may have many over time, **at most one live**):
-  - `id` uuid (SYS) · `tourId` FK (SYS) · `operatorId` FK (SYS) · `destinationId` FK (SYS, the cap is enforced per destination) · `status` `SpotlightStatus` (SYS/ADM, default `REQUESTED`) · `requestedAt` (SYS, default now) · `approvedAt` DateTime? (ADM) · `approvedBy` string? (ADM) · `startsAt` / `endsAt` DateTime? (ADM) · `note` string? (ADM).
-  - **`+ TO ADD` (optional):** `requestedStartsAt` DateTime? (OP), `requestedDurationDays` int? (OP, alt `requestedEndsAt`), `rejectionReason` string? (ADM, cleaner than overloading `note`), `requestedBy` string? (OP, submitting user id for audit).
-  - Indexes: `@@index([destinationId, status])` (cap enforcement), `@@index([tourId])`.
+    - `id` uuid (SYS) · `tourId` FK (SYS) · `operatorId` FK (SYS) · `destinationId` FK (SYS, the cap is enforced per destination) · `status` `SpotlightStatus` (SYS/ADM, default `REQUESTED`) · `requestedAt` (SYS, default now) · `approvedAt` DateTime? (ADM) · `approvedBy` string? (ADM) · `startsAt` / `endsAt` DateTime? (ADM) · `note` string? (ADM).
+    - **`+ TO ADD` (optional):** `requestedStartsAt` DateTime? (OP), `requestedDurationDays` int? (OP, alt `requestedEndsAt`), `rejectionReason` string? (ADM, cleaner than overloading `note`), `requestedBy` string? (OP, submitting user id for audit).
+    - Indexes: `@@index([destinationId, status])` (cap enforcement), `@@index([tourId])`.
 - **Rules the service must enforce:**
-  1. **Eligibility gate at request AND approve** — reads `tour.aggregateRating`, `tour.aggregateReviewCount`, and `operator.cancellation_rate_90d`.
-  2. **Hard cap at approve** — count requests for the destination with `status IN (APPROVED, ACTIVE)` whose window has not ended; **reject approval if already 3**. Must run **in a transaction** to avoid a race past the cap.
-  3. **Effective commission at booking creation** — the snapshot must use the active-spotlight rate, not the tier column:
-     ```
-     effectiveCommissionRate(tourId, at):
-       if hasActiveSpotlight(tourId, at) -> 0.35   (SPOTLIGHT_COMMISSION_RATE)
-       else                              -> tour.commissionTier / 100
-     ```
-     `hasActiveSpotlight` = EXISTS a `SpotlightRequest` with `status = ACTIVE` and `bookingTime BETWEEN startsAt AND endsAt`. Resolved in **both quote and reserve** via `TiersService.effectiveCommissionRate(tourId, now)`; commission **snapshots and never changes retroactively** — a later activation/expiry does not change an existing booking. If a spotlight flips between quote and reserve, **the reserve snapshot is authoritative**. Payment never recomputes commission.
-     - **Multi-currency safe:** commission is computed on the **EUR** value of the booking total, so a USD- or EUR-charged spotlight tour still yields a correct EUR commission at 35%.
-  4. **Placement overlay on the read/ranking path** — master: active-spotlight tours are excluded from the interleaved ranked list and rendered in the separate labeled block. Code realization: they **lead** the single grid via `is_sponsored DESC`.
+    1. **Eligibility gate at request AND approve** — reads `tour.aggregateRating`, `tour.aggregateReviewCount`, and `operator.cancellation_rate_90d`.
+    2. **Hard cap at approve** — count requests for the destination with `status IN (APPROVED, ACTIVE)` whose window has not ended; **reject approval if already 3**. Must run **in a transaction** to avoid a race past the cap.
+    3. **Effective commission at booking creation** — the snapshot must use the active-spotlight rate, not the tier column:
+        ```
+        effectiveCommissionRate(tourId, at):
+          if hasActiveSpotlight(tourId, at) -> 0.35   (SPOTLIGHT_COMMISSION_RATE)
+          else                              -> tour.commissionTier / 100
+        ```
+        `hasActiveSpotlight` = EXISTS a `SpotlightRequest` with `status = ACTIVE` and `bookingTime BETWEEN startsAt AND endsAt`. Resolved in **both quote and reserve** via `TiersService.effectiveCommissionRate(tourId, now)`; commission **snapshots and never changes retroactively** — a later activation/expiry does not change an existing booking. If a spotlight flips between quote and reserve, **the reserve snapshot is authoritative**. Payment never recomputes commission.
+        - **Multi-currency safe:** commission is computed on the **EUR** value of the booking total, so a USD- or EUR-charged spotlight tour still yields a correct EUR commission at 35%.
+    4. **Placement overlay on the read/ranking path** — master: active-spotlight tours are excluded from the interleaved ranked list and rendered in the separate labeled block. Code realization: they **lead** the single grid via `is_sponsored DESC`.
 - **Jobs (no schema change):** a nightly/clock job flips `APPROVED → ACTIVE` when `now >= startsAt` and `ACTIVE → EXPIRED` when `now > endsAt`, freeing the destination cap slot automatically, and recomputes `tour.isSponsored` from ground truth.
 - **Data sufficiency verdict:** the schema is sufficient for the core flow; what is missing is **service logic** (effective-commission resolution, transactional cap enforcement, activate/expire job, eligibility gate), the optional fields above, and **one cross-module dependency — `operator.cancellation_rate_90d` (master E.6) must exist**.
 - **Checklist status:** marked `- [x]` — `src/tiers/` implements request/approve/reject, the transactional cap, the eligibility gate, and the effective-commission overlay snapshotted onto the booking.
@@ -1734,7 +1823,7 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - It is the **single source of truth for every "Locals' favorite" surface** — the tour-page meta-row ✦ (LD13) and the destination featured-grid selector. **It is NOT a card badge.**
 - **Gated by permission `MANAGE_EDITORIAL`** — granted to **`Role.ADMIN` only**. `MANAGE_TRIPS` cannot gate it because `TOUR_OPERATOR` holds that permission. (`MANAGE_EDITORIAL` added to the `Permission` enum, migration `20260712133827_add_manage_editorial_permission`.)
 - **Write path: `PATCH /tours/:id/locals-favourite`** with body `{ value: boolean }`; toggles and **logs the admin action**.
-  - **Removed from `UpdateTourDto`** and from the service `update()`; **never in `CreateTourDto`** (confirmed non-gap). It must never be re-added to the operator tour form.
+    - **Removed from `UpdateTourDto`** and from the service `update()`; **never in `CreateTourDto`** (confirmed non-gap). It must never be re-added to the operator tour form.
 - **Stats endpoint: `GET /tours/admin/locals-favourite/stats`** → `{ totalLive, flagged, pct, target: 30, perDestination[] }`.
 - **Curation UI:** `/dashboard/locals-favourites` — RBAC-gated nav item (`permissions: [MANAGE_EDITORIAL]`), destination selector, coverage banner vs the 30% target (**amber warning when >10 points off**), a trips-table mirror with search + favourite/status/destination/operator filters + column toggle + pagination. **REMOVE confirms via `ConfirmDialog`; add is direct.** Candidate list reuses the existing `GET /tours/admin/all` + `destinationId` filter — no new list endpoint.
 - **Intentional deviation:** no row-select / bulk column (`showSelect: false`) — no bulk curation action exists.
@@ -1751,19 +1840,20 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **`unit_type` enum (nullable, only when `unit`): `group` / `boat` / `vehicle` / `aircraft` / `package`.** In the master **only `group` has any display rule** ("from $270 per group"); boat/vehicle/aircraft/package carry **no per-type behavior** in the master.
 - **What the master actually says (baseline):** prices are `price_adult` / `price_child` / `price_infant`, "from = lowest applicable"; **there is NO unit pricing formula, no included-guest count, and no extra-person surcharge anywhere in the master**; card price label has two formats only; the tour-detail widget anchor is specified only as `From $X per person` ("person-based, not group-based") — **no unit/group/charter widget anchor is defined**; `age_bands[]` nullable drives widget **Pattern B** (else **Pattern A**) and "all bands count toward capacity"; **spectators are add-ons, not age bands**; `booking_type` private/shared with the single rule "unit-priced private charters: one booking takes the whole departure"; **`booking_type` was DROPPED as a filter (no-op)**.
 - **The UNIT formula (decision D1):**
-  ```
-  unitTotal = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice
-  ```
-  - `unitIncludedGuests` **defaults to `maxPartySize`** and `extraPersonPrice` **defaults to 0**, so the model **degrades to a pure flat unit price (master-compatible)**.
-  - Implemented in `src/bookings/booking-pricing.util.ts` (`computeUnitLines`) and mirrored in the card/checkout (`lib/tours/booking.ts`, `lib/stores/booking-store.ts`, `lib/checkout/checkout.ts`).
+    ```
+    unitTotal = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice
+    ```
+
+    - `unitIncludedGuests` **defaults to `maxPartySize`** and `extraPersonPrice` **defaults to 0**, so the model **degrades to a pure flat unit price (master-compatible)**.
+    - Implemented in `src/bookings/booking-pricing.util.ts` (`computeUnitLines`) and mirrored in the card/checkout (`lib/tours/booking.ts`, `lib/stores/booking-store.ts`, `lib/checkout/checkout.ts`).
 - **The six locked decisions (Part 0 of `PRICING-MODEL-AND-UNIT-CHECKLIST.md`; `[EXT]` = extension beyond the master):**
-  - **D1a `[EXT]` — surcharge ONLY for GROUP (CONFIRMED, founder 2026-07-15).** Included-guests + extra-person surcharge applies **only when `unit_type = GROUP`**. Boat / vehicle / aircraft / package charters are a **FLAT whole-unit price with no surcharge fields**. Enforced in four places: backend create/update **null out** `unitIncludedGuests` / `extraPersonPrice` unless GROUP; the dashboard Pricing tab shows those fields only for GROUP; `buildTourBookingData` **zeroes them unless GROUP** (robust against stale data); the seed builder **forces GROUP** for any UNIT blueprint declaring surcharge fields. +2 backend tests.
-  - **D1 `[EXT]` — the UNIT pricing model (CONFIRMED, founder 2026-07-15).** The master's unit model is a flat "per group" price; the platform **ADOPTS the richer engineer model as canonical** (the formula above).
-  - **D2 `[EXT]` — `unit_type`-aware copy (CONFIRMED, founder 2026-07-15).** Beyond the master's "per group": per-`unit_type` wording + icon (boat / vehicle / aircraft / package / group) on card **and** checkout. Shared helper `lib/tours/pricing-label.ts` (`priceUnitKey` / `priceUnitLabel` / `PriceUnitKey`): `PER_PERSON` → "/per person"; `UNIT` → unit noun from `wholeUnitType` (+ "N included" / "+$X per extra" note, **GROUP only**). Copy keys `perBoat` / `perVehicle` / `perGroup` / `perAircraft` / `perPackage` across **7 locales**.
-  - **D3 — `booking_type` is NOT a filter** (master no-op). No filter facet. `bookingType` is used only for the unit+private exclusivity rule and an optional **"Private charter" badge (copy only)** — the pill *"Private charter - this departure is exclusively yours"* shows when `bookingType === 'PRIVATE'` and UNIT.
-  - **D4 — UNIT tours have NO age bands** (locked earlier). A single "guests" counter (Pattern A). The backend **rejects age bands on unit tours** (`assertNotUnitPriced` → 400 "Unit-priced tours use a single guests count…"); the dashboard hides the age-band manager for unit tours.
-  - **D5 — UNIT + PRIVATE = the whole departure** (master-canonical). One booking consumes the entire departure (exclusive sell-out). Implementation: a private-unit reserve runs an **exclusive claim** (`booked_count = capacity`, `status = sold_out`, guarded by `status = open AND booked_count = 0`); non-exclusive keeps the guarded count-up. `Booking.exclusiveDeparture` is snapshotted at reserve; `releaseSeats(..., exclusive)` **resets `booked_count = 0`** on cancel/expiry for exclusive bookings, else counts down. Migration `20260715173552_unit_booking_exclusivity`. Chosen representation means existing `bookedCount >= capacity` logic reads SOLD_OUT with **no util change and no schema flag on `Departure`**; the materializer needs no change (capacity for a private-unit departure stays `maxPartySize`; exclusivity is enforced at booking time).
-  - **D6 `[defer]` — spectators-as-add-ons.** The master puts spectators in `add_ons[]`; the code and the Figma widget model them as **`SPECTATOR` age bands** (Adult $20 / Kid $10 with their own line items "Spectators x 2 x $20", which a flat single-price `TourAddOn` cannot express). Divergence acknowledged in both docs; **out of scope, tracked separately.**
+    - **D1a `[EXT]` — surcharge ONLY for GROUP (CONFIRMED, founder 2026-07-15).** Included-guests + extra-person surcharge applies **only when `unit_type = GROUP`**. Boat / vehicle / aircraft / package charters are a **FLAT whole-unit price with no surcharge fields**. Enforced in four places: backend create/update **null out** `unitIncludedGuests` / `extraPersonPrice` unless GROUP; the dashboard Pricing tab shows those fields only for GROUP; `buildTourBookingData` **zeroes them unless GROUP** (robust against stale data); the seed builder **forces GROUP** for any UNIT blueprint declaring surcharge fields. +2 backend tests.
+    - **D1 `[EXT]` — the UNIT pricing model (CONFIRMED, founder 2026-07-15).** The master's unit model is a flat "per group" price; the platform **ADOPTS the richer engineer model as canonical** (the formula above).
+    - **D2 `[EXT]` — `unit_type`-aware copy (CONFIRMED, founder 2026-07-15).** Beyond the master's "per group": per-`unit_type` wording + icon (boat / vehicle / aircraft / package / group) on card **and** checkout. Shared helper `lib/tours/pricing-label.ts` (`priceUnitKey` / `priceUnitLabel` / `PriceUnitKey`): `PER_PERSON` → "/per person"; `UNIT` → unit noun from `wholeUnitType` (+ "N included" / "+$X per extra" note, **GROUP only**). Copy keys `perBoat` / `perVehicle` / `perGroup` / `perAircraft` / `perPackage` across **7 locales**.
+    - **D3 — `booking_type` is NOT a filter** (master no-op). No filter facet. `bookingType` is used only for the unit+private exclusivity rule and an optional **"Private charter" badge (copy only)** — the pill _"Private charter - this departure is exclusively yours"_ shows when `bookingType === 'PRIVATE'` and UNIT.
+    - **D4 — UNIT tours have NO age bands** (locked earlier). A single "guests" counter (Pattern A). The backend **rejects age bands on unit tours** (`assertNotUnitPriced` → 400 "Unit-priced tours use a single guests count…"); the dashboard hides the age-band manager for unit tours.
+    - **D5 — UNIT + PRIVATE = the whole departure** (master-canonical). One booking consumes the entire departure (exclusive sell-out). Implementation: a private-unit reserve runs an **exclusive claim** (`booked_count = capacity`, `status = sold_out`, guarded by `status = open AND booked_count = 0`); non-exclusive keeps the guarded count-up. `Booking.exclusiveDeparture` is snapshotted at reserve; `releaseSeats(..., exclusive)` **resets `booked_count = 0`** on cancel/expiry for exclusive bookings, else counts down. Migration `20260715173552_unit_booking_exclusivity`. Chosen representation means existing `bookedCount >= capacity` logic reads SOLD_OUT with **no util change and no schema flag on `Departure`**; the materializer needs no change (capacity for a private-unit departure stays `maxPartySize`; exclusivity is enforced at booking time).
+    - **D6 `[defer]` — spectators-as-add-ons.** The master puts spectators in `add_ons[]`; the code and the Figma widget model them as **`SPECTATOR` age bands** (Adult $20 / Kid $10 with their own line items "Spectators x 2 x $20", which a flat single-price `TourAddOn` cannot express). Divergence acknowledged in both docs; **out of scope, tracked separately.**
 - **`priceFrom` anchoring (2026-07-16 founder rule):** `recomputePriceFrom` sets `UNIT → priceFrom = basePrice`; `PER_PERSON → the DEFAULT participant band ?? cheapest participant band ?? basePrice`. The "From $X per person" anchor is the **DEFAULT band (adult reference price), NOT the cheapest child/senior band** (it was showing "From EUR41" child while Adult = EUR69). `orderBy isDefault DESC, price ASC`; demo seed, dashboard copy and spec mirrored; existing rows backfilled by migration `20260716165001_reanchor_price_from_on_default_band`. **The master line "the 'from' price on cards is the lowest applicable" is SUPERSEDED by this founder decision** — the master doc needs a wording update.
 - **Reserve DTO:** `items` is now optional (`ArrayMinSize` removed); `guests?` + `travelerAges?` added; `BookingUnitItemResponseDto.ageBandId` nullable. The service enforces a **model XOR** — UNIT needs `guests` and rejects `items`; PER_PERSON needs `items` and rejects `guests`. For UNIT, `pax = guests` and one null-band unit item is created per guest (whole retail on the first, for manifest + item-sum consistency).
 - **Dashboard consolidation (founder 2026-07-15):** ALL pricing fields moved into the **Pricing tab** (`PricingBasicsCard`: model + currency + base always; unit type / included guests / extra person only for UNIT; age-band manager below, hidden for UNIT). The **Details tab keeps only** operational/logistics/audience/policy fields: duration, pickup model/required, min/max party size, booking cutoff, meeting point, min age, fitness, weather/wheelchair/family/beginners, cancellation window, payment model, deposit %, `bookingType`.
@@ -1786,10 +1876,11 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 > Canonical arbiter for everything below: `technical-doc/island-tours-platform-master.html` **v1.9** (June 11, 2026). Where a derived doc disagrees with the master, the master wins. Conflicts between sources are marked `⚠️ CONFLICT` and left unresolved.
 
 > ### ⚠️ PROMINENT FLAG — `operator_full` is DROPPED FROM v1
+>
 > Multiple docs (BOOKING-AND-PAYMENTS.md, BOOKING-FLOW-DESIGN-GUIDE.md, BOOKING-AND-PAYMENT-DATA.md, master §1.4/§5.8/§6.1/§8.2, the confirmation-email wireframe, EVENT-DRIVEN-AND-QUEUES.md) spec `operator_full` as a **live, fully-specified fourth payment model**.
-> **It was DROPPED FROM v1 by the locked founder decision of 2026-07-15** recorded in `02-architecture/SETTLEMENT-AND-PAYOUTS.md` Part 2: *"V1 ships with three payment models. `operator_full` is dropped from v1."* It returns in **v2** via **Stripe Connect or direct bank transfer**, at which point the commission-collection rail is specified.
+> **It was DROPPED FROM v1 by the locked founder decision of 2026-07-15** recorded in `02-architecture/SETTLEMENT-AND-PAYOUTS.md` Part 2: _"V1 ships with three payment models. `operator_full` is dropped from v1."_ It returns in **v2** via **Stripe Connect or direct bank transfer**, at which point the commission-collection rail is specified.
 > Every `operator_full` requirement below is therefore **v2 scope**, retained verbatim because the specs are locked and the code path is built-but-guarded. Backend enforcement: `bookings.service.ts:loadContext` throws **422** for an `OPERATOR_FULL` tour, so neither `reserve` nor `quote` can create a confirmed payment-free booking. Frontend enforcement: `bookingBlocked = isOperatorFull` replaces the CTA + trust lines with a disabled `bookingUnavailable` notice.
-> EVENT-DRIVEN-AND-QUEUES.md states this explicitly: *"`operator_full` is dropped in v1 (see SETTLEMENT-AND-PAYOUTS.md); the note above is the v2 behavior."*
+> EVENT-DRIVEN-AND-QUEUES.md states this explicitly: _"`operator_full` is dropped in v1 (see SETTLEMENT-AND-PAYOUTS.md); the note above is the v2 behavior."_
 
 ---
 
@@ -1823,10 +1914,10 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - `date` — the date the exception applies to.
 - `startTime` — time, **nullable**; **null time = the whole date**.
 - `type` — enum `AvailabilityExceptionType`, four values:
-  - **`ADD_SLOT`** — introduce a departure the weekly pattern does not produce.
-  - **`SET_CAPACITY`** — override capacity for one slot (`startTime` set) or for the whole date (`startTime` null).
-  - **`CLOSE_DATE`** — stop-sell the whole date (departures are kept but marked `CLOSED`).
-  - **`CLOSE_SLOT`** — stop-sell one slot.
+    - **`ADD_SLOT`** — introduce a departure the weekly pattern does not produce.
+    - **`SET_CAPACITY`** — override capacity for one slot (`startTime` set) or for the whole date (`startTime` null).
+    - **`CLOSE_DATE`** — stop-sell the whole date (departures are kept but marked `CLOSED`).
+    - **`CLOSE_SLOT`** — stop-sell one slot.
 - `capacity`, `note`, `createdBy` — supporting fields.
 - The **close types are the stop-sell one-tap workflow — the daily core action for non-API operators** (master E.9).
 
@@ -1856,16 +1947,16 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 2. **Resolve window** (`resolveWindow`): default **`today … today + 90 days`** (`DEFAULT_HORIZON_DAYS = 90`). Hard cap **365 days** (`MAX_HORIZON_DAYS`). The nightly job passes **`to = today + 364d`** (rolling 12 months).
 3. **Load ACTIVE schedules + in-window exceptions** (`status: 'ACTIVE'`; PAUSED produce nothing).
 4. **Build the desired set one calendar day at a time** (`buildDayDepartures`):
-   - For each schedule whose `weekday` matches and whose `validFrom`/`validUntil` covers the day, add a desired departure.
-   - **Capacity resolution:** `capacity = schedule.capacityOverride ?? tour.maxPartySize`. If null, the slot is **skipped with only a warning log**.
-   - Layer exceptions on top: `ADD_SLOT`, `SET_CAPACITY`, `CLOSE_DATE`, `CLOSE_SLOT`.
-   - **Full precedence:** `exception.capacity ?? schedule.capacityOverride ?? tour.maxPartySize`.
+    - For each schedule whose `weekday` matches and whose `validFrom`/`validUntil` covers the day, add a desired departure.
+    - **Capacity resolution:** `capacity = schedule.capacityOverride ?? tour.maxPartySize`. If null, the slot is **skipped with only a warning log**.
+    - Layer exceptions on top: `ADD_SLOT`, `SET_CAPACITY`, `CLOSE_DATE`, `CLOSE_SLOT`.
+    - **Full precedence:** `exception.capacity ?? schedule.capacityOverride ?? tour.maxPartySize`.
 5. **Reconcile desired vs existing** (`reconcile`):
-   - **Create** departures that do not exist yet.
-   - **Update** capacity/status on unprotected existing rows.
-   - **Delete** orphans (existing rows no longer desired AND unprotected).
-   - A row is **protected and never touched** when `bookedCount > 0 || manuallyEdited || source === API`.
-   - All writes run in a single `$transaction`.
+    - **Create** departures that do not exist yet.
+    - **Update** capacity/status on unprotected existing rows.
+    - **Delete** orphans (existing rows no longer desired AND unprotected).
+    - A row is **protected and never touched** when `bookedCount > 0 || manuallyEdited || source === API`.
+    - All writes run in a single `$transaction`.
 6. Returns `{ created, updated, skipped, removed }`; logs e.g. `Materialized tour <id>: +2 ~1 skip 0 -0`.
 
 - Master rule: **a nightly job materializes 12 rolling months** and **never touches departures with bookings, manual edits, or API source**.
@@ -1884,17 +1975,21 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 - **`computeIsBookable(tourId)`** — true iff **≥1 live-OPEN departure within the horizon**, where horizon = `now … now + BOOKABLE_HORIZON_DAYS` and **`BOOKABLE_HORIZON_DAYS = 30`**. Query filters `status: OPEN` + the 30-day window, takes 100 candidates; for each it computes the **live** status (`liveDepartureStatus`) and keeps it only if `isDepartureBookable`.
 - **`refreshIsBookable(tourId)`** — calls `computeIsBookable` and persists to `tour.isBookable`. It is the **ONLY writer of the flag**.
 - **`liveDepartureStatus`** — computed at read time, **never stored**:
-  - `CANCELLED` / `CLOSED` are **sticky** (operator/admin states) — returned as-is.
-  - Else `bookedCount >= capacity` ⇒ **`SOLD_OUT`**.
-  - Else if the booking cutoff has passed (`now >= start - bookingCutoffMinutes`) ⇒ **`CLOSED`** — **cutoff is NEVER materialized, only applied live**.
-  - Else **`OPEN`**.
+    - `CANCELLED` / `CLOSED` are **sticky** (operator/admin states) — returned as-is.
+    - Else `bookedCount >= capacity` ⇒ **`SOLD_OUT`**.
+    - Else if the booking cutoff has passed (`now >= start - bookingCutoffMinutes`) ⇒ **`CLOSED`** — **cutoff is NEVER materialized, only applied live**.
+    - Else **`OPEN`**.
 - **`isDepartureBookable`** — only a **live `OPEN`** departure counts.
 - A departure can exist and still not make a tour bookable: **past, past cutoff, sold out, closed, or cancelled**.
 - Master §7.2 / COMMERCIAL-MODEL: **bookability = EXISTS an open departure within 30 days**; a tour is excluded from **every** ranked result set when `status != 'active'` OR `is_bookable = false` OR no open departure in the next 30 days. An excluded tour **does not occupy a position** and **is not billed for its tier** during the unbookable period.
 - **Public listing filter** — `ToursService.findAll` filters the **cached flag**, never a live join:
-  ```ts
-  const where: Prisma.TourWhereInput = { status: TourStatus.LIVE, isActive: true, isBookable: true };
-  ```
+    ```ts
+    const where: Prisma.TourWhereInput = {
+        status: TourStatus.LIVE,
+        isActive: true,
+        isBookable: true,
+    };
+    ```
 - **Real-time single-tour reads DO read departures directly:** `checkAvailability(dto)` (live-bookable slots with enough seats) and `calendar(dto)` (per-day aggregate for the date picker).
 
 #### C.1.9 Read contract (master E.9)
@@ -1906,17 +2001,17 @@ arbiter; where it is silent the item is escalated in Part V rather than silently
 
 #### C.1.10 Recompute trigger matrix
 
-| Trigger | What runs |
-|---|---|
-| Operator **creates** a schedule | `syncTourAvailability` = materialize + refresh |
-| Operator **updates** a schedule | `syncTourAvailability` |
-| Operator **deletes** a schedule | `syncTourAvailability` |
-| Operator hits the **Materialize** endpoint | `materializeTour(from, to)` + `refreshIsBookable` |
-| Operator **edits a departure** (cancel / sold-out / reopen) | `refreshIsBookable` |
-| Tour is **published** | `computeIsBookable` → stored |
-| Tour is **unpaused** | `computeIsBookable` → stored |
-| Tour's **`maxPartySize` changes** | `resyncTourAvailability` — materialize + refresh (self-heal) |
-| **Nightly cron (03:00 UTC)** | `materializeAllLive()` then `recomputeAllBookable()` across all LIVE tours |
+| Trigger                                                     | What runs                                                                  |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Operator **creates** a schedule                             | `syncTourAvailability` = materialize + refresh                             |
+| Operator **updates** a schedule                             | `syncTourAvailability`                                                     |
+| Operator **deletes** a schedule                             | `syncTourAvailability`                                                     |
+| Operator hits the **Materialize** endpoint                  | `materializeTour(from, to)` + `refreshIsBookable`                          |
+| Operator **edits a departure** (cancel / sold-out / reopen) | `refreshIsBookable`                                                        |
+| Tour is **published**                                       | `computeIsBookable` → stored                                               |
+| Tour is **unpaused**                                        | `computeIsBookable` → stored                                               |
+| Tour's **`maxPartySize` changes**                           | `resyncTourAvailability` — materialize + refresh (self-heal)               |
+| **Nightly cron (03:00 UTC)**                                | `materializeAllLive()` then `recomputeAllBookable()` across all LIVE tours |
 
 - **Nightly job** (`NightlyJobsService.run()`): (1) `availability.materializeAllLive()` — rolling 12 months for every LIVE + active tour; **per-tour failures are logged and skipped** so one bad tour never aborts the batch. (2) `availability.recomputeAllBookable()` — refresh `isBookable` for every LIVE + active tour. Both are public methods callable on demand.
 - ⚠️ **Spec-vs-code divergence (see also §C.11):** the nightly job is a plain **`@nestjs/schedule` cron (in-process), NOT BullMQ** — the rationale given is that these are idempotent recomputes, not a retry/concurrency queue. A **stale comment** in `availability-materializer.service.ts:42-43` still says "nightly BullMQ job" — **wrong; ignore it**.
@@ -1928,12 +2023,12 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 
 #### C.1.12 "PUBLISHED, NOT YET LISTED" failure mode
 
-- **Symptom:** dashboard banner *"PUBLISHED, NOT YET LISTED — This tour has no availability in the next 30 days…"*, driven by `trip.status === 'LIVE' && !trip.isBookable`.
+- **Symptom:** dashboard banner _"PUBLISHED, NOT YET LISTED — This tour has no availability in the next 30 days…"_, driven by `trip.status === 'LIVE' && !trip.isBookable`.
 - **Root cause:** both `capacityOverride` and `maxPartySize` are null ⇒ **silent skip** ⇒ zero departures ⇒ `isBookable = false`.
 - **Guards now preventing it:**
-  1. **Write-time guard** — `assertResolvableCapacity(tourId, capacityOverride)` called from `createSchedule` + `updateSchedule`; rejects a schedule with no override on a tour with no `maxPartySize`.
-  2. **Self-heal on `maxPartySize`** — `ToursService.update` calls `availability.resyncTourAvailability(id)`.
-  3. **UI surfacing** — the Schedules tab shows an amber notice when there is no Max Party Size, flips the capacity field to required, and blocks submit with a clear toast; the "not yet listed" banner explains the capacity cause.
+    1. **Write-time guard** — `assertResolvableCapacity(tourId, capacityOverride)` called from `createSchedule` + `updateSchedule`; rejects a schedule with no override on a tour with no `maxPartySize`.
+    2. **Self-heal on `maxPartySize`** — `ToursService.update` calls `availability.resyncTourAvailability(id)`.
+    3. **UI surfacing** — the Schedules tab shows an amber notice when there is no Max Party Size, flips the capacity field to required, and blocks submit with a clear toast; the "not yet listed" banner explains the capacity cause.
 - **Diagnostics:** 4 SQL queries provided (tour flags; ACTIVE schedules + overrides; departure count; OPEN departures in the next 30 days) plus a log grep for `has no capacityOverride and tour has no maxPartySize - slot skipped`.
 - **Fix decision tree:** 0 schedules → add recurring schedules · schedules + 0 departures + null capacity → set Max Party Size (self-heals) or a per-schedule override · departures exist but none OPEN in 30 days → past / past-cutoff / sold-out / closed, or `validFrom` beyond 30 days · flag stale → force recompute (materialize endpoint or `NightlyJobsService.run()`).
 
@@ -1997,7 +2092,7 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **Calendar disables carry hover hints** — no-schedule / closed / sold-out days blocked with a reason tooltip (dict keys `calendarNoDepartures`, `calendarClosed`, 7 locales); the tooltip animates via `AnimatePresence` + `crossFade`.
 - **Note:** `/availability/check` returns **ONLY bookable slots** (sold-out / closed / past-cutoff filtered server-side), so **per-time sold-out chips do not appear in live mode** — date-level sold-out is reflected by the calendar day being disabled. The `sold_out` slot state remains only for the demo dataset.
 - **Sold-out date copy (locked, B.78):** **"Sold out. Try another date."** (em dash removed); behavior — auto-suggest the next available date — unchanged.
-- ⚠️ **CONFLICT (transcribed as written):** BOOKING-WIDGET-CHECKLIST §1 marks `[~]` *"Departure times capped at 3 (`departure-times.tsx:21 slice(0,3)`); slots forced `status:'available'`, `remaining:null` — no real availability"*, which contradicts §4's `[x]` removal of the cap.
+- ⚠️ **CONFLICT (transcribed as written):** BOOKING-WIDGET-CHECKLIST §1 marks `[~]` _"Departure times capped at 3 (`departure-times.tsx:21 slice(0,3)`); slots forced `status:'available'`, `remaining:null` — no real availability"_, which contradicts §4's `[x]` removal of the cap.
 
 #### C.2.4 Booking cutoff
 
@@ -2013,21 +2108,21 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **`operator_full` renders the bare CTA "Reserve my spot"** — **no lock icon, no amount** (the lock is the payment icon and no payment occurs) — B.80, conflict log 80/82. **(v2 only — see the flag.)**
 - **CTA copy deviation from the §3.1 table (founder call 2026-07-15):** the **card CTA stays "Continue"**, NOT "Reserve my spot · Pay {amount}". The card navigates to the **checkout page**, where reserve + pay happens — so **"Reserve my spot · Pay {amount}" lives on the checkout submit button** (`checkout-form.tsx`, top-level `reserve` / `reservePay` keys), not the card. The deposit amount is already shown in the card's "Pay today" money row above the CTA.
 - **CTA readiness fix (live mode):** in live mode availability is pre-verified, so a complete in-capacity selection (date + time + party) is **immediately `ready`** (the price summary shows) with **no redundant "Check availability" click**; the party stays editable after ready. `deriveBooking`: `ready = isLive ? selectionComplete : availabilityChecked`, `editingParty = isLive ? true : !availabilityChecked`. The demo/design card keeps the two-phase check.
-- **CTA silent-ignore fixed (2026-07-19):** clicking Check Availability with an incomplete selection no longer swallows the click — `handleCtaClick` sets `ctaError: 'date' | 'slot'` in the store (cleared on `pickDate` / `selectTime` / success); `booking-cta.tsx` shows an **animated inline note above the button** (Collapse, gap inside per motion rules), and the missing field highlights: **`ring-1 ring-it-primary` on the date trigger** (`booking-calendar.tsx`, plus the existing auto-open); for the slot case the pickable chips get a soft **`border-it-primary/45` tint + a one-shot x-shake of the row** (`departure-times.tsx`). *(A wrapper ring was tried first and rejected — it collided with the date field.)* New dict keys (7 locales): `errorSelectDate`, `errorSelectSlot`.
+- **CTA silent-ignore fixed (2026-07-19):** clicking Check Availability with an incomplete selection no longer swallows the click — `handleCtaClick` sets `ctaError: 'date' | 'slot'` in the store (cleared on `pickDate` / `selectTime` / success); `booking-cta.tsx` shows an **animated inline note above the button** (Collapse, gap inside per motion rules), and the missing field highlights: **`ring-1 ring-it-primary` on the date trigger** (`booking-calendar.tsx`, plus the existing auto-open); for the slot case the pickable chips get a soft **`border-it-primary/45` tint + a one-shot x-shake of the row** (`departure-times.tsx`). _(A wrapper ring was tried first and rejected — it collided with the date field.)_ New dict keys (7 locales): `errorSelectDate`, `errorSelectSlot`.
 - **Continue → checkout no longer freezes (2026-07-19):** the push to the dynamic checkout route is wrapped in `useTransition` (`booking-cta.tsx`) — the button swaps to a spinner + "Continue" while navigating (disabled against double-push) and the checkout base route is `router.prefetch`ed on mount.
 
 #### C.2.6 Per-payment-model money rows, CTA and trust lines
 
-| `paymentModel` | Money rows | CTA (checkout button) | Trust line | v1? |
-|---|---|---|---|---|
-| `operator_link` | Total · Pay today (deposit) · Balance later (operator sends secure link) | locked `Reserve my spot - Pay {deposit}` | "Pay {pct}% now, the rest via the operator's secure link" + free cancellation | **yes** |
-| `on_arrival` | Total · Pay today (deposit) · Balance on arrival | locked `Reserve my spot - Pay {deposit}` | "Pay {pct}% now, the rest on arrival" + free cancellation | **yes** |
-| `paid_in_full` | Total · Pay today = total (no balance row) | locked `Reserve my spot - Pay {total}` | "Pay in full now" + free cancellation | **yes** |
-| `operator_full` | Total · Balance later (operator collects) — no pay-today | bare `Reserve my spot` (no lock, no amount) | free cancellation only, no payment line | **v2 (dropped v1)** |
+| `paymentModel`  | Money rows                                                               | CTA (checkout button)                       | Trust line                                                                    | v1?                 |
+| --------------- | ------------------------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------------------- | ------------------- |
+| `operator_link` | Total · Pay today (deposit) · Balance later (operator sends secure link) | locked `Reserve my spot - Pay {deposit}`    | "Pay {pct}% now, the rest via the operator's secure link" + free cancellation | **yes**             |
+| `on_arrival`    | Total · Pay today (deposit) · Balance on arrival                         | locked `Reserve my spot - Pay {deposit}`    | "Pay {pct}% now, the rest on arrival" + free cancellation                     | **yes**             |
+| `paid_in_full`  | Total · Pay today = total (no balance row)                               | locked `Reserve my spot - Pay {total}`      | "Pay in full now" + free cancellation                                         | **yes**             |
+| `operator_full` | Total · Balance later (operator collects) — no pay-today                 | bare `Reserve my spot` (no lock, no amount) | free cancellation only, no payment line                                       | **v2 (dropped v1)** |
 
 - **Zero-amount money rows are hidden** (master §6.1, conflict log 82) — `showPayToday` / `showBalance` gate rows on `> 0`. Applies in **widget S4, checkout summary, and email block 4**.
-  - `operator_full` shows **Total** and **"Balance later"**.
-  - `paid_in_full` shows **Total** and **"Pay today"**.
+    - `operator_full` shows **Total** and **"Balance later"**.
+    - `paid_in_full` shows **Total** and **"Pay today"**.
 - **Deposit uses the real `depositPct` from the tour** (`usesDeposit = isDepositModel && 0 < depositPct < 100`), never a constant.
 - `deriveBooking` derives per-model money rows, `balanceLabel` (**"Balance on arrival"** for `on_arrival`), and a `paymentTrust` line (deposit-link / "Pay in full now" / none). New dict keys (7 locales): `bookingUnavailable`, `balanceOnArrival`, `payOnArrival`, `payInFull`; `payLater` reworded to the operator's-secure-link copy.
 - **`operator_full` is guarded out of v1** via `bookingBlocked` → disabled CTA + `bookingUnavailable` notice, so the widget never offers a payment-free reserve.
@@ -2035,17 +2130,17 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 #### C.2.7 Trust strip and the two modals (LD5, locked verbatim — master §6.3)
 
 - **Exactly two lines** inside the widget container, green SVG checks, the key phrase underlined as the click target:
-  - **`✓ Free cancellation up to {hours}h`** → opens the **cancellation modal**
-  - **`✓ Pay only {X}% today, the rest later`** → opens the **deposit modal**
+    - **`✓ Free cancellation up to {hours}h`** → opens the **cancellation modal**
+    - **`✓ Pay only {X}% today, the rest later`** → opens the **deposit modal**
 - **Nothing else** — no "Instant confirmation", no WhatsApp, no "Secure payment" line; each exclusion is a locked decision (LD5, final of the 4→3→2 chain).
 - On **`paid_in_full` and `operator_full`** the strip is the **single cancellation line**; line 2 and the deposit modal apply to the **deposit models only** (conflict log 81 / B.81).
-- **Cancellation modal lead (locked):** *"Plans change. No problem."*
-- **Cancellation modal body (locked):** *"Cancel up to {hours} hours before your tour starts (local time). Full refund, no forms, no questions asked."*
-- **Cancellation modal after-window (locked):** *"If you cancel less than {hours} hours before your tour starts, we can't refund or change the booking. But if the operator has to cancel, you're covered: a full refund or a free reschedule."*
-- **Deposit modal lead (locked):** *"Keep your plans flexible."*
-- **Deposit modal step 3, default (locked):** *"Pay the balance up to {hours} hours before your tour starts (local time), or cancel for a full refund. After that, the booking is locked and the deposit is non-refundable."*
-- **Deposit modal step 3, `on_arrival` variant (locked, C23 / conflict log 88 / B.88):** *"Pay the rest on arrival (card or cash, or cash only, per tour). Cancel free up to {hours} hours before your tour starts (local time). After that, the booking is locked and the deposit is non-refundable."* Head, other steps, and the why block are unchanged.
-- **Deposit modal "Why we do this" (locked):** *"Popular tours fill up fast, so your deposit secures your spot the moment you book, without paying it all upfront. You're also supporting the local islanders who run these tours."*
+- **Cancellation modal lead (locked):** _"Plans change. No problem."_
+- **Cancellation modal body (locked):** _"Cancel up to {hours} hours before your tour starts (local time). Full refund, no forms, no questions asked."_
+- **Cancellation modal after-window (locked):** _"If you cancel less than {hours} hours before your tour starts, we can't refund or change the booking. But if the operator has to cancel, you're covered: a full refund or a free reschedule."_
+- **Deposit modal lead (locked):** _"Keep your plans flexible."_
+- **Deposit modal step 3, default (locked):** _"Pay the balance up to {hours} hours before your tour starts (local time), or cancel for a full refund. After that, the booking is locked and the deposit is non-refundable."_
+- **Deposit modal step 3, `on_arrival` variant (locked, C23 / conflict log 88 / B.88):** _"Pay the rest on arrival (card or cash, or cash only, per tour). Cancel free up to {hours} hours before your tour starts (local time). After that, the booking is locked and the deposit is non-refundable."_ Head, other steps, and the why block are unchanged.
+- **Deposit modal "Why we do this" (locked):** _"Popular tours fill up fast, so your deposit secures your spot the moment you book, without paying it all upfront. You're also supporting the local islanders who run these tours."_
 - **Modal presentation:** desktop centered card ~**520px** max; mobile **bottom sheet**.
 - **Modal a11y:** dialog semantics with **focus trap, ESC to close, focus return**.
 - **Modal styling:** **orange numbered step circles**.
@@ -2056,12 +2151,12 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 
 - **`PER_PERSON`** — age-band steppers (participants + spectators), driven from live `ageBands`. Retail = `sum(TourAgeBand.price × quantity)`; spectator bands are still `BookingUnitItem` rows and still count toward capacity.
 - **`UNIT`** (whole-unit / private charter) — a **single "guests" stepper** (`bands=[{id:'unit-guests', price:0}]`, Pattern A); age bands ignored. Formula:
-  ```
-  total = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice
-  ```
-  (e.g. Klein Curaçao Luxury Yacht Charter: 4 guests = $1,450; 12 guests = $1,890.) UNIT `priceRows` breakdown renders **"Charter (up to N guests)"** + **"Extra guests × k × {price}"**; `price-header.tsx` shows **"From {basePrice} per group"** with sub-line **"Up to N guests · +{price} per extra guest"**; `party-selector.tsx` header reads **"{count} Guests"**. `computeCheckoutTotals` mirrors the same math. New dict keys (7 locales): `guests`, `perGroup`, `unitIncludes`, `unitExtra`, `unitCharterLine`, `unitExtraGuests`.
-  - **Still pending:** the persisted/authoritative UNIT total must come from the server quote; the FE figure is a correct **client estimate** only.
-  - **Minor:** the checkout party label uses the English band label "Guests" (to localize).
+    ```
+    total = basePrice + max(0, guests - unitIncludedGuests) * extraPersonPrice
+    ```
+    (e.g. Klein Curaçao Luxury Yacht Charter: 4 guests = $1,450; 12 guests = $1,890.) UNIT `priceRows` breakdown renders **"Charter (up to N guests)"** + **"Extra guests × k × {price}"**; `price-header.tsx` shows **"From {basePrice} per group"** with sub-line **"Up to N guests · +{price} per extra guest"**; `party-selector.tsx` header reads **"{count} Guests"**. `computeCheckoutTotals` mirrors the same math. New dict keys (7 locales): `guests`, `perGroup`, `unitIncludes`, `unitExtra`, `unitCharterLine`, `unitExtraGuests`.
+    - **Still pending:** the persisted/authoritative UNIT total must come from the server quote; the FE figure is a correct **client estimate** only.
+    - **Minor:** the checkout party label uses the English band label "Guests" (to localize).
 - **"From $X per person" anchor = the DEFAULT age band** (founder rule 2026-07-16) — never the cheapest child/senior band (was "From EUR41" child while Adult = EUR69). Backend-owned: `recomputePriceFrom` prefers `isDefault DESC, price ASC`; rows backfilled by migration `20260716165001_reanchor_price_from_on_default_band`. ⚠️ **This SUPERSEDES the master field-table line "the 'from' price on cards is the lowest applicable"** — master wording still needs updating.
 - **Exact decimal prices EVERYWHERE** (founder rule 2026-07-16) — **no whole-unit rounding on any money display**: widget `conv` keeps cents; `money()` / `formatCheckoutMoney` render both cents when fractional ("$63.75", whole stays "$75"); deposit estimates round to cents; central `formatPriceFrom` / `resolveDisplayPrice` make every tour-card surface exact. ⚠️ **Supersedes the Figma whole-number card anchor for fractional prices.**
 - **Live currency switch (2026-07-16):** a footer currency change re-prices the mounted widget without a hard reload — `BookingStoreProvider` syncs re-converted `data` / `currency` into the live store on `router.refresh()`; the selection is preserved (band ids are stable) and the stale quote is dropped → auto re-quote in the new currency.
@@ -2071,7 +2166,7 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **`POST /bookings/quote`** is consumed in the widget + checkout. Backend stateless quote (`bookings.service.ts:quote()`); frontend `useBookingQuote` is **debounced, aborts superseded requests, and re-quotes on currency switch**.
 - When a fresh quote is loaded it — **not client math** — drives the money summary/breakdown. `deriveBooking` / `computeCheckoutTotals` remain **only the optimistic pre-quote estimate**.
 - Rule: the widget must call `POST /bookings/quote` **whenever date / time / party / add-ons / pickup / coupon / currency changes**, display backend quote totals, submit `quoteId` and/or `currency`, and **never compute authoritative totals locally**.
-- Locked caveat: *"for anything persisted (the actual booking total), the client math in `deriveBooking`/`computeCheckoutTotals` must not be authoritative — the server quote wins."*
+- Locked caveat: _"for anything persisted (the actual booking total), the client math in `deriveBooking`/`computeCheckoutTotals` must not be authoritative — the server quote wins."_
 - **Do not trust frontend-converted totals.** Booking creation must either accept a `quoteId` and revalidate, or recompute the same quote server-side.
 
 #### C.2.10 Pickup, add-ons and timing affordances (widget status)
@@ -2080,7 +2175,7 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **Add-ons** — `[ ]` **"Not handled anywhere in the widget today."** Must render `addOns` per `unit` (**PER_PERSON multiplies by party, FLAT once**; respect `maxQuantity`) and include them in totals + the booking payload.
 - **`instantConfirmation`** — `[ ]` show an "Instant confirmation" affordance when true.
 - **`bookingType` (PRIVATE / SHARED)** — `[ ]` semantics in the party UI.
-- **Not consumed at all (as of the checklist):** `pricingModel`, `wholeUnitType`, `bookingType`, `instantConfirmation`, `bookingCutoffMinutes`, `pickupModel`, `pickupRequired`, `pickupLocations`, `addOns`, `unitIncludedGuests`, `extraPersonPrice` — plus *"no countdown the hold time for a slot to booking"* [sic].
+- **Not consumed at all (as of the checklist):** `pricingModel`, `wholeUnitType`, `bookingType`, `instantConfirmation`, `bookingCutoffMinutes`, `pickupModel`, `pickupRequired`, `pickupLocations`, `addOns`, `unitIncludedGuests`, `extraPersonPrice` — plus _"no countdown the hold time for a slot to booking"_ [sic].
 
 #### C.2.11 Error states, loading and empty edges
 
@@ -2094,12 +2189,12 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **Slots loading** → skeleton on the chip row; **calendar loading** → `calendarLoading` state.
 - **Continue navigating** → button swaps to spinner, disabled against double-push.
 - **Checkout form errors** — contact (name / email / phone) and payment (postal / name + Stripe element errors) validate with **inline errors** (audited; no change needed).
-- ⚠️ **Empty-date edge (`[ ]` open):** a day the calendar reported open that returns zero live slots on a race — **the chips section stays collapsed**. Doc's note: *"Acceptable for now; a 'no times available' message would need a new i18n key."*
+- ⚠️ **Empty-date edge (`[ ]` open):** a day the calendar reported open that returns zero live slots on a race — **the chips section stays collapsed**. Doc's note: _"Acceptable for now; a 'no times available' message would need a new i18n key."_
 - **All-sold-out (30-day dead end)** → the alternatives module (§C.1.14), not a notify-me form.
 
 #### C.2.12 Race-condition and idempotency handling at the widget boundary
 
-- **Lost capacity race** → the guarded atomic `UPDATE` affects **0 rows** → the booking fails → the **frontend returns the traveler to date/time selection with the chosen date preserved** (flow path `C1` = *"Return to widget, keep date, choose another slot"*, on both cutoff/capacity failure and a failed claim).
+- **Lost capacity race** → the guarded atomic `UPDATE` affects **0 rows** → the booking fails → the **frontend returns the traveler to date/time selection with the chosen date preserved** (flow path `C1` = _"Return to widget, keep date, choose another slot"_, on both cutoff/capacity failure and a failed claim).
 - **Departure closes after the calendar read** → submit fails (`WHERE status='open'`).
 - **Cutoff passes after the calendar read** → submit fails (cutoff computed live).
 - **Reserve is idempotent** — `checkout-form.tsx:handleReserve` calls `reserveBooking` (real `POST /bookings`) **with an idempotency key**; `Booking.uuid` is the OCTO client-supplied idempotency key, and the DB `id` is client-suppliable as the reserve idempotency key.
@@ -2109,13 +2204,13 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 #### C.2.13 Confirmation state — the processing hop and TYP
 
 - **`/payment/processing`** (built as `[destination]/[slug]/checkout/processing`) — **lean intermediate page, noindex, ZERO tracking tags**. Holds after payment submit until the webhook confirms, then forwards to `/{destination}/thank-you/{public_ref}`.
-  - Polls the TYP endpoint until **`CONFIRMED`**, with **timeout / failure states**.
-  - Minimal **"confirming your booking"** UI.
-  - **No conversion fired here.**
-  - `operator_full` **skips this hop** (created confirmed at commit → straight to TYP) — **v2**; in v1 all live models go through it.
+    - Polls the TYP endpoint until **`CONFIRMED`**, with **timeout / failure states**.
+    - Minimal **"confirming your booking"** UI.
+    - **No conversion fired here.**
+    - `operator_full` **skips this hop** (created confirmed at commit → straight to TYP) — **v2**; in v1 all live models go through it.
 - **Synchronous "settle on return"** so the TYP redirect never waits on the webhook (EXECUTED 2026-07-19): `POST /payments/typ/:publicRef/settle` (`@Public`, keyed on `publicRef`, throttled short/medium/long) **re-reads the PaymentIntent from Stripe** (expanding `latest_charge`; **NEVER trusts the client**) and, when Stripe reports `succeeded`, runs the same idempotent `onIntentSucceeded` → `confirmFromPayment` as the webhook. The processing page calls settle first and redirects on CONFIRMED (~1s), polling only as a backstop; **the webhook remains the source of truth for redirect-return methods.**
-  - **Race-hardened:** settle and webhook can hit `confirmFromPayment` in the same second, so the `ON_HOLD → CONFIRMED` transition **and** the `conversionFiredAt` mark are **ATOMIC guarded `updateMany`s** (master §5.1 mark-first) — exactly one caller emits emails and fires the conversion; the loser only backfills billing.
-  - **Per-target rate cap** (`TargetRateLimiter`, **5 / publicRef / min**) so a multi-IP caller cannot spray the shared Stripe API.
+    - **Race-hardened:** settle and webhook can hit `confirmFromPayment` in the same second, so the `ON_HOLD → CONFIRMED` transition **and** the `conversionFiredAt` mark are **ATOMIC guarded `updateMany`s** (master §5.1 mark-first) — exactly one caller emits emails and fires the conversion; the loser only backfills billing.
+    - **Per-target rate cap** (`TargetRateLimiter`, **5 / publicRef / min**) so a multi-IP caller cannot spray the shared Stripe API.
 - **TYP** — route `/{destination}/thank-you/{public_ref}`, **no locale prefix, noindex**; URL token locked to the **`publicRef` UUID** (unguessable); **`displayRef` (`IT-2026-XXXXXXXX`) appears in page content and email, never in the URL**.
 - **TYP status chip is three-way** (Confirmed / Cancellation pending / Cancelled) driven by server verdicts `cancellationRequestedAt` / `cancelledAt` / `canRequestCancellation` / `cancellationBlockedReason` — replacing a hardcoded green "Confirmed" chip that rendered even on a cancelled booking.
 
@@ -2125,7 +2220,7 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 
 #### C.3.1 Locked master decisions governing the flow (BOOKING-FLOW-DESIGN-GUIDE §1 — all LOCKED)
 
-- **Booking is instant.** No enquiry model, no 24-hour approval step. *"Bookings are confirmed instantly on every model; no 24h enquiry step exists."*
+- **Booking is instant.** No enquiry model, no 24-hour approval step. _"Bookings are confirmed instantly on every model; no 24h enquiry step exists."_
 - **Inventory source of truth is `departures`**, not schedules or exceptions.
 - **Capacity must be claimed with one guarded atomic database update.**
 - **`payment_model` is snapshotted onto the booking at creation.**
@@ -2138,9 +2233,9 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 - **`operator_link` balance is not tracked by Island Tours v1.**
 - **Deposit forfeiture is never automatic:** operator reports non-payment → admin confirms → deposit/spot outcome applied.
 - **Webhooks must be `@Public()` + `@SkipThrottle()`, signature-verified, idempotent.**
-- **`operator_full` takes no payment rail; created `CONFIRMED` at commit.** *(v2 — see flag.)*
+- **`operator_full` takes no payment rail; created `CONFIRMED` at commit.** _(v2 — see flag.)_
 - **The checkout charge always lands in the Island Tours Stripe/Mollie account.** Island Tours is **merchant of record** for every on-platform charge; **no per-operator connected account in v1.**
-- **Two counter-party settlement rails are OPEN in the master** (conflict log C23) and must not be invented in code: (a) operator payout on `paid_in_full`, (b) commission collection on `operator_full`. **Stripe Connect is the named phase-2 candidate** (B.85). *(Now partially closed by the 2026-07-15 locked decision — see §C.8.)*
+- **Two counter-party settlement rails are OPEN in the master** (conflict log C23) and must not be invented in code: (a) operator payout on `paid_in_full`, (b) commission collection on `operator_full`. **Stripe Connect is the named phase-2 candidate** (B.85). _(Now partially closed by the 2026-07-15 locked decision — see §C.8.)_
 
 #### C.3.2 The 25-step end-to-end flow (guide §4)
 
@@ -2155,7 +2250,7 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 9. Backend **claims seats with a single guarded update** on `departures`.
 10. **If the update affects zero rows → the booking fails with an availability error.**
 11. Backend creates: `Booking`, **one `BookingUnitItem` per traveler**, `BookingAddOn` snapshots.
-12. If `paymentModel = OPERATOR_FULL` → created **`CONFIRMED`**, no payment intent, confirmation finalization runs. *(v2.)*
+12. If `paymentModel = OPERATOR_FULL` → created **`CONFIRMED`**, no payment intent, confirmation finalization runs. _(v2.)_
 13. For charge models → created **`ON_HOLD` with `utcExpiresAt`**.
 14. Frontend requests **`POST /api/v1/payments/bookings/:id/intent`**.
 15. Payment service creates or reuses a provider intent **idempotently**.
@@ -2165,18 +2260,18 @@ Monday 09:00 schedule, `maxPartySize=20`, `timeZone=America/Curacao`, `bookingCu
 19. On success, the payment row → **`SUCCEEDED`**.
 20. Booking transitions **`ON_HOLD → CONFIRMED`**.
 21. **Billing/card snapshot** written from the provider payment method.
-22. **Confirmation finalization runs once:** EUR commission backfilled if needed · **`conversionFiredAt` stamped** · confirmation email sent · *"Add invoice as attatchments (INVOICE RECIVE FROM STRIPE/MOLLIE)"* [sic — the doc's own spelling] · server-side conversion side effects run.
+22. **Confirmation finalization runs once:** EUR commission backfilled if needed · **`conversionFiredAt` stamped** · confirmation email sent · _"Add invoice as attatchments (INVOICE RECIVE FROM STRIPE/MOLLIE)"_ [sic — the doc's own spelling] · server-side conversion side effects run.
 23. Traveler is redirected/rendered to the **TYP**.
 24. TYP returns the conversion payload **only** for confirmed bookings with a valid EUR commission.
 25. Browser fires **exactly one `booking_complete`**.
 
 - Guide §5 contains a mermaid flowchart mirroring the above; the widget return path **`C1` = "Return to widget, keep date, choose another slot"** on both cutoff/capacity failure and a failed claim.
 - **Built money-flow spine (as committed):**
-  ```
-  reserve (ON_HOLD) -> PATCH contact -> payment intent (automatic_payment_methods)
-    -> custom Stripe card / PayPal + iDEAL redirect -> /payment/processing poller
-    -> webhook confirm -> CONFIRMED + EUR conversion stamp -> TYP
-  ```
+    ```
+    reserve (ON_HOLD) -> PATCH contact -> payment intent (automatic_payment_methods)
+      -> custom Stripe card / PayPal + iDEAL redirect -> /payment/processing poller
+      -> webhook confirm -> CONFIRMED + EUR conversion stamp -> TYP
+    ```
 
 #### C.3.3 Reserve logic order (guide §20.8)
 
@@ -2207,14 +2302,15 @@ EXPIRED/CANCELLED/REDEEMED --> [*]
 - Full enum on `Booking.status`: `ON_HOLD` / `CONFIRMED` / `CANCELLED` / `REDEEMED` / `EXPIRED` / `PENDING` / `REJECTED`.
 - ⚠️ **CONFLICT (naming):** master E.8 / BOOKING-AND-PAYMENTS.md describe the states as **`pending_payment → confirmed → cancelled → …`** (with further states such as **forfeited** and **operator-cancelled** following the same admin-confirmed pattern), while the code/guide state machine uses **`ON_HOLD`** for the pre-payment state and has no `forfeited` state. Both are transcribed as written.
 - Lifecycle diagram from BOOKING-AND-PAYMENT-DATA.md:
-  ```
-  ON_HOLD (utcExpiresAt, capacity claimed) ──confirm──> CONFIRMED ──> REDEEMED
-     │ expire / cancel                        │ admin-confirmed request
-     ▼                                        ▼
-  EXPIRED / CANCELLED (release capacity)   CANCELLED (full refund if before deadline)
 
-  operator_full: created CONFIRMED at commit (no charge, no webhook, no ON_HOLD).
-  ```
+    ```
+    ON_HOLD (utcExpiresAt, capacity claimed) ──confirm──> CONFIRMED ──> REDEEMED
+       │ expire / cancel                        │ admin-confirmed request
+       ▼                                        ▼
+    EXPIRED / CANCELLED (release capacity)   CANCELLED (full refund if before deadline)
+
+    operator_full: created CONFIRMED at commit (no charge, no webhook, no ON_HOLD).
+    ```
 
 #### C.3.5 Departure state machine (guide §7)
 
@@ -2253,30 +2349,30 @@ UPDATE departures
 - **Sweeper steps:** (1) find `ON_HOLD` where `utcExpiresAt < now`; (2) **release seats**; (3) mark unit items `EXPIRED`; (4) mark the booking `EXPIRED`; (5) emit availability/booking notifications.
 - **Expiry must be idempotent.**
 - Intended mechanism: a **BullMQ delayed/repeatable sweeper** (`booking.hold-expiry-sweep`, **run-window guarded**).
-- ⚠️ **CRITICAL FLAW (open):** *"Hold-expiry sweeper not scheduled."* `expireStaleHolds()` exists but **no cron/queue calls it**, so **expired holds keep seats and cause phantom sold-outs**. `Code: bookings.service.ts:expireStaleHolds` (unwired).
-- ⚠️ **Open edge:** **payment succeeds after the hold has expired** — `confirmFromPayment` only confirms when `ON_HOLD`; *"an expired booking whose payment later settles must be voided/refunded"* — **no refund/void branch exists.** Guidance: reconcile carefully; prefer preventing confirmation of expired bookings and refunding/voiding if necessary; the consumer must re-validate state.
+- ⚠️ **CRITICAL FLAW (open):** _"Hold-expiry sweeper not scheduled."_ `expireStaleHolds()` exists but **no cron/queue calls it**, so **expired holds keep seats and cause phantom sold-outs**. `Code: bookings.service.ts:expireStaleHolds` (unwired).
+- ⚠️ **Open edge:** **payment succeeds after the hold has expired** — `confirmFromPayment` only confirms when `ON_HOLD`; _"an expired booking whose payment later settles must be voided/refunded"_ — **no refund/void branch exists.** Guidance: reconcile carefully; prefer preventing confirmation of expired bookings and refunding/voiding if necessary; the consumer must re-validate state.
 
 #### C.3.8 API surface (guide §16 / §14)
 
-| Method | Route (base `/api/v1`) | Purpose |
-|---|---|---|
-| `POST` | `/bookings` | Reserve / claim seats; `OPERATOR_FULL` confirms immediately |
-| `POST` | `/bookings/quote` | Server-authoritative quote (`@Public()`, static route before `:id`) |
-| `POST` | `/bookings/:id/confirm` | Confirm a held booking in the adapter/manual flow |
-| `POST` | `/bookings/:id/cancel` | Cancel and release seats |
-| `POST` | `/bookings/:id/extend` | Extend `ON_HOLD` expiry |
-| `PATCH` | `/bookings/:id` | Update contact / notes / pickup on an active booking |
-| `GET` | `/bookings/typ/:publicRef` | Public TYP lookup |
-| `GET` | `/bookings/typ/:publicRef/calendar.ics` | ICS calendar file (RFC 5545, real UTC), CONFIRMED only |
-| `POST` | `/bookings/typ/:publicRef/resend` | Resend confirmation email (hard-throttled) |
-| `POST` | `/bookings/typ/:publicRef/cancellation-request` | Tokenized cancellation request |
-| `GET` | `/bookings` | Auth-scoped list |
-| `GET` | `/bookings/:id` | Auth-scoped detail |
-| `POST` | `/payments/bookings/:id/intent` | Create/reuse a payment intent |
-| `POST` | `/payments/typ/:publicRef/settle` | Synchronous settle-on-return (re-reads the intent from Stripe) |
-| `GET` | `/payments` | Payments list (`VIEW_PAYMENTS`, operator-scoped) |
-| `POST` | `/payments/webhook` | Stripe webhook |
-| `POST` | `/payments/webhook/mollie` | Mollie webhook |
+| Method  | Route (base `/api/v1`)                          | Purpose                                                             |
+| ------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `POST`  | `/bookings`                                     | Reserve / claim seats; `OPERATOR_FULL` confirms immediately         |
+| `POST`  | `/bookings/quote`                               | Server-authoritative quote (`@Public()`, static route before `:id`) |
+| `POST`  | `/bookings/:id/confirm`                         | Confirm a held booking in the adapter/manual flow                   |
+| `POST`  | `/bookings/:id/cancel`                          | Cancel and release seats                                            |
+| `POST`  | `/bookings/:id/extend`                          | Extend `ON_HOLD` expiry                                             |
+| `PATCH` | `/bookings/:id`                                 | Update contact / notes / pickup on an active booking                |
+| `GET`   | `/bookings/typ/:publicRef`                      | Public TYP lookup                                                   |
+| `GET`   | `/bookings/typ/:publicRef/calendar.ics`         | ICS calendar file (RFC 5545, real UTC), CONFIRMED only              |
+| `POST`  | `/bookings/typ/:publicRef/resend`               | Resend confirmation email (hard-throttled)                          |
+| `POST`  | `/bookings/typ/:publicRef/cancellation-request` | Tokenized cancellation request                                      |
+| `GET`   | `/bookings`                                     | Auth-scoped list                                                    |
+| `GET`   | `/bookings/:id`                                 | Auth-scoped detail                                                  |
+| `POST`  | `/payments/bookings/:id/intent`                 | Create/reuse a payment intent                                       |
+| `POST`  | `/payments/typ/:publicRef/settle`               | Synchronous settle-on-return (re-reads the intent from Stripe)      |
+| `GET`   | `/payments`                                     | Payments list (`VIEW_PAYMENTS`, operator-scoped)                    |
+| `POST`  | `/payments/webhook`                             | Stripe webhook                                                      |
+| `POST`  | `/payments/webhook/mollie`                      | Mollie webhook                                                      |
 
 - **Access rules:** booking creation is **public guest checkout** · TYP lookup is **public because `publicRef` is unguessable** · account/admin/operator listing + detail reads are **auth-scoped** · **webhooks bypass auth and throttling but verify provider authenticity**.
 - **No raw Prisma rows are returned** from booking APIs; **status, commission, and tier rank are never client-settable**.
@@ -2307,17 +2403,17 @@ UPDATE departures
 
 #### C.4.1 Operational shape (guide §2.1 / BOOKING-AND-PAYMENTS §1)
 
-| Model | Charged at checkout | Balance handling | Payment rail | Created status |
-|---|---|---|---|---|
-| **`OPERATOR_LINK`** (the **default**) | `depositPct`% deposit | Operator emails a **secure balance link**; balance paid **online before the deadline** | Stripe/Mollie | `ON_HOLD` → `CONFIRMED` after payment |
-| **`ON_ARRIVAL`** | `depositPct`% deposit | Balance paid **in person on arrival** (card or cash, or cash only, per tour) | Stripe/Mollie | `ON_HOLD` → `CONFIRMED` after payment |
-| **`PAID_IN_FULL`** | **100%** | Nothing later — fully paid via Island Tours at booking | Stripe/Mollie | `ON_HOLD` → `CONFIRMED` after payment |
-| **`OPERATOR_FULL`** | **0 / nothing** | Operator collects the **full amount** directly | **none** — bypasses the Stripe charge and webhook entirely | **`CONFIRMED` at commit** |
+| Model                                 | Charged at checkout   | Balance handling                                                                       | Payment rail                                               | Created status                        |
+| ------------------------------------- | --------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- |
+| **`OPERATOR_LINK`** (the **default**) | `depositPct`% deposit | Operator emails a **secure balance link**; balance paid **online before the deadline** | Stripe/Mollie                                              | `ON_HOLD` → `CONFIRMED` after payment |
+| **`ON_ARRIVAL`**                      | `depositPct`% deposit | Balance paid **in person on arrival** (card or cash, or cash only, per tour)           | Stripe/Mollie                                              | `ON_HOLD` → `CONFIRMED` after payment |
+| **`PAID_IN_FULL`**                    | **100%**              | Nothing later — fully paid via Island Tours at booking                                 | Stripe/Mollie                                              | `ON_HOLD` → `CONFIRMED` after payment |
+| **`OPERATOR_FULL`**                   | **0 / nothing**       | Operator collects the **full amount** directly                                         | **none** — bypasses the Stripe charge and webhook entirely | **`CONFIRMED` at commit**             |
 
 - A tour **declares one payment model**; it is **snapshotted onto the booking as `payment_model` at creation** and **never changes retroactively** (master §1.4, confirmed June 10, 2026).
-- **Implementation warning (the doc's own):** *"if code treats `ON_ARRIVAL` as no upfront charge, that conflicts with the master. `ON_ARRIVAL` is a deposit model."*
+- **Implementation warning (the doc's own):** _"if code treats `ON_ARRIVAL` as no upfront charge, that conflicts with the master. `ON_ARRIVAL` is a deposit model."_
 - **`deposit_pct` is tier-driven**: **20 to 30 in 2.5 steps** → allowed values **20, 22.5, 25, 27.5, 30** (LD24). Tier and commission are snapshotted onto the booking alongside `payment_model`.
-- **Superseded rule:** LD24's *"balance online, never cash on tour day"* describes only the `operator_link` default and is **superseded as a platform-wide rule** by the four-model set (B.29, C8).
+- **Superseded rule:** LD24's _"balance online, never cash on tour day"_ describes only the `operator_link` default and is **superseded as a platform-wide rule** by the four-model set (B.29, C8).
 
 #### C.4.2 Deposit / balance formulas (guide §9)
 
@@ -2337,23 +2433,23 @@ OPERATOR_FULL: deposit/payToday = 0;         balance = total
 
 Every booking splits into at most two legs: the **checkout leg** (Island Tours' Stripe/Mollie at booking) and the **remainder leg** (operator, off-platform).
 
-| `payment_model` | Checkout leg | Recipient | Remainder leg | Recipient |
-|---|---|---|---|---|
-| `OPERATOR_LINK` | `deposit` via Stripe/Mollie | **Island Tours** | `total - deposit` | **Operator** — own secure payment link, paid online before the deadline |
-| `ON_ARRIVAL` | `deposit` via Stripe/Mollie | **Island Tours** | `total - deposit` | **Operator** — in person on arrival (card or cash, per tour) |
-| `PAID_IN_FULL` | `total` via Stripe/Mollie | **Island Tours** | none | none |
-| `OPERATOR_FULL` | **none** (no charge, no webhook) | none | `total` | **Operator** — collected directly |
+| `payment_model` | Checkout leg                     | Recipient        | Remainder leg     | Recipient                                                               |
+| --------------- | -------------------------------- | ---------------- | ----------------- | ----------------------------------------------------------------------- |
+| `OPERATOR_LINK` | `deposit` via Stripe/Mollie      | **Island Tours** | `total - deposit` | **Operator** — own secure payment link, paid online before the deadline |
+| `ON_ARRIVAL`    | `deposit` via Stripe/Mollie      | **Island Tours** | `total - deposit` | **Operator** — in person on arrival (card or cash, per tour)            |
+| `PAID_IN_FULL`  | `total` via Stripe/Mollie        | **Island Tours** | none              | none                                                                    |
+| `OPERATOR_FULL` | **none** (no charge, no webhook) | none             | `total`           | **Operator** — collected directly                                       |
 
 Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md §1.
 
 #### C.4.4 Settlement per model — the original OPEN-rail table (guide §2.3)
 
-| `payment_model` | Island Tours ends with | Operator ends with | Settlement rail | Status |
-|---|---|---|---|---|
-| `OPERATOR_LINK` | Retains `deposit` | Collects balance directly | **No cross-transfer** | **Resolved** (master §1.4) |
-| `ON_ARRIVAL` | Retains `deposit` | Collects balance directly | **No cross-transfer** | **Resolved** (master §1.4) |
-| `PAID_IN_FULL` | Holds 100%; keeps commission | Owed `total - commission` | Island Tours must pay the operator out | **OPEN** — payout rail unresolved; Stripe Connect split is the phase-2 candidate (B.85, C23) |
-| `OPERATOR_FULL` | Holds nothing; still owed `commission` | Holds 100% | Island Tours must collect commission from the operator | **OPEN** — commission settlement rail unresolved (C23) |
+| `payment_model` | Island Tours ends with                 | Operator ends with        | Settlement rail                                        | Status                                                                                       |
+| --------------- | -------------------------------------- | ------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `OPERATOR_LINK` | Retains `deposit`                      | Collects balance directly | **No cross-transfer**                                  | **Resolved** (master §1.4)                                                                   |
+| `ON_ARRIVAL`    | Retains `deposit`                      | Collects balance directly | **No cross-transfer**                                  | **Resolved** (master §1.4)                                                                   |
+| `PAID_IN_FULL`  | Holds 100%; keeps commission           | Owed `total - commission` | Island Tours must pay the operator out                 | **OPEN** — payout rail unresolved; Stripe Connect split is the phase-2 candidate (B.85, C23) |
+| `OPERATOR_FULL` | Holds nothing; still owed `commission` | Holds 100%                | Island Tours must collect commission from the operator | **OPEN** — commission settlement rail unresolved (C23)                                       |
 
 - **Deposit-vs-commission note:** `depositPct` (20–30, 2.5 steps) and `commissionTier` (20–35) are both tier-driven but **separate fields**. On deposit models the retained deposit is only an **approximation** of the commission owed; the master defines **no automated true-up in v1** → manual/off-platform reconciliation. **"Do not assume `deposit == commission` in code."**
 - **"Do not invent the OPEN rails."** For `PAID_IN_FULL` / `OPERATOR_FULL`, v1 has no automated payout/collection. **Model entitlement in data, leave transfer to a manual admin process** until the Stripe Connect phase-2 decision lands. **Never auto-transfer funds without a signed-off rail.**
@@ -2365,11 +2461,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **"Do not create a `BALANCE` payment row in v1"** — even though the `Payment.kind` enum has one.
 - **No automatic "balance overdue" state and no automatic forfeit state.** Operator non-payment is **operator-reported then admin-confirmed** (master §15); only that confirmation forfeits a deposit and releases the spot.
 - The v1 platform ledger **reconciles only on-platform legs**. The two OPEN rails each need their own ledger entries once chosen; **Stripe Connect (phase 2) would make the operator balance/payouts machine-readable.**
-- **B.85 hard rule:** *"All paid" rendering on `operator_link` surfaces is **forbidden***; the platform cannot verify the operator's own rails, so any such surface uses a **neutral balance line**. The all-paid line is **`paid_in_full` only**.
+- **B.85 hard rule:** \*"All paid" rendering on `operator_link` surfaces is **forbidden\***; the platform cannot verify the operator's own rails, so any such surface uses a **neutral balance line**. The all-paid line is **`paid_in_full` only**.
 
 #### C.4.6 Two-phase operator visibility — the C2 anti-phishing mitigation
 
-- **Pre-payment — agentless.** The widget and all modals are **operator-agnostic**: *"You'll get a secure link to pay the rest."* The operator is **never named or spotlighted before payment** (disintermediation control).
+- **Pre-payment — agentless.** The widget and all modals are **operator-agnostic**: _"You'll get a secure link to pay the rest."_ The operator is **never named or spotlighted before payment** (disintermediation control).
 - **Post-booking — operator named, deliberately.** On `operator_link` tours the **Thank You page and confirmation email name the operator** and state the operator will send the balance link, so that follow-up email is **expected and never mistaken for phishing**.
 - Slogan / invariant: **"Pre-payment agentless, post-booking named."**
 - This is why `operator_link` confirmation emails **foreshadow the operator by name** — confirmation email **block 5, mandatory on `operator_link`**.
@@ -2381,10 +2477,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Widget CTA is the bare **"Reserve my spot"**; zero-amount money rows hidden.
 - Checkout has **no Payment section and no Stripe Elements**; **`/payment/processing` is skipped**; redirect **straight to the TYP** (B.79, C22).
 - **`payment_method_last4` and the Stripe billing fields stay null** (B.79).
-- Checkout trust: **free-cancellation line only, no Stripe badge** (B.89) — *"the Stripe badge drops where Stripe processes nothing."*
-- Cancellation confirmation carries **no refund line** (*"Nothing was paid to Island Tours …"*).
+- Checkout trust: **free-cancellation line only, no Stripe badge** (B.89) — _"the Stripe badge drops where Stripe processes nothing."_
+- Cancellation confirmation carries **no refund line** (_"Nothing was paid to Island Tours …"_).
 - **Conversion fires at commit rather than on a webhook**, with an **identical data contract** (master §8.2, B.79).
-- **TYP `operator_full` copy locked (B.90):** card = *"Island Tours took no payment today. Total {total}, settled directly with {operatorName}."*; step 2 = *"{operatorName} collects the full amount directly and will confirm how and when."*
+- **TYP `operator_full` copy locked (B.90):** card = _"Island Tours took no payment today. Total {total}, settled directly with {operatorName}."_; step 2 = _"{operatorName} collects the full amount directly and will confirm how and when."_
 - `original_currency` on an `operator_full` booking (where nothing is charged) is the **session display-currency snapshot** (C22).
 
 ---
@@ -2394,14 +2490,14 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### C.5.1 Payment flow per model (guide §10)
 
 - **Charge models (`OPERATOR_LINK`, `ON_ARRIVAL`, `PAID_IN_FULL`):** booking created `ON_HOLD` → **seats already claimed** → **payment intent created idempotently per `(bookingId, kind)`** → provider confirms **asynchronously via webhook** → the webhook updates the payment row → the webhook confirms the booking.
-- **`OPERATOR_FULL`:** booking created `CONFIRMED` → **no payment intent** → **no provider webhook expected** → confirmation finalization runs immediately → TYP available immediately. **Never create a provider payment intent for `OPERATOR_FULL`.** *(v2.)*
+- **`OPERATOR_FULL`:** booking created `CONFIRMED` → **no payment intent** → **no provider webhook expected** → confirmation finalization runs immediately → TYP available immediately. **Never create a provider payment intent for `OPERATOR_FULL`.** _(v2.)_
 
 #### C.5.2 PaymentIntent creation
 
 - **`POST /api/v1/payments/bookings/:id/intent`** creates or reuses a provider intent.
 - **Idempotent per `(bookingId, kind)`** — Stripe idempotency key + a **deterministic `Payment` row id**. A retried intent creation **returns the same provider intent**.
 - **Charge currency = `Booking.currency`**, never `Tour.defaultCurrency`.
-- **⚠️ Bug fixed — PaymentIntent currency/method 500 (Klarna-on-EUR):** forcing the configured method list on the intent hit *"currency invalid for payment method type klarna"* (USD-only). Switched `createIntentForBooking` to Stripe **`automatic_payment_methods`** (account-activated **and** currency-compatible methods only) and to **return `payment_method_types`** so the checkout gates the methods it renders.
+- **⚠️ Bug fixed — PaymentIntent currency/method 500 (Klarna-on-EUR):** forcing the configured method list on the intent hit _"currency invalid for payment method type klarna"_ (USD-only). Switched `createIntentForBooking` to Stripe **`automatic_payment_methods`** (account-activated **and** currency-compatible methods only) and to **return `payment_method_types`** so the checkout gates the methods it renders.
 
 #### C.5.3 Payment method eligibility gating
 
@@ -2429,8 +2525,8 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - A parallel **`mollie_webhook_events`** table exists (`+ TO ADD if Mollie is live`: a `MollieWebhookEvent`, or generalize to `ProviderWebhookEvent` with a `provider` column).
 - **On a successful intent:** `Payment` → `SUCCEEDED` · booking `ON_HOLD → CONFIRMED` · **billing/card snapshot written from the provider payment method** (`payments.service.ts:onIntentSucceeded`, `bookings.service.ts:confirmFromPayment`).
 - **Webhook events handled (named in the docs):** `payment_intent` **succeeded** (the confirm path, `onIntentSucceeded`); **payment failed** → the booking **stays `ON_HOLD`** until retry or expiry; **redelivery** → skipped via the event ledger. The Mollie webhook currently only records the event.
-- ⚠️ **Mollie webhook is a stub** (`[~]`, flaw 7): *"It records the event but never confirms the booking; Mollie-paid bookings never reach CONFIRMED."* `Code: payments.service.ts:handleMollieWebhook`.
-- **⚠️ Bug fixed — card brand/last4 null on every paid booking:** `expandedCharge(intent)` only read an *already-expanded* charge, but **Stripe webhooks never expand nested objects** — a succeeded `payment_intent` carries `latest_charge` as a plain **string id**, and the legacy `intent.charges.data[0]` list no longer exists on current API versions. It returned `undefined` → `billing` was `undefined` → `confirmFromPayment` wrote null brand/last4 on **every** booking, and the TYP card line was always blank. Fixed with `StripeService.retrieveCharge()` + `PaymentsService.resolveCharge()`, which fetch the charge when `latest_charge` is a string (**best-effort: a failed lookup logs and still confirms** — the snapshot must never block a confirmation). The old spec had **baked the bug in** (`confirmFromPayment('b1', undefined)` was the asserted expectation); replaced with 3 real regression tests. **Existing bookings keep their null snapshot** — the fix applies only to new webhook deliveries.
+- ⚠️ **Mollie webhook is a stub** (`[~]`, flaw 7): _"It records the event but never confirms the booking; Mollie-paid bookings never reach CONFIRMED."_ `Code: payments.service.ts:handleMollieWebhook`.
+- **⚠️ Bug fixed — card brand/last4 null on every paid booking:** `expandedCharge(intent)` only read an _already-expanded_ charge, but **Stripe webhooks never expand nested objects** — a succeeded `payment_intent` carries `latest_charge` as a plain **string id**, and the legacy `intent.charges.data[0]` list no longer exists on current API versions. It returned `undefined` → `billing` was `undefined` → `confirmFromPayment` wrote null brand/last4 on **every** booking, and the TYP card line was always blank. Fixed with `StripeService.retrieveCharge()` + `PaymentsService.resolveCharge()`, which fetch the charge when `latest_charge` is a string (**best-effort: a failed lookup logs and still confirms** — the snapshot must never block a confirmation). The old spec had **baked the bug in** (`confirmFromPayment('b1', undefined)` was the asserted expectation); replaced with 3 real regression tests. **Existing bookings keep their null snapshot** — the fix applies only to new webhook deliveries.
 
 #### C.5.6 Billing snapshot from the payment method
 
@@ -2442,7 +2538,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### C.5.7 Refunds
 
 - Refunds write **`REFUND` `Payment` rows**.
-- ⚠️ **NOT IMPLEMENTED (open):** *"Actual Stripe REFUND execution + `REFUND` Payment row on cancellation (compute + issue refund, not just categorize)"* — **the refund is a category only** today. `computeRefund` returns only a **FULL / NONE** verdict: *"no deposit-only vs full-amount computation per model, no partial."*
+- ⚠️ **NOT IMPLEMENTED (open):** _"Actual Stripe REFUND execution + `REFUND` Payment row on cancellation (compute + issue refund, not just categorize)"_ — **the refund is a category only** today. `computeRefund` returns only a **FULL / NONE** verdict: _"no deposit-only vs full-amount computation per model, no partial."_
 - The dashboard **Cancellation Requests** queue lets an admin mark a booking cancelled, but **real refund money movement is deferred to CP6**.
 
 #### C.5.8 Encrypted settings fields / provider configuration
@@ -2472,11 +2568,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **`commission_amount`** `decimal(10,2)` — **in EUR**; the conversion value for every analytics platform.
 - **Formulas:** `commissionRate = effectiveCommissionPercent / 100`; **`commissionAmount = totalEur * commissionRate`**. Once written, **never changes**.
 - **The effective commission may be the active Destination Spotlight rate.** Resolved in **both quote and reserve** via `TiersService.effectiveCommissionRate(tourId, now)`:
-  ```
-  effectiveCommissionRate(tourId, at):
-    if hasActiveSpotlight(tourId, at) -> 0.35   (SPOTLIGHT_COMMISSION_RATE)
-    else                              -> tour.commissionTier / 100
-  ```
+    ```
+    effectiveCommissionRate(tourId, at):
+      if hasActiveSpotlight(tourId, at) -> 0.35   (SPOTLIGHT_COMMISSION_RATE)
+      else                              -> tour.commissionTier / 100
+    ```
 - Evaluated at booking-time `now`, snapshotted, **never retroactive** — a later spotlight activation/expiry does not change an existing booking.
 - **The quote shows the spotlight-effective rate** (matching what reserve will charge). If a spotlight flips between quote and reserve, **the reserve snapshot is authoritative**.
 - **Payment never recomputes the commission RATE**; `finalizeConfirmation` only **EUR-normalizes the value**. Since 2026-07-25 (task #28/5C) that normalization prefers the **PSP's actual charge rate** (Stripe `balance_transaction.exchange_rate` / Mollie `settlementAmount`, threaded as `ChargeFx` into `finalizeConfirmation`) and falls back to the reserve-time ECB snapshot; **never a live FX refetch**.
@@ -2514,7 +2610,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **`conversion_fired_at`** `timestamptz NULL` — the **mark-first idempotency guard, set server-side BEFORE the conversion payload is exposed/rendered** (master §8.2).
 - **Idempotency belongs in the DATABASE, never localStorage** (master §8.1 item 5).
 - **TYP refresh, email revisits, and shared links must never double-fire.** A client push that never executes is an **accepted false negative, never a double fire**.
-- ⚠️ **FIRE-POINT RECONCILIATION (open, double-fire risk):** the code sets `conversion_fired_at` and fires the conversion at **webhook-confirm** (server, `finalizeConfirmation`), *before any TYP visit*. The master fires at **TYP render** (mark-first) via the **browser push**. These are **incompatible as-is**: a browser push gated on `conversion_fired_at` would **never fire** (already set at confirm), and `getThankYou` currently returns the `conversion` payload on **every** visit with no once-guard → the client pixel would **double-fire** (violating §8.1 item 5). **Documented fix:** keep the server CAPI at confirm and add a **separate `conversion_pushed_at` guard** (new migration) so the TYP push fires exactly once, independent of `conversion_fired_at`.
+- ⚠️ **FIRE-POINT RECONCILIATION (open, double-fire risk):** the code sets `conversion_fired_at` and fires the conversion at **webhook-confirm** (server, `finalizeConfirmation`), _before any TYP visit_. The master fires at **TYP render** (mark-first) via the **browser push**. These are **incompatible as-is**: a browser push gated on `conversion_fired_at` would **never fire** (already set at confirm), and `getThankYou` currently returns the `conversion` payload on **every** visit with no once-guard → the client pixel would **double-fire** (violating §8.1 item 5). **Documented fix:** keep the server CAPI at confirm and add a **separate `conversion_pushed_at` guard** (new migration) so the TYP push fires exactly once, independent of `conversion_fired_at`.
 - The `ON_HOLD → CONFIRMED` transition and the `conversionFiredAt` mark are now **atomic guarded `updateMany`s** so exactly one caller (webhook vs settle-on-return) emits emails and fires the conversion.
 
 #### C.6.6 Affiliate commission (funded out of commission)
@@ -2545,7 +2641,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Formula: `cancelDeadline = tour start − cancellation_hours`.**
 - Computed in **tour-local time**, displayed with **"(local time)"**. Deadlines render in the tour-local timezone per E.1 (`Destination.timezone`, an IANA string, **drives every "(local time)" computation**).
 - **The deadline is computed, never stored on the booking** (Appendix E.8). **Do NOT add a column.**
-- Implemented: *"Deadline computed = tour start - `cancellationHours`, never stored"* — verified live (start `2026-07-24T13:30` − 48h = `2026-07-22T13:30`).
+- Implemented: _"Deadline computed = tour start - `cancellationHours`, never stored"_ — verified live (start `2026-07-24T13:30` − 48h = `2026-07-22T13:30`).
 
 #### C.7.3 The five render locations (from ONE backend lookup per page)
 
@@ -2566,19 +2662,19 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 #### C.7.5 The tokenized C1 cancellation flow (master §6.4)
 
-- **No raw-click cancellation.** The confirmation email's **"Cancel booking"** button opens a **tokenized confirmation page** on island.tours — **never an immediate cancel**. *Clicking the link never cancels.*
+- **No raw-click cancellation.** The confirmation email's **"Cancel booking"** button opens a **tokenized confirmation page** on island.tours — **never an immediate cancel**. _Clicking the link never cancels._
 - Pipeline:
-  1. Confirmation email **"Cancel booking"** button
-  2. → **Tokenized confirmation page**: `"Cancel {tour}, {date}? Refund ${deposit}"` — **the refund line renders only when the amount is above zero** (C23)
-  3. → submit → **manual request form (modal)** → **admin email**
-  4. → **admin marks `cancelled` in the DB**
-  5. → **notifications to BOTH traveler and operator**
+    1. Confirmation email **"Cancel booking"** button
+    2. → **Tokenized confirmation page**: `"Cancel {tour}, {date}? Refund ${deposit}"` — **the refund line renders only when the amount is above zero** (C23)
+    3. → submit → **manual request form (modal)** → **admin email**
+    4. → **admin marks `cancelled` in the DB**
+    5. → **notifications to BOTH traveler and operator**
 - Implementation flow: traveler clicks the cancel link → tokenized confirmation page → shows tour / date / refund expectation → traveler submits the cancellation request → **stamp `utcCancellationRequestedAt`** → admin/operator workflow reviews → if allowed/forced: mark `CANCELLED` → release seats → **compute the refund from the request timestamp** → notify traveler and operator; if not allowed: keep the booking active / support resolution.
 - **The cancellation deadline is judged on the REQUEST timestamp, not the admin action** — admin latency never penalizes a traveler who requested in time.
 - **`utcCancellationRequestedAt` is stamped on the FIRST request only**; re-submits re-notify but never move it.
 - **Account fallback for lost emails:** `island.tours/bookings` — login with **email + booking reference (`display_ref`)**, **rate-limited**. **Accounts are auto-created at booking** (B.34 supersedes the earlier "No account area in v1").
 - **The TYP URL rides on the separate unguessable `public_ref` UUID**; the **email-plus-reference pair is the credential** for an account holding invoices and PII.
-- **As built:** locale-less **`/cancel/{publicRef}`** (proxy rewrite, noindex), *"Cancel {tour}, {date}?"* + a green **"Refund {amount}" chip only when something was paid to Island Tours** (C23) + after-window locked copy with **no request button**; `POST /bookings/typ/:publicRef/cancellation-request` (`@Public`, resend-grade throttle, optional **500-char** reason) stamps the timestamp and emails **admin + traveller ack + operator notice**. Admin email target is **`ADMIN_EMAIL`** — **503 if unconfigured**, because *"a silently dropped refund request is the worst outcome"*; mail failure **throws**.
+- **As built:** locale-less **`/cancel/{publicRef}`** (proxy rewrite, noindex), _"Cancel {tour}, {date}?"_ + a green **"Refund {amount}" chip only when something was paid to Island Tours** (C23) + after-window locked copy with **no request button**; `POST /bookings/typ/:publicRef/cancellation-request` (`@Public`, resend-grade throttle, optional **500-char** reason) stamps the timestamp and emails **admin + traveller ack + operator notice**. Admin email target is **`ADMIN_EMAIL`** — **503 if unconfigured**, because _"a silently dropped refund request is the worst outcome"_; mail failure **throws**.
 - **Repeat requests refused server-side:** `submitCancellationRequest` enforces `cancellationEligibility` — the **same predicate the read paths advertise** — so **`ALREADY_REQUESTED` / `NOT_CONFIRMED` / `DEPARTED` all 409** with traveller-facing copy. (Previously re-submits waved through as "idempotent" while re-sending **three** emails each time — one booking could spam three mailboxes on a loop.)
 - **Owner-only cancellation (2026-07-19):** `cancellation-request` **401s without an owning traveler session**; the `/cancel` page deep-returns through `/bookings?returnTo=`. The bare `publicRef` TYP link stays permanently valid but renders **MASKED** (email/phone/last-name masked; pickup address + card withheld; `verified:false`) with a 7-locale "verify it's you" card. Lookup has **per-credential caps: 5/email + 10/reference per 15 min**.
 
@@ -2588,18 +2684,18 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Submitting sends a **cancellation request to the Island Tours admin by email**; the **admin processes the refund and confirms by email**.
 - Layout: **430px** max-width white card, `border-radius:16px`, `box-shadow:0 26px 70px -20px rgba(0,0,0,.55)`, padding `24px 22px`, Plus Jakarta Sans, ink `#1F2937`.
 - Content in order:
-  1. Title: **"Are you sure you want to cancel?"** — 18px weight 800, `letter-spacing:-.01em`.
-  2. Context line: **"{tourName} · {date}"** — 13px `#9aa3b2`.
-  3. Reassurance: **"Full refund, no questions asked. We'll email you to confirm."** — 13.5px `#6B7280`.
-  4. **Optional free-text textarea**, 3 rows, placeholder **"Optional. Anything you'd like us to know?"**, `1.5px solid #D1D5DB`, `border-radius:10px`, `resize:vertical`. **Not required.**
-  5. Two buttons in a wrapping flex row, 10px gap: primary dark `#1F2937` white text weight 700 radius 10 padding `11px 18px` — **"Yes, cancel booking"**; secondary transparent `1.5px solid #D1D5DB` text `#374151` — **"Keep my booking"**.
+    1. Title: **"Are you sure you want to cancel?"** — 18px weight 800, `letter-spacing:-.01em`.
+    2. Context line: **"{tourName} · {date}"** — 13px `#9aa3b2`.
+    3. Reassurance: **"Full refund, no questions asked. We'll email you to confirm."** — 13.5px `#6B7280`.
+    4. **Optional free-text textarea**, 3 rows, placeholder **"Optional. Anything you'd like us to know?"**, `1.5px solid #D1D5DB`, `border-radius:10px`, `resize:vertical`. **Not required.**
+    5. Two buttons in a wrapping flex row, 10px gap: primary dark `#1F2937` white text weight 700 radius 10 padding `11px 18px` — **"Yes, cancel booking"**; secondary transparent `1.5px solid #D1D5DB` text `#374151` — **"Keep my booking"**.
 - **Ordering rule:** destructive action first, "Keep my booking" as the outline escape — **as drawn**.
 
 #### C.7.7 Per-payment-model cancellation confirmation copy (locked, master §6.4 / C23 / B.87)
 
-- **Deposit models (locked):** *"Your {X}% deposit is on its way back from us, within 3 to 5 business days, to your original payment method. If you've already paid the balance, the tour operator refunds that part. Don't see your balance refund within {N} days? Message us and we'll chase it."*
-- **`paid_in_full` (locked):** opens with *"Your payment is on its way back from us, within 3 to 5 business days, to your original payment method."*
-- **`operator_full` (locked):** carries **no refund line** and reads *"Nothing was paid to Island Tours. Already paid the operator? Then the operator refunds you directly."*
+- **Deposit models (locked):** _"Your {X}% deposit is on its way back from us, within 3 to 5 business days, to your original payment method. If you've already paid the balance, the tour operator refunds that part. Don't see your balance refund within {N} days? Message us and we'll chase it."_
+- **`paid_in_full` (locked):** opens with _"Your payment is on its way back from us, within 3 to 5 business days, to your original payment method."_
+- **`operator_full` (locked):** carries **no refund line** and reads _"Nothing was paid to Island Tours. Already paid the operator? Then the operator refunds you directly."_
 - The tokenized cancel page **renders the refund amount only when above zero**.
 
 #### C.7.8 Refund rules
@@ -2615,7 +2711,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Cancellation fields on `Booking`:** `cancellationRefund` (**`FULL` / `PARTIAL` / `NONE`**), `cancelledBy` (**`CUSTOMER` / `OPERATOR` / `ADMIN` / `SYSTEM`**), `cancellationReason`, `utcCancelledAt`, `utcCancellationRequestedAt`.
 - **Cancel releases seats** and marks unit items + booking `CANCELLED` (with `cancelledBy` / reason / timestamps) **in a transaction**.
 - ⚠️ **Refund amount is category-only** (`[~]`): only a FULL/NONE verdict is returned; **no deposit-only vs full-amount computation per model, no partial**, and **no actual Stripe refund is executed**.
-- **Cancellation-confirmed emails (EXECUTED 2026-07-20):** `cancel()` previously sent **nothing**, so the request-ack's promise (*"We'll email you to confirm once it's done"*) and the operator's (*"you'll be notified when it is final"*) were both silently broken — a processed request reached the traveller as silence. `sendCancellationConfirmedNotices` now sends both, with **refund-verdict-aware copy** (FULL names the amount and the **5-10 day** card timing; NONE explains the window). **Best-effort** (seats are already released, so a dead mailbox must never surface as a failed cancellation), and **skipped entirely for `heldOnly` releases** — an abandoned checkout hold is inventory housekeeping, not news.
+- **Cancellation-confirmed emails (EXECUTED 2026-07-20):** `cancel()` previously sent **nothing**, so the request-ack's promise (_"We'll email you to confirm once it's done"_) and the operator's (_"you'll be notified when it is final"_) were both silently broken — a processed request reached the traveller as silence. `sendCancellationConfirmedNotices` now sends both, with **refund-verdict-aware copy** (FULL names the amount and the **5-10 day** card timing; NONE explains the window). **Best-effort** (seats are already released, so a dead mailbox must never surface as a failed cancellation), and **skipped entirely for `heldOnly` releases** — an abandoned checkout hold is inventory housekeeping, not news.
 
 #### C.7.9 Manual-forfeit and operator non-payment rules (master §15, §6.2, B.84)
 
@@ -2629,10 +2725,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 #### C.7.10 Dashboard cancellation-request queue
 
-- **`/dashboard/cancellation-requests`** — the bookings table in **queue mode** (`cancellationRequested=true`, **OLDEST request first**) with **Requested / Free-window / Refund-due** columns. This is master §6.4's "admin marks cancelled" done properly (the master literally says *"admin marks cancelled in Supabase"*; the queue replaces raw DB edits). **Real refund money movement stays CP6.**
+- **`/dashboard/cancellation-requests`** — the bookings table in **queue mode** (`cancellationRequested=true`, **OLDEST request first**) with **Requested / Free-window / Refund-due** columns. This is master §6.4's "admin marks cancelled" done properly (the master literally says _"admin marks cancelled in Supabase"_; the queue replaces raw DB edits). **Real refund money movement stays CP6.**
 - `BookingListItemDto` adds `requestedInFreeWindow`, **judged at the REQUEST instant per C23**.
 - **UPDATED 2026-07-20:** the queue now defaults to **OUTSTANDING work**. It previously filtered only on `cancellationRequested=true`, which never excluded processed rows, so the queue grew forever and (sorting oldest-first) **buried requests still needing attention**. A **Pending / Processed / All requests** control now sits where the status filter is suppressed in queue mode, defaulting to **Pending → `status=CONFIRMED`**. Frontend-only, via the existing status param — a filter default rather than a hard exclusion, so history stays reachable.
-- ⚠️ **KNOWN LOOSENESS:** *"Processed reads as cancellation history, because `cancel()` stamps `utcCancellationRequestedAt` on every cancellation — so admin-initiated cancels with no traveller request appear there too. Pending is exact; tightening Processed would change refund-instant semantics, so it was left alone."*
+- ⚠️ **KNOWN LOOSENESS:** _"Processed reads as cancellation history, because `cancel()` stamps `utcCancellationRequestedAt` on every cancellation — so admin-initiated cancels with no traveller request appear there too. Pending is exact; tightening Processed would change refund-instant semantics, so it was left alone."_
 - The **nav badge had the same bug** and is fixed with it: its comment said "awaiting admin review" but the query never filtered status, so it counted **every cancellation ever and never decremented** (it read 3 against a 1-row Pending queue). It now pins `status=CONFIRMED`, **as does the hover-prefetch key — which must match the list view's mount-time params exactly or the warmed cache is dead.**
 
 ---
@@ -2645,62 +2741,62 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - Resolves the two "open settlement rails" flagged in the master (C23): **operator payout on `paid_in_full`** (platform holds 100%) and **commission collection on `operator_full`** (platform holds nothing).
 - **Key reframe:** the four models are **one target with three deviations**. The platform's goal on every booking is to **end up holding exactly its `commission`**.
-  - **Deposit models** — collected `deposit` (≈ commission by design) vs the commission target: roughly equal → **settlement needed: none (self-settling)**.
-  - **`paid_in_full`** — collected 100% → **over-collects** → pay the operator back the net.
-  - **`operator_full`** — collected 0% → **under-collects** → collect commission from the operator.
+    - **Deposit models** — collected `deposit` (≈ commission by design) vs the commission target: roughly equal → **settlement needed: none (self-settling)**.
+    - **`paid_in_full`** — collected 100% → **over-collects** → pay the operator back the net.
+    - **`operator_full`** — collected 0% → **under-collects** → collect commission from the operator.
 - The deposit is deliberately sized near the commission rate — `deposit_pct` steps **20 / 22.5 / 25 / 27.5 / 30** line up with the tier commission rates — so IT keeps its deposit as its cut and the operator keeps the balance. **No transfer needed.**
 - The two open rails are the two classic marketplace money-flow problems: `paid_in_full` = **the payout problem**; `operator_full` = **the commission-collection problem**.
-- **Industry benchmark:** Viator (Merchant API) / GetYourGuide / Klook = merchant of record (= `paid_in_full`); Viator remits **monthly, ~21 business days after the travel month** (weekly PayPal option); GYG **monthly default, bi-weekly for +2% commission**. Airbnb = merchant of record + fast payout (**host paid ~24h after check-in**). Booking.com (legacy) = pay-at-property (= `operator_full`), **invoices the hotel monthly** and collects by direct debit / bank transfer / virtual card. **Lesson: pay-at-property is real and viable but is the one everyone is trying to get away from** (leakage, disputes, reconciliation cost) — *"Nobody builds toward operator-collects on purpose."*
-- **The standard tool: Stripe Connect** — destination charges + `application_fee_amount`. **Hard truth about `operator_full`:** *"you cannot automatically collect commission on money that never touches the platform."* Only two honest closures: **(1) route the money through the platform** (which collapses it into `paid_in_full`), or **(2) keep it truly off-platform and invoice for commission** (monthly self-billed invoice + SEPA direct-debit mandate or card-on-file, with **listing suspension on non-payment**). *"There is no third option; this is a product decision, not an engineering one."*
+- **Industry benchmark:** Viator (Merchant API) / GetYourGuide / Klook = merchant of record (= `paid_in_full`); Viator remits **monthly, ~21 business days after the travel month** (weekly PayPal option); GYG **monthly default, bi-weekly for +2% commission**. Airbnb = merchant of record + fast payout (**host paid ~24h after check-in**). Booking.com (legacy) = pay-at-property (= `operator_full`), **invoices the hotel monthly** and collects by direct debit / bank transfer / virtual card. **Lesson: pay-at-property is real and viable but is the one everyone is trying to get away from** (leakage, disputes, reconciliation cost) — _"Nobody builds toward operator-collects on purpose."_
+- **The standard tool: Stripe Connect** — destination charges + `application_fee_amount`. **Hard truth about `operator_full`:** _"you cannot automatically collect commission on money that never touches the platform."_ Only two honest closures: **(1) route the money through the platform** (which collapses it into `paid_in_full`), or **(2) keep it truly off-platform and invoice for commission** (monthly self-billed invoice + SEPA direct-debit mandate or card-on-file, with **listing suspension on non-payment**). _"There is no third option; this is a product decision, not an engineering one."_
 
 #### C.8.2 ⚠️ THE LOCKED FOUNDER DECISION (2026-07-15) — supersedes the two OPEN flags for v1 scope
 
 > **"V1 ships with three payment models. `operator_full` is dropped from v1."**
 
-| Model | v1 status | Checkout leg | Settlement |
-|---|---|---|---|
-| `operator_link` | **Live** | `deposit` to Island Tours via Stripe/Mollie | **Self-settling** — `deposit_pct == commission`; IT keeps the deposit as commission; the operator collects the balance directly (secure payment link). **No transfer.** |
-| `on_arrival` | **Live** | `deposit` to Island Tours via Stripe/Mollie | **Self-settling**, same as above; the operator collects the balance in person. |
-| `paid_in_full` | **Live** | `total` (100%) to Island Tours via Stripe/Mollie | **Scheduled payout (clawback-safe)** — IT retains its `commission`; the remainder (`total - commission`) is paid out to the operator **on a schedule after the cancellation window closes**. |
-| `operator_full` | **REMOVED IN v1** | none | Returns in **v2** via **Stripe Connect or direct bank transfer**. |
+| Model           | v1 status         | Checkout leg                                     | Settlement                                                                                                                                                                                   |
+| --------------- | ----------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operator_link` | **Live**          | `deposit` to Island Tours via Stripe/Mollie      | **Self-settling** — `deposit_pct == commission`; IT keeps the deposit as commission; the operator collects the balance directly (secure payment link). **No transfer.**                      |
+| `on_arrival`    | **Live**          | `deposit` to Island Tours via Stripe/Mollie      | **Self-settling**, same as above; the operator collects the balance in person.                                                                                                               |
+| `paid_in_full`  | **Live**          | `total` (100%) to Island Tours via Stripe/Mollie | **Scheduled payout (clawback-safe)** — IT retains its `commission`; the remainder (`total - commission`) is paid out to the operator **on a schedule after the cancellation window closes**. |
+| `operator_full` | **REMOVED IN v1** | none                                             | Returns in **v2** via **Stripe Connect or direct bank transfer**.                                                                                                                            |
 
 - **Decision 1 — Deposit models: commission equals deposit.** Treat **`commission == deposit_pct`**. IT collects the deposit, which **IS** its commission take; the rest of the booking amount is received by the operator directly. **No cross-transfer and no settlement action required.** The `settlements` row exists **for record-keeping only** (`net_position` ~ 0).
-  - **Engineering note:** because `commission == deposit_pct` is locked for these models, **keep the two values consistent per tier** so the self-settling property holds. **If a tour ever has `deposit_pct != commission`, a residual appears and MUST be reconciled through the ledger.**
-  - ⚠️ **CONFLICT:** this directly contradicts guide §2.3's *"Do not assume `deposit == commission` in code."*
-- **Decision 2 — `paid_in_full`:** originally documented as *"platform commission retained, remainder paid out to the operator in a single booking flow but in a queue so it does not await the traveler's booking"* — **this phrasing is deprecated.**
-  - **Engineering note (carried to phase 2):** an **immediate in-flow payout is NOT clawback-safe** against cancellations inside the free-cancellation window. If a traveler cancels and is refunded after the operator has been paid, IT must recover the net from the operator. **A scheduled payout released after the cancellation window closes (the Viator/Airbnb pattern) removes this risk.** A true in-flow split generally requires Stripe Connect (destination charge with `transfer_data`); without Connect, the "single flow payout" is a manual/near-real-time transfer recorded against the ledger row.
-  - **NOTE (authoritative, verbatim):** **"AS PER ENGINEER NOTE WE WILL IMPLEMENT SCHEDULED PAYOUT RELEASE AFTER THE CANCELLATION WINDOW."**
+    - **Engineering note:** because `commission == deposit_pct` is locked for these models, **keep the two values consistent per tier** so the self-settling property holds. **If a tour ever has `deposit_pct != commission`, a residual appears and MUST be reconciled through the ledger.**
+    - ⚠️ **CONFLICT:** this directly contradicts guide §2.3's _"Do not assume `deposit == commission` in code."_
+- **Decision 2 — `paid_in_full`:** originally documented as _"platform commission retained, remainder paid out to the operator in a single booking flow but in a queue so it does not await the traveler's booking"_ — **this phrasing is deprecated.**
+    - **Engineering note (carried to phase 2):** an **immediate in-flow payout is NOT clawback-safe** against cancellations inside the free-cancellation window. If a traveler cancels and is refunded after the operator has been paid, IT must recover the net from the operator. **A scheduled payout released after the cancellation window closes (the Viator/Airbnb pattern) removes this risk.** A true in-flow split generally requires Stripe Connect (destination charge with `transfer_data`); without Connect, the "single flow payout" is a manual/near-real-time transfer recorded against the ledger row.
+    - **NOTE (authoritative, verbatim):** **"AS PER ENGINEER NOTE WE WILL IMPLEMENT SCHEDULED PAYOUT RELEASE AFTER THE CANCELLATION WINDOW."**
 - **Decision 3 — `operator_full`: deferred to v2.** Not offered in v1. Reintroduced in v2 using **Stripe Connect or direct bank transfer**, at which point the commission-collection rail (invoice + collection, or a Connect application fee) is specified.
 
 #### C.8.3 The `Settlement` model (build in v1, extend later)
 
 - **Every booking gets a settlement record from day one, even when no transfer happens.** It is the extension point for scheduled payouts, Connect, and `operator_full` in v2 **without a data-model rewrite**.
 - `model Settlement` (`@@map("settlements")`):
-  - `id String @id @default(uuid())`
-  - `bookingId String @unique`
-  - `booking Booking @relation(fields: [bookingId], references: [id])`
-  - `operatorId String`
-  - `paymentModel PaymentModel`
-  - **Core ledger (locked minimum):**
-    - `amountCollected Decimal @db.Decimal(10, 2)` — what IT collected at checkout (**EUR**)
-    - `commissionOwed Decimal @db.Decimal(10, 2)` — IT's commission (**EUR**)
-    - `netPosition Decimal @db.Decimal(10, 2)` — **`+` = IT owes the operator; `-` = the operator owes IT**
-  - **Extension hooks (nullable in v1, used by v2 payouts/Connect):**
-    - `currency Currency @default(EUR)`
-    - `operatorPayout Decimal? @db.Decimal(10, 2)` — amount paid out to the operator (`paid_in_full`)
-    - `status SettlementStatus @default(RECORDED)` — enum **`RECORDED | PAID_OUT | INVOICED | SETTLED`**
-    - `settledAt DateTime?`
-    - `externalRef String?` — Stripe transfer id / payout id / invoice id (v2)
-  - `createdAt DateTime @default(now())`, `updatedAt DateTime @updatedAt`
-  - `@@index([operatorId, status])`, `@@index([status])`
+    - `id String @id @default(uuid())`
+    - `bookingId String @unique`
+    - `booking Booking @relation(fields: [bookingId], references: [id])`
+    - `operatorId String`
+    - `paymentModel PaymentModel`
+    - **Core ledger (locked minimum):**
+        - `amountCollected Decimal @db.Decimal(10, 2)` — what IT collected at checkout (**EUR**)
+        - `commissionOwed Decimal @db.Decimal(10, 2)` — IT's commission (**EUR**)
+        - `netPosition Decimal @db.Decimal(10, 2)` — **`+` = IT owes the operator; `-` = the operator owes IT**
+    - **Extension hooks (nullable in v1, used by v2 payouts/Connect):**
+        - `currency Currency @default(EUR)`
+        - `operatorPayout Decimal? @db.Decimal(10, 2)` — amount paid out to the operator (`paid_in_full`)
+        - `status SettlementStatus @default(RECORDED)` — enum **`RECORDED | PAID_OUT | INVOICED | SETTLED`**
+        - `settledAt DateTime?`
+        - `externalRef String?` — Stripe transfer id / payout id / invoice id (v2)
+    - `createdAt DateTime @default(now())`, `updatedAt DateTime @updatedAt`
+    - `@@index([operatorId, status])`, `@@index([status])`
 
 #### C.8.4 Row semantics per v1 model
 
-| Model | `amountCollected` | `commissionOwed` | `netPosition` | Action |
-|---|---|---|---|---|
-| `operator_link` | `deposit` | `commission` (= deposit) | **~ 0** | **Record only** |
-| `on_arrival` | `deposit` | `commission` (= deposit) | **~ 0** | **Record only** |
-| `paid_in_full` | `total` | `commission` | **`+ (total - commission)`** | **Scheduled payout after the cancellation window**; `status = RECORDED` until the window closes, then **`PAID_OUT`** (set `operatorPayout`) |
+| Model           | `amountCollected` | `commissionOwed`         | `netPosition`                | Action                                                                                                                                      |
+| --------------- | ----------------- | ------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operator_link` | `deposit`         | `commission` (= deposit) | **~ 0**                      | **Record only**                                                                                                                             |
+| `on_arrival`    | `deposit`         | `commission` (= deposit) | **~ 0**                      | **Record only**                                                                                                                             |
+| `paid_in_full`  | `total`           | `commission`             | **`+ (total - commission)`** | **Scheduled payout after the cancellation window**; `status = RECORDED` until the window closes, then **`PAID_OUT`** (set `operatorPayout`) |
 
 #### C.8.5 Settlement invariants
 
@@ -2713,15 +2809,15 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - The `paid_in_full` payout is a **BullMQ delayed job** — `settlement.paid-in-full-payout`, triggered by `booking.confirmed` **AND** `paid_in_full`, **released after the cancellation window**, idempotency key **`bookingId:payout`**.
 - **Compute the delay from tour-local time** (payout: after the cancellation window closes) and **re-check state in the consumer**, because the booking may have been cancelled or refunded meanwhile.
-- Because the payout is delayed until after the cancellation window, the edge case *"cancellation refunded after the operator was paid"* **cannot happen for `paid_in_full`**.
-- Aligns with the master's *"revenue is recognized on tour completion"* and with the affiliate on-hold-then-approve lifecycle.
+- Because the payout is delayed until after the cancellation window, the edge case _"cancellation refunded after the operator was paid"_ **cannot happen for `paid_in_full`**.
+- Aligns with the master's _"revenue is recognized on tour completion"_ and with the affiliate on-hold-then-approve lifecycle.
 - **v1 runs it manually/batched against the ledger; v2 automates it** via a Stripe Connect destination charge (`application_fee_amount = commission`) with the transfer released on the same post-window schedule.
 
 #### C.8.7 Phase 1 vs Phase 2 (recommendation)
 
 - **Phase 1 (now, no Connect) — build the settlement ledger, execute manually:** add the `settlements` ledger (every model writes a row, even deposit models where the delta is ~0); `paid_in_full` → scheduled **manual net payout** per operator per cycle, released after the cancellation window closes / tour completion; `operator_full` → **monthly commission invoice** collected via bank transfer / direct debit, requiring a payment method or mandate on file at operator onboarding, with **listing suspension on non-payment** (reusing the manual admin-confirm pattern from the forfeit flow). **"The ledger is the important part: build now so Phase 2 changes only the executor, not the data model."**
 - **Phase 2 (Stripe Connect Express):** onboard operators as **Express connected accounts**; `paid_in_full` + deposit models → **destination charges with `application_fee_amount = commission`** (automatic, reconciled, machine-readable; the ledger populated from Stripe events instead of manual entry); `operator_full` → force the product decision (route through Connect, or keep invoice-only and accept it will never be machine-readable). **Machine-readable balances:** routing the operator balance through Connect makes the currently off-platform legs verifiable, closing the B.85 gap.
-- **The decision behind both rails:** *"is Island Tours the merchant of record?"* Yes (via Connect) → `paid_in_full` and deposit balances **solve themselves and become trackable**.
+- **The decision behind both rails:** _"is Island Tours the merchant of record?"_ Yes (via Connect) → `paid_in_full` and deposit balances **solve themselves and become trackable**.
 
 #### C.8.8 Settlement build status
 
@@ -2762,46 +2858,46 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Derives `USD <-> EUR` from **`FX_USD_TO_EUR` (default `0.92`)** with **no network call**, so local/dev/tests convert without any account (`EUR->USD` is its inverse).
 - **NOT production-grade.** Guide §20.1 mandates a real provider and **"fail closed"** for production checkout.
 - **Recommended production provider: Stripe FX Quotes** — locks a quote you can attach to the PaymentIntent, so **the displayed converted amount and the charged payment share one rate**. Use when `booking.currency` differs from `Tour.defaultCurrency`; request a locked quote for the expected checkout lifetime (**`five_minutes` or `hour`**); snapshot the `fx_quote` id, rate, provider timestamp and expiry on the booking quote; pass the `fx_quote` id into the PaymentIntent; **if expired/invalid, discard and ask the frontend to refresh prices.**
-- **Open Exchange Rates** = good display/cache fallback; **ECB euro reference rates** = reference/audit source. *"Do not use a generic rates API as the sole checkout source if Stripe FX Quotes is available."*
+- **Open Exchange Rates** = good display/cache fallback; **ECB euro reference rates** = reference/audit source. _"Do not use a generic rates API as the sole checkout source if Stripe FX Quotes is available."_
 - Provider requirements: supports USD+EUR · timestamped rates · documented update frequency · server-side API usage · clear failure/rate-limit behavior · commercial use allowed.
 - **What is still needed for true production:** (1) a real `FxProvider` implementation (Stripe FX Quotes) + rebind in `FxModule`; (2) then production **genuinely fails closed on cross-currency** when the provider is down, instead of leaning on the static default.
 
 #### C.9.5 The two rate paths (deliberately different)
 
-| Method | Used by | Freshness | On failure |
-|---|---|---|---|
-| **`getRate()` / `convert()`** | **booking quote + reserve** (authoritative money) | **Fresh only; lazy-refreshes once if stale** | **FAILS CLOSED → 503** (`Payments temporarily unavailable`) |
-| **`getDisplayRate()` / `buildMoney()`** | **public cards/detail** (display only) | **Fresh preferred, stale allowed within a window** | **Falls back to source currency (rate `1`), NEVER blocks the page** |
-| **`refreshRates()`** | the **scheduler (M4)** + the lazy on-demand path | n/a | **Logs + skips a non-positive rate** |
+| Method                                  | Used by                                           | Freshness                                          | On failure                                                          |
+| --------------------------------------- | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| **`getRate()` / `convert()`**           | **booking quote + reserve** (authoritative money) | **Fresh only; lazy-refreshes once if stale**       | **FAILS CLOSED → 503** (`Payments temporarily unavailable`)         |
+| **`getDisplayRate()` / `buildMoney()`** | **public cards/detail** (display only)            | **Fresh preferred, stale allowed within a window** | **Falls back to source currency (rate `1`), NEVER blocks the page** |
+| **`refreshRates()`**                    | the **scheduler (M4)** + the lazy on-demand path  | n/a                                                | **Logs + skips a non-positive rate**                                |
 
 - **Same-currency short-circuits to rate `1` with NO DB or provider call** (`identityRate`).
 - Guide freshness matrix:
 
-| Use | Freshness rule |
-|---|---|
-| Public tour cards / search | May use the last active/stale-display rate |
-| Booking quote | **Requires a fresh, non-expired rate** |
-| Payment intent | Uses the booking/quote snapshot, **never refetches** |
-| TYP / email | Uses the booking snapshot, **never refetches** |
-| Tracking | Uses the booking snapshot, **never refetches** |
+| Use                        | Freshness rule                                       |
+| -------------------------- | ---------------------------------------------------- |
+| Public tour cards / search | May use the last active/stale-display rate           |
+| Booking quote              | **Requires a fresh, non-expired rate**               |
+| Payment intent             | Uses the booking/quote snapshot, **never refetches** |
+| TYP / email                | Uses the booking snapshot, **never refetches**       |
+| Tracking                   | Uses the booking snapshot, **never refetches**       |
 
 - Rate rules: same-currency rate is always `1` with no provider call · cross-currency must come from `fx_rates`/equivalent cache · `getRate()` returns only a **non-expired active rate** · a stale rate is allowed **only within the configured stale window** · **no acceptable rate → the quote/booking fails with `503 Payments temporarily unavailable`** · use `Decimal`, never JS float.
 
 #### C.9.6 Booking-time snapshot fields
 
 - `quote / reserve` → **`resolvePricing()`** (`bookings.service.ts`):
-  - `getRate(tourCurrency -> bookingCurrency)` → **`sourceFxRateToBooking`**
-  - `getRate(bookingCurrency -> EUR)` → **`fxRateToEur`**
-  - `tiers.effectiveCommissionRate(tourId, now)` (spotlight-aware)
-  - → **`computeBookingPricing(...rates, commissionTier)`** (pure, `booking-pricing.util.ts`) → booking-currency totals + `source*` snapshot + EUR commission
+    - `getRate(tourCurrency -> bookingCurrency)` → **`sourceFxRateToBooking`**
+    - `getRate(bookingCurrency -> EUR)` → **`fxRateToEur`**
+    - `tiers.effectiveCommissionRate(tourId, now)` (spotlight-aware)
+    - → **`computeBookingPricing(...rates, commissionTier)`** (pure, `booking-pricing.util.ts`) → booking-currency totals + `source*` snapshot + EUR commission
 - **`booking.create` snapshots:**
-  - `currency` (= `bookingCurrency`, the **charged** currency)
-  - `totalRetail` / `depositAmount` / `balanceAmount` (booking currency)
-  - `sourceCurrency`, `sourceTotalRetail`, `sourceDepositAmount`, `sourceBalanceAmount`
-  - `sourceFxRateToBooking` (tourCurrency → bookingCurrency)
-  - `fxRateToEur`, `totalEur` (bookingCurrency → EUR)
-  - `commissionRate`, `commissionAmount` (**EUR**, project rule #22)
-  - **FX audit provenance:** `sourceFxProvider` / `sourceFxProviderAsOf` / `eurFxProvider` / `eurFxProviderAsOf`
+    - `currency` (= `bookingCurrency`, the **charged** currency)
+    - `totalRetail` / `depositAmount` / `balanceAmount` (booking currency)
+    - `sourceCurrency`, `sourceTotalRetail`, `sourceDepositAmount`, `sourceBalanceAmount`
+    - `sourceFxRateToBooking` (tourCurrency → bookingCurrency)
+    - `fxRateToEur`, `totalEur` (bookingCurrency → EUR)
+    - `commissionRate`, `commissionAmount` (**EUR**, project rule #22)
+    - **FX audit provenance:** `sourceFxProvider` / `sourceFxProviderAsOf` / `eurFxProvider` / `eurFxProviderAsOf`
 - **payment / TYP / email / tracking → READ the snapshot, NEVER refetch FX.**
 - Migration: `20260715221643_multi_currency_fx_rates_and_source_snapshots`. Guide-specified additive columns: `sourceCurrency Currency?`, `sourceTotalRetail Decimal?(10,2)`, `sourceDepositAmount Decimal?(10,2)`, `sourceBalanceAmount Decimal?(10,2)`, `sourceFxRateToBooking Decimal?(12,6)` — existing bookings get `sourceCurrency = currency`, source totals = charged totals, `sourceFxRateToBooking = 1`; **keep nullable during migration**.
 
@@ -2811,19 +2907,19 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **`bookingCurrency = dto.currency ?? sourceCurrency`** (shopper choice; **default = the tour currency**).
 - The traveler is charged in `bookingCurrency`; **the PaymentIntent uses `Booking.currency` — never the tour currency.**
 
-| Term | Meaning |
-|---|---|
-| `tourCurrency` | Currency operators entered prices in (`Tour.defaultCurrency`) |
-| `shopperCurrency` | Currency the visitor selected (`NEXT_CURRENCY`, default per locale) |
-| `booking.currency` | Currency actually snapshotted/charged; should equal `shopperCurrency` |
-| `sourceCurrency` / `sourceTotalRetail` / `sourceFxRateToBooking` | The tour-currency audit snapshot |
-| `fxRateToEur` | `booking.currency` → EUR, snapshotted for tracking/commission |
-| `sourceFxRate` | `tourCurrency` → `shopperCurrency` |
-| `totalEur` | Full total normalized to EUR (`booking_total_eur`) |
+| Term                                                             | Meaning                                                               |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `tourCurrency`                                                   | Currency operators entered prices in (`Tour.defaultCurrency`)         |
+| `shopperCurrency`                                                | Currency the visitor selected (`NEXT_CURRENCY`, default per locale)   |
+| `booking.currency`                                               | Currency actually snapshotted/charged; should equal `shopperCurrency` |
+| `sourceCurrency` / `sourceTotalRetail` / `sourceFxRateToBooking` | The tour-currency audit snapshot                                      |
+| `fxRateToEur`                                                    | `booking.currency` → EUR, snapshotted for tracking/commission         |
+| `sourceFxRate`                                                   | `tourCurrency` → `shopperCurrency`                                    |
+| `totalEur`                                                       | Full total normalized to EUR (`booking_total_eur`)                    |
 
 - `Tour.defaultCurrency Currency @default(USD)` is the **source of truth** for all tour-authored prices: `Tour.basePrice`, `Tour.priceFrom`, `TourAgeBand.price` / `.priceOriginal` / `.priceNet`, `TourAddOn.price`. **No per-age-band or per-add-on currency field — a tour is single-currency.**
 - **Rounding policy (guide 20.5):** each **participant seat and add-on line** is converted to booking currency and **rounded to 2dp**, then summed for `totalRetail`. `source*` figures preserve the original tour-currency quote. **Deposit/balance are computed in each currency independently.** Computation order: (1) source totals from tour prices; (2) source deposit/balance; (3) convert lines/totals to bookingCurrency; (4) round consistently at line boundaries and final totals; (5) `fxRateToEur` from bookingCurrency; (6) `totalEur`; (7) `commissionAmount = totalEur * commissionRate`.
-- **Display rule:** *"Frontend must not simply replace the symbol. It must display a converted amount."*
+- **Display rule:** _"Frontend must not simply replace the symbol. It must display a converted amount."_
 - **TYP + confirmation email render `Booking.currency` / `totalRetail` / `depositAmount` / `balanceAmount` — NEVER `Tour.defaultCurrency`** on booking transactional surfaces. Source values appear only in internal dashboards. The TYP renders the **historical booking currency, not the cookie**.
 
 #### C.9.8 The quote endpoint
@@ -2833,7 +2929,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Output (`BookingQuoteResponseDto`):** `quoteId`, `expiresAt`, `tourCurrency`, `currency`, `sourceFxRateToBooking`, `fxRateToEur`, `sourceTotalRetail`, `totalRetail`, `sourceDepositAmount`, `depositAmount`, `sourceBalanceAmount`, `balanceAmount`, `commissionRate`, `commissionAmount`, `paymentModel`, `lines`.
 - **Quote expiry: 10–15 minutes** (implemented at **15 min**). Redis if available, else a DB table `model BookingQuote { id, payload Json, expiresAt, createdAt }`.
 - **The quote must include a hash of the request inputs so it cannot be reused for different items.** ⚠️ **Still deferred:** DB-backed quote + input-hash revalidation, and `couponCode` discount preview.
-- `ReserveBookingDto` accepts **`currency`** (drives the charged currency, default = tour currency) and **`quoteId`** (accepted for forward-compat; **reserve recomputes server-side**). *"If you skip `quoteId`, `POST /bookings` must recompute the quote server-side and ignore frontend totals."*
+- `ReserveBookingDto` accepts **`currency`** (drives the charged currency, default = tour currency) and **`quoteId`** (accepted for forward-compat; **reserve recomputes server-side**). _"If you skip `quoteId`, `POST /bookings` must recompute the quote server-side and ignore frontend totals."_
 
 #### C.9.9 Public display conversion (M3)
 
@@ -2850,39 +2946,39 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Startup** (`onApplicationBootstrap`): one `refreshRates()` so the first booking quote does not pay the provider round-trip and cross-currency works immediately when reachable.
 - **Interval**: registered dynamically via **`SchedulerRegistry`** every **`FX_RATE_REFRESH_MINUTES` (default 30)** — **well inside the 120-minute TTL** so a rate never expires between refreshes.
 - **Non-fatal**: a refresh that throws is **logged and swallowed** — boot and the interval never die. **Correctness is enforced per-request downstream** (the booking quote 503s, display falls back to source currency), **not by blocking the app**.
-- ⚠️ **Convention:** in-process **`@nestjs/schedule` (NO BullMQ)**, matching `NightlyJobsService` — *"FX refresh is an idempotent recompute, not a retry/concurrency queue."*
+- ⚠️ **Convention:** in-process **`@nestjs/schedule` (NO BullMQ)**, matching `NightlyJobsService` — _"FX refresh is an idempotent recompute, not a retry/concurrency queue."_
 - **`onModuleDestroy` clears the interval defensively** (tests / hot-reload leave no live timer).
 
 #### C.9.11 Environment variables
 
 - **Consumed by code today (all optional — defaults work; validated as positive numbers in `env.validate.ts` when set):**
-  - **`FX_USD_TO_EUR`** — default **`0.92`** — the static `USD->EUR` rate used by `StaticFxProvider`.
-  - **`FX_RATE_TTL_MINUTES`** — default **`120`** — how long a fetched rate stays **"fresh"** for booking quotes.
-  - **`FX_RATE_STALE_DISPLAY_HOURS`** — default **`24`** — how stale a rate may be for the **public-display fallback**.
-  - **`FX_RATE_REFRESH_MINUTES`** — default **`30`** — the `FxRefreshService` interval cadence. **Keep well below the TTL.**
-  - **Local:** nothing required — runs on defaults.
+    - **`FX_USD_TO_EUR`** — default **`0.92`** — the static `USD->EUR` rate used by `StaticFxProvider`.
+    - **`FX_RATE_TTL_MINUTES`** — default **`120`** — how long a fetched rate stays **"fresh"** for booking quotes.
+    - **`FX_RATE_STALE_DISPLAY_HOURS`** — default **`24`** — how stale a rate may be for the **public-display fallback**.
+    - **`FX_RATE_REFRESH_MINUTES`** — default **`30`** — the `FxRefreshService` interval cadence. **Keep well below the TTL.**
+    - **Local:** nothing required — runs on defaults.
 - **Production (guide-listed, NOT YET consumed):**
-  - **`FX_PROVIDER=stripe`** — selects the provider impl (**no effect yet**).
-  - **`FX_PROVIDER_API_KEY=...`** — provider credential (**no effect yet**).
-  - **⚠️ WARNING:** setting these does **nothing today** — the binding is **hardcoded to `StaticFxProvider`** in `FxModule`.
+    - **`FX_PROVIDER=stripe`** — selects the provider impl (**no effect yet**).
+    - **`FX_PROVIDER_API_KEY=...`** — provider credential (**no effect yet**).
+    - **⚠️ WARNING:** setting these does **nothing today** — the binding is **hardcoded to `StaticFxProvider`** in `FxModule`.
 - Guide-listed fetch-schedule defaults: fetch every **30 minutes** · expire after **2 hours** · stale allowed up to **24 hours for public display only** · **never stale for new booking quotes/payment intents**.
 
 #### C.9.12 Failure scenarios
 
-| Scenario | Behavior |
-|---|---|
-| **Provider down at boot** | Startup refresh is **logged + swallowed**; the app boots. Cached DB rows (if any) still serve; the interval keeps retrying. |
-| **Provider down, fresh cached rate exists** | **Use the cached rate.** |
-| **Provider down, only a stale display rate exists** | **Public display only** (source-currency fallback); **the booking quote BLOCKS.** |
-| **Provider down, no cached rate** | **Same-currency only**; a cross-currency **quote/reserve returns 503**. |
-| **Rate changes after a quote** | The existing quote **stays valid until expiry**; a new quote uses the new rate. |
-| **Rate changes after a booking** | **The booking never changes** (snapshot). |
+| Scenario                                            | Behavior                                                                                                                    |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Provider down at boot**                           | Startup refresh is **logged + swallowed**; the app boots. Cached DB rows (if any) still serve; the interval keeps retrying. |
+| **Provider down, fresh cached rate exists**         | **Use the cached rate.**                                                                                                    |
+| **Provider down, only a stale display rate exists** | **Public display only** (source-currency fallback); **the booking quote BLOCKS.**                                           |
+| **Provider down, no cached rate**                   | **Same-currency only**; a cross-currency **quote/reserve returns 503**.                                                     |
+| **Rate changes after a quote**                      | The existing quote **stays valid until expiry**; a new quote uses the new rate.                                             |
+| **Rate changes after a booking**                    | **The booking never changes** (snapshot).                                                                                   |
 
 - Startup rule (guide): try refresh → if the provider fails but valid cached rates exist, continue → if there are no cached cross-currency rates, **disable cross-currency quoting and return same-currency only**. **"Do not silently fall back to hardcoded production rates."**
 
 #### C.9.13 Known FX/currency gaps
 
-- ⚠️ **Currency-change guard missing:** `defaultCurrency` is **editable on the tour** and existing numeric price rows are **NOT auto-converted**. Must either block changing it after prices exist, require re-entry of all prices, or implement an explicit conversion workflow updating `basePrice`, `priceFrom`, age-band prices, add-on prices, and unit pricing fields **together**. **"Do not silently relabel existing USD prices as EUR."** Status: *"not verified/likely missing."*
+- ⚠️ **Currency-change guard missing:** `defaultCurrency` is **editable on the tour** and existing numeric price rows are **NOT auto-converted**. Must either block changing it after prices exist, require re-entry of all prices, or implement an explicit conversion workflow updating `basePrice`, `priceFrom`, age-band prices, add-on prices, and unit pricing fields **together**. **"Do not silently relabel existing USD prices as EUR."** Status: _"not verified/likely missing."_
 - ⚠️ **`PricingModel.UNIT` booking gap (now resolved):** `reserve()` originally built pricing only from selected `TourAgeBand` rows and did not implement the UNIT formula. **Implemented 2026-07-16** — `loadContext` selects unit fields; `computeUnitLines` prices `basePrice + surcharge`; **the surcharge is GROUP-only per D1a, flat otherwise**.
 - **OCTO serializer:** keep OCTO source pricing stable unless the OCTO endpoint explicitly accepts a requested currency; **the public shopper-currency cookie must not affect OCTO responses.**
 - **Frontend currency state:** helper `frontend/lib/currency/current.ts` (`currencyFromCookie`, `formatMoney`); the footer selector must **`router.refresh()`** after setting the cookie (`max-age=31536000; samesite=lax`), not just local state.
@@ -2892,27 +2988,27 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 ### C.10 Transactional email
 
-> **LOCKED-WIREFRAME RULE:** `island-tours-booking-confirmation-email-wireframe.html` is titled *"Island Tours · Booking Confirmation Email (locked template)"* and is declared **LOCKED — the binding source of truth for booking emails**. Booking emails must mirror the wireframe **exactly, in design and logic**; if a template deviates it is **rebuilt from the wireframe**. Operator emails reuse the same shell.
+> **LOCKED-WIREFRAME RULE:** `island-tours-booking-confirmation-email-wireframe.html` is titled _"Island Tours · Booking Confirmation Email (locked template)"_ and is declared **LOCKED — the binding source of truth for booking emails**. Booking emails must mirror the wireframe **exactly, in design and logic**; if a template deviates it is **rebuilt from the wireframe**. Operator emails reuse the same shell.
 > **The wireframe and the template are different artifacts and must not be confused:** the wireframe is the **visual mockup (zero tokens)**; `booking-confirmation-email.template.html` is the **tokenized template that renders**.
 
 #### C.10.1 Provider and deliverability
 
 - **Provider: Resend (primary)** — React Email, free tier viable at launch. **Postmark (fallback).**
-- **SPF, DKIM, DMARC on a dedicated transactional subdomain**, fully separate from the marketing stream. **Deliverability is mission-critical because the C2 mitigation lives in this email** — named as *"the real lever"* on the anti-phishing mitigation.
+- **SPF, DKIM, DMARC on a dedicated transactional subdomain**, fully separate from the marketing stream. **Deliverability is mission-critical because the C2 mitigation lives in this email** — named as _"the real lever"_ on the anti-phishing mitigation.
 - **Executed 2026-07-19:** nodemailer/SMTP removed; `mail.service.ts` sends via the **Resend SDK, env-configured only** (`RESEND_API_KEY` + `MAIL_FROM`); the `/settings/smtp` API and `smtp_configuration` table were dropped. **Postmark fallback still open.**
 
 #### C.10.2 One dynamic template
 
 - **ONE dynamic template** for all bookings, tours, and locales: merge variables, **conditional blocks**, i18n resource files. Not four separate templates.
-- *"Sample data shown; all values are merge variables"* — **every literal in the wireframe** (name, tour, operator, dates, money, phone, email) is a merge field.
+- _"Sample data shown; all values are merge variables"_ — **every literal in the wireframe** (name, tour, operator, dates, money, phone, email) is a merge field.
 - **Two render targets:** **Desktop 600px** and **Mobile single-column**. The mockup clones the identical template into both frames — **desktop and mobile are the same markup; there is no separate mobile template**. Mobile preview frame is **392px wide / 760px tall**; desktop frame is **600px max-width**.
 - **Mini-language:** `{token}` placeholders + `[IF cond]…[ELSE]…[/IF]` blocks (supporting `=`, `AND`, `OR`), plus **`[EACH list]…{item}…[/EACH]`** (added in review round 2; **an empty list is falsy for `[IF]`**). **44 tokens, 14 distinct conditions** at extraction; the built context provides **46 tokens + 3 condition-only fields**.
-  - Renderer (`mail/templates/email-template.renderer.ts`): **recursive, 2-deep nesting**; unknown tokens are left **literal**; **`findUnresolvedTokens()` is the guard**; values are **HTML-escaped**; CSS braces untouched; it **throws on an unbalanced block rather than emitting half an email**.
-  - **`[ELSEIF]` is NOT in the language** — it appears nowhere in the wireframe and nothing implements it. Use nested `[ELSE]`.
+    - Renderer (`mail/templates/email-template.renderer.ts`): **recursive, 2-deep nesting**; unknown tokens are left **literal**; **`findUnresolvedTokens()` is the guard**; values are **HTML-escaped**; CSS braces untouched; it **throws on an unbalanced block rather than emitting half an email**.
+    - **`[ELSEIF]` is NOT in the language** — it appears nowhere in the wireframe and nothing implements it. Use nested `[ELSE]`.
 
 #### C.10.3 Subject line and preheader rules
 
-- **Subject pattern: "You're booked: {tourName} on {date}"** — sample *"You're booked: Klein Curaçao Day Trip on 22 May 2026"*. The subject leads with the outcome, then the tour name, then the departure date in `D Month YYYY` form.
+- **Subject pattern: "You're booked: {tourName} on {date}"** — sample _"You're booked: Klein Curaçao Day Trip on 22 May 2026"_. The subject leads with the outcome, then the tour name, then the departure date in `D Month YYYY` form.
 - **Preheader / preview text: "Your spot is reserved. Here are your details and what happens next."**
 - **<24h variant (master §6.5, B.83):** when a booking is created **less than 24 hours before tour start**, the subject switches to **"You're booked for tomorrow: {tour}"** (or **"today"**) and **no separate reminder follows** — it doubles as the reminder for last-minute bookings.
 - **`operator_full`:** Block 1's headline becomes **"Reservation sent"**, so the **subject must branch in the same direction** for that model (headline/subject consistency).
@@ -2927,21 +3023,21 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Card chrome: white `#FFFFFF`, `border-radius:16px`, `overflow:hidden`, `1px solid #E8EAED`, `border-collapse:separate` (**required for the radius to render**).
 - Outer cell padding `0 16px` for mobile gutters.
 - **Font stack: `'Plus Jakarta Sans', Arial, sans-serif`** — **Arial is the mandatory fallback on every text node** (Gmail/Outlook will not load the webfont).
-  - ⚠️ **Email clients do NOT inherit `font-family` from `<body>` into tables** — the wireframe carries the stack **on every block `<td>` (15 sites)**.
-  - ⚠️ **Gmail font is CLOSED as impossible-by-platform:** Gmail (web + apps) and Outlook-Windows **strip `<link>`, `@import`, and `@font-face` for every sender**. Apple Mail / iOS do load Plus Jakarta Sans. **The only lever is the fallback stack, which the wireframe locks to Arial.** A closer-metric fallback (Segoe UI) would require a **wireframe edit first**.
+    - ⚠️ **Email clients do NOT inherit `font-family` from `<body>` into tables** — the wireframe carries the stack **on every block `<td>` (15 sites)**.
+    - ⚠️ **Gmail font is CLOSED as impossible-by-platform:** Gmail (web + apps) and Outlook-Windows **strip `<link>`, `@import`, and `@font-face` for every sender**. Apple Mail / iOS do load Plus Jakarta Sans. **The only lever is the fallback stack, which the wireframe locks to Arial.** A closer-metric fallback (Segoe UI) would require a **wireframe edit first**.
 - **Palette:** brand orange **`#E8611A`**; orange-tint `#FBF1EA`; green `#16A34A` (also `#1f9d55` in branch variants); dark ink `#1F2937`; mid gray `#6B7280`; hairline `#E8EAED`; secondary text `#374151` / `#4B5563`; muted `#9aa3b2` / `#b6bcc7`; disabled/dot `#D1D5DB`; panel fill `#F7F8FA`; info-blue panel `#EEF4FB` with text `#27496f` / `#3a516b` and icon `#3B6AA0`; orange-box heading `#9a4a16` and body `#5b3a22`. **Lowercase design hex values.**
 - **SVG line icons in neutral gray `#6B7280`** per **LD20**. **No emoji anywhere in the body.** Icons: inline `<svg>` with `stroke-width` ~1.3–1.8, `stroke-linecap="round"`, `stroke-linejoin="round"`, sized **16–17px** (blocks) with a **24px viewBox**.
-  - ⚠️ **DELIBERATE DEVIATION (founder-approved): SVG is NOT deliverable in email** — Gmail strips `<svg>`; Outlook's Word engine never supported it. The wireframe draws **14 `<svg>` sites = 10 unique icons**; all 10 were extracted verbatim into `mail/templates/icons/*.svg` (**the repo is the source of truth**) and **rasterized by Cloudinary (`f_png`)**, referenced as `<img>`. One **`{emailIconBase}`** token = `.../f_png,w_34/islandtours/email/icons`; **delivered at 34px, displayed at wireframe size (16/17px)**; source SVGs authored at **4x** so Cloudinary always downscales. **`alt=""` + fixed 26px gutter cells** so Outlook image-blocking never collapses the layout. Republish with `pnpm email:icons:upload` (idempotent); preview with `pnpm email:preview [paymentModel]`.
+    - ⚠️ **DELIBERATE DEVIATION (founder-approved): SVG is NOT deliverable in email** — Gmail strips `<svg>`; Outlook's Word engine never supported it. The wireframe draws **14 `<svg>` sites = 10 unique icons**; all 10 were extracted verbatim into `mail/templates/icons/*.svg` (**the repo is the source of truth**) and **rasterized by Cloudinary (`f_png`)**, referenced as `<img>`. One **`{emailIconBase}`** token = `.../f_png,w_34/islandtours/email/icons`; **delivered at 34px, displayed at wireframe size (16/17px)**; source SVGs authored at **4x** so Cloudinary always downscales. **`alt=""` + fixed 26px gutter cells** so Outlook image-blocking never collapses the layout. Republish with `pnpm email:icons:upload` (idempotent); preview with `pnpm email:preview [paymentModel]`.
 - **Hero/featured image `alt` = the tour name.** Featured-image placeholders carry `aria-label="tour featured image"`.
 - **Mobile responsiveness:** the wireframe has **no media queries and no classes — its shell IS the fluid hybrid** (`width:100%;max-width:600px`). ⚠️ A first port's media-query/class layer and an mso ghost table were both **deviations and were removed**. The **only** sanctioned media query is the founder-requested mobile breathing room: on **≤480px**, outer gutter **26/16 → 12/6** and cell sides **28 → 16** (`.it-shell-pad` / `.it-cell`) — **the ONLY media query and the ONLY classes**, with parity guards asserting exactly that.
 - **Dark-mode safety (2026-07-19):** the SiteInfo logo is a transparent PNG with dark artwork — invisible when Gmail/Outlook dark mode repaints the card. Two-layer fix: (1) `mail/email-logo.util.ts` `emailSafeLogoUrl()` injects a **Cloudinary chained transform (`b_white,c_pad,f_jpg,h_ih_mul_1.2,w_iw_mul_1.2`)** baking a **white chip with 20% padding** into the delivered pixels (non-Cloudinary URLs pass through); logo `<img>` bumped **40 → 48px**. (2) **`color-scheme: light` meta pair + a `:root` rule** added to **all four shells** (3 HTML templates + `auth-email-shell.ts`) so Apple Mail/iOS stop inverting the design. The white chip is invisible on the light card, so light mode is unchanged. (Logo previously enlarged 28px → 40px by founder request.)
 - **Locale formatting rules:**
-  - **Currency:** **USD for EN and ZH; EUR for NL, DE, FR, ES, PT.** Money always renders in the **charged** currency.
-  - **Dates:** locale-formatted. **`en` → `en-GB`.** ⚠️ **en-GB renders USD as "US$220.00"** while the wireframe locks "$60.00"/"from $45" → fixed with **`currencyDisplay: 'narrowSymbol'`**.
-  - **Times: 24-hour across ALL locales** (`hourCycle: 'h23'`) — **no AM/PM in any locale**. ⚠️ **Note: the TYP renders 12-hour — the email rule differs.**
-  - All times are labelled with the **destination timezone**, e.g. **"(Curaçao time)"**. *(Master §6.5 correction: block 9's "(Curaçao time)" → **"(local time)"** as the expansion-proof rule — B.31.)*
-  - **Deadline format locked:** **"Wed, 20 May 2026, 08:00"** (was "Wednesday, 20 May 2026 at 08:00").
-  - **Language** rendered via **`Intl.DisplayNames`, localized** (was raw ISO codes).
+    - **Currency:** **USD for EN and ZH; EUR for NL, DE, FR, ES, PT.** Money always renders in the **charged** currency.
+    - **Dates:** locale-formatted. **`en` → `en-GB`.** ⚠️ **en-GB renders USD as "US$220.00"** while the wireframe locks "$60.00"/"from $45" → fixed with **`currencyDisplay: 'narrowSymbol'`**.
+    - **Times: 24-hour across ALL locales** (`hourCycle: 'h23'`) — **no AM/PM in any locale**. ⚠️ **Note: the TYP renders 12-hour — the email rule differs.**
+    - All times are labelled with the **destination timezone**, e.g. **"(Curaçao time)"**. _(Master §6.5 correction: block 9's "(Curaçao time)" → **"(local time)"** as the expansion-proof rule — B.31.)_
+    - **Deadline format locked:** **"Wed, 20 May 2026, 08:00"** (was "Wednesday, 20 May 2026 at 08:00").
+    - **Language** rendered via **`Intl.DisplayNames`, localized** (was raw ISO codes).
 - **`prefers-reduced-motion` / animation: none** — static email.
 - **A real `text/plain` part** is generated (`buildConfirmationEmailText`).
 
@@ -2950,12 +3046,13 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 > Master §6.5 enumerates **eleven blocks in order**. The wireframe numbers them slightly differently (brand bar as block 0, blocks 2+3 combined). Both enumerations are given.
 
 **Master §6.5 ordering:**
+
 1. **Block 1** — confirmation **plus booking reference**, direct, at the top.
 2. **Block 2** — tour **hero image**.
 3. **Block 3** — core details: **date, time in 24h format, meeting point or pickup, party, duration**, with the **dynamic arrival buffer**.
 4. **Block 4** — **payment summary**: deposit paid, balance due, total, with the single **`{hours}` deadline "(local time)"**; **zero-amount rows hidden** (conflict log 82).
 5. **Block 5** — **C2 foreshadow, MANDATORY on `operator_link`**: the operator, **named**, will send a separate email with a secure link to pay the balance, so that email is **expected and never read as phishing**.
-6. **Block 6** — **anti-fraud line (LOCKED):** *"We'll never ask for card details by reply, text, or phone. Always pay through the link in your booking emails."* plus the verification anchor *"If a payment request looks off, check with us on WhatsApp first."*
+6. **Block 6** — **anti-fraud line (LOCKED):** _"We'll never ask for card details by reply, text, or phone. Always pay through the link in your booking emails."_ plus the verification anchor _"If a payment request looks off, check with us on WhatsApp first."_
 7. **Block 7** — **cancellation**: the **tokenized cancel link** plus the **account pointer**.
 8. **Block 8** — **what to bring and prepare** (conditional per tour) and **support: WhatsApp, Mon to Sun 08:00 to 20:00** (confirmed).
 9. **Block 9** — **payment-model block, conditional per the four models**; **every deadline "(local time)"**; **`{operatorName}` always templated** (was a hardcoded "Zipline" — B.32).
@@ -2965,90 +3062,90 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 **Wireframe block-by-block (Option 1 = default `operator_link` deposit model):**
 
 - **Brand bar (block 0)** — padding `18px 28px`, bottom border `1px solid #E8EAED`. Wordmark **"ISLAND TOURS"** — uppercase, weight 800, 13px, `letter-spacing:.04em`; **"ISLAND" in `#1F2937`, "TOURS" in `#E8611A`**.
-  - ⚠️ **Deliberate deviation (founder-approved):** the wireframe's brand bar is a **text wordmark with zero `<img>`**, so using the real logo is itself a deviation. Renders `[IF siteLogoUrl]<img>[ELSE]<wordmark>[/IF]` — **admin-swappable via Settings > General**.
+    - ⚠️ **Deliberate deviation (founder-approved):** the wireframe's brand bar is a **text wordmark with zero `<img>`**, so using the real logo is itself a deviation. Renders `[IF siteLogoUrl]<img>[ELSE]<wordmark>[/IF]` — **admin-swappable via Settings > General**.
 - **Block 1 · Confirmation headline** — 30×30px circular badge, background `#E7F6ED`, containing a 16px green checkmark SVG (`#16A34A`, stroke-width 2.4). Headline **"You're booked, {firstName}."** — 22px weight 800, `letter-spacing:-.02em`, `#1F2937`, **no line-height**. Sub-line **"Booking reference: {displayRef}"** — 13px `#6B7280`, the reference itself bold `#1F2937` (sample `IT-2026-04821`). Padding `26px 28px 6px`.
-  - **Conditional:** for `operator_full` the headline becomes **"Reservation sent, {firstName}."** (still shows the booking-reference line).
+    - **Conditional:** for `operator_full` the headline becomes **"Reservation sent, {firstName}."** (still shows the booking-reference line).
 - **Blocks 2 + 3 · Booking summary (combined row)** — two-column table: **96×96px featured-image thumbnail** (`border-radius:10px`) at left with `padding-right:14px`; details at right; both `vertical-align:top`. Source note: the thumbnail beside the title is **"same format as checkout"** — the email must **mirror the checkout summary card format**.
-  - Tour name: 17px weight 800 `#1F2937`, `line-height:1.25`, `letter-spacing:-.01em`. Operator name below: 13.5px `#6B7280`.
-  - Date + time line: **"{Weekday}, {D Month YYYY} · {HH:MM}"** — 14px weight 600 `#374151` (sample *"Friday, 22 May 2026 · 08:00"*).
-  - Horizontal rule: 1px `#E8EAED`, margin `16px 0 14px`.
-  - Detail rows table (14.5px `#374151`, `line-height:1.45`), each row = **26px-wide icon cell + text cell**, `padding:5px 0` (**first icon cell only carries `width:26px`**):
-    1. **Pickup row (conditional: pickup vs meeting point)** — map-pin icon + **"Pickup: {location}, {HH:MM}."** + inline link **"Open in Maps"** (orange `#E8611A`, weight 600, underlined).
-    2. **Readiness note** — **"Please be ready 5 minutes before pickup."**
-    3. **Ends at** — arrow icon + **"Ends at: {endLocation}"** (sample *"Jan Thiel Beach"*).
-    4. **Guests** — people icon + **"Guests: {n} adults, {n} child"** — pluralized/composed from the age-band breakdown.
-    5. **Duration (conditional)** — clock icon + **"Duration: {duration}"** (sample *"9 hours"*).
-    6. **Language** — globe icon + **"Language: {language}"** (sample *"English"*).
-    7. **Special requests (conditional)** — speech-bubble icon + **"Your note to the operator: {note}"**.
-  - Footer links row: **"View tour details"** · gray `#D1D5DB` dot separator (`margin:0 9px`) · **"Add to calendar"** — both 13.5px orange weight 600 underlined. **(Implies the ICS/calendar-link requirement.)**
+    - Tour name: 17px weight 800 `#1F2937`, `line-height:1.25`, `letter-spacing:-.01em`. Operator name below: 13.5px `#6B7280`.
+    - Date + time line: **"{Weekday}, {D Month YYYY} · {HH:MM}"** — 14px weight 600 `#374151` (sample _"Friday, 22 May 2026 · 08:00"_).
+    - Horizontal rule: 1px `#E8EAED`, margin `16px 0 14px`.
+    - Detail rows table (14.5px `#374151`, `line-height:1.45`), each row = **26px-wide icon cell + text cell**, `padding:5px 0` (**first icon cell only carries `width:26px`**):
+        1. **Pickup row (conditional: pickup vs meeting point)** — map-pin icon + **"Pickup: {location}, {HH:MM}."** + inline link **"Open in Maps"** (orange `#E8611A`, weight 600, underlined).
+        2. **Readiness note** — **"Please be ready 5 minutes before pickup."**
+        3. **Ends at** — arrow icon + **"Ends at: {endLocation}"** (sample _"Jan Thiel Beach"_).
+        4. **Guests** — people icon + **"Guests: {n} adults, {n} child"** — pluralized/composed from the age-band breakdown.
+        5. **Duration (conditional)** — clock icon + **"Duration: {duration}"** (sample _"9 hours"_).
+        6. **Language** — globe icon + **"Language: {language}"** (sample _"English"_).
+        7. **Special requests (conditional)** — speech-bubble icon + **"Your note to the operator: {note}"**.
+    - Footer links row: **"View tour details"** · gray `#D1D5DB` dot separator (`margin:0 9px`) · **"Add to calendar"** — both 13.5px orange weight 600 underlined. **(Implies the ICS/calendar-link requirement.)**
 - **Block 4 · Operator note (CONDITIONAL)** — blue info panel `#EEF4FB`, `border-radius:10px`, padding `14px 16px`; 16px circular-info icon in `#3B6AA0`. Header **"A note from {operatorName}"** — 13.5px weight 700 `#27496f`. Body: free-text operator note, 13.5px `#3a516b`. **Renders only when the operator has supplied a note.**
-  - Data source: **`TourTranslation.operatorNote`** (localized; migration `20260716144848_tour_translation_operator_note`), edited at **Dashboard > Tours > edit > Translations tab > "Note to Travellers"**; traveller locale with English fallback; **empty hides the blue card**.
+    - Data source: **`TourTranslation.operatorNote`** (localized; migration `20260716144848_tour_translation_operator_note`), edited at **Dashboard > Tours > edit > Translations tab > "Note to Travellers"**; traveller locale with English fallback; **empty hides the blue card**.
 - **Block 5 · Payment (BRANCHES on `paymentModel`)** — container `#F7F8FA` fill, `1px solid #E8EAED`, `border-radius:12px`, padding `16px 18px`. Section label **"PAYMENT"** — 13px weight 700 uppercase `letter-spacing:.06em` `#9aa3b2`.
 - **Block 6 · "How to pay the rest" / C2 anti-phishing foreshadow (BRANCHES)** — container `#FBF1EA` fill, **left border 4px solid `#E8611A`**, `border-radius:10px`, padding `15px 17px`. Heading 14px weight 800 `#9a4a16`; body 14px `#5b3a22`, `line-height:1.55`. Below the box, **always**: a shield-with-check icon (16px `#6B7280`) + a 12.5px `#6B7280` **anti-fraud line**.
-  - **⚠️ PLACEMENT RULE (HARD):** this block **and the anti-fraud line carry the C2 anti-phishing mitigation and MUST stay above the fold of the payment area — never buried in the footer.**
-- **Block 7 · Prepare ("What to bring" + "Good to know") — CONDITIONAL** — preceded by a `1px solid #E8EAED` top border with `padding-top:18px`. Section label **"WHAT TO BRING"** (13px weight 700 uppercase `.06em` `#9aa3b2`); bulleted list with bullet `&bull;` in orange `#E8611A`, text 14px `#374151` (samples: *"Swimwear and a towel"*, *"Reef-safe sunscreen and a hat"*, *"Cash. Card payments are not possible on Klein Curaçao."*). Section label **"GOOD TO KNOW"**, same styling, `margin:16px 0 10px`, same bullet format. **Both lists render/hide per booking.**
+    - **⚠️ PLACEMENT RULE (HARD):** this block **and the anti-fraud line carry the C2 anti-phishing mitigation and MUST stay above the fold of the payment area — never buried in the footer.**
+- **Block 7 · Prepare ("What to bring" + "Good to know") — CONDITIONAL** — preceded by a `1px solid #E8EAED` top border with `padding-top:18px`. Section label **"WHAT TO BRING"** (13px weight 700 uppercase `.06em` `#9aa3b2`); bulleted list with bullet `&bull;` in orange `#E8611A`, text 14px `#374151` (samples: _"Swimwear and a towel"_, _"Reef-safe sunscreen and a hat"_, _"Cash. Card payments are not possible on Klein Curaçao."_). Section label **"GOOD TO KNOW"**, same styling, `margin:16px 0 10px`, same bullet format. **Both lists render/hide per booking.**
 - **Block 8 · Questions (two-part contact panel)** — container `#F7F8FA` + `1px solid #E8EAED`, `border-radius:12px`, padding `16px 18px`.
-  - **Part 1 — operator contact:** heading **"Questions about the day?"** (15px weight 700 `#1F2937`); body **"{operatorName} runs your tour and knows it best."** (14px `#4B5563`); two white outline buttons side by side — **"Call"** and **"Email"** (14px weight 700, `1.5px solid #D1D5DB`, `border-radius:10px`, padding `11px 18px`); contact line **"{operatorPhone} · {operatorEmail}"** — 12px `#9aa3b2`.
-  - Divider `1px solid #E8EAED`, `margin:16px 0 14px`.
-  - **Part 2 — platform contact:** heading **"Questions about your booking?"**; body **"We'll sort it out."**; solid orange CTA **"Chat on WhatsApp"** (white on `#E8611A`, `border-radius:10px`, padding `11px 20px`); hours line **"Mon to Sun, 8:00 to 20:00 Curaçao time"** — 12.5px `#9aa3b2`.
-  - **Deliberate split:** the **operator handles the tour, Island Tours handles the booking.**
+    - **Part 1 — operator contact:** heading **"Questions about the day?"** (15px weight 700 `#1F2937`); body **"{operatorName} runs your tour and knows it best."** (14px `#4B5563`); two white outline buttons side by side — **"Call"** and **"Email"** (14px weight 700, `1.5px solid #D1D5DB`, `border-radius:10px`, padding `11px 18px`); contact line **"{operatorPhone} · {operatorEmail}"** — 12px `#9aa3b2`.
+    - Divider `1px solid #E8EAED`, `margin:16px 0 14px`.
+    - **Part 2 — platform contact:** heading **"Questions about your booking?"**; body **"We'll sort it out."**; solid orange CTA **"Chat on WhatsApp"** (white on `#E8611A`, `border-radius:10px`, padding `11px 20px`); hours line **"Mon to Sun, 8:00 to 20:00 Curaçao time"** — 12.5px `#9aa3b2`.
+    - **Deliberate split:** the **operator handles the tour, Island Tours handles the booking.**
 - **Block 9 · Cancel (BRANCHES)** — preceded by a top border + `padding-top:18px`.
-  - **Default variant:** section label **"NEED TO CANCEL?"** (uppercase `#9aa3b2`); body **"You can cancel for a full refund up to {deadline} ({destination} time)."** (deadline bold); outline button **"Cancel booking"** (14px weight 700, `1.5px solid #D1D5DB`, `border-radius:10px`, padding `11px 20px`); account pointer **"Your booking details, history, and invoice are always in your Island Tours account at island.tours/bookings."** — 12.5px `#9aa3b2`, the URL an orange underlined link. *(A `{accountUrlLabel}` token renders **"island.tours/bookings"** rather than a raw URL.)*
-  - **`operator_full` variant:** the card is a bordered white box (`1px solid #EAE7E1`, radius 14px) rather than the plain section; heading **"Need to cancel?"** (15px weight 800); body **"{operatorName} handles payment for this tour, so cancellation and refunds run through them under their terms. To cancel, contact {operatorName} directly. We're on WhatsApp if you have questions."**; **NO "Cancel booking" button** — cancellation is off-platform for this model.
-  - **⚠️ CANCEL-BUTTON RULE (HARD):** the Cancel button is a **tokenized link** that opens a **cancellation request form on island.tours** — **never a raw one-click cancel**. **Clicking the link never cancels.** Submitting the form **emails the request to the Island Tours admin**, who **processes the refund and confirms by email**. (`cancelUrl` → `/cancel/{publicRef}` per master §6.4/C1.)
-- **Block 10 · Sign-off** — top border + `padding-top:18px`. Line 1 **"Island Tours. Built by Islanders."** — 13px weight 800 `#1F2937`. Line 2 **"www.island.tours"** — 12.5px `#9aa3b2`. Legal block, 11.5px `#b6bcc7`, `line-height:1.6`, three lines: *"ITG B.V. (Island Tours Group) · KvK Curaçao 169950"* · *"Caracasbaaiweg 366, Willemstad, Curaçao"* · *"This is a transactional booking email."* (**transactional classification statement — no unsubscribe/marketing footer**).
-- **Block 11 · Upsell ("More {destination} experiences")** — **bottom-anchored, contained in a panel, explicitly NO social row.** Container `#F7F8FA` + `1px solid #E8EAED`, radius 12, padding `16px 18px`. Heading **"More {destination} experiences"** — 15px weight 700. Two-up grid (`width="50%"` each, 7px inner gutters); each card: **150px-tall featured image**, `border-radius:9px`, `aria-label="tour featured image"`; tour title 13.5px weight 700 `#1F2937`; meta line **"{rating} · {price}"** — 12.5px `#6B7280` (samples *"4.9 · $89"*, *"4.7 · $65"* — **no "from", zero cents stripped**). Footer link **"Browse all {destination} tours"** — 13.5px orange weight 600 underlined.
-  - **Related tours = same DESTINATION, not category** (founder correction mid-review; a category filter was tried and reverted). LIVE + bookable, ordered by master §7.2 (`tier_rank ASC, quality_score DESC, id ASC`); **no rating fabricated for an unreviewed tour** (LD11 cold start).
+    - **Default variant:** section label **"NEED TO CANCEL?"** (uppercase `#9aa3b2`); body **"You can cancel for a full refund up to {deadline} ({destination} time)."** (deadline bold); outline button **"Cancel booking"** (14px weight 700, `1.5px solid #D1D5DB`, `border-radius:10px`, padding `11px 20px`); account pointer **"Your booking details, history, and invoice are always in your Island Tours account at island.tours/bookings."** — 12.5px `#9aa3b2`, the URL an orange underlined link. _(A `{accountUrlLabel}` token renders **"island.tours/bookings"** rather than a raw URL.)_
+    - **`operator_full` variant:** the card is a bordered white box (`1px solid #EAE7E1`, radius 14px) rather than the plain section; heading **"Need to cancel?"** (15px weight 800); body **"{operatorName} handles payment for this tour, so cancellation and refunds run through them under their terms. To cancel, contact {operatorName} directly. We're on WhatsApp if you have questions."**; **NO "Cancel booking" button** — cancellation is off-platform for this model.
+    - **⚠️ CANCEL-BUTTON RULE (HARD):** the Cancel button is a **tokenized link** that opens a **cancellation request form on island.tours** — **never a raw one-click cancel**. **Clicking the link never cancels.** Submitting the form **emails the request to the Island Tours admin**, who **processes the refund and confirms by email**. (`cancelUrl` → `/cancel/{publicRef}` per master §6.4/C1.)
+- **Block 10 · Sign-off** — top border + `padding-top:18px`. Line 1 **"Island Tours. Built by Islanders."** — 13px weight 800 `#1F2937`. Line 2 **"www.island.tours"** — 12.5px `#9aa3b2`. Legal block, 11.5px `#b6bcc7`, `line-height:1.6`, three lines: _"ITG B.V. (Island Tours Group) · KvK Curaçao 169950"_ · _"Caracasbaaiweg 366, Willemstad, Curaçao"_ · _"This is a transactional booking email."_ (**transactional classification statement — no unsubscribe/marketing footer**).
+- **Block 11 · Upsell ("More {destination} experiences")** — **bottom-anchored, contained in a panel, explicitly NO social row.** Container `#F7F8FA` + `1px solid #E8EAED`, radius 12, padding `16px 18px`. Heading **"More {destination} experiences"** — 15px weight 700. Two-up grid (`width="50%"` each, 7px inner gutters); each card: **150px-tall featured image**, `border-radius:9px`, `aria-label="tour featured image"`; tour title 13.5px weight 700 `#1F2937`; meta line **"{rating} · {price}"** — 12.5px `#6B7280` (samples _"4.9 · $89"_, _"4.7 · $65"_ — **no "from", zero cents stripped**). Footer link **"Browse all {destination} tours"** — 13.5px orange weight 600 underlined.
+    - **Related tours = same DESTINATION, not category** (founder correction mid-review; a category filter was tried and reverted). LIVE + bookable, ordered by master §7.2 (`tier_rank ASC, quality_score DESC, id ASC`); **no rating fabricated for an unreviewed tour** (LD11 cold start).
 
 #### C.10.6 The four `paymentModel` branches (block 5 payment + block 6 how-to-pay)
 
 **Block 5 — Payment:**
 
 - **Variant 1 — default / `operator_link` deposit:**
-  - Row **"Deposit paid today ({depositPct}%)"** → amount, weight 700, **green `#16A34A`** (sample "$40.00" at 20%).
-  - Row **"Balance due"** → amount, weight 600, `#1F2937` (sample "$160.00").
-  - **Divider row** (`border-top:1px solid #E8EAED`, `padding-top:8px`).
-  - Row **"Total"** (weight 700) → amount weight 800 (sample "$200.00").
-  - Deadline note under a **dashed divider** (`1px dashed #E0E3E8`, `padding-top:12px`), 13.5px `#4B5563`: **"Pay your balance, or cancel for a full refund, up to {Weekday, D Month YYYY, HH:MM} ({destination} time). After that the deposit is non-refundable, and an unpaid balance cancels the booking."** — the deadline datetime bold.
+    - Row **"Deposit paid today ({depositPct}%)"** → amount, weight 700, **green `#16A34A`** (sample "$40.00" at 20%).
+    - Row **"Balance due"** → amount, weight 600, `#1F2937` (sample "$160.00").
+    - **Divider row** (`border-top:1px solid #E8EAED`, `padding-top:8px`).
+    - Row **"Total"** (weight 700) → amount weight 800 (sample "$200.00").
+    - Deadline note under a **dashed divider** (`1px dashed #E0E3E8`, `padding-top:12px`), 13.5px `#4B5563`: **"Pay your balance, or cancel for a full refund, up to {Weekday, D Month YYYY, HH:MM} ({destination} time). After that the deposit is non-refundable, and an unpaid balance cancels the booking."** — the deadline datetime bold.
 - **Variant 2 — `on_arrival`:**
-  - Row **"Deposit paid today ({pct}%)"** → green `#1f9d55` weight 700.
-  - Row **"Balance due on arrival"** → weight 600.
-  - Row **"Total"** with top border, both cells weight 800.
-  - Note: **"Cancel for a full refund up to {deadline} ({destination} time). After that the deposit is non-refundable."** — **no "unpaid balance cancels the booking" clause**, because there is no balance link.
+    - Row **"Deposit paid today ({pct}%)"** → green `#1f9d55` weight 700.
+    - Row **"Balance due on arrival"** → weight 600.
+    - Row **"Total"** with top border, both cells weight 800.
+    - Note: **"Cancel for a full refund up to {deadline} ({destination} time). After that the deposit is non-refundable."** — **no "unpaid balance cancels the booking" clause**, because there is no balance link.
 - **Variant 3 — `paid_in_full`:**
-  - **Single row "Paid in full"** (weight 800) → total amount in **green `#1f9d55`, weight 800** (sample "$200.00").
-  - Note: **"Cancel for a full refund up to {deadline} ({destination} time). After that it is non-refundable."**
-  - Business rule stated: 100% is paid to **Island Tours** at booking and **Island Tours refunds in full** on cancellation.
+    - **Single row "Paid in full"** (weight 800) → total amount in **green `#1f9d55`, weight 800** (sample "$200.00").
+    - Note: **"Cancel for a full refund up to {deadline} ({destination} time). After that it is non-refundable."**
+    - Business rule stated: 100% is paid to **Island Tours** at booking and **Island Tours refunds in full** on cancellation.
 - **Variant 4 — `operator_full`:**
-  - **Single row "Total"** (weight 800) → amount weight 800. *(As built: a plain Total row + "Payable to {operator}. Island Tours took no payment." and **no Cancel button**.)*
-  - Note: **"Payable to {operatorName}. Island Tours took no payment."**
-  - Business rule stated: Island Tours takes no payment at booking; the operator emails the full-payment link, confirms the spot, and settles commission with Island Tours afterward.
+    - **Single row "Total"** (weight 800) → amount weight 800. _(As built: a plain Total row + "Payable to {operator}. Island Tours took no payment." and **no Cancel button**.)_
+    - Note: **"Payable to {operatorName}. Island Tours took no payment."**
+    - Business rule stated: Island Tours takes no payment at booking; the operator emails the full-payment link, confirms the spot, and settles commission with Island Tours afterward.
 - ⚠️ **Defect fixed:** money rows originally conditioned **only the LABEL, not the row**, so `paid_in_full` / `operator_full` would have rendered a **bare `{depositAmount}` with no label**. Per the wireframe the **whole `<tr>` must vanish**: `operator_link` = deposit / Balance due / Total · `on_arrival` = deposit / Balance due on arrival / Total · `paid_in_full` = **Paid in full only** · `operator_full` = **Total only**. Now wrapped at `<tr>` level, asserted by 4 tests.
 
 **Block 6 — How to pay the rest:**
 
 - **Variant 1 — default (deposit / `operator_link`):**
-  - Heading **"How to pay the rest"**.
-  - Body: **"{operatorName} will email you a secure link to pay the remaining {balance}. This is the only payment left on your booking, so look out for that email and pay before the deadline above."**
-  - Anti-fraud line: **"We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on WhatsApp first."** (WhatsApp is an underlined link, gray `#6B7280`.)
+    - Heading **"How to pay the rest"**.
+    - Body: **"{operatorName} will email you a secure link to pay the remaining {balance}. This is the only payment left on your booking, so look out for that email and pay before the deadline above."**
+    - Anti-fraud line: **"We'll never ask you to send card details by reply, message, or phone. If you're ever unsure about a payment request, check with us on WhatsApp first."** (WhatsApp is an underlined link, gray `#6B7280`.)
 - **Variant 2A — `on_arrival` + `onArrivalPayment = card_or_cash`:**
-  - Heading **"Pay the rest on arrival"**.
-  - Body: **"You'll pay the remaining {balance} to {operatorName} when you arrive. Card and cash are both accepted."**
-  - Anti-fraud line: **"You only pay the rest on arrival. We'll never send a link to pay the balance."**
+    - Heading **"Pay the rest on arrival"**.
+    - Body: **"You'll pay the remaining {balance} to {operatorName} when you arrive. Card and cash are both accepted."**
+    - Anti-fraud line: **"You only pay the rest on arrival. We'll never send a link to pay the balance."**
 - **Variant 2B — `on_arrival` + `onArrivalPayment = cash_only`:**
-  - Heading **"Pay the rest on arrival"**.
-  - Body: **"You'll pay the remaining {balance} to {operatorName} in cash when you arrive. Card isn't possible and there's no ATM on site, so bring the {balance} in cash with you."** (**balance appears twice, both bold**.)
-  - Anti-fraud line: same as 2A.
+    - Heading **"Pay the rest on arrival"**.
+    - Body: **"You'll pay the remaining {balance} to {operatorName} in cash when you arrive. Card isn't possible and there's no ATM on site, so bring the {balance} in cash with you."** (**balance appears twice, both bold**.)
+    - Anti-fraud line: same as 2A.
 - **Variant 3 — `paid_in_full`:**
-  - Heading **"From {operatorName}"**.
-  - Body: **"{operatorName} will also email you with their own confirmation and arrival details. Look out for it."**
-  - Anti-fraud line: **"Your tour is fully paid. No one should ask you for further payment."**
+    - Heading **"From {operatorName}"**.
+    - Body: **"{operatorName} will also email you with their own confirmation and arrival details. Look out for it."**
+    - Anti-fraud line: **"Your tour is fully paid. No one should ask you for further payment."**
 - **Variant 4 — `operator_full`:**
-  - Heading **"Pay to confirm your spot"**.
-  - Body: **"{operatorName} will email you a secure link to pay the full {total}. Paying confirms your spot, so look out for that email."**
-  - Anti-fraud line: the full *"We'll never ask you to send card details by reply, message, or phone… WhatsApp first."* variant.
+    - Heading **"Pay to confirm your spot"**.
+    - Body: **"{operatorName} will email you a secure link to pay the full {total}. Paying confirms your spot, so look out for that email."**
+    - Anti-fraud line: the full _"We'll never ask you to send card details by reply, message, or phone… WhatsApp first."_ variant.
 - The sub-variant is selected by a dedicated field **`onArrivalPayment`** (`card_or_cash` | `cash_only`).
-  - **Locked decision (founder 2026-07-16):** `onArrivalPayment` is a **new `Tour` enum column** (`CARD_OR_CASH | CASH_ONLY`, **NOT NULL default `CARD_OR_CASH`**) + an operator dashboard field (Details tab + create form, **shown only when `paymentModel = ON_ARRIVAL`**), **snapshotted onto `Booking` at reserve** (rule #21 — never retroactive). Migration `20260716122726_on_arrival_payment_and_pickup_timing_snapshot`.
+    - **Locked decision (founder 2026-07-16):** `onArrivalPayment` is a **new `Tour` enum column** (`CARD_OR_CASH | CASH_ONLY`, **NOT NULL default `CARD_OR_CASH`**) + an operator dashboard field (Details tab + create form, **shown only when `paymentModel = ON_ARRIVAL`**), **snapshotted onto `Booking` at reserve** (rule #21 — never retroactive). Migration `20260716122726_on_arrival_payment_and_pickup_timing_snapshot`.
 
 #### C.10.7 Conditional / dynamic-block register
 
@@ -3056,13 +3153,13 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Branch variable **`paymentModel`** with four values: `operator_link` (default), `on_arrival`, `paid_in_full`, `operator_full`.
 - Branch variable **`onArrivalPayment`** with two values: `card_or_cash`, `cash_only` (only under `on_arrival`).
 - **Blocks affected per model:**
-  - **`on_arrival` → only blocks 5 and 6 change**; everything else identical to Option 1.
-  - **`paid_in_full` → blocks 5 and 6 change**; the headline stays "You're booked".
-  - **`operator_full` → blocks 1, 5, 6 and 9 change.**
+    - **`on_arrival` → only blocks 5 and 6 change**; everything else identical to Option 1.
+    - **`paid_in_full` → blocks 5 and 6 change**; the headline stays "You're booked".
+    - **`operator_full` → blocks 1, 5, 6 and 9 change.**
 - **Merge variables implied across the template:** firstName · displayRef/bookingReference · tourName · featuredImage (+alt) · operatorName · departure weekday/date/time · pickup type + location + time · endLocation · guest composition by age band · duration · language · specialRequest note · operatorNote · depositPct · depositAmount · balanceAmount · totalAmount · currency · cancellationDeadline (datetime + timezone label) · destinationName · operatorPhone · operatorEmail · whatsAppLink · tourDetailsUrl · calendarUrl · cancelTokenUrl · mapsUrl · upsell tours (image/title/rating/price) · browse-all URL · support hours.
 - **Data already available (post-E3):** `firstName`, `bookingRef`, `tourName`, `operatorName/Email/Phone`, `dateLong`, `dateShort`, `startTime`, `duration`, `partyBreakdown`, `pickupLocation`, `totalAmount`, `depositAmount`, `depositPct`, `balanceAmount`, `islandName`, `specialRequests` (`Booking.notes`), `cancelDeadlineDateTime`, `locale`, related tours.
 - **`depositPct` is derived from the booked amounts**, NOT from `Tour.depositPct` (which is tier-driven and mutable).
-- **Arrival-buffer / pickup-timing decision (SUPERSEDED on inspection — no platform constant needed; every field already exists):** non-pickup *"arrive N minutes early"* → **`Tour.checkInMinutesBefore` (`@default(30)`)**; pickup *"be ready N minutes before"* → **`PickupLocation.minutesPrior`**; **`PickupLocation.windowStart` / `windowEnd`** (`'HH:MM'`) give the Figma "7:45-8:15 AM window". A platform constant is only a fallback. **Pickup TIMING is snapshotted at reserve, never joined live** — `Booking.pickupMinutesPrior`, `pickupWindowStart`, `pickupWindowEnd` (nullable snapshots), alongside the existing `pickupAddress` + `pickupLocationId`.
+- **Arrival-buffer / pickup-timing decision (SUPERSEDED on inspection — no platform constant needed; every field already exists):** non-pickup _"arrive N minutes early"_ → **`Tour.checkInMinutesBefore` (`@default(30)`)**; pickup _"be ready N minutes before"_ → **`PickupLocation.minutesPrior`**; **`PickupLocation.windowStart` / `windowEnd`** (`'HH:MM'`) give the Figma "7:45-8:15 AM window". A platform constant is only a fallback. **Pickup TIMING is snapshotted at reserve, never joined live** — `Booking.pickupMinutesPrior`, `pickupWindowStart`, `pickupWindowEnd` (nullable snapshots), alongside the existing `pickupAddress` + `pickupLocationId`.
 - **`meetingPoint` = the tour's `START` `TourLocation`**, rendered from `TourLocationTranslation.title` (already localized) + `streetAddress`. **No migration.** The same source gives **`endPoint`** for free (`types` contains `'END'`).
 - **`operatorNote`** originally rendered nothing (no note modelled; the card hid) until `TourTranslation.operatorNote` was added.
 - ⚠️ **Two orphan-icon bugs fixed** (found by the template spec): icon cells sat **OUTSIDE** their `[IF]` (a booking with no end point / duration / language / note would have emailed an icon beside blank space); `[IF operatorNote]` wrapped **only the heading** (leaving an empty blue card). **Both now wrap the whole `<tr>`.**
@@ -3073,48 +3170,48 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **confirmation → operator balance email (`operator_link` only) → pre-tour reminder (24h before start) → cancellation confirmation.**
 - **Founder requirement 2026-07-16: 2 emails per booking, 3 on `operator_link`:** (1) **Confirmation to the traveller** (must follow the LOCKED wireframe); (2) **"Booking Received" notification to the tour operator** (NEW, previously untracked); (3) **Secure payment link for the remainder — `operator_link` only.**
 - **Operator "Booking Received" email (BUILT):** fires in `finalizeConfirmation` right after the traveller email; recipient = **`companyInfo.companyEmail ?? contactEmail`** (founder: company email first); **reuses the traveller shell VERBATIM** (the spec asserts **zero new style attributes**); **per-model action copy** (send link / collect on arrival / fully paid), guest contact, dashboard CTA; **English-formatted regardless of the traveller's locale**; **failures swallow** (money is already captured).
-- **Operator-balance email on `operator_link` — ⚠️ NOT BUILT.** *"no such template."*
-- **Cancellation-request emails ×3 (BUILT):** admin work-item (**throws** on failure), traveller ack (*"we got your request — terms are judged from this moment"*, in their locale's date format), operator heads-up (*"no action needed yet"*, company inbox first). The ack/notice pair is **best-effort**. All ride a shared **`booking-notice.template.html`** (spec asserts zero new style attributes).
-- **Final post-admin cancellation confirmations** (locked *"on its way back within 3 to 5 business days"* copy, C23-aware) — see §C.7.8.
+- **Operator-balance email on `operator_link` — ⚠️ NOT BUILT.** _"no such template."_
+- **Cancellation-request emails ×3 (BUILT):** admin work-item (**throws** on failure), traveller ack (_"we got your request — terms are judged from this moment"_, in their locale's date format), operator heads-up (_"no action needed yet"_, company inbox first). The ack/notice pair is **best-effort**. All ride a shared **`booking-notice.template.html`** (spec asserts zero new style attributes).
+- **Final post-admin cancellation confirmations** (locked _"on its way back within 3 to 5 business days"_ copy, C23-aware) — see §C.7.8.
 - **TYP resend endpoint (BUILT):** `POST /bookings/typ/:publicRef/resend` — `@Public`, keyed on the unguessable `publicRef`; **the recipient is NEVER accepted from the caller** (sends only to the booking's stored `contactEmail`); **CONFIRMED-only**, so a CANCELLED booking can never re-emit "You're booked"; throttled to **1/10s, 3/min, 10/hr per IP**. **It MUST stay a browser call** — `skipIf: isTrustedInternalOrigin` exempts the internal API secret from throttling, so routing it through SSR/`publicFetch` would **silently strip every limit**. Confirm-time sends **swallow** email failures (money already captured); the **resend path rethrows** (one `rethrow` flag, both behaviours tested).
 - **ICS calendar endpoint (BUILT):** `GET /bookings/typ/:publicRef/calendar.ics` — `@Public`, keyed on `publicRef`, **confirmed bookings only**; `booking-ics.util.ts` is hand-rolled **RFC 5545**: CRLF, escaping, **75-OCTET folding on UTF-8 boundaries**, real UTC via `localWallClockToUtc`.
-- ⚠️ **Invoice attachment NOT implemented** — guide step 22 requires *"Add invoice as attatchments (INVOICE RECIVE FROM STRIPE/MOLLIE)"* [sic].
+- ⚠️ **Invoice attachment NOT implemented** — guide step 22 requires _"Add invoice as attatchments (INVOICE RECIVE FROM STRIPE/MOLLIE)"_ [sic].
 
 #### C.10.9 The pre-tour reminder email (master §6.7, locked June 11, 2026)
 
 - Canonical source: `island-tours-pre-tour-reminder-email-spec.md`. **Same template system as the confirmation, deliberately recognizable as its sibling.**
 - **TRIGGER: sends once per confirmed booking at 24 hours before tour start, tour-local.**
 - **SUPPRESSION:**
-  - Bookings **created inside that 24h window get NO reminder** — the confirmation's subject variant covers it (B.83).
-  - **Suppressed for cancelled, forfeited, and operator-cancelled bookings.**
+    - Bookings **created inside that 24h window get NO reminder** — the confirmation's subject variant covers it (B.83).
+    - **Suppressed for cancelled, forfeited, and operator-cancelled bookings.**
 - **Content — logistics card:** time, meeting point or pickup with the be-ready line and the **Maps text link**, dynamic arrival buffer per §4.4.
-- **Content — booking reference** renders as a **quiet line under the greeting** (the confirmation's block-1 pattern); the reference plus an ID stays the **LD4 check-in credential**. ⚠️ The v1.6 *"Your ticket = your reference + an ID"* callout box is **DROPPED** (B.86); **LD4 itself is unchanged**.
+- **Content — booking reference** renders as a **quiet line under the greeting** (the confirmation's block-1 pattern); the reference plus an ID stays the **LD4 check-in credential**. ⚠️ The v1.6 _"Your ticket = your reference + an ID"_ callout box is **DROPPED** (B.86); **LD4 itself is unchanged**.
 - **Content — conditional what-to-bring.**
 - **Content — payment-model block with zero-amount rows hidden:**
-  - **`on_arrival`:** states the balance and accepted methods.
-  - **`operator_full`:** the operator-direct total.
-  - **`paid_in_full`:** **one all-paid line** — *"the only model allowed to say 'all paid'"*.
-  - **`operator_link`:** a **neutral balance line that never claims payment** (B.85 — "All paid" rendering on `operator_link` surfaces is **forbidden**).
+    - **`on_arrival`:** states the balance and accepted methods.
+    - **`operator_full`:** the operator-direct total.
+    - **`paid_in_full`:** **one all-paid line** — _"the only model allowed to say 'all paid'"_.
+    - **`operator_link`:** a **neutral balance line that never claims payment** (B.85 — "All paid" rendering on `operator_link` surfaces is **forbidden**).
 - **Content — a conditional weather line** on `weather_dependent` tours.
 - **Content — operator contact named first**, with the Island Tours WhatsApp fallback (two-phase principle, §1.4).
 - **NEVER a payment link** — payment links exist **only** in the operator balance email, reinforcing the C2 mitigation.
 - **NO cancellation CTA** — the window has closed or is closing at send time.
 - **NO balance nudge** — the `operator_link` balance state is not machine-readable in v1, and forfeit follows operator report + admin confirmation (B.84, B.85).
-- Below the operational content, **soft-opt-in customers (§5.8) get the TYP-style upsell block**: *"Islanders also love..."*, **2 to 3 cross-category cards with an open departure within 7 days** (E.9), **UTM-tagged links**. **Opted-out customers receive the identical email WITHOUT the block.**
+- Below the operational content, **soft-opt-in customers (§5.8) get the TYP-style upsell block**: _"Islanders also love..."_, **2 to 3 cross-category cards with an open departure within 7 days** (E.9), **UTM-tagged links**. **Opted-out customers receive the identical email WITHOUT the block.**
 - ⚠️ **NOT BUILT.**
 
 #### C.10.10 Copy invariants and mechanical guards
 
-- **Never name or spotlight the operator before payment**; name deliberately post-booking on `operator_link`. ⚠️ Status: *"verify in template copy"*.
+- **Never name or spotlight the operator before payment**; name deliberately post-booking on `operator_link`. ⚠️ Status: _"verify in template copy"_.
 - **Always show the booking reference.** **Hide zero-amount rows.** Deposit models show deposit paid + balance due. `PAID_IN_FULL` shows total paid, no balance. `OPERATOR_FULL` shows that nothing was paid to Island Tours. `OPERATOR_LINK` explicitly names the operator **after** booking and says they will send the secure balance link.
 - **Include the cancellation link to a tokenized confirmation/request page, not a raw-click cancel action.** Include the account fallback: `/bookings` lookup with email + `displayRef`.
 - **THE MECHANICAL GUARD (design review round 3 — "every single style must match 100%, nothing skipped"):** the template was **rebuilt as a byte-for-byte port of the wireframe's `<template id="email-tpl">`**, and the template spec **extracts EVERY `style=""` attribute from the wireframe and asserts each appears VERBATIM in the shipped template** (only demo placeholder art, canvas padding fold, and inline-svg alignment are excluded, each with a stated reason). **A designer edit to either file fails CI on the first drifted byte.**
 - **Template spec assertions** (`booking-confirmation-email.template.spec.ts`, 13 tests, rendering the **real shipped template**): every token resolves for **all 5 payment models**; **no leftover `[IF]` or `{token}`**; **zero `<svg>` and zero glyphs**; all 10 icons render as Cloudinary PNG `<img alt="">`; each optional row hides **together with its icon**; both logo/wordmark branches render.
 - **Context builder** `bookings/booking-email.context.ts` is a **PURE function** (46 tokens + 3 condition-only fields); `BookingsService.assembleConfirmationContext` does the I/O, so **assembly is DB-free and every wireframe rule is unit-testable**. Deliberately render-agnostic. **The loop is closed by a test**: `booking-email.context.spec.ts` renders the REAL template with the REAL builder output and asserts **`findUnresolvedTokens() === []`** for all 5 payment models plus a minimal booking. `render-email-preview.ts` also **builds through the real builder** (it previously hand-rolled its context, so the preview could look perfect while production shipped something else).
 - **Bugs found while wiring that "each one would have shipped":** (1) **`nest build` never copied the `.html`** — no `assets` entry, so `readFileSync` threw at startup in production while every test passed locally (fixed in `nest-cli.json`, `outDir: dist/src`; **`watchAssets` landed later — a dev server compiled before it keeps a STALE template in `dist`, so the dev backend must be restarted once**). (2) **`Booking.customerLocale` is a free-form `String?`, not the `Locale` enum** — added a `toLocale()` coercion ("en-US"/junk → `en`). (3) **`calendarUrl` was built off `FRONTEND_URL`** but it is an **API route**, so it would have 404'd in every inbox — now `PUBLIC_API_URL ?? BETTER_AUTH_URL`. (4) **en-GB renders USD as "US$220.00"** → `currencyDisplay: 'narrowSymbol'`. (5) Redundant tour query in `resendConfirmation` dropped.
-- ⚠️ **Open conflicts flagged for the founder (not silently resolved):** (1) **`accountUrl` vs master C1** — the template footer says booking details/history/invoice *"are always in your Island Tours account at {accountUrl}"*, but master C1 states *"No account area in v1"* and asks for a lightweight booking-lookup fallback. **`/bookings` DOES exist in the code** (built after the master was written), and **B.34 RESOLVES it**: accounts ARE auto-created with email + booking-reference login. **The lookup LOGIN page itself is still to build.** (2) **Two Cloudinary accounts live**: `SiteInfo.logo` → cloud **`djqinkh2c`**, `backend/.env` `CLOUDINARY_CLOUD_NAME` → **`dsfms7jb4`**. (3) **`start:prod` is `node dist/main` but the build emits `dist/src/main.js`** — production start would fail (pre-existing; **flagged, not fixed**). (4) **English date punctuation vs Figma:** Figma demo strings were `Tue 28 May, 2026` / `Sunday, 26 May`; Intl `en-GB` produces `Fri, 24 Jul 2026` / `Wednesday 22 July` — correct day-then-month order, but the **comma sits after the weekday rather than before the year**. Matching Figma exactly needs a hand-rolled formatter that would break the other 6 locales, **so it was NOT silently hand-rolled** — decide: keep locale-correct Intl, or hand-compose for `en` only.
+- ⚠️ **Open conflicts flagged for the founder (not silently resolved):** (1) **`accountUrl` vs master C1** — the template footer says booking details/history/invoice _"are always in your Island Tours account at {accountUrl}"_, but master C1 states _"No account area in v1"_ and asks for a lightweight booking-lookup fallback. **`/bookings` DOES exist in the code** (built after the master was written), and **B.34 RESOLVES it**: accounts ARE auto-created with email + booking-reference login. **The lookup LOGIN page itself is still to build.** (2) **Two Cloudinary accounts live**: `SiteInfo.logo` → cloud **`djqinkh2c`**, `backend/.env` `CLOUDINARY_CLOUD_NAME` → **`dsfms7jb4`**. (3) **`start:prod` is `node dist/main` but the build emits `dist/src/main.js`** — production start would fail (pre-existing; **flagged, not fixed**). (4) **English date punctuation vs Figma:** Figma demo strings were `Tue 28 May, 2026` / `Sunday, 26 May`; Intl `en-GB` produces `Fri, 24 Jul 2026` / `Wednesday 22 July` — correct day-then-month order, but the **comma sits after the weekday rather than before the year**. Matching Figma exactly needs a hand-rolled formatter that would break the other 6 locales, **so it was NOT silently hand-rolled** — decide: keep locale-correct Intl, or hand-compose for `en` only.
 - **WhatsApp deep-link pattern (master §6.6):** one pattern everywhere — **`https://wa.me/{number}?text={greeting}`**; WhatsApp Web/app handles desktop and mobile natively — **no custom modal**. WhatsApp **lives in**: tour-description inline links, the global footer, error states, the NeedHelp components, **post-purchase email**. WhatsApp is **deliberately absent from**: the widget trust strip, the trust modals, and the commit moment generally. `buildWhatsappUrl()` is mirrored on both sides (`common/utils/whatsapp.util.ts` + `lib/whatsapp.ts`), normalizes to bare digits, and **returns null when disabled/unusable so callers hide the surface**. ⚠️ **OPEN:** the `?text={greeting}` half needs real copy in **7 locales** (currently linking bare `wa.me/{number}`).
-- **TYP "4 guestss" bug (founder-spotted):** `getThankYou` returned the **PLURAL** label `'Guests'` for age-band-less (UNIT-priced) parties while every other label is singular, and the client pluralises against the quantity → double-pluralised. **Contract: the backend sends the SINGULAR unit; the client pluralises.** Fixed to `'Guest'`; `fmtParty` hardened so `pluralise()` skips a label already ending in 's'. *"`getThankYou` had ZERO test coverage — that is why it shipped."*
+- **TYP "4 guestss" bug (founder-spotted):** `getThankYou` returned the **PLURAL** label `'Guests'` for age-band-less (UNIT-priced) parties while every other label is singular, and the client pluralises against the quantity → double-pluralised. **Contract: the backend sends the SINGULAR unit; the client pluralises.** Fixed to `'Guest'`; `fmtParty` hardened so `pluralise()` skips a label already ending in 's'. _"`getThankYou` had ZERO test coverage — that is why it shipped."_
 - **"Card payment only" removed from `operator_link`** (founder-approved): it was hardcoded in `thank-you-summary.tsx`, driven by **no data**, present in **no spec**, and asserted how a third party collects a balance running on the operator's own rails — **which master B.85 forbids on any surface**. The card/cash statement is only legitimate on `on_arrival`, where `Tour.onArrivalPayment` actually tells us.
 
 ---
@@ -3125,72 +3222,73 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 #### C.11.1 Decision summary — concern → mechanism → queue?
 
-| Concern | Correct mechanism | Queue? |
-|---|---|---|
-| Overbooking / two travelers race for the last seats | **Single atomic guarded `UPDATE departures`** (row-level lock) | **No** |
-| Booking create + unit items + add-ons + settlement row | **One DB transaction (synchronous)** | **No** |
-| Payment intent creation | **Idempotent per `(bookingId, kind)`** (synchronous) | **No** |
-| Confirmation / operator-balance email | BullMQ job, retryable, idempotent | **Yes** |
-| Server-side **Meta CAPI** conversion | BullMQ job, idempotent by event id | **Yes** |
-| **Hold expiry** (release seats at `utcExpiresAt`) | BullMQ delayed/repeatable sweeper | **Yes** |
-| Scheduled **`paid_in_full` payout** after the cancellation window | BullMQ delayed job | **Yes** |
-| **Pre-tour reminder** (24h before start) | BullMQ delayed job | **Yes** |
-| **Affiliate postback** (on-hold, approve after window) | BullMQ delayed job | **Yes** |
-| Nightly **`quality_score` / eligibility / materialization** | BullMQ repeatable (cron) | **Yes** |
+| Concern                                                           | Correct mechanism                                              | Queue?  |
+| ----------------------------------------------------------------- | -------------------------------------------------------------- | ------- |
+| Overbooking / two travelers race for the last seats               | **Single atomic guarded `UPDATE departures`** (row-level lock) | **No**  |
+| Booking create + unit items + add-ons + settlement row            | **One DB transaction (synchronous)**                           | **No**  |
+| Payment intent creation                                           | **Idempotent per `(bookingId, kind)`** (synchronous)           | **No**  |
+| Confirmation / operator-balance email                             | BullMQ job, retryable, idempotent                              | **Yes** |
+| Server-side **Meta CAPI** conversion                              | BullMQ job, idempotent by event id                             | **Yes** |
+| **Hold expiry** (release seats at `utcExpiresAt`)                 | BullMQ delayed/repeatable sweeper                              | **Yes** |
+| Scheduled **`paid_in_full` payout** after the cancellation window | BullMQ delayed job                                             | **Yes** |
+| **Pre-tour reminder** (24h before start)                          | BullMQ delayed job                                             | **Yes** |
+| **Affiliate postback** (on-hold, approve after window)            | BullMQ delayed job                                             | **Yes** |
+| Nightly **`quality_score` / eligibility / materialization**       | BullMQ repeatable (cron)                                       | **Yes** |
 
 #### C.11.2 Why no queue for overbooking
 
 - The guarded atomic `UPDATE` (§C.3.6) **is** the concurrency control; **if it affects zero rows, the booking fails**. PostgreSQL's row-level lock means **exactly one of two racing travelers wins**, at the database, **with no extra infrastructure**.
 - A queue **does not remove the need for the atomic update** — you would still run it inside the consumer, so you would have **both**.
 - A queue **serializes bookings**, fighting the master's **instant booking** requirement by adding latency and a new failure surface.
-- Queues / virtual waiting rooms only help for true **flash-sale hot inventory** (thousands of buyers on one SKU in the same second). **A tour departure has ~20 to 40 seats and a handful of concurrent bookers.** *"Do not build for contention we will not have."*
+- Queues / virtual waiting rooms only help for true **flash-sale hot inventory** (thousands of buyers on one SKU in the same second). **A tour departure has ~20 to 40 seats and a handful of concurrent bookers.** _"Do not build for contention we will not have."_
 - **"Keep the atomic guarded update. That is the overbooking and race-condition answer."**
 
 #### C.11.3 Synchronous core, asynchronous edges
 
 - **Stays synchronous and transactional (critical path) — inside ONE DB transaction, in order:**
-  1. **Atomic seat claim** (`UPDATE departures … WHERE booked_count + :seats <= capacity`).
-  2. **Create `Booking`** (+ `BookingUnitItem`, `BookingAddOn`, **`Settlement` row**).
-  3. **Write an `outbox` row for each domain event** this booking emits.
-- Then, **outside the transaction**:
-  4. **Create the payment intent** (idempotent per `(bookingId, kind)`) — except `operator_full`, which is confirmed at commit with no charge. *(⚠️ `operator_full` is dropped in v1; that is v2 behavior.)*
+    1. **Atomic seat claim** (`UPDATE departures … WHERE booked_count + :seats <= capacity`).
+    2. **Create `Booking`** (+ `BookingUnitItem`, `BookingAddOn`, **`Settlement` row**).
+    3. **Write an `outbox` row for each domain event** this booking emits.
+- Then, **outside the transaction**: 4. **Create the payment intent** (idempotent per `(bookingId, kind)`) — except `operator_full`, which is confirmed at commit with no charge. _(⚠️ `operator_full` is dropped in v1; that is v2 behavior.)_
 - **Goes async (BullMQ jobs):** everything that is a **side effect of a state change** — email, conversion, payout, reminder, nightly recompute. **Retryable, idempotent, sometimes delayed.** They must **never block the booking response** and **never be lost if a process crashes**.
 - **"Keep the critical booking path (seat claim, booking create, payment intent) off the queue entirely."**
 
 #### C.11.4 Job inventory — job | trigger | type | idempotency key
 
-| Job | Trigger | Type | Idempotency key |
-|---|---|---|---|
-| `booking.confirmation-email` | `booking.confirmed` | standard | **`bookingId:confirmation`** |
-| `booking.operator-balance-email` | `booking.confirmed` **AND** `operator_link` | standard | **`bookingId:operator-balance`** |
-| `tracking.capi-conversion` | `booking.confirmed` (**EUR commission present**) | standard | **`bookingId:capi`** (dedup by event id) |
-| `booking.hold-expiry-sweep` | schedule | **repeatable (cron)** | **run-window guarded** |
-| `settlement.paid-in-full-payout` | `booking.confirmed` **AND** `paid_in_full`, **released after the cancellation window** | **delayed** | **`bookingId:payout`** |
-| `booking.pre-tour-reminder` | `booking.confirmed`, **fire 24h before start** | **delayed** | **`bookingId:reminder`** |
-| `affiliate.postback` | `booking.confirmed` with attribution, **approve after window** | **delayed** | **`bookingId:affiliate`** |
-| `commercial.quality-score` | **nightly** | repeatable (cron) | **run-date guarded** |
-| `commercial.eligibility-enforce` | **nightly** | repeatable (cron) | **run-date guarded** |
-| `availability.materialization` | **nightly** | repeatable (cron) | **run-date guarded** |
+| Job                              | Trigger                                                                                | Type                  | Idempotency key                          |
+| -------------------------------- | -------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------- |
+| `booking.confirmation-email`     | `booking.confirmed`                                                                    | standard              | **`bookingId:confirmation`**             |
+| `booking.operator-balance-email` | `booking.confirmed` **AND** `operator_link`                                            | standard              | **`bookingId:operator-balance`**         |
+| `tracking.capi-conversion`       | `booking.confirmed` (**EUR commission present**)                                       | standard              | **`bookingId:capi`** (dedup by event id) |
+| `booking.hold-expiry-sweep`      | schedule                                                                               | **repeatable (cron)** | **run-window guarded**                   |
+| `settlement.paid-in-full-payout` | `booking.confirmed` **AND** `paid_in_full`, **released after the cancellation window** | **delayed**           | **`bookingId:payout`**                   |
+| `booking.pre-tour-reminder`      | `booking.confirmed`, **fire 24h before start**                                         | **delayed**           | **`bookingId:reminder`**                 |
+| `affiliate.postback`             | `booking.confirmed` with attribution, **approve after window**                         | **delayed**           | **`bookingId:affiliate`**                |
+| `commercial.quality-score`       | **nightly**                                                                            | repeatable (cron)     | **run-date guarded**                     |
+| `commercial.eligibility-enforce` | **nightly**                                                                            | repeatable (cron)     | **run-date guarded**                     |
+| `availability.materialization`   | **nightly**                                                                            | repeatable (cron)     | **run-date guarded**                     |
 
 #### C.11.5 The transactional outbox pattern
 
 - **The problem:** the gap between committing to Postgres and enqueuing the job — the commit succeeds but the process dies before `queue.add`; **or** the enqueue succeeds and the transaction rolls back.
 - **The fix:** write the event to an **`outbox` table inside the same transaction** as the booking; a **relay** publishes outbox rows to BullMQ and **marks them dispatched**.
 - Prisma model:
-  ```prisma
-  model OutboxEvent {
-    id           String   @id @default(uuid())
-    aggregate    String   // 'booking'
-    aggregateId  String   // bookingId
-    type         String   // 'booking.confirmed' | 'booking.cancelled' | 'payment.succeeded' | 'hold.expired'
-    payload      Json
-    dispatchedAt DateTime?
-    createdAt    DateTime @default(now())
 
-    @@index([dispatchedAt])
-    @@map("outbox_events")
-  }
-  ```
+    ```prisma
+    model OutboxEvent {
+      id           String   @id @default(uuid())
+      aggregate    String   // 'booking'
+      aggregateId  String   // bookingId
+      type         String   // 'booking.confirmed' | 'booking.cancelled' | 'payment.succeeded' | 'hold.expired'
+      payload      Json
+      dispatchedAt DateTime?
+      createdAt    DateTime @default(now())
+
+      @@index([dispatchedAt])
+      @@map("outbox_events")
+    }
+    ```
+
 - **Domain event types enumerated:** `booking.confirmed`, `booking.cancelled`, `payment.succeeded`, `hold.expired`.
 - **Guarantee:** "booking confirmed" **always eventually fires its email, conversion, and payout — exactly once in effect.**
 - **Producers** are services that, after commit, publish outbox rows (the **relay** calls `queue.add`). **Consumers** are `@Processor` classes; **each is idempotent and re-validates booking state before acting.**
@@ -3198,28 +3296,40 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### C.11.6 Reliability rules
 
 - **Idempotent consumers — two layers:**
-  - **Queue-level dedup via a custom `jobId`:** BullMQ ignores a second `add()` with an existing `jobId` and emits a `duplicated` event. Use a deterministic key (e.g. `bookingId:confirmation`).
-    - **⚠️ CAVEAT:** `removeOnComplete` / `removeOnFail` remove the job from the queue, after which **the same `jobId` is no longer seen as a duplicate**. **Do NOT rely on `jobId` dedup alone for correctness.**
-  - **DB-level guard is the real backstop:** **`conversion_fired_at` is stamped before the conversion payload is exposed (mark-first)**, and **Stripe events are recorded in `stripe_webhook_events` before processing**. **Each consumer checks and sets its own guard.**
+    - **Queue-level dedup via a custom `jobId`:** BullMQ ignores a second `add()` with an existing `jobId` and emits a `duplicated` event. Use a deterministic key (e.g. `bookingId:confirmation`).
+        - **⚠️ CAVEAT:** `removeOnComplete` / `removeOnFail` remove the job from the queue, after which **the same `jobId` is no longer seen as a duplicate**. **Do NOT rely on `jobId` dedup alone for correctness.**
+    - **DB-level guard is the real backstop:** **`conversion_fired_at` is stamped before the conversion payload is exposed (mark-first)**, and **Stripe events are recorded in `stripe_webhook_events` before processing**. **Each consumer checks and sets its own guard.**
 - **Retries and backoff:** configure `attempts` with **exponential backoff** so a transient email/provider failure retries instead of dropping. BullMQ delay grows as **`2^(attempt-1) * delay`**. Reference config:
-  ```typescript
-  await queue.add('booking.confirmation-email', { bookingId }, {
-    jobId: `${bookingId}:confirmation`,
-    attempts: 5,
-    backoff: { type: 'exponential', delay: 1000 }, // 1s, 2s, 4s, 8s, 16s
-    removeOnComplete: 1000,
-    removeOnFail: false, // keep failures for inspection / DLQ
-  });
-  ```
+    ```typescript
+    await queue.add(
+        'booking.confirmation-email',
+        { bookingId },
+        {
+            jobId: `${bookingId}:confirmation`,
+            attempts: 5,
+            backoff: { type: 'exponential', delay: 1000 }, // 1s, 2s, 4s, 8s, 16s
+            removeOnComplete: 1000,
+            removeOnFail: false, // keep failures for inspection / DLQ
+        }
+    );
+    ```
 - **Delayed jobs (fire once, later):** the scheduled `paid_in_full` payout and the pre-tour reminder use `{ delay: msUntilTarget }`. **Compute the delay from tour-local time** (payout: after the cancellation window closes; reminder: 24h before start). **Re-check state in the consumer**, because the booking may have been cancelled or refunded meanwhile.
 - **Repeatable / cron jobs** (hold-expiry sweep, nightly jobs) use the **Job Scheduler**:
-  ```typescript
-  await queue.upsertJobScheduler('nightly-quality-score',
-    { pattern: '0 15 3 * * *' }, // 03:15 daily
-    { name: 'commercial.quality-score',
-      opts: { attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnFail: 1000 } });
-  ```
-  Delayed and repeatable jobs need the **BullMQ scheduler running**; the modern **`upsertJobScheduler`** API **supersedes** the older `QueueScheduler` + `repeat` pattern.
+    ```typescript
+    await queue.upsertJobScheduler(
+        'nightly-quality-score',
+        { pattern: '0 15 3 * * *' }, // 03:15 daily
+        {
+            name: 'commercial.quality-score',
+            opts: {
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 5000 },
+                removeOnFail: 1000,
+            },
+        }
+    );
+    ```
+    Delayed and repeatable jobs need the **BullMQ scheduler running**; the modern **`upsertJobScheduler`** API **supersedes** the older `QueueScheduler` + `repeat` pattern.
 - **Failed jobs: do NOT silently drop.** Keep them (`removeOnFail: false` or a numeric retention) and **surface them** (Bull Board or an admin view) so a stuck payout/conversion is visible.
 - **A confirmed booking with a null `commission_amount` is data corruption** (master §8) — **the conversion job must FAIL LOUDLY, not fire.**
 
@@ -3249,9 +3359,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### C.11.10 ⚠️ SPEC-SAYS-BullMQ-CRON vs CODE-USES-`@nestjs/schedule` — the divergence
 
 - **The spec (EVENT-DRIVEN-AND-QUEUES.md §1 and §4)** lists the **nightly `quality_score` / eligibility / materialization** jobs — and the **hold-expiry sweep** — as **BullMQ repeatable (cron)** jobs, driven by `upsertJobScheduler`.
-- **The code does NOT do this for the nightly work.** `NightlyJobsService` is a **plain in-process `@nestjs/schedule` cron (03:00 UTC)**, explicitly **NOT BullMQ**, with the stated rationale: *"idempotent recomputes, not a retry/concurrency queue."* The same convention is applied to **`FxRefreshService`** (startup refresh + a dynamic `SchedulerRegistry` interval), which likewise declares *"in-process `@nestjs/schedule` (no BullMQ), matching `NightlyJobsService`."*
+- **The code does NOT do this for the nightly work.** `NightlyJobsService` is a **plain in-process `@nestjs/schedule` cron (03:00 UTC)**, explicitly **NOT BullMQ**, with the stated rationale: _"idempotent recomputes, not a retry/concurrency queue."_ The same convention is applied to **`FxRefreshService`** (startup refresh + a dynamic `SchedulerRegistry` interval), which likewise declares _"in-process `@nestjs/schedule` (no BullMQ), matching `NightlyJobsService`."_
 - A **stale comment** in `availability-materializer.service.ts:42-43` still says **"nightly BullMQ job"** — **wrong; ignore it.**
-- **BullMQ IS installed and wired**, but for different concerns: *"queues exist for media-upload, notifications; one nightly cron"* (`app.module.ts`, `workers/nightly-jobs.service.ts`).
+- **BullMQ IS installed and wired**, but for different concerns: _"queues exist for media-upload, notifications; one nightly cron"_ (`app.module.ts`, `workers/nightly-jobs.service.ts`).
 - **The hold-expiry sweeper is the one place the divergence bites:** the spec says BullMQ repeatable; the code has **neither** — `expireStaleHolds()` exists but **nothing calls it** (see §C.3.7).
 
 #### C.11.11 Queue/job build status
@@ -3269,7 +3379,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - `[~]` **Nightly quality-score / eligibility / materialization (cron)** — **materialization / bookability / spotlight / demand are DONE**; **quality-score and tier eligibility/grace/demotion are TODOs**.
 - `[~]` **Idempotent consumers** — DB guards exist (`conversion_fired_at`, `stripe_webhook_events`); once jobs move to the queue, **add `jobId` dedup and KEEP the DB guards** — do not rely on `jobId` alone.
 - `[ ]` **Retries + exponential backoff, and keep failed jobs (no silent drop)** — applies once jobs are queued.
-- ⚠️ **CRITICAL FLAW 5 (`[~]`):** *"Conversion/email fire inline with mark-first stamp, no queue/outbox."* `conversionFiredAt` is set **before** email/CAPI run, so **a CAPI/email failure is never retried and the conversion is lost.** `Code: bookings.service.ts:finalizeConfirmation`.
+- ⚠️ **CRITICAL FLAW 5 (`[~]`):** _"Conversion/email fire inline with mark-first stamp, no queue/outbox."_ `conversionFiredAt` is set **before** email/CAPI run, so **a CAPI/email failure is never retried and the conversion is lost.** `Code: bookings.service.ts:finalizeConfirmation`.
 
 ---
 
@@ -3278,7 +3388,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### C.12.1 `Booking` — E.8 field register
 
 - **Identity & status:** `public_ref` `uuid NOT NULL UNIQUE` (TYP URL credential; **random, never incremental** — booking URLs **cannot be enumerated**) · `display_ref` `varchar NOT NULL` (customer-facing, format **`IT-2026-XXXXX`**; the **transaction id in all tracking** and, **with the email, the account login**) · `status` enum · `island` `varchar NOT NULL` (**denormalized from the tour at creation**, default **`'Curaçao'`**; **stable under future tour relocation**).
-  - Token roles locked: `publicRef` (UUID `@unique @default(uuid())`) = **URL token only**, never the DB `id`, never the human ref · `displayRef` (`IT-YYYY-XXXXXXXX`) = customer-facing, **never in the URL** (sequential/guessable → enumeration risk) · `id` (DB PK, client-suppliable as the reserve idempotency key) = **authenticated mutations only**.
+    - Token roles locked: `publicRef` (UUID `@unique @default(uuid())`) = **URL token only**, never the DB `id`, never the human ref · `displayRef` (`IT-YYYY-XXXXXXXX`) = customer-facing, **never in the URL** (sequential/guessable → enumeration risk) · `id` (DB PK, client-suppliable as the reserve idempotency key) = **authenticated mutations only**.
 - **Money & commission:** `original_currency` `char(3)` (**USD or EUR**; what Stripe charged; on `operator_full` the **session display-currency snapshot**; **every customer-facing amount renders in this currency**) · `original_amount` `decimal(10,2)` · `booking_total_eur` `decimal(10,2)` · `fx_rate_to_eur` `decimal(10,6)` (**snapshot at booking time, audit trail**) · `deposit_amount` `decimal` (**TYP balance row = `original_amount − deposit_amount`** in the original currency; **0 on `operator_full`**) · `payment_method_last4` + `brand` (from the Stripe payment method; **null on `operator_full`**) · `commission_rate` `decimal(5,4)` · `commission_amount` `decimal(10,2)` **in EUR** · `payment_model` enum (**snapshotted from the tour at creation**, added via the C5 migration).
 - **Attribution & idempotency:** `conversion_fired_at` `timestamptz NULL` (mark-first guard, set server-side before render) · `gclid`, `gbraid`, `wbraid`, `fbclid` (**click ids captured at booking creation**; required for adjustments and offline conversions) · `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` · `affiliateId` (Trackdesk).
 - **Customer identity & billing:** `customer_first_name` + `customer_last_name` (**stored SPLIT** — the checkout form asks separately; improves Enhanced Conversions match rate by **+20 to 40%**; legacy single-field names **parse heuristically**) · `customer_email`, `customer_phone` (**normalized to E.164 via `libphonenumber-js`**) · `customer_id` (**hash of the email**; GA4 `user_id` for cross-device tracking) · `customer_locale` (**captured from day one** under the 7-locale scope; drives localized TYP and email) · `billing_country` `char(2)`, `billing_postal_code`, `billing_city` (pulled from the Stripe payment method **during webhook handling**; **null on `operator_full`**).
@@ -3300,17 +3410,17 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 #### C.12.3 Remaining "gaps to add" ledger (BOOKING-AND-PAYMENT-DATA)
 
-| # | Change | Where | Basis |
-|---|---|---|---|
-| 1 | Add `tourStartDateTime` + `tourEndDateTime` | `Booking` | Master E.8 core; TYP time range, ICS, 24h reminder, deadline calc |
-| 2 | Add `travelerAge` `int?` | `BookingUnitItem` | Master child ages; min-age enforcement |
-| 3 | Add `pickupAddress` `string?` snapshot | `Booking` | Master `pickup_address`; booking immutability |
-| 4 | Add `newsletterOptIn` `bool` | `Booking` | Figma checkout opt-in |
-| 5 | Cap `notes` at **500** chars | DTO | Figma "Max 500 characters" |
-| 6 | Make `island` NOT NULL (default `'Curaçao'`) | `Booking` | Master E.8 |
-| 7 | Add `methodType` `string?` | `Payment` | Figma 4 payment methods |
-| 8 | Mollie webhook idempotency | `payments.prisma` | If Mollie is live |
-| 9 | (design) `couponCode` + `discountAmount` + a `Coupon` entity | `Booking` + new | Figma "Apply"; **confirm against the commercial model FIRST** — not in the master tables and it **affects commission math** |
+| #   | Change                                                       | Where             | Basis                                                                                                                       |
+| --- | ------------------------------------------------------------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Add `tourStartDateTime` + `tourEndDateTime`                  | `Booking`         | Master E.8 core; TYP time range, ICS, 24h reminder, deadline calc                                                           |
+| 2   | Add `travelerAge` `int?`                                     | `BookingUnitItem` | Master child ages; min-age enforcement                                                                                      |
+| 3   | Add `pickupAddress` `string?` snapshot                       | `Booking`         | Master `pickup_address`; booking immutability                                                                               |
+| 4   | Add `newsletterOptIn` `bool`                                 | `Booking`         | Figma checkout opt-in                                                                                                       |
+| 5   | Cap `notes` at **500** chars                                 | DTO               | Figma "Max 500 characters"                                                                                                  |
+| 6   | Make `island` NOT NULL (default `'Curaçao'`)                 | `Booking`         | Master E.8                                                                                                                  |
+| 7   | Add `methodType` `string?`                                   | `Payment`         | Figma 4 payment methods                                                                                                     |
+| 8   | Mollie webhook idempotency                                   | `payments.prisma` | If Mollie is live                                                                                                           |
+| 9   | (design) `couponCode` + `discountAmount` + a `Coupon` entity | `Booking` + new   | Figma "Apply"; **confirm against the commercial model FIRST** — not in the master tables and it **affects commission math** |
 
 - ⚠️ **Discount/coupon DEFERRED (founder decision 2026-07-16):** a client-supplied `discountAmount` / `couponCode` is **untrusted with no server-side coupon engine** (a client could grant itself 100% off), so it is **NOT applied** — full price stays authoritative and **no phantom discount is written**. The untrusted DTO fields and write-through were **removed**. Re-add (validated) when a `Coupon` engine ships.
 
@@ -3357,7 +3467,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Locale prefix always present for content pages: `/en/`, `/nl/`, `/de/`, `/fr/`, `/es/`, `/pt/`, `/zh/`.
 - No-prefix requests **302-redirect** via `Accept-Language` detection, defaulting to `/en/`.
 - Middleware config: `createMiddleware({ locales: ['en','es','nl','pt','fr','de','zh'], defaultLocale:
-  'en', localePrefix: 'always' })` (next-intl).
+'en', localePrefix: 'always' })` (next-intl).
 - **Slugs are English at every locale.** The locale prefix selects the translation and never changes the
   slug. `/nl/curacao/boottochten/` is wrong.
 - **Three invariants:** (1) one canonical URL per tour; (2) all third-segment entities share one
@@ -3379,29 +3489,29 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   **persists for the session**.
 - **The nav never carries the currency selector.**
 - IP-based currency localization is roadmap, not launch.
-  - **EXECUTED 2026-07-21 (geo-preselected currency):** brought forward from roadmap on request. The
-    footer selector now **opens on the visitor's own currency instead of the locale default**, chosen
-    from location - still strictly a choice between the two supported currencies, EUR or USD, and
-    still only ever the *initial* value: a stored `NEXT_CURRENCY` (an explicit pick, or an earlier geo
-    pick) is never overwritten.
-    - **One input, one writer.** Geo writes the `NEXT_CURRENCY` cookie and nothing else;
-      `getServerCurrency` still reads only that cookie, so prices keep resolving through exactly one
-      path and the pill can never disagree with the prices next to it.
-    - **`proxy.ts`** resolves the visitor's country from the edge (`x-vercel-ip-country`, plus
-      `cf-ipcountry`/`x-country`) and sets the cookie **on the same redirect that picks the locale** -
-      so anyone arriving at `/` or `/curacao` gets a first paint already in their currency.
-    - **`CurrencyAutoDetect`** (first child of the locale layout, renders nothing) covers deep
-      landings straight onto `/{locale}/...`, which the proxy matcher deliberately excludes, and
-      hosts that report no country at all. It reads the **browser clock's time zone** - the one
-      location signal with no network round trip, no third-party lookup, and no permission prompt -
-      then refreshes once so the server re-renders prices in the new currency. Mounted first because
-      the nav/hero search, wishlist, and footer pill all read the cookie in their own mount effects.
-    - **The rule is one question** (`lib/currency/geo.ts`): is the visitor in Europe? EU 27 + EEA + UK
-      + CH + the euro microstates + the Western Balkans → EUR; everywhere else → USD, which is also
-      right for the Caribbean itself (Curaçao and Sint Maarten quote in USD, Aruba's florin is
-      dollar-pegged). Turkey and Russia sit partly or wholly in Europe but price international travel
-      in dollars, so they fall through to USD. An unreadable signal returns `undefined` rather than a
-      guess, leaving the locale default in place.
+    - **EXECUTED 2026-07-21 (geo-preselected currency):** brought forward from roadmap on request. The
+      footer selector now **opens on the visitor's own currency instead of the locale default**, chosen
+      from location - still strictly a choice between the two supported currencies, EUR or USD, and
+      still only ever the _initial_ value: a stored `NEXT_CURRENCY` (an explicit pick, or an earlier geo
+      pick) is never overwritten.
+        - **One input, one writer.** Geo writes the `NEXT_CURRENCY` cookie and nothing else;
+          `getServerCurrency` still reads only that cookie, so prices keep resolving through exactly one
+          path and the pill can never disagree with the prices next to it.
+        - **`proxy.ts`** resolves the visitor's country from the edge (`x-vercel-ip-country`, plus
+          `cf-ipcountry`/`x-country`) and sets the cookie **on the same redirect that picks the locale** -
+          so anyone arriving at `/` or `/curacao` gets a first paint already in their currency.
+        - **`CurrencyAutoDetect`** (first child of the locale layout, renders nothing) covers deep
+          landings straight onto `/{locale}/...`, which the proxy matcher deliberately excludes, and
+          hosts that report no country at all. It reads the **browser clock's time zone** - the one
+          location signal with no network round trip, no third-party lookup, and no permission prompt -
+          then refreshes once so the server re-renders prices in the new currency. Mounted first because
+          the nav/hero search, wishlist, and footer pill all read the cookie in their own mount effects.
+        - **The rule is one question** (`lib/currency/geo.ts`): is the visitor in Europe? EU 27 + EEA + UK
+            - CH + the euro microstates + the Western Balkans → EUR; everywhere else → USD, which is also
+              right for the Caribbean itself (Curaçao and Sint Maarten quote in USD, Aruba's florin is
+              dollar-pegged). Turkey and Russia sit partly or wholly in Europe but price international travel
+              in dollars, so they fall through to USD. An unreadable signal returns `undefined` rather than a
+              guess, leaving the locale default in place.
 - Locale-aware number formatting applies: `$1,234.56` vs `€1.234,56`.
 - `destination.currency` stays in the data model for operator/payout context; it does **not** drive
   display currency.
@@ -3419,16 +3529,16 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   homepage Figma (hero H1, micro trust bar, NeedHelp). The final spec file was lost; deviations from V2
   are marked.
 - **Section order — eight specced sections plus the trust component from the cross-surface matrix (10 rows):**
-  1. Navigation bar, homepage variant (§3.9).
-  2. Hero — spec structure; H1 per the June 10 Figma.
-  3. Micro trust bar.
-  4. Video carousel.
-  5. Social proof strip.
-  6. Featured destinations.
-  7. Editorial banner (launch-only slot).
-  8. Why Island Tours.
-  9. Need help before booking? (full, with FAQ column) — added by trust matrix §3.11.
-  10. Footer.
+    1. Navigation bar, homepage variant (§3.9).
+    2. Hero — spec structure; H1 per the June 10 Figma.
+    3. Micro trust bar.
+    4. Video carousel.
+    5. Social proof strip.
+    6. Featured destinations.
+    7. Editorial banner (launch-only slot).
+    8. Why Island Tours.
+    9. Need help before booking? (full, with FAQ column) — added by trust matrix §3.11.
+    10. Footer.
 - Hero (locked): full-bleed Caribbean aerial image, dark gradient bottom-to-top, **CMS-managed per locale**.
 - **H1 LOCKED June 10, 2026:** `We didn't discover the Caribbean. We grew up in it.`
 - The H1 is a deliberate **subversion** of the LD9-banned word "discover" — a sanctioned exception, not a use.
@@ -3456,7 +3566,7 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Homepage sections carry the **peach/ivory tint on card #1** (curated-list rule, §D.10).
 - **Tracking:** standard GA4 page view; destination selection fires `select_content`.
 - ⚠️ CONFLICT — trust-bar cancellation copy: B.72 records the Figma line `Free cancellation on most tours,
-  up to 24h before` (founder decision over the 48h recommendation, "honest only while most live tours
+up to 24h before` (founder decision over the 48h recommendation, "honest only while most live tours
   carry 24h windows"); B.75 then supersedes it with `Free cancellation on every tour, no questions asked`
   (hour-free). The **LD1 platform default stays 48h** either way.
 
@@ -3488,102 +3598,102 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - At **20 or more published tours** the CTA carries the dynamic count: `See all {count} {Destination} tours →`.
 - **Below 20 published tours no count is shown**, to avoid signaling scarcity.
 - Instagram grid: brand handle row per review.
-  - **EXECUTED 2026-07-21 (phase 1 - admin-curated feed):** the grid was hardcoded (six bundled JPGs, a
-    hardcoded `@island.tours_` handle) and `SiteInfo.instagramWidgetId` was the abandoned start of a
-    third-party embed that nothing ever read. Both are gone. New **`instagram` backend module**
-    (`instagram.prisma`: `InstagramAccount` singleton + `InstagramPost`; enums `InstagramSource`,
-    `InstagramMediaType`; migration `20260721160000_instagram_feed`, which also **drops
-    `instagramWidgetId`**). Public `GET /instagram/public/feed?destination=&limit=` returns the handle,
-    profile link and tiles in one call; admin CRUD + reorder sits behind `VIEW_SETTINGS` /
-    `MANAGE_SETTINGS`. Public site renders `components/frontend/instagram/instagram-grid.tsx` from
-    `lib/api/public/instagram.ts` (`'use cache'`, new coarse tag **`instagram`**, added to
-    `lib/cache-tags.ts` in BOTH repos). Dashboard gets a **Settings > Instagram** tab (handle card +
-    tile grid: media-library photo, permalink, caption, alt override, per-island pin, show/hide, arrow
-    reorder), and dashboard writes bust `instagram` via `cache-revalidation.ts`.
-  - **Why first-party, not a widget:** an iframe embed cannot be server-rendered into this prerendered
-    page, brings consent-managed cookies into six EU locales for a decorative strip, and cannot be
-    styled to the Figma grid. **Instagram `media_url` CDN links expire within days and hotlinking them
-    breaks their terms**, so a tile's photo is always a URL we control.
-  - **Gates (all three collapse to "render no section"):** `SiteInfo.enableInstagram` off, zero live
-    tiles, or no handle set. A handle row over an empty grid is worse than no section.
-  - **EXECUTED 2026-07-21 (phase 1b - video tiles + two layouts):** a feed of only stills could not
-    represent reels, so `InstagramPost` gained **`videoUrl`** (migration `20260721170000_instagram_video`,
-    which drops the redundant `thumbnailUrl`): `imageUrl` is now the still the grid always paints and
-    **doubles as the poster**, so a reel never flashes black and a reduced-motion visitor sees the
-    photo. **`mediaType` is DERIVED, never client-set** - VIDEO when a video is attached, otherwise the
-    admin's IMAGE/CAROUSEL_ALBUM choice (that one describes the linked post, which we cannot see).
-    Playback is `components/frontend/instagram/instagram-tile-video.tsx`: muted + `playsInline`, loaded
-    and played only within 200px of the viewport, paused on exit, and **rendered not at all under
-    `prefers-reduced-motion`**.
-  - **Two layouts, admin-chosen** (`InstagramLayout` on `InstagramAccount`, migration
-    `20260721180000_instagram_layout_and_badges`): **GRID** = the curated Figma band (2/3 columns,
-    rounded 384x337 cards, 6 tiles); **GALLERY** = the Instagram profile look (3/6 columns of 4:5
-    portraits, tight gutters, 18 tiles). The layout rides the public feed payload, so switching it is
-    a content decision, not a deploy. `getPublicFeed` takes its default tile count FROM the layout
-    (6 / 18); an explicit `limit` still wins. Frontend split: `instagram-section.tsx` (fetch + gates +
-    handle row) → `instagram-grid.tsx` | `instagram-gallery.tsx`, both rendering the shared
-    `instagram-tile.tsx`, so the two can never drift on media handling.
-  - **Dashboard:** the on/off switch MOVED off Integrations onto the Instagram tab, beside the handle,
-    layout selector and tiles it governs (a toggle three tabs from what it turns on is how the old
-    widget-ID field went unnoticed). Tile dialog gains an optional media-library **video**, a post-type
-    (photo/carousel) choice and a pin toggle. `isPinned` is **badge-only and never reorders** -
-    `displayOrder` owns order.
-  - **Corner badges DECIDED 2026-07-21: on, in both layouts.** Reel / carousel / pin glyphs
-    (`public/icons/instagram-{reel,carousel,pin}.svg`) sit top-right; **a single photo carries none**,
-    matching Instagram - a badge on every tile would only label a photo as a photo. Pin outranks the
-    media badge when a post is both. They are `pointer-events-none` LABELS: the whole tile stays one
-    outbound link. (They were briefly removed on the argument that this is Instagram's product chrome;
-    reinstated by decision - without them a still and a reel are identical until the reel plays.)
-  - **EXECUTED 2026-07-28 (phase 2 - API auto-sync, now the ONLY path):** the feed is a mirror of the
-    connected account; the manual tile picker is retired (decision: remove manual UI entirely, keep
-    reorder & hide). Built:
-    - **Provider seam** (`src/instagram/providers/`): `InstagramApiProvider` interface with a live
-      `InstagramGraphProvider` ("Instagram API with Instagram Login" - the Basic Display API it
-      replaces is retired) and an `InstagramDemoProvider` (canned Curacao media, no network). The
-      module binds one at boot from config; **`INSTAGRAM_APP_ID=demo`** runs the whole loop - connect,
-      sync, mirror, render, dashboard - with **no Meta app and no App Review**.
-    - **Env (3-file change):** `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_REDIRECT_URI`,
-      all optional-together (unset ⇒ sync dormant). The long-lived token reuses the existing
-      `ENCRYPTION_KEY` + `crypto.util` - **there is NO separate `INSTAGRAM_TOKEN_SECRET`** (the earlier
-      plan's name; dropped).
-    - **Schema:** OAuth columns on `InstagramAccount` (`igUserId`, encrypted `accessToken`,
-      `tokenExpiresAt`, `lastSyncedAt`, `lastSyncStatus`, `lastSyncError`) + `InstagramSyncStatus` enum
-      + `InstagramPost.videoPublicId`. Migrations `20260728060000` / `20260728061500`.
-    - **OAuth:** `GET /instagram/oauth/authorize-url` (signed-state CSRF) → dashboard callback page
-      `/settings/instagram/callback` → `POST /instagram/oauth/callback` exchanges code → 60-day
-      long-lived token, stored encrypted. `GET /instagram/connection`, `POST /instagram/disconnect`.
-    - **Sync** (`instagram-sync.service.ts`, `POST /instagram/sync` + daily `@Cron 02:30 UTC`): fetch
-      recent media, **mirror each asset into Cloudinary** (media_url CDN links expire in days and
-      hotlinking breaks ToS), **upsert on `igMediaId`**. New post → mirror + create; seen post →
-      refresh metadata only (media already mirrored; `displayOrder`/`isActive` are admin-owned, never
-      clobbered); gone post → delete + Cloudinary cleanup. **60-day token refresh** at <10 days
-      (`refresh_access_token`, token ≥24h old, unexpired), surfaced as `EXPIRING`.
-    - **Dashboard:** connection panel (Connect / Reconnect / Disconnect / Sync now + status), and the
-      tile grid slimmed to **reorder + hide + alt/island** (no add/create/pin). Needs an Instagram
-      **Business/Creator** account and Meta app review for `instagram_business_basic` to go live.
-    - **EXECUTED 2026-07-28 (env-token path + dashboard credentials + auto handle):** for a single
-      first-party brand account, `INSTAGRAM_ACCESS_TOKEN` (env) OR a dashboard-entered access token
-      syncs the account directly - no OAuth/redirect/App-Review. The env/dashboard token SEEDS the DB
-      connection once, then the nightly refresh owns it, so **env-token mode auto-refreshes on the
-      same 60-day/10-day schedule** as OAuth (not a token that silently dies). Credentials (App ID /
-      Secret / Redirect / Access Token) are **editable from the dashboard**, DB-first-then-env,
-      secrets encrypted (`configAppId/configAppSecret/configRedirectUri/configAccessToken`, migration
-      `20260728120000`); `InstagramConfigService.resolve()` is now async. The **handle + profile link
-      are auto-derived** from the connected account (`/me?fields=user_id,username`, refreshed every
-      sync) - the manual Handle/Profile-Link fields are removed. Demo stays an env-only boot toggle.
-      Verified live against a real BUSINESS account: 15 tiles mirrored to Cloudinary, handle
-      auto-resolved.
-    - **Tests:** 53 unit tests across service (incl. removePost mirror-cleanup), sync (mirror/upsert/
-      preserve-curation/refresh/partial/fail/**refresh-fail-still-EXPIRING**), token (encrypt
-      round-trip, no-leak), config (demo detection), OAuth state.
-    - **Post-build review fixes (code + security reviewers):** (1) `env.validate.ts` now accepts the
-      `demo` sentinel for `INSTAGRAM_APP_ID` - it previously rejected it and would have crashed boot;
-      (2) manual `removePost` now cleans its Cloudinary mirror via a shared `deleteInstagramMirror`
-      helper (was leaking an asset pair per delete, and double-mirroring on delete-then-resync);
-      (3) a failed token refresh now records `EXPIRING` even when the same run's sync succeeds (the
-      final status no longer clobbers the warning); (4) per-row isolation on the cleanup loop +
-      reconcile wrapped so a mid-run DB error still records a FAILED result. `isPinned` documented as
-      reserved/always-false (the `instagram_business_basic` scope exposes no pinned state).
+    - **EXECUTED 2026-07-21 (phase 1 - admin-curated feed):** the grid was hardcoded (six bundled JPGs, a
+      hardcoded `@island.tours_` handle) and `SiteInfo.instagramWidgetId` was the abandoned start of a
+      third-party embed that nothing ever read. Both are gone. New **`instagram` backend module**
+      (`instagram.prisma`: `InstagramAccount` singleton + `InstagramPost`; enums `InstagramSource`,
+      `InstagramMediaType`; migration `20260721160000_instagram_feed`, which also **drops
+      `instagramWidgetId`**). Public `GET /instagram/public/feed?destination=&limit=` returns the handle,
+      profile link and tiles in one call; admin CRUD + reorder sits behind `VIEW_SETTINGS` /
+      `MANAGE_SETTINGS`. Public site renders `components/frontend/instagram/instagram-grid.tsx` from
+      `lib/api/public/instagram.ts` (`'use cache'`, new coarse tag **`instagram`**, added to
+      `lib/cache-tags.ts` in BOTH repos). Dashboard gets a **Settings > Instagram** tab (handle card +
+      tile grid: media-library photo, permalink, caption, alt override, per-island pin, show/hide, arrow
+      reorder), and dashboard writes bust `instagram` via `cache-revalidation.ts`.
+    - **Why first-party, not a widget:** an iframe embed cannot be server-rendered into this prerendered
+      page, brings consent-managed cookies into six EU locales for a decorative strip, and cannot be
+      styled to the Figma grid. **Instagram `media_url` CDN links expire within days and hotlinking them
+      breaks their terms**, so a tile's photo is always a URL we control.
+    - **Gates (all three collapse to "render no section"):** `SiteInfo.enableInstagram` off, zero live
+      tiles, or no handle set. A handle row over an empty grid is worse than no section.
+    - **EXECUTED 2026-07-21 (phase 1b - video tiles + two layouts):** a feed of only stills could not
+      represent reels, so `InstagramPost` gained **`videoUrl`** (migration `20260721170000_instagram_video`,
+      which drops the redundant `thumbnailUrl`): `imageUrl` is now the still the grid always paints and
+      **doubles as the poster**, so a reel never flashes black and a reduced-motion visitor sees the
+      photo. **`mediaType` is DERIVED, never client-set** - VIDEO when a video is attached, otherwise the
+      admin's IMAGE/CAROUSEL_ALBUM choice (that one describes the linked post, which we cannot see).
+      Playback is `components/frontend/instagram/instagram-tile-video.tsx`: muted + `playsInline`, loaded
+      and played only within 200px of the viewport, paused on exit, and **rendered not at all under
+      `prefers-reduced-motion`**.
+    - **Two layouts, admin-chosen** (`InstagramLayout` on `InstagramAccount`, migration
+      `20260721180000_instagram_layout_and_badges`): **GRID** = the curated Figma band (2/3 columns,
+      rounded 384x337 cards, 6 tiles); **GALLERY** = the Instagram profile look (3/6 columns of 4:5
+      portraits, tight gutters, 18 tiles). The layout rides the public feed payload, so switching it is
+      a content decision, not a deploy. `getPublicFeed` takes its default tile count FROM the layout
+      (6 / 18); an explicit `limit` still wins. Frontend split: `instagram-section.tsx` (fetch + gates +
+      handle row) → `instagram-grid.tsx` | `instagram-gallery.tsx`, both rendering the shared
+      `instagram-tile.tsx`, so the two can never drift on media handling.
+    - **Dashboard:** the on/off switch MOVED off Integrations onto the Instagram tab, beside the handle,
+      layout selector and tiles it governs (a toggle three tabs from what it turns on is how the old
+      widget-ID field went unnoticed). Tile dialog gains an optional media-library **video**, a post-type
+      (photo/carousel) choice and a pin toggle. `isPinned` is **badge-only and never reorders** -
+      `displayOrder` owns order.
+    - **Corner badges DECIDED 2026-07-21: on, in both layouts.** Reel / carousel / pin glyphs
+      (`public/icons/instagram-{reel,carousel,pin}.svg`) sit top-right; **a single photo carries none**,
+      matching Instagram - a badge on every tile would only label a photo as a photo. Pin outranks the
+      media badge when a post is both. They are `pointer-events-none` LABELS: the whole tile stays one
+      outbound link. (They were briefly removed on the argument that this is Instagram's product chrome;
+      reinstated by decision - without them a still and a reel are identical until the reel plays.)
+    - **EXECUTED 2026-07-28 (phase 2 - API auto-sync, now the ONLY path):** the feed is a mirror of the
+      connected account; the manual tile picker is retired (decision: remove manual UI entirely, keep
+      reorder & hide). Built:
+        - **Provider seam** (`src/instagram/providers/`): `InstagramApiProvider` interface with a live
+          `InstagramGraphProvider` ("Instagram API with Instagram Login" - the Basic Display API it
+          replaces is retired) and an `InstagramDemoProvider` (canned Curacao media, no network). The
+          module binds one at boot from config; **`INSTAGRAM_APP_ID=demo`** runs the whole loop - connect,
+          sync, mirror, render, dashboard - with **no Meta app and no App Review**.
+        - **Env (3-file change):** `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` / `INSTAGRAM_REDIRECT_URI`,
+          all optional-together (unset ⇒ sync dormant). The long-lived token reuses the existing
+          `ENCRYPTION_KEY` + `crypto.util` - **there is NO separate `INSTAGRAM_TOKEN_SECRET`** (the earlier
+          plan's name; dropped).
+        - **Schema:** OAuth columns on `InstagramAccount` (`igUserId`, encrypted `accessToken`,
+          `tokenExpiresAt`, `lastSyncedAt`, `lastSyncStatus`, `lastSyncError`) + `InstagramSyncStatus` enum
+            - `InstagramPost.videoPublicId`. Migrations `20260728060000` / `20260728061500`.
+        - **OAuth:** `GET /instagram/oauth/authorize-url` (signed-state CSRF) → dashboard callback page
+          `/settings/instagram/callback` → `POST /instagram/oauth/callback` exchanges code → 60-day
+          long-lived token, stored encrypted. `GET /instagram/connection`, `POST /instagram/disconnect`.
+        - **Sync** (`instagram-sync.service.ts`, `POST /instagram/sync` + daily `@Cron 02:30 UTC`): fetch
+          recent media, **mirror each asset into Cloudinary** (media_url CDN links expire in days and
+          hotlinking breaks ToS), **upsert on `igMediaId`**. New post → mirror + create; seen post →
+          refresh metadata only (media already mirrored; `displayOrder`/`isActive` are admin-owned, never
+          clobbered); gone post → delete + Cloudinary cleanup. **60-day token refresh** at <10 days
+          (`refresh_access_token`, token ≥24h old, unexpired), surfaced as `EXPIRING`.
+        - **Dashboard:** connection panel (Connect / Reconnect / Disconnect / Sync now + status), and the
+          tile grid slimmed to **reorder + hide + alt/island** (no add/create/pin). Needs an Instagram
+          **Business/Creator** account and Meta app review for `instagram_business_basic` to go live.
+        - **EXECUTED 2026-07-28 (env-token path + dashboard credentials + auto handle):** for a single
+          first-party brand account, `INSTAGRAM_ACCESS_TOKEN` (env) OR a dashboard-entered access token
+          syncs the account directly - no OAuth/redirect/App-Review. The env/dashboard token SEEDS the DB
+          connection once, then the nightly refresh owns it, so **env-token mode auto-refreshes on the
+          same 60-day/10-day schedule** as OAuth (not a token that silently dies). Credentials (App ID /
+          Secret / Redirect / Access Token) are **editable from the dashboard**, DB-first-then-env,
+          secrets encrypted (`configAppId/configAppSecret/configRedirectUri/configAccessToken`, migration
+          `20260728120000`); `InstagramConfigService.resolve()` is now async. The **handle + profile link
+          are auto-derived** from the connected account (`/me?fields=user_id,username`, refreshed every
+          sync) - the manual Handle/Profile-Link fields are removed. Demo stays an env-only boot toggle.
+          Verified live against a real BUSINESS account: 15 tiles mirrored to Cloudinary, handle
+          auto-resolved.
+        - **Tests:** 53 unit tests across service (incl. removePost mirror-cleanup), sync (mirror/upsert/
+          preserve-curation/refresh/partial/fail/**refresh-fail-still-EXPIRING**), token (encrypt
+          round-trip, no-leak), config (demo detection), OAuth state.
+        - **Post-build review fixes (code + security reviewers):** (1) `env.validate.ts` now accepts the
+          `demo` sentinel for `INSTAGRAM_APP_ID` - it previously rejected it and would have crashed boot;
+          (2) manual `removePost` now cleans its Cloudinary mirror via a shared `deleteInstagramMirror`
+          helper (was leaking an asset pair per delete, and double-mirroring on delete-then-resync);
+          (3) a failed token refresh now records `EXPIRING` even when the same run's sync succeeds (the
+          final status no longer clobbers the warning); (4) per-row isolation on the cleanup loop +
+          reconcile wrapped so a mid-run DB error still records a FAILED result. `isPinned` documented as
+          reserved/always-false (the `instagram_business_basic` scope exposes no pinned state).
 - Destination description section: `About tours in {Destination}` — **350 to 500 words, exactly 3 H2s**,
   SEO content from the destination model.
 - **SEO ownership lock:** the destination page owns destination-level keywords and About content;
@@ -3626,27 +3736,27 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   industry standard is 15–25/page (GetYourGuide 20, Viator 30). At 18/page with 32 tours: 2 pages total.
   Vertical card format unchanged — only more cards per page.
 - **Orientation line (locked):** `From Klein Curaçao day trips to buggy adventures. Every tour we offer on the island.`
-  - Supersedes the wireframe line "From catamaran trips to off-road adventures — everything we offer on the island."
-  - Reason 1: Klein Curaçao is the strongest SEO anchor for the destination — far higher search volume
-    than "catamaran".
-  - Reason 2: "every tour we offer" reads as concrete completeness; "everything we offer" is vaguer.
-  - The orientation line is **CMS-managed per destination**; Aruba and Sint Maarten get their own
-    locally-strong tour-type pairs at launch.
+    - Supersedes the wireframe line "From catamaran trips to off-road adventures — everything we offer on the island."
+    - Reason 1: Klein Curaçao is the strongest SEO anchor for the destination — far higher search volume
+      than "catamaran".
+    - Reason 2: "every tour we offer" reads as concrete completeness; "everything we offer" is vaguer.
+    - The orientation line is **CMS-managed per destination**; Aruba and Sint Maarten get their own
+      locally-strong tour-type pairs at launch.
 - **Compact trust strip (four checkmarks, current platform copy):**
-  - `Free cancellation, no questions asked`
-  - `Pay as little as 20% today, the rest later`
-  - `Confirmed in seconds`
-  - `Safe & secure checkout`
-  - Plus the inline link `Questions? Chat on WhatsApp →`.
-  - Checkmarks **stack vertically on mobile** (1 column), WhatsApp link below.
-  - **No FAQ accordion here** (FAQ lives on the destination page only) and **no payment logos** (footer only).
-  - The trust strip is inserted **between pagination and the SEO block** where a SEO block exists; the two
-    serve different purposes and both must appear.
-  - ⚠️ CONFLICT — an earlier `[ALLTOURS-IMP]` lock states the same strip with the copy
-    `✓ Free cancellation — no questions asked` / `✓ Reserve from 20% · pay the rest later` /
-    `✓ Confirmed in seconds` / `✓ Safe & secure checkout`; §5.3 records the later platform copy above.
-    §3.11 also states the deliberate component split: the NeedHelpSection carries **two** checkmarks while
-    the All Tours compact strip keeps **four** — "different components, design must not harmonize them."
+    - `Free cancellation, no questions asked`
+    - `Pay as little as 20% today, the rest later`
+    - `Confirmed in seconds`
+    - `Safe & secure checkout`
+    - Plus the inline link `Questions? Chat on WhatsApp →`.
+    - Checkmarks **stack vertically on mobile** (1 column), WhatsApp link below.
+    - **No FAQ accordion here** (FAQ lives on the destination page only) and **no payment logos** (footer only).
+    - The trust strip is inserted **between pagination and the SEO block** where a SEO block exists; the two
+      serve different purposes and both must appear.
+    - ⚠️ CONFLICT — an earlier `[ALLTOURS-IMP]` lock states the same strip with the copy
+      `✓ Free cancellation — no questions asked` / `✓ Reserve from 20% · pay the rest later` /
+      `✓ Confirmed in seconds` / `✓ Safe & secure checkout`; §5.3 records the later platform copy above.
+      §3.11 also states the deliberate component split: the NeedHelpSection carries **two** checkmarks while
+      the All Tours compact strip keeps **four** — "different components, design must not harmonize them."
 - **Dual count** and applied-filter pills per §3.12; the results counter carries the ranking tooltip.
 - Grid order per the ranking rule plus the diversity pass.
 - **Peach tint on card #1 is conditional here:** it applies **only while Sort = "Locals' favorites"** (the
@@ -3657,45 +3767,45 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.5.1 All Tours — 🔴 Must Fix items
 
 - **🔴 Remove the "Explore by type" category-cards section.**
-  - Five large category cards (Boat Tours, Buggy Tours, Sunset Cruises, Snorkeling, Walking Tours)
-    currently sit between page header and filter row.
-  - They duplicate the Category Quick Links already on the homepage and destination page.
-  - On All Tours the user has explicitly chosen to see all tours; re-offering visual category navigation
-    pushes the first tour cards far below the fold.
-  - They conflict with the category chips that belong inside the filter row.
-  - Competitor evidence verified by direct screenshots, April 2026: Viator (`viator.com/Curacao/d725-ttd`)
-    and GetYourGuide (Curaçao listing) both run page header → filter row with category chips → tour grid,
-    **no visual category cards**; same pattern on Klook, Headout, Airbnb Experiences — **5 of 5 major
-    platforms converge on filter-row chips for listing pages**.
-  - Why "move them below the grid" does not solve it: below pagination is a discovery dead zone; the ~5%
-    who scroll past pagination look for trust signals or SEO content; filter-row chips already navigate to
-    `/curacao/{category}/` without consuming above-the-fold space; the same cards already exist on
-    `/curacao/` and repeating them creates two parallel navigation systems.
-  - **FIX: delete the entire section. Do NOT move it below the grid.**
-  - Resulting structure: page header → filter row (with category chips) → tour grid → pagination → SEO
-    content block → footer.
-  - Both buckets (browse-driven via chips, filter-driven via Date + Adults + Filters + Sort) reach their
-    goal within the first **280px** of content height instead of 600px+.
+    - Five large category cards (Boat Tours, Buggy Tours, Sunset Cruises, Snorkeling, Walking Tours)
+      currently sit between page header and filter row.
+    - They duplicate the Category Quick Links already on the homepage and destination page.
+    - On All Tours the user has explicitly chosen to see all tours; re-offering visual category navigation
+      pushes the first tour cards far below the fold.
+    - They conflict with the category chips that belong inside the filter row.
+    - Competitor evidence verified by direct screenshots, April 2026: Viator (`viator.com/Curacao/d725-ttd`)
+      and GetYourGuide (Curaçao listing) both run page header → filter row with category chips → tour grid,
+      **no visual category cards**; same pattern on Klook, Headout, Airbnb Experiences — **5 of 5 major
+      platforms converge on filter-row chips for listing pages**.
+    - Why "move them below the grid" does not solve it: below pagination is a discovery dead zone; the ~5%
+      who scroll past pagination look for trust signals or SEO content; filter-row chips already navigate to
+      `/curacao/{category}/` without consuming above-the-fold space; the same cards already exist on
+      `/curacao/` and repeating them creates two parallel navigation systems.
+    - **FIX: delete the entire section. Do NOT move it below the grid.**
+    - Resulting structure: page header → filter row (with category chips) → tour grid → pagination → SEO
+      content block → footer.
+    - Both buckets (browse-driven via chips, filter-driven via Date + Adults + Filters + Sort) reach their
+      goal within the first **280px** of content height instead of 600px+.
 - **🔴 Replace facet-pill filters with the locked Filters-button + modal.**
-  - The wireframe uses individual facet pills ("Free cancel (18)", "Under €50 (9)", "3–6 hours (14)",
-    "Top rated (12)", "Full day (8)", "Under €100") — a GetYourGuide pattern.
-  - Our locked spec is the Viator pattern: a **single "Filters" button opening a modal**.
-  - The wireframe currently mixes both patterns, so users see two inconsistent filter systems.
-  - Additional pill problems: "Top rated (12)" reads as a sort criterion next to the actual sort dropdown;
-    "Under €50" + "Under €100" are overlapping price buckets, not a single price filter; "3–6 hours" +
-    "Full day" overlap with the locked 4-band duration filter; currency shown as € should be $.
-  - **FIX:** replace all facet pills with a single Filters button, showing a count badge when filters are
-    active: `Filters ●2`.
-  - ⚠️ CONFLICT — this 🔴 item names an earlier 6-filter set (Price slider / Duration 4 options / Booking
-    type 3 options / Rating 3 options / Free cancellation toggle / Pickup included toggle). The
-    `[FILTER-MODAL]` list in §D.10 is the **final locked version**.
+    - The wireframe uses individual facet pills ("Free cancel (18)", "Under €50 (9)", "3–6 hours (14)",
+      "Top rated (12)", "Full day (8)", "Under €100") — a GetYourGuide pattern.
+    - Our locked spec is the Viator pattern: a **single "Filters" button opening a modal**.
+    - The wireframe currently mixes both patterns, so users see two inconsistent filter systems.
+    - Additional pill problems: "Top rated (12)" reads as a sort criterion next to the actual sort dropdown;
+      "Under €50" + "Under €100" are overlapping price buckets, not a single price filter; "3–6 hours" +
+      "Full day" overlap with the locked 4-band duration filter; currency shown as € should be $.
+    - **FIX:** replace all facet pills with a single Filters button, showing a count badge when filters are
+      active: `Filters ●2`.
+    - ⚠️ CONFLICT — this 🔴 item names an earlier 6-filter set (Price slider / Duration 4 options / Booking
+      type 3 options / Rating 3 options / Free cancellation toggle / Pickup included toggle). The
+      `[FILTER-MODAL]` list in §D.10 is the **final locked version**.
 - **🔴 Add category chips and the Adults pill to the filter row.**
-  - Locked filter-row layout:
-    `[📅 26 Apr]  [👤 2 Adults]  [⚙ Filters ●n]  │  Klein Curaçao · Boat Tours · Snorkeling · Sunset Cruises · Buggy Tours · Private Charters  →    Sort by: Locals' favourites ▼`
-  - A **vertical divider** separates search context (Date, Adults, Filters) from category navigation chips.
-  - Category chips are **NAVIGATION LINKS** to `/curacao/{category}/`, not facet filters; they scroll
-    horizontally on overflow.
-  - The Adults pill opens a 3-tier popover: Adults 12+ / Children 4–11 / Infants under 4 · Free on most tours.
+    - Locked filter-row layout:
+      `[📅 26 Apr]  [👤 2 Adults]  [⚙ Filters ●n]  │  Klein Curaçao · Boat Tours · Snorkeling · Sunset Cruises · Buggy Tours · Private Charters  →    Sort by: Locals' favourites ▼`
+    - A **vertical divider** separates search context (Date, Adults, Filters) from category navigation chips.
+    - Category chips are **NAVIGATION LINKS** to `/curacao/{category}/`, not facet filters; they scroll
+      horizontally on overflow.
+    - The Adults pill opens a 3-tier popover: Adults 12+ / Children 4–11 / Infants under 4 · Free on most tours.
 - **🔴 Sort label "Featured" → "Locals' favourites."** "Featured" is Viator/GYG language, inconsistent with
   brand voice. Exactly three sort options total.
 - **🔴 H1 → `All Curaçao tours & activities in {year}`** (see above).
@@ -3705,21 +3815,21 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **🟠 Move the SEO content block above pagination.** The "About tours in Curaçao" block currently sits
   BELOW pagination, where SEO/AEO value is significantly lower: Google treats pagination as a soft "page
   end" and ~99% of users never scroll past it, so the block is dead space for both signals.
-  - Fix option A: move the entire block above the tour grid (between page header and filter row) — best
-    for SEO/AEO weight.
-  - Fix option B: keep the position but expand to **300+ words** with internal links to category pages, so
-    it earns the position.
-  - **Anything less than 300+ words must be moved.**
-  - ⚠️ CONFLICT — §5.3 states flatly **"No About content block on All Tours"**; this 🟠 item assumes the
-    block exists and only argues about its position/length.
+    - Fix option A: move the entire block above the tour grid (between page header and filter row) — best
+      for SEO/AEO weight.
+    - Fix option B: keep the position but expand to **300+ words** with internal links to category pages, so
+      it earns the position.
+    - **Anything less than 300+ words must be moved.**
+    - ⚠️ CONFLICT — §5.3 states flatly **"No About content block on All Tours"**; this 🟠 item assumes the
+      block exists and only argues about its position/length.
 - **🟠 Card copy `Pickup is available` → `Pickup included`.** "is available" reads passive and uncertain;
   "included" is direct and reads as a tour benefit. Change ALL card pickup labels. Must be translatable
   via an i18n key.
-  - ⚠️ CONFLICT (three-way) — `[TOURCARD-FIX]` Fix 7 locks `Pick-up available`; this item locks
-    `Pickup included`; **LD3 locks "Pickup" with NO hyphen platform-wide**; and §3.5/B.69 resolves it
-    per `pickup_model`: **"Pickup included" when pickup is in the price, "Pickup available" when it is a
-    paid add-on, nothing when none** — with the **filter label always "Pickup available."** The B.69
-    per-`pickup_model` rule is the latest and most specific.
+    - ⚠️ CONFLICT (three-way) — `[TOURCARD-FIX]` Fix 7 locks `Pick-up available`; this item locks
+      `Pickup included`; **LD3 locks "Pickup" with NO hyphen platform-wide**; and §3.5/B.69 resolves it
+      per `pickup_model`: **"Pickup included" when pickup is in the price, "Pickup available" when it is a
+      paid add-on, nothing when none** — with the **filter label always "Pickup available."** The B.69
+      per-`pickup_model` rule is the latest and most specific.
 - **🟠 Currency display € → $** (see the D.2 conflict note).
 - **🟠 Grid density: 18 per page** (see above).
 - **🟠 First card missing peach/ivory tint** (see D.10 tint rules).
@@ -3729,9 +3839,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **🟠 Rating display rules (show only when meaningful).** The wireframe shows "4.8 (1738)" on every card;
   locked spec renders rating only at **≥3 reviews**. Below 3, one or two ratings can unfairly tank a tour
   or look fake.
-  - ≥3 reviews: show `⭐ 4.8 (124)`.
-  - 0–2 reviews: **hide the rating row entirely**.
-  - Tour added **<30 days ago AND 0 reviews**: show a `New` badge **instead of** the rating row.
+    - ≥3 reviews: show `⭐ 4.8 (124)`.
+    - 0–2 reviews: **hide the rating row entirely**.
+    - Tour added **<30 days ago AND 0 reviews**: show a `New` badge **instead of** the rating row.
 - **🟠 Price suffix "/per" formatting.** The wireframe shows "from $36/per" — incomplete and unclear. Only
   two formats allowed: per person (default) `from $36` — **NO suffix**; per group `from $270 per group` —
   full label, muted text.
@@ -3749,11 +3859,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - The check runs on **every tour status change in both directions** (publish can flip a category live;
   unpublish can flip it back to draft).
 - **Structure (ONE single listing):**
-  1. Hero — category H1 + intro.
-  2. Filter row with the Filters modal, explicitly **without the category chips**.
-  3. **One ranked grid** — ranking order + diversity pass, with Sponsored / Most popular badges.
-  4. Category description content blocks (this vertical's About).
-  5. Related categories.
+    1. Hero — category H1 + intro.
+    2. Filter row with the Filters modal, explicitly **without the category chips**.
+    3. **One ranked grid** — ranking order + diversity pass, with Sponsored / Most popular badges.
+    4. Category description content blocks (this vertical's About).
+    5. Related categories.
 - **No trust bar on category pages** — this is not incidental; the locked trust matrix has an explicit
   row `Category, Activity Hub → No trust bar`, and the matrix is "the outcome of the cross-surface trust
   review and is intentional."
@@ -3778,29 +3888,29 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.6.1 The category "two listings" conflict (A16, July 5 2026)
 
 - ⚠️ CONFLICT — **`category-page.tsx` renders TWO listing blocks; the master defines ONE.**
-  - **Top block (lines 288–337, `ToursListingSection`):** real dynamic data (`getCategoryFacets` +
-    `getDestinationTours`), backend-paginated, real URL-driven toolbar locked to this category with
-    sub-category pills, real pagination, **no trust strip**. **Matches the master.**
-  - **Second block (lines 347–380, `ToursListing`):** `MOCK_TOURS` (6 hardcoded cards), `CategoryFilterBar`
-    with local `useState` only and hardcoded `SECONDARY_FILTER_CATEGORIES` pills, **fake pagination
-    (`pageCount={1}`)**, and a `CategoryTrustStrip`. **Does not match the master, on two counts.**
-  - The comment on line 347 cites **Figma node 47171:1499** — the second block is a **design-file artifact,
-    not a master requirement**.
-  - It contradicts the master in two locked ways: (1) it is a second listing where the master defines one
-    ranked grid; (2) it has a trust strip where §3.11 explicitly says category pages get none.
-  - **Structurally the two filter bars cannot coexist:** the top `ToursFilterBar` owns the URL query params
-    (`?sort=`, `?price=`, sub-category slugs); `CategoryFilterBar` is pure local state wired to nothing.
-  - Sub-categories are a **codebase feature, filter-only** — the master never mentions them (grep returns
-    zero matches). With no sub-cat pills selected the top block shows the whole category tree (parent + subs).
-  - Backend capability: **for the master-compliant single listing, YES, completely — and it already works.**
-    `/tours` already does category filtering (`categoryIds`), sub-category narrowing, attribute facets,
-    price/rating/duration filters, ranking-order sort and pagination. For the second listing "there is
-    nothing to be capable of — the master does not define it, so there is no backend contract."
-  - **Recommendation:** REMOVE the second `<section>` plus the now-unused `CategoryFilterBar`,
-    `CategoryTrustStrip`, `MOCK_TOURS`, and `SECONDARY_FILTER_CATEGORIES`, collapsing the page to
-    `breadcrumb → header → the one dynamic listing → related categories → About → FAQs`.
-  - If the Figma genuinely wants that block, that is a **master-vs-Figma decision for the founder — the
-    master wins unless it is amended.**
+    - **Top block (lines 288–337, `ToursListingSection`):** real dynamic data (`getCategoryFacets` +
+      `getDestinationTours`), backend-paginated, real URL-driven toolbar locked to this category with
+      sub-category pills, real pagination, **no trust strip**. **Matches the master.**
+    - **Second block (lines 347–380, `ToursListing`):** `MOCK_TOURS` (6 hardcoded cards), `CategoryFilterBar`
+      with local `useState` only and hardcoded `SECONDARY_FILTER_CATEGORIES` pills, **fake pagination
+      (`pageCount={1}`)**, and a `CategoryTrustStrip`. **Does not match the master, on two counts.**
+    - The comment on line 347 cites **Figma node 47171:1499** — the second block is a **design-file artifact,
+      not a master requirement**.
+    - It contradicts the master in two locked ways: (1) it is a second listing where the master defines one
+      ranked grid; (2) it has a trust strip where §3.11 explicitly says category pages get none.
+    - **Structurally the two filter bars cannot coexist:** the top `ToursFilterBar` owns the URL query params
+      (`?sort=`, `?price=`, sub-category slugs); `CategoryFilterBar` is pure local state wired to nothing.
+    - Sub-categories are a **codebase feature, filter-only** — the master never mentions them (grep returns
+      zero matches). With no sub-cat pills selected the top block shows the whole category tree (parent + subs).
+    - Backend capability: **for the master-compliant single listing, YES, completely — and it already works.**
+      `/tours` already does category filtering (`categoryIds`), sub-category narrowing, attribute facets,
+      price/rating/duration filters, ranking-order sort and pagination. For the second listing "there is
+      nothing to be capable of — the master does not define it, so there is no backend contract."
+    - **Recommendation:** REMOVE the second `<section>` plus the now-unused `CategoryFilterBar`,
+      `CategoryTrustStrip`, `MOCK_TOURS`, and `SECONDARY_FILTER_CATEGORIES`, collapsing the page to
+      `breadcrumb → header → the one dynamic listing → related categories → About → FAQs`.
+    - If the Figma genuinely wants that block, that is a **master-vs-Figma decision for the founder — the
+      master wins unless it is amended.**
 - ⚠️ CONFLICT — **gating threshold.** `CLAUDE.md`/master §2.4 specify **≥3 published tours**; the code
   gates at **≥1** (`categories.service.ts getPublishedTourCount` + the detail 404). The featured-experience
   card gate deliberately **mirrors the CODE**, because its job is to match the real 404 condition. If ≥3 is
@@ -3815,18 +3925,18 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Canonical sources:** `Section4_5_ActivityHubPage.md`, `ActivityHubPage_DesignReview_v1`, hub context summary.
 - **Hub types: location, highlight, area** — each with its own anchor-nav set and content template.
 - Klein Curaçao reference structure, **12 sections**:
-  1. Hero — H1 and fast facts overlaid on image.
-  2. Sticky anchor nav, **5 items LOCKED**: `Book now · Private charter · Our Pick · Compare · Tips & FAQ`.
-  3. Editorial lead — **max 150 words, no visible header**.
-  4. Best for / Good to know.
-  5. Shared tours grid (filter chips per §3.12; **no peach card**).
-  6. Private charters.
-  7. Our Pick — **3 picks**: Best overall, Most popular, Best for families — referencing **tour titles, not operator names**.
-  8. Comparison table — **two groups Comfort and Adventure**, frozen first column, booking buttons in the header, tour-title columns.
-  9. `Our {hub}` editorial deep-dive.
-  10. Local tips.
-  11. FAQ — **7 AEO questions**.
-  12. Related hubs.
+    1. Hero — H1 and fast facts overlaid on image.
+    2. Sticky anchor nav, **5 items LOCKED**: `Book now · Private charter · Our Pick · Compare · Tips & FAQ`.
+    3. Editorial lead — **max 150 words, no visible header**.
+    4. Best for / Good to know.
+    5. Shared tours grid (filter chips per §3.12; **no peach card**).
+    6. Private charters.
+    7. Our Pick — **3 picks**: Best overall, Most popular, Best for families — referencing **tour titles, not operator names**.
+    8. Comparison table — **two groups Comfort and Adventure**, frozen first column, booking buttons in the header, tour-title columns.
+    9. `Our {hub}` editorial deep-dive.
+    10. Local tips.
+    11. FAQ — **7 AEO questions**.
+    12. Related hubs.
 - Sections `Our {hub}`, `Local Tips`, and `Related Hubs` are **mandatory**.
 - **Header rule LOCKED June 10, 2026:** the editorial section H2 defaults to `Our {hub}` via the i18n
   template; a hub may override it per locale through its content-section heading field; **every override
@@ -3854,12 +3964,12 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   overlay, heavier at the bottom where H1 and the fast facts bar sit.
 - **Hero image specificity requirement (ALL hubs):** the image must show the specific location,
   attraction, or activity — never the broader destination.
-  - Location (Klein Curaçao): correct = aerial of the small island with turquoise water; incorrect =
-    generic Curaçao beach.
-  - Highlight (Dolphins): correct = dolphins in open water with a boat visible; incorrect = generic
-    Caribbean ocean.
-  - Area (West Coast): correct = rocky West Coast coastline with characteristic terrain; incorrect =
-    generic Curaçao coastline.
+    - Location (Klein Curaçao): correct = aerial of the small island with turquoise water; incorrect =
+      generic Curaçao beach.
+    - Highlight (Dolphins): correct = dolphins in open water with a boat visible; incorrect = generic
+      Caribbean ocean.
+    - Area (West Coast): correct = rocky West Coast coastline with characteristic terrain; incorrect =
+      generic Curaçao coastline.
 - Images sourced from actual tour operators on this hub are preferred — authentic, contextually accurate,
   visually differentiated from stock.
 
@@ -3879,13 +3989,13 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Styling: white, bold, **CENTERED** in the hero image, above the fast facts bar.
 - **CMS field `hub_h1`** — per hub, per locale. **NEVER templated.**
 - **Multilingual H1s ADAPT THE CONCEPT, not a direct translation:**
-  - EN: `Klein Curaçao — Where Islanders Send Their Visitors` (social proof, local authority)
-  - NL: `Klein Curaçao — Hier zijn we opgegroeid` (most direct brand claim, strongest for NL)
-  - ES: `Klein Curaçao — Elegido por quienes viven aquí`
-  - DE: `Klein Curaçao — Empfohlen von denen, die hier aufgewachsen sind`
-  - FR: `Klein Curaçao — Choisi par ceux qui ont grandi ici`
-  - PT: `Klein Curaçao — Escolhido por quem cresceu aqui`
-  - ZH: `克莱因库拉索 — 岛民世代的首选`
+    - EN: `Klein Curaçao — Where Islanders Send Their Visitors` (social proof, local authority)
+    - NL: `Klein Curaçao — Hier zijn we opgegroeid` (most direct brand claim, strongest for NL)
+    - ES: `Klein Curaçao — Elegido por quienes viven aquí`
+    - DE: `Klein Curaçao — Empfohlen von denen, die hier aufgewachsen sind`
+    - FR: `Klein Curaçao — Choisi par ceux qui ont grandi ici`
+    - PT: `Klein Curaçao — Escolhido por quem cresceu aqui`
+    - ZH: `克莱因库拉索 — 岛民世代的首选`
 - **H1 naming principle (EN pattern):** `[Place/Experience Name] — [One line that only a local who grew up here would say]`.
 
 ##### Hub Fast Facts Bar
@@ -3895,10 +4005,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Desktop: 4 facts in ONE horizontal row, always visible without scrolling. Mobile: same 4 facts in a
   **2×2 grid** inside the hero.
 - Facts for Klein Curaçao:
-  - `🕐 Duration` → `Full day · 8–9 hours`
-  - `🚢 Getting there` → `45min–1.5h crossing · 10km offshore`
-  - `💰 Price from` → `From $120 · BBQ lunch included`
-  - `🗓 Availability` → `Daily departures`
+    - `🕐 Duration` → `Full day · 8–9 hours`
+    - `🚢 Getting there` → `45min–1.5h crossing · 10km offshore`
+    - `💰 Price from` → `From $120 · BBQ lunch included`
+    - `🗓 Availability` → `Daily departures`
 - Why these four: duration pre-qualifies time commitment; crossing time carries seasickness relevance +
   genuine remoteness (the range is honest — Powerboat 45 min, catamarans up to 1.5h; "1.5h by boat" was
   only accurate for catamarans); price + immediate value signal (lunch is included by all 6 operators, and
@@ -3926,13 +4036,13 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - `[Check availability]` button: Island Tours orange `#E8611A`, white text.
 - Positioned directly below the Fast Facts Bar, still inside the hero image area.
 - **Behaviour on date selection:**
-  1. Auto-scrolls to Section 4 (Tour Listings).
-  2. Date filter chip activates automatically: `📅 May 15`.
-  3. Grid filters to tours available on that date.
-  4. Tour count updates: `4 of 7 tours available on May 15`.
-  5. Tours sold out on that date: greyed-out card + `Sold out` badge, still visible but not clickable.
-  6. If 0 tours available: `No tours available on May 15 — try another date`, with the date picker
-     re-exposed inline.
+    1. Auto-scrolls to Section 4 (Tour Listings).
+    2. Date filter chip activates automatically: `📅 May 15`.
+    3. Grid filters to tours available on that date.
+    4. Tour count updates: `4 of 7 tours available on May 15`.
+    5. Tours sold out on that date: greyed-out card + `Sold out` badge, still visible but not clickable.
+    6. If 0 tours available: `No tours available on May 15 — try another date`, with the date picker
+       re-exposed inline.
 - **Empty on arrival: NEVER pre-filled** — not from ad parameters, not from URL. The user always selects
   their own date.
 - Mobile: same full-width design, stacked below the Fast Facts 2×2 grid; tapping opens the native date picker.
@@ -3953,20 +4063,20 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Canonical source:** `CollectionPage_FinalDecisions.md` (June 2026). Fully locked; the v1–v8 review
   chain is lineage only.
 - **Seven sections:**
-  1. Nav.
-  2. Thin full-width editorial banner (~300px), all text overlaid on image with gradient, carrying persona
-     label, H1, curation note, fast stats, Share pill.
-  3. One-sentence intro — body text, **max 30 words**, AEO "include" structure.
-  4. Curated **3-column grid — NO sort, NO filters**.
-  5. "Need help before booking?" with the collection FAQ as its right column.
-  6. FAQ content — **6 AEO questions**, `FAQPage` schema.
-  7. `Keep exploring Curaçao` — **the only H2 on the page** — with 3 cross-intent collection cards plus the
-     recovery CTA `Not sure yet? See all Curaçao tours →` linking to `/{locale}/{destination}/`.
+    1. Nav.
+    2. Thin full-width editorial banner (~300px), all text overlaid on image with gradient, carrying persona
+       label, H1, curation note, fast stats, Share pill.
+    3. One-sentence intro — body text, **max 30 words**, AEO "include" structure.
+    4. Curated **3-column grid — NO sort, NO filters**.
+    5. "Need help before booking?" with the collection FAQ as its right column.
+    6. FAQ content — **6 AEO questions**, `FAQPage` schema.
+    7. `Keep exploring Curaçao` — **the only H2 on the page** — with 3 cross-intent collection cards plus the
+       recovery CTA `Not sure yet? See all Curaçao tours →` linking to `/{locale}/{destination}/`.
 - **Locked copy (Best Things to Do):**
-  - H1: `The 10 best things to do in Curaçao.` — **period required**.
-  - Curation note: `Chosen by Islanders, in the order we'd book them.`
-  - Fast stats: `10 tours · From $36`.
-  - Intro: `The best things to do in Curaçao include Klein Curaçao day trips, swimming with dolphins, Westcoast Tours, sunset cruises, and off-road buggy tours, chosen by Islanders who've done all of them.`
+    - H1: `The 10 best things to do in Curaçao.` — **period required**.
+    - Curation note: `Chosen by Islanders, in the order we'd book them.`
+    - Fast stats: `10 tours · From $36`.
+    - Intro: `The best things to do in Curaçao include Klein Curaçao day trips, swimming with dolphins, Westcoast Tours, sunset cruises, and off-road buggy tours, chosen by Islanders who've done all of them.`
 - The six FAQ answers are verbatim from the final decisions doc, including **Q6 reframed** from "Are these
   paid placements?" to `How does Island Tours choose which tours to feature?`.
 - **Circular numbered badges 01 to 10 on Best Things to Do and Top 10 only.**
@@ -4008,45 +4118,45 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Element 1 — Breadcrumbs:** always visible on desktop AND mobile (**LD8: mobile breadcrumbs are VISIBLE
   on the tour detail page, a deliberate divergence from the destination page which hides them**); truncate
   long crumbs; the final breadcrumb is the current page and is **NOT clickable**.
-  - Three path variants chosen by the tour's **primary attachment**: `Home › Destination › Hub › Tour`;
-    `Home › Destination › Category › Tour`; `Home › Destination › Tour`.
-  - **The URL stays flat regardless of which breadcrumb variant renders** — the breadcrumb reflects
-    discovery context, not URL.
+    - Three path variants chosen by the tour's **primary attachment**: `Home › Destination › Hub › Tour`;
+      `Home › Destination › Category › Tour`; `Home › Destination › Tour`.
+    - **The URL stays flat regardless of which breadcrumb variant renders** — the breadcrumb reflects
+      discovery context, not URL.
 - **Element 2 — H1 (LD15):** format `{Destination or Hub}: {Tour name}` (GYG colon pattern), **Title Case
   on both sides**, hub-first when specific (Klein Curaçao, Willemstad, Caracas Bay), destination as
   fallback; avoid destination-then-sub-destination double reference; **35–60 chars target, 70 hard max**;
   **no operator name suffix** (LD14).
-  - Rationale: entity binding for AI citations; the H1 travels well outside page context (cards, social
-    shares, marketing); multi-destination scalability for Aruba and Sint Maarten.
+    - Rationale: entity binding for AI citations; the H1 travels well outside page context (cards, social
+      shares, marketing); multi-destination scalability for Aruba and Sint Maarten.
 - **Element 3 — Meta row (LD13):** single unified row directly below H1 —
   `[★ rating · count reviews] · [✦ Locals' favorite (if applicable)] · [📍 City, Island]`; full width,
   left-aligned.
-  - Middle-dot `·` separates info-categories; the **comma separates City from Island** within the location
-    reference (geographic notation, not a typographic separator).
-  - Middle-dot chosen over pipe `|`: lighter visual weight matching metadata status; aligns with the warm
-    + minimal aesthetic; modern UI pattern (Twitter/Instagram bios, Airbnb, GYG). **The pipe was earlier
-    locked but REVERSED** — too "structured marketplace / corporate" for warm Caribbean curator positioning.
-  - **Location is ALWAYS present.**
-  - Wireframe example: `★ 4.8 (1,738) · ✦ Locals' favourite · 📍 Willemstad`.
+    - Middle-dot `·` separates info-categories; the **comma separates City from Island** within the location
+      reference (geographic notation, not a typographic separator).
+    - Middle-dot chosen over pipe `|`: lighter visual weight matching metadata status; aligns with the warm
+        - minimal aesthetic; modern UI pattern (Twitter/Instagram bios, Airbnb, GYG). **The pipe was earlier
+          locked but REVERSED** — too "structured marketplace / corporate" for warm Caribbean curator positioning.
+    - **Location is ALWAYS present.**
+    - Wireframe example: `★ 4.8 (1,738) · ✦ Locals' favourite · 📍 Willemstad`.
 - **Element 4 — Gallery:** hero + 4 tiles asymmetric grid; "Show all photos" CTA bottom-right; lightbox on
   click. `[♡ Save] [↗ Share]` pill-style controls overlay the hero image **top-right corner** (Viator
   pattern). **Save/Share are NOT in the meta row.**
 - **Element 5 — Quick info badges (LD7): exactly 3** — Duration, Pickup, Languages. No more.
-  - Duration badge format `[X hours]` — single-day tours only (LD25 dropped multi-day; no multi-day variant).
-  - Universal facts go in the trust strip, not here.
+    - Duration badge format `[X hours]` — single-day tours only (LD25 dropped multi-day; no multi-day variant).
+    - Universal facts go in the trust strip, not here.
 - **Element 6 — Review preview module (LD29)** — see D.16.
 - **Element 7 — Booking widget** in the right rail from H1 level, sticky.
 - **Brand voice above the fold:** H1 starts with destination context ("Curaçao: ..."); trust strip uses
   lowercase humanized copy `Free cancellation up to {hours}h` — **NOT** "FREE CANCELLATION 48HRS";
   Locals' favourite is editorial (manual, curated), not algorithmic, target ~30% catalog coverage at launch.
 - **Don't do this above the fold:**
-  - ❌ Don't put the booking widget below the gallery (v1 mistake — must be right rail from H1 level).
-  - ❌ Don't use check-in/check-out date inputs (Airbnb accommodation pattern, wrong for tours).
-  - ❌ Don't show "Total Price: $X" before the user selects a date — show "From $X per person" until then.
-  - ❌ Don't add a 4th quick info badge.
-  - ❌ Don't include an operator host card.
+    - ❌ Don't put the booking widget below the gallery (v1 mistake — must be right rail from H1 level).
+    - ❌ Don't use check-in/check-out date inputs (Airbnb accommodation pattern, wrong for tours).
+    - ❌ Don't show "Total Price: $X" before the user selects a date — show "From $X per person" until then.
+    - ❌ Don't add a 4th quick info badge.
+    - ❌ Don't include an operator host card.
 - ⚠️ CONFLICT — the above-fold wireframe widget content lists `✓ Free cancellation up to {hours}h before
-  tour` / `✓ Pay {X}% today, the rest later` / `✓ Instant confirmation` / `💬 WhatsApp us · daily 08–22h`
+tour` / `✓ Pay {X}% today, the rest later` / `✓ Instant confirmation` / `💬 WhatsApp us · daily 08–22h`
   and a `📍 Pickup location ▾` field. **That wireframe pre-dates LD5 (2-line trust strip, no Instant
   confirmation, no WhatsApp) and §3.1 (pickup moved to Step 2). LD5/§3.1 win.**
 
@@ -4054,33 +4164,33 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - **Section navigation = Sticky TOC (LD16)**, Baymard-validated and Viator-aligned with one ordering
   divergence.
-  - The sticky anchor-link row appears at the top of the viewport when the user scrolls past the Quick Info
-    badges; **NOT visible at initial page load**.
-  - **Exactly 7 items in order:** `Overview · What's Included · What to Expect · Meeting & Pickup ·
-    Important Info · Cancellation Policy · Reviews`.
-  - **Excluded from the TOC:** Related tours, Provider attribution (tail content). The FAQ section is
-    removed entirely per LD21.
-  - **All sections expanded by default** — the TOC is supplementary navigation, not a content gatekeeper.
-  - Active state: underline indicator follows scroll position. Click: smooth scroll with
-    `scroll-margin-top` accounting for TOC height.
-  - Mobile: horizontal scrolling pill row, same 7 items, sticky on scroll. Booking widget remains sticky in
-    the right rail underneath.
-  - Rationale: Baymard PDP testing — **Sticky TOC 7% miss rate vs 27% for content-hiding horizontal tabs**.
-  - Persuasion-grouped order: emotional sell (Overview), concrete value (What's Included), experience detail
-    (What to Expect) precede logistics (Meeting & Pickup), then risk surfacing (Important Info), trust
-    signal (Cancellation Policy), final validation (Reviews).
-  - Diverges from Viator on Meeting & Pickup / What to Expect placement: Viator puts logistics first for
-    their global cruise-traveler audience where pickup logistics are deal-breakers; the Caribbean
-    island-resident tour audience has lower logistical variability.
-  - **Section H2s match TOC labels EXACTLY.**
+    - The sticky anchor-link row appears at the top of the viewport when the user scrolls past the Quick Info
+      badges; **NOT visible at initial page load**.
+    - **Exactly 7 items in order:** `Overview · What's Included · What to Expect · Meeting & Pickup ·
+Important Info · Cancellation Policy · Reviews`.
+    - **Excluded from the TOC:** Related tours, Provider attribution (tail content). The FAQ section is
+      removed entirely per LD21.
+    - **All sections expanded by default** — the TOC is supplementary navigation, not a content gatekeeper.
+    - Active state: underline indicator follows scroll position. Click: smooth scroll with
+      `scroll-margin-top` accounting for TOC height.
+    - Mobile: horizontal scrolling pill row, same 7 items, sticky on scroll. Booking widget remains sticky in
+      the right rail underneath.
+    - Rationale: Baymard PDP testing — **Sticky TOC 7% miss rate vs 27% for content-hiding horizontal tabs**.
+    - Persuasion-grouped order: emotional sell (Overview), concrete value (What's Included), experience detail
+      (What to Expect) precede logistics (Meeting & Pickup), then risk surfacing (Important Info), trust
+      signal (Cancellation Policy), final validation (Reviews).
+    - Diverges from Viator on Meeting & Pickup / What to Expect placement: Viator puts logistics first for
+      their global cruise-traveler audience where pickup logistics are deal-breakers; the Caribbean
+      island-resident tour audience has lower logistical variability.
+    - **Section H2s match TOC labels EXACTLY.**
 - **Section layout = stacked H2 over content (LD17, Viator pattern).** Each of the 7 sections renders as a
   visible H2 followed by body content. **NO two-column layout** (the GYG label-left/content-right pattern
   v1 currently uses) and **NO parent grouping headers** ("Experience" / "About this tour" / "Details").
-  - Rationale: stacked H2 is the coherent system pairing for the Sticky TOC — anchor links land on visible
-    H2 landmarks; two-column would create competing navigation cues. Stacked also preserves desktop-mobile
-    parity. Industry alignment: Viator, Klook, Airbnb Experiences, Headout, Tiqets all stacked; GYG's
-    two-column is an outlier supporting their choice of no sticky TOC.
-  - Section H2 styling consistent across all 7 — same weight, size, spacing.
+    - Rationale: stacked H2 is the coherent system pairing for the Sticky TOC — anchor links land on visible
+      H2 landmarks; two-column would create competing navigation cues. Stacked also preserves desktop-mobile
+      parity. Industry alignment: Viator, Klook, Airbnb Experiences, Headout, Tiqets all stacked; GYG's
+      two-column is an outlier supporting their choice of no sticky TOC.
+    - Section H2 styling consistent across all 7 — same weight, size, spacing.
 
 **H2 1 — Overview (LD22: Highlights merged in, not a standalone H2)**
 
@@ -4103,11 +4213,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Two-column industry-standard pattern with SVG icon sub-headers: `[check icon] Included` |
   `[cross icon] Not included` on desktop; stacked on mobile. Aligns with Viator and GYG (Jakob's Law).
 - **Right-column item content conventions** (inline text carries the nuance; no extra structural state):
-  - (a) Paid add-on purchaseable in advance via the widget: `[item name] (available — from $X pp)` —
-    e.g. `Hotel transfer (available — from $17 pp)`.
-  - (b) Paid extra, on-site only: `[item name] (pay on the day)` — e.g. `Alcoholic beverages (pay on the day)`.
-  - (c) Not available: plain statement, no suffix — e.g. `WiFi on board`.
-  - (d) Not permitted: `[item] not permitted` — e.g. `Outside food & drinks not permitted`.
+    - (a) Paid add-on purchaseable in advance via the widget: `[item name] (available — from $X pp)` —
+      e.g. `Hotel transfer (available — from $17 pp)`.
+    - (b) Paid extra, on-site only: `[item name] (pay on the day)` — e.g. `Alcoholic beverages (pay on the day)`.
+    - (c) Not available: plain statement, no suffix — e.g. `WiFi on board`.
+    - (d) Not permitted: `[item] not permitted` — e.g. `Outside food & drinks not permitted`.
 - **Where each item belongs:** ✓ Included = items provided at no extra cost; ✗ Not included = items with
   explicit inclusion status (paid add-on, unavailable, not permitted). Operational caveats
   (weather-dependent, age restrictions, fitness, time warnings) route to Important Info > Know before you
@@ -4153,12 +4263,12 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Replaces former separate sections 4.7.12 What to Bring, 4.7.13 Know Before You Go, 4.7.14 Accessibility,
   4.7.15 Languages.
 - **Subsections in FIXED order:**
-  1. **Not suitable for** — **CONDITIONAL render**, shown only when restrictions apply (age limits, fitness
-     requirements, pregnancy restrictions, wheelchair-INaccessibility). **Hidden entirely when zero
-     restrictions exist.** GYG pattern. 1–6 bullets when present.
-  2. **Know before you go** — **ALWAYS shown.** Operational caveats + dietary + capacity + equipment +
-     tour-side rules (no glass, no outside food) + **POSITIVE accessibility status**. 3–10 bullets.
-  3. **What to bring** — always shown when non-empty. Personal items list, 3–8 bullets.
+    1. **Not suitable for** — **CONDITIONAL render**, shown only when restrictions apply (age limits, fitness
+       requirements, pregnancy restrictions, wheelchair-INaccessibility). **Hidden entirely when zero
+       restrictions exist.** GYG pattern. 1–6 bullets when present.
+    2. **Know before you go** — **ALWAYS shown.** Operational caveats + dietary + capacity + equipment +
+       tour-side rules (no glass, no outside food) + **POSITIVE accessibility status**. 3–10 bullets.
+    3. **What to bring** — always shown when non-empty. Personal items list, 3–8 bullets.
 - Items already in What's Included MUST NOT duplicate here — editorial rule, CMS warning.
 - **Accessibility routing rule:** positive accessibility status ("Wheelchair-accessible vessel via boarding
   ramp") routes to "Know before you go"; **negative** accessibility ("Not wheelchair accessible — requires
@@ -4187,38 +4297,38 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **`Supplied by {operatorName}` muted line (LD14)** — rendered as a right-aligned signature trailer at the
   END of the Cancellation Policy section, before the Reviews H2. Muted text, no separator lines,
   **non-clickable at v1**.
-  - **No dedicated host showcase section, no operator name in H1, no host bio/photo/story per tour.**
-  - Disintermediation control: prominence calibrated to satisfy EU consumer transparency law (Package
-    Travel Directive) while minimizing google-the-operator friction.
-  - Operator celebration moves to brand-level surfaces (marketing copy, Locals' favourite badge, global
-    footer brand sign-off), not per-tour.
+    - **No dedicated host showcase section, no operator name in H1, no host bio/photo/story per tour.**
+    - Disintermediation control: prominence calibrated to satisfy EU consumer transparency law (Package
+      Travel Directive) while minimizing google-the-operator friction.
+    - Operator celebration moves to brand-level surfaces (marketing copy, Locals' favourite badge, global
+      footer brand sign-off), not per-tour.
 - **Related Tours (LD33) — two horizontal-scroll rows with independent conditional render.**
-  - Row 1 H2: `More {category_display} in {Destination}`. Query: `SELECT tours WHERE category =
-    current.category AND destination = current.primary_destination AND id != current.id AND status =
-    active ORDER BY rating × bookability_score DESC LIMIT 3`.
-  - Row 2 H2: `More to explore in {Destination}`. Query: same but `category != current.category`.
-  - **3 cards per row maximum**; desktop 3-across grid; mobile horizontal scroll snap with **1.2 cards
-    visible peek**.
-  - **Render threshold: ≥2 valid tours required for a row to render**; below that the row is hidden. Rows
-    render independently; if both queries return <2, the entire section is absent.
-  - Card variant: the listing-page tour card **WITHOUT the peach/ivory tint** on the first card (peach is
-    reserved for curated listing pages with default sort, not cross-sell context) and **WITHOUT Collection
-    Rationale**.
-  - Standard card content: image, title, rating (≥3 review threshold), price, duration badge, locality.
-  - Title voice rationale: specific titles outperform generic by ~10–15% click-through; a specific category
-    keyword improves SEO topical density vs a generic "Related tours" H2; the "More" prefix maintains warm
-    brand voice.
-  - Diverges from Viator (5+ rows + tabs + footer category links + Recently viewed = overengineering) and
-    GYG (single mixed-content carousel = lower relevance signal per card).
-  - **CMS requirement `tour.category_display_{locale}`** — a **plural noun phrase per locale** (EN: "boat
-    tours" / "snorkeling tours" / "cruises" / "food tours" / "ATV tours" / "diving experiences"; NL:
-    "boottochten" / "snorkeltours" / "cruises" / "food tours" / "ATV-tochten" / "duikexcursies"). CMS
-    validation warns if the value is singular or not a noun phrase.
-  - **Tracking:** `related_tour_click` with `{source_tour_id, target_tour_id, row: "category"|"destination",
-    position: 1-3, is_mobile: boolean}` — drives post-launch algorithm tuning.
-  - Position: between Reviews and the global footer. Cross-sell at the conversion-critical moment is
-    conversion-neutral with a retention-positive trade-off; industry revealed preference (Viator/GYG/Airbnb)
-    validates inclusion.
+    - Row 1 H2: `More {category_display} in {Destination}`. Query: `SELECT tours WHERE category =
+current.category AND destination = current.primary_destination AND id != current.id AND status =
+active ORDER BY rating × bookability_score DESC LIMIT 3`.
+    - Row 2 H2: `More to explore in {Destination}`. Query: same but `category != current.category`.
+    - **3 cards per row maximum**; desktop 3-across grid; mobile horizontal scroll snap with **1.2 cards
+      visible peek**.
+    - **Render threshold: ≥2 valid tours required for a row to render**; below that the row is hidden. Rows
+      render independently; if both queries return <2, the entire section is absent.
+    - Card variant: the listing-page tour card **WITHOUT the peach/ivory tint** on the first card (peach is
+      reserved for curated listing pages with default sort, not cross-sell context) and **WITHOUT Collection
+      Rationale**.
+    - Standard card content: image, title, rating (≥3 review threshold), price, duration badge, locality.
+    - Title voice rationale: specific titles outperform generic by ~10–15% click-through; a specific category
+      keyword improves SEO topical density vs a generic "Related tours" H2; the "More" prefix maintains warm
+      brand voice.
+    - Diverges from Viator (5+ rows + tabs + footer category links + Recently viewed = overengineering) and
+      GYG (single mixed-content carousel = lower relevance signal per card).
+    - **CMS requirement `tour.category_display_{locale}`** — a **plural noun phrase per locale** (EN: "boat
+      tours" / "snorkeling tours" / "cruises" / "food tours" / "ATV tours" / "diving experiences"; NL:
+      "boottochten" / "snorkeltours" / "cruises" / "food tours" / "ATV-tochten" / "duikexcursies"). CMS
+      validation warns if the value is singular or not a noun phrase.
+    - **Tracking:** `related_tour_click` with `{source_tour_id, target_tour_id, row: "category"|"destination",
+position: 1-3, is_mobile: boolean}` — drives post-launch algorithm tuning.
+    - Position: between Reviews and the global footer. Cross-sell at the conversion-critical moment is
+      conversion-neutral with a retention-positive trade-off; industry revealed preference (Viator/GYG/Airbnb)
+      validates inclusion.
 - Global footer.
 
 #### D.9.4 Tour page — explicit exclusions and the demand card
@@ -4228,10 +4338,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **No per-tour FAQ section (LD21).** User-question space is covered by Important Info > Know before you go,
   Important Info > What to bring, the Cancellation Policy section, Reviews, and the site-level Help Center
   at `/help`.
-  - Rationale: revealed preference from Viator and GYG — both market leaders decided NOT to use per-tour FAQ
-    despite massive A/B test infrastructure. Per-tour FAQ duplicates Important Info, creates an editorial
-    scale problem at thousands of tours, and shows weak engagement on tail sections.
-  - **Schema.org `FAQPage` markup lives on `/help`, NOT on tour detail pages.**
+    - Rationale: revealed preference from Viator and GYG — both market leaders decided NOT to use per-tour FAQ
+      despite massive A/B test infrastructure. Per-tour FAQ duplicates Important Info, creates an editorial
+      scale problem at thousands of tours, and shows weak engagement on tail sections.
+    - **Schema.org `FAQPage` markup lives on `/help`, NOT on tour detail pages.**
 - **LD27 DROPPED — no critical-constraints callout above the fold.** The original single-line micro-component
   (Min age · Fitness · Weather-dependent · Not wheelchair accessible) between Quick Info badges and the
   Sticky TOC trigger was reversed in Phase 5: the original rationale rested on generic e-commerce
@@ -4241,14 +4351,14 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   **The structured fields `min_age_years`, `fitness_level`, `weather_dependent`, `wheelchair_accessible`
   REMAIN in the data model** for Schema.org accessibility/audience markup.
 - **LD25 DROPPED — multi-day tour support.** The original decision included `is_multi_day` + a `days` array
-  + conditional UI across Duration badge, What to Expect, Meeting & Pickup and the widget. Removed because
-  the v1 launch catalog (Curaçao) and the 12-month roadmap contain **ZERO multi-day tours**; future-proofing
-  adds CMS complexity, conditional rendering and validation surface with no v1 value. **Single-day tours are
-  the ONLY supported tour type in v1.**
+    - conditional UI across Duration badge, What to Expect, Meeting & Pickup and the widget. Removed because
+      the v1 launch catalog (Curaçao) and the 12-month roadmap contain **ZERO multi-day tours**; future-proofing
+      adds CMS complexity, conditional rendering and validation surface with no v1 value. **Single-day tours are
+      the ONLY supported tour type in v1.**
 - **Demand card:** renders below the widget when the single demand trigger fires.
-  - Copy LOCKED: headline `Likely to sell out`, line `Book today to secure your spot.`
-  - Style: flame icon (SVG), white card, brand-orange border at 30% — **never red, never animated, not
-    clickable in v1**.
+    - Copy LOCKED: headline `Likely to sell out`, line `Book today to secure your spot.`
+    - Style: flame icon (SVG), white card, brand-orange border at 30% — **never red, never animated, not
+      clickable in v1**.
 - **Schema:** `Product`/`Offer` with `acceptedPaymentMethod` (including ApplePay, GooglePay),
   `audience.suggestedMinAge` from `min_age_years`, accessibility fields, `refundPolicy` from
   `cancellation_hours`, `includes`/`excludes` arrays, plus `Review` + `AggregateRating`, and `BreadcrumbList`.
@@ -4270,33 +4380,33 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - The step-indicator semantics from the two-step design carry over as accordion section states: completed
   sections show a check and reopen on tap.
 - **Contact section fields:**
-  - "Back to availability" link.
-  - **First name and last name as TWO fields** (split names raise the Enhanced Conversions match rate
-    **20–40%**). This overrides the widget brief's single "Full name" field.
-  - Email — helper `Booking confirmation sent here.` plus the **PECR soft opt-in marketing notice**.
-  - Country — **default Curaçao `+599`**, drives phone format via `libphonenumber-js`.
-  - Phone.
-  - Pickup location dropdown, rendered when `tour.pickup_available`.
-    - Label: `Pickup location (From $X p.p.)`.
-    - **Default LOCKED:** `No pickup, meet at location`.
-    - Options: operator zones with prices, plus the fallback `Other location, we'll confirm via WhatsApp`.
-    - Prices render with **no $0.00 decimals**.
-  - Special requests (optional, **500 chars**).
+    - "Back to availability" link.
+    - **First name and last name as TWO fields** (split names raise the Enhanced Conversions match rate
+      **20–40%**). This overrides the widget brief's single "Full name" field.
+    - Email — helper `Booking confirmation sent here.` plus the **PECR soft opt-in marketing notice**.
+    - Country — **default Curaçao `+599`**, drives phone format via `libphonenumber-js`.
+    - Phone.
+    - Pickup location dropdown, rendered when `tour.pickup_available`.
+        - Label: `Pickup location (From $X p.p.)`.
+        - **Default LOCKED:** `No pickup, meet at location`.
+        - Options: operator zones with prices, plus the fallback `Other location, we'll confirm via WhatsApp`.
+        - Prices render with **no $0.00 decimals**.
+    - Special requests (optional, **500 chars**).
 - **Payment section (radio list, LD26 revised).** Header: `Select a payment method`.
-  - **LD26 REVERSED:** the original "Express wallet buttons primary, manual card secondary" is reversed.
-    Market analysis showed both Viator and GYG present payment methods as **equal radio options** for tour
-    booking specifically (considered purchases ≠ impulse e-commerce).
-  - **Card radio is selected and expanded by default**, with VISA, MC, Amex logos.
-  - Discover, JCB, Maestro logos are **locale-conditional**.
-  - PayPal, iDEAL, Klarna render **collapsed**.
-  - **Apple Pay renders only on iOS Safari; Google Pay only on Chrome/Android** (device-aware).
-  - Stripe Elements handles locale-aware postal code.
+    - **LD26 REVERSED:** the original "Express wallet buttons primary, manual card secondary" is reversed.
+      Market analysis showed both Viator and GYG present payment methods as **equal radio options** for tour
+      booking specifically (considered purchases ≠ impulse e-commerce).
+    - **Card radio is selected and expanded by default**, with VISA, MC, Amex logos.
+    - Discover, JCB, Maestro logos are **locale-conditional**.
+    - PayPal, iDEAL, Klarna render **collapsed**.
+    - **Apple Pay renders only on iOS Safari; Google Pay only on Chrome/Android** (device-aware).
+    - Stripe Elements handles locale-aware postal code.
 - **Final CTA lives INSIDE the expanded method**, LOCKED (LD2 override): `🔒 Reserve my spot · Pay $X` with
   the exact deposit amount.
-  - **Four CRO triggers in the final CTA:** outcome-first (`Reserve my spot`); psychological ownership
-    (`my spot` — Cialdini commitment trigger); specific action + amount (`Pay $X`); trust signal (🔒 padlock).
-  - **CTA progression matched to mental state (LD2):** discovery stage `Check availability`; transitional
-    stage `Continue`; checkout stage `🔒 Reserve my spot · Pay $X` (replacing the former `Secure your spot`).
+    - **Four CRO triggers in the final CTA:** outcome-first (`Reserve my spot`); psychological ownership
+      (`my spot` — Cialdini commitment trigger); specific action + amount (`Pay $X`); trust signal (🔒 padlock).
+    - **CTA progression matched to mental state (LD2):** discovery stage `Check availability`; transitional
+      stage `Continue`; checkout stage `🔒 Reserve my spot · Pay $X` (replacing the former `Secure your spot`).
 - Below the CTA: `Payments are secure and encrypted`.
 - Below the CTA: implied-consent line `By tapping Reserve my spot, you agree to Island Tours' Terms and Privacy Policy.` — **links, no checkbox**.
 - **Trust signals at the payment moment: exactly two** — the "Secure checkout" cue with the official
@@ -4353,10 +4463,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.10.3 Booking widget trust strip (LD5) and its two modals
 
 - **Exactly TWO lines, both clickable, in fixed order.**
-  - Line 1: `✓ Free cancellation up to {hours}h` — template-substitutes `tour.cancellation_hours` per LD1
-    (default 48, enum `[24, 48, 72, 168]`); click opens the **cancellation modal**.
-  - Line 2: `✓ Pay only {X}% today, the rest later` — template-substitutes `tour.deposit_pct` per LD24
-    (range 20–30%, steps of 2.5); click opens the **deposit modal**.
+    - Line 1: `✓ Free cancellation up to {hours}h` — template-substitutes `tour.cancellation_hours` per LD1
+      (default 48, enum `[24, 48, 72, 168]`); click opens the **cancellation modal**.
+    - Line 2: `✓ Pay only {X}% today, the rest later` — template-substitutes `tour.deposit_pct` per LD24
+      (range 20–30%, steps of 2.5); click opens the **deposit modal**.
 - Copy choice locked as `Pay only {X}% today`, **NOT** `Reserve from {X}%`, because: (a) "only" is honest
   amplifier framing on a real low-commitment benefit (20% IS objectively low vs industry-standard 100%
   upfront) — not fake CRO theater; (b) "Pay X% today" is maximally transparent; (c) "Reserve from X%" is
@@ -4375,8 +4485,8 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   static, table-stakes, lacks modal depth, and adds filler. Email confirmation behaviour is implied by the
   modern mental model and made explicit in the confirmation state.
 - **Deliberately excluded — "Secure payment":** already triple-signaled at the payment moment (CTA padlock
-  + "Payments are secure and encrypted" microcopy + payment provider logos in Step 2); adding it at Step 1
-  introduces **shadow anxiety** (negative framing).
+    - "Payments are secure and encrypted" microcopy + payment provider logos in Step 2); adding it at Step 1
+      introduces **shadow anxiety** (negative framing).
 - **Where WhatsApp lives instead:** tour description sections (small inline link `Questions? WhatsApp us →`
   near Description and Meeting & Pickup); the page footer; error states (API failure / card declined /
   network errors all show a WhatsApp fallback button); the confirmation email
@@ -4439,41 +4549,41 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Field order LOCKED: Date FIRST, Travelers SECOND.** Industry split: date first at Viator, Klook,
   Headout, Booking, Airbnb Experiences, Fever (5 of 7 majors); participants first only at GetYourGuide
   (driven by per-group pricing where party size IS the pricing driver).
-  - Date-first rationale: (1) our price anchor is person-based so it is accurate before party selection;
-    (2) date is the availability gate — selecting it triggers the API call for time slots and capacity;
-    (3) sequential data flow date → time slots → confirm party matches the mental model; (4) one widget
-    pattern across per-person, age-banded and per-group tours; (5) the hotel-tourist majority on Curaçao has
-    flexible party size but fixed vacation dates.
-  - A post-launch A/B test may reconsider for per-group pricing tours (private charters), if data warrants.
+    - Date-first rationale: (1) our price anchor is person-based so it is accurate before party selection;
+      (2) date is the availability gate — selecting it triggers the API call for time slots and capacity;
+      (3) sequential data flow date → time slots → confirm party matches the mental model; (4) one widget
+      pattern across per-person, age-banded and per-group tours; (5) the hotel-tourist majority on Curaçao has
+      flexible party size but fixed vacation dates.
+    - A post-launch A/B test may reconsider for per-group pricing tours (private charters), if data warrants.
 - **Date picker — single full-month calendar.** Tapping `📅 Select date` opens a full-month calendar
   dropdown **DIRECTLY**. **NO compact chip row; NO "View all dates" intermediate step.**
-  - Header shows month nav `← May 2026 … June →`; **week starts Monday**.
-  - State is communicated through cell styling — **NO legend needed**.
-  - Desktop: **2 months side-by-side** (current + next). Mobile: single month; swipe horizontally OR tap
-    `←`/`→` arrows above the calendar.
-  - **Date cell states:** available plentiful (≥5 spots) — date number, subtle hover, tappable, NO
-    indicator; available low capacity (1–4 spots) — date number + subscript indicator below (`5 left`,
-    `4 left`, …) in **neutral muted gray ~12px, NOT red/orange**, still tappable; today — subtle
-    pill/circle; sold out (0 spots) — greyed, strikethrough or ✕ overlay, non-tappable; closed day —
-    greyed, non-tappable; cutoff passed — greyed, non-tappable; selected — **brand-orange filled
-    background, white text**.
-  - **Scarcity indicator rules (date level):** render the `N left` subscript **ONLY when
-    `available_capacity_for_date < 5`**; colour **muted neutral gray — NOT brand-orange, NOT red, NOT
-    yellow** (honest factual signal, not pressure framing); format `5 left` / `4 left` / `3 left` /
-    `2 left` / `1 left` — **no exclamation, no "Only", no "HURRY"**; the same indicator surfaces on the
-    date pill after selection `📅 Tue 28 May (5 left)` only when capacity < 5; works for ALL tour types
-    (single-departure 95% + multi-departure 5%) because capacity is fundamentally a date property; it does
-    NOT replace slot-level scarcity badges on time-slot chips.
-  - **Rules:** custom component, **NOT native OS pickers** (worse mobile conversion); opens directly to the
-    month containing the first available bookable date; if the current month is fully booked, auto-advance
-    to the next month with availability; **forward window 12 months max**, per-tour configurable via
-    `tour.max_advance_days`; at month +12 the next-month arrow is disabled with tooltip
-    `"Bookings open up to {N} months ahead"`; loading state = skeleton calendar grid.
-  - **Why no chip row (v1 simplification):** Viator + GYG don't do this for tours/activities; the chip row
-    is a flight-booking pattern (Skyscanner) meaningful only when prices fluctuate daily; tour pricing is
-    stable and the "From $X per person" anchor does the price-signal work.
-  - **Don'ts:** ❌ native iOS/Android date picker; ❌ price-per-date inside calendar cells; ❌ a "compact"
-    alternative view; ❌ red/orange on the capacity scarcity subscript.
+    - Header shows month nav `← May 2026 … June →`; **week starts Monday**.
+    - State is communicated through cell styling — **NO legend needed**.
+    - Desktop: **2 months side-by-side** (current + next). Mobile: single month; swipe horizontally OR tap
+      `←`/`→` arrows above the calendar.
+    - **Date cell states:** available plentiful (≥5 spots) — date number, subtle hover, tappable, NO
+      indicator; available low capacity (1–4 spots) — date number + subscript indicator below (`5 left`,
+      `4 left`, …) in **neutral muted gray ~12px, NOT red/orange**, still tappable; today — subtle
+      pill/circle; sold out (0 spots) — greyed, strikethrough or ✕ overlay, non-tappable; closed day —
+      greyed, non-tappable; cutoff passed — greyed, non-tappable; selected — **brand-orange filled
+      background, white text**.
+    - **Scarcity indicator rules (date level):** render the `N left` subscript **ONLY when
+      `available_capacity_for_date < 5`**; colour **muted neutral gray — NOT brand-orange, NOT red, NOT
+      yellow** (honest factual signal, not pressure framing); format `5 left` / `4 left` / `3 left` /
+      `2 left` / `1 left` — **no exclamation, no "Only", no "HURRY"**; the same indicator surfaces on the
+      date pill after selection `📅 Tue 28 May (5 left)` only when capacity < 5; works for ALL tour types
+      (single-departure 95% + multi-departure 5%) because capacity is fundamentally a date property; it does
+      NOT replace slot-level scarcity badges on time-slot chips.
+    - **Rules:** custom component, **NOT native OS pickers** (worse mobile conversion); opens directly to the
+      month containing the first available bookable date; if the current month is fully booked, auto-advance
+      to the next month with availability; **forward window 12 months max**, per-tour configurable via
+      `tour.max_advance_days`; at month +12 the next-month arrow is disabled with tooltip
+      `"Bookings open up to {N} months ahead"`; loading state = skeleton calendar grid.
+    - **Why no chip row (v1 simplification):** Viator + GYG don't do this for tours/activities; the chip row
+      is a flight-booking pattern (Skyscanner) meaningful only when prices fluctuate daily; tour pricing is
+      stable and the "From $X per person" anchor does the price-signal work.
+    - **Don'ts:** ❌ native iOS/Android date picker; ❌ price-per-date inside calendar cells; ❌ a "compact"
+      alternative view; ❌ red/orange on the capacity scarcity subscript.
 - **Travelers selector — variant-aware.** Pattern A (single-pricing tour, one price per person regardless
   of age): **inline counter, always visible** — `👥 2 travelers  [− 2 +]`. Pattern B (age-banded tour,
   different prices for adults/children/infants): **dropdown panel + Apply button**, with a COLLAPSED state
@@ -4485,22 +4595,22 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.10.5 Checkout error, race and confirmation states
 
 - **Error states (Step 1) — trigger → microcopy:**
-  - Date sold out → `Sold out — try another date.` + auto-suggest next available.
-  - All next-30-days sold out → `No spots open in the next 30 days. Get notified when one opens?` + `[Email me]`.
-  - All time slots sold out for the selected date → `All times sold out for this date. Try another date →`
-    (returns to the date picker, date deselected).
-  - API failure loading dates → `Couldn't load dates. Try again, or message us on WhatsApp.` + `[Retry]` `[WhatsApp →]`.
-  - Below min party size → `This tour needs at least 4 travelers. Try the smaller-group version →`.
-  - Time slot needed but not picked → `Please pick a departure time.`
-  - Network offline → `You're offline. Showing cached dates — these may be out of date.`
+    - Date sold out → `Sold out — try another date.` + auto-suggest next available.
+    - All next-30-days sold out → `No spots open in the next 30 days. Get notified when one opens?` + `[Email me]`.
+    - All time slots sold out for the selected date → `All times sold out for this date. Try another date →`
+      (returns to the date picker, date deselected).
+    - API failure loading dates → `Couldn't load dates. Try again, or message us on WhatsApp.` + `[Retry]` `[WhatsApp →]`.
+    - Below min party size → `This tour needs at least 4 travelers. Try the smaller-group version →`.
+    - Time slot needed but not picked → `Please pick a departure time.`
+    - Network offline → `You're offline. Showing cached dates — these may be out of date.`
 - **Error states (Step 2) — trigger → microcopy:**
-  - Empty required field → `Please fill in your [field name].` (inline below the field).
-  - Invalid email format → `That email doesn't look right. Mind double-checking?`
-  - Email typo detected → `Did you mean gmail.com?` — inline suggestion below the field, tappable to accept.
-  - Invalid phone → `Phone number format unclear. Include country code.`
-  - Card declined → `Card declined. Try a different card, or message us on WhatsApp.` + `[WhatsApp →]`.
-  - Payment processing failed → `Payment didn't go through — your card wasn't charged. Try again?` + `[Retry]`.
-  - Spot sold out between Step 1 and Step 2 submission → `This time just sold out. Pick another?`
+    - Empty required field → `Please fill in your [field name].` (inline below the field).
+    - Invalid email format → `That email doesn't look right. Mind double-checking?`
+    - Email typo detected → `Did you mean gmail.com?` — inline suggestion below the field, tappable to accept.
+    - Invalid phone → `Phone number format unclear. Include country code.`
+    - Card declined → `Card declined. Try a different card, or message us on WhatsApp.` + `[WhatsApp →]`.
+    - Payment processing failed → `Payment didn't go through — your card wasn't charged. Try again?` + `[Retry]`.
+    - Spot sold out between Step 1 and Step 2 submission → `This time just sold out. Pick another?`
 - **Error placement rules:** inline below the specific field; **red text on a neutral background — NOT a red
   banner** across the top of the form; icon `⚠` before the error text; **focus returns to the first errored field**.
 - **Payment retry safety (idempotency):** all payment attempts use a **client-generated idempotency key
@@ -4511,19 +4621,19 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   **with the date PRESERVED**; (4) time slots are refreshed; (5) the user picks a new time and re-enters
   Step 2 **with the contact form PRE-FILLED**.
 - **Confirmation state (post-successful payment):**
-  - Heading `✓ Reserved!`
-  - Body `Your spot is confirmed. We've sent the details to john.smith@example.com.`
-  - Detail lines `📅 Tue 28 May · 8:00 AM`, `👥 2 adults`, and **CONDITIONALLY** `📍 Hotel pickup: Marriott`
-    (shown only if a paid pickup zone was selected; omitted entirely when "No pickup" is the default).
-  - Financial lines `Paid today $48` and `Balance later $192`.
-  - `What's next?`: 1. `Check your email for the confirmation`; 2. `Pay your remaining balance online — we'll email you a secure payment link. Sooner the better; latest 48h before tour starts.`
-  - Buttons `[ View booking ]` and `[ Add to calendar ]`.
-  - Divider, then upsell block heading `Make the most of Curaçao` with sub-line
-    `While you're planning your trip, these tours pair well with what you booked:` and cards e.g.
-    `Klein Curaçao Sunset Cruise · From $85`, `Christoffel Park Hike · From $45`,
-    `Willemstad Food Tour · From $65`; CTA `[Explore more tours →]` right-aligned.
-  - Mobile: same content stacked vertically, centered ✓ + "Reserved!", divider rules between blocks,
-    full-width `[ View booking → ]` and `[ Add to calendar ]`, pickup line still conditional.
+    - Heading `✓ Reserved!`
+    - Body `Your spot is confirmed. We've sent the details to john.smith@example.com.`
+    - Detail lines `📅 Tue 28 May · 8:00 AM`, `👥 2 adults`, and **CONDITIONALLY** `📍 Hotel pickup: Marriott`
+      (shown only if a paid pickup zone was selected; omitted entirely when "No pickup" is the default).
+    - Financial lines `Paid today $48` and `Balance later $192`.
+    - `What's next?`: 1. `Check your email for the confirmation`; 2. `Pay your remaining balance online — we'll email you a secure payment link. Sooner the better; latest 48h before tour starts.`
+    - Buttons `[ View booking ]` and `[ Add to calendar ]`.
+    - Divider, then upsell block heading `Make the most of Curaçao` with sub-line
+      `While you're planning your trip, these tours pair well with what you booked:` and cards e.g.
+      `Klein Curaçao Sunset Cruise · From $85`, `Christoffel Park Hike · From $45`,
+      `Willemstad Food Tour · From $65`; CTA `[Explore more tours →]` right-aligned.
+    - Mobile: same content stacked vertically, centered ✓ + "Reserved!", divider rules between blocks,
+      full-width `[ View booking → ]` and `[ Add to calendar ]`, pickup line still conditional.
 
 ---
 
@@ -4544,22 +4654,22 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Canonical sources:** `island-tours-typ-design-brief.md` (UI/UX) and
   `island-tours-typ-tracking-dev-spec.md` (implementation). Strategy docs are lineage only.
 - **Structure (order locked June 10, 2026 per the TYP Figma) — 7 sections:**
-  1. Confirmation hero with key details — tour, operator, date and time, pickup state, party, booking
-     reference; **partially masked email with Resend link**.
-  2. Booking card — details plus payment status per model.
-  3. `What happens next` per-step cards.
-  4. Tour upsell under H2 `Islanders also love...` with sub-line `Picked to pair with your booking`,
-     **3 cards**.
-  5. Apartment block — the Island Tours-owned stay with the ownership disclosure and Airbnb availability CTA.
-  6. Support card, **operator-first** — operator email and phone primary, Island Tours email fallback for
-     platform issues.
-  7. Footer.
+    1. Confirmation hero with key details — tour, operator, date and time, pickup state, party, booking
+       reference; **partially masked email with Resend link**.
+    2. Booking card — details plus payment status per model.
+    3. `What happens next` per-step cards.
+    4. Tour upsell under H2 `Islanders also love...` with sub-line `Picked to pair with your booking`,
+       **3 cards**.
+    5. Apartment block — the Island Tours-owned stay with the ownership disclosure and Airbnb availability CTA.
+    6. Support card, **operator-first** — operator email and phone primary, Island Tours email fallback for
+       platform issues.
+    7. Footer.
 - **Booking card, deposit-model copy:** `Deposit paid today $X ({pct}%)`, then `Remaining balance` with the
   concrete deadline `Pay before {Day, Date}`. Variants exist for on_arrival, paid_in_full and operator_full.
 - **Booking card `operator_full` variant LOCKED:** `Island Tours took no payment today. Total {total}, settled directly with {operatorName}.`
 - **"What happens next" step 2 names the operator deliberately.**
-  - On `operator_link`: `{operatorName} will email you a payment link for the remaining balance. Pay before {date}.`
-  - On `operator_full` LOCKED: `{operatorName} collects the full amount directly and will confirm how and when.`
+    - On `operator_link`: `{operatorName} will email you a payment link for the remaining balance. Pay before {date}.`
+    - On `operator_full` LOCKED: `{operatorName} collects the full amount directly and will confirm how and when.`
 - **Upsell selection rules:** a category **other than** the booked tour, rating **4.7 or higher**,
   availability **2 to 7 days out**, **limit 3**. Whole card clickable, **no per-card CTA** (the Figma's
   per-card "Quick" link was rejected).
@@ -4574,12 +4684,12 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.11.1 TYP — complete English microcopy
 
 - **Hero block:**
-  - `You're booked, [Firstname]!` 🌴
-  - `Your [Klein Curaçao Day Trip] is reserved for Friday, 22 May at 8:00 AM.`
-  - `Booking ref: IT-2026-04821` with a `[copy]` affordance.
-  - `[Add to calendar ▼]` button.
-  - `Confirmation email sent to denley@example.com. Don't see it? Check your spam folder, or [Resend email].`
-  - Fallback without name: `Your Curaçao adventure is locked in!` 🌴 / `Your [Tour Name] is reserved for [Date] at [Time].`
+    - `You're booked, [Firstname]!` 🌴
+    - `Your [Klein Curaçao Day Trip] is reserved for Friday, 22 May at 8:00 AM.`
+    - `Booking ref: IT-2026-04821` with a `[copy]` affordance.
+    - `[Add to calendar ▼]` button.
+    - `Confirmation email sent to denley@example.com. Don't see it? Check your spam folder, or [Resend email].`
+    - Fallback without name: `Your Curaçao adventure is locked in!` 🌴 / `Your [Tour Name] is reserved for [Date] at [Time].`
 - **Booking summary card:** column headers `TOUR DETAILS` and `PAYMENT`; microcopy under payment
   `You've paid your 20% deposit today. The operator will email you a payment link for the remaining 80% — pay by card at least 72 hours before your tour.`
 - **What happens next:** heading `What happens next`;
@@ -4588,8 +4698,8 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   step 3 `Show up & enjoy`.
 - **Tour upsell section:** heading `Make the most of Curaçao`; sub-line `Picked to pair with your tour.`;
   body 3 tour cards; CTA `[Browse Curaçao's top picks →]`.
-  - ⚠️ CONFLICT — §5.9 (B.57) supersedes this with H2 `Islanders also love...` and sub-line
-    `Picked to pair with your booking`.
+    - ⚠️ CONFLICT — §5.9 (B.57) supersedes this with H2 `Islanders also love...` and sub-line
+      `Picked to pair with your booking`.
 - **Our apartment block:** eyebrow `[palm icon] OUR APARTMENT · Jan Thiel`; heading `Palm Suite Apartment`;
   body `Quiet, modern, 5 minutes from the beach.`; meta `★ 4.9 · Sleeps 4 · From $160/night`;
   CTA `[See availability on Airbnb ↗]`; disclosure `Owned and hosted by Island Tours.`
@@ -4600,17 +4710,17 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   `Email reservations@island.tours and include your ref (IT-2026-04821). We usually reply within 24 hours.`
 - **Trust strip at bottom:** `[palm icon] Built by Islanders on Curaçao · 🔒 Secure booking · ✓ Free cancellation`.
 - **Edge-case microcopy:**
-  - Email delayed: `Email taking longer than usual? Check your spam folder first. Still nothing? Your booking is safe — ref IT-2026-04821. Tap [Resend email] or email reservations@island.tours and include your ref.`
-  - Pending manual confirmation: `Your booking is being confirmed by Miss Ann Boat Trips. We'll email you within 4 hours (usually faster). You can already add it to your calendar — we'll update if anything changes.`
-  - Tour starts today/tomorrow — banner above hero: `⏰ Your tour is tomorrow! Make sure your phone is on — the operator may call to confirm pickup.`
-  - Full amount paid: payment column shows `✓ Paid in full · $200.00`; the "Remaining balance" block is
-    replaced with `Your tour is fully paid. Just bring your booking ref and ID.`; **"What's next" SKIPS step 2**
-    (payment link) and shifts the remaining steps up.
-  - Last-minute booking (<72h before tour): `✓ Deposit paid: $40.00 (20%)`;
-    `⚠ Remaining: $160.00 (80%) — pay ASAP`;
-    `Miss Ann Boat Trips will email you a payment link shortly. Tour starts in [X hours] — please pay immediately to secure your spot.`; step 2 uses the urgent variant copy.
-  - No pickup (meeting point): the Pickup field becomes `MEETING POINT — [tappable address]` plus microcopy
-    `Please arrive 15 minutes early.`
+    - Email delayed: `Email taking longer than usual? Check your spam folder first. Still nothing? Your booking is safe — ref IT-2026-04821. Tap [Resend email] or email reservations@island.tours and include your ref.`
+    - Pending manual confirmation: `Your booking is being confirmed by Miss Ann Boat Trips. We'll email you within 4 hours (usually faster). You can already add it to your calendar — we'll update if anything changes.`
+    - Tour starts today/tomorrow — banner above hero: `⏰ Your tour is tomorrow! Make sure your phone is on — the operator may call to confirm pickup.`
+    - Full amount paid: payment column shows `✓ Paid in full · $200.00`; the "Remaining balance" block is
+      replaced with `Your tour is fully paid. Just bring your booking ref and ID.`; **"What's next" SKIPS step 2**
+      (payment link) and shifts the remaining steps up.
+    - Last-minute booking (<72h before tour): `✓ Deposit paid: $40.00 (20%)`;
+      `⚠ Remaining: $160.00 (80%) — pay ASAP`;
+      `Miss Ann Boat Trips will email you a payment link shortly. Tour starts in [X hours] — please pay immediately to secure your spot.`; step 2 uses the urgent variant copy.
+    - No pickup (meeting point): the Pickup field becomes `MEETING POINT — [tappable address]` plus microcopy
+      `Please arrive 15 minutes early.`
 
 #### D.11.2 TYP server-component flow (mark-first conversion, with idempotency)
 
@@ -4618,11 +4728,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - Load the booking with `getBookingByPublicRef(params.bookingRef)`. **If no booking → `notFound()`.**
 - **If `booking.status !== 'confirmed'` → render `<PendingPaymentState />`.**
 - **SERVER-SIDE MARK-FIRST conversion pattern:**
-  - Atomic update: set `conversion_fired_at = now()` **WHERE `public_ref` matches AND
-    `conversion_fired_at IS NULL`**, returning the row.
-  - `markedBooking` is non-null **only if THIS update was the first to succeed**; on refresh the second
-    render gets null → no fire.
-  - `shouldFire = markedBooking !== null`.
+    - Atomic update: set `conversion_fired_at = now()` **WHERE `public_ref` matches AND
+      `conversion_fired_at IS NULL`**, returning the row.
+    - `markedBooking` is non-null **only if THIS update was the first to succeed**; on refresh the second
+      render gets null → no fire.
+    - `shouldFire = markedBooking !== null`.
 - Detect the UI state server-side via `detectBookingState(booking)`.
 - Server-side **Meta CAPI fires when `shouldFire`, in parallel with the browser Pixel** via dataLayer. The
   CAPI call is **fire-and-forget, non-blocking**; failures logged via
@@ -4652,16 +4762,16 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - `last_minute` = **<72h to tour start**. `balance_overdue` = the 72h deadline passed with remaining unpaid.
 - The design brief describes **16 component states**; the state is detected server-side from booking + tour data.
 - **`detectBookingState` logic, IN ORDER:**
-  1. Compute `hoursUntilTour = (tourStart - now) / 3_600_000`.
-  2. **Time-based banners first** (they visually override other states).
-  3. `hoursUntilTour < 24 && > 0` → `tour_today`.
-  4. `hoursUntilTour < 48 && > 24` → `tour_tomorrow`.
-  5. `hoursUntilTour < 72 && > 0` → `last_minute`.
-  6. Then payment state: `remaining_amount === 0` → `fully_paid`.
-  7. `remaining_payment_overdue` → `balance_overdue`.
-  8. `deposit_paid && !fully_paid` → `deposit_paid_balance_pending`.
-  9. `requires_operator_confirmation` → `pending_manual_confirm`.
-  10. Default → `fully_confirmed`.
+    1. Compute `hoursUntilTour = (tourStart - now) / 3_600_000`.
+    2. **Time-based banners first** (they visually override other states).
+    3. `hoursUntilTour < 24 && > 0` → `tour_today`.
+    4. `hoursUntilTour < 48 && > 24` → `tour_tomorrow`.
+    5. `hoursUntilTour < 72 && > 0` → `last_minute`.
+    6. Then payment state: `remaining_amount === 0` → `fully_paid`.
+    7. `remaining_payment_overdue` → `balance_overdue`.
+    8. `deposit_paid && !fully_paid` → `deposit_paid_balance_pending`.
+    9. `requires_operator_confirmation` → `pending_manual_confirm`.
+    10. Default → `fully_confirmed`.
 
 ---
 
@@ -4706,9 +4816,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Existing legal pages** are hand-authored JSX: `privacy-policy` (516 lines), `terms` (541 lines), plus
   `cookie-policy`, `cancellation-policy`, `legal-notice`, `manage-cookies` — **English on every locale**, via
   `components/frontend/legal/legal-page-shell`.
-  - Header comment: **verbatim handover copy, change only through Denley per the README.**
-  - The full Cancellation Policy page stays reachable from the footer and from the on-page Cancellation
-    Policy section.
+    - Header comment: **verbatim handover copy, change only through Denley per the README.**
+    - The full Cancellation Policy page stays reachable from the footer and from the on-page Cancellation
+      Policy section.
 - The footer already carries **four inert labels waiting for routes** (about, help, contact, …).
 - **`robots.txt`:** disallow `/admin`, `/api`, `/dashboard`; allow `/`; declare the sitemap.
 - **Sitemaps:** `/sitemap.xml` index plus **per-locale and per-page-type sitemap files**; published entities
@@ -4766,24 +4876,24 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   plus the free-cancellation line at the CTA; on `operator_full` **only the free-cancellation line renders**.
 - **NeedHelpSection checkmarks LOCKED June 10, 2026: TWO lines, no longer four** —
   `Free cancellation, no questions asked` · `Pay as little as 20% today, the rest later`.
-  - "Confirmed in seconds" and "Safe & secure checkout" are **dropped from the NeedHelpSection component**.
-  - ⚠️ CONFLICT — B.74 records the same drop but with the first checkmark worded
-    `Free cancellation on most tours, no forms`; §3.11 records `Free cancellation, no questions asked`.
+    - "Confirmed in seconds" and "Safe & secure checkout" are **dropped from the NeedHelpSection component**.
+    - ⚠️ CONFLICT — B.74 records the same drop but with the first checkmark worded
+      `Free cancellation on most tours, no forms`; §3.11 records `Free cancellation, no questions asked`.
 - NeedHelpSection left column also carries the **"We're locals" support line, WhatsApp CTA with team
   avatars, and payment logos**.
 - **NeedHelp FAQ answer to "Can I cancel if my plans change?" LOCKED June 10, 2026:**
   `Every tour can be cancelled for free. How late you can cancel differs per tour; the exact cut-off is on the tour page and in your confirmation email. No forms, no questions asked.`
-  - **No numeric range in that answer:** the LD1 enum allows 168h, so a quoted 24-to-72 range would break the
-    moment a one-week-window tour publishes.
-  - Detail belongs in the FAQ; **page-level lines stay hour-free**.
+    - **No numeric range in that answer:** the LD1 enum allows 168h, so a quoted 24-to-72 range would break the
+      moment a one-week-window tour publishes.
+    - Detail belongs in the FAQ; **page-level lines stay hour-free**.
 - **Trust copy matrix LOCKED: two deposit phrasings, no longer three.**
-  - The page-level deposit sentence is `Pay as little as 20% today, the rest later` — in full on the
-    NeedHelp checkmark and on the All Tours trust strip.
-  - The homepage micro bar renders it **split**: label `Pay as little as 20% today` plus clarification
-    `Secure your spot now, pay the rest later`.
-  - The **widget strip alone** uses the tour-precise `Pay only {X}% today, the rest later`, **on the deposit
-    models only**.
-  - **Do not cross-apply the deposit phrasings.**
+    - The page-level deposit sentence is `Pay as little as 20% today, the rest later` — in full on the
+      NeedHelp checkmark and on the All Tours trust strip.
+    - The homepage micro bar renders it **split**: label `Pay as little as 20% today` plus clarification
+      `Secure your spot now, pay the rest later`.
+    - The **widget strip alone** uses the tour-precise `Pay only {X}% today, the rest later`, **on the deposit
+      models only**.
+    - **Do not cross-apply the deposit phrasings.**
 - The **"on every tour" universality claim is homepage-exclusive** (trust bar row 2); every other surface
   uses "Free cancellation, no questions asked".
 
@@ -4891,9 +5001,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - **One algorithm** powers both the listing-card "Likely to sell out" badge and the tour-page demand card.
 - **All three conditions must hold, evaluated DAILY:**
-  1. `tour_age_days >= 90`.
-  2. `recent_sellouts >= 3` in the past **60 days**.
-  3. `upcoming_availability_ratio < 0.40` over the next **30 days**.
+    1. `tour_age_days >= 90`.
+    2. `recent_sellouts >= 3` in the past **60 days**.
+    3. `upcoming_availability_ratio < 0.40` over the next **30 days**.
 - A **manual CMS override flag** exists for the launch phase (no tour has 90 days of history at launch) and
   is **removed once organic data accrues**.
 - Sellout events come from `departures.sold_out_at`.
@@ -4903,9 +5013,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 #### D.15.4 Ranking, diversity pass and pagination
 
 - **Ranking rule.** For any category page or search query, tours are sorted by:
-  1. `tier_rank` **ASCENDING** (1 before 4).
-  2. `quality_score` **DESCENDING**.
-  3. `tour_id` **ASCENDING** (stable final tiebreaker).
+    1. `tier_rank` **ASCENDING** (1 before 4).
+    2. `quality_score` **DESCENDING**.
+    3. `tour_id` **ASCENDING** (stable final tiebreaker).
 - Canonical query:
   `SELECT * FROM tours WHERE category_slug = $1 AND status = 'active' AND is_bookable = true ORDER BY tier_rank ASC, quality_score DESC, id ASC LIMIT $2 OFFSET $3;`
 - For search queries, replace the `category_slug` filter with the search match condition; **the `ORDER BY`
@@ -4945,21 +5055,21 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   type, old Pickup-included) swapped for two live ones (Time of day, Pickup-available)**, and **two reworked
   (Duration bands, Free cancellation window)**.
 - **Order top to bottom:**
-  1. **Price** — slider, `$0` to max. The earlier price-preset chips are **retired**.
-  2. **Duration** — **4 multi-select bands**: `up to 2h · 2 to 4h · 4 to 6h · full day 6h+`. Maps to
-     `duration_minutes`; **boundary rule is lower-bound-inclusive, upper-exclusive** (a 4h tour falls in
-     4 to 6h).
-  3. **Time of day** — multi-select `morning · afternoon · evening`. Maps to start times, stored as a set; a
-     tour with morning and evening departures **matches both**.
-  4. **Free cancellation window** — **single-select**: `up to 24h · 48h · 72h before`.
-     - **Subtext LOCKED:** `All tours include free cancellation. Filter by how late you can cancel.` —
-       **13px, `#6B7280`, WCAG AA**.
-     - Replaces the dead yes/no toggle; maps to `cancellation_hours`; **exact filter logic (including 168h
-       tours) is TO CONFIRM with product before build**.
-  5. **Pickup available** — **toggle, default off**. **"Available", never "included"**: no expectation of
-     free pickup in the base price. Matches any tour with `pickup_model` other than `none`.
-  6. **Ratings** — single-select `3.0+ · 4.0+ · 4.5+`. **HIDDEN entirely until tours cross the 3-review
-     render threshold; flips on PER ISLAND.**
+    1. **Price** — slider, `$0` to max. The earlier price-preset chips are **retired**.
+    2. **Duration** — **4 multi-select bands**: `up to 2h · 2 to 4h · 4 to 6h · full day 6h+`. Maps to
+       `duration_minutes`; **boundary rule is lower-bound-inclusive, upper-exclusive** (a 4h tour falls in
+       4 to 6h).
+    3. **Time of day** — multi-select `morning · afternoon · evening`. Maps to start times, stored as a set; a
+       tour with morning and evening departures **matches both**.
+    4. **Free cancellation window** — **single-select**: `up to 24h · 48h · 72h before`.
+        - **Subtext LOCKED:** `All tours include free cancellation. Filter by how late you can cancel.` —
+          **13px, `#6B7280`, WCAG AA**.
+        - Replaces the dead yes/no toggle; maps to `cancellation_hours`; **exact filter logic (including 168h
+          tours) is TO CONFIRM with product before build**.
+    5. **Pickup available** — **toggle, default off**. **"Available", never "included"**: no expectation of
+       free pickup in the base price. Matches any tour with `pickup_model` other than `none`.
+    6. **Ratings** — single-select `3.0+ · 4.0+ · 4.5+`. **HIDDEN entirely until tours cross the 3-review
+       render threshold; flips on PER ISLAND.**
 - **Removed: "Booking type"** — it was a no-op.
 - The **Apply button shows a live result count** against the unapplied selection.
 - **Filters combine with AND logic.**
@@ -4997,85 +5107,85 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 ### D.16 The "Fixes" list (tour card)
 
 - **Fix 1 — Remove the 01/02/03 ranking ribbon.**
-  - Delete the red folded-ribbon element from the tour card entirely.
-  - **Position in the grid becomes the ONLY ranking signal** (no numeric rank rendered).
-  - Reason: violates "max 1 badge per card" — ribbon + pill = two badges.
-  - Reason: breaks in carousels (cards 4–6 render "04, 05, 06" with no context).
-  - Reason: breaks on filtered search results (rank changes per query).
-  - Reason: stylistically dated — no major experience platform uses ranking ribbons.
+    - Delete the red folded-ribbon element from the tour card entirely.
+    - **Position in the grid becomes the ONLY ranking signal** (no numeric rank rendered).
+    - Reason: violates "max 1 badge per card" — ribbon + pill = two badges.
+    - Reason: breaks in carousels (cards 4–6 render "04, 05, 06" with no context).
+    - Reason: breaks on filtered search results (rank changes per query).
+    - Reason: stylistically dated — no major experience platform uses ranking ribbons.
 - **Fix 2 — Badge system with proper colour hierarchy.**
-  - Problem: identical light-green pills for all three badges collapse the hierarchy; **each badge must look
-    different**.
-  - `Likely to sell out` — function urgency — **red or deep orange background, white text**.
-  - `Bestseller` — function authority — **dark (near-black or deep navy) background, white text**.
-  - `New` — function neutral framing — **off-white / ivory background, dark text**.
-  - **Green is BANNED for these badges:** in booking UIs green signals deal/discount and none of our badges
-    mean that. **Green is reserved in-spec for a future "Special Offer" badge** — using it now exhausts the
-    vocabulary.
-  - Current light-green-on-light-green **likely fails WCAG AA contrast**.
-  - **Copy fix `Best Seller` → `Bestseller`** (one word; industry convention — NYT, Amazon, Klook, GYG).
-  - ⚠️ CONFLICT — B.33 supersedes the listing badge name again: **`Bestseller` → `Most popular`** (category
-    review chain), and §3.6 defines `Most popular` with its own trigger (organic, ≥10 reviews, ≥4.5 rating,
-    max 1 per category).
+    - Problem: identical light-green pills for all three badges collapse the hierarchy; **each badge must look
+      different**.
+    - `Likely to sell out` — function urgency — **red or deep orange background, white text**.
+    - `Bestseller` — function authority — **dark (near-black or deep navy) background, white text**.
+    - `New` — function neutral framing — **off-white / ivory background, dark text**.
+    - **Green is BANNED for these badges:** in booking UIs green signals deal/discount and none of our badges
+      mean that. **Green is reserved in-spec for a future "Special Offer" badge** — using it now exhausts the
+      vocabulary.
+    - Current light-green-on-light-green **likely fails WCAG AA contrast**.
+    - **Copy fix `Best Seller` → `Bestseller`** (one word; industry convention — NYT, Amazon, Klook, GYG).
+    - ⚠️ CONFLICT — B.33 supersedes the listing badge name again: **`Bestseller` → `Most popular`** (category
+      review chain), and §3.6 defines `Most popular` with its own trigger (organic, ≥10 reviews, ≥4.5 rating,
+      max 1 per category).
 - **Fix 3 — Add the wishlist heart.**
-  - Currently missing; **REQUIRED on every card**.
-  - Desktop position: **top-right overlay on the image**. Mobile position: **bottom-right overlay** (avoids
-    badge collision).
-  - Visual: **~32px white circular backdrop, subtle shadow, heart icon inside**.
-  - States: **outlined (default) → filled brand-orange (wishlisted)**.
-  - Behaviour: click toggles; **optimistic UI — fill immediately, revert on API failure**; **no page
-    navigation on click**.
+    - Currently missing; **REQUIRED on every card**.
+    - Desktop position: **top-right overlay on the image**. Mobile position: **bottom-right overlay** (avoids
+      badge collision).
+    - Visual: **~32px white circular backdrop, subtle shadow, heart icon inside**.
+    - States: **outlined (default) → filled brand-orange (wishlisted)**.
+    - Behaviour: click toggles; **optimistic UI — fill immediately, revert on API failure**; **no page
+      navigation on click**.
 - **Fix 4 — Image carousel: photo count + description last-slide (desktop).**
-  - The card needs a **5–7 photo carousel with a description snippet as the last slide** (the wireframe shows
-    a static image). **Supersedes the earlier "3–5 photos" spec** — 3–5 was too conservative; **5–7 is the
-    current industry standard**.
-  - Photos: `hero_image` first; the rest pulled from `gallery_images`.
-  - **Dots always visible**, bottom-centre of image, white with partial opacity.
-  - **Arrows fade in on card hover only**, on the left/right edges of the image.
-  - **Lazy load: only the first image loads immediately**; others load on first interaction.
-  - Transition: **slide, 300ms ease-out**.
-  - **Mobile: single `hero_image`, NO carousel** — touch users rarely swipe deep on listing cards and the
-    detail-page carousel covers the use case.
-  - **Last slide (desktop only) — description snippet:** first ~150 characters of `description` (the same
-    field used on the detail page), **truncated on a word boundary**, ending with `...More` which navigates
-    to the detail page; light background (not an image), readable typography, same card corner-radius as
-    image slides. **Never rendered on mobile.**
-  - **Wireframe requirement:** draw the dots on the image even in the wireframe so dev knows it is a carousel.
+    - The card needs a **5–7 photo carousel with a description snippet as the last slide** (the wireframe shows
+      a static image). **Supersedes the earlier "3–5 photos" spec** — 3–5 was too conservative; **5–7 is the
+      current industry standard**.
+    - Photos: `hero_image` first; the rest pulled from `gallery_images`.
+    - **Dots always visible**, bottom-centre of image, white with partial opacity.
+    - **Arrows fade in on card hover only**, on the left/right edges of the image.
+    - **Lazy load: only the first image loads immediately**; others load on first interaction.
+    - Transition: **slide, 300ms ease-out**.
+    - **Mobile: single `hero_image`, NO carousel** — touch users rarely swipe deep on listing cards and the
+      detail-page carousel covers the use case.
+    - **Last slide (desktop only) — description snippet:** first ~150 characters of `description` (the same
+      field used on the detail page), **truncated on a word boundary**, ending with `...More` which navigates
+      to the detail page; light background (not an image), readable typography, same card corner-radius as
+      image slides. **Never rendered on mobile.**
+    - **Wireframe requirement:** draw the dots on the image even in the wireframe so dev knows it is a carousel.
 - **Fix 5 — Keep the USP in the title (no separate highlight line).**
-  - The wireframe title `Klein Curaçao Catamaran Day Trip with Open Bar & BBQ` is **CORRECT — no change
-    needed**. The note exists only to prevent the pattern being re-opened during revision.
-  - Rationale: Viator, GetYourGuide and Airbnb Experiences all put the USP in the title and omit inclusion
-    bullets on listing cards. The USP is visible in **100% of viewports with zero extra vertical space**.
-  - **Title convention for operator onboarding:** `[Tour core identity] + [single strongest USP]` — e.g.
-    `Klein Curaçao Catamaran Day Trip with Open Bar & BBQ`, `Sunset Sailing Cruise with Unlimited Drinks`,
-    `Private Yacht Charter with Custom Itinerary & Snorkel Gear`.
-  - **No `highlights[0]` field on the card component;** the `highlights` array stays on the tour object for
-    the detail page.
+    - The wireframe title `Klein Curaçao Catamaran Day Trip with Open Bar & BBQ` is **CORRECT — no change
+      needed**. The note exists only to prevent the pattern being re-opened during revision.
+    - Rationale: Viator, GetYourGuide and Airbnb Experiences all put the USP in the title and omit inclusion
+      bullets on listing cards. The USP is visible in **100% of viewports with zero extra vertical space**.
+    - **Title convention for operator onboarding:** `[Tour core identity] + [single strongest USP]` — e.g.
+      `Klein Curaçao Catamaran Day Trip with Open Bar & BBQ`, `Sunset Sailing Cruise with Unlimited Drinks`,
+      `Private Yacht Charter with Custom Itinerary & Snorkel Gear`.
+    - **No `highlights[0]` field on the card component;** the `highlights` array stays on the tour object for
+      the detail page.
 - **Fix 6 — Outlined check-circle icon for Free Cancellation.**
-  - Replace the plain `✓` character with an **outlined check-circle icon** (circle outline + checkmark inside).
-  - Reason: a plain `✓` reads as a text character, not an icon, and scans weaker beside duration and pickup.
-  - **CRITICAL: all meta-row icons (duration clock, pickup car, cancellation check) share the same style,
-    stroke-width, size and colour**, pulled from a **SINGLE icon library** (Heroicons, Lucide or Feather —
-    whichever the rest of the UI uses).
-  - **Style outlined, NOT filled.** Filled check-circles read as "success/confirmed" (form submission,
-    booking confirmation) and create cognitive mismatch on a not-yet-booked card.
-  - **Size 16–20px**, matched to duration and pickup icons. **Colour: muted neutral gray**, same as other
-    meta-row icons.
-  - Source examples: `CheckCircle` (Heroicons-outline) or `CircleCheck` (Lucide).
-  - Cheap for dev: no custom icon, just swap the character for a library icon already in the set.
+    - Replace the plain `✓` character with an **outlined check-circle icon** (circle outline + checkmark inside).
+    - Reason: a plain `✓` reads as a text character, not an icon, and scans weaker beside duration and pickup.
+    - **CRITICAL: all meta-row icons (duration clock, pickup car, cancellation check) share the same style,
+      stroke-width, size and colour**, pulled from a **SINGLE icon library** (Heroicons, Lucide or Feather —
+      whichever the rest of the UI uses).
+    - **Style outlined, NOT filled.** Filled check-circles read as "success/confirmed" (form submission,
+      booking confirmation) and create cognitive mismatch on a not-yet-booked card.
+    - **Size 16–20px**, matched to duration and pickup icons. **Colour: muted neutral gray**, same as other
+      meta-row icons.
+    - Source examples: `CheckCircle` (Heroicons-outline) or `CircleCheck` (Lucide).
+    - Cheap for dev: no custom icon, just swap the character for a library icon already in the set.
 - **Fix 7 — Copy fixes.** `Pickup is available` → `Pick-up available` (hyphenated form signals
   optional/at-extra-cost, matching operator reality; unhyphenated "Pickup" implies included; the word "is"
   is dead weight); `Best Seller` → `Bestseller`.
-  - ⚠️ CONFLICT — see D.5.2: LD3 locks **"Pickup" with NO hyphen platform-wide**, `[ALLTOURS-IMP]` locks
-    `Pickup included`, and B.69 resolves it per `pickup_model`.
+    - ⚠️ CONFLICT — see D.5.2: LD3 locks **"Pickup" with NO hyphen platform-wide**, `[ALLTOURS-IMP]` locks
+      `Pickup included`, and B.69 resolves it per `pickup_model`.
 - **Fix 8 — Thousand separator on review count.**
-  - The `4.8 (1738)` format is almost correct — **omitting the word "reviews" is the right choice**.
-  - **Only fix: add a locale-formatted thousand separator** — `4.8 (1,738)` for en/es/pt; `4.8 (1.738)` for
-    nl/de — via `toLocaleString()` per active locale. **Same format across all viewports.**
-  - **Accessibility:** `aria-label="4.8 out of 5 stars, 1,738 reviews"` on the rating element. Sighted users
-    see clean numbers; screen readers get the full context.
-  - **Master-spec correction:** the master UI/UX Structure doc's mobile `(3)` vs desktop `(3 reviews)`
-    distinction is **WRONG**; the wireframe is right.
+    - The `4.8 (1738)` format is almost correct — **omitting the word "reviews" is the right choice**.
+    - **Only fix: add a locale-formatted thousand separator** — `4.8 (1,738)` for en/es/pt; `4.8 (1.738)` for
+      nl/de — via `toLocaleString()` per active locale. **Same format across all viewports.**
+    - **Accessibility:** `aria-label="4.8 out of 5 stars, 1,738 reviews"` on the rating element. Sighted users
+      see clean numbers; screen readers get the full context.
+    - **Master-spec correction:** the master UI/UX Structure doc's mobile `(3)` vs desktop `(3 reviews)`
+      distinction is **WRONG**; the wireframe is right.
 - **Fix 9 — Duration formatter** — see D.15.1 for the locked rules.
 
 **Banned words (platform-wide, enforced by LD9)**
@@ -5145,11 +5255,11 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **Every homepage content field is nullable, and null means "use the built-in i18n dictionary default"** —
   `content.heroTitle || dict.home.hero.title`.
 - This makes the work shippable incrementally:
-  - **An empty table renders exactly the pre-CMS homepage.** No content-entry milestone gates the deploy.
-  - **Clearing a field restores its default** rather than blanking the section.
-  - **Rollback is "empty the table".**
-  - **A backend outage degrades to bundled copy** — hence `publicGet`, **never `publicGetStrict`**: the
-    site's front door must not 404.
+    - **An empty table renders exactly the pre-CMS homepage.** No content-entry milestone gates the deploy.
+    - **Clearing a field restores its default** rather than blanking the section.
+    - **Rollback is "empty the table".**
+    - **A backend outage degrades to bundled copy** — hence `publicGet`, **never `publicGetStrict`**: the
+      site's front door must not 404.
 - **Note the operator is `||`, not `??`:** an empty string from the DB **must fall back too**, or a cleared
   field renders a broken image / empty heading.
 
@@ -5163,19 +5273,19 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   `editorialBody`, `editorialCta`, `faqTitle`, `faqSubtitle`, `isMachineTranslated`.
 - **Routes** (`MANAGE_EDITORIAL`, admin-only — this is editorial curation, so it sits with the other manual
   admin flags):
-  - `GET /home-page/public?locale=` — `@Public()`
-  - `GET /home-page` · `PATCH /home-page`
-  - `GET /home-page/translations` · `PATCH /home-page/translations/:locale`
+    - `GET /home-page/public?locale=` — `@Public()`
+    - `GET /home-page` · `PATCH /home-page`
+    - `GET /home-page/translations` · `PATCH /home-page/translations/:locale`
 - **Service invariants:**
-  - **The public read is a `findUnique`, NEVER the self-seeding upsert the admin read uses — an anonymous
-    GET must not write.** A missing row returns an **all-null payload rather than 404**.
-  - **An archived editorial destination reports `editorialDestinationSlug: null`** so the homepage never
-    advertises a link that 404s.
-  - **Writes use conditional spreads** so an absent field is untouched and an explicit `null` clears it.
-  - **Translation writes seed the singleton first**, so the FK always resolves.
-  - Translation copy uses the **`{ fields: {...} }` wrapper**. **There is no delete route: clearing is a
-    null upsert** (the English-tab "Clear Fields" pattern), because **deleting the base locale would strand
-    the section headings**.
+    - **The public read is a `findUnique`, NEVER the self-seeding upsert the admin read uses — an anonymous
+      GET must not write.** A missing row returns an **all-null payload rather than 404**.
+    - **An archived editorial destination reports `editorialDestinationSlug: null`** so the homepage never
+      advertises a link that 404s.
+    - **Writes use conditional spreads** so an absent field is untouched and an explicit `null` clears it.
+    - **Translation writes seed the singleton first**, so the FK always resolves.
+    - Translation copy uses the **`{ fields: {...} }` wrapper**. **There is no delete route: clearing is a
+      null upsert** (the English-tab "Clear Fields" pattern), because **deleting the base locale would strand
+      the section headings**.
 - **Public loader** `lib/api/public/home-page.ts`: `'use cache'` + `cacheLife('days')` +
   `cacheTag('homepage')`, `publicGet` with an all-null fallback.
 - **Cache-tag contract:** `homepage` added to `COARSE_CACHE_TAGS` in **both repos** (byte-identical), plus a
@@ -5194,9 +5304,9 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - **`FeaturedExperience` already existed** (`prisma/destinations.prisma`), migrated and demo-seeded, **with
   ZERO application code**: `entityType (CATEGORY|HUB) + entityId + destinationId? + videoUrl + displayOrder
-  + isActive`. **The `videoUrl` column exists precisely for the video cards `top-experiences.tsx` hardcodes.**
-  It survived the slot-economy purge deliberately. **Top Island Experiences is therefore a wiring job, not a
-  design job.**
+    - isActive`. **The `videoUrl`column exists precisely for the video cards`top-experiences.tsx` hardcodes.**
+      It survived the slot-economy purge deliberately. **Top Island Experiences is therefore a wiring job, not a
+      design job.\*\*
 - **Top Island Experiences is admin-curated and covers Categories and Hubs ONLY — never individual tours.**
 - **Routes:** `GET /featured-experiences/public?locale=&destination=` (`@Public()`); `GET`, `POST`,
   `PATCH /:id`, `DELETE /:id` (all `MANAGE_EDITORIAL`).
@@ -5205,10 +5315,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   never drift from its target page.**
 - **THE GATE IS THE FEATURE.** Every card **mirrors the exact condition its target page 404s on**, and
   anything that fails is **dropped**:
-  - **category:** `destination.isActive && category.isActive && liveTourCount > 0`
-  - **hub:** `isActive && status === PUBLISHED && liveTourCount > 0`
-  - **a hub pinned to an island other than its own** (a curation mistake) is dropped
-  - **an orphan row whose target no longer exists** is dropped
+    - **category:** `destination.isActive && category.isActive && liveTourCount > 0`
+    - **hub:** `isActive && status === PUBLISHED && liveTourCount > 0`
+    - **a hub pinned to an island other than its own** (a curation mistake) is dropped
+    - **an orphan row whose target no longer exists** is dropped
 - **Image falls back `heroImage || ogImage || null`**; the frontend then falls back to bundled art. (The demo
   seed populates `ogImage` but NOT `heroImage` on categories, so without this fallback every card rendered grey.)
 - **Public loader carries `cacheTag('homepage', 'tours')`. The second tag is load-bearing:** card visibility
@@ -5271,15 +5381,15 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - `EntityTabs` **in the order the sections appear ON THE PAGE (Hero, Experiences, CTA Card, FAQs, then SEO)**,
   so **scanning the tab row is scanning the homepage top to bottom**.
 - **Design rules, each enforced in one shared place:**
-  - **Label by consequence** — a `where` prop describing where the text lands ("the large text over the hero
-    photo"), **never a column name**.
-  - **Show the fallback** — the shipped copy is the placeholder AND, while a field is empty, an explicit
-    **"Currently showing the built-in default"** note. **Empty state on a fallback CMS otherwise reads as a
-    missing section.** Defaults live in `lib/home-page/defaults.ts` — **the ONE cross-repo duplication**
-    (display-only, so drift costs a stale hint, never wrong data).
-  - **Publishing honesty** — "Saving publishes straight to the live homepage" beside every save button;
-    **there is no draft state, so nothing should imply one**.
-  - **English inline, other locales in the Console** — each translatable card links straight to the workspace.
+    - **Label by consequence** — a `where` prop describing where the text lands ("the large text over the hero
+      photo"), **never a column name**.
+    - **Show the fallback** — the shipped copy is the placeholder AND, while a field is empty, an explicit
+      **"Currently showing the built-in default"** note. **Empty state on a fallback CMS otherwise reads as a
+      missing section.** Defaults live in `lib/home-page/defaults.ts` — **the ONE cross-repo duplication**
+      (display-only, so drift costs a stale hint, never wrong data).
+    - **Publishing honesty** — "Saving publishes straight to the live homepage" beside every save button;
+      **there is no draft state, so nothing should imply one**.
+    - **English inline, other locales in the Console** — each translatable card links straight to the workspace.
 - `useSaveHomepageSection` composes the two endpoints a tab spans (locale-agnostic fields + English copy) so
   **one button saves both, sequentially rather than in parallel** — both write the same singleton, and a
   half-applied pair is easier to reason about than two racing writes.
@@ -5295,20 +5405,20 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
   homepage has no About/SEO body, and rendering fields that save nowhere is worse than omitting them), and
   **`paginated` now excludes `homepage`**.
 - **Review fixes (four real defects):**
-  1. **The shared FaqManager pointed the homepage at a dead link** — `CONSOLE_TYPE_BY_BASE` had no
-     `/home-page` entry and fell back to `?? 'destination'`. Added the mapping **and removed the fallback: an
-     unmapped basePath now renders NO pointer, because a wrong link is worse than a missing one.**
-  2. **The forms duplicated the shared settings kit** — `HomepageSectionCard`/`HomepageField` were
-     re-implementations of `SettingsCard`/`TextField`/`TextareaField`/`ImageField`. **Both duplicates are
-     deleted**; the label-by-consequence and show-the-fallback behaviour survived as
-     `describeField(where, value, fallback)`.
-  3. **A media field asked for a pasted URL** — the featured-experience video was a raw `<Input>`, the one
-     field not backed by the media library. `MediaGalleryManager`/`MediaSelector` now take a **`kind`
-     restriction** that seeds the type filter AND omits the setter (hiding the type dropdown entirely);
-     selector toasts take their noun from the kind; `VideoSelectorField` + `VideoField` render a real
-     `<video>` preview. **Kind is tested with `getMediaKind`, never `resourceType === 'video'`, because
-     Cloudinary stores AUDIO under resourceType `video`.**
-  4. Hand-written row types replaced by `Prisma.CategoryGetPayload<{ select: typeof CATEGORY_SELECT }>`.
+    1. **The shared FaqManager pointed the homepage at a dead link** — `CONSOLE_TYPE_BY_BASE` had no
+       `/home-page` entry and fell back to `?? 'destination'`. Added the mapping **and removed the fallback: an
+       unmapped basePath now renders NO pointer, because a wrong link is worse than a missing one.**
+    2. **The forms duplicated the shared settings kit** — `HomepageSectionCard`/`HomepageField` were
+       re-implementations of `SettingsCard`/`TextField`/`TextareaField`/`ImageField`. **Both duplicates are
+       deleted**; the label-by-consequence and show-the-fallback behaviour survived as
+       `describeField(where, value, fallback)`.
+    3. **A media field asked for a pasted URL** — the featured-experience video was a raw `<Input>`, the one
+       field not backed by the media library. `MediaGalleryManager`/`MediaSelector` now take a **`kind`
+       restriction** that seeds the type filter AND omits the setter (hiding the type dropdown entirely);
+       selector toasts take their noun from the kind; `VideoSelectorField` + `VideoField` render a real
+       `<video>` preview. **Kind is tested with `getMediaKind`, never `resourceType === 'video'`, because
+       Cloudinary stores AUDIO under resourceType `video`.**
+    4. Hand-written row types replaced by `Prisma.CategoryGetPayload<{ select: typeof CATEGORY_SELECT }>`.
 - **Security fix (HIGH): unvalidated media URLs could take the homepage down site-wide.**
   `heroImage`/`ogImage`/`editorialImages`/`videoUrl` were `@IsString()` only. **`next/image` THROWS at render
   on a src it cannot load, and this row is a singleton inside the prerendered shell of every locale's front
@@ -5339,18 +5449,18 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **OPEN DECISION 2 — Rich text:** **neither repo has any editor, markdown lib, or sanitizer** — long-form is
   a `rows={8}` textarea end to end. **A full working TipTap v3 setup exists at
   `/Users/devripon/devripon/Final & Running Project/wattup-frontend` to port from.** Caveats found on inspection:
-  1. Its four `@tiptap/extension-table*` packages are **installed but NEVER wired** — no extension, no toolbar
-     button, no CSS. **Since the existing legal copy contains tables (`LegalTableScroller`), table support is
-     a build, not a copy. This is the main argument for storing HTML rather than markdown.**
-  2. `simple-editor.scss` **styles global `html`/`body`/`:root` and overrides shadcn tokens to hardcoded
-     light-mode values — importing it anywhere leaks app-wide and breaks dark mode. Scope those selectors
-     first. Biggest porting hazard.**
-  3. Its renderer **sanitizes client-side in a `useEffect` (empty first paint, bad for SEO on public legal
-     pages)** and **runs `marked` over content that is already HTML**. **Sanitize server-side on the write
-     path instead, and drop `marked`.**
-  4. **No react-hook-form integration exists**; the `value`/`onChange` signature maps onto
-     `field.value`/`field.onChange` but **the `Controller` wrapper must be written**, and **`onChange` wants
-     debouncing (it serializes the whole document per keystroke).**
+    1. Its four `@tiptap/extension-table*` packages are **installed but NEVER wired** — no extension, no toolbar
+       button, no CSS. **Since the existing legal copy contains tables (`LegalTableScroller`), table support is
+       a build, not a copy. This is the main argument for storing HTML rather than markdown.**
+    2. `simple-editor.scss` **styles global `html`/`body`/`:root` and overrides shadcn tokens to hardcoded
+       light-mode values — importing it anywhere leaks app-wide and breaks dark mode. Scope those selectors
+       first. Biggest porting hazard.**
+    3. Its renderer **sanitizes client-side in a `useEffect` (empty first paint, bad for SEO on public legal
+       pages)** and **runs `marked` over content that is already HTML**. **Sanitize server-side on the write
+       path instead, and drop `marked`.**
+    4. **No react-hook-form integration exists**; the `value`/`onChange` signature maps onto
+       `field.value`/`field.onChange` but **the `Controller` wrapper must be written**, and **`onChange` wants
+       debouncing (it serializes the whole document per keystroke).**
 - **Migration:** convert the six authored legal pages to `Page` rows via a **seed script**, **swap the routes
   last**, and **delete the old JSX only after verification.**
 
@@ -5411,18 +5521,18 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 
 - **`CustomerProvisioningService.provisionForBooking(booking)` — fire-and-forget (never throws, never blocks
   a booking/webhook):**
-  1. **No contact email → no-op.**
-  2. **Email belongs to a non-USER account (operator/staff/admin) → skip entirely** (no link, no email).
-     **Linking would inject bookings into their ops dashboard lists**; those bookers keep the publicRef flow.
-  3. **No account →** `provisionInvitedAccount(role: USER)` +
-     `auth.api.requestPasswordReset({ redirectTo: getAccountUrl() + '/reset' })` → **welcome email (ONLY on
-     this create path)**. A `ConflictException` race (settle vs webhook) → **refetch, continue, no second
-     welcome**.
-  4. **Existing USER with `hasPassword=false` → re-send the set-password link, capped 1 per 24h per email**
-     (own `TargetRateLimiter` instance, bucket `customer-welcome`); **`hasPassword=true` → silent**.
-  5. **Backfill:** `updateMany` links this booking **AND ALL past bookings with the same `contactEmail`
-     (case-insensitive) where `userId IS NULL`**.
-  6. **Upsert `customers` rows for each distinct operator + recompute aggregates.**
+    1. **No contact email → no-op.**
+    2. **Email belongs to a non-USER account (operator/staff/admin) → skip entirely** (no link, no email).
+       **Linking would inject bookings into their ops dashboard lists**; those bookers keep the publicRef flow.
+    3. **No account →** `provisionInvitedAccount(role: USER)` +
+       `auth.api.requestPasswordReset({ redirectTo: getAccountUrl() + '/reset' })` → **welcome email (ONLY on
+       this create path)**. A `ConflictException` race (settle vs webhook) → **refetch, continue, no second
+       welcome**.
+    4. **Existing USER with `hasPassword=false` → re-send the set-password link, capped 1 per 24h per email**
+       (own `TargetRateLimiter` instance, bucket `customer-welcome`); **`hasPassword=true` → silent**.
+    5. **Backfill:** `updateMany` links this booking **AND ALL past bookings with the same `contactEmail`
+       (case-insensitive) where `userId IS NULL`**.
+    6. **Upsert `customers` rows for each distinct operator + recompute aggregates.**
 - **Call sites in `bookings.service.ts` (all `void ...`):** `finalizeConfirmation` (**winner branch — confirm
   endpoint + Stripe webhook paths**), `update()` when contact lands on an already-CONFIRMED booking
   (**OPERATOR_FULL insurance; note OPERATOR_FULL is rejected at reserve in v1**), and `cancel()` (**recomputes
@@ -5448,10 +5558,10 @@ Canonical basis: master §1.4, §5.8 / conflict log C22, BOOKING-AND-PAYMENTS.md
 - **`ROLE_PERMISSIONS[USER]` (roles.config.ts + the dashboard `rbac.ts` mirror) adds `VIEW_BOOKINGS` +
   `VIEW_PAYMENTS`.** **Verified blast radius: exactly `GET /bookings`, `GET /bookings/:id`, `GET /payments` —
   all self-scoped:**
-  - `BookingsService.list` already scoped non-platform roles via `where.userId = actor.id`; `getById` had the
-    owner check.
-  - **`PaymentsService.list` gained the USER branch: `where.booking = { userId: actor.id }`** (it previously
-    ran operator-resolution for all non-ADMIN).
+    - `BookingsService.list` already scoped non-platform roles via `where.userId = actor.id`; `getById` had the
+      owner check.
+    - **`PaymentsService.list` gained the USER branch: `where.booking = { userId: actor.id }`** (it previously
+      ran operator-resolution for all non-ADMIN).
 - **Booking list rows carry ledger-derived `paymentStatus`** (`PAID | PARTIALLY_PAID | UNPAID | REFUNDED`)
   **+ `paidAmount`** (SUCCEEDED non-REFUND minus SUCCEEDED REFUND vs totalRetail) — **for operators too,
   unconditional**. `derivePaymentState`: **zero-value bookings read as PAID, not UNPAID.**
@@ -5517,6 +5627,7 @@ unaffected — the public frontend never called `/confirm` or raw `/cancel`; the
    booking (**foreign ids 404, no existence oracle; `Role.USER` rejected — customers use the
    cancellation-request flow**). The dashboard admin flow still works because AuthGuard attaches the session
    user even on `@Public` routes.
+
 - **All guarded `updateMany`/`$transaction` atomic transitions are unchanged — the gates are pre-checks, each
   a single indexed query.**
 - **`cancel()` authorization now runs BEFORE the idempotent `CANCELLED` early-return.** Previously the
@@ -5527,14 +5638,14 @@ unaffected — the public frontend never called `/confirm` or raw `/cancel`; the
 - **Departed trips can no longer be put up for cancellation.** **The verdict is computed SERVER-side and
   shipped on the payload — clients must not re-derive it**, because `tourStartDateTime` is a LOCAL wall clock
   and is meaningless without `tourTimeZone` (which the list payload does not carry).
-  - **`cancellationEligibility()` returns `{ canRequest, reason }`** with reason
-    `ALREADY_REQUESTED | NOT_CONFIRMED | DEPARTED`; surfaced as **`canRequestCancellation` +
-    `cancellationBlockedReason`**, **and enforced by the same predicate inside `submitCancellationRequest`
-    (409). One rule, so the UI can never offer something the endpoint refuses.**
-  - **`hasDeparted()` edge cases:** start + zone gives an **exact instant**; **a legacy row with no zone falls
-    back to the travel DAY and counts as departed only once that day has ended in EVERY timezone (36h)**,
-    deliberately lenient rather than refusing a trip that has not happened; **`localDate` is NOT NULL so there
-    is always a floor**. **A re-submit on an already-requested booking still works even after departure.**
+    - **`cancellationEligibility()` returns `{ canRequest, reason }`** with reason
+      `ALREADY_REQUESTED | NOT_CONFIRMED | DEPARTED`; surfaced as **`canRequestCancellation` +
+      `cancellationBlockedReason`**, **and enforced by the same predicate inside `submitCancellationRequest`
+      (409). One rule, so the UI can never offer something the endpoint refuses.**
+    - **`hasDeparted()` edge cases:** start + zone gives an **exact instant**; **a legacy row with no zone falls
+      back to the travel DAY and counts as departed only once that day has ended in EVERY timezone (36h)**,
+      deliberately lenient rather than refusing a trip that has not happened; **`localDate` is NOT NULL so there
+      is always a floor**. **A re-submit on an already-requested booking still works even after departure.**
 
 #### D.18.9 Commission-withheld-from-traveler-payloads rule
 
@@ -5553,14 +5664,14 @@ unaffected — the public frontend never called `/confirm` or raw `/cancel`; the
 
 - The first real end-to-end run (book → welcome email → set password → log in) produced **a dashboard with no
   bookings and no payments.** **Root cause was two bugs, not configuration:**
-  1. **`reserve()` stamped `booking.userId` with whoever was logged into the browser.** The route is
-     `@Public`, **but AuthGuard still attaches a session**, and the controller passed `user?.id` straight
-     through. **Testing checkout while signed in as ADMIN made the admin account the booking's "traveller" —
-     16 of 18 test bookings for one contact email were owned by `admin@islandtours.com` or a demo operator.**
-     **`reserve` now accepts the actor and stamps the owner ONLY for a `Role.USER` session.**
-  2. **The backfill only claimed `userId IS NULL` bookings, so those mis-stamped rows were invisible to it.**
-     **The customer's identity is the contact email**, so the backfill now **also reclaims bookings owned by a
-     non-USER account. Bookings owned by a different CUSTOMER are never stolen.**
+    1. **`reserve()` stamped `booking.userId` with whoever was logged into the browser.** The route is
+       `@Public`, **but AuthGuard still attaches a session**, and the controller passed `user?.id` straight
+       through. **Testing checkout while signed in as ADMIN made the admin account the booking's "traveller" —
+       16 of 18 test bookings for one contact email were owned by `admin@islandtours.com` or a demo operator.**
+       **`reserve` now accepts the actor and stamps the owner ONLY for a `Role.USER` session.**
+    2. **The backfill only claimed `userId IS NULL` bookings, so those mis-stamped rows were invisible to it.**
+       **The customer's identity is the contact email**, so the backfill now **also reclaims bookings owned by a
+       non-USER account. Bookings owned by a different CUSTOMER are never stolen.**
 - **Payments needed no separate fix:** a payment has **no owner column, it is scoped through `booking.userId`**,
   so re-linking the booking restores the payments view and the spend summary at the same time.
 - **Historical rows** carrying an ops `userId` are repaired **either by the next confirmed booking for that
@@ -5620,14 +5731,14 @@ unaffected — the public frontend never called `/confirm` or raw `/cancel`; the
 
 #### D.19.1 The cast
 
-| Piece | What it is | Where it lives |
-|---|---|---|
-| `public_ref` | **Unguessable UUID in the TYP URL. A permanent VIEWING capability — never an identity** | `bookings.publicRef`, in the URL |
-| `display_ref` | `IT-2026-XXXXX`, the customer-facing reference. **Half of the login credential** | `bookings.displayRef`, in emails + on the TYP |
-| Session token | `v1.<payload>.<hmac>` — **24h, HMAC-SHA256. TWO SCOPES.** The proof of identity | Issued by the backend, parked in the HttpOnly cookie |
-| `it.travelerSession` | First-party **HttpOnly** cookie holding the token. **Browser JS can never read it** | Set by the frontend route handler `POST /api/traveler-session` (**same-origin only**) |
-| `it.travelerBooking` | Client-readable cookie with `{email, ref, path}` — **display sugar only** (navbar identity, deep link). **Authorizes nothing** | Set by client JS after a lookup |
-| Backend verifier | **The ONLY place tokens are checked:** signature + expiry + "do these claims own THIS booking?" | `backend/src/bookings/traveler-session.util.ts` |
+| Piece                | What it is                                                                                                                     | Where it lives                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `public_ref`         | **Unguessable UUID in the TYP URL. A permanent VIEWING capability — never an identity**                                        | `bookings.publicRef`, in the URL                                                      |
+| `display_ref`        | `IT-2026-XXXXX`, the customer-facing reference. **Half of the login credential**                                               | `bookings.displayRef`, in emails + on the TYP                                         |
+| Session token        | `v1.<payload>.<hmac>` — **24h, HMAC-SHA256. TWO SCOPES.** The proof of identity                                                | Issued by the backend, parked in the HttpOnly cookie                                  |
+| `it.travelerSession` | First-party **HttpOnly** cookie holding the token. **Browser JS can never read it**                                            | Set by the frontend route handler `POST /api/traveler-session` (**same-origin only**) |
+| `it.travelerBooking` | Client-readable cookie with `{email, ref, path}` — **display sugar only** (navbar identity, deep link). **Authorizes nothing** | Set by client JS after a lookup                                                       |
+| Backend verifier     | **The ONLY place tokens are checked:** signature + expiry + "do these claims own THIS booking?"                                | `backend/src/bookings/traveler-session.util.ts`                                       |
 
 #### D.19.2 The two token scopes (the load-bearing distinction)
 
@@ -5639,16 +5750,16 @@ unaffected — the public frontend never called `/confirm` or raw `/cancel`; the
 - **BOOKING scope `{ b }`** — issued by **checkout's contact PATCH**. **The email there is caller-supplied and
   unproven**; what the caller DID prove is **possession of the unguessable booking `id` it just created**. So
   this token unlocks **exactly that one booking and nothing else.**
-  - **Minting an email-scoped token here was the critical review finding: anyone could reserve a throwaway
-    booking, type a victim's email, and get a token valid against the victim's real bookings. Booking-scope
-    closes it.**
+    - **Minting an email-scoped token here was the critical review finding: anyone could reserve a throwaway
+      booking, type a victim's email, and get a token valid against the victim's real bookings. Booking-scope
+      closes it.**
 - **`sessionOwnsBooking(claims, booking)` enforces this:** **booking-scope requires an exact `id` match;
   email-scope requires a `contactEmail` match** (and a booking with no contact email can never be email-owned).
 - **Two principles run through everything:**
-  1. **Possession of a URL is never identity.** The publicRef link may show a booking exists; **only a session
-     that OWNS the booking (by id or by proven email) unlocks identity and actions.**
-  2. **One verifier.** **The frontend never validates tokens (it has no secret). It only ferries them.** A
-     forged, expired, or wrong-scope token **simply renders the masked page.**
+    1. **Possession of a URL is never identity.** The publicRef link may show a booking exists; **only a session
+       that OWNS the booking (by id or by proven email) unlocks identity and actions.**
+    2. **One verifier.** **The frontend never validates tokens (it has no secret). It only ferries them.** A
+       forged, expired, or wrong-scope token **simply renders the masked page.**
 - **Session TTL: 24 hours** (the login-spec session ceiling). **Tokens self-expire; an expired token in the
   cookie is simply ignored by the verifier** — the TYP quietly renders masked with the verify card and the
   traveler re-verifies in one form. **Nothing is stored server-side, so there is nothing to clean.**
@@ -5686,30 +5797,30 @@ Checkout form (browser)
   exists, nothing about who it belongs to (**founder decision 2026-07-19, tightened from the earlier
   mask-to-initials approach**):
 
-| Field | verified: true | verified: false (bare link) |
-|---|---|---|
-| Guest name | Ripon Mia | **withheld (row hidden)** |
-| Guest email / phone | shown | **withheld** |
-| Operator email / phone (support line) | shown | **withheld (row hidden)** |
-| Pickup address | full address | **withheld** |
-| Card brand / last4 | visa ••••4242 | **withheld** |
-| Conversion (EUR commission) | present | **withheld (business-sensitive take-rate)** |
-| Tour name, date, duration, free-cancel, party count, operator NAME | shown | **shown (non-identifying)** |
-| Page extra | management actions / celebratory hero | `ThankYouVerifyNotice` card → "Verify it's you" → `/bookings` |
+| Field                                                              | verified: true                        | verified: false (bare link)                                   |
+| ------------------------------------------------------------------ | ------------------------------------- | ------------------------------------------------------------- |
+| Guest name                                                         | Ripon Mia                             | **withheld (row hidden)**                                     |
+| Guest email / phone                                                | shown                                 | **withheld**                                                  |
+| Operator email / phone (support line)                              | shown                                 | **withheld (row hidden)**                                     |
+| Pickup address                                                     | full address                          | **withheld**                                                  |
+| Card brand / last4                                                 | visa ••••4242                         | **withheld**                                                  |
+| Conversion (EUR commission)                                        | present                               | **withheld (business-sensitive take-rate)**                   |
+| Tour name, date, duration, free-cancel, party count, operator NAME | shown                                 | **shown (non-identifying)**                                   |
+| Page extra                                                         | management actions / celebratory hero | `ThankYouVerifyNotice` card → "Verify it's you" → `/bookings` |
 
 - ⚠️ CONFLICT — the reconciliation doc's earlier note describes the unverified payload as **MASKED**
   (`d•••@g•••.com`, last-name initial, phone last-2); the 2026-07-19 founder decision **tightened this to
   fully WITHHELD (rows hidden)**. The withheld model is the later state.
 - **Three presentations of the same booking**, chosen server-side:
-  - **celebratory** — the **ONE-TIME** "You're booked, {name}! 🌴" moment right after checkout. The
-    `/payment/processing` page **drops a short-lived `it.justBooked` cookie (publicRef, ~15 min)** before
-    redirecting; the TYP shows the **green-check hero + add-to-calendar + resend**, plus the cross-sell and
-    apartment upsell.
-  - **management** — **any later verified visit** (via the `/bookings` login, or after the justBooked cookie
-    expires). Calmer `BookingManageHeader`: a "Confirmed" status chip, "Your booking", the ref, and management
-    actions **including Cancel booking**. **No celebratory hero, no upsell.**
-  - **masked** — unverified shared link: the `ThankYouVerifyNotice` card + the non-identifying summary only.
-    **No hero, no upsell.**
+    - **celebratory** — the **ONE-TIME** "You're booked, {name}! 🌴" moment right after checkout. The
+      `/payment/processing` page **drops a short-lived `it.justBooked` cookie (publicRef, ~15 min)** before
+      redirecting; the TYP shows the **green-check hero + add-to-calendar + resend**, plus the cross-sell and
+      apartment upsell.
+    - **management** — **any later verified visit** (via the `/bookings` login, or after the justBooked cookie
+      expires). Calmer `BookingManageHeader`: a "Confirmed" status chip, "Your booking", the ref, and management
+      actions **including Cancel booking**. **No celebratory hero, no upsell.**
+    - **masked** — unverified shared link: the `ThankYouVerifyNotice` card + the non-identifying summary only.
+      **No hero, no upsell.**
 - **Masked, never omitted:** the unverified page **keeps its exact shape**, so the design is identical and
   **the real traveler immediately sees there IS more behind verification**.
 - **The TYP fetch is UNCACHED by design** (per-traveler data streams after `connection()`), **so a verified
@@ -5743,8 +5854,8 @@ Checkout form (browser)
   **ONE branded notice** (the shared `booking-notice` shell) to the **STORED contact address**, listing **up
   to the 5 most recent references + a TYP CTA**, **fire-and-forget so response timing doesn't leak whether
   mail went out**.
-  - Spec target limits: **1 send per email per minute, 5 per day, per-IP caps, CAPTCHA behind the abuse
-    threshold**. **Per-email caps still pending Redis** as built.
+    - Spec target limits: **1 send per email per minute, 5 per day, per-IP caps, CAPTCHA behind the abuse
+      threshold**. **Per-email caps still pending Redis** as built.
 - Traveler lookup throttle as built: per-IP `@Throttle` tiers **2/10s, 6/min, 30/hr** (browser-only — the SSR
   internal-key bypass would skip limits).
 
@@ -5782,10 +5893,10 @@ cancel page (server)
   — **NOT a cancel-on-raw-click**. This prevents accidental and wrong-party cancellations. A **lightweight
   booking-lookup fallback (booking reference + email)** exists for lost or spam-filtered emails — **not a full
   account area**. Precedent: Viator manages cancellation via booking number + email.
-  - ⚠️ CONFLICT — the C1 note says "No account area in v1"; the 2026-07-20 amendment adds the `/account` door.
-  - ⚠️ CONFLICT — the email wireframe's cancel flow is "request → admin email → admin processes refund and
-    confirms" (**request-based**); the as-built endpoint is **session-gated (401 without an owning traveler
-    session)** — consistent, but it adds an authentication gate the wireframe does not mention.
+    - ⚠️ CONFLICT — the C1 note says "No account area in v1"; the 2026-07-20 amendment adds the `/account` door.
+    - ⚠️ CONFLICT — the email wireframe's cancel flow is "request → admin email → admin processes refund and
+      confirms" (**request-based**); the as-built endpoint is **session-gated (401 without an owning traveler
+      session)** — consistent, but it adds an authentication gate the wireframe does not mention.
 
 #### D.19.7 Scene 5 — sign-out and expiry
 
@@ -5795,20 +5906,20 @@ cancel page (server)
 
 #### D.19.8 Scene 6 — the attacker's day (why each attack dies)
 
-| Attack | What happens |
-|---|---|
-| Guess TYP URLs | **publicRef is a UUID — not enumerable** |
-| Got a leaked TYP link | Sees the **masked view**: tour facts, no identity, no pickup address, no card, **and every mutation 401s** |
-| Brute-force the pair login | **Per-IP throttle + 5 fails/email + 10 fails/reference per 15min**, **uniform errors, silent until a uniform 429**; **lockout writes an ops warning** |
-| Probe which emails have bookings | **Identical 404 body for wrong email vs wrong reference** |
-| Forge/tamper a token | **HMAC-SHA256 over the payload, constant-time compare**; any bit flip = null = masked |
-| Replay a stolen token | **Bounded to 24h**; email-scope only unlocks bookings whose contactEmail matches, **booking-scope only its one id** |
-| Mint a token for a victim's email via the checkout PATCH | **Closed:** that endpoint issues a **BOOKING-scoped** token (its own id only) |
-| Plant their own valid token in a victim's cookie (**fixation**) | **Yields nothing:** the token only unlocks the ATTACKER's own booking(s) |
-| CSRF the session route to plant/clear a cookie | **`POST`/`DELETE /api/traveler-session` reject cross-site requests (`Sec-Fetch-Site` / Origin check)** |
-| Read the pickup address from the public calendar.ics | **Closed: the ICS `LOCATION` no longer contains the street address** |
-| `Origin: null` credentialed CORS from a sandboxed iframe | **Closed: `origin === 'null'` removed from the allow-list** |
-| Operator insider (legitimately sees email + reference) | **The pair unlocks single-booking manage only**; invoices/cross-booking history will require the **email-code step-up** (deferred with those features) |
+| Attack                                                          | What happens                                                                                                                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Guess TYP URLs                                                  | **publicRef is a UUID — not enumerable**                                                                                                               |
+| Got a leaked TYP link                                           | Sees the **masked view**: tour facts, no identity, no pickup address, no card, **and every mutation 401s**                                             |
+| Brute-force the pair login                                      | **Per-IP throttle + 5 fails/email + 10 fails/reference per 15min**, **uniform errors, silent until a uniform 429**; **lockout writes an ops warning**  |
+| Probe which emails have bookings                                | **Identical 404 body for wrong email vs wrong reference**                                                                                              |
+| Forge/tamper a token                                            | **HMAC-SHA256 over the payload, constant-time compare**; any bit flip = null = masked                                                                  |
+| Replay a stolen token                                           | **Bounded to 24h**; email-scope only unlocks bookings whose contactEmail matches, **booking-scope only its one id**                                    |
+| Mint a token for a victim's email via the checkout PATCH        | **Closed:** that endpoint issues a **BOOKING-scoped** token (its own id only)                                                                          |
+| Plant their own valid token in a victim's cookie (**fixation**) | **Yields nothing:** the token only unlocks the ATTACKER's own booking(s)                                                                               |
+| CSRF the session route to plant/clear a cookie                  | **`POST`/`DELETE /api/traveler-session` reject cross-site requests (`Sec-Fetch-Site` / Origin check)**                                                 |
+| Read the pickup address from the public calendar.ics            | **Closed: the ICS `LOCATION` no longer contains the street address**                                                                                   |
+| `Origin: null` credentialed CORS from a sandboxed iframe        | **Closed: `origin === 'null'` removed from the allow-list**                                                                                            |
+| Operator insider (legitimately sees email + reference)          | **The pair unlocks single-booking manage only**; invoices/cross-booking history will require the **email-code step-up** (deferred with those features) |
 
 #### D.19.9 Design decisions on record (founder, 2026-07-19)
 
@@ -5816,6 +5927,7 @@ cancel page (server)
 2. **Cancellation requires the verified session.**
 3. **Email-code step-up deferred** until invoices / cross-booking history exist — **the session already covers
    everything v1 ships.**
+
 - **Deliberately NOT done:** no Better Auth involvement for travelers (spec: thin endpoint over bookings);
   **no server-side session store** (stateless HMAC + per-use ownership check + 24h expiry); **the traveler
   surface stays on the public frontend — never the ops dashboard** (three-doors isolation).
@@ -5835,7 +5947,7 @@ cancel page (server)
 > **Status of the source spec:** `island-tours-login-design-spec.md` is **proposal v0.1, July 3, 2026. NOT
 > folded into the master. Where this doc and the master disagree, the master wins.**
 > Master **6.4 locks the traveler login model** (email plus booking reference at `island.tours/bookings`,
-> rate-limited, accounts auto-created at booking), so Section 2 *implements a locked decision*.
+> rate-limited, accounts auto-created at booking), so Section 2 _implements a locked decision_.
 > Master **0.3 explicitly places operator and admin tooling out of scope** — Sections 3 and 4 fill a gap the
 > master deliberately leaves open.
 
@@ -5843,11 +5955,11 @@ cancel page (server)
 
 - **Three audiences, three jobs, three threat models. They never share a login page.**
 
-| Surface | URL | Who | Auth model |
-|---|---|---|---|
-| Your bookings | `island.tours/bookings` | Travelers | Email + booking reference (master 6.4, locked) |
-| Operator portal | `operators.island.tours` | Tour operators and their staff | Email + password, mandatory 2FA |
-| Staff | `admin.island.tours` | Island Tours team | Google Workspace SSO only |
+| Surface         | URL                      | Who                            | Auth model                                     |
+| --------------- | ------------------------ | ------------------------------ | ---------------------------------------------- |
+| Your bookings   | `island.tours/bookings`  | Travelers                      | Email + booking reference (master 6.4, locked) |
+| Operator portal | `operators.island.tours` | Tour operators and their staff | Email + password, mandatory 2FA                |
+| Staff           | `admin.island.tours`     | Island Tours team              | Google Workspace SSO only                      |
 
 - Rationale for separate subdomains: OTA/SaaS convention (`admin.booking.com`, `supplier.viator.com`,
   `supplier.getyourguide.com`, `expediapartnercentral.com`), **cookie isolation via `__Host-` scoped
@@ -5944,8 +6056,8 @@ cancel page (server)
   **`autocapitalize="characters"`**, **`spellcheck="false"`**, `placeholder="IT-2026-K3M9P"`,
   `aria-describedby="tError"`, plus the helper.
 - Primary submit inside a real `<form>`.
-- **Success state:** green check well, `Logged in.`, then *"The bookings list opens here: bookings, invoices,
-  and your saved tours."* — **confirms the account area contains bookings, invoices, and saved tours
+- **Success state:** green check well, `Logged in.`, then _"The bookings list opens here: bookings, invoices,
+  and your saved tours."_ — **confirms the account area contains bookings, invoices, and saved tours
   (wishlist)**.
 - **Lost-reference panel replaces the login panel in-place** (panel swap, not a new page), with a "Back" link
   at top and an `.info-note` envelope result shown **always** on submit.
@@ -6012,13 +6124,13 @@ cancel page (server)
   as ours:** (a) **trusted devices skip the every-login prompt** (daily-use reality); (b) **SMS is replaced
   entirely**.
 - **2FA channels, phased:**
-  - **v1:** **authenticator app (TOTP) plus backup codes, with white-glove enrollment during operator
-    onboarding** (at launch scale every operator gets a guided setup anyway).
-  - **v1.1:** **WhatsApp code as the fallback channel** via **Meta authentication templates (one-tap or
-    copy-code)**; requires **template approval and business verification**, so it is **scheduled work, not a
-    launch dependency**. **WhatsApp capability of the target number is validated at enrollment.**
-  - **Never SMS, never email codes.**
-  - **Codes delivered over WhatsApp are valid 10 minutes; any code is invalidated after 5 failed attempts.**
+    - **v1:** **authenticator app (TOTP) plus backup codes, with white-glove enrollment during operator
+      onboarding** (at launch scale every operator gets a guided setup anyway).
+    - **v1.1:** **WhatsApp code as the fallback channel** via **Meta authentication templates (one-tap or
+      copy-code)**; requires **template approval and business verification**, so it is **scheduled work, not a
+      launch dependency**. **WhatsApp capability of the target number is validated at enrollment.**
+    - **Never SMS, never email codes.**
+    - **Codes delivered over WhatsApp are valid 10 minutes; any code is invalidated after 5 failed attempts.**
 - **Backup codes:** **10, single-use, shown once at enrollment, regenerate under owner re-auth.**
 - **Device trust:** **"Remember this device for 30 days"** (opt-in checkbox **at the 2FA step**), **rolling
   14-day session**, biometric-gated persistence reserved for a future mobile app. **Daily-use friction is
@@ -6090,19 +6202,19 @@ cancel page (server)
   `Send a new code in 30s` counting down; at 0 it becomes enabled and orange with text `Send a new code`.
   **Shown only in WhatsApp mode.** The "Back" link returns to step 1 **and stops the resend timer**.
 - **Three channel modes: `totp` | `wa` | `backup`.**
-  - **WhatsApp mode:** sub becomes the "ending in {last2}" line; label stays "6-digit code"; placeholder
-    `000000`; maxlength 6; field cleared; error cleared; **resend row shown and timer started**.
-  - **Backup mode:** sub becomes "Enter one of your backup codes."; **label becomes `Backup code`**;
-    placeholder **`XXXX-XXXX`**; **maxlength 9**; field cleared; error cleared; **resend row hidden and timer
-    stopped**. Validation accepts **≥8 alphanumeric characters** (backup codes are ~8 chars, displayed
-    hyphenated).
-  - **TOTP mode:** validation requires **≥6 digits**.
+    - **WhatsApp mode:** sub becomes the "ending in {last2}" line; label stays "6-digit code"; placeholder
+      `000000`; maxlength 6; field cleared; error cleared; **resend row shown and timer started**.
+    - **Backup mode:** sub becomes "Enter one of your backup codes."; **label becomes `Backup code`**;
+      placeholder **`XXXX-XXXX`**; **maxlength 9**; field cleared; error cleared; **resend row hidden and timer
+      stopped**. Validation accepts **≥8 alphanumeric characters** (backup codes are ~8 chars, displayed
+      hyphenated).
+    - **TOTP mode:** validation requires **≥6 digits**.
 - **Enumerated states:** happy path (Credentials → 2FA on untrusted device → portal), WhatsApp code sent
   (v1.1), backup code entry, **locked**, password reset requested, reset form, **expired reset link**, and
   **seat invited** (first login **sets password plus enrolls 2FA in one flow**; enrollment shows **QR plus
   manual key plus backup codes**).
-- **Success state:** green check, `Logged in.`, then *"The portal opens on the availability screen with
-  one-tap Close today."* — **confirms the post-login landing screen is availability, with a one-tap "Close
+- **Success state:** green check, `Logged in.`, then _"The portal opens on the availability screen with
+  one-tap Close today."_ — **confirms the post-login landing screen is availability, with a one-tap "Close
   today" action.**
 
 **Seat lifecycle**
@@ -6149,32 +6261,32 @@ cancel page (server)
   control.**
 - **Layout and copy:** **minimal, quiet, near-monochrome within the token set** — "the one surface with no
   marketing job"; **small wordmark, centered card**.
-  - Header: `Staff access` · Button: `Continue with Google`
-  - Fine print: `Island Tours staff only. Every login and action is logged.`
-  - Denied (post-auth; **specific is safe here** because identity is already verified by Google, so **no
-    enumeration risk**): `This Google account doesn't have staff access. Ask an admin to add you.`
-  - Success state: green check, `Logged in.`, then `Role and domain checked server-side, session 12 hours.`
-  - Footnote below the card: `admin.island.tours · linked from nowhere, noindex, authorization always server-side`
-  - As built: full-viewport **dark ink background**, white wordmark at 85% opacity, card `max-width:380px`
-    with **heavy shadow `0 20px 60px rgba(0,0,0,.4)`**, H1 19px weight 650, the 4-color Google `g-mark` SVG
-    (18px, `#EA4335`/`#4285F4`/`#FBBC05`/`#34A853`), denied state `role="alert"` with left-aligned text inside
-    the centered card. **Demo behavior: first click shows the denied state, second click succeeds — both
-    states are first-class screens.**
+    - Header: `Staff access` · Button: `Continue with Google`
+    - Fine print: `Island Tours staff only. Every login and action is logged.`
+    - Denied (post-auth; **specific is safe here** because identity is already verified by Google, so **no
+      enumeration risk**): `This Google account doesn't have staff access. Ask an admin to add you.`
+    - Success state: green check, `Logged in.`, then `Role and domain checked server-side, session 12 hours.`
+    - Footnote below the card: `admin.island.tours · linked from nowhere, noindex, authorization always server-side`
+    - As built: full-viewport **dark ink background**, white wordmark at 85% opacity, card `max-width:380px`
+      with **heavy shadow `0 20px 60px rgba(0,0,0,.4)`**, H1 19px weight 650, the 4-color Google `g-mark` SVG
+      (18px, `#EA4335`/`#4285F4`/`#FBBC05`/`#34A853`), denied state `role="alert"` with left-aligned text inside
+      the centered card. **Demo behavior: first click shows the denied state, second click succeeds — both
+      states are first-class screens.**
 - **Data model:** `admin_allowlist`: `email`, `role` enum **admin/support/content**, `added_by`, `added_at`.
   Plus the shared `auth_audit`.
 - **How the super admin logs in:** **super admin = the `ADMIN` role. There is no tier above it** and **no
   admin password anywhere**. Flow: open `admin.island.tours` (today `/staff`) → Continue with Google →
   **server-side `hd` claim check + `admin_allowlist` membership with a role** → **12h session, every login and
   action writes an `auth_audit` line**.
-  - **Bootstrapping the first super admin:** you cannot add yourself to `admin_allowlist` through the UI
-    before you are an admin, so **the first super admin is created by database seed only** — seed the
-    first super-admin email into `admin_allowlist` (+ the `User` row with `role = ADMIN`); that person logs in
-    via Google SSO, then **adds the rest of the staff from the admin UI**.
-  - **Hard constraint (O5):** Google SSO only succeeds if the super admin's email is a **Google Workspace
-    account in the org domain**. **A super admin whose email is not on the Workspace cannot use `/staff` at all.**
-  - **Transition safety:** until `/staff` + Google SSO + the allowlist are built and cut over, **admins keep
-    logging in through the existing `/login` (email+password → `/dashboard`). Do not remove that path first,
-    or super admins lock themselves out.**
+    - **Bootstrapping the first super admin:** you cannot add yourself to `admin_allowlist` through the UI
+      before you are an admin, so **the first super admin is created by database seed only** — seed the
+      first super-admin email into `admin_allowlist` (+ the `User` row with `role = ADMIN`); that person logs in
+      via Google SSO, then **adds the rest of the staff from the admin UI**.
+    - **Hard constraint (O5):** Google SSO only succeeds if the super admin's email is a **Google Workspace
+      account in the org domain**. **A super admin whose email is not on the Workspace cannot use `/staff` at all.**
+    - **Transition safety:** until `/staff` + Google SSO + the allowlist are built and cut over, **admins keep
+      logging in through the existing `/login` (email+password → `/dashboard`). Do not remove that path first,
+      or super admins lock themselves out.**
 
 #### D.20.6 Wrong-door routing
 
@@ -6214,7 +6326,7 @@ cancel page (server)
 - **D3** **Enumeration-proof responses everywhere, tested in DoD.**
 - **D4** **Reference recovery by email, always-positive response** — airline/Expedia "forgot reference" convention.
 - **D5** **Traveler step-up email code deferred to v1.1 (O2)** — v1 accounts hold single bookings; the master
-  locks the pair as credential. *(Sits alongside D16, which pulls the invoice/cross-booking step-up into v1.)*
+  locks the pair as credential. _(Sits alongside D16, which pulls the invoice/cross-booking step-up into v1.)_
 - **D6** Operator: **mandatory 2FA, per-person seats, roles, owner-gated payouts.**
 - **D7** Operator 2FA channels: **TOTP + backup codes in v1** (white-glove enrollment at launch scale),
   **WhatsApp fallback in v1.1**, **no SMS, no email codes** — GYG precedent on strict channels; **YAGNI at
@@ -6292,17 +6404,17 @@ cancel page (server)
   (right channel, wrong moment — **25 operators can be white-glove enrolled on authenticator apps faster than
   the integration ships**).
 - **Known weak spots, stated openly:** the X/Twitter ~$60M SMS-pumping figure is an **unverified company
-  claim** (the *withdrawal* of free SMS 2FA is verified); the **$5,000 partner-account figure is a crime-forum
+  claim** (the _withdrawal_ of free SMS 2FA is verified); the **$5,000 partner-account figure is a crime-forum
   buy offer, not a confirmed sale price**; Krebs notes it is **unclear whether Booking.com's 2FA mandate covers
   legacy partners**; **KAYAK's password elimination is a stated plan, not an independently confirmed
   completion**; **magic-link folklore numbers (Slack, Substack) were found untraceable and are not used
   anywhere in this design**; **Viator's consumer login methods were not verifiable from primary sources and
   are not load-bearing**.
-- **Measurement plan:** *Traveler* — pair-login success rate, **reference-recovery volume (a proxy for email
-  findability)**, lockout rate, **WhatsApp-assist rate**. *Operator* — **2FA method mix**, **remember-device
-  adoption**, **median login time**, recovery volume, **step-up friction on payout changes**. *Security* —
+- **Measurement plan:** _Traveler_ — pair-login success rate, **reference-recovery volume (a proxy for email
+  findability)**, lockout rate, **WhatsApp-assist rate**. _Operator_ — **2FA method mix**, **remember-device
+  adoption**, **median login time**, recovery volume, **step-up friction on payout changes**. _Security_ —
   **failed-attempt patterns per surface**, **enumeration-probe detection**, **audit-log review cadence
-  (monthly)**, **time-to-revoke on seat removal**. *Admin* — **allowlist size vs actual actors**,
+  (monthly)**, **time-to-revoke on seat removal**. _Admin_ — **allowlist size vs actual actors**,
   **denied-login events**, **re-auth frequency on destructive actions**.
 
 #### D.20.11 Definition of Done (DoD 1–13)
@@ -6325,6 +6437,7 @@ cancel page (server)
 12. **Seat revocation and password change kill active sessions and trusted devices immediately** — verified
     **with a live session in a second browser**.
 13. **Reference-recovery endpoint honors its cooldowns and caps under a distributed-IP test.**
+
 - **DoD → phase mapping:** enumeration test → Phases 1/5/6 + tests; rate limits/lockout → Phase 0 (Redis
   store) + 1 + 3; password-manager autofill → Phase 1/3/5 form audit; OTP field → Phase 3; 2FA enrollment →
   Phase 3; step-up + audit → Phase 4; `hd` + allowlist → Phase 5; zero em-dashes/banned words → content
@@ -6416,14 +6529,14 @@ cancel page (server)
   **RLS policies**, roles via a **custom access token hook**, "no custom crypto anywhere"). **The platform runs
   Better Auth `^1.6.9` inside NestJS.**
 
-| Dimension | Proposal | As-built |
-|---|---|---|
-| Auth engine | Supabase Auth | **Better Auth `^1.6.9`** |
-| Runs where | Supabase (managed) | **NestJS backend only**; CLAUDE.md rule 12 |
-| DB access | Postgres RLS policies | **Prisma ORM + service-layer guards** (no RLS anywhere) |
-| Authz mechanism | `aal2` JWT claim in RLS | **`RolesGuard` + `PermissionsGuard`** on the `role` column + `ROLE_PERMISSIONS` map |
-| Session store | Supabase | Better Auth `session` table (Prisma), **7-day expiry** |
-| Multi-tenant seats | `operator_users` table | **None** — `Operator.userId` is `@unique` (one user per operator) |
+| Dimension          | Proposal                | As-built                                                                            |
+| ------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| Auth engine        | Supabase Auth           | **Better Auth `^1.6.9`**                                                            |
+| Runs where         | Supabase (managed)      | **NestJS backend only**; CLAUDE.md rule 12                                          |
+| DB access          | Postgres RLS policies   | **Prisma ORM + service-layer guards** (no RLS anywhere)                             |
+| Authz mechanism    | `aal2` JWT claim in RLS | **`RolesGuard` + `PermissionsGuard`** on the `role` column + `ROLE_PERMISSIONS` map |
+| Session store      | Supabase                | Better Auth `session` table (Prisma), **7-day expiry**                              |
+| Multi-tenant seats | `operator_users` table  | **None** — `Operator.userId` is `@unique` (one user per operator)                   |
 
 - **RESOLUTION: Better Auth.** The proposal is flagged "proposal v0.1, not folded into the master," and "the
   master wins." The master + CLAUDE.md lock Better Auth. **"Almost none of the login proposal is built yet,
@@ -6520,31 +6633,31 @@ fails in prod**; no `auth_audit` table; no wrong-door cross-links.
   (**excluding ambiguous characters 0/O, 1/I/L**, migrating **the generator only — existing refs stay**);
   recovery endpoint; **email-code step-up (6-digit code emailed to the booking address, short-lived, 5-attempt
   cap)**; the `/bookings` page; tracking.
-  - **EXECUTED 2026-07-18 (partial):** lookup DONE simplified (both fields case-insensitive, same generic 404
-    on every failure; **constant-time comparison NOT implemented** — it is a Prisma lookup and timing is
-    dominated by the query); rate limits **PARTIAL** (per-IP `@Throttle` 2/10s, 6/min, 30/hr — browser-only);
-    `/bookings` page **PARTIAL** (**no locale prefix**, copy **English-only**, screens built pre-i18n);
-    recovery **DONE**. **NOT DONE:** non-sequential `displayRef`, email-code step-up, tracking events.
-    (Later superseded by the 2026-07-19 hardening in D.19.)
+    - **EXECUTED 2026-07-18 (partial):** lookup DONE simplified (both fields case-insensitive, same generic 404
+      on every failure; **constant-time comparison NOT implemented** — it is a Prisma lookup and timing is
+      dominated by the query); rate limits **PARTIAL** (per-IP `@Throttle` 2/10s, 6/min, 30/hr — browser-only);
+      `/bookings` page **PARTIAL** (**no locale prefix**, copy **English-only**, screens built pre-i18n);
+      recovery **DONE**. **NOT DONE:** non-sequential `displayRef`, email-code step-up, tracking events.
+      (Later superseded by the 2026-07-19 hardening in D.19.)
 - **Phase 2 — Operator seats & roles (L):** add the seats table, migrate existing operators (one owner seat
   each), extend `resolveOperatorId`, seat management (invite/list/change role/revoke), owner-only gates, and
   the RBAC note that **all seats keep the `TOUR_OPERATOR` platform `Role`; `seatRole` is the intra-operator
   distinction, checked in the service, not via a new platform role.**
-  - ⚠️ CONFLICT (seats shape) — the plan specified **`operator_users`**; the **EXECUTED 2026-07-19 build used a
-    unified `staff_members` + `staff_designations`** table covering **both** operator team seats
-    (`operatorId` set) **and** platform admin-side staff (`operatorId` NULL), preserving E.11's shape
-    (seatRole owner/manager/staff, status invited/active/suspended, invitedBy, lastLoginAt) inside it, **plus a
-    fine-grained effective-permission engine beyond the spec** — effective set =
-    **(designation.permissions ∪ extraPermissions) − revokedPermissions**, capped to a per-scope **grant
-    ceiling** and a **non-revocable floor (VIEW_PROFILE/EDIT_PROFILE)**, computed by a `@Global`
-    `StaffPermissionsService` (60s cache, invalidated on every staff mutation). **A STAFF-role user WITHOUT a
-    staff record resolves to the floor only** (closing the role-flip escalation path).
-  - Rationale for the custom table over the `organization` plugin: the plugin **models the wrong shape**
-    (multi-tenant SaaS with org switching; **our operators are single-business, ~25 at launch**); **we already
-    have the tenant root — `Operator`**, and the plugin would add a parallel table that **1:1 shadows it
-    forever with permanent "which is canonical" drift risk**; **every FK points at `operators.id`**; it avoids
-    **a second permission system**; and the "less code" edge is small and front-loaded. **The one thing that
-    would flip this to the plugin: a near-term need for one person to manage multiple operator accounts.**
+    - ⚠️ CONFLICT (seats shape) — the plan specified **`operator_users`**; the **EXECUTED 2026-07-19 build used a
+      unified `staff_members` + `staff_designations`** table covering **both** operator team seats
+      (`operatorId` set) **and** platform admin-side staff (`operatorId` NULL), preserving E.11's shape
+      (seatRole owner/manager/staff, status invited/active/suspended, invitedBy, lastLoginAt) inside it, **plus a
+      fine-grained effective-permission engine beyond the spec** — effective set =
+      **(designation.permissions ∪ extraPermissions) − revokedPermissions**, capped to a per-scope **grant
+      ceiling** and a **non-revocable floor (VIEW_PROFILE/EDIT_PROFILE)**, computed by a `@Global`
+      `StaffPermissionsService` (60s cache, invalidated on every staff mutation). **A STAFF-role user WITHOUT a
+      staff record resolves to the floor only** (closing the role-flip escalation path).
+    - Rationale for the custom table over the `organization` plugin: the plugin **models the wrong shape**
+      (multi-tenant SaaS with org switching; **our operators are single-business, ~25 at launch**); **we already
+      have the tenant root — `Operator`**, and the plugin would add a parallel table that **1:1 shadows it
+      forever with permanent "which is canonical" drift risk**; **every FK points at `operators.id`**; it avoids
+      **a second permission system**; and the "less code" edge is small and front-loaded. **The one thing that
+      would flip this to the plugin: a near-term need for one person to manage multiple operator accounts.**
 - **Phase 3 — Operator 2FA (L):** enable the `twoFactor` plugin; white-glove enrollment (QR + manual key + 10
   backup codes shown exactly once, verified by a first code); login flow with trusted-device skip; backup-code
   regeneration under owner re-auth; device & session management UI with "Sign out everywhere"; recovery;
@@ -6557,37 +6670,37 @@ fails in prod**; no `auth_audit` table; no wrong-door cross-links.
   whose `hd` != the Workspace domain, server-side; `admin_allowlist` table; the admin login page; **12h max
   admin session** with fresh SSO for destructive/money actions.
 - **Phase 6 — Platform hardening: subdomains, cookies, CSP (M).**
-  - **6.0 Decision — separate subdomains, NOT separate applications.** The spec's stated reasons are all
-    **runtime isolation** (cookie scoping, stricter CSP per surface, OTA convention) — **none of which require
-    separate codebases.** **Chosen approach: one codebase, host-based routing (Option A), with admin promotable
-    to its own deploy later (Option B).** Option C (fully separate apps/repos) has the highest isolation and
-    the highest cost. **Why A over C:** the design system (`--it-*` tokens), the Better Auth client, the API
-    client, shared types and form components are used by every surface; **splitting into three codebases
-    triplicates all of it for a small team.** **Admin is the natural (and only) candidate for physical
-    separation.**
-  - **6.1 Better Auth cookie changes (the current config is WRONG for this).** **Problem:**
-    `advanced.crossSubDomainCookies` with `domain: process.env.COOKIE_DOMAIN ?? '.esenc.cloud'` **SHARES the
-    auth cookie across all subdomains**, so **an XSS or token theft on the operator surface could reach an
-    admin session on a sibling subdomain — exactly what three doors is meant to prevent.**
-    - **Target cookie model:** traveler `/bookings` — **no Better Auth session**, host-only, short-lived (24h
-      ceiling), `__Host-` prefix, **separate cookie name, never shared**; operator portal — Better Auth session
-      + 2FA, **host-only to `operators.island.tours`**; admin — Better Auth session (Google SSO), **host-only
-      to `admin.island.tours`, 12h ceiling**.
-    - **Changes:** (1) stop sharing the auth cookie across sibling subdomains; (2) add the **`__Host-` prefix**
-      (`Secure`, path `/`, **no `Domain` attribute** — **`__Host-` and a shared `Domain` are mutually
-      exclusive**); (3) per-surface `httpOnly`, `Secure`, `SameSite=Lax` minimum; (4) **fresh session id on
-      every successful login** (verify Better Auth rotates it; enforce if not); (5) **different cookie names
-      per surface**; (6) **`trustedOrigins` must list all three subdomains**, keeping the `INTERNAL_API_SECRET`
-      SSR bypass working per origin; (7) **session ceilings per surface** — operator 14-day rolling (with
-      30-day device trust), admin 12h — **Better Auth's `expiresIn` is global, so per-surface ceilings are
-      enforced in a guard/hook**; (8) **revocation stays global at the identity level.**
-    - **Migration caution:** changing the cookie domain **invalidates existing sessions — everyone is logged
-      out once**. Ship in a window where a forced re-login is acceptable, **and only after the operator/admin
-      login surfaces exist**.
-  - **6.2 Remaining hardening:** per-surface CSP set in middleware per host; **noindex on `/bookings` and all
-    admin routes**; **compromised-credential screening** at password set + login (HaveIBeenPwned range API in
-    a Better Auth password hook); wrong-door cross-links + global-footer "For operators"; **enumeration/timing
-    audit across all three surfaces in all locales**.
+    - **6.0 Decision — separate subdomains, NOT separate applications.** The spec's stated reasons are all
+      **runtime isolation** (cookie scoping, stricter CSP per surface, OTA convention) — **none of which require
+      separate codebases.** **Chosen approach: one codebase, host-based routing (Option A), with admin promotable
+      to its own deploy later (Option B).** Option C (fully separate apps/repos) has the highest isolation and
+      the highest cost. **Why A over C:** the design system (`--it-*` tokens), the Better Auth client, the API
+      client, shared types and form components are used by every surface; **splitting into three codebases
+      triplicates all of it for a small team.** **Admin is the natural (and only) candidate for physical
+      separation.**
+    - **6.1 Better Auth cookie changes (the current config is WRONG for this).** **Problem:**
+      `advanced.crossSubDomainCookies` with `domain: process.env.COOKIE_DOMAIN ?? '.esenc.cloud'` **SHARES the
+      auth cookie across all subdomains**, so **an XSS or token theft on the operator surface could reach an
+      admin session on a sibling subdomain — exactly what three doors is meant to prevent.**
+        - **Target cookie model:** traveler `/bookings` — **no Better Auth session**, host-only, short-lived (24h
+          ceiling), `__Host-` prefix, **separate cookie name, never shared**; operator portal — Better Auth session
+            - 2FA, **host-only to `operators.island.tours`**; admin — Better Auth session (Google SSO), **host-only
+              to `admin.island.tours`, 12h ceiling**.
+        - **Changes:** (1) stop sharing the auth cookie across sibling subdomains; (2) add the **`__Host-` prefix**
+          (`Secure`, path `/`, **no `Domain` attribute** — **`__Host-` and a shared `Domain` are mutually
+          exclusive**); (3) per-surface `httpOnly`, `Secure`, `SameSite=Lax` minimum; (4) **fresh session id on
+          every successful login** (verify Better Auth rotates it; enforce if not); (5) **different cookie names
+          per surface**; (6) **`trustedOrigins` must list all three subdomains**, keeping the `INTERNAL_API_SECRET`
+          SSR bypass working per origin; (7) **session ceilings per surface** — operator 14-day rolling (with
+          30-day device trust), admin 12h — **Better Auth's `expiresIn` is global, so per-surface ceilings are
+          enforced in a guard/hook**; (8) **revocation stays global at the identity level.**
+        - **Migration caution:** changing the cookie domain **invalidates existing sessions — everyone is logged
+          out once**. Ship in a window where a forced re-login is acceptable, **and only after the operator/admin
+          login surfaces exist**.
+    - **6.2 Remaining hardening:** per-surface CSP set in middleware per host; **noindex on `/bookings` and all
+      admin routes**; **compromised-credential screening** at password set + login (HaveIBeenPwned range API in
+      a Better Auth password hook); wrong-door cross-links + global-footer "For operators"; **enumeration/timing
+      audit across all three surfaces in all locales**.
 - **Phase 7 — v1.1 / V2:** WhatsApp 2FA codes; enforce channel-separation in recovery; WebOTP autofill on
   Android; then operator + traveler passkeys, traveler magic-link sessions, operator NL/ES locales, admin
   hardware-key requirement.
@@ -6633,7 +6746,7 @@ fails in prod**; no `auth_audit` table; no wrong-door cross-links.
 #### D.21.2 Aggregates (computed fields)
 
 - `tour.review_count` — int (computed) — total approved native reviews; drives the Reviews rating-header count
-  + the LD11 cold-start threshold (<3) + the LD30 sort/filter conditional thresholds (<10 / <20).
+    - the LD11 cold-start threshold (<3) + the LD30 sort/filter conditional thresholds (<10 / <20).
 - `tour.aggregate_rating` — float (computed) — average rating across all approved reviews, **1 decimal place**.
 - `tour.rating_distribution` — array (computed) — per-star count, e.g.
   `[{stars: 5, count: 38}, {stars: 4, count: 7}, ...]`.
@@ -6652,82 +6765,82 @@ fails in prod**; no `auth_audit` table; no wrong-door cross-links.
 - **LD29 — Review preview module above Overview (three-tier phased implementation).** A content block in the
   left column between the Quick Info badges / booking-widget intro and the Sticky TOC activation zone.
   **NOT a TOC-anchored section** — a content module without an H2 anchor in the 7-item structure.
-  - **Tier 1 (cold-start, <3 verified reviews) — LAUNCH SCOPE:** the module is **hidden entirely. No DOM
-    rendering, no empty state, no "Be the first to review" placeholder.** The LD11 Provider Rating fallback in
-    the meta row remains the primary trust signal. Rationale: **an empty review preview weakens the brand
-    promise more than absence does.**
-  - **Tier 2 (established, 3–9 verified reviews AND aggregate rating ≥4.0) — LAUNCH SCOPE:** the module renders
-    with header `What our guests say · [rating] ([count]) · See all reviews →` plus **2 review cards in a
-    2-column grid on desktop, stacked on mobile**.
-    - Card content: 5-star rating · reviewer first name + last initial · `[Month DD, YYYY]` from
-      `review.created_at` (e.g. "March 12, 2026") · 2–3 sentence snippet · **"Read more" expand inline (NO modal)**.
-    - **Card selection logic: the 2 most recent verified reviews with rating ≥4** (mathematically guaranteed to
-      exist when aggregate ≥4.0 and ≥3 reviews).
-    - **If aggregate <4.0 the module reverts to Tier 1 (hidden)** — a single outlier review does not
-      permanently disqualify, but consistent low quality does.
-    - Transparency is handled at aggregate level (rating + count in the meta row and module header) AND at
-      deep-dive level (the full Reviews section shows ALL reviews including <4-star). **The preview module is
-      section-appropriate curation, NOT cherry-picking.**
-    - "See all reviews" smooth-scrolls to the Reviews TOC anchor.
-  - **Tier 3 (mature, ≥10 verified reviews) — V2 SCOPE:** AI-generated category chips above the cards
-    (`[All] [Great crew] [Crystal water] [BBQ lunch] [Snorkel safari]`, Viator pattern); clicking a chip filters
-    cards inline; mobile chips horizontally scrollable. **Hard dependency on the LD28 AI pipeline.**
-  - **Mobile layout: cards stack vertically (1 per row), NOT a carousel.**
-  - **Performance: server-side rendered, inline — NO lazy load** (above-fold zone).
-  - **Schema.org `Review` structured data per card**; `AggregateRating` lives in the Reviews section.
-  - Rationale: industry standard 2026 (Viator "Why travelers loved this", GYG "What travelers loved"); reviews
-    are the **#1 conversion driver (Baymard: 95% of users rely on reviews)**; high-on-page placement = early
-    trust signal. Effort: Tier 1+2 ≈ 3–4 days design, 5–7 days dev.
+    - **Tier 1 (cold-start, <3 verified reviews) — LAUNCH SCOPE:** the module is **hidden entirely. No DOM
+      rendering, no empty state, no "Be the first to review" placeholder.** The LD11 Provider Rating fallback in
+      the meta row remains the primary trust signal. Rationale: **an empty review preview weakens the brand
+      promise more than absence does.**
+    - **Tier 2 (established, 3–9 verified reviews AND aggregate rating ≥4.0) — LAUNCH SCOPE:** the module renders
+      with header `What our guests say · [rating] ([count]) · See all reviews →` plus **2 review cards in a
+      2-column grid on desktop, stacked on mobile**.
+        - Card content: 5-star rating · reviewer first name + last initial · `[Month DD, YYYY]` from
+          `review.created_at` (e.g. "March 12, 2026") · 2–3 sentence snippet · **"Read more" expand inline (NO modal)**.
+        - **Card selection logic: the 2 most recent verified reviews with rating ≥4** (mathematically guaranteed to
+          exist when aggregate ≥4.0 and ≥3 reviews).
+        - **If aggregate <4.0 the module reverts to Tier 1 (hidden)** — a single outlier review does not
+          permanently disqualify, but consistent low quality does.
+        - Transparency is handled at aggregate level (rating + count in the meta row and module header) AND at
+          deep-dive level (the full Reviews section shows ALL reviews including <4-star). **The preview module is
+          section-appropriate curation, NOT cherry-picking.**
+        - "See all reviews" smooth-scrolls to the Reviews TOC anchor.
+    - **Tier 3 (mature, ≥10 verified reviews) — V2 SCOPE:** AI-generated category chips above the cards
+      (`[All] [Great crew] [Crystal water] [BBQ lunch] [Snorkel safari]`, Viator pattern); clicking a chip filters
+      cards inline; mobile chips horizontally scrollable. **Hard dependency on the LD28 AI pipeline.**
+    - **Mobile layout: cards stack vertically (1 per row), NOT a carousel.**
+    - **Performance: server-side rendered, inline — NO lazy load** (above-fold zone).
+    - **Schema.org `Review` structured data per card**; `AggregateRating` lives in the Reviews section.
+    - Rationale: industry standard 2026 (Viator "Why travelers loved this", GYG "What travelers loved"); reviews
+      are the **#1 conversion driver (Baymard: 95% of users rely on reviews)**; high-on-page placement = early
+      trust signal. Effort: Tier 1+2 ≈ 3–4 days design, 5–7 days dev.
 - **LD30 — Reviews section sort & filter conditional rendering.**
-  - **Sort dropdown HIDDEN when `tour.review_count < 10`** — at <10 reviews all cards fit on one screen, so
-    sort is decoration without UX value.
-  - **Filter row HIDDEN when `tour.review_count < 20`** — at <20 reviews, filtering by Traveler type / Language
-    / With photos returns 0–2 matches in most combinations (**dead UX**).
-  - **Default ordering at ALL volumes: `ORDER BY review.created_at DESC`** (most recent first).
-  - Above thresholds (V2) the sort dropdown surfaces with `Most relevant` (hybrid recency × helpful-vote ×
-    rating-balance), `Most recent`, `Highest rated`, `Lowest rated`, `Most helpful`; the filter row surfaces
-    with Traveler type enum (requires v2 `reviewer_type` collection), Language, and "With photos only".
-  - **Helpful vote button DEFERRED to V2** — at launch volumes "↑ Found this helpful (0)" counts read as a
-    negative signal rather than social validation. CMS impact: `review.helpful_count` and
-    `review.reviewer_type` deferred, re-added at V2.
+    - **Sort dropdown HIDDEN when `tour.review_count < 10`** — at <10 reviews all cards fit on one screen, so
+      sort is decoration without UX value.
+    - **Filter row HIDDEN when `tour.review_count < 20`** — at <20 reviews, filtering by Traveler type / Language
+      / With photos returns 0–2 matches in most combinations (**dead UX**).
+    - **Default ordering at ALL volumes: `ORDER BY review.created_at DESC`** (most recent first).
+    - Above thresholds (V2) the sort dropdown surfaces with `Most relevant` (hybrid recency × helpful-vote ×
+      rating-balance), `Most recent`, `Highest rated`, `Lowest rated`, `Most helpful`; the filter row surfaces
+      with Traveler type enum (requires v2 `reviewer_type` collection), Language, and "With photos only".
+    - **Helpful vote button DEFERRED to V2** — at launch volumes "↑ Found this helpful (0)" counts read as a
+      negative signal rather than social validation. CMS impact: `review.helpful_count` and
+      `review.reviewer_type` deferred, re-added at V2.
 - **LD31 — Star distribution chart: clickable rows in v1.**
-  - Each row (5★ / 4★ / 3★ / 2★ / 1★) is **clickable from launch** (not v2-deferred); clicking filters the
-    review list to that rating, **regardless of `review_count` threshold (functional from review #1)**.
-  - Rationale: **96% of users actively look for negative reviews; 52% specifically seek 1-star reviews.** The
-    clickable star chart is the **PRIMARY fast-path to critical reviews** — especially important because no
-    "Most helpful critical" surfaced pair is rendered.
-  - **With the filter row hidden below 20 reviews (LD30), the star chart is the ONLY v1 mechanism to filter
-    reviews by rating.**
-  - **The chart itself renders when `tour.review_count >= 3`**; at 0–2 reviews only the rating + count line shows.
-  - Active filter state: the clicked row is highlighted in **brand orange `#E8611A`**, with an inline link
-    above the review cards: `Showing X reviews at [N]★ · Clear filter`.
-  - **Multi-row selection NOT supported in v1** (single-rating filter only).
+    - Each row (5★ / 4★ / 3★ / 2★ / 1★) is **clickable from launch** (not v2-deferred); clicking filters the
+      review list to that rating, **regardless of `review_count` threshold (functional from review #1)**.
+    - Rationale: **96% of users actively look for negative reviews; 52% specifically seek 1-star reviews.** The
+      clickable star chart is the **PRIMARY fast-path to critical reviews** — especially important because no
+      "Most helpful critical" surfaced pair is rendered.
+    - **With the filter row hidden below 20 reviews (LD30), the star chart is the ONLY v1 mechanism to filter
+      reviews by rating.**
+    - **The chart itself renders when `tour.review_count >= 3`**; at 0–2 reviews only the rating + count line shows.
+    - Active filter state: the clicked row is highlighted in **brand orange `#E8611A`**, with an inline link
+      above the review cards: `Showing X reviews at [N]★ · Clear filter`.
+    - **Multi-row selection NOT supported in v1** (single-rating filter only).
 - **LD32 — Review translation = machine translation + show-original toggle.**
-  - Non-EN locale reviews are translated **on demand, server-side, via Google Translate API** (or equivalent:
-    DeepL, Azure Translator).
-  - Each review card displays in the user's current locale by default, with a subtle **"Translated by Google"**
-    label beneath the text.
-  - **"Show original" toggle reverts to source-locale text inline — no modal, no reload. Toggle state is
-    per-card, not section-wide.**
-  - Rationale: human translation is cost-prohibitive at scale (100 tours × 20 reviews × 6 non-EN locales ≈
-    **12,000 translations × $0.10/word recurring**); machine translation with a transparency label is the OTA
-    industry standard (Booking, Viator, GYG all use Google Translate); **88% of users prefer reviews with text
-    over star-only**.
-  - **The brand voice rule does NOT apply to review translations** (user-generated content, not editorial).
-  - CMS: `review.text_{locale}` simplified to **`review.text` (single source of truth in the original locale)**
-    plus a **translation cache table**; `review.original_locale` retained.
+    - Non-EN locale reviews are translated **on demand, server-side, via Google Translate API** (or equivalent:
+      DeepL, Azure Translator).
+    - Each review card displays in the user's current locale by default, with a subtle **"Translated by Google"**
+      label beneath the text.
+    - **"Show original" toggle reverts to source-locale text inline — no modal, no reload. Toggle state is
+      per-card, not section-wide.**
+    - Rationale: human translation is cost-prohibitive at scale (100 tours × 20 reviews × 6 non-EN locales ≈
+      **12,000 translations × $0.10/word recurring**); machine translation with a transparency label is the OTA
+      industry standard (Booking, Viator, GYG all use Google Translate); **88% of users prefer reviews with text
+      over star-only**.
+    - **The brand voice rule does NOT apply to review translations** (user-generated content, not editorial).
+    - CMS: `review.text_{locale}` simplified to **`review.text` (single source of truth in the original locale)**
+      plus a **translation cache table**; `review.original_locale` retained.
 - **LD28 — AI Review Summary pipeline DEFERRED to V2.**
-  - Original two-tier implementation: Tier 1 cold-start (<10 verified reviews) hid the summary with the Provider
-    Rating fallback as primary signal; Tier 2 (≥10 verified reviews) rendered an AI summary box at the top of
-    Reviews — a 3–5 sentence LLM synthesis with disclaimer + "Report inaccuracy" link, **regenerated weekly and
-    on-demand after every 5 new reviews**, multi-locale via **7 direct LLM calls per regenerate**.
-  - **Reason for deferral:** at May 1, 2026 launch **zero tours have ≥10 reviews** — Tier 1 logic means the AI
-    summary **renders for nobody**. The pipeline-prep cost (~1.5–2 weeks dev + LLM integration + cron
-    infrastructure + multi-locale + moderation queue + visual design) is investment for a feature first
-    rendering for one tour in month 3–6 post-launch. On a launching marketplace, **AI synthesis on 10-review
-    tours can feel suspicious rather than reassuring**, weakening "Built by Islanders" authenticity.
-  - **Reactivation trigger: when the first tour reaches ≥30 reviews** (genuine synthesis substrate).
-  - CMS fields `tour.ai_review_summary_*` removed from the launch data model; re-added at reactivation.
+    - Original two-tier implementation: Tier 1 cold-start (<10 verified reviews) hid the summary with the Provider
+      Rating fallback as primary signal; Tier 2 (≥10 verified reviews) rendered an AI summary box at the top of
+      Reviews — a 3–5 sentence LLM synthesis with disclaimer + "Report inaccuracy" link, **regenerated weekly and
+      on-demand after every 5 new reviews**, multi-locale via **7 direct LLM calls per regenerate**.
+    - **Reason for deferral:** at May 1, 2026 launch **zero tours have ≥10 reviews** — Tier 1 logic means the AI
+      summary **renders for nobody**. The pipeline-prep cost (~1.5–2 weeks dev + LLM integration + cron
+      infrastructure + multi-locale + moderation queue + visual design) is investment for a feature first
+      rendering for one tour in month 3–6 post-launch. On a launching marketplace, **AI synthesis on 10-review
+      tours can feel suspicious rather than reassuring**, weakening "Built by Islanders" authenticity.
+    - **Reactivation trigger: when the first tour reaches ≥30 reviews** (genuine synthesis substrate).
+    - CMS fields `tour.ai_review_summary_*` removed from the launch data model; re-added at reactivation.
 
 #### D.21.4 Platform reviews
 
@@ -6808,33 +6921,33 @@ fails in prod**; no `auth_audit` table; no wrong-door cross-links.
 
 The push carries the **shared event id** for CAPI deduplication, plus:
 
-| dataLayer field | Source |
-|---|---|
-| `booking_value` | `bookings.commission_amount` — **EUR, always; never `booking_total_eur`** |
-| `booking_currency` | hardcoded `'EUR'` — tracking currency is always EUR; the customer UI shows `original_currency` |
-| `booking_ref` | `bookings.display_ref` — transaction id for dedupe across all platforms |
-| `tour_id`, `tour_name` | `bookings.tour_id`, `tours.name` — GA4 `item_id` and `item_name` |
-| `operator_id`, `operator_name` | `bookings.operator_id`, `operators.name` — `item_brand` and segmentation |
-| `island` | `bookings.island` — denormalized at creation |
-| `items[]` | composed: `{ item_id, item_name, item_brand, item_category, price, quantity: 1 }`; `item_category` from `tours.category`; `price` = commission_amount |
-| `user_id` | `bookings.customer_id` — GA4 cross-device tracking |
-| `click_ids.gclid` / `.gbraid` / `.wbraid` / `.fbclid` | the E.8 click-id columns — Google Ads and Meta adjustments, offline conversions |
-| `user_data.sha256_email_address` | SHA-256 of lowercased, trimmed `customer_email` — **REQUIRED** |
-| `user_data.sha256_phone_number` | SHA-256 of the E.164 `customer_phone` — optional when no phone (normalized using `billing_country`) |
-| `user_data.sha256_first_name`, `.sha256_last_name` | SHA-256 of the split name fields — **match rate +20–40%** |
-| `user_data.address.sha256_city` / `.sha256_postal_code` / `.sha256_country` | SHA-256 of the Stripe billing fields — optional, each only when the underlying field is present |
+| dataLayer field                                                             | Source                                                                                                                                                |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `booking_value`                                                             | `bookings.commission_amount` — **EUR, always; never `booking_total_eur`**                                                                             |
+| `booking_currency`                                                          | hardcoded `'EUR'` — tracking currency is always EUR; the customer UI shows `original_currency`                                                        |
+| `booking_ref`                                                               | `bookings.display_ref` — transaction id for dedupe across all platforms                                                                               |
+| `tour_id`, `tour_name`                                                      | `bookings.tour_id`, `tours.name` — GA4 `item_id` and `item_name`                                                                                      |
+| `operator_id`, `operator_name`                                              | `bookings.operator_id`, `operators.name` — `item_brand` and segmentation                                                                              |
+| `island`                                                                    | `bookings.island` — denormalized at creation                                                                                                          |
+| `items[]`                                                                   | composed: `{ item_id, item_name, item_brand, item_category, price, quantity: 1 }`; `item_category` from `tours.category`; `price` = commission_amount |
+| `user_id`                                                                   | `bookings.customer_id` — GA4 cross-device tracking                                                                                                    |
+| `click_ids.gclid` / `.gbraid` / `.wbraid` / `.fbclid`                       | the E.8 click-id columns — Google Ads and Meta adjustments, offline conversions                                                                       |
+| `user_data.sha256_email_address`                                            | SHA-256 of lowercased, trimmed `customer_email` — **REQUIRED**                                                                                        |
+| `user_data.sha256_phone_number`                                             | SHA-256 of the E.164 `customer_phone` — optional when no phone (normalized using `billing_country`)                                                   |
+| `user_data.sha256_first_name`, `.sha256_last_name`                          | SHA-256 of the split name fields — **match rate +20–40%**                                                                                             |
+| `user_data.address.sha256_city` / `.sha256_postal_code` / `.sha256_country` | SHA-256 of the Stripe billing fields — optional, each only when the underlying field is present                                                       |
 
 - **Contract rules:**
-  - **One SHA-256 pass serves Google and Meta alike — never per-platform hashing.**
-  - **The payload is type-checked in CI; a missing REQUIRED field is a BUILD ERROR, not a runtime fallback.**
-  - **A confirmed booking with a null `commission_amount` is DATA CORRUPTION: render an error and fire NO
-    conversion.** The same no-silent-fallback rule covers a missing cancellation window and an operator with
-    **neither** contact field.
+    - **One SHA-256 pass serves Google and Meta alike — never per-platform hashing.**
+    - **The payload is type-checked in CI; a missing REQUIRED field is a BUILD ERROR, not a runtime fallback.**
+    - **A confirmed booking with a null `commission_amount` is DATA CORRUPTION: render an error and fire NO
+      conversion.** The same no-silent-fallback rule covers a missing cancellation window and an operator with
+      **neither** contact field.
 - **Conflict resolution — where the §13 UI columns disagree, the master governs:**
-  - The stale **72h payment deadline** and `cancellation_window_hours` are **superseded by the unified
-    `cancellation_hours` window**.
-  - The **unmasked confirmation email** is superseded by the **masked render**.
-  - **en-US-only dates** are superseded by the **seven-locale scope** (`customer_locale`).
+    - The stale **72h payment deadline** and `cancellation_window_hours` are **superseded by the unified
+      `cancellation_hours` window**.
+    - The **unmasked confirmation email** is superseded by the **masked render**.
+    - **en-US-only dates** are superseded by the **seven-locale scope** (`customer_locale`).
 
 #### D.23.4 Booking schema fields added for tracking
 
@@ -6853,10 +6966,10 @@ The push carries the **shared event id** for CAPI deduplication, plus:
 - **UTM parameters:** `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` — all varchar NULL.
 - **Customer identity:** `customer_first_name` (NOT NULL, **split for hashing**), `customer_last_name` (NOT
   NULL), `customer_email` (NOT NULL), `customer_phone` (NULL, **normalize to E.164**).
-  - **If the booking form has a single `customer_name` field, change the form to collect first + last
-    SEPARATELY** — this improves the Enhanced Conversions match rate substantially (**Google: +20–40%**).
-  - **Backwards compatibility:** parse existing `customer_name` heuristically (first word = first name, rest =
-    last name), accepting that this is sometimes wrong for historic data.
+    - **If the booking form has a single `customer_name` field, change the form to collect first + last
+      SEPARATELY** — this improves the Enhanced Conversions match rate substantially (**Google: +20–40%**).
+    - **Backwards compatibility:** parse existing `customer_name` heuristically (first word = first name, rest =
+      last name), accepting that this is sometimes wrong for historic data.
 - **Billing data (from the Stripe `payment_method`):** `billing_country` (char(2), ISO-3166-1 alpha-2 —
   `'NL'`, `'US'`, `'CW'`); `billing_postal_code` (from `payment_method.card.address_zip`); `billing_city`
   (optional). **Billing data adds NO extra friction to the booking form** — these are pulled automatically from
@@ -6894,7 +7007,7 @@ The push carries the **shared event id** for CAPI deduplication, plus:
 - Homepage: standard GA4 page view; **destination selection fires `select_content`**.
 - Tour cards (every listing surface): `view_item_list`, `select_item`, `add_to_wishlist` — **with list id and index**.
 - Related tours: `related_tour_click` with `{source_tour_id, target_tour_id, row: "category"|"destination",
-  position: 1-3, is_mobile: boolean}`.
+position: 1-3, is_mobile: boolean}`.
 - Search: GA4 `search` fires on **every render** with `results_count`.
 - Traveler login: GA4 `login` with `method: booking_ref` on success; **silent failure counter with no PII and
   never the reference itself in the dataLayer**; **lockout fires an ops alert, not an analytics event**.
@@ -6935,10 +7048,10 @@ The push carries the **shared event id** for CAPI deduplication, plus:
 - **WCAG AA** across all surfaces; visible focus rings (the login forms use `outline:2px solid var(--orange)`,
   `outline-offset:0`, border transparent).
 - **Unified loading state pattern — ONE rule for ALL async operations:**
-  - `< 200ms` → **no skeleton** (avoid visual flash).
-  - `200–1500ms` → **skeleton or spinner appears**.
-  - `> 1500ms` → **skeleton + secondary indicator `Loading...`**.
-  - `> 5000ms` → **timeout error + retry option**.
+    - `< 200ms` → **no skeleton** (avoid visual flash).
+    - `200–1500ms` → **skeleton or spinner appears**.
+    - `> 1500ms` → **skeleton + secondary indicator `Loading...`**.
+    - `> 5000ms` → **timeout error + retry option**.
 - **Applies to:** date picker initial load → **skeleton calendar grid**; date picker month change → **skeleton
   calendar grid**; time-slot fetch after date select → **skeleton chip row beneath the date pill**;
   availability check on Continue tap → **CTA becomes a spinner; the widget greys to 50% opacity**; payment
@@ -6975,9 +7088,9 @@ The push carries the **shared event id** for CAPI deduplication, plus:
   $19.20, Island Tours nets $40.80**.
 - **Platform: Trackdesk (primary)** — chosen for **server-side postback, dynamic commission amounts, an
   on-hold→approved lifecycle, the widest payout rails, and scriptless GDPR-compliant tracking**.
-  - **Tapfiliate** = mature alternative; **FirstPromoter** = middle option.
-  - **Stripe-native tools (PromoteKit, Rewardful, Tolt) are structurally incompatible** — they calculate off the
-    ~20% Stripe charge, **not the full tour price**.
+    - **Tapfiliate** = mature alternative; **FirstPromoter** = middle option.
+    - **Stripe-native tools (PromoteKit, Rewardful, Tolt) are structurally incompatible** — they calculate off the
+      ~20% Stripe charge, **not the full tour price**.
 - **Attribution is owned by the platform's own backend** via the **`booking_complete`** event. **Promo codes
   double as attribution identifiers** in the booking widget. **The platform purchase buys the partner portal,
   payout rails, and fraud detection — NOT the attribution itself.**
@@ -7047,21 +7160,21 @@ PermissionsGuard → checks @RequirePermissions() metadata
 
 Per-module map (create / edit / delete-or-manage):
 
-| Module | Create | Edit | Delete / Manage |
-|---|---|---|---|
-| Destinations | `CREATE_DESTINATION` | `EDIT_DESTINATION` | `DELETE_DESTINATION` |
-| Categories | `CREATE_CATEGORY` | `EDIT_CATEGORY` | `DELETE_CATEGORY` |
-| Hubs | `MANAGE_HUBS` | `MANAGE_HUBS` | `MANAGE_HUBS` |
-| Collections | `CREATE_COLLECTION` | `EDIT_COLLECTION` | `DELETE_COLLECTION` |
-| Tours | `CREATE_TRIP` | `EDIT_TRIP` | `DELETE_TRIP` / `MANAGE_TRIPS` (admin) |
-| Attributes dictionary | `MANAGE_SYSTEM` | `MANAGE_SYSTEM` | `MANAGE_SYSTEM` |
-| Availability | `EDIT_TRIP` (own) | `EDIT_TRIP` | `MANAGE_TRIPS` (admin override) |
-| Bookings | — | — | `VIEW_BOOKINGS` / `MANAGE_BOOKINGS` |
-| Reviews | (traveler, booking-gated) | operator response | `MODERATE_REVIEWS` (admin) |
-| Operators | `CREATE_OPERATOR` | `EDIT_OPERATOR_PROFILE` | `MANAGE_OPERATORS` |
-| Settings | — | `MANAGE_SETTINGS` | `MANAGE_SETTINGS` |
-| Users | — | — | `MANAGE_USERS` |
-| Media | `UPLOAD_MEDIA` | — | `MANAGE_MEDIA` |
+| Module                | Create                    | Edit                    | Delete / Manage                        |
+| --------------------- | ------------------------- | ----------------------- | -------------------------------------- |
+| Destinations          | `CREATE_DESTINATION`      | `EDIT_DESTINATION`      | `DELETE_DESTINATION`                   |
+| Categories            | `CREATE_CATEGORY`         | `EDIT_CATEGORY`         | `DELETE_CATEGORY`                      |
+| Hubs                  | `MANAGE_HUBS`             | `MANAGE_HUBS`           | `MANAGE_HUBS`                          |
+| Collections           | `CREATE_COLLECTION`       | `EDIT_COLLECTION`       | `DELETE_COLLECTION`                    |
+| Tours                 | `CREATE_TRIP`             | `EDIT_TRIP`             | `DELETE_TRIP` / `MANAGE_TRIPS` (admin) |
+| Attributes dictionary | `MANAGE_SYSTEM`           | `MANAGE_SYSTEM`         | `MANAGE_SYSTEM`                        |
+| Availability          | `EDIT_TRIP` (own)         | `EDIT_TRIP`             | `MANAGE_TRIPS` (admin override)        |
+| Bookings              | —                         | —                       | `VIEW_BOOKINGS` / `MANAGE_BOOKINGS`    |
+| Reviews               | (traveler, booking-gated) | operator response       | `MODERATE_REVIEWS` (admin)             |
+| Operators             | `CREATE_OPERATOR`         | `EDIT_OPERATOR_PROFILE` | `MANAGE_OPERATORS`                     |
+| Settings              | —                         | `MANAGE_SETTINGS`       | `MANAGE_SETTINGS`                      |
+| Users                 | —                         | —                       | `MANAGE_USERS`                         |
+| Media                 | `UPLOAD_MEDIA`            | —                       | `MANAGE_MEDIA`                         |
 
 Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEAM`, `VIEW_PERMISSIONS`, `VIEW_PROFILE`, `EDIT_PROFILE`, `VIEW_USERS`, `CREATE_USER`, `UPDATE_USER`, `DELETE_USER`, `MANAGE_OPERATOR_PAYMENTS`, `MANAGE_EDITORIAL`, `VIEW_PAYMENTS`, `VIEW_TRIPS`, `VIEW_REVIEWS`, `EDIT_REVIEW`, `DELETE_REVIEW`, `APPROVE_REVIEW`, `MANAGE_AVAILABILITY`, `MANAGE_BOOKINGS`, `MANAGE_PAYMENTS`, `MANAGE_TIERS`, `APPROVE_SPOTLIGHT`, `VIEW_ANALYTICS`, `EDIT_BOOKING`. Vestigial in the dashboard mirror only: `VIEW_ENQUIRIES`, `VIEW_LEADS`.
 
@@ -7081,9 +7194,9 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 - `@nestjs/throttler` with a **global `ThrottlerGuard`**, running **first in the guard chain, before auth**.
 - Current per-client-IP tiers:
-  - `{ name: 'short',  ttl: 1_000,     limit: 60   }` — 60 req/sec burst, sized for an authed dashboard page's parallel fan-out.
-  - `{ name: 'medium', ttl: 60_000,    limit: 300  }` — 300 req/min sustained.
-  - `{ name: 'long',   ttl: 3_600_000, limit: 3000 }` — 3000 req/hr hard cap.
+    - `{ name: 'short',  ttl: 1_000,     limit: 60   }` — 60 req/sec burst, sized for an authed dashboard page's parallel fan-out.
+    - `{ name: 'medium', ttl: 60_000,    limit: 300  }` — 300 req/min sustained.
+    - `{ name: 'long',   ttl: 3_600_000, limit: 3000 }` — 3000 req/hr hard cap.
 - ⚠️ CONFLICT — burst tier: `ARCHITECTURE-OVERVIEW.md` §2 and project `CLAUDE.md` state the three tiers as **20/s · 300/min · 3000/hr**; `VPS-OPERATIONS-GUIDE.md` (code-read) states **60/s · 300/min · 3000/hr**. The operations guide reflects the code as measured.
 - **Trusted-origin bypass:** `skipIf: isTrustedInternalOrigin`. The SSR/build server sends **`x-internal-api-key` matching `INTERNAL_API_SECRET`**, so Vercel prerender bursts are not throttled; everyone else is limited.
 - **`INTERNAL_API_SECRET` is REQUIRED in production** (both apps, **min 32 chars**) — the env validator **fails to boot** if it is unset in prod, not merely warns.
@@ -7106,10 +7219,10 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **Each person gets their own login** (email + password on the existing Better Auth door) — **no shared accounts** — and access is controlled **individually**: a reusable **Designation** template plus per-person grant/revoke overrides.
 - The login doc specified an `operator_users` seats table for the operator side only; the implementation **unifies both sides into ONE model**, where a single column decides the world a row belongs to:
 
-| `staff_members.operatorId` | Meaning | Platform `Role` |
-|---|---|---|
-| `NULL` | Platform (admin-side) staff | `STAFF` |
-| set (FK to `operators.id`) | Operator team seat | `TOUR_OPERATOR` |
+| `staff_members.operatorId` | Meaning                     | Platform `Role` |
+| -------------------------- | --------------------------- | --------------- |
+| `NULL`                     | Platform (admin-side) staff | `STAFF`         |
+| set (FK to `operators.id`) | Operator team seat          | `TOUR_OPERATOR` |
 
 - One table, one service, one permission engine, one dashboard page — **the scope column does the branching**. The login doc's E.11 shape (seatRole, status, invitedBy, lastLoginAt) is preserved inside it.
 
@@ -7119,14 +7232,14 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **`enum StaffSeatRole { OWNER MANAGER STAFF }`** — intra-operator seat role. **MANAGER/STAFF is an ORGANIZATIONAL LABEL in v1** with **no permission semantics**; access comes only from designation/overrides, and the UI copy says so. **OWNER is created only by operator create/backfill, never via the API.**
 - **`enum StaffStatus { INVITED ACTIVE SUSPENDED }`**.
 - **Two new `Permission` values:**
-  - **`MANAGE_STAFF`** — manage platform staff + platform designations. **ADMIN only**, and deliberately **outside every grant ceiling** (self-escalation guard).
-  - **`MANAGE_TEAM`** — manage an operator's own team. In the `TOUR_OPERATOR` role set and ADMIN's; **outside the seat ceiling**, so non-owner seats can never be granted it (**seat management is owner-only**).
+    - **`MANAGE_STAFF`** — manage platform staff + platform designations. **ADMIN only**, and deliberately **outside every grant ceiling** (self-escalation guard).
+    - **`MANAGE_TEAM`** — manage an operator's own team. In the `TOUR_OPERATOR` role set and ADMIN's; **outside the seat ceiling**, so non-owner seats can never be granted it (**seat management is owner-only**).
 - **`StaffDesignation`** (the permission template): `id · operatorId (NULL = platform) · name · description · permissions Permission[] · isSystem · createdById · timestamps`, `@@unique([operatorId, name])`, `@@index([operatorId])`.
 - **Postgres NULL gotcha, handled:** `@@unique([operatorId, name])` does **not** deduplicate rows where `operatorId IS NULL`. Platform-scope name uniqueness is enforced **in the service** (case-insensitive `findFirst` → **409**), with the DB constraint covering the operator scope and a **`P2002` catch as the race fallback**.
 - **`StaffMember`** (the person): `id · userId (unique — one seat per account) · operatorId · seatRole (default STAFF) · designationId (SetNull on designation delete) · extraPermissions Permission[] · revokedPermissions Permission[] · status (default INVITED) · invitedById · invitedAt · activatedAt · lastLoginAt · timestamps`; relations `user (Cascade)`, `operator (Cascade)`, `designation`, `invitedBy`; indexes on `operatorId`, `status`, `designationId`.
 - **Migration side-effects beyond DDL:**
-  - **Backfill** — every existing operator's login user became the **`ACTIVE OWNER` seat of its own team (7 rows)**; **admin-owned auto-provisioned operator records were excluded** (ADMIN accounts are never staff-managed). Going forward `OperatorsService.create` writes the OWNER seat for every new operator.
-  - **Seeded 3 platform system designations (`isSystem = true`)**: *Operations Manager* (bookings/payments/review moderation/analytics — **16 permissions**), *Content Editor* (catalog + editorial + media — **18 permissions**), *Support Agent* (read-mostly support — **13 permissions**). **None reference enum values added in the same migration** (Postgres forbids using a new enum value inside the transaction that added it).
+    - **Backfill** — every existing operator's login user became the **`ACTIVE OWNER` seat of its own team (7 rows)**; **admin-owned auto-provisioned operator records were excluded** (ADMIN accounts are never staff-managed). Going forward `OperatorsService.create` writes the OWNER seat for every new operator.
+    - **Seeded 3 platform system designations (`isSystem = true`)**: _Operations Manager_ (bookings/payments/review moderation/analytics — **16 permissions**), _Content Editor_ (catalog + editorial + media — **18 permissions**), _Support Agent_ (read-mostly support — **13 permissions**). **None reference enum values added in the same migration** (Postgres forbids using a new enum value inside the transaction that added it).
 - `User` gained `staffMember StaffMember?` + `staffInvitesSent`; `Operator` gained `staffMembers` + `staffDesignations`.
 
 #### E.2.3 The effective-permission engine
@@ -7146,16 +7259,16 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **OWNER seats** (and the `Operator.userId` account itself) return the **full `TOUR_OPERATOR` role set**; owners are not permission-managed and **`revokedPermissions` on an owner row is ignored**.
 - **SUSPENDED members return the empty set.**
 - **`PLATFORM_STAFF_CEILING` = `ROLE_PERMISSIONS[ADMIN]` minus:**
-  - `MANAGE_SYSTEM` (system administration stays with real ADMIN accounts)
-  - `MANAGE_STAFF` (staff must never manage staff — self-escalation)
-  - `MANAGE_TEAM` (operator-side concern)
-  - `MANAGE_USERS`, `CREATE_USER`, `UPDATE_USER`, `DELETE_USER` (identity mutations are an escalation surface: a role flip hands out an un-ceilinged static permission set; an email change redirects password resets. **`VIEW_USERS` stays grantable.**)
-  - `MANAGE_OPERATOR_PAYMENTS` (owner-only downstream — listing it would offer a permission that always 403s)
+    - `MANAGE_SYSTEM` (system administration stays with real ADMIN accounts)
+    - `MANAGE_STAFF` (staff must never manage staff — self-escalation)
+    - `MANAGE_TEAM` (operator-side concern)
+    - `MANAGE_USERS`, `CREATE_USER`, `UPDATE_USER`, `DELETE_USER` (identity mutations are an escalation surface: a role flip hands out an un-ceilinged static permission set; an email change redirects password resets. **`VIEW_USERS` stays grantable.**)
+    - `MANAGE_OPERATOR_PAYMENTS` (owner-only downstream — listing it would offer a permission that always 403s)
 - **`OPERATOR_SEAT_CEILING` = `ROLE_PERMISSIONS[TOUR_OPERATOR]` minus:** `MANAGE_TEAM` (seat management is owner-only) and `MANAGE_OPERATOR_PAYMENTS` (payout/bank config is owner-only).
 - **Fallback rules (no staff row present):**
-  - `TOUR_OPERATOR` with no staff row → **full role set** (the operator account itself / legacy).
-  - **`STAFF` with no staff row → the FLOOR only** — never the legacy static STAFF list from `roles.config.ts`. Otherwise anyone able to flip a user's role to STAFF would mint a broad-powered account. **Power comes ONLY from an explicit designation/grant.**
-  - Every other role (ADMIN, EDITOR, GUIDE, USER) → its static `ROLE_PERMISSIONS` set, **with zero DB cost** (short-circuit before any query).
+    - `TOUR_OPERATOR` with no staff row → **full role set** (the operator account itself / legacy).
+    - **`STAFF` with no staff row → the FLOOR only** — never the legacy static STAFF list from `roles.config.ts`. Otherwise anyone able to flip a user's role to STAFF would mint a broad-powered account. **Power comes ONLY from an explicit designation/grant.**
+    - Every other role (ADMIN, EDITOR, GUIDE, USER) → its static `ROLE_PERMISSIONS` set, **with zero DB cost** (short-circuit before any query).
 - **Runtime + cache** — `StaffPermissionsService.getEffectivePermissions({id, role})`: non-staff-manageable roles short-circuit; otherwise **one small `staff_members` read** (designation permissions included) feeds the pure function; the result is cached **in-process for 60 seconds per userId**. Every staff mutation calls `invalidate(userId)`; **designation permission edits call `invalidateAll()`**. Service and guard share **ONE instance** (the module is `@Global`; providing it elsewhere would fork the cache), so changes apply on the very next request.
 - `hasPermissions(user, required)` returns `{granted, missing}` for the guard's error message.
 - **Why one pure function matters:** the guard path AND the API responses (`effectivePermissions` echoed on every member object) both call `computeEffectivePermissions`, so **display and enforcement can never drift**.
@@ -7164,45 +7277,45 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 #### E.2.4 Service-level scoping
 
 - **`resolveOperatorId`** (`src/common/utils/operator.util.ts`) is the shared util used by tours, availability, bookings, payments, reviews, tiers, notifications; `tours.service.ts`'s private copy delegates to it. Resolution order:
-  1. `Operator.userId` direct match → the owner account.
-  2. **NEW:** an **ACTIVE (non-suspended)** `staff_members` seat → that seat's `operatorId`.
-  3. An **ADMIN** with neither gets an operator record **auto-provisioned**.
-  4. Anyone else → **400** "complete your operator registration".
+    1. `Operator.userId` direct match → the owner account.
+    2. **NEW:** an **ACTIVE (non-suspended)** `staff_members` seat → that seat's `operatorId`.
+    3. An **ADMIN** with neither gets an operator record **auto-provisioned**.
+    4. Anyone else → **400** "complete your operator registration".
 - The two layers on any request: **permission** answers "may this person do this kind of thing at all" (guard); **scoping** answers "on whose data" (service). Independent, both server-side.
 - **Owner-only vs member-level operator resources** (`operators.service.ts`):
-  - **`assertOwnerOrAdmin`** — **payout config** (Stripe/Mollie get/update). **Team seats, even managers, never pass.**
-  - **`assertMemberOrAdmin`** (new) — profile-level resources (operator detail, company info, social media). Passes owner, admin, or an **ACTIVE seat of that same operator**. **A seat without the profile permissions still gets 403 — both layers must pass.**
+    - **`assertOwnerOrAdmin`** — **payout config** (Stripe/Mollie get/update). **Team seats, even managers, never pass.**
+    - **`assertMemberOrAdmin`** (new) — profile-level resources (operator detail, company info, social media). Passes owner, admin, or an **ACTIVE seat of that same operator**. **A seat without the profile permissions still gets 403 — both layers must pass.**
 
 #### E.2.5 The API surface (22 endpoints)
 
 - **Where:** `backend/src/staff/` following the standard module pattern; registered in `AppModule` with the `@Global` `StaffPermissionsModule`. **Every static segment (`permission-catalog`, `designations`, `team`, `invite`) is declared BEFORE the dynamic `:id` routes.** Base URL `http://localhost:5050/api/v1`.
 - **Shared:** `GET /staff/permission-catalog?scope=platform|team` (`VIEW_PERMISSIONS`) — grouped, human-labeled catalog **already intersected with the requested scope's ceiling**, plus the flat `ceiling` and the `base` floor. Feeds the matrix UI, so it **physically cannot offer an ungrantable permission**.
 - **Platform staff (admin) — all `@RequirePermissions(MANAGE_STAFF)`:**
-  - `GET /staff` — paginated members list (search name/email; status + designation filters)
-  - `POST /staff/invite` — provision + invite (email, name, designationId?, extraPermissions?)
-  - `GET /staff/:id` — one member incl. `effectivePermissions`
-  - `PATCH /staff/:id` — designation (nullable to clear) + extra/revoked overrides
-  - `PATCH /staff/:id/status` — ACTIVE ⇄ SUSPENDED; **INVITED is never settable manually**
-  - `POST /staff/:id/resend-invite` — INVITED only; throttled **1/10s, 3/min, 10/hr**
-  - `DELETE /staff/:id` — remove member + their login account
-  - `GET/POST /staff/designations`, `PATCH/DELETE /staff/designations/:id` — platform designation CRUD
+    - `GET /staff` — paginated members list (search name/email; status + designation filters)
+    - `POST /staff/invite` — provision + invite (email, name, designationId?, extraPermissions?)
+    - `GET /staff/:id` — one member incl. `effectivePermissions`
+    - `PATCH /staff/:id` — designation (nullable to clear) + extra/revoked overrides
+    - `PATCH /staff/:id/status` — ACTIVE ⇄ SUSPENDED; **INVITED is never settable manually**
+    - `POST /staff/:id/resend-invite` — INVITED only; throttled **1/10s, 3/min, 10/hr**
+    - `DELETE /staff/:id` — remove member + their login account
+    - `GET/POST /staff/designations`, `PATCH/DELETE /staff/designations/:id` — platform designation CRUD
 - **Operator team — all `@RequirePermissions(MANAGE_TEAM)` (owners + admins):** the same shapes under `/staff/team[...]` and `/staff/team/designations[...]`. **Owners are auto-resolved to their own operator; admins must pass an explicit `operatorId`** (body on POST/PATCH, query on GET/DELETE/resend). `resolveTeamOperatorId` throws **400** for an admin without it, **403** for an owner passing a foreign one, and **404** pins every `:id` to the resolved operator — **no cross-tenant reads or writes**.
 - **Team-only:** invites create `TOUR_OPERATOR`-role users with `seatRole` **MANAGER | STAFF** (default STAFF, label only). **OWNER can never be created, edited, suspended or removed through this API** — the owner is managed via the operators module.
 - **Service rules enforced on every mutation:**
-  - **`assertWithinCeiling`** rejects out-of-ceiling permission arrays with a **400 naming the offenders** (defense-in-depth on top of compute-time capping).
-  - **Designations:** platform-name dedup in service + DB unique for operator scope; **`isSystem` rows reject rename/delete (403) but allow permission edits**; **delete while `memberCount > 0` is 409**; a designation reference must belong to the same scope (**400** otherwise).
-  - **Self-protection:** you **cannot suspend or remove your own account** (400).
-  - **Every mutating action writes a `Logger` line with the actor id.**
+    - **`assertWithinCeiling`** rejects out-of-ceiling permission arrays with a **400 naming the offenders** (defense-in-depth on top of compute-time capping).
+    - **Designations:** platform-name dedup in service + DB unique for operator scope; **`isSystem` rows reject rename/delete (403) but allow permission edits**; **delete while `memberCount > 0` is 409**; a designation reference must belong to the same scope (**400** otherwise).
+    - **Self-protection:** you **cannot suspend or remove your own account** (400).
+    - **Every mutating action writes a `Logger` line with the actor id.**
 - **Hardened alongside:** `GET /bookings` and `GET /bookings/:id` were **auth-only**; both now require **`VIEW_BOOKINGS`**, and **`isPlatformWideBookingRole()` (ADMIN/STAFF/EDITOR — one helper used by both `list` and `assertCanView`)** grants platform-wide read; operators stay operator-scoped.
 
 #### E.2.6 Seat lifecycle — invite → accept → activate → remove
 
 - **Invite:**
-  1. Admin/owner submits → `POST /staff/invite` or `POST /staff/team/invite`.
-  2. **`provisionInvitedAccount`** (`src/common/utils/invite-provisioning.util.ts` — **ONE shared implementation** used by operator creation, platform staff and team invites): normalizes the email (lowercase/trim), **409 if a user exists**; creates the auth user with the correct role (`STAFF` or `TOUR_OPERATOR`) and **`emailVerified: true`** (admin/owner-vouched; ownership re-proven by the invite link); links a **throwaway credential** — **24 random bytes, hashed, never displayed or transmitted** — so the reset flow has a credential account to overwrite; **rolls back the user if the credential link fails.** Better Auth's `user.create.before` `allowedRoles` was extended with `Role.STAFF`; **ADMIN creation stays blocked at runtime.**
-  3. The `staff_members` row is created: scope, seatRole, status **`INVITED`**, designation + extraPermissions (ceiling-validated), **`invitedById` for audit**.
-  4. **Invite email (dynamic per audience):** the service calls `auth.api.requestPasswordReset({ email, redirectTo: getPortalUrl() + '/reset' })`. The `sendResetPassword` hook sees no originating HTTP request → server-initiated → and because **every invite flow creates the `staff_members` row BEFORE firing the reset**, it looks the row up and picks the copy: `operatorId` NULL → **platform staff invite** (`staff-invite.template.ts`, variant `platform`); `operatorId` set with MANAGER/STAFF → **team-seat invite** (variant `team`); **OWNER seat or no staff row** → the original **operator-invite template**. Subjects are dynamic the same way; **all interpolations are HTML-escaped**; resend goes through the same hook. **Fire-and-forget with `.catch` logging — a mail-provider outage cannot fail the invite API.**
-  5. **Any failure after user creation rolls back via `internalAdapter.deleteUser`** — no orphans.
+    1. Admin/owner submits → `POST /staff/invite` or `POST /staff/team/invite`.
+    2. **`provisionInvitedAccount`** (`src/common/utils/invite-provisioning.util.ts` — **ONE shared implementation** used by operator creation, platform staff and team invites): normalizes the email (lowercase/trim), **409 if a user exists**; creates the auth user with the correct role (`STAFF` or `TOUR_OPERATOR`) and **`emailVerified: true`** (admin/owner-vouched; ownership re-proven by the invite link); links a **throwaway credential** — **24 random bytes, hashed, never displayed or transmitted** — so the reset flow has a credential account to overwrite; **rolls back the user if the credential link fails.** Better Auth's `user.create.before` `allowedRoles` was extended with `Role.STAFF`; **ADMIN creation stays blocked at runtime.**
+    3. The `staff_members` row is created: scope, seatRole, status **`INVITED`**, designation + extraPermissions (ceiling-validated), **`invitedById` for audit**.
+    4. **Invite email (dynamic per audience):** the service calls `auth.api.requestPasswordReset({ email, redirectTo: getPortalUrl() + '/reset' })`. The `sendResetPassword` hook sees no originating HTTP request → server-initiated → and because **every invite flow creates the `staff_members` row BEFORE firing the reset**, it looks the row up and picks the copy: `operatorId` NULL → **platform staff invite** (`staff-invite.template.ts`, variant `platform`); `operatorId` set with MANAGER/STAFF → **team-seat invite** (variant `team`); **OWNER seat or no staff row** → the original **operator-invite template**. Subjects are dynamic the same way; **all interpolations are HTML-escaped**; resend goes through the same hook. **Fire-and-forget with `.catch` logging — a mail-provider outage cannot fail the invite API.**
+    5. **Any failure after user creation rolls back via `internalAdapter.deleteUser`** — no orphans.
 - **Accept:** the invitee lands on the **surface-matched reset screen** — platform staff on **`/staff/reset`**, team seats and operators on **`/portal/reset`** (`StaffService.resetRedirectFor(operatorId)`; the staff base URL is derived from **`PORTAL_URL`** by swapping the `/portal` segment via `getStaffUrl()`, so **one env var still configures the app**). Password **min 12 chars**; `revokeSessionsOnPasswordReset` applies. They sign in at their door — **`/staff` for platform staff, `/portal` for seats/operators**. Both doors hit the same Better Auth backend; **the separation is surface branding + noindex, never a security control.**
 - **Activate:** on successful sign-in the Better Auth **`databaseHooks.session.create.after`** hook stamps **`lastLoginAt = now`** and flips **`INVITED → ACTIVE`** (+ `activatedAt`) via two `updateMany` calls (no-ops for non-staff users), **wrapped in try/catch so bookkeeping can never break a login**. The dashboard layout then renders exactly the nav and actions their grants cover.
 - **Remove:** deletes the login account (`internalAdapter.deleteUser` — sessions and staff row cascade), then **invalidates the permission cache**. **OWNER seats are refused (403).**
@@ -7212,28 +7325,28 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 - `PATCH .../:id/status { SUSPENDED }` does four things: (1) `staff_members.status = SUSPENDED` (engine computes the **empty set**); (2) `user.status = SUSPENDED`; (3) **`session.deleteMany`** — every live session dies; (4) permission-cache **`invalidate(userId)`**.
 - **Three independent locks then hold:**
-  - **Existing sessions** die instantly — AuthGuard checks the **session STORE** (`disableCookieCache`) and the sessions are gone. (Live smoke found the cookie cache keeping a deleted session alive **≤5 min** — exactly why the flag exists.)
-  - **Re-login** is refused by the **`databaseHooks.session.create.before`** hook with `APIError('FORBIDDEN', 'This account has been suspended.')` — a clean **403**, and **safe to name the reason because the hook only runs AFTER the password verified** (no enumeration).
-  - **Belt-and-suspenders:** even with a session, **AuthGuard 401s SUSPENDED/DELETED users**, and a suspended member's effective set is empty.
+    - **Existing sessions** die instantly — AuthGuard checks the **session STORE** (`disableCookieCache`) and the sessions are gone. (Live smoke found the cookie cache keeping a deleted session alive **≤5 min** — exactly why the flag exists.)
+    - **Re-login** is refused by the **`databaseHooks.session.create.before`** hook with `APIError('FORBIDDEN', 'This account has been suspended.')` — a clean **403**, and **safe to name the reason because the hook only runs AFTER the password verified** (no enumeration).
+    - **Belt-and-suspenders:** even with a session, **AuthGuard 401s SUSPENDED/DELETED users**, and a suspended member's effective set is empty.
 - **Reactivation (`ACTIVE`)** restores `user.status` and the staff row, **stamps `activatedAt` if they had never logged in**, and invalidates the cache.
 - **Unified with the users module:** `PATCH /users/:id/status` and the `status` field of `PATCH /users/:id` previously flipped **only `user.status`**. `user.service.ts` now runs the same **`syncStatusSideEffects`** (session kill + staff-row mirror + cache invalidation) so **the two suspension paths cannot drift**.
 
 #### E.2.8 Live-proven data scoping
 
-| Check | Result |
-|---|---|
-| Invited platform staff with "Operations Manager" | `effectivePermissions` = **16** (template + floor) |
-| Staff `GET /bookings` with `VIEW_BOOKINGS` granted | **200**, platform-wide (**total 254**) |
-| Same staff, `VIEW_BOOKINGS` revoked via override | **403** on the very next request |
-| Staff `GET /staff` (MANAGE_STAFF gated) | **403** always (outside ceiling) |
-| Owner invites seat with `MANAGE_OPERATOR_PAYMENTS` | **400** naming the permission |
-| Seat (VIEW_BOOKINGS granted) `GET /bookings` | **200**, **operator-scoped: 70 rows** (identical to the owner's view, not the platform's 254) |
-| Seat `GET /staff/team` | **403** (MANAGE_TEAM outside seat ceiling) |
-| Seat `GET /operators/:id/stripe-config` | **403** (owner-only gate) |
-| Seat `GET /operators/:id/company-info` w/o profile permission | **403** (fine-grained layer) |
-| Admin `GET /staff/team` without `operatorId` | **400** |
-| Suspend → existing session · re-login | **401** instantly · **403** |
-| INVITED → first login | status **ACTIVE**, `activatedAt` + `lastLoginAt` stamped |
+| Check                                                         | Result                                                                                        |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Invited platform staff with "Operations Manager"              | `effectivePermissions` = **16** (template + floor)                                            |
+| Staff `GET /bookings` with `VIEW_BOOKINGS` granted            | **200**, platform-wide (**total 254**)                                                        |
+| Same staff, `VIEW_BOOKINGS` revoked via override              | **403** on the very next request                                                              |
+| Staff `GET /staff` (MANAGE_STAFF gated)                       | **403** always (outside ceiling)                                                              |
+| Owner invites seat with `MANAGE_OPERATOR_PAYMENTS`            | **400** naming the permission                                                                 |
+| Seat (VIEW_BOOKINGS granted) `GET /bookings`                  | **200**, **operator-scoped: 70 rows** (identical to the owner's view, not the platform's 254) |
+| Seat `GET /staff/team`                                        | **403** (MANAGE_TEAM outside seat ceiling)                                                    |
+| Seat `GET /operators/:id/stripe-config`                       | **403** (owner-only gate)                                                                     |
+| Seat `GET /operators/:id/company-info` w/o profile permission | **403** (fine-grained layer)                                                                  |
+| Admin `GET /staff/team` without `operatorId`                  | **400**                                                                                       |
+| Suspend → existing session · re-login                         | **401** instantly · **403**                                                                   |
+| INVITED → first login                                         | status **ACTIVE**, `activatedAt` + `lastLoginAt` stamped                                      |
 
 #### E.2.9 The `/team` page (shipped as `/users`)
 
@@ -7256,16 +7369,16 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 #### E.3.1 Scale and route inventory (as audited)
 
-| Measure | Count |
-|---|---|
-| Dashboard route files (`app/(dashboard)/**`) | 42 |
-| Dashboard route pages (excl. layout) | 41 across 21 modules |
-| Dashboard components (`components/dashboard/**`) | 166 files |
-| Total dashboard `.tsx` (routes + components) | 207 |
-| Marked `'use client'` | **161 (77.8%)** |
-| Dashboard component LOC | ~35,328 |
-| `components/ui/` (shadcn) | 35 files, 4,518 LOC |
-| Trips module alone | 28 components, 10,363 LOC |
+| Measure                                          | Count                     |
+| ------------------------------------------------ | ------------------------- |
+| Dashboard route files (`app/(dashboard)/**`)     | 42                        |
+| Dashboard route pages (excl. layout)             | 41 across 21 modules      |
+| Dashboard components (`components/dashboard/**`) | 166 files                 |
+| Total dashboard `.tsx` (routes + components)     | 207                       |
+| Marked `'use client'`                            | **161 (77.8%)**           |
+| Dashboard component LOC                          | ~35,328                   |
+| `components/ui/` (shadcn)                        | 35 files, 4,518 LOC       |
+| Trips module alone                               | 28 components, 10,363 LOC |
 
 - Base path was `/dashboard/*` with layout `app/(dashboard)/dashboard/layout.tsx` (52 lines); it is now served at **root `/`** in the extracted repo.
 - Route inventory by module: **overview** (`page.tsx`) · **trips** (`page.tsx`, `new/`, `[id]/` redirect, `[id]/edit/`) · **destinations**, **hubs**, **categories**, **collections** (same 4-route shape each) · **attributes** (`page.tsx`, `new/`, `[key]/edit/` — keyed by `key`, no detail route) · **tour-operators** (4-route shape) · **bookings** (`page.tsx`) · **payments** (`page.tsx`) · **cancellation-requests** (`page.tsx`, zero components — renders `<BookingsListView cancellationView />`) · **spotlight** · **locals-favourites** · **media** (**the only module with `export const metadata`**) · **settings** · **profile** · **users** (`page.tsx`, `new/page.tsx` — **stub**, static JSX, 8 lines each) · **reviews** (**stub**) · **leads** (**stub**, deleted in Phase 4) · **enquiries** (**stub**, deleted in Phase 4).
@@ -7321,6 +7434,7 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 **Overview (`/`)** — S1 for trust, S3 for effort. **The first screen after login is fabricated:** `getDashboardStats()` is a hardcoded literal (`totalRevenue: 125000.50`, `bookings.total: 1240`, `'John Doe'` booking `'Bali Adventure'`, `alice@example.com`), and `statistics.tsx:408`/`:516` force mock chart branches with `|| true ?`. **BLOCKED on backend request A1.** Interim: replace fake data with an honest empty state plus counts from existing endpoints. Target architecture: SERVER page, per-card `<Suspense>`, charts stay client (Recharts), `statistics.tsx` (1,078 LOC) split per card, **delete `dashboardActions.ts`**. Role split when unblocked — **Operator:** today's departures · bookings needing action · tours not listed (and why) · translation completeness · payout summary. **Admin:** platform GMV + commission · bookings by status · spotlight approvals pending · cancellation requests pending · operator activity. **Every card links to the filtered list that produced it. A number nobody can act on is decoration.**
 
 **Tours / Trips (`/trips`, admin + operator)** — the core workflow and its weakest contract (S1). Manages the tour entity and every child collection. **28 components, 10,363 LOC, all 28 `'use client'`.**
+
 - **Editor shell** `trip-edit-view.tsx` (431 LOC): a single flat `<Tabs>` with **13 tabs**, presented as peers, grouped only in source comments; **no tab gated or disabled**. Header carries the status badge, lifecycle buttons (Publish/Pause/Unpause/Archive, gated on `can('MANAGE_TRIPS')`), a warnings banner fed by `onWarnings` from Details, a **"Published, not yet listed"** notice on `LIVE && !isBookable`, and a **5-item Publish Readiness card shown only for DRAFT** (5 images, hero set, 3 highlights, EN overview, price set).
 - **The 13 tabs:** Details · Pricing · Schedules · Images · Highlights · Inclusions · Exclusions · Itinerary (locations) · Pickups · Info & Terms (features) · Attributes · Promotion · Translations, plus SEO.
 - **Create flow** `trip-form.tsx` (704 LOC): a single long form, one submit, no wizard, no draft-save; ~30 fields of which **4 are truly required** — `name` (≥3), `slug` (auto from name), `destinationId`, `categoryIds` (≥1); conditionally required `basePrice` + `wholeUnitType` when `pricingModel === 'UNIT'`. After create → `router.push('/dashboard/trips/${created.id}/edit')`.
@@ -7334,13 +7448,14 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **Target redesign:** create collects **4 fields** (name, destination, category, slug auto-derived/editable) and `trip-form.tsx` is **deleted**; 13 tabs → **4 routed phase groups** — `/tours/[id]/setup` (Details · Pricing · Schedules), `/tours/[id]/content` (Images · Highlights · Inclusions · Itinerary · Pickups · Info), `/tours/[id]/reach` (Attributes · Promotion · SEO), `/tours/[id]/translations` (deep-links into the Translation Console). **Routes, not in-page tabs** — fixes URL state, back-button, bookmarking, and gives each group its own server boundary.
 - **Gating rule, deliberately soft:** Setup always · Content always · Reach **always, but SEO shows an inline notice** if no EN overview exists · Translations **always, but shows an empty state** if no EN content exists. **Gate with information, not with disabled controls.**
 - **The readiness rail (the publish contract):** the DRAFT-only card becomes a **persistent right rail on every tour route** showing Name/destination/category · Price set · 5+ images (5/5) · Hero image · Highlights (2/3) · EN overview — then a separate **"To be LISTED (not just live)"** block: At least one schedule · Capacity set. Three changes: (1) **Publish disabled until checks pass**, naming the blocking item; (2) **listing requirements shown alongside publish requirements**; (3) each unmet item **links to the exact sub-tab that fixes it**. **The backend contract is unchanged** — the client stops offering an action it knows will fail. `readiness-rail.tsx` is a **SERVER component** (pure computation, zero interactivity, zero JS). ⚠️ Risk: **the client readiness rule must be a strict subset of the backend validator** — if it disagrees, an operator is blocked from a legal action; **warn rather than disable if uncertain.** The rail **is** the empty state for a new tour (6 unmet items).
-- **One save per route, dirty-tracked** — a sticky-footer primary Save enabled only when dirty (replacing ~20 scattered buttons), an unsaved-changes navigation guard (does not exist today), **child collections stay immediate-per-action** (adding an image *is* the save), and an explicit "Saved" state.
+- **One save per route, dirty-tracked** — a sticky-footer primary Save enabled only when dirty (replacing ~20 scattered buttons), an unsaved-changes navigation guard (does not exist today), **child collections stay immediate-per-action** (adding an image _is_ the save), and an explicit "Saved" state.
 - **Drag-and-drop reorder BLOCKED on A6** (keep arrows — without a bulk endpoint, drag-drop fires N PATCHes per drop, worse than today). **Schedule batching BLOCKED on A5** (keep the loop, add a progress indicator and a **partial-failure summary naming what succeeded**).
 - **Click depth today:** publish a new tour **~25-30 clicks across 5 tabs** minimum · change one price 5 (row-action deep link) / 6 without · add a date exception 8-10 · translate the overview into German 5 clicks with **no German source reference on screen**.
 - **`trip-promotion-tab.tsx:49`** carries `SHOW_DEMAND_BADGE_OVERRIDE = false` — DemandBadgeCard is dead behind a flag.
 
-**Destinations · Hubs · Categories · Collections (admin only, `CURATE`)** — treated as one family because the audit proves they *are* one: ~90% identical translation forms, ~60% identical SEO tabs, 138-202-line diffs between table scaffolds, 32-line diffs between detail shells.
-- **Current tab sets drift for no reason:** destinations `Details, Translations, Page Content, SEO, FAQs` (5) · categories `Details, Sub-categories*, Translations, Page Content, FAQs, SEO` (6, *conditional) · collections `Details, Tours, Translations, Page Content, FAQs, SEO` (6) · **hubs `Details, Allowed Categories, Translations, Our Picks, Comparison, Page Content, FAQs, SEO` (8)**. **Tab ORDER drifts too** (destinations puts SEO before FAQs with a justifying comment; the other three do the opposite).
+**Destinations · Hubs · Categories · Collections (admin only, `CURATE`)** — treated as one family because the audit proves they _are_ one: ~90% identical translation forms, ~60% identical SEO tabs, 138-202-line diffs between table scaffolds, 32-line diffs between detail shells.
+
+- **Current tab sets drift for no reason:** destinations `Details, Translations, Page Content, SEO, FAQs` (5) · categories `Details, Sub-categories*, Translations, Page Content, FAQs, SEO` (6, \*conditional) · collections `Details, Tours, Translations, Page Content, FAQs, SEO` (6) · **hubs `Details, Allowed Categories, Translations, Our Picks, Comparison, Page Content, FAQs, SEO` (8)**. **Tab ORDER drifts too** (destinations puts SEO before FAQs with a justifying comment; the other three do the opposite).
 - Other problems: four forks of one editor (~4,300 LOC near-mechanical duplication); collections diverges arbitrarily (no row-actions, no delete dialog, no quick-edit — its actions live in `collection-columns.tsx`); **three pagination strategies** (collections/attributes/spotlight client-paginated **and with no loading skeleton**); **four delete-confirm abstractions + 4 clone wrappers**; no URL tab state. **An admin who learns Destinations must re-learn Hubs.**
 - **Target:** **one canonical editor shape, same tabs, same order, every module** — `Details · Page Content · SEO · FAQs · [module extras] · Translations→console`. **Hubs' 4 extras (Allowed Categories, Our Picks, Comparison, Content Sections) become one "Curation" tab with sections — 8 tabs → 5.** **Routed tabs** (`/destinations/[id]/details`). **One `EntityTable`** (server pagination, one skeleton, one empty state, one bulk bar, `PAGE_SIZE_OPTIONS` once). **One `ConfirmDialog`** (delete the other 3 abstractions + 4 wrappers). **Sheet quick-edit** replacing the 3 cloned dialogs. ~10,500 → ~4,000 LOC.
 - ⚠️ CONFLICT / RETRACTED: **defect B-7 ("Collections: 594-line CRUD form, zero RBAC gating") is FACTUALLY FALSE.** Collections imported `useRole` in **two** files and has gated `CREATE_/EDIT_/DELETE_COLLECTION` since **2026-06-08 — five weeks before the audit**. `02` §5.4, `04` §5, Phase 9's risk line and parity check #20 all inherit the error. **"The one known intentional delta" does not exist.**
@@ -7348,14 +7463,15 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 **Attributes dictionary (`/attributes`, admin only)** — the thinnest module (748 LOC), structurally fine. Manages `attribute_definitions`; per-tour values are edited on the tour's Attributes tab. Keyed by `key` not `id` with no detail route (a defensible quirk). Two real issues: **client-side pagination with no loading skeleton**, and a create/edit `Dialog` inconsistent with every other module's route-based form. **Solution:** adopt the shared `EntityTable`; **keep the dialog** (attributes are small and a dialog is genuinely right here — the inconsistency is worth naming and accepting); **add a "used by N tours" column** so an admin can see blast radius before editing. ~748 → ~600.
 
 **Bookings (`/bookings`, admin + operator)** — the daily-throughput surface. Exposes exactly **one** transition: `CANCELLABLE = ['ON_HOLD','PENDING','CONFIRMED'] → CANCELLED`, gated on `EDIT_BOOKING`. **No confirm, no hold, no refund.** Detail is a cramped `max-w-lg` read-only Dialog with ~15 label/value pairs and **no fetch** (it just re-renders the list row). **Commission column visible to ADMIN, hidden from operator.** 7 palette classes; two gating idioms in one file; business logic (`refundDue()`, `paymentModelLabel()`) exported from a **columns** file. **Target:** detail moves to a **Sheet** (same data, room to breathe, list context preserved, arrow through bookings without closing) — **the single biggest throughput win in the module**; `StatusBadge` everywhere; **move `refundDue`/`paymentModelLabel` to `lib/bookings/`**; one gating idiom (`can()`).
-  - **Preserve exactly:** commission is **ADMIN-only**; conversion value is **`commission_amount` in EUR, never GMV**; a confirmed booking with a null commission renders an **error**, never a conversion.
-  - Booking list rows now carry ledger-derived **`paymentStatus`** (`PAID | PARTIALLY_PAID | UNPAID | REFUNDED`) **+ `paidAmount`** — for operators too, unconditional.
 
-**Payments (`/payments`, admin + operator)** — **a dead end**: no actions column, no row-actions file, no detail view, no status transitions. **The only money-touching module with no drill-in**, while Bookings — sharing the same `types/booking` shape — has a details dialog and a cancel action. **Payments detail + refund transitions are BLOCKED on backend request A7**; until then the read-only list is at least *honestly* read-only — **do not add affordances the API cannot serve.** Parity requires correct provider/method rendering and **money with exact decimals and the correct currency**.
+- **Preserve exactly:** commission is **ADMIN-only**; conversion value is **`commission_amount` in EUR, never GMV**; a confirmed booking with a null commission renders an **error**, never a conversion.
+- Booking list rows now carry ledger-derived **`paymentStatus`** (`PAID | PARTIALLY_PAID | UNPAID | REFUNDED`) **+ `paidAmount`** — for operators too, unconditional.
+
+**Payments (`/payments`, admin + operator)** — **a dead end**: no actions column, no row-actions file, no detail view, no status transitions. **The only money-touching module with no drill-in**, while Bookings — sharing the same `types/booking` shape — has a details dialog and a cancel action. **Payments detail + refund transitions are BLOCKED on backend request A7**; until then the read-only list is at least _honestly_ read-only — **do not add affordances the API cannot serve.** Parity requires correct provider/method rendering and **money with exact decimals and the correct currency**.
 
 **Cancellation requests (`/cancellation-requests`, admin + operator)** — today a boolean: `<BookingsListView cancellationView />`, **zero components** — clever reuse, invisible as a workflow. Shows 3 extra columns. **Target: a real queue** — pending first, **the free-cancellation window and refund-due surfaced as columns not prose**, approve/reject inline, nav badge.
 
-**Refunds** — no dedicated module. Refund handling is the `refundDue` computation in the bookings surface plus the confirm dialog's branching copy; **transitions are BLOCKED on A7**. In the ledger, **a refund flips the original payment to `REFUNDED` *and* writes a separate `kind = REFUND` row** (see E.4).
+**Refunds** — no dedicated module. Refund handling is the `refundDue` computation in the bookings surface plus the confirm dialog's branching copy; **transitions are BLOCKED on A7**. In the ledger, **a refund flips the original payment to `REFUNDED` _and_ writes a separate `kind = REFUND` row** (see E.4).
 
 **Settlements / payouts** — **no dashboard module exists.** `payoutDueEur` is surfaced in analytics as **earned-and-unsettled**; the settlements ledger (SETTLEMENT-AND-PAYOUTS Phase 1) is **unbuilt**, so it reports what is **owed**, not what is **unpaid**.
 
@@ -7364,11 +7480,12 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 **Platform reviews (third-party)** — `/platform-reviews` module: an admin configures a **Trustpilot API or Google Reviews API** key in dashboard **Settings → Reviews** (**encrypted key, DB-cached payload, 12h lazy refresh, manual "Fetch now"**). The homepage Testimonials band renders the live payload and **stays hidden until enabled AND platform review count > 100** — the gate is enforced **server-side in `GET /platform-reviews/public`**. The public loader `getPlatformReviews` is an **external-provider aggregate with no change event**, so it is deliberately excluded from the cache-tag/ISR-cost passes.
 
 **Customers / Users (`/users`)** — two distinct things share the name:
-  - The **audited `users` stub** (static JSX, `page.tsx` + `new/page.tsx`, 8 lines each) is **BLOCKED on A3** (`GET /users` paginated + filterable, plus role management). Target: `EntityTable` + role column + invite flow; **role changes via the admin-only endpoint, never client-set**; same queue shape as Spotlight and Cancellations — **three inboxes, one pattern**.
-  - The **shipped `/users` page is Staff & Teams** (E.2.9), role-branched platform-scope vs team-scope, gated `[MANAGE_STAFF, MANAGE_TEAM]` any-of.
-  - **Customer-facing surfaces** (`Role.USER`): `components/customer/customer-bookings-view.tsx` (stat row from `me/summary` + own-bookings table + details sheet), `customer-booking-details.tsx` (trip/payment sections + cancellation request with "nothing is cancelled until we process it" copy), `customer-payments-view.tsx` (charges/refunds table), `payment-state.tsx`. `app/(app)/bookings|payments/page.tsx` **branch on role server-side**. A **backend `customers` table** (one row per `(userId, operatorId)`, aggregates `firstBookingAt`/`lastBookingAt`/`bookingsCount`/`totalSpendEur`) exists to feed a **FUTURE operator-facing "Customers" page only** — **customer-facing totals always come live from `GET /bookings/me/summary`**, never the aggregates.
 
-**Tour Operators (`/tour-operators`, admin only)** — 1,001 LOC. **A `DashboardTabNav` wrapping a single tab labeled "Details"** — a navigation primitive rendering navigation for nothing, and a *different* primitive from the four entity editors. Own hand-rolled `<Input>` search instead of the shared `TableSearchInput`. 5 palette classes. **No onboarding visibility.** **Target:** delete the single-tab nav and render the form; adopt `EntityTable` + `TableSearchInput`; **add an onboarding status column** (the data exists — the layout already branches on `user.operator`); add **tour count + tier distribution** so an admin can assess an operator without leaving the row. ~1,001 → ~800.
+- The **audited `users` stub** (static JSX, `page.tsx` + `new/page.tsx`, 8 lines each) is **BLOCKED on A3** (`GET /users` paginated + filterable, plus role management). Target: `EntityTable` + role column + invite flow; **role changes via the admin-only endpoint, never client-set**; same queue shape as Spotlight and Cancellations — **three inboxes, one pattern**.
+- The **shipped `/users` page is Staff & Teams** (E.2.9), role-branched platform-scope vs team-scope, gated `[MANAGE_STAFF, MANAGE_TEAM]` any-of.
+- **Customer-facing surfaces** (`Role.USER`): `components/customer/customer-bookings-view.tsx` (stat row from `me/summary` + own-bookings table + details sheet), `customer-booking-details.tsx` (trip/payment sections + cancellation request with "nothing is cancelled until we process it" copy), `customer-payments-view.tsx` (charges/refunds table), `payment-state.tsx`. `app/(app)/bookings|payments/page.tsx` **branch on role server-side**. A **backend `customers` table** (one row per `(userId, operatorId)`, aggregates `firstBookingAt`/`lastBookingAt`/`bookingsCount`/`totalSpendEur`) exists to feed a **FUTURE operator-facing "Customers" page only** — **customer-facing totals always come live from `GET /bookings/me/summary`**, never the aggregates.
+
+**Tour Operators (`/tour-operators`, admin only)** — 1,001 LOC. **A `DashboardTabNav` wrapping a single tab labeled "Details"** — a navigation primitive rendering navigation for nothing, and a _different_ primitive from the four entity editors. Own hand-rolled `<Input>` search instead of the shared `TableSearchInput`. 5 palette classes. **No onboarding visibility.** **Target:** delete the single-tab nav and render the form; adopt `EntityTable` + `TableSearchInput`; **add an onboarding status column** (the data exists — the layout already branches on `user.operator`); add **tour count + tier distribution** so an admin can assess an operator without leaving the row. ~1,001 → ~800.
 
 **Tiers & Spotlight approval (`/spotlight`, admin approves / operator requests)** — Spotlight is 1,042 LOC with **24 palette classes in `spotlight-columns.tsx`** (#3 offender), its own `statusStyles` convention, client pagination, no skeleton, a shallower empty state. **Neither Spotlight nor Locals' Favourites is discoverable** — both are editorial powers with real commercial consequence, buried in a flat sidebar. **Target:** both under `CURATE`, adjacent; **Spotlight approvals get a queue shape** — pending first, approve/reject inline, badge on the nav item (**it is an inbox; make it one**); `StatusBadge` for both. Tier selection itself lives on the tour's **Promotion tab** (tier change with the **30-day lock** enforced, plus the spotlight request).
 
@@ -7388,7 +7505,7 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 **Translations console (`/translations`)** — see E.3.5.
 
-**Slug registry / redirects** — **no dedicated dashboard module.** The slug field lives on each entity's create/edit form (editable on create with auto-generation from name; editable on edit **with a note that renaming issues a 301 redirect**). `types/slug-registry.ts` exists dashboard-side; the dashboard's only interaction is the **`slug-registry` cache tag** emitted on tour and entity writes. Parity check 53: *rename a slug → 301 works, slug-registry tag busted.*
+**Slug registry / redirects** — **no dedicated dashboard module.** The slug field lives on each entity's create/edit form (editable on create with auto-generation from name; editable on edit **with a note that renaming issues a 301 redirect**). `types/slug-registry.ts` exists dashboard-side; the dashboard's only interaction is the **`slug-registry` cache tag** emitted on tour and entity writes. Parity check 53: _rename a slug → 301 works, slug-registry tag busted._
 
 **Notifications** — **no dashboard module.** OCTO `octo/notifications` subscriptions are an API surface (E.11); transactional email is a BullMQ concern (E.9). Nav badges for pending counts were **DEFERRED** to the module phases that own the counts — **a badge is a promise that something needs a human, and a hardcoded one would lie.**
 
@@ -7407,18 +7524,18 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **Severity S1 — the single largest source of bloat.** Locales `['en','es','nl','pt','fr','de','zh']`. `LOCALE_LABELS` is commented "English labels (admin UI)" — **the admin interface itself is English-only; the 7 locales are a content translation workflow, not an i18n system.**
 - **Cost for one realistic tour (5 highlights, 5 inclusions, 3 exclusions, 4 itinerary stops, 2 pickups) × 6 non-English locales:** Translations tab (7 locale tabs × 13 fields) **6 saves** · Highlights 30 · Inclusions 30 · Exclusions 18 · Info & Terms (features) 6N · Itinerary (`DualTranslationRow` title+description × 6 × 4) 24 · Pickups 12 · SEO 6 → **~120 saves, 300+ clicks, 7 tabs.** Each child row must be expanded first. No progress indicator, no completeness view.
 - **The 13 translatable core fields:** `title`, `overview` (**required for publish, EN only**), `description`, `shortDescription`, `whatToBring`, `knowBeforeYouGo`, `notSuitableFor`, `whatToExpectIntro`, `categoryDisplay`, `localTipTitle`, `localTipBody`, `operatorNote`, `meetingPointText`. **Three are `string[]` on the backend**, edited as newline-delimited textareas (`linesToArray`/`arrayToLines`).
-- **Three aggravators:** (1) **the source text is never on screen** — the German tab renders 13 empty inputs placeheld "Overview in German" and the English it translates *from* appears nowhere; (2) **no machine translation exists** although `isMachineTranslated` threads through the whole type layer (14 occurrences in `types/trip.ts`), is settable on the upsert payload, and renders a "Machine Translated" badge in 6 components — **the data model is complete for a feature the UI never built** (`grep -E "autoTranslate|translateAll|deepl|openai"` returns **zero**; the SEO tab's "Regenerate" is client-side `truncate(collapse(...))`, not translation); (3) **no completeness view** — "which tours are ready for the German market?" is unanswerable without opening every tour and clicking every locale tab.
+- **Three aggravators:** (1) **the source text is never on screen** — the German tab renders 13 empty inputs placeheld "Overview in German" and the English it translates _from_ appears nowhere; (2) **no machine translation exists** although `isMachineTranslated` threads through the whole type layer (14 occurrences in `types/trip.ts`), is settable on the upsert payload, and renders a "Machine Translated" badge in 6 components — **the data model is complete for a feature the UI never built** (`grep -E "autoTranslate|translateAll|deepl|openai"` returns **zero**; the SEO tab's "Regenerate" is client-side `truncate(collapse(...))`, not translation); (3) **no completeness view** — "which tours are ready for the German market?" is unanswerable without opening every tour and clicking every locale tab.
 - **There is no shared `LocaleTab`** — it is redefined from scratch in 5 modules (`trips/trip-translations-tab.tsx:80`, `destinations/destination-translation-form.tsx:39`, `categories/category-translation-form.tsx:39`, `hubs/hub-translation-form.tsx:40`, `collections/collection-translation-form.tsx:41`), plus a 6th variant `rationale-translation-tabs.tsx` (97 LOC). `destination-` vs `category-translation-form.tsx` are **272 lines each and identical except mechanical renames** (~30-line diff, one of which is the string "destination page" → "category page").
-- **Diagnosis:** translation was modeled as a *field attribute* ("every field has 7 versions") when it is a *workload* ("a person renders one entity into one language"). **The UI mirrors the database schema instead of the job.**
+- **Diagnosis:** translation was modeled as a _field attribute_ ("every field has 7 versions") when it is a _workload_ ("a person renders one entity into one language"). **The UI mirrors the database schema instead of the job.**
 - **The console:** `/translations` (matrix: what needs doing) and `/translations/[type]/[id]/[locale]` (workspace: do it).
-  - **The matrix** — rows = entities, columns = the 7 locales, cells = ✓ complete / ⬤ partial / ○ missing, filterable by type/destination/status, with a **Bulk pre-translate** action. A cell is a completeness ratio across **every** translatable surface for that entity, not just the Translations tab.
-  - **The workspace** — one locale, every field, **source beside target**, one save. Header shows `[ 8 / 21 fields ]`; left column English (source, read-only), right column the target inputs; covers all 13 core fields **plus** every highlight, inclusion, exclusion, feature, itinerary stop, pickup and SEO field. Footer: `[ Pre-translate all empty ]  [ Save all (13 changes) ]`.
-  - **Outcome:** clicks 300+ → ~30; saves ~120 → 6; screens 7 tabs × 6 locales → 6; source text visible; completeness visible; LOC ~1,145 (5 forks) + trips' tab → ~450 (one console).
+    - **The matrix** — rows = entities, columns = the 7 locales, cells = ✓ complete / ⬤ partial / ○ missing, filterable by type/destination/status, with a **Bulk pre-translate** action. A cell is a completeness ratio across **every** translatable surface for that entity, not just the Translations tab.
+    - **The workspace** — one locale, every field, **source beside target**, one save. Header shows `[ 8 / 21 fields ]`; left column English (source, read-only), right column the target inputs; covers all 13 core fields **plus** every highlight, inclusion, exclusion, feature, itinerary stop, pickup and SEO field. Footer: `[ Pre-translate all empty ]  [ Save all (13 changes) ]`.
+    - **Outcome:** clicks 300+ → ~30; saves ~120 → 6; screens 7 tabs × 6 locales → 6; source text visible; completeness visible; LOC ~1,145 (5 forks) + trips' tab → ~450 (one console).
 - **Pre-translate** fills every empty target from the EN source, marks each `isMachineTranslated: true`, and leaves them editable for review — the badge then means something. **BLOCKED on A4** (the DB column, DTO field, type and badge already exist end-to-end; **only the generator is missing**).
 - **Delete the Translations tab from all 5 modules.** Every entity editor's Translations tab becomes a **link into the console** showing a locale completeness summary; the five private `LocaleTab` implementations (~1,145 LOC) are deleted. **This is the make-or-break instruction** — adding a console while leaving the tabs in place gives operators two ways to do one job and deletes nothing.
 - **`lib/translatable-schema.ts` is the design** — one declarative registry describing what is translatable per entity type (tour: 13 core + highlights[] + inclusions[] + exclusions[] + features[] + locations[] + pickups[] + seo{}; destination: name, overview, h1Override, breadcrumbLabel + pageContent + seo; category/hub/collection the same shape; collection + per-tour rationale). **Adding a translatable field is one registry entry, not a change in 5 forked forms.** It also retires `trip-translations-tab.tsx`'s worst property: restating the same 13-field list **four times**.
 - **Architecture:** `app/(app)/translations/page.tsx` SERVER (filters + matrix); `[type]/[id]/[locale]/page.tsx` SERVER (fetch source + target); `translation-matrix.tsx` client (virtualized grid); `completeness-cell.tsx` SERVER pure; `workspace/workspace.tsx` client (ONE RHF form, all fields); `field-pair.tsx` SERVER (source read-only | target client input); `pretranslate-button.tsx` client **[BLOCKED A4]**.
-- **States:** *Empty* — "No EN content yet. Translations need a source." + link to Setup. *Loading* — two-column skeleton. *Error* — per-field inline; a failed field never blocks the rest. *Saving* — one progress row with per-field success/failure. *Conflict* — flag "source updated" if EN changed since the translation was saved (**BLOCKED**: needs a source-updated timestamp; verify whether `updatedAt` on the EN translation suffices).
+- **States:** _Empty_ — "No EN content yet. Translations need a source." + link to Setup. _Loading_ — two-column skeleton. _Error_ — per-field inline; a failed field never blocks the rest. _Saving_ — one progress row with per-field success/failure. _Conflict_ — flag "source updated" if EN changed since the translation was saved (**BLOCKED**: needs a source-updated timestamp; verify whether `updatedAt` on the EN translation suffices).
 - **Deleted by the console:** 5 `LocaleTab` implementations, `trip-translations-tab.tsx`, `rationale-translation-tabs.tsx`, `translation-row.tsx`, `dual-translation-row.tsx` — **~1,400 LOC.**
 - **Preserve the EN rule exactly:** English "Clear Fields" **upserts nulls**, never calls delete (the backend blocks it). Translation upserts always use the **`{ fields: { ... } }` wrapper**; flat sends 400 on `forbidNonWhitelisted`.
 - **Rollback is large** — the one defensible R7 exception: land the console first and delete the tabs in an **immediate, same-day** follow-up (**not same-quarter**). ⚠️ Risk: `lib/translatable-schema.ts` must be exhaustive — **a missed field silently becomes untranslatable.**
@@ -7435,28 +7552,28 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 - **Service invariants:** **the public read is a `findUnique`, NEVER the self-seeding upsert the admin read uses — an anonymous GET must not write** (a missing row returns an **all-null payload rather than 404**); **an archived editorial destination reports `editorialDestinationSlug: null`** so the homepage never advertises a link that 404s; writes use **conditional spreads** so an absent field is untouched and an explicit `null` clears it; **translation writes seed the singleton first**; **there is no delete route — clearing is a null upsert.**
 - **Homepage FAQ** (migration `20260720151119_faq_page_type_homepage`, one `ALTER TYPE "FaqPageType" ADD VALUE 'homepage'`): `GET/POST /home-page/:entityId/faqs/groups`, `PATCH/DELETE /home-page/:entityId/faqs/groups/:groupId`, `PUT /home-page/:entityId/faqs/groups/:groupId/translations/:locale` — all `MANAGE_EDITORIAL`, thin delegation to the `@Global` `FaqGroupService`. **`:entityId` is always the singleton key `'default'` and anything else 404s**; it stays in the path purely so the dashboard's shared `FaqManager` and `faqGroupsApi` work with **zero dashboard changes**. **Public FAQs ride along inside `GET /home-page/public`** (one cached read beats two; no new cache tag). **Locale rule: only FAQs that exist in the REQUESTED locale are returned** — an untranslated FAQ is **omitted rather than falling back to English**; an empty list means the frontend keeps its **full bundled dictionary set** (a complete block rather than a half-English one). The frontend **swaps `faqDict.items` wholesale**, never appends.
 - **Featured experiences (Top Island Experiences)** — `FeaturedExperience` already existed in `prisma/destinations.prisma`, migrated and demo-seeded, **with ZERO application code**: `entityType (CATEGORY|HUB) + entityId + destinationId? + videoUrl + displayOrder + isActive`. **The `videoUrl` column exists precisely for the video cards `top-experiences.tsx` hardcodes.** Migration `20260720133830_featured_experience_destination_fk` gave `destinationId` a real relation with **`onDelete: Cascade`**; **`entityId` deliberately does NOT, because it cannot** (it points at either a Category or a Hub, and a relational FK targets exactly one table).
-  - **Routes** (`src/featured-experiences/`): `GET /featured-experiences/public?locale=&destination=` (`@Public()`); `GET`, `POST`, `PATCH /:id`, `DELETE /:id` — all **`MANAGE_EDITORIAL`**.
-  - The resolver returns `{ id, entityType, title, image, videoUrl, href }` where **everything except `videoUrl` comes from the referenced Category/Hub** — a card inherits that entity's translations and **can never drift from its target page**.
-  - **THE GATE IS THE FEATURE.** Every card **mirrors the exact condition its target page 404s on**, and anything failing is **dropped**: **category** → `destination.isActive && category.isActive && liveTourCount > 0`; **hub** → `isActive && status === PUBLISHED && liveTourCount > 0`; **a hub pinned to an island other than its own**; **an orphan row whose target no longer exists**.
-  - **Image falls back `heroImage || ogImage || null`**, then the frontend falls back to bundled art (the demo seed populates `ogImage` but not `heroImage` on categories, so without this every card rendered grey).
-  - **A destination-less CATEGORY row had no URL at all** (category pages exist only per-destination; there is no global category route, and the navbar's destination-less branch is dead code). Rows now resolve to **the destination where the category has the most live tours (ties broken by id, so the pick is stable)** — guaranteeing a page that renders and picking the most convincing one.
-  - **Frontend:** `TopExperiences` derives its slide count, loop copies, start index and dot row from the array; **fewer than 3 resolved cards falls back to the bundled deck**; the link is a **stretched overlay sibling** (`absolute inset-0 z-10`), not a wrapper, because **a button nested inside an anchor is invalid HTML** (the play button sits at `z-20`); **Embla 8 has NO `clickAllowed()`**, so drag-vs-click is decided by measuring pointer travel against an **8px slop**.
-  - **Fixed in passing:** `categories.forceDelete` claimed Prisma cascade handled FAQs — **it does not** (`Faq` is polymorphic with no FK), so every hard-deleted category was **leaking its FAQ rows**. The transaction now deletes both `Faq` and `FeaturedExperience` rows by discriminator.
+    - **Routes** (`src/featured-experiences/`): `GET /featured-experiences/public?locale=&destination=` (`@Public()`); `GET`, `POST`, `PATCH /:id`, `DELETE /:id` — all **`MANAGE_EDITORIAL`**.
+    - The resolver returns `{ id, entityType, title, image, videoUrl, href }` where **everything except `videoUrl` comes from the referenced Category/Hub** — a card inherits that entity's translations and **can never drift from its target page**.
+    - **THE GATE IS THE FEATURE.** Every card **mirrors the exact condition its target page 404s on**, and anything failing is **dropped**: **category** → `destination.isActive && category.isActive && liveTourCount > 0`; **hub** → `isActive && status === PUBLISHED && liveTourCount > 0`; **a hub pinned to an island other than its own**; **an orphan row whose target no longer exists**.
+    - **Image falls back `heroImage || ogImage || null`**, then the frontend falls back to bundled art (the demo seed populates `ogImage` but not `heroImage` on categories, so without this every card rendered grey).
+    - **A destination-less CATEGORY row had no URL at all** (category pages exist only per-destination; there is no global category route, and the navbar's destination-less branch is dead code). Rows now resolve to **the destination where the category has the most live tours (ties broken by id, so the pick is stable)** — guaranteeing a page that renders and picking the most convincing one.
+    - **Frontend:** `TopExperiences` derives its slide count, loop copies, start index and dot row from the array; **fewer than 3 resolved cards falls back to the bundled deck**; the link is a **stretched overlay sibling** (`absolute inset-0 z-10`), not a wrapper, because **a button nested inside an anchor is invalid HTML** (the play button sits at `z-20`); **Embla 8 has NO `clickAllowed()`**, so drag-vs-click is decided by measuring pointer travel against an **8px slop**.
+    - **Fixed in passing:** `categories.forceDelete` claimed Prisma cascade handled FAQs — **it does not** (`Faq` is polymorphic with no FK), so every hard-deleted category was **leaking its FAQ rows**. The transaction now deletes both `Faq` and `FeaturedExperience` rows by discriminator.
 - ⚠️ CONFLICT — category gating: `CLAUDE.md` says a category page renders at **≥3** published tours per destination; **the code gates at ≥1** (`categories.service.ts` `getPublishedTourCount` + the detail 404). **The featured-card gate mirrors the CODE**, because its job is to match the real 404 condition. **If ≥3 is intended, both the category service and this gate change together.**
 - **Dashboard editor (Phase 4):** nav is a **`Pages` group placed immediately before `Account`**, gated `MANAGE_EDITORIAL`; **the route stays root-level (`/homepage`)**; the editor uses **no `EntityDetailShell`** because it is a top-level tabbed singleton, same as Settings. `app/(app)/homepage` → `HomepageEditView` → `EntityTabs`, **tabs in the order the sections appear ON THE PAGE (Hero, Experiences, CTA Card, FAQs, then SEO)** — scanning the tab row is scanning the homepage top to bottom.
-  - **Label by consequence** — `HomepageField` takes a `where` prop describing where the text lands ("the large text over the hero photo"), **never a column name**.
-  - **Show the fallback** — the shipped copy is the placeholder AND, while a field is empty, an explicit **"Currently showing the built-in default"** note. Defaults live in `lib/home-page/defaults.ts` — **the ONE cross-repo duplication in this feature**, display-only, so drift costs a stale hint, never wrong data.
-  - **Publishing honesty** — `HomepageSectionCard` renders **"Saving publishes straight to the live homepage"** beside every save button; **there is no draft state, so nothing should imply one.**
-  - **English inline, other locales in the Console** — each translatable card links straight to the workspace.
-  - `useSaveHomepageSection` composes the two endpoints a tab spans (locale-agnostic fields + English copy) **so one button saves both, sequentially rather than in parallel** — both write the same singleton, and a half-applied pair is easier to reason about than two racing writes.
-  - **The Experiences tab carries the real product logic:** it states that **a card whose target has no live tour is dropped, and for hubs that bar is HIGHER than the hub page's own**; that **below 3 live cards the site ignores curation entirely and keeps its bundled deck** (so 1-2 cards produce no visible change — the notice says so with the count); it **warns past 5** (carousel geometry), **flags rows whose target was deleted** (`entityName: null`), and **surfaces the 409 duplicate error inline**.
+    - **Label by consequence** — `HomepageField` takes a `where` prop describing where the text lands ("the large text over the hero photo"), **never a column name**.
+    - **Show the fallback** — the shipped copy is the placeholder AND, while a field is empty, an explicit **"Currently showing the built-in default"** note. Defaults live in `lib/home-page/defaults.ts` — **the ONE cross-repo duplication in this feature**, display-only, so drift costs a stale hint, never wrong data.
+    - **Publishing honesty** — `HomepageSectionCard` renders **"Saving publishes straight to the live homepage"** beside every save button; **there is no draft state, so nothing should imply one.**
+    - **English inline, other locales in the Console** — each translatable card links straight to the workspace.
+    - `useSaveHomepageSection` composes the two endpoints a tab spans (locale-agnostic fields + English copy) **so one button saves both, sequentially rather than in parallel** — both write the same singleton, and a half-applied pair is easier to reason about than two racing writes.
+    - **The Experiences tab carries the real product logic:** it states that **a card whose target has no live tour is dropped, and for hubs that bar is HIGHER than the hub page's own**; that **below 3 live cards the site ignores curation entirely and keeps its bundled deck** (so 1-2 cards produce no visible change — the notice says so with the count); it **warns past 5** (carousel geometry), **flags rows whose target was deleted** (`entityName: null`), and **surfaces the 409 duplicate error inline**.
 - **Review round (2026-07-20) — five points, four real defects, all fixed:**
-  1. **The shared FaqManager pointed the homepage at a dead link** — `CONSOLE_TYPE_BY_BASE` had no `/home-page` entry and fell back to `?? 'destination'`, so every homepage FAQ linked to a route that does not exist. Added the mapping **and removed the fallback: an unmapped basePath now renders NO pointer, because a wrong link is worse than a missing one.**
-  2. **The forms duplicated the shared settings kit** — `HomepageSectionCard`/`HomepageField` re-implemented `SettingsCard`/`TextField`/`TextareaField`/`ImageField`. **Both duplicates deleted;** the behaviour survived as **`describeField(where, value, fallback)`** building the `description` the shared field already accepts.
-  3. FAQs already used the shared manager and console — correct; only the link was broken.
-  4. Tabs already used the shared `EntityTabs` — the divergence was form internals.
-  5. **A media field asked for a pasted URL** — the featured-experience video was a raw `<Input>`, **the one field in the dashboard not backed by the media library**. A video picker now exists (see E.7).
-  - **Security (HIGH): unvalidated media URLs could take the homepage down site-wide.** `heroImage`/`ogImage`/`editorialImages`/`videoUrl` were `@IsString()` only; **`next/image` THROWS at render on a src it cannot load**, and this singleton sits inside the prerendered shell of every locale's front page — **one bad save blanked the site's front door in every language.** Fixed in two layers: **write time** `@IsUrl({ protocols: ['https'] })` + `@MaxLength(2048)` (**nulls still pass, so clearing still restores defaults**); **render time** `lib/images/remote-hosts.ts` is the **SINGLE source of truth for allowed hosts** — `next.config.ts` derives `remotePatterns` from it and **`safeRemoteImage()` re-checks at render, falling back to bundled art**. **Host allow-listing is deliberately NOT duplicated in the backend.**
+    1. **The shared FaqManager pointed the homepage at a dead link** — `CONSOLE_TYPE_BY_BASE` had no `/home-page` entry and fell back to `?? 'destination'`, so every homepage FAQ linked to a route that does not exist. Added the mapping **and removed the fallback: an unmapped basePath now renders NO pointer, because a wrong link is worse than a missing one.**
+    2. **The forms duplicated the shared settings kit** — `HomepageSectionCard`/`HomepageField` re-implemented `SettingsCard`/`TextField`/`TextareaField`/`ImageField`. **Both duplicates deleted;** the behaviour survived as **`describeField(where, value, fallback)`** building the `description` the shared field already accepts.
+    3. FAQs already used the shared manager and console — correct; only the link was broken.
+    4. Tabs already used the shared `EntityTabs` — the divergence was form internals.
+    5. **A media field asked for a pasted URL** — the featured-experience video was a raw `<Input>`, **the one field in the dashboard not backed by the media library**. A video picker now exists (see E.7).
+    - **Security (HIGH): unvalidated media URLs could take the homepage down site-wide.** `heroImage`/`ogImage`/`editorialImages`/`videoUrl` were `@IsString()` only; **`next/image` THROWS at render on a src it cannot load**, and this singleton sits inside the prerendered shell of every locale's front page — **one bad save blanked the site's front door in every language.** Fixed in two layers: **write time** `@IsUrl({ protocols: ['https'] })` + `@MaxLength(2048)` (**nulls still pass, so clearing still restores defaults**); **render time** `lib/images/remote-hosts.ts` is the **SINGLE source of truth for allowed hosts** — `next.config.ts` derives `remotePatterns` from it and **`safeRemoteImage()` re-checks at render, falling back to bundled art**. **Host allow-listing is deliberately NOT duplicated in the backend.**
 - **Cache-tag contract:** `homepage` added to `COARSE_CACHE_TAGS` **in both repos**, plus `case 'home-page'` in the dashboard's `tagsForMutation`. **Coarse rather than granular because there is exactly one homepage.** The featured-experiences loader carries **`cacheTag('homepage', 'tours')`** — **the second tag is load-bearing**: card visibility depends on the target still having a live tour, so a tour going dark must regenerate the list. Dashboard maps `case 'featured-experiences'` → `homepage`.
 - **NOT verified: the rendered dashboard UI.** Every dashboard route 307s to `/portal` without a session; **the editor needs a human pass before it is trusted.**
 
@@ -7481,6 +7598,7 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 2. **Mixed currencies added together** under a hardcoded `$` — USD and EUR summed as the same unit.
 3. **`Total Customers` was the literal constant `0`**; "No customers yet" was the else-branch of a value also pinned to `0`. Not computed from anything.
 4. **6-month trend charts were fabricated** — one real current-month value × a fixed `0.6 / 0.7 / 0.8 / 0.85 / 0.9 / 1.0` ramp, with hardcoded `Jun`–`Nov` labels that never moved with the calendar. **Both empty-state guards were short-circuited with `|| true // Forced true for mock visualization`**, so a brand-new tenant saw a flat-zero chart instead of an empty state.
+
 - Also: **`Inquiries & Leads`** and **`Customer Insights`** were hardcoded zeros with no backing model.
 - **Module rule: every number is a live aggregate. A zero on screen means the query genuinely returned zero. Nothing is estimated, extrapolated, or placeheld.**
 
@@ -7488,24 +7606,24 @@ Additional permission keys named across the doc set: `MANAGE_STAFF`, `MANAGE_TEA
 
 Per master §1.4/§5.8 the traveler pays the tier-driven **deposit (20–30%) to Island Tours** at checkout, and **that deposit IS the platform's commission**; the operator keeps the balance, collected on their own rails.
 
-| Model | IT collects at checkout | Operator collects | Platform tracks the operator's half? |
-|---|---|---|---|
-| `OPERATOR_LINK` (default) | deposit | balance, via their link | **No** |
-| `ON_ARRIVAL` | deposit | balance, in person | **No** |
-| `PAID_IN_FULL` | 100% | nothing | Yes, and IT **owes** them the net |
-| `OPERATOR_FULL` | nothing | everything | **Dropped for v1** |
+| Model                     | IT collects at checkout | Operator collects       | Platform tracks the operator's half? |
+| ------------------------- | ----------------------- | ----------------------- | ------------------------------------ |
+| `OPERATOR_LINK` (default) | deposit                 | balance, via their link | **No**                               |
+| `ON_ARRIVAL`              | deposit                 | balance, in person      | **No**                               |
+| `PAID_IN_FULL`            | 100%                    | nothing                 | Yes, and IT **owes** them the net    |
+| `OPERATOR_FULL`           | nothing                 | everything              | **Dropped for v1**                   |
 
 #### E.4.3 Role-shaped payload — `GET /analytics/dashboard` returns the same keys with audience-dependent meaning
 
-| Field | ADMIN | OPERATOR |
-|---|---|---|
-| `earnedEur` | commission earned | retail minus commission (**net**) |
-| `commissionEur` | what the marketplace made | what they **paid** the marketplace |
-| `payoutDueEur` | liability owed **out** to operators | money owed **to** them |
-| `untrackedBalanceEur` | balance never flowing through IT | their own off-platform takings |
-| `cashCollectedEur` / `refundedEur` | Stripe ledger | **null** (not applicable) |
-| `customers.registered` | USER-account count | **null** (not their data) |
-| `breakdowns.topOperators` / `topDestinations` / `byTier` | populated | **empty** (no cross-operator leakage) |
+| Field                                                    | ADMIN                               | OPERATOR                              |
+| -------------------------------------------------------- | ----------------------------------- | ------------------------------------- |
+| `earnedEur`                                              | commission earned                   | retail minus commission (**net**)     |
+| `commissionEur`                                          | what the marketplace made           | what they **paid** the marketplace    |
+| `payoutDueEur`                                           | liability owed **out** to operators | money owed **to** them                |
+| `untrackedBalanceEur`                                    | balance never flowing through IT    | their own off-platform takings        |
+| `cashCollectedEur` / `refundedEur`                       | Stripe ledger                       | **null** (not applicable)             |
+| `customers.registered`                                   | USER-account count                  | **null** (not their data)             |
+| `breakdowns.topOperators` / `topDestinations` / `byTier` | populated                           | **empty** (no cross-operator leakage) |
 
 Additional metrics carried in the response blocks: `revenue`, `bookings` (incl. `byPaymentModel` + `funnel`), `trips`, `customers`, `payments`, `trend`, `breakdowns`, `recent`, plus `fx`. **`pendingEur`** reports confirmed-but-not-travelled money separately.
 
@@ -7517,7 +7635,7 @@ Additional metrics carried in the response blocks: `revenue`, `bookings` (incl. 
 
 #### E.4.5 The five data-layer traps handled
 
-- **Refunds are double-recorded.** A refund flips the original payment to `REFUNDED` *and* writes a separate `kind = REFUND` row. **Gross counts `SUCCEEDED` inbound kinds only; refunds count `REFUND` rows only.** Summing `status='REFUNDED'` would double count.
+- **Refunds are double-recorded.** A refund flips the original payment to `REFUNDED` _and_ writes a separate `kind = REFUND` row. **Gross counts `SUCCEEDED` inbound kinds only; refunds count `REFUND` rows only.** Summing `status='REFUNDED'` would double count.
 - **Mixed currency.** Every money aggregate multiplies by the booking's own **snapshotted `fxRateToEur`** → USD/EUR ledger sums correctly and historically. **Never a live rate.**
 - **Guest bookings.** A customer is a distinct booker keyed by **`COALESCE(userId, lower(contactEmail))`**. `reserve()` writes `userId: null` for guests, so counting `User` rows alone would report **zero customers while bookings flow**.
 - **Freesale bookings.** "Upcoming" keys off **`booking.localDate`**, not the `departure` relation, because freesale bookings carry `departureId: null`.
@@ -7532,20 +7650,20 @@ GET /api/v1/analytics/dashboard?granularity=month|day&buckets=2..24
 
 - **Scope follows the caller:** `ADMIN`/`STAFF`/`EDITOR` are platform-wide; `TOUR_OPERATOR` resolves to its own `operatorId` — **mirroring `isPlatformWideBookingRole` in `bookings.service`, so a KPI can never exceed what the caller's booking list justifies.**
 - **`fx`** carries one live **EUR → USD** rate so the UI renders both currencies from a single conversion. It is **`null`** when no fresh rate exists, and the UI then shows **EUR alone rather than converting at a stale rate**.
-- **`bookings.funnel`** is labelled **"booking outcomes", not a marketing funnel**: the platform stores only a booking's *current* status and has no view/cart event store, so pre-booking steps cannot be reported honestly. It reports **created → committed → completed** with `commitRate`, `completionRate`, `expiryRate`, `cancellationRate`.
+- **`bookings.funnel`** is labelled **"booking outcomes", not a marketing funnel**: the platform stores only a booking's _current_ status and has no view/cart event store, so pre-booking steps cannot be reported honestly. It reports **created → committed → completed** with `commitRate`, `completionRate`, `expiryRate`, `cancellationRate`.
 
 #### E.4.7 Verified against live data (2026-07-20, platform scope, demo-seeded DB, 263 bookings)
 
-| Figure | Value |
-|---|---|
-| Commission earned (REDEEMED) | 8,914.30 EUR |
-| Commission pending (CONFIRMED) | 3,568.30 EUR |
-| GMV | 50,154.14 EUR |
-| Payouts due to operators | 11,419.19 EUR |
-| Untracked operator-rail balance | 26,279.74 EUR |
-| Stripe cash collected / refunded | 23,874.29 / 2,006.68 EUR |
-| Customers (distinct bookers) | 15 (12 registered) |
-| Funnel | 263 created, 80.6% commit, 70.8% completion, 9% cancellation |
+| Figure                           | Value                                                        |
+| -------------------------------- | ------------------------------------------------------------ |
+| Commission earned (REDEEMED)     | 8,914.30 EUR                                                 |
+| Commission pending (CONFIRMED)   | 3,568.30 EUR                                                 |
+| GMV                              | 50,154.14 EUR                                                |
+| Payouts due to operators         | 11,419.19 EUR                                                |
+| Untracked operator-rail balance  | 26,279.74 EUR                                                |
+| Stripe cash collected / refunded | 23,874.29 / 2,006.68 EUR                                     |
+| Customers (distinct bookers)     | 15 (12 registered)                                           |
+| Funnel                           | 263 created, 80.6% commit, 70.8% completion, 9% cancellation |
 
 Operator scope (Miss Ann Boat Trips) returns the **other half**: `earnedEur` 9,282.78 (net), `commissionEur` 3,112.36 (paid to IT), `cashCollectedEur` null, `registered` null, `topOperators` empty. Tests: `analytics.service.spec.ts` (15); full backend suite **1228 pass**.
 
@@ -7555,7 +7673,7 @@ Operator scope (Miss Ann Boat Trips) returns the **other half**: `earnedEur` 9,2
 - [x] Booking outcomes funnel + payment-model mix + breakdown leaderboards
 - [x] Dashboard rewired to a single aggregate call (**22-request fan-out removed**)
 - [x] All fabricated series, forced empty-state guards, and unbacked cards removed
-- [ ] Settlements ledger (SETTLEMENT-AND-PAYOUTS Phase 1) — `payoutDueEur` becomes *unsettled* rather than *earned* once it exists
+- [ ] Settlements ledger (SETTLEMENT-AND-PAYOUTS Phase 1) — `payoutDueEur` becomes _unsettled_ rather than _earned_ once it exists
 - [ ] Operator-rails balance tracking — would retire `untrackedBalanceEur`'s caveat
 - [ ] Pre-booking funnel (views, add-to-cart) — needs a tracking event store
 
@@ -7565,23 +7683,23 @@ Operator scope (Miss Ann Boat Trips) returns the **other half**: `earnedEur` 9,2
 
 #### E.5.1 Confirmed parameters and target repo
 
-| Parameter | Decision |
-|---|---|
-| Split | **Own repo, now. Hard cut.** |
-| Target repo | `github.com/devripon-tr/tripwheel-x-islandtours-dashboard` |
+| Parameter                   | Decision                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Split                       | **Own repo, now. Hard cut.**                                                                                              |
+| Target repo                 | `github.com/devripon-tr/tripwheel-x-islandtours-dashboard`                                                                |
 | Domains (interim, in force) | `islandtours.esenc.cloud` · `dashboard.islandtours.esenc.cloud` · `api.islandtours.esenc.cloud` — one apex, all same-site |
-| Domains (target, deferred) | `island.tours` · `dashboard.tripwheel.io` · `api.tripwheel.io` |
-| Auth | Cookie, cross-subdomain on `.islandtours.esenc.cloud` — already the configured default |
-| Base path | Root `/` |
-| Travels with | portal + staff, onboarding, media gallery |
-| `components/ui/` | **Fork.** The dashboard diverges. |
-| Design | Free rein, new palette. Dark mode kept, both to WCAG AA. |
-| Backend | **No changes.** Requests live in 02 Appendix A. |
-| Deploy | Dockerfile + Next standalone → **changed to Vercel** (Phase 8 deviation) |
-| Locales | 7, as a content workflow. **Admin UI stays English.** |
-| Deleted | Leads, Enquiries (vestigial — "no enquiry model") |
-| Designed but blocked | Overview (A1), Reviews (A2), Users (A3), Pre-translate (A4) |
-| Local port map | **5050 backend · 3000 public site · 3001 dashboard** |
+| Domains (target, deferred)  | `island.tours` · `dashboard.tripwheel.io` · `api.tripwheel.io`                                                            |
+| Auth                        | Cookie, cross-subdomain on `.islandtours.esenc.cloud` — already the configured default                                    |
+| Base path                   | Root `/`                                                                                                                  |
+| Travels with                | portal + staff, onboarding, media gallery                                                                                 |
+| `components/ui/`            | **Fork.** The dashboard diverges.                                                                                         |
+| Design                      | Free rein, new palette. Dark mode kept, both to WCAG AA.                                                                  |
+| Backend                     | **No changes.** Requests live in 02 Appendix A.                                                                           |
+| Deploy                      | Dockerfile + Next standalone → **changed to Vercel** (Phase 8 deviation)                                                  |
+| Locales                     | 7, as a content workflow. **Admin UI stays English.**                                                                     |
+| Deleted                     | Leads, Enquiries (vestigial — "no enquiry model")                                                                         |
+| Designed but blocked        | Overview (A1), Reviews (A2), Users (A3), Pre-translate (A4)                                                               |
+| Local port map              | **5050 backend · 3000 public site · 3001 dashboard**                                                                      |
 
 ```
 tripwheel-dashboard/                    # repo root = the app, no monorepo
@@ -7615,36 +7733,36 @@ tripwheel-dashboard/                    # repo root = the app, no monorepo
 
 #### E.5.2 Verified defects
 
-| # | Defect | Severity |
-|---|---|---|
-| B-1 / D-1 | `PATCH /settings/site` never busts public `site-info`. Duplicate `case 'settings'` in `cache-revalidation.ts:142,150`; the second is unreachable. `site-info` is `cacheLife('days')`. **Live production bug.** | S1 |
-| B-2 / D-7 | `statistics.tsx:408,516` — `|| true ?` forces mock chart branches on | S2 |
-| B-3 | Dashboard home 100% fabricated (`'John Doe'`, `'Bali Adventure'`, `totalRevenue: 125000.50`, `alice@example.com`) | S2 |
-| B-4 / D-2 | `ui/sidebar.tsx:478` wraps oklch tokens in `hsl()` — invalid CSS, renders nothing | S3 |
-| B-5 / D-3,D-4,D-5 | `--shadow-2xl` / `--tracking-normal` self-referential; `--destructive-foreground` never defined | S3 |
-| B-6 / D-9 | `refundDue` / `paymentModelLabel` (money logic) exported from a columns file | S3 |
-| ~~B-7~~ | ~~Collections: 594-line CRUD form, zero RBAC gating~~ **RETRACTED — false finding. Gated since 2026-06-08.** | ~~S2~~ |
-| D-6 | `dashbaord-wraper.tsx:45` `bg-[#f1f4fa]`, no dark variant on the outermost container | — |
-| D-8 | `bookings-dashboard.ts:16-29` local `buildQuery` duplicating `lib/api/query.ts:8` | — |
+| #                 | Defect                                                                                                                                                                                                         | Severity |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------- | --- |
+| B-1 / D-1         | `PATCH /settings/site` never busts public `site-info`. Duplicate `case 'settings'` in `cache-revalidation.ts:142,150`; the second is unreachable. `site-info` is `cacheLife('days')`. **Live production bug.** | S1       |
+| B-2 / D-7         | `statistics.tsx:408,516` — `                                                                                                                                                                                   |          | true ?` forces mock chart branches on | S2  |
+| B-3               | Dashboard home 100% fabricated (`'John Doe'`, `'Bali Adventure'`, `totalRevenue: 125000.50`, `alice@example.com`)                                                                                              | S2       |
+| B-4 / D-2         | `ui/sidebar.tsx:478` wraps oklch tokens in `hsl()` — invalid CSS, renders nothing                                                                                                                              | S3       |
+| B-5 / D-3,D-4,D-5 | `--shadow-2xl` / `--tracking-normal` self-referential; `--destructive-foreground` never defined                                                                                                                | S3       |
+| B-6 / D-9         | `refundDue` / `paymentModelLabel` (money logic) exported from a columns file                                                                                                                                   | S3       |
+| ~~B-7~~           | ~~Collections: 594-line CRUD form, zero RBAC gating~~ **RETRACTED — false finding. Gated since 2026-06-08.**                                                                                                   | ~~S2~~   |
+| D-6               | `dashbaord-wraper.tsx:45` `bg-[#f1f4fa]`, no dark variant on the outermost container                                                                                                                           | —        |
+| D-8               | `bookings-dashboard.ts:16-29` local `buildQuery` duplicating `lib/api/query.ts:8`                                                                                                                              | —        |
 
 **The five things that matter:** (1) **161 of 207 dashboard files are `'use client'` (77.8%)** — the root cause of the perf profile, skeleton-first UX and tabs-instead-of-routes. (2) **7-locale entry costs 300+ clicks and ~120 saves per tour** — a missing system, not a bad screen. (3) **The cache bridge dies silently on split** — the only extraction risk no build/typecheck/import graph catches. (4) **Tour editor: 13 flat tabs, no save model, a publish contract that lies.** (5) **A stripped badge primitive caused 149 hardcoded colors** — highest leverage-to-effort fix.
 
-**The governing pattern:** *this codebase's failure mode is not missing abstractions, it is un-adopted ones.* The generic `DataTable` (813 LOC) — all 10 tables ignored it. `ConfirmDialog`, documented for "any potentially-destructive dashboard action" — 2 of ~10 consumers. Shared `DatePickerField` — the schedules tab redefined it locally. Shared `deactivate-dialog` — behind four clone wrappers. **`FaqManager` (477 LOC, 4 consumers, zero forks) is the one that won.** **Therefore R7: a PR that adds a shared component and does not delete every fork it replaces is incomplete and must be rejected. Same PR, not a follow-up ticket.**
+**The governing pattern:** _this codebase's failure mode is not missing abstractions, it is un-adopted ones._ The generic `DataTable` (813 LOC) — all 10 tables ignored it. `ConfirmDialog`, documented for "any potentially-destructive dashboard action" — 2 of ~10 consumers. Shared `DatePickerField` — the schedules tab redefined it locally. Shared `deactivate-dialog` — behind four clone wrappers. **`FaqManager` (477 LOC, 4 consumers, zero forks) is the one that won.** **Therefore R7: a PR that adds a shared component and does not delete every fork it replaces is incomplete and must be rejected. Same PR, not a follow-up ticket.**
 
 **What is NOT covered by the extraction docs:** (1) **No accessibility audit was run** — no axe, no keyboard sweep, no screen reader, no focus order; §E of 01 is static analysis only and **must not be cited as a WCAG audit**. (2) **No bundle measurement** — no `@next/bundle-analyzer`; client-component counts are a proxy. (3) **Contrast ratios in 03 are design targets, not compliance claims.** (4) **The public site's cross-site auth break is reported, not solved.**
 
 #### E.5.3 The 7 hard coupling blockers (dashboard imports FROM public site)
 
-| File | Line | Import |
-|---|---|---|
-| `collections/collection-form.tsx` | 24 | `TourBadgeChip` from `@/components/frontend/tour-badge` |
-| `collections/collection-tour-select.tsx` | 10 | same |
-| `collections/collection-tours-manager.tsx` | 17 | same |
-| `hubs/hub-comparison-manager.tsx` | 17 | same |
-| `hubs/hub-our-picks-manager.tsx` | 19 | same |
-| `hubs/hub-tour-select.tsx` | 9 | same |
-| `lib/tours/listing.ts` | 5 | type `TourListing` from `@/components/frontend/tour-card` |
-| `lib/tours/listing.ts` | 6 | type `TourBadge` from `@/components/frontend/tour-badge` |
+| File                                       | Line | Import                                                    |
+| ------------------------------------------ | ---- | --------------------------------------------------------- |
+| `collections/collection-form.tsx`          | 24   | `TourBadgeChip` from `@/components/frontend/tour-badge`   |
+| `collections/collection-tour-select.tsx`   | 10   | same                                                      |
+| `collections/collection-tours-manager.tsx` | 17   | same                                                      |
+| `hubs/hub-comparison-manager.tsx`          | 17   | same                                                      |
+| `hubs/hub-our-picks-manager.tsx`           | 19   | same                                                      |
+| `hubs/hub-tour-select.tsx`                 | 9    | same                                                      |
+| `lib/tours/listing.ts`                     | 5    | type `TourListing` from `@/components/frontend/tour-card` |
+| `lib/tours/listing.ts`                     | 6    | type `TourBadge` from `@/components/frontend/tour-badge`  |
 
 - **Resolution:** **REIMPLEMENT** `TourBadgeChip` as `components/common/tour-badge.tsx` (an admin-styled signal, **not a replica of customer chrome**); **REIMPLEMENT** `TourListing` as a local `AdminTourRow` type; **REIMPLEMENT** `TourBadge` locally. **Split `lib/tours/listing.ts` in two:** `deriveTourBadge` → dashboard `lib/tours/derive-badge.ts`; `formatTourSignals` → dashboard `lib/tours/signals.ts`; the public mappers **LEAVE**.
 - **Public imports FROM dashboard: none.** One non-dashboard file does: `components/site-header.tsx:5-6` imports `ProfileDropdown` + `WeatherSlide` from `@/components/dashboard/*`.
@@ -7657,16 +7775,16 @@ tripwheel-dashboard/                    # repo root = the app, no monorepo
 
 #### E.5.4 The two independent fetch stacks
 
-| | `apiFetch` (`lib/api/fetch.ts`) | `publicGet` / `publicFetch` |
-|---|---|---|
-| Owner | Dashboard | Public site |
-| Context | Browser | `import 'server-only'` |
-| Base URL | `${NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1` | same |
-| Auth | `credentials: 'include'` (session cookie) | `x-internal-api-key: INTERNAL_API_SECRET` |
-| Retry | `[300, 800]` + **full jitter, GET only**, on 429/503 | `[300, 800]` fixed, **no jitter** (no `Math.random()` inside `'use cache'`) |
-| Errors | throws `Error(message)` | returns `null`, never throws |
-| Caching | none (TanStack Query owns it) | none at fetch level |
-| Next coupling | calls `revalidatePublicForPath()` on success (`:64`) | `cacheTag()` in callers |
+|               | `apiFetch` (`lib/api/fetch.ts`)                                | `publicGet` / `publicFetch`                                                 |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Owner         | Dashboard                                                      | Public site                                                                 |
+| Context       | Browser                                                        | `import 'server-only'`                                                      |
+| Base URL      | `${NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1` | same                                                                        |
+| Auth          | `credentials: 'include'` (session cookie)                      | `x-internal-api-key: INTERNAL_API_SECRET`                                   |
+| Retry         | `[300, 800]` + **full jitter, GET only**, on 429/503           | `[300, 800]` fixed, **no jitter** (no `Math.random()` inside `'use cache'`) |
+| Errors        | throws `Error(message)`                                        | returns `null`, never throws                                                |
+| Caching       | none (TanStack Query owns it)                                  | none at fetch level                                                         |
+| Next coupling | calls `revalidatePublicForPath()` on success (`:64`)           | `cacheTag()` in callers                                                     |
 
 - **Third variant:** `lib/server/auth-headers.ts` (`serverAuthHeaders`) forwards **both** the cookie and the internal key; used by server actions. **Copy as-is.** `INTERNAL_API_SECRET` must match the backend's and exempts SSR from the per-IP throttle.
 - `apiFetch` **copies as-is**: error normalization `body.message` (string or `string[]`) → `throw new Error`; `204` → `undefined`; **text-first parse to survive empty-body 200s**. **One change:** the tail call `revalidatePublicForPath(path, method)` keeps its signature with a replaced implementation. **Error handling and retries are explicitly NOT in scope to redesign.**
@@ -7709,16 +7827,16 @@ Browser → dashboard origin
 
 **Project rule adapted: every var appears in `.env.example` AND `.env.production.example` in the same change.**
 
-| Var | Public? | Purpose | Example |
-|---|---|---|---|
-| `NEXT_PUBLIC_BACKEND_URL` | yes | Backend base | `https://api.islandtours.esenc.cloud` |
-| `INTERNAL_API_SECRET` | no | SSR throttle exemption; must match backend | 32+ chars |
-| `COOKIE_DOMAIN` | no | Session cookie scope; must match backend | `.islandtours.esenc.cloud` |
-| ~~`NEXT_PUBLIC_SITE_URL`~~ | — | **GHOST — does not exist. Do not add it.** No code reads it. | — |
-| `REVALIDATE_TARGET_URL` | no | Public revalidate endpoint | `https://islandtours.esenc.cloud/api/revalidate` |
-| `REVALIDATE_SECRET` | no | Shared secret; must match the public site | 32+ chars |
-| `NEXT_PUBLIC_OPEN_WEATHER_API_KEY` | yes | Header weather widget | |
-| `NEXT_PUBLIC_STAGING_APP_URL` | yes | `setup-guide.tsx:53` | |
+| Var                                | Public? | Purpose                                                      | Example                                          |
+| ---------------------------------- | ------- | ------------------------------------------------------------ | ------------------------------------------------ |
+| `NEXT_PUBLIC_BACKEND_URL`          | yes     | Backend base                                                 | `https://api.islandtours.esenc.cloud`            |
+| `INTERNAL_API_SECRET`              | no      | SSR throttle exemption; must match backend                   | 32+ chars                                        |
+| `COOKIE_DOMAIN`                    | no      | Session cookie scope; must match backend                     | `.islandtours.esenc.cloud`                       |
+| ~~`NEXT_PUBLIC_SITE_URL`~~         | —       | **GHOST — does not exist. Do not add it.** No code reads it. | —                                                |
+| `REVALIDATE_TARGET_URL`            | no      | Public revalidate endpoint                                   | `https://islandtours.esenc.cloud/api/revalidate` |
+| `REVALIDATE_SECRET`                | no      | Shared secret; must match the public site                    | 32+ chars                                        |
+| `NEXT_PUBLIC_OPEN_WEATHER_API_KEY` | yes     | Header weather widget                                        |                                                  |
+| `NEXT_PUBLIC_STAGING_APP_URL`      | yes     | `setup-guide.tsx:53`                                         |                                                  |
 
 - **The dashboard reads exactly seven vars** (+ `NODE_ENV`), confirmed Phase 8.
 - **Backend-side changes required (config only, no code):** `COOKIE_DOMAIN` = `.islandtours.esenc.cloud` (**unchanged, already the default**); `CORS_ORIGINS` += `https://dashboard.islandtours.esenc.cloud` while keeping the public origin (**in dev also add `http://localhost:3001`**). **`CORS_ORIGINS` feeds BOTH `main.ts:43` (CORS) and `auth.instance.ts:17` (Better Auth `trustedOrigins`) — one var, two consumers. A miss rejects sign-in, not just fetches.** `main.ts` must keep `credentials: true`.
@@ -7757,25 +7875,26 @@ Granular: tour:<id> | destination:<id> | hub:<id> | category:<id>
           | collection:<id> | operator:<id>
 ```
 
-  Validation: valid if in the coarse set, **or** it splits on `:` into exactly two parts whose prefix is in the granular set and whose suffix is non-empty. **Reject partial batches wholly** — any unknown tag 400s the whole request and revalidates nothing, because **partial success would leave the caller believing it succeeded.** **Failure mode without the guard:** public renames `site-info` → `site`, dashboard POSTs `site-info`, public returns `200 { revalidated: ["site-info"] }`, the cache is never busted — **green checkmarks all the way down, stale content forever.**
-  **Two special cases to keep:** `/availability/check` short-circuits (`:76`) — it is a read shaped as a POST and revalidating loops; and `seg1 === 'slug'` is excluded from the granular `tour:<id>` tag (`:64-66`) — `/tours/slug/:slug` is a lookup, not an entity id.
-  **Where the contract lives:** `lib/cache-tags.ts`, **byte-identical at the same path in both repos**, with types **derived** from the arrays (`type CoarseCacheTag = (typeof COARSE_CACHE_TAGS)[number]`). **No shared npm package.** The drift check is `diff <dashboard>/lib/cache-tags.ts <public>/lib/cache-tags.ts` — empty output means the contract holds. **Changing a tag: edit both repos in the same change, and ship the public site FIRST.** ⚠️ **Nothing enforces this:** there is no CI guard and no cheap way to add one (**the dashboard repo has no CI at all**; a shared package is rejected; token-clone is fragile; a committed hash goes stale). **The 400 is runtime detection, not prevention. `diff` is the prevention and it is manual.**
-  ⚠️ **`user-profile` is a phantom tag in BOTH repos** — the mapping emits it for `/users/me` and every `/settings/*` write, but **nothing anywhere calls `cacheTag('user-profile')`** (`getUserProfile` is React `cache()`), so `updateTag('user-profile')` has been a no-op since long before the split. **Kept in the union for parity** (cost: a few no-op POSTs). **Remove from both repos together or not at all.**
+Validation: valid if in the coarse set, **or** it splits on `:` into exactly two parts whose prefix is in the granular set and whose suffix is non-empty. **Reject partial batches wholly** — any unknown tag 400s the whole request and revalidates nothing, because **partial success would leave the caller believing it succeeded.** **Failure mode without the guard:** public renames `site-info` → `site`, dashboard POSTs `site-info`, public returns `200 { revalidated: ["site-info"] }`, the cache is never busted — **green checkmarks all the way down, stale content forever.**
+**Two special cases to keep:** `/availability/check` short-circuits (`:76`) — it is a read shaped as a POST and revalidating loops; and `seg1 === 'slug'` is excluded from the granular `tour:<id>` tag (`:64-66`) — `/tours/slug/:slug` is a lookup, not an entity id.
+**Where the contract lives:** `lib/cache-tags.ts`, **byte-identical at the same path in both repos**, with types **derived** from the arrays (`type CoarseCacheTag = (typeof COARSE_CACHE_TAGS)[number]`). **No shared npm package.** The drift check is `diff <dashboard>/lib/cache-tags.ts <public>/lib/cache-tags.ts` — empty output means the contract holds. **Changing a tag: edit both repos in the same change, and ship the public site FIRST.** ⚠️ **Nothing enforces this:** there is no CI guard and no cheap way to add one (**the dashboard repo has no CI at all**; a shared package is rejected; token-clone is fragile; a committed hash goes stale). **The 400 is runtime detection, not prevention. `diff` is the prevention and it is manual.**
+⚠️ **`user-profile` is a phantom tag in BOTH repos** — the mapping emits it for `/users/me` and every `/settings/*` write, but **nothing anywhere calls `cacheTag('user-profile')`** (`getUserProfile` is React `cache()`), so `updateTag('user-profile')` has been a no-op since long before the split. **Kept in the union for parity** (cost: a few no-op POSTs). **Remove from both repos together or not at all.**
+
 - **Reliability requirements** (today's `void revalidateCacheTags(tags).catch(() => {})` **is indefensible across a network** — DNS, TLS, a deploy, a 401 on a rotated secret, a 400 on drift, a timeout, a 5xx all mean the public site is silently stale):
-  - **R1 — Keep the write path non-blocking.** A revalidation failure must never fail or delay the operator's save. **Non-negotiable.**
-  - **R2 — Log every failure** with the tags, the status, and the path.
-  - **R3 — Retry transient failures** (network, 5xx, timeout) with the same `[300, 800]` + jitter backoff `apiFetch` uses.
-  - **R4 — Never retry 400 or 401.** Both are permanent (400 = tag drift/code bug; 401 = secret mismatch/config bug).
-  - **R5 — Timeout at ~3s.** This bounds each *attempt*, not the operation — **worst case ~11s for 3 attempts + backoff + jitter. Accepted** (fire-and-forget so R1 holds; the dashboard is self-hosted so there is no serverless `maxDuration`; shortening it would fight R3).
-  - **R6 — Surface a persistent failure to a human** — at minimum a structured `console.error` the log drain alerts on.
-  - **The honest gap: a revalidation lost to a hard failure is lost forever.** No queue, no replay. Mitigated by the TTL backstop + alerting, **not solved**.
+    - **R1 — Keep the write path non-blocking.** A revalidation failure must never fail or delay the operator's save. **Non-negotiable.**
+    - **R2 — Log every failure** with the tags, the status, and the path.
+    - **R3 — Retry transient failures** (network, 5xx, timeout) with the same `[300, 800]` + jitter backoff `apiFetch` uses.
+    - **R4 — Never retry 400 or 401.** Both are permanent (400 = tag drift/code bug; 401 = secret mismatch/config bug).
+    - **R5 — Timeout at ~3s.** This bounds each _attempt_, not the operation — **worst case ~11s for 3 attempts + backoff + jitter. Accepted** (fire-and-forget so R1 holds; the dashboard is self-hosted so there is no serverless `maxDuration`; shortening it would fight R3).
+    - **R6 — Surface a persistent failure to a human** — at minimum a structured `console.error` the log drain alerts on.
+    - **The honest gap: a revalidation lost to a hard failure is lost forever.** No queue, no replay. Mitigated by the TTL backstop + alerting, **not solved**.
 - **Efficiency / coalescing.** Volume today: a 7-day × 3-time schedule save = **21 sequential writes → 21 POSTs** (`tours`, `search`); adding 5 images = 5; reordering one image = 2; adding/removing one start time = 1 full `PATCH /tours/:id` (+ `slug-registry`); translating one tour into 6 locales = **~120 saves → ~120 POSTs**.
-  - **Fix 1 (largest): reduce the writes, not the revalidations** — the save-model redesign + bulk endpoints A5/A6 remove ~95% of volume at source (translate 120→6, tour details ~20→1 per route, 7×3 schedule 21→1, image reorder 2-per-arrow→1-per-drop).
-  - **Fix 2 (immediate): leading + trailing throttle, ~1s window, per unique tag set.** The leading edge fires immediately (**a single isolated save is unchanged — no regression**); the trailing edge flushes once at window end; tags accumulate into a `Set`; flush on `pagehide`/`visibilitychange`. **Spec said 21 → 2; measured 21 → 3** (the burst spans ~1.05s and outlives one 1s window) — **still 86% off.** Not a plain trailing debounce (that would delay every revalidation). **`navigator.sendBeacon` is not an option** (it cannot invoke a Server Action, and a direct call would leak the secret).
-  - **Fix 3 (deferred): the `'max'` profile.** Only if measurement shows it hurts. **Do not adopt as a guess.**
-  - **Fix 4: DO NOT narrow the tag mapping.** Over-invalidation costs a regeneration; **under-invalidation serves wrong prices** — not symmetric. Concrete trap: `use-trips.ts:362-363` and `:858-861` invalidate `tripKeys.detail` on age-band/highlight/inclusion/exclusion/schedule/exception mutations because **`priceFrom`/`isBookable`/counts recompute server-side** — a child-collection write genuinely can change the public listing.
-  - **Fix 5: backend-emitted** — coalesces naturally, emits precise tags, gives durable retries.
-  - **Order: 2 now, 1 as the redesign lands, then re-measure before touching 3.**
+    - **Fix 1 (largest): reduce the writes, not the revalidations** — the save-model redesign + bulk endpoints A5/A6 remove ~95% of volume at source (translate 120→6, tour details ~20→1 per route, 7×3 schedule 21→1, image reorder 2-per-arrow→1-per-drop).
+    - **Fix 2 (immediate): leading + trailing throttle, ~1s window, per unique tag set.** The leading edge fires immediately (**a single isolated save is unchanged — no regression**); the trailing edge flushes once at window end; tags accumulate into a `Set`; flush on `pagehide`/`visibilitychange`. **Spec said 21 → 2; measured 21 → 3** (the burst spans ~1.05s and outlives one 1s window) — **still 86% off.** Not a plain trailing debounce (that would delay every revalidation). **`navigator.sendBeacon` is not an option** (it cannot invoke a Server Action, and a direct call would leak the secret).
+    - **Fix 3 (deferred): the `'max'` profile.** Only if measurement shows it hurts. **Do not adopt as a guess.**
+    - **Fix 4: DO NOT narrow the tag mapping.** Over-invalidation costs a regeneration; **under-invalidation serves wrong prices** — not symmetric. Concrete trap: `use-trips.ts:362-363` and `:858-861` invalidate `tripKeys.detail` on age-band/highlight/inclusion/exclusion/schedule/exception mutations because **`priceFrom`/`isBookable`/counts recompute server-side** — a child-collection write genuinely can change the public listing.
+    - **Fix 5: backend-emitted** — coalesces naturally, emits precise tags, gives durable retries.
+    - **Order: 2 now, 1 as the redesign lands, then re-measure before touching 3.**
 - **`cacheLife` as a safety net** (a public-repo tuning request, **not a mandate**): `site-info` `days` → **`hours`** (confirmed too long); `tour:<id>`, `tours`, `search` → `hours` (price and availability — the highest-cost staleness); `destinations`, `categories`, `collections`, `hubs` → `hours`-`days` (editorial); `slug-registry` → `hours` (a stale registry serves 404s/wrong pages); `reviews` → `days` (low stakes). **Principle: TTL is a bound on damage, not a cache strategy.**
 - **Secret rotation and unset behaviour:** the endpoint accepts a **comma-separated list of valid secrets**, so rotation is a **two-deploy operation** (verified: it accepts both old and new). **`REVALIDATE_TARGET_URL` absent → skip revalidation and log once at startup; it must not throw.**
 - **Target state (backend-emitted):** `api → entity write (dashboard, BullMQ job, Stripe webhook, script) └─ outbox row [exists] → BullMQ worker [exists] → POST public /api/revalidate { tags }`. This fixes: the dashboard stops knowing the public site exists; backend-originated writes bust the cache; lost revalidations are retried durably; the tag taxonomy lives with the write's owner; new consumers get fan-out for free. **Migration path:** the endpoint is identical in both designs, only the caller changes; both can run in parallel briefly (**`revalidateTag` is idempotent, no flag-day**); then the dashboard's mapping becomes a no-op behind a flag and `cache-revalidation.ts` + `revalidate.ts` are deleted.
@@ -7787,32 +7906,37 @@ Granular: tour:<id> | destination:<id> | hub:<id> | category:<id>
 - **The crux asymmetry:** both browsers must **send** credentials to the API, but only the **dashboard's own server** must **read** the session cookie (`guardDashboard` **and** the layout's `getUserProfile(cookie)`). The public site's server does **not** — `getSessionCookie` appears only at `proxy.ts:87`, and public auth is client-side only (`wishlist-provider.tsx:63` `useSession()`). **Why: the public site is built on a `'use cache'` static shell, which cannot be per-user, so per-user data was already pushed to the browser by design. The caching architecture made the domain split easy as a side effect.**
 - **Why "just add `api.island.tours`" does not work** — `dist/cookies/index.mjs:22`: `const domain = crossSubdomainEnabled ? options.advanced?.crossSubDomainCookies?.domain || (baseURLString ? new URL(baseURLString).hostname : void 0) : void 0;`
 
-| Config | Cookie `Domain` | Public leg | Dashboard leg |
-|---|---|---|---|
-| `domain: '.tripwheel.io'` (static) | always `.tripwheel.io` | **broken** — the browser rejects a `.tripwheel.io` cookie from `api.island.tours` | works |
-| `domain` omitted + dynamic `baseURL` | the API hostname | works (same-site, host-scoped, the public server never reads it) | **broken** — invisible to `dashboard.tripwheel.io`; guard + layout see nothing; login appears to succeed then bounces |
+| Config                               | Cookie `Domain`        | Public leg                                                                        | Dashboard leg                                                                                                         |
+| ------------------------------------ | ---------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `domain: '.tripwheel.io'` (static)   | always `.tripwheel.io` | **broken** — the browser rejects a `.tripwheel.io` cookie from `api.island.tours` | works                                                                                                                 |
+| `domain` omitted + dynamic `baseURL` | the API hostname       | works (same-site, host-scoped, the public server never reads it)                  | **broken** — invisible to `dashboard.tripwheel.io`; guard + layout see nothing; login appears to succeed then bounces |
 
-  **Conclusion: one Better Auth instance cannot emit cookies for two registrable domains.**
+**Conclusion: one Better Auth instance cannot emit cookies for two registrable domains.**
+
 - **Evidence base** (installed `better-auth@^1.6.9` dist source + context7): cookie `domain` resolution **verified (source read)**; cookie defaults `sameSite:'lax'`, `httpOnly:true`, `secure` per prefix, `path:'/'` **verified**; `crossSubDomainCookies.enabled` without `domain` throws unless the baseURL is dynamic **verified**; the cookie getter is re-created per request when cross-subdomain is enabled **verified**; `isDynamicBaseURLConfig` = an object with an `allowedHosts` array **verified**; `bearer()` emits `set-auth-token` and adds it to `Access-Control-Expose-Headers` **verified**; **`bearer()` is ALREADY ENABLED** (`auth.instance.ts:177`) **verified**. **INFERRED, must be proven by test:** whether `resolved.options.baseURL` is per-request under a dynamic config.
 - **Options:** **C — bearer token for the public site** (no new hosts, **no backend change — already enabled**; public: not HttpOnly, dashboard: still HttpOnly) — **RECOMMENDED**. **A** — two API hostnames + two auth instances (A-i two deployments / A-ii `authForHost(host)` in one process); HttpOnly on both; fallback if C's XSS trade is unacceptable. **B** — the public site proxies `/api/*` through its own origin; viable, worst latency; **must rewrite the `Set-Cookie` domain**; puts the public Next app on the auth-critical path. **D** — partitioned cookies (CHIPS): **REJECTED** (partitions per top-level site, the opposite of the need; Safari ITP still blocks). **E** — do nothing: **not viable.**
 - **Option C change set:** backend `CORS_ORIGINS` += `https://island.tours` (1 env var) and `COOKIE_DOMAIN` = `.tripwheel.io` (1 env var); `bearer()` plugin **already enabled**; public `lib/auth-client.ts` global token capture + send (~10 lines); public `lib/api/wishlist.ts:16`, `lib/api/categories.ts:86` and **`lib/api/fetch.ts:29` — THE MISSING ROW** switch `credentials:'include'` → `Authorization` (1 line each); **dashboard: none.**
-- ⚠️ **CORRECTION:** `lib/api/fetch.ts:29` carries `credentials: 'include'` and is imported by two public-only clients — **`lib/api/bookings.ts`** (`/bookings/quote`, `POST /bookings`, `/bookings/:id`; consumed by `checkout-form`, `checkout-processing`, `thank-you-hero-actions`, `cancel-request-card`, `lib/checkout/checkout.ts`, `lib/stores/booking-store.ts`) — **the entire booking flow, the revenue path** — and **`lib/api/availability.ts`** (`hub-trips-panel`, `use-availability-sync`). **Omit it and Safari users cannot complete a booking while Chrome users can, so it will not surface in testing.** *The original count was wrong because it came from grepping the literal `credentials: 'include'`.* ***Grep the helper's importers, not just the literal.*** **Do not delete `fetch.ts` reflexively during dashboard cleanup — it looks dashboard-shaped but the checkout needs it.**
+- ⚠️ **CORRECTION:** `lib/api/fetch.ts:29` carries `credentials: 'include'` and is imported by two public-only clients — **`lib/api/bookings.ts`** (`/bookings/quote`, `POST /bookings`, `/bookings/:id`; consumed by `checkout-form`, `checkout-processing`, `thank-you-hero-actions`, `cancel-request-card`, `lib/checkout/checkout.ts`, `lib/stores/booking-store.ts`) — **the entire booking flow, the revenue path** — and **`lib/api/availability.ts`** (`hub-trips-panel`, `use-availability-sync`). **Omit it and Safari users cannot complete a booking while Chrome users can, so it will not surface in testing.** _The original count was wrong because it came from grepping the literal `credentials: 'include'`._ **_Grep the helper's importers, not just the literal._** **Do not delete `fetch.ts` reflexively during dashboard cleanup — it looks dashboard-shaped but the checkout needs it.**
 - **Client pattern:**
 
 ```ts
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
-  fetchOptions: {
-    onSuccess: (ctx) => {
-      const t = ctx.response.headers.get('set-auth-token');
-      if (t) localStorage.setItem('bearer_token', t);
+    baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    fetchOptions: {
+        onSuccess: ctx => {
+            const t = ctx.response.headers.get('set-auth-token');
+            if (t) localStorage.setItem('bearer_token', t);
+        },
+        auth: {
+            type: 'Bearer',
+            token: () => localStorage.getItem('bearer_token') || '',
+        },
     },
-    auth: { type: 'Bearer', token: () => localStorage.getItem('bearer_token') || '' },
-  },
 });
 ```
 
-  Both hooks are **global**, so a session refresh re-issuing a token is captured automatically; `useSession()` is unchanged; raw-`fetch` call sites need a factored `publicAuthHeaders()` helper.
+Both hooks are **global**, so a session refresh re-issuing a token is captured automatically; `useSession()` is unchanged; raw-`fetch` call sites need a factored `publicAuthHeaders()` helper.
+
 - **Why business logic cannot break:** bearer carries **the same session token value from the same DB row** — the plugin's `after` hook lifts it out of the `Set-Cookie` the backend was already producing. Unchanged: roles, permissions, RBAC, `disableSignUp: true`, auto-user-creation on first booking, wishlist semantics, booking flow, every guard. **A transport swap, not an auth redesign. Bonus: bearer is CSRF-immune.**
 - **The three costs, accepted knowingly:** (1) the public token is **not HttpOnly** — any XSS on `island.tours` exfiltrates it; **a strict CSP is the actual control, not a nice-to-have**; bounded to the USER role, cannot reach operator endpoints, and the dashboard keeps HttpOnly. (2) **Safari ITP caps script-writable storage at ~7 days** without first-party interaction — a dormant traveler is silently signed out; UX degradation, not a break; **verify, do not assume**. (3) **Operator password-reset currently lives on the public site** (`operator-forgot.tsx`, `operator-reset.tsx`) and must move to the dashboard with `portal`/`staff` — **verified 2026-07-17: these are DUPLICATED in both repos, not moved. Delete the PUBLIC copies.**
 - **Verification — 15 checks, none reproducible on localhost** (`localhost:3000` → `localhost:5050` is same-site and `crossSubDomainCookies.enabled` is gated on `NODE_ENV === 'production'`): (1) prove/disprove per-request `baseURL` under a dynamic config [blocks A]; (2) sign in on `island.tours` in **Safari** with ITP on → session persists across reload; (3) same in **Firefox** with Total Cookie Protection; (4) wishlist add/remove/list on Safari; (5) `set-auth-token` readable cross-origin; (6) sign-out revokes **server-side**; (7) dashboard login works, cookie scoped `.tripwheel.io`; (8) `guardDashboard` reads the cookie, malformed → `/portal` + cleared; (9) `getUserProfile` resolves the role server-side; (10) a public USER token **cannot** reach an operator endpoint; (11) CSP blocks inline script; (12) Safari ITP 7-day cap — does a token survive a week; (13) session refresh re-issues `set-auth-token` and the global `onSuccess` captures it; (14) **no surviving `credentials: 'include'` on the public site**; (15) operator reset/forgot moved to the dashboard. **Checks 2 and 3 are the acceptance criteria. Check 14 is the one most likely to be missed — a stray `credentials: 'include'` fails only on Safari, only in production, and looks like an intermittent bug.**
@@ -7823,15 +7947,15 @@ export const authClient = createAuthClient({
 
 **Prerequisite: Phase 9 green and the dashboard cut over on the interim topology. Do not attempt the domain move and the repo split in one window.**
 
-| Step | Action |
-|---|---|
+| Step  | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **1** | **Code the public site's bearer support (no domains involved).** Four files, public repo, on the CURRENT domains where cookies still work and bearer is redundant-but-harmless. **1a** `lib/auth-client.ts` global capture + send. **1b** Factor `publicAuthHeaders()` once and apply at the three raw-`fetch` surfaces: `lib/api/fetch.ts:29` (serves `bookings.ts` = the ENTIRE checkout + `availability.ts`), `lib/api/wishlist.ts:16`, `lib/api/categories.ts:86`. **Both transports work at once** — independently shippable and revertible. **Validation:** on the current domains, sign in, clear cookies, confirm the app still works off the bearer token alone. |
-| **2** | **Delete the dashboard's leftovers from the public repo.** Verified DUPLICATED, not moved: `app/(login)/portal`, `app/(login)/staff`, `components/frontend/login/{operator-login,operator-forgot,operator-reset,operator-two-factor,staff-login}.tsx`. **Keep** `app/(login)/apply` and `app/(login)/bookings`. **DO NOT delete `lib/api/fetch.ts` — deleting it takes the checkout with it.** |
-| **3** | **CSP on `island.tours` — BEFORE the move, not after.** It is the entire compensating mechanism for the security property being given up. Ship it first, verify it blocks inline script, then move domains. |
-| **4** | **DNS + certs, no traffic yet.** Stand up all three; leave the old hosts serving. |
-| **5** | **Backend env — the whole backend change: two vars, zero code.** `COOKIE_DOMAIN=.tripwheel.io`, `CORS_ORIGINS=https://island.tours,https://dashboard.tripwheel.io`. **This invalidates every existing session.** Everyone signs in again, once — schedule it and tell operators. |
-| **6** | **Cut over, public first.** (1) Deploy public to `island.tours` (bearer live from step 1). (2) Deploy dashboard to `dashboard.tripwheel.io` — **zero code change**. (3) Point old hosts at new ones with 301s. (4) Update dashboard `REVALIDATE_TARGET_URL` → `https://island.tours/api/revalidate` and `NEXT_PUBLIC_BACKEND_URL` → `https://api.tripwheel.io`. **`NEXT_PUBLIC_*` are inlined at build time — this needs a REDEPLOY, not a restart.** |
-| **7** | **Verify on real hostnames in a real Safari.** Run all 15 checks, plus **#16** complete a real booking end-to-end in Safari (quote → POST → thank-you → cancel) — the `fetch.ts` surface the earlier analysis missed — and **#17** hub trips panel + availability sync in Safari. |
+| **2** | **Delete the dashboard's leftovers from the public repo.** Verified DUPLICATED, not moved: `app/(login)/portal`, `app/(login)/staff`, `components/frontend/login/{operator-login,operator-forgot,operator-reset,operator-two-factor,staff-login}.tsx`. **Keep** `app/(login)/apply` and `app/(login)/bookings`. **DO NOT delete `lib/api/fetch.ts` — deleting it takes the checkout with it.**                                                                                                                                                                                                                                                                            |
+| **3** | **CSP on `island.tours` — BEFORE the move, not after.** It is the entire compensating mechanism for the security property being given up. Ship it first, verify it blocks inline script, then move domains.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **4** | **DNS + certs, no traffic yet.** Stand up all three; leave the old hosts serving.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **5** | **Backend env — the whole backend change: two vars, zero code.** `COOKIE_DOMAIN=.tripwheel.io`, `CORS_ORIGINS=https://island.tours,https://dashboard.tripwheel.io`. **This invalidates every existing session.** Everyone signs in again, once — schedule it and tell operators.                                                                                                                                                                                                                                                                                                                                                                                          |
+| **6** | **Cut over, public first.** (1) Deploy public to `island.tours` (bearer live from step 1). (2) Deploy dashboard to `dashboard.tripwheel.io` — **zero code change**. (3) Point old hosts at new ones with 301s. (4) Update dashboard `REVALIDATE_TARGET_URL` → `https://island.tours/api/revalidate` and `NEXT_PUBLIC_BACKEND_URL` → `https://api.tripwheel.io`. **`NEXT_PUBLIC_*` are inlined at build time — this needs a REDEPLOY, not a restart.**                                                                                                                                                                                                                     |
+| **7** | **Verify on real hostnames in a real Safari.** Run all 15 checks, plus **#16** complete a real booking end-to-end in Safari (quote → POST → thank-you → cancel) — the `fetch.ts` surface the earlier analysis missed — and **#17** hub trips panel + availability sync in Safari.                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Rollback:** steps 1-3 revert freely (bearer is additive); step 5 restore `COOKIE_DOMAIN`/`CORS_ORIGINS` (sessions invalidate again); step 6 DNS back, with old hosts staying live until certain. **The only irreversible act is time: step 5 signs everyone out, twice if you roll back.**
 
@@ -7844,14 +7968,15 @@ export const authClient = createAuthClient({
 - **Brand ramp (hue 220):** `brand-50` 0.97/0.015 → `brand-900` 0.28/0.060. **Primary is `brand-600` in light and `brand-400` in dark — a primary must move between modes.**
 - **Semantic ramps — the single highest-leverage artifact:**
 
-| State | Hue | `-subtle` (bg) | `-border` | `-fg` | `-solid` |
-|---|---|---|---|---|---|
+| State   | Hue | `-subtle` (bg)     | `-border`   | `-fg`       | `-solid`    |
+| ------- | --- | ------------------ | ----------- | ----------- | ----------- |
 | success | 150 | L 0.95 / dark 0.26 | 0.85 / 0.36 | 0.42 / 0.80 | 0.55 / 0.62 |
-| warning | 75 | 0.96 / dark 0.27 | 0.86 / 0.37 | 0.44 / 0.82 | 0.70 / 0.75 |
-| danger | 25 | 0.95 / dark 0.26 | 0.85 / 0.36 | 0.45 / 0.80 | 0.55 / 0.62 |
-| info | 250 | 0.96 / dark 0.27 | 0.86 / 0.37 | 0.45 / 0.82 | 0.55 / 0.62 |
+| warning | 75  | 0.96 / dark 0.27   | 0.86 / 0.37 | 0.44 / 0.82 | 0.70 / 0.75 |
+| danger  | 25  | 0.95 / dark 0.26   | 0.85 / 0.36 | 0.45 / 0.80 | 0.55 / 0.62 |
+| info    | 250 | 0.96 / dark 0.27   | 0.86 / 0.37 | 0.45 / 0.82 | 0.55 / 0.62 |
 
-  Chroma: `-subtle` ~0.02, `-border` ~0.05, `-fg` ~0.12, `-solid` ~0.15. **Every role flips between modes.** **The rule, enforced by lint: a status surface is `bg-{state}-subtle border-{state}-border text-{state}-fg`. There is no other way to color a status.** No `amber-100`. No `emerald-700`. **If a state does not exist in this table, add it to the table.**
+Chroma: `-subtle` ~0.02, `-border` ~0.05, `-fg` ~0.12, `-solid` ~0.15. **Every role flips between modes.** **The rule, enforced by lint: a status surface is `bg-{state}-subtle border-{state}-border text-{state}-fg`. There is no other way to color a status.** No `amber-100`. No `emerald-700`. **If a state does not exist in this table, add it to the table.**
+
 - **Chart ramp (6 hues, dark-mode lightness compensation):** chart-1 brand teal 220 · chart-2 coral 25 · chart-3 green 150 · chart-4 amber 75 · chart-5 violet 300 · chart-6 cyan 190. **Ordering constraint: chart-1 and chart-2 must be distinguishable under deuteranopia** (2-series is the common case) — **must be verified with a simulator, not assumed.**
 - **ADDED `--rating`** — star-rating gold, light `oklch(0.77 0.16 75)` / dark `oklch(0.80 0.15 78)`. **Ratings are NOT a status:** mapping star fills onto the warning quartet would make a 4.8-star tour render like a warning. Decorative, no contrast target.
 - **Token architecture (Tailwind v4):** `@theme` defines tokens and generates utilities; **`@theme inline` maps a utility name to a `var()` resolved at use time** — required when the value must switch by mode; mode-switching values live in `:root` / `.dark` with `@theme inline` pointing at them; `@custom-variant dark (&:where(.dark, .dark *));`.
@@ -7868,9 +7993,9 @@ export const authClient = createAuthClient({
 - **Buttons:** retire the forced `uppercase tracking-widest text-xs`. Variants `primary` (`bg-primary text-primary-content`, hover `bg-primary-hover`) · `secondary` · `ghost` · **`destructive` = `bg-danger-solid text-n-0`, a SOLID fill** ("Delete tour" should not look quieter than "Save") · `link`. Sizes **8 → 5**: `sm` 32px · `md` 36px default · `lg` 40px · `icon-sm`/`icon` 32/36px square. Text sentence case at 14px.
 - **Card:** `bg-surface-raised border border-line rounded-lg shadow-xs`, `p-4`/`p-6`. **No nested cards** — a card inside a card is a section; use a `--line-subtle` divider. **Sidebar:** `--sidebar` bg, 240px expanded / 56px collapsed, groups by `2xs` uppercase labels, active = `bg-sidebar-active text-sidebar-active-content` **plus a 2px leading indicator** (not color alone), persisted collapse. **Toasts (sonner):** success 3s, **error sticky until dismissed** (an operator must not miss a failed save), bottom-right, max 3 stacked, every toast carries an icon. **Empty states:** icon `size-8` `--content-subtle` + `sm` medium title + `xs` `--content-muted` explanation + primary action. **Loading:** skeletons mirror the real layout's dimensions; **never a spinner for page-level loads.** **Icons — lucide-react only:** inline with `sm` = `size-4` · buttons `size-4` · micro/badge dots `size-3` · empty states `size-8`; decorative → `aria-hidden="true"`; **icon-only buttons → `aria-label` required.**
 - **shadcn inventory actions:** `badge.tsx` **REPLACE** → `StatusBadge` · `button.tsx` **EXTEND** (drop forced uppercase/tracking; 8 sizes → 5; solid destructive) · `table.tsx` **EXTEND** (retarget header to `2xs` + `tracking-caps`) · `sidebar.tsx` **EXTEND** (**fix `hsl(var(--sidebar-border))` at `:478`** — B-4) · `chart.tsx` **EXTEND** (replace `#ccc`/`#fff` THEMES literals with tokens; wire the 6-hue ramp) · `sheet.tsx` **ADOPT** (installed, unused; becomes the standard secondary-disclosure primitive) · `input, label, field, textarea, checkbox, select, card, tabs, dialog, alert-dialog, dropdown-menu, popover, tooltip, skeleton, separator, collapsible, command, calendar, avatar, sonner` **AS-IS** (re-token only) · `multi-select.tsx` **STANDARDIZE** (custom, keep — 9 consumers) · `progress.tsx` **KEEP** (0 importers today, but the translation console needs completeness bars) · `breadcrumb.tsx` **RESOLVE** (two implementations) · `drawer.tsx` **DROP** (vaul; only consumer was the dead `data-table.tsx`) · `toggle.tsx`, `toggle-group.tsx` **DROP** · `input-otp.tsx` **DROP** (public site only) · `input-group.tsx` **REVIEW**. **Dependencies removed:** `@hugeicons/react`, `@hugeicons/core-free-icons`, `vaul`. **Keep `@dnd-kit`.** **Fonts five → two:** ADD Inter Variable · KEEP JetBrains Mono (21 usages; refs, IDs, money) · DROP Playfair Display (70 usages — an editorial display serif in an operational CRM) · DROP DM Sans (1) · DROP General Sans (3) · DROP Noto Sans.
-- **Enforcement — lint** (*a design system that is not lintable is a suggestion*): (1) no numeric Tailwind palette classes — ESLint `no-restricted-syntax` on className regex; (2) no hex/`rgb()`/`hsl()`/`oklch()` in components; (3) no inline `style={{}}` except TanStack column sizing (allowlist); (4) spacing restricted to `0.5, 1, **1.5**, 2, **2.5**, 3, 4, 6, 8, 12, 16` — regex on `(p|px|py|m|gap|space-[xy])-`; (5) no arbitrary `text-[...]`; (6) uppercase only at `--text-2xs` (review); (7) every icon-only button has `aria-label` (`eslint-plugin-jsx-a11y`); (8) contrast gate. **Rules 1-5 are mechanical and land WITH (in practice BEFORE) the token system. A migration that introduces tokens without the lint that forbids the alternatives will regrow the 187 classes within a quarter.**
+- **Enforcement — lint** (_a design system that is not lintable is a suggestion_): (1) no numeric Tailwind palette classes — ESLint `no-restricted-syntax` on className regex; (2) no hex/`rgb()`/`hsl()`/`oklch()` in components; (3) no inline `style={{}}` except TanStack column sizing (allowlist); (4) spacing restricted to `0.5, 1, **1.5**, 2, **2.5**, 3, 4, 6, 8, 12, 16` — regex on `(p|px|py|m|gap|space-[xy])-`; (5) no arbitrary `text-[...]`; (6) uppercase only at `--text-2xs` (review); (7) every icon-only button has `aria-label` (`eslint-plugin-jsx-a11y`); (8) contrast gate. **Rules 1-5 are mechanical and land WITH (in practice BEFORE) the token system. A migration that introduces tokens without the lint that forbids the alternatives will regrow the 187 classes within a quarter.**
 - **Accessibility gate — the merge gate for the token system:** (1) `--content` on `--surface` ≥ 7:1 (AAA); (2) `--content-muted` on `--surface` ≥ 4.5:1; (3) `--content-subtle` on `--surface` ≥ 4.5:1; (4) every `{state}-fg` on its `{state}-subtle` ≥ 4.5:1; (5) `--primary-content` on `--primary` ≥ 4.5:1; (6) `--focus-ring` on `--surface` and `--surface-raised` ≥ 3:1; (7) ~~`--line` on `--surface`~~ → **`--line-control` on `--surface` and `--surface-raised` ≥ 3:1 (AMENDED)**; (8) all of 1-7 **in both modes**; (9) chart-1 vs chart-2 under deuteranopia and protanopia, distinguishable in a simulator; (10) every `StatusBadge` variant carries a **non-color** cue. **Any value failing its target is adjusted here, before implementation — not after.**
-  > **MEASURED 2026-07-17: the gate ran RED and caught two defects in the spec's own palette.** (1) **`--content-subtle` was unfixable as written** — `n-500` in BOTH modes, but light needs `L ≤ 0.556` and dark needs `L ≥ 0.567`: **the windows do not overlap.** Measured light `n-500` = **4.10:1 FAIL**; fix = `--color-n-550` for light (**4.64:1**), dark keeps `n-500` (**4.75:1**). (2) **Check 7 tested the wrong token and could not be passed** — `--line` on `--surface` = **1.29:1** light / **1.39:1** dark, `--line-strong` 1.56/2.03; reaching 3:1 forces `L = 0.658`, a near-black hairline around every card, row and input. **WCAG 1.4.11 applies only where the boundary is the ONLY thing identifying a control**, so `--line`/`--line-strong` are decorative with **no** target, and the new **`--line-control`** (light `n-450` **3.09:1**, dark `oklch(0.50 0.014 250)` **3.39:1**) is the tested token, with the shadcn `--input` alias pointing at it. **Also fixed:** `--warning-foreground` was near-white on `oklch(0.769)` amber and had never passed contrast — now dark ink.
+    > **MEASURED 2026-07-17: the gate ran RED and caught two defects in the spec's own palette.** (1) **`--content-subtle` was unfixable as written** — `n-500` in BOTH modes, but light needs `L ≤ 0.556` and dark needs `L ≥ 0.567`: **the windows do not overlap.** Measured light `n-500` = **4.10:1 FAIL**; fix = `--color-n-550` for light (**4.64:1**), dark keeps `n-500` (**4.75:1**). (2) **Check 7 tested the wrong token and could not be passed** — `--line` on `--surface` = **1.29:1** light / **1.39:1** dark, `--line-strong` 1.56/2.03; reaching 3:1 forces `L = 0.658`, a near-black hairline around every card, row and input. **WCAG 1.4.11 applies only where the boundary is the ONLY thing identifying a control**, so `--line`/`--line-strong` are decorative with **no** target, and the new **`--line-control`** (light `n-450` **3.09:1**, dark `oklch(0.50 0.014 250)` **3.39:1**) is the tested token, with the shadcn `--input` alias pointing at it. **Also fixed:** `--warning-foreground` was near-white on `oklch(0.769)` amber and had never passed contrast — now dark ink.
 - **Motion:** **No `whileHover` motion** — no scale-ups, lifts or nudges; hover is a color/opacity CSS transition, full stop. **Press is `whileTap` scale DOWN** (0.97 for buttons). Durations from tokens (`fast` hover/focus · `normal` disclosure · `slow` route/sheet). **`prefers-reduced-motion: reduce` → all transitions to 0.01ms. Mandatory.** **A CRM is not a place for delight animation. Motion has one job: explain where a thing came from.**
 - **Impact/effort order: 3 (lint), 1 (StatusBadge), 4 (fonts), 5 (icons), 2 (tokens), 8 (sheet), 6 (type scale), 7 (DataTable), 9 (buttons), 10 (sidebar `hsl()` fix). Lint first** — cheapest, and the only one that stops the problem coming back.
 
@@ -7881,19 +8006,19 @@ export const authClient = createAuthClient({
 - **Code targets per module:** Tours 10,363 → ~6,500 · Entity modules ×4 ~10,500 → ~4,000 · Translations (5 forks) ~1,400 → ~450 · Bookings/Payments 1,529 → ~1,100 · Media 1,949 → ~1,400 · Settings 1,673 → ~1,300 · Profile 1,188 → ~900 · Spotlight/Locals 1,633 → ~1,000 · Operators 1,001 → ~800 · Dead code 1,574 → **0** · **Total ~35,300 → ~19,500 (−45%)**.
 - **UX ranked by impact/effort:** 1 `StatusBadge` + semantic tokens (5/2 = **2.5**) · 2 command palette (4/2 = **2.0**) · 3 publish readiness as a real contract (4/2 = **2.0**) · 4 create 30 fields → 4 (4/2 = **2.0**) · 5 booking detail → Sheet (3/2 = 1.5) · 6 media pagination, unblock item 101 (3/2 = 1.5) · 7 **Translation Console (5/4 = 1.3)** · 8 Tours 13 tabs → 4 routes (5/4 = 1.3) · 9 one `EntityTable` (4/4 = 1.0) · 10 entity editor unification (4/4 = 1.0). **Sequence 1, 2, 3, 4 first** (all ratio ≥ 2.0, all independent, all shippable in isolation), then 7, then 8, 9, 10.
 - **Duplication hotspots (measured by `diff`):** translation forms 4 files ~1,145 LOC (dest 272 vs cat 272 diff ≈ 30 lines, all renames) · SEO tabs 4 files ~1,448 LOC (dest 362 vs cat 366 = 139; vs hub 361 = 133; vs coll 359 = 137) · table scaffolds 10 (dest 352 vs cat 332 = 138; vs hubs 361 = 202) · row actions 3+ (dest 185 vs cat 185 = 139) · quick-edit dialogs 3, 422 LOC (dest 142 vs cat 142 = 64) · delete confirms **4 competing abstractions + 4 clone wrappers** (`confirm-dialog.tsx` 72/2 consumers · `common/deactivate-dialog.tsx` 70 · `common/force-delete-dialog.tsx` 76 · `media/delete-confirmation-dialog.tsx` 55; wrappers destination/category/hub-delete-dialog all 47 lines with mutual diff 44, plus operator-delete-dialog 52; **`Dialog` and `AlertDialog` both used for semantically identical destructive confirms**) · status badges 4 conventions (**the audit undercounted: there were SIX**) · list-view shells 4+ (bookings vs payments = the same 500ms-debounce state machine twice) · detail shells 4 ~200 LOC · `trip-form` vs `trip-details-tab` 2 files 1,764 LOC near-identical.
-- **What is genuinely good (a redesign discarding these would be a regression):** (1) **the API boundary is already clean** — two deliberately separate fetch stacks with different auth models and retry strategies, and correct reasoning about each (`public/fetch.ts:31-33` avoids `Math.random()`/`Date.now()` because `'use cache'` bans them; `fetch.ts:19-22` explains why the client stack *can* use jitter); (2) **`userActions.ts:41-48`** deliberately uses React `cache()` instead of `'use cache'`; (3) **`apiFetch` retries GETs only** — "a retried POST/PATCH/DELETE could double-apply a mutation"; (4) **`FaqManager` (477 LOC)** consumed identically by all four entity modules with **zero forks**; (5) **`image-selector-field.tsx`** — 10 consumers, no forks; (6) **all 10 tables use TanStack consistently** — nobody hand-rolled a `<table>`; (7) route-level server/client split is correct where it exists; (8) **`cache-revalidation.ts` is thoughtfully specified** — one bug (B-1), not a bad design.
+- **What is genuinely good (a redesign discarding these would be a regression):** (1) **the API boundary is already clean** — two deliberately separate fetch stacks with different auth models and retry strategies, and correct reasoning about each (`public/fetch.ts:31-33` avoids `Math.random()`/`Date.now()` because `'use cache'` bans them; `fetch.ts:19-22` explains why the client stack _can_ use jitter); (2) **`userActions.ts:41-48`** deliberately uses React `cache()` instead of `'use cache'`; (3) **`apiFetch` retries GETs only** — "a retried POST/PATCH/DELETE could double-apply a mutation"; (4) **`FaqManager` (477 LOC)** consumed identically by all four entity modules with **zero forks**; (5) **`image-selector-field.tsx`** — 10 consumers, no forks; (6) **all 10 tables use TanStack consistently** — nobody hand-rolled a `<table>`; (7) route-level server/client split is correct where it exists; (8) **`cache-revalidation.ts` is thoughtfully specified** — one bug (B-1), not a bad design.
 
 #### E.5.12 Component-architecture rules (R1-R12, D1-D5)
 
-- **R1 · Server by default. `'use client'` is opt-in and must be justified.** A file gets it **only if it uses** `useState`/`useReducer`/`useEffect`/`useRef`-for-DOM, an event handler, a browser API, a Context consumer, or a client-only library (RHF, TanStack Query, Recharts, framer-motion, dnd-kit). **If none apply it is a Server Component. No exceptions.** *`trip-detail-shell.tsx` is the canonical violation: 49 lines — a `Breadcrumb`, an `<h1>`, a `<Skeleton>`, `{children}` — marked `'use client'`. The directive is inert anyway because a client parent imports it, **which is exactly what makes it insidious: it costs nothing to add and nothing visibly breaks, so it spread to 161 files.***
+- **R1 · Server by default. `'use client'` is opt-in and must be justified.** A file gets it **only if it uses** `useState`/`useReducer`/`useEffect`/`useRef`-for-DOM, an event handler, a browser API, a Context consumer, or a client-only library (RHF, TanStack Query, Recharts, framer-motion, dnd-kit). **If none apply it is a Server Component. No exceptions.** \*`trip-detail-shell.tsx` is the canonical violation: 49 lines — a `Breadcrumb`, an `<h1>`, a `<Skeleton>`, `{children}` — marked `'use client'`. The directive is inert anyway because a client parent imports it, **which is exactly what makes it insidious: it costs nothing to add and nothing visibly breaks, so it spread to 161 files.\***
 - **R2 · The boundary goes at the deepest leaf that needs it.** **Corollary:** a server component may render a client component, but not vice versa — **except through `children`.** Passing server-rendered JSX as `children` into a client component is the primary tool for keeping the boundary deep. **Use it.**
 - **R3 · Data fetching belongs to the server unless it is user-interactive.** The entity being edited → **server, in `layout.tsx`, once** (every tab needs it; today half the tabs get it as a prop and half re-query). Lists with URL-driven state → **server, from `searchParams`** (the URL is already the state). Child collections mutated in place → TanStack Query (client) — correct today. Session/role → **server, in `layout.tsx`** — correct today, **do not touch (R11)**. Anything behind a user interaction → client.
-- **R4 · Never a client boundary for a provider you can hoist.** Mount at the shallowest node that *needs* it, not the shallowest node available.
+- **R4 · Never a client boundary for a provider you can hoist.** Mount at the shallowest node that _needs_ it, not the shallowest node available.
 - **R5 · One file, one responsibility. Hard limits:** component soft 150 / **hard 250** · hook 100 / 200 · API module 200 / 400. **The limit is a smoke alarm, not a rule of taste.**
 - **R6 · Business logic never lives in a view file.** Moves: `scheduledSlotsForDate` (`trip-schedules-tab.tsx:770-790`) → `lib/tours/availability.ts` · `refundDue`, `paymentModelLabel` (`booking-columns.tsx`, exported and imported by 2 others) → `lib/bookings/refund.ts` · `deriveTourBadge`, `formatTourSignals` → `lib/tours/derive-badge.ts`, `signals.ts` · `toSlug` (duplicated in `trip-form.tsx` + `trip-details-tab.tsx`) → `lib/utils/slug.ts`, **one copy kept in sync with the backend util** · `numOrNull`, `numOrUndef`, `strOrNull` (`trip-locations-tab.tsx:78-80`, verbatim in `trip-pickup-locations-tab.tsx:58-60`) → `lib/utils/coerce.ts` · `durationHint` (`trip-details-tab.tsx:352-364`) → `lib/tours/duration.ts` · the local `buildQuery` dup → delete, import `lib/api/query.ts`. **Test: if it can be unit-tested without React, it does not belong in a `.tsx`.**
 - **R7 · Extract a shared component only on the third occurrence — and then delete the forks.** **A PR that adds a shared component and does not delete every fork it replaces is incomplete and must be rejected.** Not "follow-up ticket". Same PR. **The only rule in this document with teeth against the specific way this codebase decays.**
 - **R8 · Composition over configuration.** `<EntityTable module="tours" showBulk showCommission={role==='ADMIN'} variant="compact" />` is **BAD**; slotted `<DataTable data={...} columns={...}>` with `DataTable.Toolbar` / `DataTable.BulkBar` children is **GOOD**. **A boolean prop that gates JSX is a slot wearing a disguise.** The 813-line `data-table.tsx` failed partly because it was configuration-shaped: adapting it to a real module was harder than writing a new table.
-- **R9 · One system per kind of state. No overlap.** Server data → **TanStack Query. Only.** Form state → **react-hook-form + zod. Only.** URL state (page, sort, filter, tab) → **`searchParams`. Only.** Ephemeral UI → `useState`, colocated. Cross-cutting (role, sidebar collapse, upload progress) → Context / zustand. *Today four systems overlap: `AgeBandRow` holds **8 `useState`s**; `AddOnRow` 5; the schedules add-form 6 **plus a hand-rolled `errors` object**; `ExceptionsSection` 5 + errors. And **two validation systems coexist** — zod resolvers in some rows, imperative `if (!HHMM.test(...))` in others (`trip-schedules-tab.tsx:423`, `:928`).* **All `useState` row editors migrate to RHF. All imperative validation migrates to zod. No exceptions.**
+- **R9 · One system per kind of state. No overlap.** Server data → **TanStack Query. Only.** Form state → **react-hook-form + zod. Only.** URL state (page, sort, filter, tab) → **`searchParams`. Only.** Ephemeral UI → `useState`, colocated. Cross-cutting (role, sidebar collapse, upload progress) → Context / zustand. _Today four systems overlap: `AgeBandRow` holds **8 `useState`s**; `AddOnRow` 5; the schedules add-form 6 **plus a hand-rolled `errors` object**; `ExceptionsSection` 5 + errors. And **two validation systems coexist** — zod resolvers in some rows, imperative `if (!HHMM.test(...))` in others (`trip-schedules-tab.tsx:423`, `:928`)._ **All `useState` row editors migrate to RHF. All imperative validation migrates to zod. No exceptions.**
 - **R10 · URL state is the default for anything a user would bookmark, share, or expect back to work.** Page, sort, filter, search, tab, and selected-record all live in the URL; tabs become **routes**.
 - **R11 · Do not "optimize" the auth path** (the three load-bearing properties, E.5.5).
 - **R12 · Delete every `as unknown as Resolver<T>`.** Five occurrences. **That cast is the type system reporting a real modeling problem and being told to be quiet.** Fix the schema (use `z.coerce` consistently, or type the form values to match) and the cast disappears on its own. **If it does not disappear, the model is still wrong.**
@@ -7906,16 +8031,16 @@ export const authClient = createAuthClient({
 
 #### E.5.13 Backend requests (blockers) and cross-repo contracts
 
-| # | Request | Unblocks | Priority |
-|---|---|---|---|
-| **A1** | `GET /dashboard/stats` returning real revenue / bookings / tours / customers + recent activity | Kills `dashboardActions.ts` (B-3). **The first screen after login is currently fabricated data.** | **High** |
-| **A2** | `GET /reviews` + moderation transitions | The `reviews` stub | High |
-| **A3** | `GET /users` (paginated, filterable) + role management | The `users` stub | Medium |
+| #      | Request                                                                                                     | Unblocks                                                                                                                         | Priority |
+| ------ | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **A1** | `GET /dashboard/stats` returning real revenue / bookings / tours / customers + recent activity              | Kills `dashboardActions.ts` (B-3). **The first screen after login is currently fabricated data.**                                | **High** |
+| **A2** | `GET /reviews` + moderation transitions                                                                     | The `reviews` stub                                                                                                               | High     |
+| **A3** | `GET /users` (paginated, filterable) + role management                                                      | The `users` stub                                                                                                                 | Medium   |
 | **A4** | Machine-translation job `POST /tours/:id/translations/:locale/generate` setting `isMachineTranslated: true` | The console's pre-translate step. **The flag, payload field and badge already exist end-to-end; only the generator is missing.** | **High** |
-| **A5** | Bulk schedule create `POST /availability/schedules/bulk` accepting `{ weekdays[], startTimes[] }` | Collapses 21 sequential POSTs to 1 | Medium |
-| **A6** | Bulk image reorder `PATCH /tours/:id/images/order` accepting an ordered id array | Drag-drop reorder in 1 request instead of 2-per-arrow | Medium |
-| **A7** | Payment detail + refund transitions | Payments is currently a dead end | Medium |
-| **A8** | Backend-emitted cache revalidation via the existing outbox/BullMQ | The correct end-state; removes the dashboard's knowledge of the public site | Medium |
+| **A5** | Bulk schedule create `POST /availability/schedules/bulk` accepting `{ weekdays[], startTimes[] }`           | Collapses 21 sequential POSTs to 1                                                                                               | Medium   |
+| **A6** | Bulk image reorder `PATCH /tours/:id/images/order` accepting an ordered id array                            | Drag-drop reorder in 1 request instead of 2-per-arrow                                                                            | Medium   |
+| **A7** | Payment detail + refund transitions                                                                         | Payments is currently a dead end                                                                                                 | Medium   |
+| **A8** | Backend-emitted cache revalidation via the existing outbox/BullMQ                                           | The correct end-state; removes the dashboard's knowledge of the public site                                                      | Medium   |
 
 Also blocked, no request number: **media tags** (needs a backend field) — Low; **profile session list** (needs an endpoint) — Low; **translation "source updated" conflict flag** (verify whether `updatedAt` on the EN translation suffices).
 
@@ -7926,11 +8051,11 @@ Also blocked, no request number: **media tags** (needs a backend field) — Low;
 #### E.5.14 Extraction status (as recorded)
 
 - **Stage A (Decouple, phases 1-4): done** in the monorepo — B-1 fixed, the 7 imports severed, `components/` sorted by owner, **2,725 LOC of dead code deleted** (vs >1,574 estimated) across 20 files. **Stage A has value even if the split never happens.**
-- **Stage B (Extract, phases 5-9): 5-8 done, 9 automated half done.** New repo exists, serves at `/` on port 3001, deploys to Vercel, reaches the backend only over HTTP. **Phase 9: NO REGRESSION FOUND** — 171 component files compared (95 byte-identical, 76 differing *only* in import paths or the `/dashboard/x` → `/x` prefix, **0 behavioural**), route sets identical 19/19; **227 e2e tests run against both dashboards — 102 failures identical name-for-name, 0 failing only on old**, and the 4 failing only on new **fail on old too when run in isolation** (database residue). **The suite is ~45% red on BOTH sides — it is measuring its own decay, not the extraction.**
+- **Stage B (Extract, phases 5-9): 5-8 done, 9 automated half done.** New repo exists, serves at `/` on port 3001, deploys to Vercel, reaches the backend only over HTTP. **Phase 9: NO REGRESSION FOUND** — 171 component files compared (95 byte-identical, 76 differing _only_ in import paths or the `/dashboard/x` → `/x` prefix, **0 behavioural**), route sets identical 19/19; **227 e2e tests run against both dashboards — 102 failures identical name-for-name, 0 failing only on old**, and the 4 failing only on new **fail on old too when run in isolation** (database residue). **The suite is ~45% red on BOTH sides — it is measuring its own decay, not the extraction.**
 - **Stage C/D (Redesign, phases 10-20):** Phase 10 lint rules **DONE** (8 rules as `warn`, **428 warnings / 0 errors**, all validated firing) · Phase 11 token system **DONE** (gate GREEN, 34 checks × 2 modes; it caught 2 defects in the spec's own palette) · Phase 12 StatusBadge **DONE** (**zero palette classes repo-wide**; **6 conventions deleted — the audit counted 4**) · Phase 13 fonts/icons/primitives **DONE** (Playfair dropped by user decision, **hugeicons KEPT by user decision — overrides D-7 and the grep validation is WAIVED**, B-4 fixed, buttons de-shouted) · Phase 14 command palette + IA **DONE** · Phase 15 DataTable **DONE** (**11/11 forks converted — the audit counted 10**; 3,552 → 2,524 LOC including the new system) · Phase 16 Tours create + readiness **NEXT** · Phases 17-20 not started · Stage E (21-23) blocked on A1/A4/A2/A3/A5/A6/A7.
 - **Owed to the user (cannot be agent-completed):** the Vercel project for `dashboard.islandtours.esenc.cloud` + DNS, and adding that origin to the backend's **real** `.env.production` `CORS_ORIGINS` (only the committed examples were changed) — **a `*.vercel.app` URL cannot authenticate** (the session cookie is scoped to a different registrable domain), **so there is no "deploy now, domain later"**; parity checks **#2, #9** on staging; parity **#6, #7, #10, #43-45, #49** and the visual half of the module rows; **the sidebar-font visual delta** (DM Sans + General Sans → Noto Sans); the visual check of the 6 tour pickers.
 - **Five open decisions:** the trips→tours rename timing (**DEFERRED**), the weather widget (**OPEN**), the `revalidateTag` profile (**RESOLVED — `{ expire: 0 }`, `'max'` deferred**), the Phase 17 rollback shape (**OPEN**), dropping Playfair Display (**RESOLVED — dropped**).
-- **Risk register:** cache revalidation failing silently (Critical) · the publish gate blocking a legal action (High) · **forks surviving the shared component (High — this is *how this codebase decayed*)** · `COOKIE_DOMAIN` mismatch → login loop (High) · contrast gate skipped (High) · the translation schema missing a field (High) · the tours refactor being too large (Medium) · rbac/types drift post-split (Medium) · the public site's cross-site auth breaking (**High, not ours**) · lint-as-`error` blocking all work (Medium — land as `warn`, flip at 20).
+- **Risk register:** cache revalidation failing silently (Critical) · the publish gate blocking a legal action (High) · **forks surviving the shared component (High — this is _how this codebase decayed_)** · `COOKIE_DOMAIN` mismatch → login loop (High) · contrast gate skipped (High) · the translation schema missing a field (High) · the tours refactor being too large (Medium) · rbac/types drift post-split (Medium) · the public site's cross-site auth breaking (**High, not ours**) · lint-as-`error` blocking all work (Medium — land as `warn`, flip at 20).
 - **Governing principles:** (1) extraction and redesign never interleave; (2) decoupling work lands in the current repo first; (3) every phase is independently revertible — one phase, one PR, one revert; (4) **a PR that adds a shared component and does not delete its forks is rejected — non-negotiable**; (5) **lint lands before the pattern it protects.** **The gate at Phase 9 is the plan's spine: extraction proven before redesign begins. Break it and every subsequent bug becomes an argument about whether the move or the redesign caused it.**
 - **Two traps recorded from execution:** ⚠️ `git mv` from `frontend/` stages into `frontend/.git`, **a different repo on a different branch** — 23 renames landed in the wrong index. **Run every git command from the repo ROOT.** ⚠️ **Never let a comparison's failure mode look like success:** a `diff -rq` with stderr suppressed read a **missing directory** as "identical", and a zsh `ls *.tsx *.ts` **aborted on any directory with no `.ts` file**, silently skipping it — both inflated parity. The same class of error appears in lint (**a regex selector that fails to parse reports zero and looks identical to a clean codebase** — every rule was proved to fire against positive **and negative** cases before being trusted) and in grep (**a `grep` over a missing path returns nothing and reads exactly like a clean result** — check the directory exists first).
 - ⚠️ **The login surfaces keep the public brand tokens, permanently.** "The split resolves F-3 for free" was **WRONG** — `/portal` and `/staff` are built on the PUBLIC site's `--it-*` tokens (**81 usages across 20 tokens**, wrapped in `.frontend-root`), so dropping the import renders them **unstyled**. Resolution (user): fork the tokens into `app/login-tokens.css` (130 lines, reduced from 524, scoped by `.frontend-root`) — **intentional architecture, not debt; the token phase must leave the login surfaces alone.** **Enabling fact:** ZERO files in `components/dashboard`, `components/ui`, `components/onboarding` or `app/(dashboard)` use `--it-*`. **A green build proves nothing here — Tailwind silently skips unknown utilities**; verified in the BUILT CSS (14/14 utilities generate).
@@ -7941,15 +8066,15 @@ Also blocked, no request number: **media tags** (needs a backend field) — Low;
 ### E.6 Shared UI kit rules
 
 - **Compose the shared settings form kit; never hand-roll form chrome.** The kit lives in `components/settings/settings-fields.tsx` — `SettingsCard`, `TextField`, `TextareaField`, `ImageField` (plus the new `VideoField`) — and is **the kit every settings form already uses**. The Homepage editor's `HomepageSectionCard` / `HomepageField` were re-implementations and **both duplicates were deleted**; their label-by-consequence and show-the-fallback behaviour survived as **`describeField(where, value, fallback)`**, which builds the `description` string the shared field already accepts — **so no new component was needed.**
-  - ⚠️ Tension to resolve: the design spec separately asks to **fold `settings-fields.tsx` into the shared form primitives**, because as it stands it is "a settings-local design system no other module uses". The Homepage review resolved in the opposite direction — **compose the existing kit rather than fork it** — which is the operative rule today.
+    - ⚠️ Tension to resolve: the design spec separately asks to **fold `settings-fields.tsx` into the shared form primitives**, because as it stands it is "a settings-local design system no other module uses". The Homepage review resolved in the opposite direction — **compose the existing kit rather than fork it** — which is the operative rule today.
 - **Use the shared `EntityTabs` for any tabbed entity/singleton editor.** The Homepage editor uses `EntityTabs` and **no `EntityDetailShell`**, because it is a top-level tabbed singleton, same as Settings. Tabs are ordered by **where the sections appear on the page**, so scanning the tab row scans the page top to bottom.
 - **Use the shared `FaqManager` for every FAQ surface.** `faq/faq-manager.tsx` (477 LOC, 4 entity-module consumers, **zero forks**) is the proof the shared-component approach works — **it was achieved once; do it four more times.** It composes with the generic `faqGroupsApi`, which builds `{basePath}/{id}/faqs/groups` for every entity — which is why the homepage kept `:entityId` in its path and needed **zero dashboard changes**.
-  - ⚠️ `FaqManager` maps a `basePath` to a Translation-Console type via `CONSOLE_TYPE_BY_BASE`. **The `?? 'destination'` fallback was removed: an unmapped `basePath` now renders NO pointer, because a wrong link is worse than a missing one.** That silent default is what turned a missing entry into a broken link instead of a visible error.
+    - ⚠️ `FaqManager` maps a `basePath` to a Translation-Console type via `CONSOLE_TYPE_BY_BASE`. **The `?? 'destination'` fallback was removed: an unmapped `basePath` now renders NO pointer, because a wrong link is worse than a missing one.** That silent default is what turned a missing entry into a broken link instead of a visible error.
 - **EVERY media field goes through the media library — never a pasted URL.** The featured-experience video was a raw `<Input>`, **the one field in the dashboard not backed by the media library**. There was no video picker, **so one now exists**:
-  - `MediaGalleryManager` and `MediaSelector` take a **`kind` restriction**, which **seeds the type filter AND omits the setter, hiding the type dropdown entirely** — a field that can only accept a video should not offer "All types".
-  - **Selector toasts take their noun from the kind**, so a video picker never says "image".
-  - `VideoSelectorField` + a `VideoField` in the shared kit render **a real `<video>` preview**.
-  - ⚠️ **Kind is tested with `getMediaKind`, never `resourceType === 'video'`, because Cloudinary stores AUDIO under resourceType `video`** — the raw check would accept an mp3 for a video slot.
+    - `MediaGalleryManager` and `MediaSelector` take a **`kind` restriction**, which **seeds the type filter AND omits the setter, hiding the type dropdown entirely** — a field that can only accept a video should not offer "All types".
+    - **Selector toasts take their noun from the kind**, so a video picker never says "image".
+    - `VideoSelectorField` + a `VideoField` in the shared kit render **a real `<video>` preview**.
+    - ⚠️ **Kind is tested with `getMediaKind`, never `resourceType === 'video'`, because Cloudinary stores AUDIO under resourceType `video`** — the raw check would accept an mp3 for a video slot.
 - **Other proven shared components (do not fork):** `media/image-selector-field.tsx` (296 LOC, **10 consumers, no forks**) · `table-search-input.tsx` (67 LOC, 6 of 10 tables) · `rationale-translation-tabs.tsx` (97 LOC, 3 consumers) · `common/deactivate-dialog.tsx` (70 LOC, **but only reachable through 4 duplicated wrappers — the anti-pattern**).
 - **Targets for consolidation:** ONE `SeoForm` (was 4 × ~360 LOC) · ONE `ConfirmDialog` (**delete 3 competing abstractions + 4 clone wrappers**) · ONE `EntityTable` / `DataTable` (E.5.12) · ONE `EntityShell` (SERVER) · ONE `StatusBadge` + `status-maps.ts` (**one map per domain: `BOOKING_STATUS`, `PAYMENT_STATUS`, `TRIP_STATUS`, `SCHEDULE_STATUS`, `SPOTLIGHT_STATUS`, `OPERATOR_VERIFICATION`, `ACTIVE_STATUS`, `STAFF_MEMBER_STATUS`, `BOOKING_PAYMENT_STATE` — a new backend status now costs one line in one file**) · ONE `useTableState` hook.
 
@@ -7966,7 +8091,7 @@ Also blocked, no request number: **media tags** (needs a backend field) — Low;
 - **Search is a client-side filename substring.** **No type/date/size filter, no sort.** Bulk actions are **delete-only**.
 - **The picker is a `Dialog` styled `inset-0 w-screen h-screen` borderless `rounded-none` — a dialog cosplaying as a route.**
 - Second icon library lives here (7 of 14 hugeicons files). Own skeleton, own empty state, own delete dialog — **none shared**.
-- **Solutions:** (1) **pagination or infinite scroll — table stakes**; (2) **server-side search + filters** (type, date, size, unused) — **BLOCKED if `/media-gallery` lacks query params; verify early** (if it supports them this is frontend-only); (3) **tags over folders** — an image belongs to a tour *and* a destination, and folders force one truth — **BLOCKED: needs a backend field**; (4) the picker becomes a **Sheet** (`media-selector.tsx` → `media-picker-sheet.tsx`); (5) **a "used by" indicator** — delete is currently blind and an operator cannot see that an image is a tour's hero — **the highest-value non-blocked item here**; (6) lucide only, plus the shared skeleton, empty state and `ConfirmDialog`. **Keep the zustand upload store** — correct for cross-component progress. Architecture: `media/page.tsx` SERVER shell → `<MediaGrid/>` client (virtualized). ~1,949 → ~1,400 LOC.
+- **Solutions:** (1) **pagination or infinite scroll — table stakes**; (2) **server-side search + filters** (type, date, size, unused) — **BLOCKED if `/media-gallery` lacks query params; verify early** (if it supports them this is frontend-only); (3) **tags over folders** — an image belongs to a tour _and_ a destination, and folders force one truth — **BLOCKED: needs a backend field**; (4) the picker becomes a **Sheet** (`media-selector.tsx` → `media-picker-sheet.tsx`); (5) **a "used by" indicator** — delete is currently blind and an operator cannot see that an image is a tour's hero — **the highest-value non-blocked item here**; (6) lucide only, plus the shared skeleton, empty state and `ConfirmDialog`. **Keep the zustand upload store** — correct for cross-component progress. Architecture: `media/page.tsx` SERVER shell → `<MediaGrid/>` client (virtualized). ~1,949 → ~1,400 LOC.
 - **Metadata surfaces in use:** alt text and focal point (edited via `ImageEditDialog` on the tour Images tab), hero flag, display order, and the **24-image cap per tour**.
 - **Media is the only dashboard module with `export const metadata`.**
 
@@ -7980,15 +8105,15 @@ Also blocked, no request number: **media tags** (needs a backend field) — Low;
 - **Social media** — `/settings/social-media`; operators have their own social links under `/operators/:id/social-media`.
 - **Mailchimp** — `/settings/mailchimp`, an Integrations-tab concern. The design spec asks for a **connection status** indicator (connected / error / not configured) with a test action on **Stripe, Mollie and Mailchimp**.
 - **Stripe** — `/settings/payment/stripe`. **Credentials live encrypted in the database (Settings → Payments), never in `.env`.** Fields: **Payment Label** (display name), **Publishable Key** (`pk_test_...`/`pk_live_...`), **Secret Key** (`sk_test_...`/`sk_live_...`, stored encrypted; **leave blank on edit to keep the current one**), **Webhook Secret** (`whsec_...`), and **Payment Methods** — only **Card, iDEAL, PayPal** are selectable today (enabling one shows a short setup guide; disabling asks to confirm).
-  - **Prerequisite `ENCRYPTION_KEY`** in the backend env: a **stable** value, the same across restarts and **distinct per environment**. **If it changes, previously saved secrets cannot be decrypted and must be re-entered.**
-  - **Never mix test + live keys** (e.g. a live secret with a test publishable) → auth error → **500 at intent creation**.
-  - **Because the intent uses `automatic_payment_methods`, real eligibility is whatever is activated on the Stripe account for the booking currency** — a method selected here still will not appear until it is activated in Stripe. **Card** is on by default and works in every currency, collected **inline** (no redirect); **iDEAL is EUR-only** and auto-hidden for USD; **PayPal** requires completing the PayPal connection. **Until activated, a method stays greyed at checkout with a hint — that is the eligibility gate working, not a bug.**
-  - **Webhooks — local:** `POST http://localhost:5050/api/v1/payments/webhook`, **`@Public()` + `@SkipThrottle()`**, verifying the Stripe signature against the **raw** body (`main.ts` sets `rawBody: true`). `brew install stripe/stripe-cli/stripe` → `stripe login` → `stripe listen --forward-to localhost:5050/api/v1/payments/webhook` → paste the printed `whsec_...` into Settings. **Keep `stripe listen` running while testing checkout locally, else the booking never leaves `ON_HOLD`** (the `/payment/processing` page polls, then falls back to the manual "View my booking" link).
-  - **Webhooks — production:** Stripe Dashboard → Developers → Webhooks → Add endpoint `https://<your-domain>/api/v1/payments/webhook`; **minimum events `payment_intent.succeeded`, `payment_intent.payment_failed`**; paste the endpoint's signing secret (live mode). **Redeliveries are safe: the backend records each event id in `stripe_webhook_events` and skips duplicates (idempotent).**
-  - **Money flow recap:** checkout collects **card inline** (styled Stripe **Card Elements**, no Stripe-hosted UI) and **redirects** for **PayPal / iDEAL**; the up-front PaymentIntent uses **`automatic_payment_methods`**; on a successful charge the **webhook confirms the booking** (`payment_intent.succeeded` → `confirmFromPayment`), which **fires the EUR conversion** and the **confirmation email**. **Without a working webhook, bookings stay `ON_HOLD`.**
-  - **Test cards (test mode only):** `4242 4242 4242 4242` succeeds · `4000 0025 0000 3155` requires 3-D Secure (inline modal) · `4000 0000 0000 9995` declines (insufficient funds).
-  - **Troubleshooting:** 500 on `.../intent` with "currency invalid for payment method" → a method incompatible with the currency was forced; `automatic_payment_methods` is used now, re-check you are on the latest backend · **503 "Payments are not configured"** → no secret + webhook secret saved · booking stuck on `/payment/processing` → the webhook is not reaching the backend · iDEAL/PayPal greyed out → not activated in Stripe, or currency-incompatible · auth error at intent creation → test/live key mismatch, or a wrong `ENCRYPTION_KEY`.
-  - **Intent creation:** `POST /api/v1/payments/bookings/:id/intent` → returns `clientSecret`, `publishableKey`, `paymentMethodTypes`. Code: `backend/src/payments/` (`stripe.service.ts`, `payments.service.ts`).
+    - **Prerequisite `ENCRYPTION_KEY`** in the backend env: a **stable** value, the same across restarts and **distinct per environment**. **If it changes, previously saved secrets cannot be decrypted and must be re-entered.**
+    - **Never mix test + live keys** (e.g. a live secret with a test publishable) → auth error → **500 at intent creation**.
+    - **Because the intent uses `automatic_payment_methods`, real eligibility is whatever is activated on the Stripe account for the booking currency** — a method selected here still will not appear until it is activated in Stripe. **Card** is on by default and works in every currency, collected **inline** (no redirect); **iDEAL is EUR-only** and auto-hidden for USD; **PayPal** requires completing the PayPal connection. **Until activated, a method stays greyed at checkout with a hint — that is the eligibility gate working, not a bug.**
+    - **Webhooks — local:** `POST http://localhost:5050/api/v1/payments/webhook`, **`@Public()` + `@SkipThrottle()`**, verifying the Stripe signature against the **raw** body (`main.ts` sets `rawBody: true`). `brew install stripe/stripe-cli/stripe` → `stripe login` → `stripe listen --forward-to localhost:5050/api/v1/payments/webhook` → paste the printed `whsec_...` into Settings. **Keep `stripe listen` running while testing checkout locally, else the booking never leaves `ON_HOLD`** (the `/payment/processing` page polls, then falls back to the manual "View my booking" link).
+    - **Webhooks — production:** Stripe Dashboard → Developers → Webhooks → Add endpoint `https://<your-domain>/api/v1/payments/webhook`; **minimum events `payment_intent.succeeded`, `payment_intent.payment_failed`**; paste the endpoint's signing secret (live mode). **Redeliveries are safe: the backend records each event id in `stripe_webhook_events` and skips duplicates (idempotent).**
+    - **Money flow recap:** checkout collects **card inline** (styled Stripe **Card Elements**, no Stripe-hosted UI) and **redirects** for **PayPal / iDEAL**; the up-front PaymentIntent uses **`automatic_payment_methods`**; on a successful charge the **webhook confirms the booking** (`payment_intent.succeeded` → `confirmFromPayment`), which **fires the EUR conversion** and the **confirmation email**. **Without a working webhook, bookings stay `ON_HOLD`.**
+    - **Test cards (test mode only):** `4242 4242 4242 4242` succeeds · `4000 0025 0000 3155` requires 3-D Secure (inline modal) · `4000 0000 0000 9995` declines (insufficient funds).
+    - **Troubleshooting:** 500 on `.../intent` with "currency invalid for payment method" → a method incompatible with the currency was forced; `automatic_payment_methods` is used now, re-check you are on the latest backend · **503 "Payments are not configured"** → no secret + webhook secret saved · booking stuck on `/payment/processing` → the webhook is not reaching the backend · iDEAL/PayPal greyed out → not activated in Stripe, or currency-incompatible · auth error at intent creation → test/live key mismatch, or a wrong `ENCRYPTION_KEY`.
+    - **Intent creation:** `POST /api/v1/payments/bookings/:id/intent` → returns `clientSecret`, `publishableKey`, `paymentMethodTypes`. Code: `backend/src/payments/` (`stripe.service.ts`, `payments.service.ts`).
 - **Mollie** — `/settings/payment/mollie`, plus `/operators/:id/mollie-config`. Webhook `POST /api/v1/payments/webhook/mollie` — **recorded only**.
 - **Company** — `/settings/company` (the platform's legal entity, `CompanyInformations`); distinct from `/operators/:id/company-info` (an operator's own business).
 - **Platform-reviews config** — dashboard **Settings → Reviews** configures a **Trustpilot API or Google Reviews API** key for the `/platform-reviews` module: **encrypted key, DB-cached payload, 12h lazy refresh, manual "Fetch now"**. The homepage Testimonials band **stays hidden until enabled AND platform review count > 100**, enforced **server-side in `GET /platform-reviews/public`**.
@@ -8002,23 +8127,23 @@ Also blocked, no request number: **media tags** (needs a backend field) — Low;
 
 #### E.9.1 The decision: synchronous transactional core, asynchronous edges
 
-| Concern | Correct mechanism | Queue? |
-|---|---|---|
-| Overbooking / two travelers race for the last seats | **single atomic guarded `UPDATE departures` (row-level lock)** | **No** |
-| Booking create + unit items + add-ons + settlement row | one DB transaction (synchronous) | **No** |
-| Payment intent creation | idempotent per `(bookingId, kind)` (synchronous) | **No** |
-| Confirmation / operator-balance email | BullMQ job, retryable, idempotent | **Yes** |
-| Server-side Meta CAPI conversion | BullMQ job, idempotent by event id | **Yes** |
-| Hold expiry (release seats at `utcExpiresAt`) | BullMQ delayed/repeatable sweeper | **Yes** |
-| Scheduled `paid_in_full` payout after the cancellation window | BullMQ delayed job | **Yes** |
-| Pre-tour reminder (24h before start) | BullMQ delayed job | **Yes** |
-| Affiliate postback (on-hold, approve after window) | BullMQ delayed job | **Yes** |
-| Nightly quality_score / eligibility / materialization | BullMQ repeatable (cron) | **Yes** |
+| Concern                                                       | Correct mechanism                                              | Queue?  |
+| ------------------------------------------------------------- | -------------------------------------------------------------- | ------- |
+| Overbooking / two travelers race for the last seats           | **single atomic guarded `UPDATE departures` (row-level lock)** | **No**  |
+| Booking create + unit items + add-ons + settlement row        | one DB transaction (synchronous)                               | **No**  |
+| Payment intent creation                                       | idempotent per `(bookingId, kind)` (synchronous)               | **No**  |
+| Confirmation / operator-balance email                         | BullMQ job, retryable, idempotent                              | **Yes** |
+| Server-side Meta CAPI conversion                              | BullMQ job, idempotent by event id                             | **Yes** |
+| Hold expiry (release seats at `utcExpiresAt`)                 | BullMQ delayed/repeatable sweeper                              | **Yes** |
+| Scheduled `paid_in_full` payout after the cancellation window | BullMQ delayed job                                             | **Yes** |
+| Pre-tour reminder (24h before start)                          | BullMQ delayed job                                             | **Yes** |
+| Affiliate postback (on-hold, approve after window)            | BullMQ delayed job                                             | **Yes** |
+| Nightly quality_score / eligibility / materialization         | BullMQ repeatable (cron)                                       | **Yes** |
 
 - **Rule of thumb: synchronous transactional core, asynchronous edges.**
 - **Why a queue is the wrong tool for overbooking:** it does **not remove the need for the atomic update** (you would still run it inside the consumer, so you would have both); it **serializes bookings**, fighting the master's **instant booking** requirement by adding latency and a new failure surface; and the only case where a queue or virtual waiting room helps is **true flash-sale hot inventory**. **A tour departure has ~20 to 40 seats and a handful of concurrent bookers. Do not build for contention we will not have.**
 - **The canonical seat claim:** `UPDATE departures SET booked_count = booked_count + :seats, status = CASE WHEN booked_count + :seats >= capacity THEN 'sold_out' ELSE status END, … WHERE id = :departure_id AND tour_id = :tour_id AND status = 'open' AND booked_count + :seats <= capacity;` — **if the update affects zero rows, the booking fails. That is the concurrency control.** PostgreSQL takes a **row-level lock** on the conditional `UPDATE`, so **exactly one of two racers wins — atomically, at the database, with no extra infrastructure.**
-- **Inside ONE DB transaction, in order:** (1) atomic seat claim; (2) create `Booking` (+ `BookingUnitItem`, `BookingAddOn`, `Settlement` row); (3) **write an `outbox` row for each domain event this booking emits**. Then, **outside the transaction**: (4) create the payment intent, idempotent per `(bookingId, kind)` — except `operator_full`, which is confirmed at commit with no charge (*and `operator_full` is dropped in v1; that is the v2 behavior*).
+- **Inside ONE DB transaction, in order:** (1) atomic seat claim; (2) create `Booking` (+ `BookingUnitItem`, `BookingAddOn`, `Settlement` row); (3) **write an `outbox` row for each domain event this booking emits**. Then, **outside the transaction**: (4) create the payment intent, idempotent per `(bookingId, kind)` — except `operator_full`, which is confirmed at commit with no charge (_and `operator_full` is dropped in v1; that is the v2 behavior_).
 
 #### E.9.2 Job inventory (job / trigger / type / idempotency key)
 
@@ -8088,18 +8213,18 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 
 #### E.10.2 Files
 
-| Path | Purpose |
-|---|---|
-| `backend/Dockerfile` | Multi-stage production image (build → slim runner) |
-| `backend/docker-entrypoint.sh` | `migrate deploy` (+ optional seed) then start |
-| `backend/.dockerignore` | Keeps secrets/deps/tests out of the build context |
-| `docker-compose.yml` | Production stack: postgres + redis + backend |
-| `docker-compose.dev.yml` | Local dev infra: postgres + redis only (host ports) |
-| `.env.example` | Compose infra vars (Postgres/Redis creds, image tag) |
-| `backend/.env.production.example` | Backend app secrets for the prod stack |
-| `.github/workflows/ci.yml` | Lint + build + test on PR/push |
-| `.github/workflows/deploy-backend.yml` | SSH deploy to the VPS on push to main |
-| `deploy/nginx/island-api.conf` | Tracked nginx site config |
+| Path                                   | Purpose                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| `backend/Dockerfile`                   | Multi-stage production image (build → slim runner)   |
+| `backend/docker-entrypoint.sh`         | `migrate deploy` (+ optional seed) then start        |
+| `backend/.dockerignore`                | Keeps secrets/deps/tests out of the build context    |
+| `docker-compose.yml`                   | Production stack: postgres + redis + backend         |
+| `docker-compose.dev.yml`               | Local dev infra: postgres + redis only (host ports)  |
+| `.env.example`                         | Compose infra vars (Postgres/Redis creds, image tag) |
+| `backend/.env.production.example`      | Backend app secrets for the prod stack               |
+| `.github/workflows/ci.yml`             | Lint + build + test on PR/push                       |
+| `.github/workflows/deploy-backend.yml` | SSH deploy to the VPS on push to main                |
+| `deploy/nginx/island-api.conf`         | Tracked nginx site config                            |
 
 #### E.10.3 Local development — two supported setups
 
@@ -8157,17 +8282,17 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 
 #### E.10.7 Troubleshooting matrix
 
-| Symptom | Cause / fix |
-|---|---|
-| `ERR max requests limit exceeded` (Redis) | Still on the Upstash free tier / `UPSTASH_REDIS_URL` still set somewhere. Unset it; use the self-hosted `redis` service (no quota). |
-| `Environment validation failed: ... is missing` | A required var is absent. Check `backend/.env.production` against `*.example`; compose injects `DATABASE_URL`/`REDIS_*`. |
-| Redis `NOAUTH` / `WRONGPASS` | `REDIS_PASSWORD` in `.env` must match the `redis` service `--requirepass`. Re-run `docker compose up -d` after editing. |
-| CORS error in the browser | Add the **exact** origin (scheme + host, comma-separated, **no spaces, no trailing slash**) to `CORS_ORIGINS`, redeploy the backend. |
-| Better Auth links point at localhost | Set `BETTER_AUTH_URL=https://api.your-domain.com`. |
-| Stripe webhook signature fails | Ensure nginx forwards the raw body (no buffering middleware); the app uses `rawBody: true`. |
-| Backend container restarts on boot | Usually a failed `migrate deploy` — `docker compose logs backend`. Postgres must be healthy first (compose `depends_on` handles ordering). |
-| 502 from nginx | Backend not healthy or not on `127.0.0.1:5050`. Check `docker compose ps` / logs. |
-| certbot fails | The DNS A record for `api` must resolve to the VPS **and port 80 must be open (ufw)** before running certbot. |
+| Symptom                                         | Cause / fix                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ERR max requests limit exceeded` (Redis)       | Still on the Upstash free tier / `UPSTASH_REDIS_URL` still set somewhere. Unset it; use the self-hosted `redis` service (no quota).        |
+| `Environment validation failed: ... is missing` | A required var is absent. Check `backend/.env.production` against `*.example`; compose injects `DATABASE_URL`/`REDIS_*`.                   |
+| Redis `NOAUTH` / `WRONGPASS`                    | `REDIS_PASSWORD` in `.env` must match the `redis` service `--requirepass`. Re-run `docker compose up -d` after editing.                    |
+| CORS error in the browser                       | Add the **exact** origin (scheme + host, comma-separated, **no spaces, no trailing slash**) to `CORS_ORIGINS`, redeploy the backend.       |
+| Better Auth links point at localhost            | Set `BETTER_AUTH_URL=https://api.your-domain.com`.                                                                                         |
+| Stripe webhook signature fails                  | Ensure nginx forwards the raw body (no buffering middleware); the app uses `rawBody: true`.                                                |
+| Backend container restarts on boot              | Usually a failed `migrate deploy` — `docker compose logs backend`. Postgres must be healthy first (compose `depends_on` handles ordering). |
+| 502 from nginx                                  | Backend not healthy or not on `127.0.0.1:5050`. Check `docker compose ps` / logs.                                                          |
+| certbot fails                                   | The DNS A record for `api` must resolve to the VPS **and port 80 must be open (ufw)** before running certbot.                              |
 
 ---
 
@@ -8178,29 +8303,30 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 - **Goal:** revamp the Island Tours backend API to strictly follow the **OCTO specification** (docs.octo.travel) for the **tour → availability → booking** surface. **OCTO is the API contract for that core; the master rules remain the business logic.**
 - **One entity name across the whole stack: `tour`.** We deliberately deviate from OCTO's wire term **`product`** and expose that concept as **`tour`**. **There is no `trip` and no `product` anywhere we control — DB, code, routes and JSON all say `tour`.**
 
-| OCTO canonical | Our API |
-|---|---|
+| OCTO canonical                         | Our API                          |
+| -------------------------------------- | -------------------------------- |
 | `GET /products` · `GET /products/{id}` | `GET /tours` · `GET /tours/{id}` |
-| field `productId` | field `tourId` |
-| error `INVALID_PRODUCT_ID` | error `INVALID_TOUR_ID` |
-| DTO `Product` | DTO `OctoTour` |
+| field `productId`                      | field `tourId`                   |
+| error `INVALID_PRODUCT_ID`             | error `INVALID_TOUR_ID`          |
+| DTO `Product`                          | DTO `OctoTour`                   |
 
-  **Everything else in the OCTO contract is kept verbatim** — `option`, `unit`, `availability`, `booking`, `supplier`, capabilities, status values, money encoding, error envelope. **Only the `product` → `tour` rename is ours.**
+**Everything else in the OCTO contract is kept verbatim** — `option`, `unit`, `availability`, `booking`, `supplier`, capabilities, status values, money encoding, error envelope. **Only the `product` → `tour` rename is ours.**
+
 - **Base path — Decision D0:** the recommendation was a **dedicated OCTO namespace `/api/octo/v1/*`** alongside the existing `/api/v1/*`. ⚠️ **The built path as executed is `/api/v1/octo/...`** (e.g. `OctoToursController` at **`/api/v1/octo/tours`**), and the capabilities middleware is applied `forRoutes('octo')` in `OctoModule`. **If D0 changes, only the path prefixes move.** The alternative — replacing the public-read tour/availability/booking routes under `/api/v1` in place — was rejected because it **mixes OCTO + native conventions (errors, money) on one prefix**.
-- ⚠️ **Strict-OCTO consumers (D11):** a third-party OCTO client (e.g. an OTA) expects `productId` / `/products`. If/when we expose the API to one, **add a compatibility alias** (accept `productId` as a synonym for `tourId`, mount `/products` → `/tours`). **Our API stays `tour`.** *(OCTO already speaks "tours" in its content model — the `octo/content` `categoryLabels` enum contains `boat-tours`, `walking-tours`, `day-trips` — so naming the container `tour` is a natural fit.)*
+- ⚠️ **Strict-OCTO consumers (D11):** a third-party OCTO client (e.g. an OTA) expects `productId` / `/products`. If/when we expose the API to one, **add a compatibility alias** (accept `productId` as a synonym for `tourId`, mount `/products` → `/tours`). **Our API stays `tour`.** _(OCTO already speaks "tours" in its content model — the `octo/content` `categoryLabels` enum contains `boat-tours`, `walking-tours`, `day-trips` — so naming the container `tour` is a natural fit.)_
 - **The Prisma rename is documentation-only for now** and lands with the OCTO build: `Trip` model → `Tour`, `trips.prisma` → `tours.prisma`, `TripTranslation/TripImage/TripStatus/...` → `Tour*`, module `trips/` → `tours/`, routes `/api/v1/trips` → `/api/v1/tours`, **and the physical table `trips` → `tours` (DS2 — `@@map("tours")`, no `@@map("trips")` alias)**. One coordinated migration + import updates + frontend API clients.
 
 #### E.11.2 Scope — what is OCTO and what stays native
 
-| Layer | API shape | Why |
-|---|---|---|
-| **Catalog read** (tours/options/units) | **OCTO** (`GET /tours`, `/tours/{id}`, `/supplier`) | Standard, consumable by the frontend + future OTAs |
-| **Availability** (check + calendar) | **OCTO** (`POST /availability`, `/availability/calendar`) | The standard slot model maps to departures |
-| **Booking transaction** (reserve→confirm→cancel) | **OCTO** (`/bookings/*`) | Standard two-step flow |
-| **Pricing / content / pickups** | **OCTO capabilities** | `octo/pricing`, `octo/content`, `octo/pickups` |
-| **Commercial engine** (tiers, ranking, quality score, eligibility, Spotlight, tracking) | **Native** | Not in OCTO; stays under `/api/v1/...` |
-| **Admin/operator management** (create/edit tours, translations, page content, FAQ, attributes, hubs, collections, settings) | **Native** (existing `/api/v1/...`) | Authoring surface; **OCTO is read/transact only** |
-| **Discovery** (categories, hubs, collections, search, filters) | **Native** | Marketplace IA; not OCTO |
+| Layer                                                                                                                       | API shape                                                 | Why                                                |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------- |
+| **Catalog read** (tours/options/units)                                                                                      | **OCTO** (`GET /tours`, `/tours/{id}`, `/supplier`)       | Standard, consumable by the frontend + future OTAs |
+| **Availability** (check + calendar)                                                                                         | **OCTO** (`POST /availability`, `/availability/calendar`) | The standard slot model maps to departures         |
+| **Booking transaction** (reserve→confirm→cancel)                                                                            | **OCTO** (`/bookings/*`)                                  | Standard two-step flow                             |
+| **Pricing / content / pickups**                                                                                             | **OCTO capabilities**                                     | `octo/pricing`, `octo/content`, `octo/pickups`     |
+| **Commercial engine** (tiers, ranking, quality score, eligibility, Spotlight, tracking)                                     | **Native**                                                | Not in OCTO; stays under `/api/v1/...`             |
+| **Admin/operator management** (create/edit tours, translations, page content, FAQ, attributes, hubs, collections, settings) | **Native** (existing `/api/v1/...`)                       | Authoring surface; **OCTO is read/transact only**  |
+| **Discovery** (categories, hubs, collections, search, filters)                                                              | **Native**                                                | Marketplace IA; not OCTO                           |
 
 - **Explicitly NOT covered by OCTO** (and therefore native or out of scope): the commercial tier economy and ranking, quality score, eligibility, Destination Spotlight, tracking/attribution, the slug registry and flat URLs, multilingual page content and FAQ authoring, categories/hubs/collections/search, per-tour reviews (**OCTO has no review capability**), add-ons (**add-ons are NOT OCTO units** — defer to `octo/extras`, which is not standardized, or keep them as a native booking extra), and **iCal** (secondary sync only, never the availability source).
 - **Also not standardized / to verify:** `octo/promotions` is **in development — defer**; header examples mention `octo/offers` but it is **not a documented capability — treat as non-standard**; `octo/cart`, `octo/adjustments`, `octo/extras`, `octo/questions`, `octo/packages`, `octo/maps`, `octo/resources` were **not confirmed** in the captured docs. The **Ticket schema** (booking `voucher` and per-unitItem `ticket`) was **NOT fully captured — confirm against the live spec before relying on specific fields**; expected shape is a delivery payload (`deliveryOptions[]` with `deliveryFormat` + `value`) plus redemption metadata. Also unverified: the **`Octo-Env` header** (`live`/`test`, seen in examples but not formally documented), the exact **`PATCH /bookings/{uuid}`** and **`GET /bookings/`** paths and full query-param set, the **GeoJSON `geometry` structure on `Place`**, whether **`contact` may be supplied at create as well as confirm**, the **`pickupAreas` schema**, **notification webhook retry policy and signature/verification** (**not specified — implementers add their own**) plus the exact `data` payload per type and whether a delivery-history endpoint exists, and the **notification subscriptions path spelling** (one doc table showed a `subcriptions` typo).
@@ -8216,28 +8342,28 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 
 #### E.11.4 Endpoints (complete OCTO list, paths relative to the supplier `endpoint`)
 
-| Operation | Method | Path | Notes |
-|---|---|---|---|
-| Get Supplier | `GET` | `/supplier/` | Supplier metadata + contact |
-| Get Product List | `GET` | `/products/` (**ours: `/tours/`**) | Full catalog (paginated) |
-| Get Product | `GET` | `/products/{id}` (**ours: `/tours/{id}`**) | Single product, same shape as the list item |
-| Availability Check | `POST` | `/availability/` | Concrete bookable slots for a date range / specific ids |
-| Availability Calendar | `POST` | `/availability/calendar` | Day-level availability summary for a range |
-| Create Booking (reserve) | `POST` | `/bookings/` | Holds availability → `ON_HOLD` |
-| Get Booking | `GET` | `/bookings/{uuid}` | Single booking |
-| Get Booking List | `GET` | `/bookings/` | Filter via query params |
-| Confirm Booking | `POST` | `/bookings/{uuid}/confirm` | `ON_HOLD → CONFIRMED` |
-| Update Booking | `PATCH` | `/bookings/{uuid}` | Modify unit items / contact / notes |
-| Cancel Booking | `POST` | `/bookings/{uuid}/cancel` | `→ CANCELLED` + refund decision |
-| Extend Booking | `POST` | `/bookings/{uuid}/extend` | Push out `utcExpiresAt` |
-| Get Pickup Locations | `GET` | `/bookings/{uuid}/pickupLocations?latitude=&longitude=` | `octo/pickups` only |
-| Create Notification Subscription | `POST` | `/notifications/subscriptions` | `octo/notifications` |
-| List Notification Subscriptions | `GET` | `/notifications/subscriptions` | `octo/notifications` |
-| Get Notification Subscription | `GET` | `/notifications/subscriptions/{id}` | `octo/notifications` |
-| Update Notification Subscription | `PATCH` | `/notifications/subscriptions/{id}` | `octo/notifications` |
-| Delete Notification Subscription | `DELETE` | `/notifications/subscriptions/{id}` | `octo/notifications` |
+| Operation                        | Method   | Path                                                    | Notes                                                   |
+| -------------------------------- | -------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| Get Supplier                     | `GET`    | `/supplier/`                                            | Supplier metadata + contact                             |
+| Get Product List                 | `GET`    | `/products/` (**ours: `/tours/`**)                      | Full catalog (paginated)                                |
+| Get Product                      | `GET`    | `/products/{id}` (**ours: `/tours/{id}`**)              | Single product, same shape as the list item             |
+| Availability Check               | `POST`   | `/availability/`                                        | Concrete bookable slots for a date range / specific ids |
+| Availability Calendar            | `POST`   | `/availability/calendar`                                | Day-level availability summary for a range              |
+| Create Booking (reserve)         | `POST`   | `/bookings/`                                            | Holds availability → `ON_HOLD`                          |
+| Get Booking                      | `GET`    | `/bookings/{uuid}`                                      | Single booking                                          |
+| Get Booking List                 | `GET`    | `/bookings/`                                            | Filter via query params                                 |
+| Confirm Booking                  | `POST`   | `/bookings/{uuid}/confirm`                              | `ON_HOLD → CONFIRMED`                                   |
+| Update Booking                   | `PATCH`  | `/bookings/{uuid}`                                      | Modify unit items / contact / notes                     |
+| Cancel Booking                   | `POST`   | `/bookings/{uuid}/cancel`                               | `→ CANCELLED` + refund decision                         |
+| Extend Booking                   | `POST`   | `/bookings/{uuid}/extend`                               | Push out `utcExpiresAt`                                 |
+| Get Pickup Locations             | `GET`    | `/bookings/{uuid}/pickupLocations?latitude=&longitude=` | `octo/pickups` only                                     |
+| Create Notification Subscription | `POST`   | `/notifications/subscriptions`                          | `octo/notifications`                                    |
+| List Notification Subscriptions  | `GET`    | `/notifications/subscriptions`                          | `octo/notifications`                                    |
+| Get Notification Subscription    | `GET`    | `/notifications/subscriptions/{id}`                     | `octo/notifications`                                    |
+| Update Notification Subscription | `PATCH`  | `/notifications/subscriptions/{id}`                     | `octo/notifications`                                    |
+| Delete Notification Subscription | `DELETE` | `/notifications/subscriptions/{id}`                     | `octo/notifications`                                    |
 
-**Get Booking List query filters (commonly supported):** `resellerReference`, `supplierReference`, `localDate` / `localDateStart` / `localDateEnd`, `productId`, `optionId`. *(Exact param set — verify against the OpenAPI definition.)*
+**Get Booking List query filters (commonly supported):** `resellerReference`, `supplierReference`, `localDate` / `localDateStart` / `localDateEnd`, `productId`, `optionId`. _(Exact param set — verify against the OpenAPI definition.)_
 
 #### E.11.5 Schemas
 
@@ -8257,28 +8383,28 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 
 #### E.11.6 Entity mapping (Island Tours → OCTO)
 
-| OCTO concept | Island Tours source | Notes / gap |
-|---|---|---|
-| **Supplier** | `Operator` (+ platform `SiteInfo`) | ⚠️ **D4: platform-as-supplier**; the operator is tour-level metadata |
-| Supplier contact | `OperatorCompanyInfo.companyPhone`, `User.email` | Add operator `contactEmail`/`contactPhone` (**E.164**) |
-| **Tour** | `Tour` | Derive `availabilityType` (START_TIME), `instantConfirmation` (true), `deliveryMethods` (VOUCHER), `redemptionMethod` |
-| Tour.options | *(none)* | Synthesize a `DEFAULT` option (D3) |
-| Tour.pricingPer | `Tour.pricingModel` | `PER_PERSON`→`UNIT`, `UNIT`(group/boat)→`BOOKING` |
-| Tour.durationMinutesFrom/To | `Tour.durationMinutes` | Map both from the single value (or add a range) |
-| Tour content | `TourTranslation`, `TourHighlight`/`TourInclusion`/`TourExclusion` + `TourFeature`, `TourImage`, FAQ, `TourLocation` | `octo/content`: the serializer **merges** all into `features[]`, `media[]`, `faqs[]`, `locations[]` |
-| **Option** | synthetic / persisted `TourOption` | start times ← schedules' `startTime`; `cancellationCutoff` ← `cancellationHours`; `restrictions.min/maxUnits` ← `minPartySize`/`maxPartySize` |
-| **Unit** | `TourAgeBand` → `TourUnit` | `bandType`→`type`; ages/counts→`restrictions`; `price`→`pricing` |
-| **Availability** | `TourSchedule` → master `departures` | `startDate+startTime`→`localDateTimeStart`; `availableSpots`→`vacancies`; `totalSpots`→`capacity`; `status`→OCTO status; **calendar = aggregate per day** |
-| **Booking** | `Booking` (thin) | **Expand heavily:** `uuid`, two-step status, `unitItems`, `contact`, `pricing`, currency, refs, expiry |
-| **UnitItem** | *(none)* | **New child table — one row per pax** |
-| **Contact** | `User` + new booking contact fields | Add a guest contact override on the booking |
-| **Pricing** | `Decimal` money fields | Serialize to minor units at the boundary (D2) |
-| **Pickup** | `Tour.pickupModel` + pickup add-on | Map to `octo/pickups` |
-| Booking status | `BookingStatus` | Replace/extend to the OCTO set |
+| OCTO concept                | Island Tours source                                                                                                  | Notes / gap                                                                                                                                               |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Supplier**                | `Operator` (+ platform `SiteInfo`)                                                                                   | ⚠️ **D4: platform-as-supplier**; the operator is tour-level metadata                                                                                      |
+| Supplier contact            | `OperatorCompanyInfo.companyPhone`, `User.email`                                                                     | Add operator `contactEmail`/`contactPhone` (**E.164**)                                                                                                    |
+| **Tour**                    | `Tour`                                                                                                               | Derive `availabilityType` (START_TIME), `instantConfirmation` (true), `deliveryMethods` (VOUCHER), `redemptionMethod`                                     |
+| Tour.options                | _(none)_                                                                                                             | Synthesize a `DEFAULT` option (D3)                                                                                                                        |
+| Tour.pricingPer             | `Tour.pricingModel`                                                                                                  | `PER_PERSON`→`UNIT`, `UNIT`(group/boat)→`BOOKING`                                                                                                         |
+| Tour.durationMinutesFrom/To | `Tour.durationMinutes`                                                                                               | Map both from the single value (or add a range)                                                                                                           |
+| Tour content                | `TourTranslation`, `TourHighlight`/`TourInclusion`/`TourExclusion` + `TourFeature`, `TourImage`, FAQ, `TourLocation` | `octo/content`: the serializer **merges** all into `features[]`, `media[]`, `faqs[]`, `locations[]`                                                       |
+| **Option**                  | synthetic / persisted `TourOption`                                                                                   | start times ← schedules' `startTime`; `cancellationCutoff` ← `cancellationHours`; `restrictions.min/maxUnits` ← `minPartySize`/`maxPartySize`             |
+| **Unit**                    | `TourAgeBand` → `TourUnit`                                                                                           | `bandType`→`type`; ages/counts→`restrictions`; `price`→`pricing`                                                                                          |
+| **Availability**            | `TourSchedule` → master `departures`                                                                                 | `startDate+startTime`→`localDateTimeStart`; `availableSpots`→`vacancies`; `totalSpots`→`capacity`; `status`→OCTO status; **calendar = aggregate per day** |
+| **Booking**                 | `Booking` (thin)                                                                                                     | **Expand heavily:** `uuid`, two-step status, `unitItems`, `contact`, `pricing`, currency, refs, expiry                                                    |
+| **UnitItem**                | _(none)_                                                                                                             | **New child table — one row per pax**                                                                                                                     |
+| **Contact**                 | `User` + new booking contact fields                                                                                  | Add a guest contact override on the booking                                                                                                               |
+| **Pricing**                 | `Decimal` money fields                                                                                               | Serialize to minor units at the boundary (D2)                                                                                                             |
+| **Pickup**                  | `Tour.pickupModel` + pickup add-on                                                                                   | Map to `octo/pickups`                                                                                                                                     |
+| Booking status              | `BookingStatus`                                                                                                      | Replace/extend to the OCTO set                                                                                                                            |
 
 #### E.11.7 What is built vs to build
 
-- **BUILT — catalog:** `GET /supplier/` (`OctoSupplierController` + serializer) and `GET /tours/`, `GET /tours/{id}` (`OctoToursController` at `/api/v1/octo/tours`, public for v1). The **core serializer** emits `id, internalName, reference, locale, timeZone, allowFreesale, instantConfirmation, instantDelivery, availabilityRequired, availabilityType, deliveryFormats, deliveryMethods, redemptionMethod, options[]`; the **DEFAULT option serializer** and **units from `TourUnit`**; the **`octo/content` serializer** emits `features[]`, `media[]`, `faqs[]`, `locations[]`, `commentary[]`, `categoryLabels[]` (our category slugs) and durations, **localized via `Accept-Language` against `TourTranslation` with `Content-Language` set** (*the `Available-Languages` response header is deferred*); the **`octo/pricing` serializer** emits `defaultCurrency`, `availableCurrencies`, `pricingPer`, `pricingFrom` on option + units. ⚠️ **Pagination pending (D5): the list currently returns the full LIVE catalog as a bare array (tier-ranked).**
+- **BUILT — catalog:** `GET /supplier/` (`OctoSupplierController` + serializer) and `GET /tours/`, `GET /tours/{id}` (`OctoToursController` at `/api/v1/octo/tours`, public for v1). The **core serializer** emits `id, internalName, reference, locale, timeZone, allowFreesale, instantConfirmation, instantDelivery, availabilityRequired, availabilityType, deliveryFormats, deliveryMethods, redemptionMethod, options[]`; the **DEFAULT option serializer** and **units from `TourUnit`**; the **`octo/content` serializer** emits `features[]`, `media[]`, `faqs[]`, `locations[]`, `commentary[]`, `categoryLabels[]` (our category slugs) and durations, **localized via `Accept-Language` against `TourTranslation` with `Content-Language` set** (_the `Available-Languages` response header is deferred_); the **`octo/pricing` serializer** emits `defaultCurrency`, `availableCurrencies`, `pricingPer`, `pricingFrom` on option + units. ⚠️ **Pagination pending (D5): the list currently returns the full LIVE catalog as a bare array (tier-ranked).**
 - **BUILT — `octo/notifications`:** subscription endpoints `POST /notifications/subscriptions` (body `url`, `notificationTypes[]`, `headers?`; **returns the subscription with its `id` + signing `secret`, once**), `GET /notifications/subscriptions` (**scoped to the caller: operator = own, admin = all**), `GET /notifications/subscriptions/{id}` (+ `:id/deliveries` delivery log), `PATCH`, `DELETE`. **Event types (the only three):** **`PRODUCT_UPDATE`** (`data.productId` = tourId; ⚠️ **the tour publish/edit emit hook is deferred to the tours module**), **`AVAILABILITY_UPDATE`** (emitted when departures/inventory change — reserve, cancel, expiry, materialize, schedule/exception/departure edits; `data` carries Availability-Check-compatible params so **the subscriber re-fetches `POST /availability/`** — **this is how availability propagates, not polling**), **`BOOKING_UPDATE`** (booking status transitions; **`data.uuid` = the booking `publicRef`**). **Delivery payload** `{ id, subscriptionId, notificationType, utcCreatedAt, data }` (**delivery id = notification id**). **BullMQ `notification-delivery` worker** POSTs to each matching subscription `url` with its custom `headers`, **exponential backoff (5 attempts)**, recording `NotificationDelivery` (status/attempts/lastError/deliveredAt) and **marking `DEAD` on the final failed attempt**. **Signing (D13): `Octo-Signature: sha256=<hmac>` over the raw body** with the per-subscription `secret` (**stored encrypted at rest**), plus an **`Octo-Notification-Id`** header and a `verifyNotification` helper.
 - **TO BUILD — availability:** `POST /availability/` (`OctoAvailabilityController`) and `POST /availability/calendar`. **Depends on the availability/departures model (master Stage 5)** — today only `TourSchedule` exists. **Caching policy: the calendar/list may cache briefly (e.g. 30–60s ISR/Redis); the reservation path reads live (no cache). Document it.** Performance: **index-backed range queries; avoid N+1; return arrays (the OCTO shape).**
 - **TO BUILD — bookings (the largest gap: `Booking` is model-only today, no controller/service, and thin):** `POST /bookings/` (reserve — **atomic capacity claim**, `ON_HOLD` + `BookingUnitItem` rows, `utcExpiresAt = now + expirationMinutes` **clamped to supplier/master limits**, unit-restriction validation, pricing computation, and a **freesale** path when `allowFreesale`) · `POST /bookings/{uuid}/confirm` (**reject if expired**; trigger the Stripe PaymentIntent per `payment_model`, **`operator_full` confirms with no charge**; **snapshot `commission_amount`**; on success set `CONFIRMED` + `utcConfirmedAt`, persist contact, issue voucher/tickets, send the Resend confirmation email, fire `booking_complete` tracking with **conversion = commission EUR**) · `POST /bookings/{uuid}/cancel` (compute refund **FULL/PARTIAL/NONE** from the `cancellationHours` window, **release capacity atomically**, set `CANCELLED` + `BookingCancellation`, Stripe refund per the decision, **respect commission reversal rules**) · `POST /bookings/{uuid}/extend` (**only while `ON_HOLD`**) · `PATCH /bookings/{uuid}` (⚠️ **D8** — re-validate capacity + pricing) · `GET /bookings/{uuid}` and `GET /bookings/` (**authZ: a reseller/operator sees only its own bookings; admin sees all**) · plus a **BullMQ expiry job** sweeping `ON_HOLD` past `utcExpiresAt` → `EXPIRED` and **releasing held capacity**.
@@ -8324,15 +8450,15 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 
 #### E.11.11 Frontend alignment
 
-| Area | Before | After (OCTO) |
-|---|---|---|
-| Tour detail data | `GET /tours/slug/:slug` (native shape) | `GET /tours/{id}` (Tour → Option → Unit) with `Octo-Capabilities` |
-| Availability | `GET /tours/:id/schedules` (flat list) | `POST /availability` + `POST /availability/calendar` |
-| Booking | none (no API) | reserve → confirm two-step (`POST /bookings`, `/confirm`, `/cancel`, `/extend`) |
-| Money | decimals from the API | **integer minor units** + `currencyPrecision` → convert in a helper |
-| Pax selection | age bands | **units** (with restrictions: min/max age, counts, `accompaniedBy`) |
-| Errors | `{statusCode,message}` | `{ error, errorMessage, <contextId> }` |
-| Capabilities | n/a | send `Octo-Capabilities: octo/content, octo/pricing` (+ pickups when used) |
+| Area             | Before                                 | After (OCTO)                                                                    |
+| ---------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| Tour detail data | `GET /tours/slug/:slug` (native shape) | `GET /tours/{id}` (Tour → Option → Unit) with `Octo-Capabilities`               |
+| Availability     | `GET /tours/:id/schedules` (flat list) | `POST /availability` + `POST /availability/calendar`                            |
+| Booking          | none (no API)                          | reserve → confirm two-step (`POST /bookings`, `/confirm`, `/cancel`, `/extend`) |
+| Money            | decimals from the API                  | **integer minor units** + `currencyPrecision` → convert in a helper             |
+| Pax selection    | age bands                              | **units** (with restrictions: min/max age, counts, `accompaniedBy`)             |
+| Errors           | `{statusCode,message}`                 | `{ error, errorMessage, <contextId> }`                                          |
+| Capabilities     | n/a                                    | send `Octo-Capabilities: octo/content, octo/pricing` (+ pickups when used)      |
 
 - **The native discovery surface (homepage, destination, category, hub, collection, search, filters, slug routing) stays on `/api/v1` and does NOT change.** Only the tour detail data, availability, and the booking/checkout flow move to OCTO.
 - **Types (`types/octo.ts`):** `OctoTour`, `OctoOption`, `OctoUnit`, `OctoUnitRestrictions`, `OctoAvailability`, `OctoAvailabilityCalendar`, `OctoBooking`, `OctoUnitItem`, `OctoContact`, `OctoPricing`, `OctoTax`, `OctoFeature`, `OctoMedia`, `OctoLocation`, `OctoBookingCancellation`, plus the status unions. **Mark capability-gated fields optional so core responses typecheck.**
@@ -8347,22 +8473,23 @@ travelers ──▶ Vercel (Next.js)  https://www.your-domain.com
 ### E.12 Testing infrastructure
 
 - **Unit tests (backend):** Jest-style `*.spec.ts` files colocated with each service. **Unit specs are mocked — CI runs them with no database.** Suite growth on record: **1197 tests / 58 suites (all green)** after Staff & Teams (**113 new tests**), **1228 pass** after analytics (**15 new**), **1245/1245** after the customer-accounts review rounds, and **1285/1286** during the homepage work.
-  - Named suites: `staff.config.spec.ts` (the formula, both ceiling directions, floor non-revocability, owner/suspended cases) · `staff-permissions.service.spec.ts` (short-circuits, fallbacks, **the real 60s TTL with fake timers**, invalidation) · `staff.service.spec.ts` (invite 409/400/rollback, the operator-resolution matrix, owner/self protections, suspend cascades, designation rules, catalog scoping — **Better Auth mocked the same way as `operators.service.spec.ts`**) · `permissions.guard.spec.ts` · `user.service` / `tours.service` · `analytics.service.spec.ts` (15) · `customer-provisioning.service.spec.ts` (10 — create+welcome-once, no-email no-op, non-USER skip, linked-silent, resend cap hit/ok, conflict race, never-throws, aggregate recompute) · `bookings.service.spec.ts` · `payments.service.spec.ts` · `fx-rates.service.spec.ts` · `fx-refresh.service.spec.ts` · `booking-pricing.util.spec.ts` · home-page specs (12 service + 16 FAQ + 16 featured-experiences + 9 DTO).
-  - **NOT unit-tested (covered manually):** the `auth.instance` invite branch — **a module-level Better Auth singleton**, covered by the manual E2E pass.
-  - ⚠️ **Known pre-existing failure:** the `tours.service.spec.ts` date-filter test **hardcodes `2026-07-20` and "expires the moment that morning passes"**. Confirmed failing at clean HEAD via `git stash` — **not caused by any of the work above. Everything else is green.**
-  - ⚠️ **Baseline before blame:** never call a failure a regression until the same check has been run against the pre-change code; **diff test NAMES, not counts.**
+    - Named suites: `staff.config.spec.ts` (the formula, both ceiling directions, floor non-revocability, owner/suspended cases) · `staff-permissions.service.spec.ts` (short-circuits, fallbacks, **the real 60s TTL with fake timers**, invalidation) · `staff.service.spec.ts` (invite 409/400/rollback, the operator-resolution matrix, owner/self protections, suspend cascades, designation rules, catalog scoping — **Better Auth mocked the same way as `operators.service.spec.ts`**) · `permissions.guard.spec.ts` · `user.service` / `tours.service` · `analytics.service.spec.ts` (15) · `customer-provisioning.service.spec.ts` (10 — create+welcome-once, no-email no-op, non-USER skip, linked-silent, resend cap hit/ok, conflict race, never-throws, aggregate recompute) · `bookings.service.spec.ts` · `payments.service.spec.ts` · `fx-rates.service.spec.ts` · `fx-refresh.service.spec.ts` · `booking-pricing.util.spec.ts` · home-page specs (12 service + 16 FAQ + 16 featured-experiences + 9 DTO).
+    - **NOT unit-tested (covered manually):** the `auth.instance` invite branch — **a module-level Better Auth singleton**, covered by the manual E2E pass.
+    - ⚠️ **Known pre-existing failure:** the `tours.service.spec.ts` date-filter test **hardcodes `2026-07-20` and "expires the moment that morning passes"**. Confirmed failing at clean HEAD via `git stash` — **not caused by any of the work above. Everything else is green.**
+    - ⚠️ **Baseline before blame:** never call a failure a regression until the same check has been run against the pre-change code; **diff test NAMES, not counts.**
 - **Live end-to-end verification (curl against the built backend with real admin/operator/staff/seat logins)** is a first-class step, not a formality: **it is what surfaced the session cookie-cache revocation bypass, the permissionless bookings reads, and the 500-on-suspended-login — none of which unit tests alone would have caught.** The customer-accounts E2E run (book → welcome email → set password → log in) likewise surfaced **two real bugs** (`reserve()` stamping `booking.userId` with whoever was logged into the browser, and a backfill that only claimed `userId IS NULL` rows).
 - **E2E (dashboard):** **Playwright**, `e2e/` with 11 specs — **all 11 are dashboard tests**, so "leave the public-site specs behind" had nothing to act on. **The stored auth state `e2e/.auth/user.json` is deliberately NOT carried between repos — it is a credential.** `playwright.config.ts` is pinned to **:3001** (the port-collision fix) with `workers: 1, fullyParallel: false`.
-  - ⚠️ **The e2e suite is NOT a parity gate — it is ~45% red on BOTH sides.** Old: 125 passed / **102 failed**; new: 120 passed / **107 failed**. After a clean uncontended re-run (106 failed / 121 passed, 29.3m) the name-by-name diff was **102 failures identical on both sides, 0 failing only on old, 4 failing only on new — and all four fail on old too when run in isolation.** **ZERO REGRESSIONS; all 227 tests behave identically.** The four were **DATABASE RESIDUE**: they passed in the full old-suite run and fail standalone on old too. **A count (102 vs 106) would have read as "4 regressions"; a full-suite re-run would have reshuffled the residue and produced a different four. Only isolation holds the variable still. It indicts the suite, not the app.**
-  - **Suite trim (Phase 9B, PARTIAL):** **user decision — keep behaviour/contract tests, cut presence-only. Not by red/green — those are anti-correlated here:** the green tests are mostly the worthless ones ("Key input is rendered"), the red ones mostly the contracts ("confirming deactivation calls DELETE"). **Cutting by colour would have deleted everything worth having.** The rule: *would this test still pass if the feature were broken?* **55 presence-only tests deleted, 227 → 172**, with **23 rescued** despite presence-shaped names — **a regex classified; a human eye rescued. Do not re-run the regex and trust it.**
-  - ⚠️ **THE MOCKS ADDRESSED AN API THAT DOES NOT EXIST.** Tests routed `**/api/v1/trips/*` while the app calls `/api/v1/tours/*`; every mock missed, every request hit the real backend, the page rendered **"Trip not found"**, and `beforeEach` waited 15s for a form that never came — **that is the entire ~17s signature across the Edit Trip block: 38 failures, one cause.** Also corrected: `/tours/my-tours` (not `my-trips`), and **schedules live at `/availability/schedules?tourId=`, not under the tour — a blind `trips`→`tours` replace would have been wrong.**
-  - **PARKED — the trips fixtures are archaeological (~1 day):** with mocks matching, the app now crashes on the fixture (`TypeError: Cannot read properties of undefined (reading '0')` at `tripToDefaults`, `trip.categoryIds[0]`). `MOCK_TRIP_DRAFT` has **35 keys against a `TripListItem` of ~60** and predates **four migrations**: `categoryId` → `categoryIds[]` + `primaryCategoryId`; `hubId` → `hubIds[]`; `durationMinutes` → `durationMinutesFrom`/`To`; `featuredSlotNumber`/`featuredSlotStatus` → **the slot economy is REMOVED**, now `tierKey`/`tierRank`/`commissionTier`; plus the whole OCTO block. **These tests have been asserting against a schema that no longer exists, on both dashboards, for a long time. Do NOT "fix" the app to tolerate the fixture.** ~41 failures (collections 12 · attributes 11 · categories 9 · destinations 5 · hubs 4) remain undiagnosed.
-  - **Deliberately NOT done: isolation.** `workers: 1, fullyParallel: false` stays. **Isolation is what makes `workers: 4` safe (~172 tests in ~2-3 min vs today's ~19-29). It is the expensive half and it is owed.**
+    - ⚠️ **The e2e suite is NOT a parity gate — it is ~45% red on BOTH sides.** Old: 125 passed / **102 failed**; new: 120 passed / **107 failed**. After a clean uncontended re-run (106 failed / 121 passed, 29.3m) the name-by-name diff was **102 failures identical on both sides, 0 failing only on old, 4 failing only on new — and all four fail on old too when run in isolation.** **ZERO REGRESSIONS; all 227 tests behave identically.** The four were **DATABASE RESIDUE**: they passed in the full old-suite run and fail standalone on old too. **A count (102 vs 106) would have read as "4 regressions"; a full-suite re-run would have reshuffled the residue and produced a different four. Only isolation holds the variable still. It indicts the suite, not the app.**
+    - **Suite trim (Phase 9B, PARTIAL):** **user decision — keep behaviour/contract tests, cut presence-only. Not by red/green — those are anti-correlated here:** the green tests are mostly the worthless ones ("Key input is rendered"), the red ones mostly the contracts ("confirming deactivation calls DELETE"). **Cutting by colour would have deleted everything worth having.** The rule: _would this test still pass if the feature were broken?_ **55 presence-only tests deleted, 227 → 172**, with **23 rescued** despite presence-shaped names — **a regex classified; a human eye rescued. Do not re-run the regex and trust it.**
+    - ⚠️ **THE MOCKS ADDRESSED AN API THAT DOES NOT EXIST.** Tests routed `**/api/v1/trips/*` while the app calls `/api/v1/tours/*`; every mock missed, every request hit the real backend, the page rendered **"Trip not found"**, and `beforeEach` waited 15s for a form that never came — **that is the entire ~17s signature across the Edit Trip block: 38 failures, one cause.** Also corrected: `/tours/my-tours` (not `my-trips`), and **schedules live at `/availability/schedules?tourId=`, not under the tour — a blind `trips`→`tours` replace would have been wrong.**
+    - **PARKED — the trips fixtures are archaeological (~1 day):** with mocks matching, the app now crashes on the fixture (`TypeError: Cannot read properties of undefined (reading '0')` at `tripToDefaults`, `trip.categoryIds[0]`). `MOCK_TRIP_DRAFT` has **35 keys against a `TripListItem` of ~60** and predates **four migrations**: `categoryId` → `categoryIds[]` + `primaryCategoryId`; `hubId` → `hubIds[]`; `durationMinutes` → `durationMinutesFrom`/`To`; `featuredSlotNumber`/`featuredSlotStatus` → **the slot economy is REMOVED**, now `tierKey`/`tierRank`/`commissionTier`; plus the whole OCTO block. **These tests have been asserting against a schema that no longer exists, on both dashboards, for a long time. Do NOT "fix" the app to tolerate the fixture.** ~41 failures (collections 12 · attributes 11 · categories 9 · destinations 5 · hubs 4) remain undiagnosed.
+    - **Deliberately NOT done: isolation.** `workers: 1, fullyParallel: false` stays. **Isolation is what makes `workers: 4` safe (~172 tests in ~2-3 min vs today's ~19-29). It is the expensive half and it is owed.**
 - **Neither frontend repo has a unit-test runner (Playwright only).** As a consequence, the cache-tag mapping and revalidate-endpoint checks were **run as harnesses against the real files, not committed tests** — **so the tag contract is guarded at runtime by the 400 only.** A CI check is **not cheaply possible: the dashboard repo has no CI at all.** The target test layering is vitest for pure `lib/` logic, vitest + a live backend for contract tests, RTL for components, and Playwright for E2E — **with the tag-mapping tests and the rbac contract test as the priority, because both guard silent failures.**
-- **Test database:** the backend e2e setup uses a dedicated **`island_tours_test`** database with an explicit reset consent step. **Sign-up is disabled**, so test users must be provisioned through the Better Auth internal adapter, and cleanup must follow an FK-safe order. *(This detail comes from project convention rather than the four fragments assigned here; treat the fragment-backed statements above as the primary record.)*
+- **Test database:** the backend e2e setup uses a dedicated **`island_tours_test`** database with an explicit reset consent step. **Sign-up is disabled**, so test users must be provisioned through the Better Auth internal adapter, and cleanup must follow an FK-safe order. _(This detail comes from project convention rather than the four fragments assigned here; treat the fragment-backed statements above as the primary record.)_
 - **Seeding — two distinct seeds:**
-  - **Production/base seed** — `pnpm prisma:seed`, run by `backend/docker-entrypoint.sh` when **`RUN_SEED=true`** (**first boot only**, then set to `false`). It seeds **the admin user** (from `ADMIN_EMAIL`/`ADMIN_PASSWORD`) **+ base data** (destinations, the 19 global categories, and the other pre-seeded content). `is_seeded = true` destinations **cannot be deleted**.
-  - **Removable demo seed** — **`pnpm prisma:seed:demo`** (with a clean counterpart), used to populate a rich local dataset: it is what the Phase 9 parity run requires locally (**backend on :5050 with the demo seed, `http://localhost:3001` in `CORS_ORIGINS`, and the public site on :3000 for the cross-service rows**), and it is the dataset the analytics module was verified against (**263 bookings, 15 distinct bookers, 12 registered**). It also seeds the 7 `FeaturedExperience` rows used to prove the homepage resolver. ⚠️ **Known demo-seed quirk: it populates `ogImage` but NOT `heroImage` on categories** — without the resolver's `heroImage || ogImage` fallback every featured card rendered grey.
+    - **Production/base seed** — `pnpm prisma:seed`, run by `backend/docker-entrypoint.sh` when **`RUN_SEED=true`** (**first boot only**, then set to `false`). It seeds **the admin user** (from `ADMIN_EMAIL`/`ADMIN_PASSWORD`) **+ base data** (destinations, the 19 global categories, and the other pre-seeded content). `is_seeded = true` destinations **cannot be deleted**.
+    - **Removable demo seed** — **`pnpm prisma:seed:demo`** (with a clean counterpart), used to populate a rich local dataset: it is what the Phase 9 parity run requires locally (**backend on :5050 with the demo seed, `http://localhost:3001` in `CORS_ORIGINS`, and the public site on :3000 for the cross-service rows**), and it is the dataset the analytics module was verified against (**263 bookings, 15 distinct bookers, 12 registered**). It also seeds the 7 `FeaturedExperience` rows used to prove the homepage resolver. ⚠️ **Known demo-seed quirk: it populates `ogImage` but NOT `heroImage` on categories** — without the resolver's `heroImage || ogImage` fallback every featured card rendered grey.
 - **Verification discipline applied throughout:** `tsc --noEmit` clean and `eslint` clean on every touched file in **both** repos, plus `pnpm build` / `next build` green, are treated as the floor — **not the proof.** ⚠️ **A green build proves nothing about CSS** (Tailwind silently skips unknown utilities — verify in the BUILT output), ⚠️ **`tsc --noEmit` passes route-segment config that `next build` rejects** (`export const runtime = 'nodejs'` under `cacheComponents`), and ⚠️ **a check whose failure mode looks like success is worse than no check** (a suppressed-stderr `diff` reading a missing directory as "identical"; a `grep` over a missing path; an ESLint regex that fails to parse and reports zero). **Every lint rule was proved to fire against positive AND negative cases before being trusted, then the probe was deleted.**
 
 ---
+

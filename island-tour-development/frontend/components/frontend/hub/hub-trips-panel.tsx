@@ -226,7 +226,7 @@ export function HubTripsPanel({
                         onClick={() => setDate(undefined)}
                         whileTap={{ scale: 0.99 }}
                         transition={springPop}
-                        className='cursor-pointer rounded-it-full border border-it-heading bg-transparent px-5 py-2 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:bg-it-heading/5'>
+                        className='cursor-pointer rounded-it-full border border-it-heading bg-transparent px-5 py-2 text-[14px] font-normal leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:bg-it-heading/5'>
                         {filter.showAllDates}
                     </motion.button>
                 </motion.div>
@@ -243,16 +243,14 @@ export function HubTripsPanel({
                                   <div className='flex flex-col gap-6'>
                                       {group.title && (
                                           <Reveal>
-                                              <h3 className='m-0 mt-4 border-t border-it-divider pt-[22px] text-[13px] font-extrabold uppercase tracking-[0.06em] text-it-ink'>
+                                              <h3 className='m-0 mt-4 border-t border-it-divider pt-[22px] text-[13px] font-medium uppercase tracking-[0.06em] text-it-ink'>
                                                   {group.title}
                                               </h3>
                                           </Reveal>
                                       )}
                                       <div className={GRID}>
                                           {group.tours.map((tour, i) => (
-                                              <Reveal
-                                                  key={tour.id}
-                                                  listItem>
+                                              <Reveal key={tour.id} listItem>
                                                   <HubTourCard
                                                       tour={tour}
                                                       dict={card}
@@ -271,9 +269,7 @@ export function HubTripsPanel({
                         : filteredGroups[0] && (
                               <div className={GRID}>
                                   {filteredGroups[0].tours.map((tour, i) => (
-                                      <Reveal
-                                          key={tour.id}
-                                          listItem>
+                                      <Reveal key={tour.id} listItem>
                                           <HubTourCard
                                               tour={tour}
                                               dict={card}

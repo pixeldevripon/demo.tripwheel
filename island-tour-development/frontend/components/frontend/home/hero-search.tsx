@@ -7,12 +7,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 // Reused presentational typeahead panel (shared with the navbar + destination
 // hero searches) so all three surface identical result rows.
-import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
+import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import { searchSuggestClient } from '@/lib/api/search';
 import {
-    localizeHref,
     LOCALE_CURRENCY,
+    localizeHref,
     type Currency,
     type Locale,
 } from '@/lib/constants/locales';
@@ -113,7 +113,10 @@ export function HeroSearch({
     const tourHref = (hit: SearchHit) =>
         hit.destinationSlug
             ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
-            : localizeHref(locale, `/search?q=${encodeURIComponent(hit.title)}`);
+            : localizeHref(
+                  locale,
+                  `/search?q=${encodeURIComponent(hit.title)}`
+              );
 
     const destinationHref = (slug: string) => localizeHref(locale, `/${slug}`);
 
@@ -212,3 +215,4 @@ export function HeroSearch({
         </div>
     );
 }
+

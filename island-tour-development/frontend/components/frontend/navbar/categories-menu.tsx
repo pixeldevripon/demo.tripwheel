@@ -80,7 +80,7 @@ export function CategoriesMenu({
                                     height={24}
                                     className='size-4 shrink-0'
                                 />
-                                <span className='text-[13.5px] font-bold text-it-ink whitespace-nowrap'>
+                                <span className='text-[13.5px] font-medium text-it-ink whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>
@@ -95,7 +95,9 @@ export function CategoriesMenu({
                                                 key={cat.slug}
                                                 {...dropdownItemMotion}>
                                                 <Link
-                                                    href={categoryHref(cat.slug)}
+                                                    href={categoryHref(
+                                                        cat.slug
+                                                    )}
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
@@ -117,7 +119,8 @@ export function CategoriesMenu({
                                                         <b className='block truncate text-sm font-bold text-it-ink'>
                                                             {cat.name}
                                                         </b>
-                                                        {cat.tours !== undefined && (
+                                                        {cat.tours !==
+                                                            undefined && (
                                                             <span className='text-xs text-it-text-muted tabular-nums'>
                                                                 {cat.tours}{' '}
                                                                 {dict.tours}
@@ -156,3 +159,4 @@ export function CategoriesMenu({
         </AnimatePresence>
     );
 }
+

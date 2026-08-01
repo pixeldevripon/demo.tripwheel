@@ -65,10 +65,14 @@ export function ThankYouHero({
                     <p className='m-0 mt-3 text-[16.5px] leading-[1.6] text-it-ink'>
                         {renderTemplate(dict.subtitle, {
                             tour: (
-                                <b className='font-bold'>{booking.tourTitle}</b>
+                                <b className='font-normal'>
+                                    {booking.tourTitle}
+                                </b>
                             ),
                             date: (
-                                <b className='font-bold'>{booking.dateLabel}</b>
+                                <b className='font-normal'>
+                                    {booking.dateLabel}
+                                </b>
                             ),
                             time: (
                                 <b className='font-bold'>
@@ -155,3 +159,4 @@ export function ThankYouHero({
         </section>
     );
 }
+

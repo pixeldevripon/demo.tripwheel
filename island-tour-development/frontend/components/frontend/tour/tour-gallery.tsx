@@ -1,10 +1,10 @@
 'use client';
 
+import { crossFade, springPop } from '@/lib/motion';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { crossFade, springPop } from '@/lib/motion';
 
 /**
  * One gallery photo with the text that describes it.
@@ -14,10 +14,7 @@ import { crossFade, springPop } from '@/lib/motion';
  * is server-only. Every photo used to share the single tour title, so a gallery
  * of twelve announced the same sentence twelve times.
  */
-export type TourGalleryImage = {
-    url: string;
-    alt: string;
-};
+export type TourGalleryImage = { url: string; alt: string };
 
 /**
  * Tour photo gallery + meta strip (Figma node 47940:12742).
@@ -57,11 +54,11 @@ export function TourGallery({
     const close = useCallback(() => setOpen(false), []);
     const prev = useCallback(
         () => setIndex(i => (i === 0 ? images.length - 1 : i - 1)),
-        [images.length],
+        [images.length]
     );
     const next = useCallback(
         () => setIndex(i => (i === images.length - 1 ? 0 : i + 1)),
-        [images.length],
+        [images.length]
     );
 
     // While the lightbox is open: lock body scroll + wire keyboard nav.
@@ -165,7 +162,9 @@ export function TourGallery({
                                         whileTap={{ scale: 0.9 }}
                                         transition={springPop}
                                         className={`h-2 cursor-pointer rounded-it-full border-none p-0 transition-all duration-300 ${
-                                            i === slide ? 'w-6 bg-it-white' : 'w-2 bg-it-white/60'
+                                            i === slide
+                                                ? 'w-6 bg-it-white'
+                                                : 'w-2 bg-it-white/60'
                                         }`}
                                     />
                                 ))}
@@ -263,91 +262,92 @@ export function TourGallery({
 
             {/* Full-screen lightbox */}
             <AnimatePresence>
-            {open && (
-                <motion.div
-                    role='dialog'
-                    aria-modal='true'
-                    aria-label={title}
-                    onClick={close}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={crossFade}
-                    className='fixed inset-0 z-100 flex flex-col bg-black/95'>
-                    {/* Top bar: counter + close */}
-                    <div
-                        className='flex items-center justify-between px-4 py-4 text-it-white md:px-6'
-                        onClick={e => e.stopPropagation()}>
-                        <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums'>
-                            {index + 1} / {images.length}
-                        </span>
-                        <motion.button
-                            type='button'
-                            onClick={close}
-                            aria-label='Close'
-                            whileTap={{ scale: 0.9 }}
-                            transition={springPop}
-                            className='grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20'>
-                            <X className='size-5' />
-                        </motion.button>
-                    </div>
-
-                    {/* Stage */}
-                    <div className='relative flex flex-1 items-center justify-center px-4 pb-6 md:px-16'>
-                        {images.length > 1 && (
-                            <motion.button
-                                type='button'
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    prev();
-                                }}
-                                aria-label='Previous photo'
-                                whileTap={{ scale: 0.9 }}
-                                transition={springPop}
-                                className='absolute left-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
-                                <ChevronLeft className='size-6' />
-                            </motion.button>
-                        )}
+                {open && (
+                    <motion.div
+                        role='dialog'
+                        aria-modal='true'
+                        aria-label={title}
+                        onClick={close}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={crossFade}
+                        className='fixed inset-0 z-100 flex flex-col bg-black/95'>
+                        {/* Top bar: counter + close */}
                         <div
-                            className='relative h-full w-full max-w-5xl'
+                            className='flex items-center justify-between px-4 py-4 text-it-white md:px-6'
                             onClick={e => e.stopPropagation()}>
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={crossFade}
-                                className='absolute inset-0'>
-                                <Image
-                                    src={images[index].url}
-                                    alt={
-                                        images[index].alt ||
-                                        `${title} - photo ${index + 1}`
-                                    }
-                                    fill
-                                    sizes='100vw'
-                                    className='object-contain'
-                                    priority
-                                />
-                            </motion.div>
-                        </div>
-                        {images.length > 1 && (
+                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] tabular-nums'>
+                                {index + 1} / {images.length}
+                            </span>
                             <motion.button
                                 type='button'
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    next();
-                                }}
-                                aria-label='Next photo'
+                                onClick={close}
+                                aria-label='Close'
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
-                                className='absolute right-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
-                                <ChevronRight className='size-6' />
+                                className='grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20'>
+                                <X className='size-5' />
                             </motion.button>
-                        )}
-                    </div>
-                </motion.div>
-            )}
+                        </div>
+
+                        {/* Stage */}
+                        <div className='relative flex flex-1 items-center justify-center px-4 pb-6 md:px-16'>
+                            {images.length > 1 && (
+                                <motion.button
+                                    type='button'
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        prev();
+                                    }}
+                                    aria-label='Previous photo'
+                                    whileTap={{ scale: 0.9 }}
+                                    transition={springPop}
+                                    className='absolute left-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
+                                    <ChevronLeft className='size-6' />
+                                </motion.button>
+                            )}
+                            <div
+                                className='relative h-full w-full max-w-5xl'
+                                onClick={e => e.stopPropagation()}>
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={crossFade}
+                                    className='absolute inset-0'>
+                                    <Image
+                                        src={images[index].url}
+                                        alt={
+                                            images[index].alt ||
+                                            `${title} - photo ${index + 1}`
+                                        }
+                                        fill
+                                        sizes='100vw'
+                                        className='object-contain'
+                                        priority
+                                    />
+                                </motion.div>
+                            </div>
+                            {images.length > 1 && (
+                                <motion.button
+                                    type='button'
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        next();
+                                    }}
+                                    aria-label='Next photo'
+                                    whileTap={{ scale: 0.9 }}
+                                    transition={springPop}
+                                    className='absolute right-3 z-10 grid size-10 cursor-pointer place-items-center rounded-it-full border-none bg-white/10 text-it-white transition-colors duration-300 hover:bg-white/20 md:size-12'>
+                                    <ChevronRight className='size-6' />
+                                </motion.button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         </div>
     );
 }
+

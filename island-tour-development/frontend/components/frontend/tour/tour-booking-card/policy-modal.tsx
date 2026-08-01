@@ -1,11 +1,11 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { springPop } from '@/lib/motion';
+import type { PolicyModalDict } from '@/lib/tours/booking';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { PolicyModalDict } from '@/lib/tours/booking';
 
 /**
  * Policy detail modal (Figma "Free cancellation" 48125:20233 / "Pay later"
@@ -101,7 +101,7 @@ export function PolicyModal({
 
                         {/* Header: title + divider */}
                         <div className='flex flex-col gap-4'>
-                            <h2 className='m-0 pr-12 font-medium text-[20px] leading-[30px] tracking-[-0.3px] text-it-heading sm:pr-14 sm:text-[32px] sm:leading-[38px] sm:tracking-[-0.38px]'>
+                            <h2 className='m-0 pr-12 font-normal text-[20px] leading-[30px] tracking-[-0.3px] text-it-heading sm:pr-14 sm:text-[32px] sm:leading-[38px] sm:tracking-[-0.38px]'>
                                 {fill(content.title)}
                             </h2>
                             <div className='h-px w-full bg-it-ink/10' />
@@ -110,7 +110,7 @@ export function PolicyModal({
                         {/* Body */}
                         <div className='flex flex-col gap-5 sm:gap-6'>
                             <div className='flex flex-col gap-1'>
-                                <span className='font-medium text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-it-heading'>
+                                <span className='font-normal text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-it-heading'>
                                     {fill(content.introTitle)}
                                 </span>
                                 <p className='m-0 text-[14px] sm:text-[16px] leading-[26px] tracking-[-0.19px] text-it-heading'>
@@ -120,7 +120,7 @@ export function PolicyModal({
 
                             {/* Orange "HOW IT WORKS" box (5% primary tint) */}
                             <div className='flex flex-col gap-2 rounded-[8px] border-[0.6px] border-it-primary/20 bg-it-primary/5 p-4'>
-                                <span className='font-medium text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-[#8b390e]'>
+                                <span className='font-normal text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-[#8b390e]'>
                                     {fill(content.stepsTitle)}
                                 </span>
                                 <ol className='m-0 flex list-none flex-col gap-1 p-0'>
@@ -137,7 +137,7 @@ export function PolicyModal({
 
                             {/* Closing block */}
                             <div className='flex flex-col gap-4'>
-                                <span className='font-medium text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-it-heading'>
+                                <span className='font-normal text-[16px] sm:text-[18px] leading-[29px] tracking-[-0.22px] text-it-heading'>
                                     {fill(content.outroTitle)}
                                 </span>
                                 <p className='m-0 text-[14px] sm:text-[16px] leading-[26px] tracking-[-0.19px] text-it-heading'>
@@ -152,3 +152,4 @@ export function PolicyModal({
         document.body
     );
 }
+

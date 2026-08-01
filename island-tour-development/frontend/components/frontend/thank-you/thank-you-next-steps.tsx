@@ -37,14 +37,21 @@ export function ThankYouNextSteps({
                       title: dict.step2Title,
                       sub: dict.step2Sub
                           .replace('{operator}', booking.operatorName)
-                          .replace(
-                              '{date}',
-                              booking.payment.payBeforeShort,
-                          ),
+                          .replace('{date}', booking.payment.payBeforeShort),
                   },
               ]
             : []),
-        { title: dict.step3Title },
+        {
+            title: dict.step3Title,
+            // Shipped with no body at all, so the last card rendered as a bare
+            // heading on a blank panel (test report 2026-08-01 §Traveler.3).
+            // The start time is a formatted label and can be empty when the
+            // departure carries no time of day, hence the second string - a
+            // sentence reading "Arrive at  and..." is worse than no time.
+            sub: booking.startTimeLabel
+                ? dict.step3Sub.replace('{time}', booking.startTimeLabel)
+                : dict.step3SubNoTime,
+        },
     ];
 
     return (
@@ -69,7 +76,7 @@ export function ThankYouNextSteps({
                                         className={`h-0.5 bg-it-divider ${steps.length === 3 ? 'w-[120px]' : 'w-[150px]'}`}
                                     />
                                 )}
-                                <span className='grid size-[34px] place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[14px] font-extrabold text-it-text-muted tabular-nums'>
+                                <span className='grid size-[34px] place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[14px] font-medium text-it-text-muted tabular-nums'>
                                     {i + 1}
                                 </span>
                             </Fragment>
@@ -85,7 +92,7 @@ export function ThankYouNextSteps({
                             {/* .stepcard: white bordered card; on mobile the
                                 number rides top-left as the outline circle. */}
                             <div className='relative h-full rounded-it-md border border-it-divider bg-it-white py-[18px] pl-[58px] pr-5 shadow-it-sm md:px-5'>
-                                <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-extrabold text-it-text-muted tabular-nums md:hidden'>
+                                <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-medium text-it-text-muted tabular-nums md:hidden'>
                                     {i + 1}
                                 </span>
                                 <b className='block text-[14.5px] font-bold leading-[1.5] text-it-ink'>
@@ -104,3 +111,4 @@ export function ThankYouNextSteps({
         </section>
     );
 }
+

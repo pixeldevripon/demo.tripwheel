@@ -1,10 +1,10 @@
 'use client';
 
+import { useBooking } from '@/hooks/tours/use-booking';
+import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { BandStepperRow } from './band-stepper-row';
-import { springPop } from '@/lib/motion';
-import { useBooking } from '@/hooks/tours/use-booking';
 import { Collapse } from './collapse';
 
 /**
@@ -87,7 +87,7 @@ export function SpectatorsPanel() {
                                     clearSpectatorCounts();
                                     setSpectatorsApplied(true);
                                 }}
-                                className={`cursor-pointer rounded-[8px] bg-it-surface px-4 py-2 text-center font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
+                                className={`cursor-pointer rounded-[8px] bg-it-surface px-4 py-2 text-center font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors ${
                                     active
                                         ? 'border border-it-primary'
                                         : 'border border-transparent'
@@ -117,7 +117,7 @@ export function SpectatorsPanel() {
                         onClick={() => setSpectatorsApplied(true)}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
+                        className='flex cursor-pointer items-center gap-2.5 self-center border-none bg-transparent font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
                         {dict.apply}
                         <Image
                             src='/icons/cta-arrow-right.svg'
@@ -132,3 +132,4 @@ export function SpectatorsPanel() {
         </Collapse>
     );
 }
+

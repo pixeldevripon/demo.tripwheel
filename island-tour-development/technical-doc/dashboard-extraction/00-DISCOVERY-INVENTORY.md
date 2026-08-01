@@ -8,16 +8,16 @@
 
 ## 1. Scale
 
-| Measure | Count |
-|---|---|
-| Dashboard route files (`app/(dashboard)/**`) | 42 |
-| Dashboard route pages (excl. layout) | 41 across 21 modules |
-| Dashboard components (`components/dashboard/**`) | 166 files |
-| Total dashboard `.tsx` (routes + components) | 207 |
-| Of those, marked `'use client'` | **161 (77.8%)** |
-| Dashboard component LOC | ~35,328 |
-| `components/ui/` (shadcn) | 35 files, 4,518 LOC |
-| Trips module alone | 28 components, 10,363 LOC |
+| Measure                                          | Count                     |
+| ------------------------------------------------ | ------------------------- |
+| Dashboard route files (`app/(dashboard)/**`)     | 42                        |
+| Dashboard route pages (excl. layout)             | 41 across 21 modules      |
+| Dashboard components (`components/dashboard/**`) | 166 files                 |
+| Total dashboard `.tsx` (routes + components)     | 207                       |
+| Of those, marked `'use client'`                  | **161 (77.8%)**           |
+| Dashboard component LOC                          | ~35,328                   |
+| `components/ui/` (shadcn)                        | 35 files, 4,518 LOC       |
+| Trips module alone                               | 28 components, 10,363 LOC |
 
 ---
 
@@ -25,41 +25,41 @@
 
 Base path today: `/dashboard/*`. Layout: `app/(dashboard)/dashboard/layout.tsx` (52 lines).
 
-| Module | Routes |
-|---|---|
-| overview | `page.tsx` |
-| trips | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| destinations | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| hubs | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| categories | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| collections | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| attributes | `page.tsx`, `new/`, `[key]/edit/` (keyed by `key`, no detail route) |
-| tour-operators | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/` |
-| bookings | `page.tsx` |
-| payments | `page.tsx` |
-| cancellation-requests | `page.tsx` (zero components; renders `<BookingsListView cancellationView />`) |
-| spotlight | `page.tsx` |
-| locals-favourites | `page.tsx` |
-| media | `page.tsx` (only module with `export const metadata`) |
-| settings | `page.tsx` |
-| profile | `page.tsx` |
-| users | `page.tsx`, `new/page.tsx` - **stub** (static JSX, 8 lines each, no components dir) |
-| reviews | `page.tsx` - **stub** |
-| leads | `page.tsx` - **stub** |
-| enquiries | `page.tsx` - **stub** |
+| Module                | Routes                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| overview              | `page.tsx`                                                                          |
+| trips                 | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| destinations          | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| hubs                  | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| categories            | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| collections           | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| attributes            | `page.tsx`, `new/`, `[key]/edit/` (keyed by `key`, no detail route)                 |
+| tour-operators        | `page.tsx`, `new/`, `[id]/` (redirect), `[id]/edit/`                                |
+| bookings              | `page.tsx`                                                                          |
+| payments              | `page.tsx`                                                                          |
+| cancellation-requests | `page.tsx` (zero components; renders `<BookingsListView cancellationView />`)       |
+| spotlight             | `page.tsx`                                                                          |
+| locals-favourites     | `page.tsx`                                                                          |
+| media                 | `page.tsx` (only module with `export const metadata`)                               |
+| settings              | `page.tsx`                                                                          |
+| profile               | `page.tsx`                                                                          |
+| users                 | `page.tsx`, `new/page.tsx` - **stub** (static JSX, 8 lines each, no components dir) |
+| reviews               | `page.tsx` - **stub**                                                               |
+| leads                 | `page.tsx` - **stub**                                                               |
+| enquiries             | `page.tsx` - **stub**                                                               |
 
 All five `[id]/page.tsx` files are pure `redirect()` shims to `[id]/edit`.
 
 ### Adjacent surfaces that travel with the dashboard (per Phase-0 scope decision)
 
-| Surface | Files |
-|---|---|
-| `app/(login)/portal` | operator/admin login; dashboard guard redirects here |
-| `app/(login)/staff` | staff login |
-| `app/(login)/apply`, `app/(login)/bookings` | traveler-facing; **do not** travel (see 02) |
-| `app/onboarding/` | operator onboarding; layout redirects here |
-| `components/onboarding/` | onboarding form |
-| `app/__backup(auth)/`, `components/__backup_auth/` | dead backup dirs |
+| Surface                                            | Files                                                |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| `app/(login)/portal`                               | operator/admin login; dashboard guard redirects here |
+| `app/(login)/staff`                                | staff login                                          |
+| `app/(login)/apply`, `app/(login)/bookings`        | traveler-facing; **do not** travel (see 02)          |
+| `app/onboarding/`                                  | operator onboarding; layout redirects here           |
+| `components/onboarding/`                           | onboarding form                                      |
+| `app/__backup(auth)/`, `components/__backup_auth/` | dead backup dirs                                     |
 
 ---
 
@@ -67,16 +67,16 @@ All five `[id]/page.tsx` files are pure `redirect()` shims to `[id]/edit`.
 
 ### 3.1 Dashboard imports FROM public site (hard blockers)
 
-| File | Line | Import |
-|---|---|---|
-| `components/dashboard/collections/collection-form.tsx` | 24 | `TourBadgeChip` from `@/components/frontend/tour-badge` |
-| `components/dashboard/collections/collection-tour-select.tsx` | 10 | same |
-| `components/dashboard/collections/collection-tours-manager.tsx` | 17 | same |
-| `components/dashboard/hubs/hub-comparison-manager.tsx` | 17 | same |
-| `components/dashboard/hubs/hub-our-picks-manager.tsx` | 19 | same |
-| `components/dashboard/hubs/hub-tour-select.tsx` | 9 | same |
-| `lib/tours/listing.ts` | 5 | `type TourListing` from `@/components/frontend/tour-card` |
-| `lib/tours/listing.ts` | 6 | `type TourBadge` from `@/components/frontend/tour-badge` |
+| File                                                            | Line | Import                                                    |
+| --------------------------------------------------------------- | ---- | --------------------------------------------------------- |
+| `components/dashboard/collections/collection-form.tsx`          | 24   | `TourBadgeChip` from `@/components/frontend/tour-badge`   |
+| `components/dashboard/collections/collection-tour-select.tsx`   | 10   | same                                                      |
+| `components/dashboard/collections/collection-tours-manager.tsx` | 17   | same                                                      |
+| `components/dashboard/hubs/hub-comparison-manager.tsx`          | 17   | same                                                      |
+| `components/dashboard/hubs/hub-our-picks-manager.tsx`           | 19   | same                                                      |
+| `components/dashboard/hubs/hub-tour-select.tsx`                 | 9    | same                                                      |
+| `lib/tours/listing.ts`                                          | 5    | `type TourListing` from `@/components/frontend/tour-card` |
+| `lib/tours/listing.ts`                                          | 6    | `type TourBadge` from `@/components/frontend/tour-badge`  |
 
 `lib/tours/listing.ts` is itself imported by 9 public files **and** the dashboard. Its own docstrings acknowledge the split: `deriveTourBadge` exists because "Admin tour rows don't carry a server-derived badge"; `formatTourSignals` is "Shared by the Collection, Our Picks and Comparison tour selectors" (all dashboard).
 
@@ -88,32 +88,32 @@ One non-dashboard file does: `components/site-header.tsx:5-6` imports `ProfileDr
 
 ### 3.3 Genuinely shared modules (both trees import)
 
-| Module | Public importers | Dashboard use |
-|---|---|---|
-| `lib/constants/locales` | 56 | `ALL_LOCALES`, `LOCALE_LABELS`, `Locale` |
-| `lib/motion` | 49 | `pageEnter` only (`dashbaord-wraper.tsx`) |
-| `lib/tours/listing` | 9 | `deriveTourBadge`, `formatTourSignals` |
-| `lib/currency/current` | 6 | money display |
-| `components/ui/calendar` | 5 | |
-| `components/ui/popover` | 5 | |
-| `lib/auth-client` | 4 | server actions + client |
-| `lib/utils` (`cn`) | 3 direct, ~40 via `components/ui/*` | everywhere |
-| `types/collection` | 2 | 8 dashboard importers |
-| `types/hub` | 1 | 13 dashboard importers |
-| `types/search`, `types/review`, `types/category`, `types/destination` | 1-6 each | 1-11 each |
+| Module                                                                | Public importers                    | Dashboard use                             |
+| --------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------- |
+| `lib/constants/locales`                                               | 56                                  | `ALL_LOCALES`, `LOCALE_LABELS`, `Locale`  |
+| `lib/motion`                                                          | 49                                  | `pageEnter` only (`dashbaord-wraper.tsx`) |
+| `lib/tours/listing`                                                   | 9                                   | `deriveTourBadge`, `formatTourSignals`    |
+| `lib/currency/current`                                                | 6                                   | money display                             |
+| `components/ui/calendar`                                              | 5                                   |                                           |
+| `components/ui/popover`                                               | 5                                   |                                           |
+| `lib/auth-client`                                                     | 4                                   | server actions + client                   |
+| `lib/utils` (`cn`)                                                    | 3 direct, ~40 via `components/ui/*` | everywhere                                |
+| `types/collection`                                                    | 2                                   | 8 dashboard importers                     |
+| `types/hub`                                                           | 1                                   | 13 dashboard importers                    |
+| `types/search`, `types/review`, `types/category`, `types/destination` | 1-6 each                            | 1-11 each                                 |
 
 ### 3.4 Files mixing both concerns (extraction blockers)
 
-| File | Mixed concern |
-|---|---|
-| `app/globals.css:4` | `@import './(frontend)/frontend-tokens.css'` - loads 149 `--it-*` public tokens on every dashboard route. The imported file's own header (lines 1-4) says "Scope: (frontend) routes only / Import in (frontend)/layout.tsx - never in (dashboard) routes". `app/(frontend)/layout.tsx` does not import it. |
-| `app/globals.css` | 276 lines serving both trees; contains dashboard-only rules (`.sidebar-menu-item`, `[data-slot='sidebar']`, `.tox-*`) |
-| `app/layout.tsx` | Root layout for both trees; `metadata.title = 'Island Tours - Admin'`; declares 5 fonts; mounts `QueryProvider`/`ThemeProvider`/`TooltipProvider`/`Toaster` for both |
-| `proxy.ts` | One middleware holding `guardDashboard()` **and** the full public i18n redirect/rewrite scheme |
-| `lib/tours/listing.ts` | Public mappers + dashboard-only derivations in one file |
-| `components/site-header.tsx` | Dashboard chrome at `components/` root |
-| `components/skelitons/` | Mixes `dashboard-skeleton`/`profile-skeleton`/`statistics-skeleton` with `tour-page-skeleton`/`checkout-page-skeleton`/`wishlist-skeleton` |
-| `components/` root | `app-sidebar`, `nav-*`, `data-table`, `section-cards`, `chart-area-interactive`, `mode-toggle` are dashboard-only but sit beside `smooth-scroll.tsx` (public) |
+| File                         | Mixed concern                                                                                                                                                                                                                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/globals.css:4`          | `@import './(frontend)/frontend-tokens.css'` - loads 149 `--it-*` public tokens on every dashboard route. The imported file's own header (lines 1-4) says "Scope: (frontend) routes only / Import in (frontend)/layout.tsx - never in (dashboard) routes". `app/(frontend)/layout.tsx` does not import it. |
+| `app/globals.css`            | 276 lines serving both trees; contains dashboard-only rules (`.sidebar-menu-item`, `[data-slot='sidebar']`, `.tox-*`)                                                                                                                                                                                      |
+| `app/layout.tsx`             | Root layout for both trees; `metadata.title = 'Island Tours - Admin'`; declares 5 fonts; mounts `QueryProvider`/`ThemeProvider`/`TooltipProvider`/`Toaster` for both                                                                                                                                       |
+| `proxy.ts`                   | One middleware holding `guardDashboard()` **and** the full public i18n redirect/rewrite scheme                                                                                                                                                                                                             |
+| `lib/tours/listing.ts`       | Public mappers + dashboard-only derivations in one file                                                                                                                                                                                                                                                    |
+| `components/site-header.tsx` | Dashboard chrome at `components/` root                                                                                                                                                                                                                                                                     |
+| `components/skelitons/`      | Mixes `dashboard-skeleton`/`profile-skeleton`/`statistics-skeleton` with `tour-page-skeleton`/`checkout-page-skeleton`/`wishlist-skeleton`                                                                                                                                                                 |
+| `components/` root           | `app-sidebar`, `nav-*`, `data-table`, `section-cards`, `chart-area-interactive`, `mode-toggle` are dashboard-only but sit beside `smooth-scroll.tsx` (public)                                                                                                                                              |
 
 ---
 
@@ -121,38 +121,38 @@ One non-dashboard file does: `components/site-header.tsx:5-6` imports `ProfileDr
 
 ### 4.1 Two independent fetch stacks (already cleanly separated)
 
-| | `apiFetch` (`lib/api/fetch.ts`) | `publicGet`/`publicFetch` (`lib/api/public/fetch.ts`) |
-|---|---|---|
-| Owner | Dashboard | Public site |
-| Context | Browser | `import 'server-only'` |
-| Base URL | `${NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1` | same |
-| Auth | `credentials: 'include'` (session cookie) | `x-internal-api-key: INTERNAL_API_SECRET` |
-| Retry | `[300, 800]` + full jitter, **GET only**, on 429/503 | `[300, 800]` fixed, no jitter (no `Math.random()` inside `'use cache'`) |
-| Errors | throws `Error(message)` | `publicGet` returns `null`, never throws |
-| Caching | none (TanStack Query owns it) | none at fetch level (`'use cache'` scope owns it) |
-| Next coupling | calls `revalidatePublicForPath()` on success (`:64`) | `cacheTag()` in callers |
+|               | `apiFetch` (`lib/api/fetch.ts`)                                | `publicGet`/`publicFetch` (`lib/api/public/fetch.ts`)                   |
+| ------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Owner         | Dashboard                                                      | Public site                                                             |
+| Context       | Browser                                                        | `import 'server-only'`                                                  |
+| Base URL      | `${NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1` | same                                                                    |
+| Auth          | `credentials: 'include'` (session cookie)                      | `x-internal-api-key: INTERNAL_API_SECRET`                               |
+| Retry         | `[300, 800]` + full jitter, **GET only**, on 429/503           | `[300, 800]` fixed, no jitter (no `Math.random()` inside `'use cache'`) |
+| Errors        | throws `Error(message)`                                        | `publicGet` returns `null`, never throws                                |
+| Caching       | none (TanStack Query owns it)                                  | none at fetch level (`'use cache'` scope owns it)                       |
+| Next coupling | calls `revalidatePublicForPath()` on success (`:64`)           | `cacheTag()` in callers                                                 |
 
 Third variant: `lib/server/auth-headers.ts` (`serverAuthHeaders`) forwards **both** cookie and internal key; used by server actions.
 
 ### 4.2 Dashboard API modules and backend endpoints
 
-| Module | Backend base paths |
-|---|---|
-| `trips.ts` (519 LOC) | `/tours`, `/tours/:id/{images,addons,age-bands,languages,highlights,inclusions,exclusions,features,locations,pickup-locations,translations}`, `/tours/:id/{publish,pause,unpause,archive,restore}`, `/availability/{schedules,exceptions}` |
-| `destinations.ts` | `/destinations`, `/destinations/:id/{translations,page-content,faqs,force}` |
-| `categories.ts` | `/categories`, `/categories/destination/:slug`, `/categories/:id/{translations,page-content,faqs,force}` |
-| `collections.ts` | `/collections`, `/collections/:id/{translations,page-content,faqs,status,tours,resolved-tours,force}` |
-| `hubs.ts` | `/hubs`, `/hubs/:id/{translations,page-content,faqs,allowed-categories,content-sections,our-picks,comparison}` |
-| `attributes.ts` | `/attributes`, `/tours/:tripId/attributes` |
-| `tiers.ts` | `/tiers/tours/:tourId/{tier,spotlight}`, `/tiers/admin/spotlight` |
-| `bookings-dashboard.ts` | `GET /bookings`, `POST /bookings/:id/cancel`, `GET /payments` |
-| `operators.ts` / `operator-settings.ts` | `/operators`, `/operators/:id/{company-info,stripe-config,mollie-config}` |
-| `settings.ts` | `/settings/{site,seo,social-media,company,payment/stripe,payment/mollie,smtp,mailchimp}` |
-| `profile.ts` | `/users/me`, `/operators/:id/{company-info,social-media}` |
-| `media.ts` | `/media-gallery`, `/media-gallery/{bulk,upload,sign,confirm}` |
-| `faq-groups.ts` | `${basePath}/:id/faqs/groups` (generic, 4 modules) |
-| `locals-favourites.ts` | `/tours/admin/locals-favourite/stats`, `PATCH /tours/:tourId/locals-favourite` |
-| `availability.ts` | `POST /availability/{check,calendar}` (shared with public) |
+| Module                                  | Backend base paths                                                                                                                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `trips.ts` (519 LOC)                    | `/tours`, `/tours/:id/{images,addons,age-bands,languages,highlights,inclusions,exclusions,features,locations,pickup-locations,translations}`, `/tours/:id/{publish,pause,unpause,archive,restore}`, `/availability/{schedules,exceptions}` |
+| `destinations.ts`                       | `/destinations`, `/destinations/:id/{translations,page-content,faqs,force}`                                                                                                                                                                |
+| `categories.ts`                         | `/categories`, `/categories/destination/:slug`, `/categories/:id/{translations,page-content,faqs,force}`                                                                                                                                   |
+| `collections.ts`                        | `/collections`, `/collections/:id/{translations,page-content,faqs,status,tours,resolved-tours,force}`                                                                                                                                      |
+| `hubs.ts`                               | `/hubs`, `/hubs/:id/{translations,page-content,faqs,allowed-categories,content-sections,our-picks,comparison}`                                                                                                                             |
+| `attributes.ts`                         | `/attributes`, `/tours/:tripId/attributes`                                                                                                                                                                                                 |
+| `tiers.ts`                              | `/tiers/tours/:tourId/{tier,spotlight}`, `/tiers/admin/spotlight`                                                                                                                                                                          |
+| `bookings-dashboard.ts`                 | `GET /bookings`, `POST /bookings/:id/cancel`, `GET /payments`                                                                                                                                                                              |
+| `operators.ts` / `operator-settings.ts` | `/operators`, `/operators/:id/{company-info,stripe-config,mollie-config}`                                                                                                                                                                  |
+| `settings.ts`                           | `/settings/{site,seo,social-media,company,payment/stripe,payment/mollie,smtp,mailchimp}`                                                                                                                                                   |
+| `profile.ts`                            | `/users/me`, `/operators/:id/{company-info,social-media}`                                                                                                                                                                                  |
+| `media.ts`                              | `/media-gallery`, `/media-gallery/{bulk,upload,sign,confirm}`                                                                                                                                                                              |
+| `faq-groups.ts`                         | `${basePath}/:id/faqs/groups` (generic, 4 modules)                                                                                                                                                                                         |
+| `locals-favourites.ts`                  | `/tours/admin/locals-favourite/stats`, `PATCH /tours/:tourId/locals-favourite`                                                                                                                                                             |
+| `availability.ts`                       | `POST /availability/{check,calendar}` (shared with public)                                                                                                                                                                                 |
 
 No dashboard module exists for `/reviews` or a `/users` list. Those pages are stubs.
 
@@ -168,24 +168,26 @@ The one runtime coupling from dashboard to public site:
 4. `lib/api/public/*` read with matching `cacheTag(...)`
 
 Tag taxonomy (`app/_actions/revalidate.ts:14-45`):
+
 - Coarse: `tours | search | hubs | categories | collections | destinations | reviews | slug-registry | site-info | user-profile`
 - Granular: `tour:${id} | destination:${id} | hub:${id} | category:${id} | collection:${id} | operator:${id}`
 
 ### 4.4 Server actions (`app/_actions/`)
 
-| File | Export | Notes |
-|---|---|---|
-| `revalidate.ts` | `revalidateCacheTags(tags)` | called over RPC from the browser |
-| `userActions.ts` | `getUserProfile(cookie)` | React `cache()`-wrapped, NOT `'use cache'` (comment at `:41-48`: a cached `null` from a transient 429 would bounce logged-in users) |
-| `userActions.ts` | `setPasswordAction(newPassword)` | |
-| `onboardingActions.ts` | `checkOnboardingStatus()`, `onboardOperator(data)` | |
-| `dashboardActions.ts` | `getDashboardStats()` | **hardcoded mock, no backend call** |
+| File                   | Export                                             | Notes                                                                                                                               |
+| ---------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `revalidate.ts`        | `revalidateCacheTags(tags)`                        | called over RPC from the browser                                                                                                    |
+| `userActions.ts`       | `getUserProfile(cookie)`                           | React `cache()`-wrapped, NOT `'use cache'` (comment at `:41-48`: a cached `null` from a transient 429 would bounce logged-in users) |
+| `userActions.ts`       | `setPasswordAction(newPassword)`                   |                                                                                                                                     |
+| `onboardingActions.ts` | `checkOnboardingStatus()`, `onboardOperator(data)` |                                                                                                                                     |
+| `dashboardActions.ts`  | `getDashboardStats()`                              | **hardcoded mock, no backend call**                                                                                                 |
 
 ### 4.5 Data-fetching style
 
 Uniform. Every list/edit route is a thin server shim rendering a `*-view` / `*-client` client component. All entity data flows through TanStack Query hooks calling `apiFetch`. Zero `useEffect` fetching. Zero server-component entity fetches.
 
 Exceptions:
+
 - `layout.tsx` - server component, `await getUserProfile(cookie)` inside `<Suspense>`, redirects to `/portal` (null) or `/onboarding` (operator-less TOUR_OPERATOR)
 - `page.tsx` (overview) - passes an **unawaited** `getDashboardStats()` promise to `<PageComponents statsPromise=... />`
 
@@ -238,14 +240,14 @@ Matcher: `['/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)']`
 
 ## 6. Environment variables
 
-| Var | Referenced at (dashboard paths) |
-|---|---|
-| `NEXT_PUBLIC_BACKEND_URL` | `lib/auth-client.ts:4`, `app/_actions/userActions.ts:8`, `app/_actions/onboardingActions.ts:8`, `lib/api/fetch.ts:9`, `lib/api/categories.ts:22`, `components/dashboard/media/media-uploader.tsx:24` |
-| `INTERNAL_API_SECRET` | `lib/server/auth-headers.ts:21` |
-| `NEXT_PUBLIC_OPEN_WEATHER_API_KEY` | `utils/weather.ts:229`, `:298` |
-| `NEXT_PUBLIC_STAGING_APP_URL` | `components/dashboard/setup-guide.tsx:53` |
-| `NODE_ENV` | `proxy.ts:124`, `:207` |
-| `COOKIE_DOMAIN` | `proxy.ts:126` |
+| Var                                | Referenced at (dashboard paths)                                                                                                                                                                      |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_BACKEND_URL`          | `lib/auth-client.ts:4`, `app/_actions/userActions.ts:8`, `app/_actions/onboardingActions.ts:8`, `lib/api/fetch.ts:9`, `lib/api/categories.ts:22`, `components/dashboard/media/media-uploader.tsx:24` |
+| `INTERNAL_API_SECRET`              | `lib/server/auth-headers.ts:21`                                                                                                                                                                      |
+| `NEXT_PUBLIC_OPEN_WEATHER_API_KEY` | `utils/weather.ts:229`, `:298`                                                                                                                                                                       |
+| `NEXT_PUBLIC_STAGING_APP_URL`      | `components/dashboard/setup-guide.tsx:53`                                                                                                                                                            |
+| `NODE_ENV`                         | `proxy.ts:124`, `:207`                                                                                                                                                                               |
+| `COOKIE_DOMAIN`                    | `proxy.ts:126`                                                                                                                                                                                       |
 
 ---
 
@@ -257,19 +259,20 @@ Color space: `oklch()` exclusively. Mixed notation (decimals `0.99` vs percentag
 
 Hue split: light neutrals on hue **80** (warm), dark neutrals on hue **260** (cool). Not a lightness inversion of one ramp.
 
-| Group | Tokens |
-|---|---|
-| Core color | `background`, `foreground`, `card(-foreground)`, `popover(-foreground)`, `primary(-foreground)`, `secondary(-foreground)`, `muted(-foreground)`, `accent(-foreground)`, `destructive`, `border`, `input`, `ring` |
-| Sidebar | 8 tokens |
-| Chart | `--chart-1..5` - all purple-family, **identical in light and dark** |
-| Semantic (non-stock) | `--success`, `--warning`, `--info` + `-foreground` pairs; base values **identical in light and dark** |
-| Radius | `--radius: 0.3rem` (`:root`), `0.2rem` (`.dark`) - radius changes with color theme |
+| Group                | Tokens                                                                                                                                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core color           | `background`, `foreground`, `card(-foreground)`, `popover(-foreground)`, `primary(-foreground)`, `secondary(-foreground)`, `muted(-foreground)`, `accent(-foreground)`, `destructive`, `border`, `input`, `ring` |
+| Sidebar              | 8 tokens                                                                                                                                                                                                         |
+| Chart                | `--chart-1..5` - all purple-family, **identical in light and dark**                                                                                                                                              |
+| Semantic (non-stock) | `--success`, `--warning`, `--info` + `-foreground` pairs; base values **identical in light and dark**                                                                                                            |
+| Radius               | `--radius: 0.3rem` (`:root`), `0.2rem` (`.dark`) - radius changes with color theme                                                                                                                               |
 
 `--primary`: `oklch(0.5417 0.179 288.0332)` (violet), identical in both modes.
 
 **Not defined:** no spacing tokens, no typography tokens, no shadow tokens.
 
 **Broken:**
+
 - `globals.css:229-230` - `--shadow-2xl: var(--shadow-2xl)` and `--tracking-normal: var(--tracking-normal)` are self-referential with no source definition
 - `--destructive-foreground` mapped in `@theme inline` (`:248`) but never defined
 - `body { letter-spacing: var(--tracking-normal) }` (`:21`) resolves to nothing
@@ -290,14 +293,14 @@ Leak is **definition-only**: grep for `--it-` across `components/dashboard/**`, 
 
 ### 7.4 Hardcoded value audit (243 dashboard-path files)
 
-| Pattern | Count |
-|---|---|
-| Hardcoded hex | 12 (7 files) |
-| `rgb(` / `rgba(` | 0 |
-| `hsl(` | 1 (broken, see below) |
-| inline `oklch(` | 0 |
-| Numeric Tailwind palette classes | **187 (30 files)** |
-| Inline `style={{` | 24 (20 files) |
+| Pattern                          | Count                 |
+| -------------------------------- | --------------------- |
+| Hardcoded hex                    | 12 (7 files)          |
+| `rgb(` / `rgba(`                 | 0                     |
+| `hsl(`                           | 1 (broken, see below) |
+| inline `oklch(`                  | 0                     |
+| Numeric Tailwind palette classes | **187 (30 files)**    |
+| Inline `style={{`                | 24 (20 files)         |
 
 Palette family distribution: amber 67, emerald 35, gray 26, red 20, green 15, rose 7, slate 5, sky 5, violet 4, neutral 2, blue 1. `components.json` declares `"baseColor": "zinc"`; zinc has **0** occurrences.
 
@@ -313,25 +316,25 @@ Hex occurrences: `dashbaord-wraper.tsx:45` `#f1f4fa` (no dark variant), `:65` `#
 
 5 families declared in `app/layout.tsx`, all attached to `<html>`, all loaded on every route:
 
-| Font | Var | Dashboard usages |
-|---|---|---|
-| Playfair Display | `--font-heading` | 70 |
-| JetBrains Mono | `--font-jetbrains-mono` | 21 |
-| General Sans (local woff2) | `--font-general-sans` | 3 |
-| Noto Sans | `--font-sans` | 2 explicit (+ body default) |
-| DM Sans | `--font-dm-sans` | 1 |
+| Font                       | Var                     | Dashboard usages            |
+| -------------------------- | ----------------------- | --------------------------- |
+| Playfair Display           | `--font-heading`        | 70                          |
+| JetBrains Mono             | `--font-jetbrains-mono` | 21                          |
+| General Sans (local woff2) | `--font-general-sans`   | 3                           |
+| Noto Sans                  | `--font-sans`           | 2 explicit (+ body default) |
+| DM Sans                    | `--font-dm-sans`        | 1                           |
 
 Font-size distribution (1,075 total):
 
-| Class | Count | Share |
-|---|---|---|
-| `text-xs` | 688 | **64.0%** |
-| `text-sm` | 294 | 27.3% |
-| `text-lg` | 47 | 4.4% |
-| `text-2xl` | 36 | 3.3% |
-| `text-base` | 7 | 0.7% |
-| `text-3xl` | 2 | 0.2% |
-| `text-xl` | 1 | 0.1% |
+| Class       | Count | Share     |
+| ----------- | ----- | --------- |
+| `text-xs`   | 688   | **64.0%** |
+| `text-sm`   | 294   | 27.3%     |
+| `text-lg`   | 47    | 4.4%      |
+| `text-2xl`  | 36    | 3.3%      |
+| `text-base` | 7     | 0.7%      |
+| `text-3xl`  | 2     | 0.2%      |
+| `text-xl`   | 1     | 0.1%      |
 
 Arbitrary `text-[...]`: 55 occurrences, 8 distinct values. `text-[10px]` x23, `text-[13px]` x10, `text-[11px]` x6, `text-[18px]` x5, `text-[#1a0dab]` x5, `text-[14px]` x3, `text-[0.8rem]` x2, `text-[0.625rem]` x1. Three units in play (px, rem, hex).
 
@@ -339,13 +342,13 @@ Arbitrary `text-[...]`: 55 occurrences, 8 distinct values. `text-[10px]` x23, `t
 
 **59 distinct spacing values across 1,298 occurrences.**
 
-| Scale | Distinct | Total | Top 3 |
-|---|---|---|---|
-| `gap-` | 13 | 565 | `gap-2` (238), `gap-3` (97), `gap-4` (72) |
-| `p-` | 11 | 93 | `p-0` (23), `p-3` (13), `p-2` (11) |
-| `px-` | 11 | 206 | `px-3` (65), `px-4` (42), `px-2` (35) |
-| `py-` | 14 | 143 | `py-2` (51), `py-4` (23), `py-3` (20) |
-| `space-y-` | 10 | 291 | `space-y-4` (91), `space-y-3` (57), `space-y-2` (48) |
+| Scale      | Distinct | Total | Top 3                                                |
+| ---------- | -------- | ----- | ---------------------------------------------------- |
+| `gap-`     | 13       | 565   | `gap-2` (238), `gap-3` (97), `gap-4` (72)            |
+| `p-`       | 11       | 93    | `p-0` (23), `p-3` (13), `p-2` (11)                   |
+| `px-`      | 11       | 206   | `px-3` (65), `px-4` (42), `px-2` (35)                |
+| `py-`      | 14       | 143   | `py-2` (51), `py-4` (23), `py-3` (20)                |
+| `space-y-` | 10       | 291   | `space-y-4` (91), `space-y-3` (57), `space-y-2` (48) |
 
 Half-steps (`0.5`/`1.5`/`2.5`) appear across all five scales: 143 occurrences.
 
@@ -368,41 +371,42 @@ Shadow: all resolve to Tailwind defaults; there are no shadow tokens.
 `components.json`: `"style": "radix-sera"`, `"baseColor": "zinc"`, `"iconLibrary": "lucide"`, `"rsc": true`, plus non-standard `"menuColor"`/`"menuAccent"`. Imports use the unified `radix-ui@1.4.3` package (`Slot.Root`), not per-primitive `@radix-ui/react-*`.
 
 ### Heavily used
+
 `button` (93), `skeleton` (61), `card` (61), `input` (55), `label` (53), `field` (49), `badge` (43), `select` (36), `tabs` (27), `textarea` (22), `dropdown-menu` (22), `checkbox` (21).
 
 ### Customized vs stock
 
-| File | Lines | Status |
-|---|---|---|
-| `button.tsx` | 65 | **Heavily customized** - base forces `text-xs font-semibold tracking-widest uppercase` on every button; 8 sizes vs stock 4; `destructive` reworked to tinted `bg-destructive/10 text-destructive`; non-stock `has-data-[icon=inline-end]` padding system |
-| `badge.tsx` | 46 | **Radically de-chromed** - base is `rounded-none border-0 bg-transparent px-0 py-0`. All badges render as bare uppercase text with no pill or background. Uses `text-[0.625rem]`. Adds `ghost`/`link` variants. |
-| `table.tsx` | 116 | Customized - `TableHead` is `h-12 px-3 text-xs font-medium tracking-wider uppercase` (stock: `h-10 px-2`, no uppercase); `TableCell` `p-3` (stock `p-2`); non-stock `has-aria-expanded:bg-muted/50` on `TableRow`. All colors are tokens. |
-| `tabs.tsx` | 98 | Customized (pill variant per DASHBOARD-PATTERNS §8) |
-| `avatar.tsx` | 112 | Customized (stock ~53) |
-| `multi-select.tsx` | 184 | **Custom** - not a shadcn primitive |
-| remaining 29 | | Stock |
+| File               | Lines | Status                                                                                                                                                                                                                                                   |
+| ------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `button.tsx`       | 65    | **Heavily customized** - base forces `text-xs font-semibold tracking-widest uppercase` on every button; 8 sizes vs stock 4; `destructive` reworked to tinted `bg-destructive/10 text-destructive`; non-stock `has-data-[icon=inline-end]` padding system |
+| `badge.tsx`        | 46    | **Radically de-chromed** - base is `rounded-none border-0 bg-transparent px-0 py-0`. All badges render as bare uppercase text with no pill or background. Uses `text-[0.625rem]`. Adds `ghost`/`link` variants.                                          |
+| `table.tsx`        | 116   | Customized - `TableHead` is `h-12 px-3 text-xs font-medium tracking-wider uppercase` (stock: `h-10 px-2`, no uppercase); `TableCell` `p-3` (stock `p-2`); non-stock `has-aria-expanded:bg-muted/50` on `TableRow`. All colors are tokens.                |
+| `tabs.tsx`         | 98    | Customized (pill variant per DASHBOARD-PATTERNS §8)                                                                                                                                                                                                      |
+| `avatar.tsx`       | 112   | Customized (stock ~53)                                                                                                                                                                                                                                   |
+| `multi-select.tsx` | 184   | **Custom** - not a shadcn primitive                                                                                                                                                                                                                      |
+| remaining 29       |       | Stock                                                                                                                                                                                                                                                    |
 
 ### Unused by the dashboard (0 dashboard importers)
 
-| File | Note |
-|---|---|
-| `progress.tsx`, `breadcrumb.tsx` | 0 importers repo-wide |
-| `sheet.tsx` | transitive only (`ui/sidebar.tsx`) |
-| `drawer.tsx` | transitive only, via dead `data-table.tsx` |
-| `toggle.tsx` | transitive only (`ui/toggle-group.tsx`) |
-| `input-group.tsx` | transitive only (`ui/command.tsx`) |
-| `toggle-group.tsx` | transitive only, via dead `chart-area-interactive.tsx` |
-| `sonner.tsx` | root layout only |
-| `input-otp.tsx` | public site only |
+| File                             | Note                                                   |
+| -------------------------------- | ------------------------------------------------------ |
+| `progress.tsx`, `breadcrumb.tsx` | 0 importers repo-wide                                  |
+| `sheet.tsx`                      | transitive only (`ui/sidebar.tsx`)                     |
+| `drawer.tsx`                     | transitive only, via dead `data-table.tsx`             |
+| `toggle.tsx`                     | transitive only (`ui/toggle-group.tsx`)                |
+| `input-group.tsx`                | transitive only (`ui/command.tsx`)                     |
+| `toggle-group.tsx`               | transitive only, via dead `chart-area-interactive.tsx` |
+| `sonner.tsx`                     | root layout only                                       |
+| `input-otp.tsx`                  | public site only                                       |
 
 **Zero sheet/drawer usage. 21 dialog sites.**
 
 ### Icons: two libraries
 
-| Library | Dashboard files |
-|---|---|
-| `lucide-react@1.11` | 105 |
-| `@hugeicons/react@1.1.6` + `@hugeicons/core-free-icons` | 14 |
+| Library                                                 | Dashboard files |
+| ------------------------------------------------------- | --------------- |
+| `lucide-react@1.11`                                     | 105             |
+| `@hugeicons/react@1.1.6` + `@hugeicons/core-free-icons` | 14              |
 
 7 of the 14 hugeicons files are the `media/` module (a de-facto module convention). `components.json` declares lucide.
 
@@ -412,18 +416,18 @@ Shadow: all resolve to Tailwind defaults; there are no shadow tokens.
 
 All 10 live dashboard tables use `@tanstack/react-table` + `@/components/ui/table`, each calling `useReactTable` + `flexRender` directly and rebuilding toolbar/body/pagination from scratch. Zero hand-rolled tables.
 
-| Table | Sort | Filter | RowSel | ColVis | Search | Pagination | Skeleton | Bulk | RowActions |
-|---|---|---|---|---|---|---|---|---|---|
-| destinations | Y | Y | Y | Y | `TableSearchInput` | server | Y | 3 | Y |
-| hubs | Y | Y | Y | Y | `TableSearchInput` | server | Y | 3 | Y |
-| categories | Y | Y | Y | Y | `TableSearchInput` | server | Y | 3 | Y |
-| collections | Y | Y | N | Y | `TableSearchInput` | **client** | **N** | N | N |
-| attributes | Y | Y | N | Y | `TableSearchInput` | **client** | **N** | N | N |
-| spotlight | Y | Y | N | Y | `TableSearchInput` | **client** | **N** | N | N |
-| operators | Y | N | Y | N | **own `<Input>`** | server | Y | partial | Y |
-| bookings | Y | N | N | Y | `searchValue` prop | server | Y | N | Y |
-| payments | Y | N | N | Y | `searchValue` prop | server | Y | N | **N** |
-| locals-favourites | Y | Y | N | Y | `searchValue` prop | server | Y | N | inline |
+| Table             | Sort | Filter | RowSel | ColVis | Search             | Pagination | Skeleton | Bulk    | RowActions |
+| ----------------- | ---- | ------ | ------ | ------ | ------------------ | ---------- | -------- | ------- | ---------- |
+| destinations      | Y    | Y      | Y      | Y      | `TableSearchInput` | server     | Y        | 3       | Y          |
+| hubs              | Y    | Y      | Y      | Y      | `TableSearchInput` | server     | Y        | 3       | Y          |
+| categories        | Y    | Y      | Y      | Y      | `TableSearchInput` | server     | Y        | 3       | Y          |
+| collections       | Y    | Y      | N      | Y      | `TableSearchInput` | **client** | **N**    | N       | N          |
+| attributes        | Y    | Y      | N      | Y      | `TableSearchInput` | **client** | **N**    | N       | N          |
+| spotlight         | Y    | Y      | N      | Y      | `TableSearchInput` | **client** | **N**    | N       | N          |
+| operators         | Y    | N      | Y      | N      | **own `<Input>`**  | server     | Y        | partial | Y          |
+| bookings          | Y    | N      | N      | Y      | `searchValue` prop | server     | Y        | N       | Y          |
+| payments          | Y    | N      | N      | Y      | `searchValue` prop | server     | Y        | N       | **N**      |
+| locals-favourites | Y    | Y      | N      | Y      | `searchValue` prop | server     | Y        | N       | inline     |
 
 Three pagination strategies (server `manualPagination`, client `getPaginationRowModel()`, none). Three search implementations. `PAGE_SIZE_OPTIONS = [10, 20, 30, 50]` redeclared per table.
 
@@ -435,17 +439,17 @@ Three pagination strategies (server `manualPagination`, client `getPaginationRow
 
 In-page shadcn `<Tabs>` for destinations/hubs/categories/collections/trips. Each `*-edit-view.tsx` declares `VALID_TABS`, validates `?tab=`, falls back to `'details'`.
 
-| Module | Tabs | Count |
-|---|---|---|
-| destinations | Details, Translations, Page Content, SEO, FAQs | 5 |
-| categories | Details, Sub-categories*, Translations, Page Content, FAQs, SEO | 6 |
-| collections | Details, Tours, Translations, Page Content, FAQs, SEO | 6 |
-| hubs | Details, Allowed Categories, Translations, Our Picks, Comparison, Page Content, FAQs, SEO | 8 |
-| **trips** | Details, Pricing, Schedules, Images, Highlights, Inclusions & Exclusions, Itinerary, Pickups, Info & Terms, Attributes, Promotion, Translations, SEO | **13** |
-| attributes | none (single form) | 0 |
-| tour-operators | `DashboardTabNav` with a **single tab** | 1 |
-| settings (admin) | General, SEO, Social, Company, Payments, Integrations | 6 |
-| settings (operator) | Company, Payments | 2 |
+| Module              | Tabs                                                                                                                                                 | Count  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| destinations        | Details, Translations, Page Content, SEO, FAQs                                                                                                       | 5      |
+| categories          | Details, Sub-categories\*, Translations, Page Content, FAQs, SEO                                                                                     | 6      |
+| collections         | Details, Tours, Translations, Page Content, FAQs, SEO                                                                                                | 6      |
+| hubs                | Details, Allowed Categories, Translations, Our Picks, Comparison, Page Content, FAQs, SEO                                                            | 8      |
+| **trips**           | Details, Pricing, Schedules, Images, Highlights, Inclusions & Exclusions, Itinerary, Pickups, Info & Terms, Attributes, Promotion, Translations, SEO | **13** |
+| attributes          | none (single form)                                                                                                                                   | 0      |
+| tour-operators      | `DashboardTabNav` with a **single tab**                                                                                                              | 1      |
+| settings (admin)    | General, SEO, Social, Company, Payments, Integrations                                                                                                | 6      |
+| settings (operator) | Company, Payments                                                                                                                                    | 2      |
 
 \* conditionally rendered (`category-edit-view.tsx:66`).
 
@@ -479,20 +483,21 @@ After create: `router.push('/dashboard/trips/${created.id}/edit')` (`:286-289`) 
 
 **No global save. No autosave. Every tab submits independently; most tabs have multiple save buttons.**
 
-| Tab | Save model |
-|---|---|
-| Details | 1 RHF form, **2 buttons** (`:863` and a duplicate inside the OCTO collapsible at `:1051`, both calling the same handler) |
-| Details -> Guide Languages | per-chip immediate |
-| Pricing | **3 independent forms** (basics, age-band add, add-on add); each row also saves itself |
-| Schedules | 3 sections, all immediate-per-action |
-| Images | immediate per action; dialog has its own save |
-| Highlights/Inclusions/Exclusions/Info | add form + per-row delete + per-locale save |
-| Itinerary/Pickups | per-row "Save Details" + 7 per-locale saves |
-| Attributes | **the only true bulk save** in the module (`:157`) |
-| Translations | per-locale "Save Translation" |
-| SEO | per-locale "Save SEO" + separate OG save |
+| Tab                                   | Save model                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Details                               | 1 RHF form, **2 buttons** (`:863` and a duplicate inside the OCTO collapsible at `:1051`, both calling the same handler) |
+| Details -> Guide Languages            | per-chip immediate                                                                                                       |
+| Pricing                               | **3 independent forms** (basics, age-band add, add-on add); each row also saves itself                                   |
+| Schedules                             | 3 sections, all immediate-per-action                                                                                     |
+| Images                                | immediate per action; dialog has its own save                                                                            |
+| Highlights/Inclusions/Exclusions/Info | add form + per-row delete + per-locale save                                                                              |
+| Itinerary/Pickups                     | per-row "Save Details" + 7 per-locale saves                                                                              |
+| Attributes                            | **the only true bulk save** in the module (`:157`)                                                                       |
+| Translations                          | per-locale "Save Translation"                                                                                            |
+| SEO                                   | per-locale "Save SEO" + separate OG save                                                                                 |
 
 Request fan-out:
+
 - Schedule creation loops `weekdays x startTimes` awaiting one POST per pair (`trip-schedules-tab.tsx:464-477`). 7 days x 3 times = **21 sequential requests**.
 - Image add = 1 POST per image in a `forEach` (`trip-images-tab.tsx:80-108`).
 - Image reorder = **2 PATCHes per arrow click** (`:155-184`).
@@ -500,37 +505,38 @@ Request fan-out:
 
 ### 11.4 Child collections
 
-| Collection | Pattern | Reorder |
-|---|---|---|
-| Images | grid of cards, hover controls, `MediaSelector` dialog, `ImageEditDialog` | **up/down arrows** (cap 24) |
-| Age bands | inline row, chevron-expand, **local `useState` per field** | n/a |
-| Add-ons | same inline-expand, local `useState` | n/a |
-| Highlights | inline row + 7-locale `TranslationRow` panel (cap 6, "need at least 3") | numeric `displayOrder` input |
-| Inclusions / Exclusions / Features | inline row + 7 `TranslationRow`s | numeric `displayOrder` input |
-| Itinerary / Pickups | inline row, chevron-expand to RHF form + 7 `DualTranslationRow`s | numeric `displayOrder` input |
-| Schedules | flat rows grouped into **weekday sub-tabs** (Tabs inside Tabs inside Tabs) | n/a |
-| Start times | badge chips + HH:MM text input; in-use times lock their remove control | n/a |
-| Exceptions | rows + type-driven conditional form (4 types x `timeMode` matrix) | **no edit**, create/delete only |
-| Attributes | dynamic inputs grouped by category | n/a |
+| Collection                         | Pattern                                                                    | Reorder                         |
+| ---------------------------------- | -------------------------------------------------------------------------- | ------------------------------- |
+| Images                             | grid of cards, hover controls, `MediaSelector` dialog, `ImageEditDialog`   | **up/down arrows** (cap 24)     |
+| Age bands                          | inline row, chevron-expand, **local `useState` per field**                 | n/a                             |
+| Add-ons                            | same inline-expand, local `useState`                                       | n/a                             |
+| Highlights                         | inline row + 7-locale `TranslationRow` panel (cap 6, "need at least 3")    | numeric `displayOrder` input    |
+| Inclusions / Exclusions / Features | inline row + 7 `TranslationRow`s                                           | numeric `displayOrder` input    |
+| Itinerary / Pickups                | inline row, chevron-expand to RHF form + 7 `DualTranslationRow`s           | numeric `displayOrder` input    |
+| Schedules                          | flat rows grouped into **weekday sub-tabs** (Tabs inside Tabs inside Tabs) | n/a                             |
+| Start times                        | badge chips + HH:MM text input; in-use times lock their remove control     | n/a                             |
+| Exceptions                         | rows + type-driven conditional form (4 types x `timeMode` matrix)          | **no edit**, create/delete only |
+| Attributes                         | dynamic inputs grouped by category                                         | n/a                             |
 
 **No drag-and-drop anywhere in the module**, despite `@dnd-kit/*` being a dependency (used only by the dead `data-table.tsx`).
 
 ### 11.5 Click depth (from trips list)
 
-| Task | Clicks |
-|---|---|
-| Publish a new tour | **~25-30 across 5 tabs**, minimum |
-| Change one price | 5 (via row-action deep link) / 6 (without) |
-| Add a date exception | 8-10, target card below two full-height cards on a 1,165-line tab |
+| Task                           | Clicks                                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Publish a new tour             | **~25-30 across 5 tabs**, minimum                                                                  |
+| Change one price               | 5 (via row-action deep link) / 6 (without)                                                         |
+| Add a date exception           | 8-10, target card below two full-height cards on a 1,165-line tab                                  |
 | Translate overview into German | 5, with no German source reference on screen; covers 1 of 13 fields on 1 of 7 translation surfaces |
 
-Publish is always enabled regardless of readiness; the checks are advisory and the backend rejects. Passing all 5 checks still does not make a tour *listed* - it needs schedules + capacity, surfaced only afterward via the `LIVE && !isBookable` banner (`trip-edit-view.tsx:284-299`). That is a 6th requirement absent from the readiness card.
+Publish is always enabled regardless of readiness; the checks are advisory and the backend rejects. Passing all 5 checks still does not make a tour _listed_ - it needs schedules + capacity, surfaced only afterward via the `LIVE && !isBookable` banner (`trip-edit-view.tsx:284-299`). That is a 6th requirement absent from the readiness card.
 
 Row actions (`trip-row-actions.tsx:103-123`) deep-link to 6 of 13 tabs via `?tab=`.
 
 ### 11.6 State ownership
 
 Four coexisting systems:
+
 1. **TanStack Query** - source of truth for server data (`use-trips.ts`, 921 LOC, 14 queries + 44 mutations)
 2. **react-hook-form** - most forms, with the repeated `as unknown as Resolver<T>` cast
 3. **local `useState`** - inconsistently substituted for RHF: `AgeBandRow` (8 `useState`s), `AddOnRow` (5), schedules add-form (6 + a manual `errors` object), `ExceptionsSection` (5 + errors), `TripAttributesTab`, `TripSeoTab` OG
@@ -542,15 +548,15 @@ Prop drilling: `trip-edit-view.tsx` passes the whole `trip` object to 5 tabs and
 
 ### 11.7 Files over 400 lines (7 of 28 = 4,873 lines = 47% of the module)
 
-| File | Lines | Mixes |
-|---|---|---|
+| File                     | Lines | Mixes                                                                                                                                                                                                                                        |
+| ------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `trip-schedules-tab.tsx` | 1,165 | 3 unrelated managers + a locally-defined `DatePickerField` (`:80-121`) duplicating the shared `components/dashboard/date-picker-field.tsx` + the `scheduledSlotsForDate` availability algorithm (`:770-790`) - business logic in a view file |
-| `trip-pricing-tab.tsx` | 1,095 | 3 domains, 5 schemas, 5 RHF instances, 2 local-state row editors |
-| `trip-details-tab.tsx` | 1,060 | ~30-field form + embedded Guide Languages manager (`:65-197`) + OCTO fields + `toSlug` + `durationHint` logic mirroring the public site |
-| `trip-form.tsx` | 704 | near-duplicate of Details for the create path |
-| `trip-images-tab.tsx` | 523 | grid + card + edit dialog + reorder algorithm + media wiring |
-| `trip-locations-tab.tsx` | 469 | row + form + 7-locale panel + add form + `numOrNull`/`numOrUndef`/`strOrNull` helpers copy-pasted verbatim into `trip-pickup-locations-tab.tsx:58-60` |
-| `trip-edit-view.tsx` | 431 | tab shell + lifecycle + readiness + 3 banners + archive dialog |
+| `trip-pricing-tab.tsx`   | 1,095 | 3 domains, 5 schemas, 5 RHF instances, 2 local-state row editors                                                                                                                                                                             |
+| `trip-details-tab.tsx`   | 1,060 | ~30-field form + embedded Guide Languages manager (`:65-197`) + OCTO fields + `toSlug` + `durationHint` logic mirroring the public site                                                                                                      |
+| `trip-form.tsx`          | 704   | near-duplicate of Details for the create path                                                                                                                                                                                                |
+| `trip-images-tab.tsx`    | 523   | grid + card + edit dialog + reorder algorithm + media wiring                                                                                                                                                                                 |
+| `trip-locations-tab.tsx` | 469   | row + form + 7-locale panel + add form + `numOrNull`/`numOrUndef`/`strOrNull` helpers copy-pasted verbatim into `trip-pickup-locations-tab.tsx:58-60`                                                                                        |
+| `trip-edit-view.tsx`     | 431   | tab shell + lifecycle + readiness + 3 banners + archive dialog                                                                                                                                                                               |
 
 `trip-translations-tab.tsx` (420) restates the same 13-field list **four times**: schema (`:26-40`), `EMPTY_FORM` (`:44-58`), reset block (`:97-111`), payload (`:119-133`).
 
@@ -588,16 +594,16 @@ The SEO tab's "Regenerate" (`trip-seo-tab.tsx:282`) is client-side `truncate(col
 
 Translated content is spread across **7 tabs**, each with per-locale, per-row saves:
 
-| Surface | Structure |
-|---|---|
-| Translations tab | 7 locale tabs x 13 fields x 1 save |
-| Highlights | `TranslationRow` x 7 locales x up to 6 rows, each row a separate form with its own save (`translation-row.tsx:39`) |
-| Inclusions | same |
-| Exclusions | same |
-| Info & Terms (features) | same |
-| Itinerary | `DualTranslationRow` (title + description) x 7 x N (`dual-translation-row.tsx`) |
-| Pickups | `DualTranslationRow` (title + directions) x 7 x N |
-| SEO | 7 locale tabs x 1 save |
+| Surface                 | Structure                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Translations tab        | 7 locale tabs x 13 fields x 1 save                                                                                 |
+| Highlights              | `TranslationRow` x 7 locales x up to 6 rows, each row a separate form with its own save (`translation-row.tsx:39`) |
+| Inclusions              | same                                                                                                               |
+| Exclusions              | same                                                                                                               |
+| Info & Terms (features) | same                                                                                                               |
+| Itinerary               | `DualTranslationRow` (title + description) x 7 x N (`dual-translation-row.tsx`)                                    |
+| Pickups                 | `DualTranslationRow` (title + directions) x 7 x N                                                                  |
+| SEO                     | 7 locale tabs x 1 save                                                                                             |
 
 Each row must be expanded first (`setExpanded`, e.g. `trip-highlights-tab.tsx:42`).
 
@@ -607,13 +613,13 @@ Each row must be expanded first (`setExpanded`, e.g. `trip-highlights-tab.tsx:42
 
 **There is no shared `LocaleTab`.** It is redefined from scratch in 5 modules:
 
-| File | Def at |
-|---|---|
-| `trips/trip-translations-tab.tsx` | `:80` |
-| `destinations/destination-translation-form.tsx` | `:39` |
-| `categories/category-translation-form.tsx` | `:39` |
-| `hubs/hub-translation-form.tsx` | `:40` |
-| `collections/collection-translation-form.tsx` | `:41` |
+| File                                            | Def at |
+| ----------------------------------------------- | ------ |
+| `trips/trip-translations-tab.tsx`               | `:80`  |
+| `destinations/destination-translation-form.tsx` | `:39`  |
+| `categories/category-translation-form.tsx`      | `:39`  |
+| `hubs/hub-translation-form.tsx`                 | `:40`  |
+| `collections/collection-translation-form.tsx`   | `:41`  |
 
 All five share the same skeleton (`ALL_LOCALES.map` -> `TabsTrigger`; EN special-cased with `disableNameField`/`isEnglish`; per-locale RHF form; `useEffect` reset on data; upsert-or-delete; machine-translated badge) with hand-copied field lists and per-module schemas.
 
@@ -627,18 +633,18 @@ Trips is the only module whose child collections are translatable, hence `transl
 
 ## 13. Duplication hotspots (measured by `diff`)
 
-| # | Cluster | Files | Total LOC | Evidence |
-|---|---|---|---|---|
-| 1 | Translation forms | 4 | ~1,145 | dest(272) vs cat(272) diff = ~30 lines, all renames |
-| 2 | SEO tabs | 4 | ~1,448 | dest(362) vs cat(366) diff = 139; vs hub(361) = 133; vs coll(359) = 137. All within 7 lines of each other |
-| 3 | Table scaffolds | 10 | - | dest(352) vs cat(332) diff = 138; vs hubs(361) = 202 |
-| 4 | Row actions | 3+ | - | dest(185) vs cat(185) diff = 139 |
-| 5 | Quick-edit dialogs | 3 | 422 | dest(142) vs cat(142) diff = 64 |
-| 6 | Delete confirms | **4 competing abstractions** + 4 clone wrappers | - | see below |
-| 7 | Status badges | 4 conventions | - | see below |
-| 8 | List-view shells | 4+ | - | dest vs cat diff = 18; bookings vs payments = the same 500ms-debounce state machine written twice |
-| 9 | Detail shells | 4 | ~200 | dest(51) vs cat(50) diff = 32 |
-| 10 | `trip-form` vs `trip-details-tab` | 2 | 1,764 | near-identical field-for-field |
+| #   | Cluster                           | Files                                           | Total LOC | Evidence                                                                                                  |
+| --- | --------------------------------- | ----------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Translation forms                 | 4                                               | ~1,145    | dest(272) vs cat(272) diff = ~30 lines, all renames                                                       |
+| 2   | SEO tabs                          | 4                                               | ~1,448    | dest(362) vs cat(366) diff = 139; vs hub(361) = 133; vs coll(359) = 137. All within 7 lines of each other |
+| 3   | Table scaffolds                   | 10                                              | -         | dest(352) vs cat(332) diff = 138; vs hubs(361) = 202                                                      |
+| 4   | Row actions                       | 3+                                              | -         | dest(185) vs cat(185) diff = 139                                                                          |
+| 5   | Quick-edit dialogs                | 3                                               | 422       | dest(142) vs cat(142) diff = 64                                                                           |
+| 6   | Delete confirms                   | **4 competing abstractions** + 4 clone wrappers | -         | see below                                                                                                 |
+| 7   | Status badges                     | 4 conventions                                   | -         | see below                                                                                                 |
+| 8   | List-view shells                  | 4+                                              | -         | dest vs cat diff = 18; bookings vs payments = the same 500ms-debounce state machine written twice         |
+| 9   | Detail shells                     | 4                                               | ~200      | dest(51) vs cat(50) diff = 32                                                                             |
+| 10  | `trip-form` vs `trip-details-tab` | 2                                               | 1,764     | near-identical field-for-field                                                                            |
 
 ### 13.1 Four competing delete-confirm abstractions
 
@@ -653,45 +659,46 @@ Two different primitives are used for semantically identical destructive confirm
 
 ### 13.2 Four status-badge conventions
 
-| File | Shape |
-|---|---|
-| `booking-columns.tsx:20,33,43` | `statusVariant` + `statusDot` + `statusLabel` |
-| `payment-columns.tsx:10,23` | `statusVariant` + `statusLabel` |
-| `spotlight-columns.tsx:47` | `statusStyles` (different shape and name) |
-| `destination-columns.tsx:89` | inline ternary `variant={isActive ? 'default' : 'secondary'}` |
+| File                           | Shape                                                         |
+| ------------------------------ | ------------------------------------------------------------- |
+| `booking-columns.tsx:20,33,43` | `statusVariant` + `statusDot` + `statusLabel`                 |
+| `payment-columns.tsx:10,23`    | `statusVariant` + `statusLabel`                               |
+| `spotlight-columns.tsx:47`     | `statusStyles` (different shape and name)                     |
+| `destination-columns.tsx:89`   | inline ternary `variant={isActive ? 'default' : 'secondary'}` |
 
 No shared `StatusBadge`. This is a direct consequence of `badge.tsx` being de-chromed: the primitive carries no semantic color, so call sites hand-roll `bg-amber-100`/`text-emerald-700`.
 
 ### 13.3 Genuinely shared (the successes)
 
-| Component | LOC | Consumers |
-|---|---|---|
-| `faq/faq-manager.tsx` | 477 | all 4 entity modules, identically: `<FaqManager basePath="/destinations\|/hubs\|/collections\|/categories" entityId={id} />`. No forks. |
-| `media/image-selector-field.tsx` | 296 | 10 consumers across settings, destinations, hubs, collections, categories |
-| `table-search-input.tsx` | 67 | 6 of 10 tables |
-| `rationale-translation-tabs.tsx` | 97 | 3 (hub-our-picks, hub-comparison, collection-tours) |
-| `common/deactivate-dialog.tsx` | 70 | shared, but only reachable through 4 duplicated wrappers |
+| Component                        | LOC | Consumers                                                                                                                               |
+| -------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `faq/faq-manager.tsx`            | 477 | all 4 entity modules, identically: `<FaqManager basePath="/destinations\|/hubs\|/collections\|/categories" entityId={id} />`. No forks. |
+| `media/image-selector-field.tsx` | 296 | 10 consumers across settings, destinations, hubs, collections, categories                                                               |
+| `table-search-input.tsx`         | 67  | 6 of 10 tables                                                                                                                          |
+| `rationale-translation-tabs.tsx` | 97  | 3 (hub-our-picks, hub-comparison, collection-tours)                                                                                     |
+| `common/deactivate-dialog.tsx`   | 70  | shared, but only reachable through 4 duplicated wrappers                                                                                |
 
 ---
 
 ## 14. Dead and orphaned code
 
-| File | LOC | Status |
-|---|---|---|
-| `components/data-table.tsx` | 813 | **0 importers repo-wide** |
-| `components/dashboard/common/image-upload-selector.tsx` | 235 | **0 external importers**; superseded by `media/image-selector-field.tsx` |
-| `components/dashboard/trips/trip-content-tab.tsx` | 255 | 0 importers |
-| `components/dashboard/trips/trip-languages-tab.tsx` | 205 | 0 importers |
-| `components/section-cards.tsx` | - | 0 importers |
-| `components/chart-area-interactive.tsx` | - | 0 importers; sole importer of `ui/toggle-group.tsx` |
-| `components/dashboard/locals-favourites/locals-favourites-list-view.tsx` | 66 | likely superseded by `locals-favourites-view.tsx` |
-| `app/__backup(auth)/`, `components/__backup_auth/` | - | backup dirs still in the graph |
+| File                                                                     | LOC | Status                                                                   |
+| ------------------------------------------------------------------------ | --- | ------------------------------------------------------------------------ |
+| `components/data-table.tsx`                                              | 813 | **0 importers repo-wide**                                                |
+| `components/dashboard/common/image-upload-selector.tsx`                  | 235 | **0 external importers**; superseded by `media/image-selector-field.tsx` |
+| `components/dashboard/trips/trip-content-tab.tsx`                        | 255 | 0 importers                                                              |
+| `components/dashboard/trips/trip-languages-tab.tsx`                      | 205 | 0 importers                                                              |
+| `components/section-cards.tsx`                                           | -   | 0 importers                                                              |
+| `components/chart-area-interactive.tsx`                                  | -   | 0 importers; sole importer of `ui/toggle-group.tsx`                      |
+| `components/dashboard/locals-favourites/locals-favourites-list-view.tsx` | 66  | likely superseded by `locals-favourites-view.tsx`                        |
+| `app/__backup(auth)/`, `components/__backup_auth/`                       | -   | backup dirs still in the graph                                           |
 
 > `lib/api/cache-revalidation.ts` is **NOT dead** - verified `lib/api/fetch.ts:7` imports it. An earlier scan reported zero importers; that was wrong. Do not delete it.
 
 **Total confirmed dead: >1,574 LOC.**
 
 Other artifacts:
+
 - `dashbaord-wraper.tsx` - filename typo, shipped
 - `components/skelitons/` - directory name typo, shipped
 - `tsconfig.json:include` references `app/(dashboard)/_dashboard/layout.js`, which does not exist on disk
@@ -701,15 +708,15 @@ Other artifacts:
 
 ## 15. Mock and stub inventory
 
-| Item | State |
-|---|---|
-| `app/_actions/dashboardActions.ts` | `getDashboardStats()` returns a **fully hardcoded object literal**: `totalRevenue: 125000.50`, `bookings.total: 1240`, `recentBookings` with `'John Doe'` / `'Bali Adventure'` / `BK-1234`, `recentCustomers` with `alice@example.com`. Live-wired into the dashboard home (`page.tsx:1,18,22`). Calls `new Date()` inside a server action (`:49,57,67,79`). |
-| `components/dashboard/statistics.tsx` | `:81` "Generate mock historical data based on current values". `:408` and `:516` contain `\|\| true ? ( // Forced true for mock visualization` - forcing chart branches on regardless of data. |
-| `reviews/page.tsx` | stub, static JSX |
-| `users/page.tsx`, `users/new/page.tsx` | stub, static JSX |
-| `leads/page.tsx` | stub, static JSX |
-| `enquiries/page.tsx` | stub, static JSX |
-| `trip-promotion-tab.tsx:49` | `SHOW_DEMAND_BADGE_OVERRIDE = false` - DemandBadgeCard is dead behind a flag |
+| Item                                   | State                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/_actions/dashboardActions.ts`     | `getDashboardStats()` returns a **fully hardcoded object literal**: `totalRevenue: 125000.50`, `bookings.total: 1240`, `recentBookings` with `'John Doe'` / `'Bali Adventure'` / `BK-1234`, `recentCustomers` with `alice@example.com`. Live-wired into the dashboard home (`page.tsx:1,18,22`). Calls `new Date()` inside a server action (`:49,57,67,79`). |
+| `components/dashboard/statistics.tsx`  | `:81` "Generate mock historical data based on current values". `:408` and `:516` contain `\|\| true ? ( // Forced true for mock visualization` - forcing chart branches on regardless of data.                                                                                                                                                               |
+| `reviews/page.tsx`                     | stub, static JSX                                                                                                                                                                                                                                                                                                                                             |
+| `users/page.tsx`, `users/new/page.tsx` | stub, static JSX                                                                                                                                                                                                                                                                                                                                             |
+| `leads/page.tsx`                       | stub, static JSX                                                                                                                                                                                                                                                                                                                                             |
+| `enquiries/page.tsx`                   | stub, static JSX                                                                                                                                                                                                                                                                                                                                             |
+| `trip-promotion-tab.tsx:49`            | `SHOW_DEMAND_BADGE_OVERRIDE = false` - DemandBadgeCard is dead behind a flag                                                                                                                                                                                                                                                                                 |
 
 ---
 
@@ -750,3 +757,4 @@ Items I could not confirm within Phase 0 and that must not be assumed:
 3. **Runtime bundle sizes** - no `@next/bundle-analyzer` run. Client-component counts are a proxy, not a measurement.
 4. **Whether `app/(login)/apply` and `app/(login)/bookings` are traveler-facing** - inferred from route names and `proxy.ts` prefix handling.
 5. **`components/dashboard/weather-slider.tsx` + `utils/weather.ts`** - a live OpenWeather widget in the admin header. Its product rationale is unknown; it carries an env var and an external network dependency into the standalone app.
+

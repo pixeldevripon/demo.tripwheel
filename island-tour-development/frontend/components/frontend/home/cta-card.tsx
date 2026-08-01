@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
 import { springPop } from '@/lib/motion';
 
@@ -56,7 +56,10 @@ export function CtaCard({
                             initial='rest'
                             animate='rest'
                             whileTap='tap'
-                            variants={{ rest: { scale: 1 }, tap: { scale: 0.98 } }}
+                            variants={{
+                                rest: { scale: 1 },
+                                tap: { scale: 0.98 },
+                            }}
                             transition={springPop}>
                             {cta}
                             <MotionSpan
@@ -75,3 +78,4 @@ export function CtaCard({
         </section>
     );
 }
+

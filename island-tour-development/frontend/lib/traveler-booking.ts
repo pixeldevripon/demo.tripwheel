@@ -140,6 +140,31 @@ export function readTravellerAccount(): string | null {
     return email.includes('@') && email.length <= 320 ? email : null;
 }
 
+/**
+ * Make the navbar identity agree with the address a booking was just made
+ * under (test report 2026-08-01 §Traveler.4).
+ *
+ * The chrome's identity is a client-readable cookie; the real credential is
+ * the HttpOnly session. Checkout moves the session, and nothing used to move
+ * the cookie - so after booking with a different address the header still
+ * showed the previous traveller, while every server-rendered surface had
+ * already moved on. Three views of one identity, disagreeing.
+ *
+ * Same address: nothing to do, the cookie is already right. A DIFFERENT one
+ * means this booking belongs to someone else, and checkout's session is
+ * booking-scoped - it opens this booking and nothing else, which is exactly
+ * what "signed out" looks like. So the display cookies go, and the header
+ * tells the truth instead of naming an account the browser can no longer open.
+ */
+export function reconcileTravellerIdentity(bookedEmail: string): void {
+    const current = getTravellerIdentity().email;
+    if (!current) return;
+    if (current.trim().toLowerCase() === bookedEmail.trim().toLowerCase()) {
+        return;
+    }
+    clearTravelerBooking();
+}
+
 // ── The identity as a subscribable store ────────────────────────────────────
 // Cookies fire no events, so anything rendering the traveller identity used to
 // read it once in a mount effect and then go stale for the life of the tab: the
@@ -268,13 +293,22 @@ export function clearJustBooked(): void {
  * Store the backend-issued traveler session token in the HttpOnly cookie.
  * Await it before navigating to the TYP so the very first server render is
  * already verified (unmasked).
+ *
+ * `forEmail` is the contact email the token was minted for. Checkout passes
+ * it so the route can refuse a DOWNGRADE: its token is booking-scoped (it
+ * unlocks one booking), and overwriting an email-scoped session with it used
+ * to sign the traveller out of their whole account the moment they booked
+ * (test report 2026-08-01 §Traveler.4). See the route handler for the rule.
  */
-export async function storeTravelerSession(token: string): Promise<void> {
+export async function storeTravelerSession(
+    token: string,
+    forEmail?: string,
+): Promise<void> {
     try {
         await fetch('/api/traveler-session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify(forEmail ? { token, forEmail } : { token }),
         });
     } catch {
         // Non-fatal: the TYP just renders masked with a "verify it's you"

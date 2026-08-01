@@ -1,7 +1,7 @@
-import { ArrowRight } from 'lucide-react';
 import { springPop } from '@/lib/motion';
-import { MotionSpan } from '../motion-primitives';
+import { ArrowRight } from 'lucide-react';
 import { MotionLink } from '../motion-link';
+import { MotionSpan } from '../motion-primitives';
 import { Reveal } from '../reveal';
 import { EditorialCardFan } from './editorial-card-fan';
 
@@ -42,7 +42,7 @@ export function EditorialBanner({
                     <div className='relative flex flex-col gap-6 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:min-h-[372px] lg:p-0'>
                         {/* Editorial copy (mockup .edfig .txt) */}
                         <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[432px]'>
-                            <h2 className='m-0 font-it-display font-extrabold text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
+                            <h2 className='m-0 font-it-display font-medium text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
                                 <span className='block'>{dict.titleLine1}</span>
                                 <span className='block text-it-editorial-accent'>
                                     {dict.titleLine2}
@@ -58,18 +58,22 @@ export function EditorialBanner({
                                 initial='rest'
                                 animate='rest'
                                 whileTap='tap'
-                                variants={{ rest: { scale: 1 }, tap: { scale: 0.99 } }}
-                                transition={springPop}
-                            >
-                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-primary-hover'>
+                                variants={{
+                                    rest: { scale: 1 },
+                                    tap: { scale: 0.99 },
+                                }}
+                                transition={springPop}>
+                                <span className='font-normal text-[14.5px] leading-[1.6] text-it-primary-hover'>
                                     {dict.cta}
                                 </span>
                                 <MotionSpan
                                     className='inline-flex'
                                     variants={{ rest: { x: 0 }, tap: { x: 6 } }}
-                                    transition={springPop}
-                                >
-                                    <ArrowRight className='size-4 text-it-primary-hover' strokeWidth={2.2} />
+                                    transition={springPop}>
+                                    <ArrowRight
+                                        className='size-4 text-it-primary-hover'
+                                        strokeWidth={2.2}
+                                    />
                                 </MotionSpan>
                             </MotionLink>
                         </div>
@@ -86,3 +90,4 @@ export function EditorialBanner({
         </section>
     );
 }
+

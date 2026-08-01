@@ -1,18 +1,18 @@
 'use client';
 
+import { MotionLink } from '@/components/frontend/motion-link';
+import { MountReveal } from '@/components/frontend/mount-reveal';
 import { useBooking } from '@/hooks/tours/use-booking';
 import {
     getDeadEndAlternatives,
     type TourAlternative,
 } from '@/lib/api/tours-alternatives';
-import { MotionLink } from '@/components/frontend/motion-link';
-import { MountReveal } from '@/components/frontend/mount-reveal';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { resolveDisplayPrice } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
+import { pushAvailabilityDeadEnd } from '@/lib/tracking/availability-dead-end';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { pushAvailabilityDeadEnd } from '@/lib/tracking/availability-dead-end';
 import { formatSelectedDate } from './lib/booking.utils';
 
 /**
@@ -40,12 +40,7 @@ export function AvailabilityDeadEnd() {
     useEffect(() => {
         if (!tourId) return;
         const controller = new AbortController();
-        getDeadEndAlternatives(
-            tourId,
-            tourLocale,
-            currency,
-            controller.signal
-        )
+        getDeadEndAlternatives(tourId, tourLocale, currency, controller.signal)
             .then(setAlternatives)
             .catch(() => {
                 if (controller.signal.aborted) return;
@@ -73,7 +68,7 @@ export function AvailabilityDeadEnd() {
     return (
         <div className='flex flex-col gap-3 pb-4'>
             <div className='flex flex-col gap-1'>
-                <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <span className='font-normal text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                     {dict.deadEndTitle}
                 </span>
                 <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -176,7 +171,7 @@ function AlternativeRow({
                         )}
                     </span>
                     <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
-                        <span className='truncate font-medium text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='truncate font-normal text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {alt.title}
                         </span>
                         {/* Meta line: rating first (it is what makes an
@@ -224,7 +219,7 @@ function AlternativeRow({
                             )}
                         </span>
                     </span>
-                    <span className='shrink-0 font-medium text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                    <span className='shrink-0 font-normal text-[15px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                         {priceDisplay}
                     </span>
                 </MotionLink>
@@ -232,3 +227,4 @@ function AlternativeRow({
         </li>
     );
 }
+

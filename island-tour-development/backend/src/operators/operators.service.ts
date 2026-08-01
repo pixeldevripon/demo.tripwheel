@@ -1,5 +1,6 @@
 import { auth } from '@/auth/auth.instance';
 import { decrypt, encrypt, maskSecret } from '@/common/utils/crypto.util';
+import { defaultTeamDesignationRows } from '@/config/team-designations.config';
 import {
   getPortalUrl,
   provisionOrAttachAccount,
@@ -221,6 +222,15 @@ export class OperatorsService {
           activatedAt: new Date(),
         },
         select: { id: true },
+      });
+
+      // Every team starts with the default designation templates, so the
+      // first invite has real options instead of "grant manually". isSystem
+      // semantics: rename/delete blocked, permission sets stay owner-editable.
+      // skipDuplicates keeps this safe against the seed backfill racing us.
+      await this.prisma.staffDesignation.createMany({
+        data: defaultTeamDesignationRows(operator.id),
+        skipDuplicates: true,
       });
 
       if (created || !hadPassword) {

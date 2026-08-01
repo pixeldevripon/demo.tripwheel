@@ -79,32 +79,31 @@ export async function Testimonials() {
                                 key={`${r.author}-${i}`}
                                 width='auto'
                                 listItem>
-                            <article
-                                className='flex h-full flex-col justify-between gap-6 rounded-it-md border border-it-divider bg-it-bg shadow-it-sm px-5 py-[18px]'>
-                                <div className='flex flex-col gap-2'>
-                                    <Stars
-                                        className='text-it-star'
-                                        count={Math.round(r.rating)}
-                                    />
-                                    <p className='m-0 text-[14px] leading-[1.55] text-it-ink line-clamp-5 md:line-clamp-7'>
-                                        {r.text}
-                                    </p>
-                                </div>
-
-                                <div className='flex flex-col gap-0.5'>
-                                    <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
-                                        <span className='font-bold text-it-ink'>
-                                            {r.author}
-                                        </span>
-                                        {r.relativeTime && (
-                                            <span>· {r.relativeTime}</span>
-                                        )}
+                                <article className='flex h-full flex-col justify-between gap-6 rounded-it-md border border-it-divider bg-it-bg shadow-it-sm px-5 py-[18px]'>
+                                    <div className='flex flex-col gap-2'>
+                                        <Stars
+                                            className='text-it-star'
+                                            count={Math.round(r.rating)}
+                                        />
+                                        <p className='m-0 text-[14px] leading-[1.55] text-it-ink line-clamp-5 md:line-clamp-7'>
+                                            {r.text}
+                                        </p>
                                     </div>
-                                    <span className='text-[12px] leading-[1.6] text-it-ink-muted'>
-                                        via {providerLabel}
-                                    </span>
-                                </div>
-                            </article>
+
+                                    <div className='flex flex-col gap-0.5'>
+                                        <div className='flex flex-wrap items-center gap-x-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
+                                            <span className='font-bold text-it-ink'>
+                                                {r.author}
+                                            </span>
+                                            {r.relativeTime && (
+                                                <span>· {r.relativeTime}</span>
+                                            )}
+                                        </div>
+                                        <span className='text-[12px] leading-[1.6] text-it-ink-muted'>
+                                            via {providerLabel}
+                                        </span>
+                                    </div>
+                                </article>
                             </Reveal>
                         ))}
                     </div>

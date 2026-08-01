@@ -97,7 +97,6 @@ export function CheckoutSummary({
     breakdownRows,
     currencySymbol,
 }: CheckoutSummaryProps) {
-
     return (
         <div className='flex flex-col gap-4 rounded-it-lg border border-it-divider bg-it-white p-5 shadow-it-sm'>
             {/* Header */}
@@ -136,7 +135,9 @@ export function CheckoutSummary({
                             />
                         )}
                     </div>
-                    <span className='text-[13px] font-bold leading-[1.35] text-it-ink'>{tourTitle}</span>
+                    <span className='text-[13px] font-normal leading-[1.35] text-it-ink'>
+                        {tourTitle}
+                    </span>
                 </div>
 
                 {/* Detail card */}
@@ -180,7 +181,7 @@ export function CheckoutSummary({
                         />
                         {dict.freeCancellation.replace(
                             '{hours}',
-                            String(cancellationHours),
+                            String(cancellationHours)
                         )}
                     </div>
 
@@ -214,3 +215,4 @@ export function CheckoutSummary({
         </div>
     );
 }
+

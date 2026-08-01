@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
+import Image from 'next/image';
 import { Reveal } from '../reveal';
 
 export type ToursTrustDict = {
@@ -22,7 +22,7 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
     const site = await getPublicSiteInfo();
     const whatsappUrl = buildWhatsappUrl(
         site.whatsappNumber,
-        site.enableWhatsappChat,
+        site.enableWhatsappChat
     );
 
     return (
@@ -63,3 +63,4 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
         </section>
     );
 }
+

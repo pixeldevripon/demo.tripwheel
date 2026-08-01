@@ -40,7 +40,7 @@ export function CategoryTrustStrip({ dict }: { dict: CategoryTrustDict }) {
                                 height={24}
                                 className='size-6 shrink-0'
                             />
-                            <span className='font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[16px] md:font-normal'>
+                            <span className='font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[16px] md:font-normal'>
                                 {dict[key]}
                             </span>
                         </Reveal>
@@ -51,3 +51,4 @@ export function CategoryTrustStrip({ dict }: { dict: CategoryTrustDict }) {
         </Reveal>
     );
 }
+

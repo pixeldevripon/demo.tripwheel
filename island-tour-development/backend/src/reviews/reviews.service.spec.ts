@@ -164,6 +164,46 @@ describe('ReviewsService', () => {
     });
   });
 
+  // Test report 2026-08-01 §Admin.4: the moderation queue asked "is this an
+  // ADMIN" and sent everyone else through operator resolution - which throws
+  // for platform staff, who have no operator record. An invited Operations
+  // Manager holding VIEW_REVIEWS + APPROVE_REVIEW got an error, not a queue.
+  describe('listForActor - who gets whose queue', () => {
+    beforeEach(() => {
+      prisma.review.count.mockResolvedValue(0);
+      prisma.review.findMany.mockResolvedValue([]);
+    });
+
+    it.each([
+      ['ADMIN', Role.ADMIN],
+      ['STAFF', Role.STAFF],
+      ['EDITOR', Role.EDITOR],
+    ])(
+      'lists platform-wide for %s, resolving no operator',
+      async (_label, role) => {
+        await svc.listForActor({}, { id: 'platform-user', role });
+
+        expect(
+          prisma.review.findMany.mock.calls[0][0].where.operatorId,
+        ).toBeUndefined();
+        expect(prisma.operator.findUnique).not.toHaveBeenCalled();
+      },
+    );
+
+    it('still scopes a TOUR_OPERATOR to their own reviews', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-7' });
+
+      await svc.listForActor(
+        {},
+        { id: 'operator-1', role: Role.TOUR_OPERATOR },
+      );
+
+      expect(prisma.review.findMany.mock.calls[0][0].where.operatorId).toBe(
+        'op-7',
+      );
+    });
+  });
+
   describe('summary (LD11 cold-start)', () => {
     beforeEach(() => {
       prisma.review.groupBy.mockResolvedValue([

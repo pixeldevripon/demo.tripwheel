@@ -1,12 +1,16 @@
 'use client';
 
+import {
+    enrichReview,
+    sendPrivateFeedback,
+    startReview,
+} from '@/lib/api/review-submit';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { springPop } from '@/lib/motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { MotionButton } from '../motion-primitives';
-import { springPop } from '@/lib/motion';
-import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { startReview, enrichReview, sendPrivateFeedback } from '@/lib/api/review-submit';
 import { ReviewPhotoUploader } from './review-photo-uploader';
 
 type Dict = Dictionary['reviewSubmit'];
@@ -129,7 +133,7 @@ export function ReviewSubmitFlow({
     if (done) {
         return (
             <Card>
-                <h1 className='m-0 font-medium text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 font-normal text-[24px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                     {dict.thanksTitle}
                 </h1>
                 <p className='mt-2.5 mb-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -138,7 +142,7 @@ export function ReviewSubmitFlow({
                 {tourHref && (
                     <Link
                         href={tourHref}
-                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
+                        className='mt-5 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 font-normal text-[14px] leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
                         {dict.thanksCta}
                     </Link>
                 )}
@@ -163,7 +167,7 @@ export function ReviewSubmitFlow({
             {/* The ask is centred: this is one question, and a left-aligned
                 heading over a wide card reads as the first field of a long form. */}
             <div className='text-center'>
-                <h1 className='m-0 font-medium text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[30px]'>
+                <h1 className='m-0 font-normal text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[30px]'>
                     {guestFirstName ? `${guestFirstName}, ` : ''}
                     {dict.step1Header}
                 </h1>
@@ -282,7 +286,7 @@ export function ReviewSubmitFlow({
                         separate from the tour question above. Shown to everyone. */}
                     {trustpilotUrl && (
                         <div className='mt-7 rounded-[12px] border border-it-border bg-it-surface p-5'>
-                            <span className='font-medium text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-normal text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                 {dict.step4Header}
                             </span>
                             <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -293,7 +297,7 @@ export function ReviewSubmitFlow({
                                     href={trustpilotUrl}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90'>
+                                    className='rounded-[10px] bg-it-heading px-4.5 py-2.75 font-normal text-[14px] leading-[1.2] text-it-white no-underline transition-opacity duration-300 hover:opacity-90'>
                                     {dict.step4Cta}
                                 </a>
                                 <button
@@ -311,7 +315,7 @@ export function ReviewSubmitFlow({
                         is review gating and is not lawful. */}
                     {isLow && !feedbackSent && (
                         <div className='mt-4 rounded-[12px] border border-it-border bg-it-white p-5'>
-                            <span className='font-medium text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-normal text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                 {dict.recoveryHeader}
                             </span>
                             <p className='mt-1.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -330,7 +334,7 @@ export function ReviewSubmitFlow({
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
                                 onClick={() => void sendFeedback()}
-                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-medium text-[14px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50'>
+                                className='mt-3 cursor-pointer rounded-[10px] border-[1.5px] border-it-heading/20 bg-transparent px-4.5 py-2.75 font-normal text-[14px] leading-[1.2] text-it-heading transition-colors duration-300 hover:border-it-heading/40 disabled:opacity-50'>
                                 {busy ? dict.saving : dict.recoverySend}
                             </MotionButton>
                         </div>
@@ -346,7 +350,7 @@ export function ReviewSubmitFlow({
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
                         onClick={() => setDone(true)}
-                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-medium text-[15px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover'>
+                        className='mt-7 w-full cursor-pointer rounded-[10px] bg-it-primary px-4.5 py-3 font-normal text-[15px] leading-[1.2] text-it-white transition-colors duration-300 hover:bg-it-primary-hover'>
                         {dict.save}
                     </MotionButton>
 
@@ -378,7 +382,7 @@ function Step({
 }) {
     return (
         <div className='mt-7 border-t border-it-border/70 pt-7'>
-            <span className='font-medium text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <span className='font-normal text-[17px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                 {header}
             </span>
             {helper && (
@@ -390,3 +394,4 @@ function Step({
         </div>
     );
 }
+

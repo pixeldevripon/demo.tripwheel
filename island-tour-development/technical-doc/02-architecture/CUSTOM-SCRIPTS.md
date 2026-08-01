@@ -169,6 +169,35 @@ together: an inline script and a `<style>` render inside `<head>` while `<title>
 the head - a browser closes `<head>` the moment it meets one, detaching every tag
 after it.
 
+### When a snippet runs - and why a DOM one-liner "does nothing"
+
+Both positions execute **during document parse, before the page is
+interactive**. `HEAD` runs before any content is drawn; `BODY_END` runs when the
+browser reaches the end of the HTML - which is still before React has rendered
+and hydrated the interactive chrome (the navbar search, the destination picker,
+anything client-rendered).
+
+Vendor snippets are written for exactly this and work. Hand-written code that
+reaches for an element does not:
+
+```html
+<!-- Reported 2026-08-01 as "custom JavaScript is not working" -->
+<script>document.querySelector("input[placeholder='Which Island?']").placeholder = "hello";</script>
+```
+
+From **either** position this throws `TypeError: Cannot set properties of null` -
+the input does not exist yet. The same line pasted into the console works,
+because by then the page has hydrated. Nothing about the injection is broken;
+the snippet simply runs too early. Reproduced and confirmed: a probe snippet in
+each position set its `window` flag and logged normally on the same page load.
+
+The Footer hint in the dashboard used to read *"Runs once the content is on
+screen"*, which is what made this look like a platform failure rather than a
+timing one. Both hints now describe the moment, and the dialog carries a standing
+note: code that looks for something on the page needs a `setTimeout` or a
+`MutationObserver`, and it fails **quietly** - the error lives only in the
+visitor's console.
+
 The dashboard labels the two positions **Header** and **Footer** - the words
 every vendor's install page uses, so an admin does not have to translate the docs
 they are following. The stored enum stays `HEAD` / `BODY_END`.

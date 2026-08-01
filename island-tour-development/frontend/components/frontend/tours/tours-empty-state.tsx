@@ -1,8 +1,8 @@
 'use client';
 
+import { crossFade, springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import { SearchX } from 'lucide-react';
-import { crossFade, springPop } from '@/lib/motion';
 
 export type ToursEmptyStateDict = {
     title: string;
@@ -34,7 +34,7 @@ export function ToursEmptyState({
             </span>
 
             <div className='flex max-w-125 flex-col gap-2'>
-                <h3 className='m-0 font-medium text-[18px] md:text-[22px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                <h3 className='m-0 font-normal text-[18px] md:text-[22px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                     {dict.title}
                 </h3>
                 <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -48,10 +48,11 @@ export function ToursEmptyState({
                     onClick={onClear}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='mt-1 cursor-pointer border-none bg-transparent p-0 text-[14px] md:text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-colors duration-300 hover:text-it-primary-hover'>
+                    className='mt-1 cursor-pointer border-none bg-transparent p-0 text-[14px] md:text-[16px] font-normal leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-colors duration-300 hover:text-it-primary-hover'>
                     {dict.clearLabel}
                 </motion.button>
             )}
         </motion.div>
     );
 }
+

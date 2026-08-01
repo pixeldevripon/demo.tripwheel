@@ -87,7 +87,8 @@ export function AddToCalendar({
     useEffect(() => {
         if (!open) return;
         function onPointerDown(event: MouseEvent | TouchEvent) {
-            if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
+            if (!wrapRef.current?.contains(event.target as Node))
+                setOpen(false);
         }
         function onKeyDown(event: KeyboardEvent) {
             if (event.key === 'Escape') setOpen(false);
@@ -192,7 +193,9 @@ export function AddToCalendar({
                                               rel: 'noopener noreferrer',
                                           }
                                         : {})}
-                                    {...(option.download ? { download: '' } : {})}>
+                                    {...(option.download
+                                        ? { download: '' }
+                                        : {})}>
                                     <Image
                                         src={option.icon}
                                         alt=''
@@ -289,3 +292,4 @@ export function ResendEmailLine({
         </AnimatePresence>
     );
 }
+

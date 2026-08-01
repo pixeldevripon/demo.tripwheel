@@ -1,12 +1,12 @@
-import Image from 'next/image';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
-import { buildFaqJsonLd } from '@/lib/seo/jsonld';
 import { springPop } from '@/lib/motion';
+import { buildFaqJsonLd } from '@/lib/seo/jsonld';
 import { buildWhatsappUrl } from '@/lib/whatsapp';
-import { JsonLd } from './seo/json-ld';
+import Image from 'next/image';
 import { FaqAccordion } from './faq-accordion';
 import { MotionA } from './motion-primitives';
 import { Reveal } from './reveal';
+import { JsonLd } from './seo/json-ld';
 
 type FaqDict = {
     title: string;
@@ -51,18 +51,19 @@ export async function FaqSection({
     const site = await getPublicSiteInfo();
     const whatsappUrl = buildWhatsappUrl(
         site.whatsappNumber,
-        site.enableWhatsappChat,
+        site.enableWhatsappChat
     );
     // The host avatar comes from Settings for the same reason the WhatsApp
     // number does - it renders from five pages. Either half unset keeps the
     // bundled asset, so this block never renders empty.
     const hostImage = site.faqHostImage || FALLBACK_HOST_IMAGE;
-    const hostVideo = site.faqHostVideo || (site.faqHostImage ? null : FALLBACK_HOST_VIDEO);
+    const hostVideo =
+        site.faqHostVideo || (site.faqHostImage ? null : FALLBACK_HOST_VIDEO);
 
     // FAQPage rich result, built from the SAME items the accordion renders below
     // so the markup only ever describes visible Q&A.
     const faqJsonLd = buildFaqJsonLd(
-        dict.items.map((it) => ({ question: it.q, answer: it.a })),
+        dict.items.map(it => ({ question: it.q, answer: it.a }))
     );
 
     // Minimal (category page, design v2 .catcontent): a plain "Frequently
@@ -89,16 +90,16 @@ export async function FaqSection({
     return (
         <>
             <JsonLd data={faqJsonLd} />
-        <section className='it-section max-md:pb-[32px]! bg-it-surface'>
-            <div className='it-container'>
-                <Reveal className='flex flex-col gap-10 lg:flex-row lg:gap-12'>
-                    {/* Left - help, WhatsApp, guarantees, payments. On mobile
+            <section className='it-section max-md:pb-[32px]! bg-it-surface'>
+                <div className='it-container'>
+                    <Reveal className='flex flex-col gap-10 lg:flex-row lg:gap-12'>
+                        {/* Left - help, WhatsApp, guarantees, payments. On mobile
                         this block sits above the accordion (matches Figma). */}
-                    <div className='flex flex-col gap-8 lg:w-115 lg:gap-10'>
+                        <div className='flex flex-col gap-8 lg:w-115 lg:gap-10'>
                             <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
                                 <div className='flex flex-col gap-2.5'>
-                                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] font-medium tracking-[-0.015em] text-it-ink'>
                                         {dict.title}
                                     </h2>
                                     <p className='m-0 max-w-[400px] text-[14px] leading-[1.6] text-it-text-muted'>
@@ -156,7 +157,7 @@ export async function FaqSection({
                                                     height={24}
                                                     className='size-4'
                                                 />
-                                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-white'>
+                                                <span className='font-medium text-[14.5px] leading-[1.6] text-it-white'>
                                                     {dict.whatsapp}
                                                 </span>
                                             </MotionA>
@@ -202,11 +203,11 @@ export async function FaqSection({
                             </div>
                         </div>
 
-                    {/* Right - accordion (the interactive client leaf) */}
-                    <FaqAccordion items={dict.items} />
-                </Reveal>
-            </div>
-        </section>
+                        {/* Right - accordion (the interactive client leaf) */}
+                        <FaqAccordion items={dict.items} />
+                    </Reveal>
+                </div>
+            </section>
         </>
     );
 }

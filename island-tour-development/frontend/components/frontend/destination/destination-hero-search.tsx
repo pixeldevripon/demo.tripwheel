@@ -7,15 +7,19 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 // Reused presentational typeahead panel (shared with the navbar search). Candidate
 // to promote to a shared `search/` folder once a third consumer appears.
-import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
+import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
 import { searchToursClient } from '@/lib/api/search';
 import {
-    localizeHref,
     LOCALE_CURRENCY,
+    localizeHref,
     type Currency,
     type Locale,
 } from '@/lib/constants/locales';
@@ -90,7 +94,14 @@ export function DestinationHeroSearch({
         const controller = new AbortController();
         const timer = setTimeout(() => {
             searchToursClient(
-                { q, locale, currency, destinationSlug, date: isoDate, limit: 6 },
+                {
+                    q,
+                    locale,
+                    currency,
+                    destinationSlug,
+                    date: isoDate,
+                    limit: 6,
+                },
                 controller.signal
             )
                 .then(res => {
@@ -116,7 +127,10 @@ export function DestinationHeroSearch({
     const tourHref = (hit: SearchHit) =>
         hit.destinationSlug
             ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
-            : localizeHref(locale, `/search?q=${encodeURIComponent(hit.title)}`);
+            : localizeHref(
+                  locale,
+                  `/search?q=${encodeURIComponent(hit.title)}`
+              );
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -210,7 +224,7 @@ export function DestinationHeroSearch({
                         <Calendar
                             mode='single'
                             selected={date}
-                            onSelect={(selected) => {
+                            onSelect={selected => {
                                 setDate(selected);
                                 setDateOpen(false);
                             }}
@@ -267,3 +281,4 @@ export function DestinationHeroSearch({
         </div>
     );
 }
+

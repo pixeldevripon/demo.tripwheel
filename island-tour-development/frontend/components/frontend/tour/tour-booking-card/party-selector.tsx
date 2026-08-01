@@ -1,10 +1,10 @@
 'use client';
 
+import { useBooking } from '@/hooks/tours/use-booking';
+import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { BandStepperRow } from './band-stepper-row';
-import { springPop } from '@/lib/motion';
-import { useBooking } from '@/hooks/tours/use-booking';
 import { Collapse } from './collapse';
 import { PriceSummary } from './price-summary';
 import { Stepper } from './stepper';
@@ -113,7 +113,7 @@ export function PartySelector() {
                     {spectatorsApplied && spectatorsOn && (
                         <>
                             <div className='h-px w-full bg-it-heading/10' />
-                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                            <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                 {dict.spectators}
                             </span>
                             {spectatorBands.map(band => (
@@ -133,3 +133,4 @@ export function PartySelector() {
         </div>
     );
 }
+

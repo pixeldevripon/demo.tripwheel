@@ -36,6 +36,8 @@
     "prisma:seed:demo:clean": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts --clean",
     "prisma:seed:recommendations": "ts-node -r tsconfig-paths/register prisma/seed-recommendations.ts",
     "prisma:seed:recommendations:clean": "ts-node -r tsconfig-paths/register prisma/seed-recommendations.ts --clean",
+    "prisma:seed:designations": "ts-node -r tsconfig-paths/register prisma/seed-designations.ts",
+    "prisma:seed:designations:clean": "ts-node -r tsconfig-paths/register prisma/seed-designations.ts --clean",
     "prisma:format": "prisma format",
     "email:preview": "ts-node -r tsconfig-paths/register scripts/render-email-preview.ts"
   },

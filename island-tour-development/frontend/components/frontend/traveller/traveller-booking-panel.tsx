@@ -5,18 +5,18 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import type { TravellerBooking } from '@/lib/api/public/traveller';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { TravellerBooking } from '@/lib/api/public/traveller';
 
 import { TravellerCancelPanel } from './traveller-cancel-panel';
-import { TravellerPaymentBox } from './traveller-payment-box';
 import {
     durationLabel,
     formatDay,
     mapsUrl,
     partyLabel,
 } from './traveller-format';
+import { TravellerPaymentBox } from './traveller-payment-box';
 
 /**
  * The expanded booking detail panel (review 5.4), shared by the list card and
@@ -87,14 +87,14 @@ export function TravellerBookingPanel({
                 <div className='mb-4 flex items-center gap-2.5 border-b border-it-heading/10 pb-4'>
                     <Link
                         href={manageHref}
-                        className='inline-flex items-center gap-2 text-[13.5px] font-medium text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
+                        className='inline-flex items-center gap-2 text-[13.5px] font-normal text-it-ink/70 no-underline transition-colors hover:text-it-heading'>
                         <SquareArrowOutUpRight
                             className='size-4'
                             strokeWidth={2}
                         />
                         {dict.openBookingPage}
                     </Link>
-                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-medium text-it-green'>
+                    <span className='inline-flex items-center gap-1.5 rounded-full border border-it-green/25 bg-it-green-subtle px-2.5 py-0.5 text-[12px] font-normal text-it-green'>
                         <span
                             aria-hidden
                             className='size-1.5 rounded-full bg-it-green'
@@ -135,7 +135,7 @@ export function TravellerBookingPanel({
                                         href={maps}
                                         target='_blank'
                                         rel='noopener noreferrer'
-                                        className='font-medium text-it-primary no-underline hover:opacity-80'>
+                                        className='font-normal text-it-primary no-underline hover:opacity-80'>
                                         {dict.mapsLink}
                                     </a>
                                 </>
@@ -161,7 +161,7 @@ export function TravellerBookingPanel({
                                         href={maps}
                                         target='_blank'
                                         rel='noopener noreferrer'
-                                        className='font-medium text-it-primary no-underline hover:opacity-80'>
+                                        className='font-normal text-it-primary no-underline hover:opacity-80'>
                                         {dict.mapsLink}
                                     </a>
                                 </>
@@ -224,7 +224,7 @@ export function TravellerBookingPanel({
                     {booking.operator.name && (
                         <span>
                             {dict.supportTourQ}{' '}
-                            <strong className='font-medium text-it-heading'>
+                            <strong className='font-normal text-it-heading'>
                                 {booking.operator.name}
                             </strong>
                             {booking.operator.phone && (
@@ -256,7 +256,7 @@ export function TravellerBookingPanel({
                                 href={whatsappHref}
                                 target='_blank'
                                 rel='noopener noreferrer'
-                                className='font-medium text-it-primary no-underline hover:opacity-80'>
+                                className='font-normal text-it-primary no-underline hover:opacity-80'>
                                 {dict.whatsappUs}
                             </a>
                         </span>
@@ -350,9 +350,10 @@ function QuietLink({ href, children }: { href: string; children: ReactNode }) {
     return (
         <Link
             href={href}
-            className='inline-flex items-center gap-1 text-[13.5px] font-medium text-it-primary no-underline transition-opacity hover:opacity-80'>
+            className='inline-flex items-center gap-1 text-[13.5px] font-normal text-it-primary no-underline transition-opacity hover:opacity-80'>
             {children}
             <ArrowUpRight className='size-3.5' strokeWidth={2} />
         </Link>
     );
 }
+

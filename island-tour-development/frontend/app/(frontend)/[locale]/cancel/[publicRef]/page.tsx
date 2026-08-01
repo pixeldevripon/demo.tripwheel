@@ -54,11 +54,11 @@ async function CancelBody({
     // the HttpOnly session and returns straight back here.
     if (!booking.verified) {
         const verifyHref = `${localizeHref(locale, '/bookings')}?returnTo=${encodeURIComponent(
-            `/cancel/${booking.publicRef}`,
+            `/cancel/${booking.publicRef}`
         )}`;
         return (
             <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                     {cd.verifyTitle}
                 </span>
                 <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -66,7 +66,7 @@ async function CancelBody({
                 </p>
                 <Link
                     href={verifyHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
+                    className='mt-4 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
                     {cd.verifyCta}
                 </Link>
             </div>
@@ -85,7 +85,7 @@ async function CancelBody({
     if (booking.cancellationRequestedAt && booking.status === 'CONFIRMED') {
         return (
             <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                     {dict.thankYou.statusCancellationPending}
                 </span>
                 <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -95,7 +95,7 @@ async function CancelBody({
                     the way forward is the status on the thank-you page. */}
                 <Link
                     href={thankYouHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                     {cd.seeStatus}
                 </Link>
             </div>
@@ -107,7 +107,7 @@ async function CancelBody({
     if (booking.status !== 'CONFIRMED') {
         return (
             <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                     {booking.tourTitle}
                 </span>
                 <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -131,18 +131,18 @@ async function CancelBody({
     if (!inWindow) {
         return (
             <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                     {title}
                 </span>
                 <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
                     {cd.afterWindow.replace(
                         '{hours}',
-                        String(booking.cancellationHours),
+                        String(booking.cancellationHours)
                     )}
                 </p>
                 <Link
                     href={thankYouHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                     {cd.keep}
                 </Link>
             </div>
@@ -159,7 +159,7 @@ async function CancelBody({
                   // Canonical formatter, same as checkout and the TYP. Raw
                   // `symbol + number` dropped grouping and decimals, so a
                   // refund of 1750 read as "$1750".
-                  formatMoney(paid, booking.payment.currency, locale),
+                  formatMoney(paid, booking.payment.currency, locale)
               )
             : null;
 
@@ -196,3 +196,4 @@ export default async function CancelPage({
         </section>
     );
 }
+

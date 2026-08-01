@@ -125,7 +125,9 @@ function PaymentInner({
     // Card is always offered when eligible; if the intent didn't report methods
     // (older/edge response) fall back to card-only.
     const isEligible = (m: PayMethod) =>
-        eligibleMethods.length === 0 ? m === 'card' : eligibleMethods.includes(m);
+        eligibleMethods.length === 0
+            ? m === 'card'
+            : eligibleMethods.includes(m);
 
     const firstEligible: PayMethod =
         (['card', 'ideal', 'paypal'] as PayMethod[]).find(isEligible) ?? 'card';
@@ -305,12 +307,10 @@ function PaymentInner({
                                     placeholder: dict.cardNumberPlaceholder,
                                     showIcon: true,
                                 }}
-                                onChange={(e) =>
-                                    setErrors((p) => ({
+                                onChange={e =>
+                                    setErrors(p => ({
                                         ...p,
-                                        number: e.error
-                                            ? e.error.message
-                                            : '',
+                                        number: e.error ? e.error.message : '',
                                     }))
                                 }
                                 className='w-full'
@@ -326,8 +326,8 @@ function PaymentInner({
                                         ...elementStyle,
                                         placeholder: dict.expiryPlaceholder,
                                     }}
-                                    onChange={(e) =>
-                                        setErrors((p) => ({
+                                    onChange={e =>
+                                        setErrors(p => ({
                                             ...p,
                                             expiry: e.error
                                                 ? e.error.message
@@ -346,12 +346,10 @@ function PaymentInner({
                                         ...elementStyle,
                                         placeholder: dict.cvvPlaceholder,
                                     }}
-                                    onChange={(e) =>
-                                        setErrors((p) => ({
+                                    onChange={e =>
+                                        setErrors(p => ({
                                             ...p,
-                                            cvv: e.error
-                                                ? e.error.message
-                                                : '',
+                                            cvv: e.error ? e.error.message : '',
                                         }))
                                     }
                                     className='w-full'
@@ -565,3 +563,4 @@ function MethodRow({
         </div>
     );
 }
+

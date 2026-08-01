@@ -70,7 +70,11 @@ const cld = (url: string, transform: string) =>
  * from the i18n dictionary; these cards have no href because they name generic
  * activities rather than a real category or hub page.
  */
-const RAW_CARDS: { key: CardKey; image: string | null; video: string | null }[] = [
+const RAW_CARDS: {
+    key: CardKey;
+    image: string | null;
+    video: string | null;
+}[] = [
     {
         key: 'sunsetCruise',
         image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
@@ -282,7 +286,7 @@ export function TopExperiences({
      */
     const handleCardClick = (
         e: React.MouseEvent<HTMLAnchorElement>,
-        index: number,
+        index: number
     ) => {
         const origin = pressOrigin.current;
         pressOrigin.current = null;

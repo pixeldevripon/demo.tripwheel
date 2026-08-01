@@ -44,7 +44,7 @@ export function Pagination({
     const control = (
         n: number,
         props: React.ComponentProps<typeof motion.button>,
-        children: React.ReactNode,
+        children: React.ReactNode
     ) => {
         const href = hrefFor?.(n);
         if (!href || props.disabled) {
@@ -60,12 +60,17 @@ export function Pagination({
                 href={href}
                 onClick={e => {
                     // Let modified clicks (new tab/window) behave natively.
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+                    if (
+                        e.metaKey ||
+                        e.ctrlKey ||
+                        e.shiftKey ||
+                        e.button !== 0
+                    ) {
                         return;
                     }
                     e.preventDefault();
                     onClick?.(
-                        e as unknown as React.MouseEvent<HTMLButtonElement>,
+                        e as unknown as React.MouseEvent<HTMLButtonElement>
                     );
                 }}
                 {...(rest as React.ComponentProps<typeof motion.a>)}>
@@ -115,7 +120,7 @@ export function Pagination({
                                     : 'border-it-border bg-it-white text-it-ink hover:bg-it-bg'
                             }`,
                         },
-                        n,
+                        n
                     )}
                 </span>
             ))}
