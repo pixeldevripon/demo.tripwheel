@@ -40,7 +40,7 @@ export function DestinationCollections({
                     {/* ── Collections ────────────────────────────────────────────────
                         Mobile: horizontal swipe carousel of compact cards.
                         sm+: standard 2 × 3 grid. */}
-                    <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
+                    <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
                         {collections.map(collection => (
                             <Reveal
                                 key={collection.id}

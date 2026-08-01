@@ -20,6 +20,28 @@ export function useIsMobile() {
     return isMobile;
 }
 
+/**
+ * False during SSR and the hydration render, true for every component that
+ * mounts AFTER the first client effect ran (client navigations, streamed
+ * Suspense content).
+ *
+ * Why: framer's `initial={{ opacity: 0 }}` is serialized into the server HTML
+ * as an inline style, so everything below the hero renders INVISIBLE until the
+ * JS bundle arrives and hydrates - on a slow connection that reads as a blank
+ * page (and it is what search engines paint). First-paint content therefore
+ * renders visible with no entrance (the sitewide "static shell → no mount
+ * animation" rule), and only post-hydration mounts animate.
+ */
+let pageHydrated = false;
+
+function useMountedAfterHydration() {
+    const [mountedAfterHydration] = React.useState(() => pageHydrated);
+    React.useEffect(() => {
+        pageHydrated = true;
+    }, []);
+    return mountedAfterHydration;
+}
+
 interface RevealProps {
     children: React.ReactNode;
     /** Wrapper width - '100%' (default), shrink to content, or 'auto' to set
@@ -70,6 +92,7 @@ export const Reveal = ({
 }: RevealProps) => {
     const reduceMotion = useReducedMotion();
     const isMobile = useIsMobile();
+    const animateEntrance = useMountedAfterHydration();
 
     // List/grid cells on phones render statically - a column of individually
     // fading cards reads as jank there, and delayed items waste scroll time.
@@ -85,7 +108,11 @@ export const Reveal = ({
 
     return (
         <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: yOffset }}
+            initial={
+                reduceMotion || !animateEntrance
+                    ? false
+                    : { opacity: 0, y: yOffset }
+            }
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once, amount, margin }}
             transition={{
