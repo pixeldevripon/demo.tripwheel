@@ -203,7 +203,7 @@ function DefaultTourCard({
             className={cn(
                 // @container: the card adapts its own typography to its width -
                 // compact at ~172px (mobile carousel), full size in wide cells.
-                '@container group flex h-full flex-col overflow-hidden rounded-it-md border transition-[transform,box-shadow,border-color] duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
+                '@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
                 peach
                     ? 'bg-it-peach border-it-peach-border'
                     : 'bg-it-white border-transparent hover:border-it-card-hover-border',
@@ -213,7 +213,8 @@ function DefaultTourCard({
             {/* ── Image area ──────────────────────────────────────────────── */}
             <div
                 className={cn(
-                    'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg',
+                    // Mockup .tc .im: photo eases to 1.03 on card hover (260ms).
+                    'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
                     mobileRow &&
                         'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none',
                 )}>
