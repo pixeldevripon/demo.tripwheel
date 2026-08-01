@@ -156,7 +156,13 @@ export function CategoryYouMightLike({
                                         {item.image && (
                                             <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink' />
                                         )}
-                                        <span className='absolute bottom-6 left-6 font-medium tracking-[-0.012em] text-it-white text-[20px] leading-[1.2] md:text-[24px]'>
+                                        <span
+                                            className={cn(
+                                                'absolute bottom-6 left-6 font-medium tracking-[-0.012em] text-[20px] leading-[1.2] md:text-[24px]',
+                                                item.image
+                                                    ? 'text-it-white'
+                                                    : 'text-it-ink'
+                                            )}>
                                             {item.name}
                                         </span>
                                     </MotionLink>

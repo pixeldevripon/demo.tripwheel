@@ -16,7 +16,7 @@ import { TourDetailSkeleton } from '@/components/frontend/skeletons/tour-page-sk
  * instead of leaving the body blank. Boundaries, by data source:
  *   - `TourDetailContent` (`getTourBySlug`): breadcrumb, header, gallery, booking,
  *     content sections; reviews stream in nested boundaries (`getTourReviews`)
- *   - `TourRelatedTours` (`getDestinationTours`): the two related grids
+ *   (related tours render in a nested boundary INSIDE the detail column)
  *
  * There is deliberately NO FAQ block here. Tours do not have FAQs at all (user
  * decision 2026-07-21) - the question a traveller would ask is answered by the

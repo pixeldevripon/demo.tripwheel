@@ -25,7 +25,7 @@ interface CollectionHeroProps {
 }
 
 /**
- * Collection hero (Figma node 47433:2069). A full-bleed image band, 533px tall on
+ * Collection hero (Figma node 47433:2069). A thin 300px editorial band on
  * desktop, with the content bottom-anchored to the container's left gutter: an
  * uppercase eyebrow, the H1 title, a subtitle, and a "{N} tours · From ${price}"
  * meta row. A Share pill sits top-right, aligned to the same container gutter.
