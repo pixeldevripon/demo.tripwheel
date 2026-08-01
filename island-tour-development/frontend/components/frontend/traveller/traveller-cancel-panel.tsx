@@ -13,7 +13,6 @@ import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade } from '@/lib/motion';
 
-import { ConfirmDialog } from '@/components/frontend/confirm-dialog';
 import { TravellerChip } from './traveller-chip';
 import {
     formatDay,
@@ -49,8 +48,6 @@ export function TravellerCancelPanel({
 }) {
     const router = useRouter();
     const [confirming, setConfirming] = useState(false);
-    /** The modal on top of the strip (QA follow-up 2026-08-02). */
-    const [confirmOpen, setConfirmOpen] = useState(false);
     const [reason, setReason] = useState('');
     const [busy, setBusy] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -64,9 +61,6 @@ export function TravellerCancelPanel({
             reason.trim() || undefined
         );
         setBusy(false);
-        // The modal closes either way - success flips the row to its
-        // requested state, failure shows the strip's error line.
-        setConfirmOpen(false);
         if (!ok) {
             setFailed(true);
             return;
@@ -235,15 +229,15 @@ export function TravellerCancelPanel({
                                 {dict.cancelFailed}
                             </p>
                         )}
+                        {/* The strip IS the confirmation (founder call
+                            2026-08-02: no extra modal here - the /cancel page
+                            keeps its dialog, this inline step is enough). */}
                         <div className='mt-3 flex flex-wrap gap-2.5'>
-                            {/* QA follow-up 2026-08-02: the red button asks
-                                one more time in a modal before the request
-                                actually fires. */}
                             <motion.button
                                 type='button'
                                 disabled={busy}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setConfirmOpen(true)}
+                                onClick={() => void submit()}
                                 className='rounded-full border-[1.5px] border-it-error px-4.5 py-2.25 text-[14px] font-semibold text-it-error transition-colors hover:bg-it-error-subtle disabled:opacity-60'>
                                 {busy ? dict.cancelSending : dict.cancelConfirm}
                             </motion.button>
@@ -256,17 +250,6 @@ export function TravellerCancelPanel({
                                 {dict.cancelKeep}
                             </motion.button>
                         </div>
-                        <ConfirmDialog
-                            open={confirmOpen}
-                            title={stripTitle}
-                            body={dict.cancelStripNote}
-                            confirmLabel={dict.cancelConfirm}
-                            cancelLabel={dict.cancelKeep}
-                            busy={busy}
-                            destructive
-                            onConfirm={() => void submit()}
-                            onClose={() => setConfirmOpen(false)}
-                        />
                     </motion.div>
                 ) : (
                     <motion.button
