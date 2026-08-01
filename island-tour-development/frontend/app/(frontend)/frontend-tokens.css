@@ -215,6 +215,9 @@
 
     /* ── Component Tokens ───────────────────────────────────────────────── */
 
+    /* Listing filter row (design v2 .frow - sticky under the navbar) */
+    --it-frow-bg:            rgba(255, 255, 255, 0.96);
+
     /* Navbar */
     --it-navbar-bg:          rgba(255, 255, 255, 0.94);
     --it-navbar-bg-scrolled: rgba(255, 255, 255, 1);

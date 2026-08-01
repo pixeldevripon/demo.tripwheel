@@ -176,25 +176,26 @@
             },
             "toolbar": {
                 "filters": "筛选",
-                "selectDate": "选择日期",
+                "selectDate": "日期",
                 "clearDate": "清除日期",
                 "guestTypes": {
                     "adults": {
                         "label": "成人",
-                        "hint": "13 岁以上",
+                        "hint": "12 岁及以上",
                         "word": "成人"
                     },
                     "children": {
                         "label": "儿童",
-                        "hint": "2–12 岁",
+                        "hint": "4 至 11 岁",
                         "word": "儿童"
                     },
                     "infants": {
                         "label": "婴儿",
-                        "hint": "2 岁以下",
+                        "hint": "4 岁以下 · 大多数行程免费",
                         "word": "婴儿"
                     }
                 },
+                "applyGuests": "应用",
                 "resultsCount": "{shown} / {total}",
                 "toursWord": "个行程",
                 "clearAll": "清除全部",
@@ -206,9 +207,8 @@
             },
             "sort": {
                 "localsFavorites": "当地人最爱",
-                "priceLowHigh": "价格（从低到高）",
-                "priceHighLow": "价格（从高到低）",
-                "defaultSuffix": "（默认）"
+                "priceLowHigh": "价格：从低到高",
+                "priceHighLow": "价格：从高到低"
             },
             "trust": {
                 "builtByLocals": {
@@ -233,10 +233,10 @@
                 "price": "价格",
                 "duration": "时长",
                 "durations": {
-                    "upTo2": "最多 2 小时",
-                    "2to4": "2 至 4 小时",
-                    "4to6": "4 至 6 小时",
-                    "fullDay": "全天 (6+ 小时)"
+                    "upTo2": "2小时以内",
+                    "2to4": "2至4小时",
+                    "4to6": "4至6小时",
+                    "fullDay": "全天6小时以上"
                 },
                 "timeOfDay": "时段",
                 "times": {
@@ -246,16 +246,17 @@
                 },
                 "freeCancellation": "免费取消",
                 "freeCancellationNote": "所有行程均含免费取消。",
-                "cancellationLabel": "按可取消时限筛选：",
+                "cancellationLabel": "按可取消时限筛选。",
                 "cancellation": {
                     "24h": "出发前 24 小时内",
-                    "48h": "出发前 48 小时",
-                    "72h": "出发前 72 小时"
+                    "48h": "出发前 48 小时内",
+                    "72h": "出发前 72 小时内"
                 },
                 "pickupAvailable": "提供接送",
+                "pickupNote": "可加购接送或接送已含在价格中的行程。绝不默认提供免费接送。",
                 "ratings": "评分",
                 "ratingsNote": "（有评价后显示）",
-                "clearAll": "清除全部",
+                "clearAll": "重置全部",
                 "applyFilters": "应用筛选"
             }
         },

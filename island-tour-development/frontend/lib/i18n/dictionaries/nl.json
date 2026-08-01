@@ -176,25 +176,26 @@
             },
             "toolbar": {
                 "filters": "Filters",
-                "selectDate": "Datum kiezen",
+                "selectDate": "Datum",
                 "clearDate": "Datum wissen",
                 "guestTypes": {
                     "adults": {
                         "label": "Volwassenen",
-                        "hint": "13+ jaar",
-                        "word": "volwassenen"
+                        "hint": "12 jaar of ouder",
+                        "word": "Volwassenen"
                     },
                     "children": {
                         "label": "Kinderen",
-                        "hint": "2–12 jaar",
-                        "word": "kinderen"
+                        "hint": "4 tot 11 jaar",
+                        "word": "Kinderen"
                     },
                     "infants": {
                         "label": "Baby's",
-                        "hint": "Onder 2",
-                        "word": "baby's"
+                        "hint": "Onder de 4 · Gratis op de meeste tours",
+                        "word": "Baby's"
                     }
                 },
+                "applyGuests": "Toepassen",
                 "resultsCount": "{shown} van {total}",
                 "toursWord": "tours",
                 "clearAll": "Alles wissen",
@@ -206,9 +207,8 @@
             },
             "sort": {
                 "localsFavorites": "Favorieten van locals",
-                "priceLowHigh": "Prijs (laag naar hoog)",
-                "priceHighLow": "Prijs (hoog naar laag)",
-                "defaultSuffix": "(Standaard)"
+                "priceLowHigh": "Prijs: laag naar hoog",
+                "priceHighLow": "Prijs: hoog naar laag"
             },
             "trust": {
                 "builtByLocals": {
@@ -229,14 +229,14 @@
                 }
             },
             "filterModal": {
-                "title": "Filter",
+                "title": "Filters",
                 "price": "Prijs",
                 "duration": "Duur",
                 "durations": {
-                    "upTo2": "Tot 2 uur",
-                    "2to4": "2 tot 4 uur",
-                    "4to6": "4 tot 6 uur",
-                    "fullDay": "Hele dag (6+ uur)"
+                    "upTo2": "Tot 2u",
+                    "2to4": "2 tot 4u",
+                    "4to6": "4 tot 6u",
+                    "fullDay": "Hele dag 6u+"
                 },
                 "timeOfDay": "Tijdstip",
                 "times": {
@@ -246,16 +246,17 @@
                 },
                 "freeCancellation": "Gratis annuleren",
                 "freeCancellationNote": "Alle tours zijn gratis te annuleren.",
-                "cancellationLabel": "Filter op hoe laat je kunt annuleren:",
+                "cancellationLabel": "Filter op hoe laat je kunt annuleren.",
                 "cancellation": {
                     "24h": "Tot 24u van tevoren",
-                    "48h": "48u van tevoren",
-                    "72h": "72u van tevoren"
+                    "48h": "Tot 48u van tevoren",
+                    "72h": "Tot 72u van tevoren"
                 },
                 "pickupAvailable": "Ophalen beschikbaar",
+                "pickupNote": "Tours waar ophalen kan worden toegevoegd of bij de prijs is inbegrepen. Nooit een verwachting van gratis ophalen.",
                 "ratings": "Beoordelingen",
                 "ratingsNote": "(verborgen tot er reviews zijn)",
-                "clearAll": "Alles wissen",
+                "clearAll": "Alles resetten",
                 "applyFilters": "Filters toepassen"
             }
         },

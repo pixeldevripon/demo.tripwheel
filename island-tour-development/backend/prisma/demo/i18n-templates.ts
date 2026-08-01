@@ -188,7 +188,6 @@ export interface LocaleTemplates {
   destMetaTitle: (name: string) => string;
   catOverview: (localName: string) => string;
   catAbout: (localName: string) => string;
-  catH1: (localName: string) => string;
   catMetaTitle: (localName: string) => string;
   hubTagline: string;
   hubLead: (name: string) => string;
@@ -218,7 +217,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `Ontdek de beste ${c.toLowerCase()} op de eilanden: stuk voor stuk gecontroleerd, direct te boeken en met gratis annulering.`,
     catAbout: (c) =>
       `Op zoek naar ${c.toLowerCase()}? Vergelijk het aanbod op prijs, duur en beoordeling en boek de tour die bij je reis past. Elke aanbieder is door ons team gescreend.`,
-    catH1: (c) => `De beste ${c.toLowerCase()}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: 'Waar eilandbewoners hun bezoekers naartoe sturen',
     hubLead: (n) =>
@@ -341,7 +339,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `Entdecken Sie die besten ${c} der Inseln: geprüft, sofort buchbar und mit kostenloser Stornierung.`,
     catAbout: (c) =>
       `Auf der Suche nach ${c}? Vergleichen Sie Preis, Dauer und Bewertungen und buchen Sie die Tour, die zu Ihrer Reise passt. Jeder Anbieter ist von unserem Team geprüft.`,
-    catH1: (c) => `Die besten ${c}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: 'Wohin Einheimische ihre Gäste schicken',
     hubLead: (n) =>
@@ -464,7 +461,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `Découvrez les meilleures offres de ${c.toLowerCase()} des îles : vérifiées, réservables immédiatement et avec annulation gratuite.`,
     catAbout: (c) =>
       `Vous cherchez ${c.toLowerCase()} ? Comparez les prix, la durée et les avis, puis réservez l'excursion qui correspond à votre voyage. Chaque opérateur est vérifié par notre équipe.`,
-    catH1: (c) => `Le meilleur de : ${c.toLowerCase()}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: 'Là où les habitants envoient leurs visiteurs',
     hubLead: (n) =>
@@ -587,7 +583,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `Descubre lo mejor en ${c.toLowerCase()} de las islas: opciones verificadas, reserva inmediata y cancelación gratuita.`,
     catAbout: (c) =>
       `¿Buscas ${c.toLowerCase()}? Compara precio, duración y valoraciones y reserva el tour que mejor encaje con tu viaje. Cada operador está verificado por nuestro equipo.`,
-    catH1: (c) => `Lo mejor en ${c.toLowerCase()}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: 'Adonde los isleños mandan a sus visitantes',
     hubLead: (n) =>
@@ -710,7 +705,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `Descubra o melhor em ${c.toLowerCase()} das ilhas: opções verificadas, reserva imediata e cancelamento grátis.`,
     catAbout: (c) =>
       `Procurando ${c.toLowerCase()}? Compare preço, duração e avaliações e reserve o passeio ideal para a sua viagem. Todos os operadores são verificados pela nossa equipe.`,
-    catH1: (c) => `O melhor em ${c.toLowerCase()}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: 'Para onde os moradores mandam seus visitantes',
     hubLead: (n) =>
@@ -833,7 +827,6 @@ export const TEMPLATES: Record<Exclude<Locale, 'en'>, LocaleTemplates> = {
       `探索海岛上最优质的${c}：全部经过审核，可即时预订，并支持免费取消。`,
     catAbout: (c) =>
       `在寻找${c}吗？按价格、时长和评分对比后，预订最适合您行程的项目。所有运营商均经过我们团队审核。`,
-    catH1: (c) => `精选${c}`,
     catMetaTitle: (c) => `${c} | Island Tours`,
     hubTagline: '本地人最推荐的去处',
     hubLead: (n) =>

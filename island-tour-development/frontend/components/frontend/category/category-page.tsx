@@ -121,7 +121,7 @@ export async function CategoryPage({
 
     // "You might also like" - sibling categories at this destination (current one
     // excluded), up to 3. Real data only: a category with no `heroImage` renders
-    // without an image (no placeholder), and an empty set hides the whole section.
+    // the flat paper surface (no placeholder), and an empty set hides the section.
     const relatedCategories: RelatedCategory[] = activeCategories
         .filter(c => c.slug !== category.slug)
         .slice(0, 3)
@@ -129,6 +129,7 @@ export async function CategoryPage({
             name: c.name,
             slug: c.slug,
             image: c.heroImage ?? undefined,
+            tours: c.publishedTourCount,
         }));
 
     // "About {category} in {destination}" editorial heading (Figma 47171:5647).
@@ -168,59 +169,54 @@ export async function CategoryPage({
                 dict={{ home: t.breadcrumb.home, current: breadcrumbLabel }}
             />
 
-            <section className='bg-it-white pb-17.5 md:pb-32.5'>
+            <section className='bg-it-white'>
+                {/* Page header (.pagehead) - the crumbs render above inside
+                    the same container; the sticky filter row + grid stream in
+                    below at FULL WIDTH (the toolbar owns its own containers,
+                    so its sticky band can bleed edge to edge). */}
                 <div className='it-container'>
-                    {/* Content stack - 60px below the breadcrumb, 40px between blocks. */}
-                    <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
-                        {/* Category header - reuses the All-Tours heading with a
-                            pre-resolved "{category} in {destination}" title and a
-                            category-specific subtitle. */}
-                        <ToursHeader
-                            dict={t.heading}
-                            destinationName={destinationName}
-                            total={total}
-                            selectDateLabel={t.toolbar.selectDate}
-                            clearDateLabel={t.toolbar.clearDate}
-                            title={heading}
-                            subtitle={subtitle}
-                        />
-
-                        <div
-                            className='h-px w-full bg-it-heading/10'
-                            aria-hidden='true'
-                        />
-
-                        {/* ── Toolbar + grid ──────────────────────────────────
-                            Streamed, URL-driven listing locked to this category
-                            (reuses the All Tours section; toolbar hides category
-                            selection since the route fixes it). The section fetches
-                            real category-scoped tours and renders the shared empty
-                            state (ToursEmptyState) when a filter combination or the
-                            category itself yields no results. */}
-                        <Suspense fallback={<ToursListingSkeleton />}>
-                            <ToursListingSection
-                                destinationId={destination.id}
-                                destination={destinationSlug}
-                                locale={locale}
-                                dict={dict}
-                                searchParams={searchParams}
-                                lockedCategory={{
-                                    id: categoryId,
-                                    slug: category.slug,
-                                    subCategories: category.subCategories,
-                                }}
-                            />
-                        </Suspense>
-                    </div>
+                    {/* Category header - reuses the All-Tours heading with a
+                        pre-resolved "{category} in {destination}" title and a
+                        category-specific subtitle. */}
+                    <ToursHeader
+                        dict={t.heading}
+                        destinationName={destinationName}
+                        total={total}
+                        title={heading}
+                        subtitle={subtitle}
+                    />
                 </div>
+
+                {/* ── Toolbar + grid ──────────────────────────────────
+                    Streamed, URL-driven listing locked to this category
+                    (reuses the All Tours section; toolbar hides category
+                    selection since the route fixes it). The section fetches
+                    real category-scoped tours and renders the shared empty
+                    state (ToursEmptyState) when a filter combination or the
+                    category itself yields no results. */}
+                <Suspense fallback={<ToursListingSkeleton />}>
+                    <ToursListingSection
+                        destinationId={destination.id}
+                        destination={destinationSlug}
+                        locale={locale}
+                        dict={dict}
+                        searchParams={searchParams}
+                        lockedCategory={{
+                            id: categoryId,
+                            slug: category.slug,
+                            subCategories: category.subCategories,
+                        }}
+                    />
+                </Suspense>
             </section>
 
-            {/* "You might also like" - related sibling categories (Figma 47070:2238). */}
+            {/* "You might also like" - related sibling categories (v2 .relgrid). */}
             <CategoryYouMightLike
                 title={dict.destination.youMightLike}
                 items={relatedCategories}
                 locale={locale}
                 destinationSlug={destinationSlug}
+                toursWord={dict.nav.tours}
             />
 
             {/* Editorial "about" section (Figma 47171:5647). */}

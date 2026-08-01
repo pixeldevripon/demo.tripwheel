@@ -28,8 +28,6 @@ export async function ToursHeaderSection({
             dict={dict.destination.allTours.heading}
             destinationName={destinationName}
             total={total}
-            selectDateLabel={dict.destination.allTours.toolbar.selectDate}
-            clearDateLabel={dict.destination.allTours.toolbar.clearDate}
         />
     );
 }

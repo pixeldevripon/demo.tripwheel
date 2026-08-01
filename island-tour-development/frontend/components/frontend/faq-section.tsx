@@ -65,24 +65,36 @@ export async function FaqSection({
         dict.items.map((it) => ({ question: it.q, answer: it.a })),
     );
 
+    // Minimal (category page, design v2 .catcontent): a plain "Frequently
+    // asked questions" sub-head + the accordion in the 760px reading column on
+    // the white surface - no host/WhatsApp/payments rail.
+    if (minimal) {
+        return (
+            <>
+                <JsonLd data={faqJsonLd} />
+                <section className='bg-it-white pb-20'>
+                    <div className='it-container'>
+                        <Reveal className='flex max-w-[760px] flex-col gap-3'>
+                            <h2 className='m-0 mt-7 text-[16px] font-bold leading-[1.6] text-it-ink'>
+                                {dict.title}
+                            </h2>
+                            <FaqAccordion items={dict.items} />
+                        </Reveal>
+                    </div>
+                </section>
+            </>
+        );
+    }
+
     return (
         <>
             <JsonLd data={faqJsonLd} />
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
-                <Reveal
-                    className={`flex flex-col lg:flex-row lg:gap-12 ${minimal ? 'gap-4' : 'gap-10'}`}>
-                    {/* Minimal (category page): title only on the left. */}
-                    {minimal ? (
-                        <div className='lg:w-113 lg:shrink-0'>
-                            <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
-                                {dict.title}
-                            </h2>
-                        </div>
-                    ) : (
-                        /* Left - help, WhatsApp, guarantees, payments.
-                        On mobile this block sits above the accordion (matches Figma). */
-                        <div className='flex flex-col gap-8 lg:w-115 lg:gap-10'>
+                <Reveal className='flex flex-col gap-10 lg:flex-row lg:gap-12'>
+                    {/* Left - help, WhatsApp, guarantees, payments. On mobile
+                        this block sits above the accordion (matches Figma). */}
+                    <div className='flex flex-col gap-8 lg:w-115 lg:gap-10'>
                             <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
                                 <div className='flex flex-col gap-2.5'>
@@ -189,7 +201,6 @@ export async function FaqSection({
                                 ))}
                             </div>
                         </div>
-                    )}
 
                     {/* Right - accordion (the interactive client leaf) */}
                     <FaqAccordion items={dict.items} />

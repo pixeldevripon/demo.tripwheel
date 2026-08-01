@@ -176,25 +176,26 @@
             },
             "toolbar": {
                 "filters": "Filtres",
-                "selectDate": "Choisir une date",
+                "selectDate": "Date",
                 "clearDate": "Effacer la date",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultes",
-                        "hint": "13 ans et +",
-                        "word": "adultes"
+                        "hint": "12 ans ou plus",
+                        "word": "Adultes"
                     },
                     "children": {
                         "label": "Enfants",
-                        "hint": "2–12 ans",
-                        "word": "enfants"
+                        "hint": "4 à 11 ans",
+                        "word": "Enfants"
                     },
                     "infants": {
                         "label": "Bébés",
-                        "hint": "Moins de 2 ans",
-                        "word": "bébés"
+                        "hint": "Moins de 4 ans · Gratuit sur la plupart des tours",
+                        "word": "Bébés"
                     }
                 },
+                "applyGuests": "Appliquer",
                 "resultsCount": "{shown} sur {total}",
                 "toursWord": "excursions",
                 "clearAll": "Tout effacer",
@@ -206,9 +207,8 @@
             },
             "sort": {
                 "localsFavorites": "Favoris des locaux",
-                "priceLowHigh": "Prix (croissant)",
-                "priceHighLow": "Prix (décroissant)",
-                "defaultSuffix": "(Par défaut)"
+                "priceLowHigh": "Prix : croissant",
+                "priceHighLow": "Prix : décroissant"
             },
             "trust": {
                 "builtByLocals": {
@@ -229,14 +229,14 @@
                 }
             },
             "filterModal": {
-                "title": "Filtrer",
+                "title": "Filtres",
                 "price": "Prix",
                 "duration": "Durée",
                 "durations": {
-                    "upTo2": "Jusqu'à 2 heures",
-                    "2to4": "2 à 4 heures",
-                    "4to6": "4 à 6 heures",
-                    "fullDay": "Journée complète (6+ heures)"
+                    "upTo2": "Jusqu'à 2h",
+                    "2to4": "2 à 4h",
+                    "4to6": "4 à 6h",
+                    "fullDay": "Journée complète 6h+"
                 },
                 "timeOfDay": "Moment de la journée",
                 "times": {
@@ -246,16 +246,17 @@
                 },
                 "freeCancellation": "Annulation gratuite",
                 "freeCancellationNote": "Toutes les excursions incluent l'annulation gratuite.",
-                "cancellationLabel": "Filtrer par délai d'annulation :",
+                "cancellationLabel": "Filtrer par délai d'annulation.",
                 "cancellation": {
                     "24h": "Jusqu'à 24h avant",
-                    "48h": "48h avant",
-                    "72h": "72h avant"
+                    "48h": "Jusqu'à 48h avant",
+                    "72h": "Jusqu'à 72h avant"
                 },
                 "pickupAvailable": "Prise en charge disponible",
+                "pickupNote": "Tours où la prise en charge peut être ajoutée ou est incluse dans le prix. Jamais une promesse de prise en charge gratuite.",
                 "ratings": "Avis",
                 "ratingsNote": "(masqué jusqu'à ce qu'il y ait des avis)",
-                "clearAll": "Tout effacer",
+                "clearAll": "Tout réinitialiser",
                 "applyFilters": "Appliquer les filtres"
             }
         },

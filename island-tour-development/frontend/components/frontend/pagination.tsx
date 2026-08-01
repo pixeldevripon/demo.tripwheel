@@ -74,24 +74,29 @@ export function Pagination({
         );
     };
 
+    // Design v2 .pager cell: 38px bordered square, 13.5px bold tabular digits;
+    // the active page inverts to the dark surface.
+    const cellBase =
+        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[13.5px] font-bold leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums';
+
     return (
         <nav
             aria-label={ariaLabel}
-            className='flex items-center justify-center gap-5'>
+            className='flex items-center justify-center gap-1.5'>
             <motion.button
                 type='button'
                 aria-label='Previous page'
                 disabled={page === 1}
                 onClick={() => onPageChange(Math.max(1, page - 1))}
-                whileTap={page > 1 ? { scale: 0.9 } : undefined}
+                whileTap={page > 1 ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className='inline-flex cursor-pointer items-center border-none bg-transparent p-0 transition-opacity disabled:cursor-not-allowed disabled:opacity-30'>
+                className={`${cellBase} border-it-border bg-it-white text-it-ink disabled:cursor-default disabled:opacity-40`}>
                 <Image
-                    src='/icons/filters/pagination-arrow.svg'
+                    src='/icons/filters/pager-arrow-ink.svg'
                     alt=''
-                    width={20}
-                    height={20}
-                    className='size-5 rotate-180'
+                    width={24}
+                    height={24}
+                    className='size-[15px] rotate-180'
                 />
             </motion.button>
 
@@ -102,12 +107,12 @@ export function Pagination({
                         {
                             'aria-current': n === page ? 'page' : undefined,
                             onClick: () => onPageChange(n),
-                            whileTap: { scale: 0.9 },
+                            whileTap: { scale: 0.95 },
                             transition: springPop,
-                            className: `cursor-pointer border-none bg-transparent p-0 text-[16px] leading-[1.6] tracking-[-0.012em] no-underline transition-colors duration-300 ${
+                            className: `${cellBase} ${
                                 n === page
-                                    ? 'text-it-heading'
-                                    : 'text-it-heading/30 hover:text-it-heading'
+                                    ? 'border-it-dark bg-it-dark text-it-ink-on-dark'
+                                    : 'border-it-border bg-it-white text-it-ink hover:bg-it-bg'
                             }`,
                         },
                         n,
@@ -120,15 +125,15 @@ export function Pagination({
                 aria-label='Next page'
                 disabled={page === pageCount}
                 onClick={() => onPageChange(Math.min(pageCount, page + 1))}
-                whileTap={page < pageCount ? { scale: 0.9 } : undefined}
+                whileTap={page < pageCount ? { scale: 0.95 } : undefined}
                 transition={springPop}
-                className='inline-flex cursor-pointer items-center border-none bg-transparent p-0 transition-opacity disabled:cursor-not-allowed disabled:opacity-30'>
+                className={`${cellBase} border-it-border bg-it-white text-it-ink disabled:cursor-default disabled:opacity-40`}>
                 <Image
-                    src='/icons/filters/pagination-arrow.svg'
+                    src='/icons/filters/pager-arrow-ink.svg'
                     alt=''
-                    width={20}
-                    height={20}
-                    className='size-5'
+                    width={24}
+                    height={24}
+                    className='size-[15px]'
                 />
             </motion.button>
         </nav>
