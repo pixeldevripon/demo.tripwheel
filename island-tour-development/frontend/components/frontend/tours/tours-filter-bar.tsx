@@ -1,7 +1,6 @@
 'use client';
 
 import { useToursNav } from '@/components/frontend/tours/tours-browser';
-import type { Currency, Locale } from '@/lib/constants/locales';
 import {
     countActiveFilters,
     EMPTY_FILTERS,
@@ -16,8 +15,8 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { springPop } from '@/lib/motion';
-import { cn } from '@/lib/utils';
 import {
     buildToursHref,
     DEFAULT_GUESTS,
@@ -27,6 +26,7 @@ import {
     type ToursGuests,
     type ToursSortValue,
 } from '@/lib/tours/filters';
+import { cn } from '@/lib/utils';
 import { format, parse } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -387,7 +387,9 @@ export function ToursFilterBar({
                     </Popover>
 
                     {/* Travelers - stepper popover (locked Adults Selector) */}
-                    <Popover open={guestsOpen} onOpenChange={onGuestsOpenChange}>
+                    <Popover
+                        open={guestsOpen}
+                        onOpenChange={onGuestsOpenChange}>
                         <PopoverTrigger asChild>
                             <motion.button
                                 type='button'
@@ -412,71 +414,67 @@ export function ToursFilterBar({
                             sideOffset={10}
                             className='w-[300px] rounded-it-lg border-none bg-it-white p-4 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
                             <div className='flex flex-col'>
-                                {(['adults', 'children', 'infants'] as const).map(
-                                    (type, i, arr) => {
-                                        const t = dict.guestTypes[type];
-                                        const min = type === 'adults' ? 1 : 0;
-                                        return (
-                                            <div
-                                                key={type}
-                                                className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
-                                                <div>
-                                                    <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
-                                                        {t.label}
-                                                    </b>
-                                                    <span className='text-[12px] leading-[1.6] text-it-text-muted'>
-                                                        {t.hint}
-                                                    </span>
-                                                </div>
-                                                <div className='flex items-center gap-3'>
-                                                    <motion.button
-                                                        type='button'
-                                                        aria-label={`Decrease ${type}`}
-                                                        disabled={
-                                                            guestDraft[type] <=
-                                                            min
-                                                        }
-                                                        onClick={() =>
-                                                            stepGuest(type, -1)
-                                                        }
-                                                        whileTap={
-                                                            guestDraft[type] >
-                                                            min
-                                                                ? { scale: 0.9 }
-                                                                : undefined
-                                                        }
-                                                        transition={springPop}
-                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
-                                                        −
-                                                    </motion.button>
-                                                    <i className='min-w-[18px] text-center text-[15px] not-italic font-extrabold text-it-ink tabular-nums'>
-                                                        {guestDraft[type]}
-                                                    </i>
-                                                    <motion.button
-                                                        type='button'
-                                                        aria-label={`Increase ${type}`}
-                                                        disabled={
-                                                            guestDraft[type] >=
-                                                            20
-                                                        }
-                                                        onClick={() =>
-                                                            stepGuest(type, 1)
-                                                        }
-                                                        whileTap={
-                                                            guestDraft[type] <
-                                                            20
-                                                                ? { scale: 0.9 }
-                                                                : undefined
-                                                        }
-                                                        transition={springPop}
-                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
-                                                        +
-                                                    </motion.button>
-                                                </div>
+                                {(
+                                    ['adults', 'children', 'infants'] as const
+                                ).map((type, i, arr) => {
+                                    const t = dict.guestTypes[type];
+                                    const min = type === 'adults' ? 1 : 0;
+                                    return (
+                                        <div
+                                            key={type}
+                                            className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
+                                            <div>
+                                                <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
+                                                    {t.label}
+                                                </b>
+                                                <span className='text-[12px] leading-[1.6] text-it-text-muted'>
+                                                    {t.hint}
+                                                </span>
                                             </div>
-                                        );
-                                    }
-                                )}
+                                            <div className='flex items-center gap-3'>
+                                                <motion.button
+                                                    type='button'
+                                                    aria-label={`Decrease ${type}`}
+                                                    disabled={
+                                                        guestDraft[type] <= min
+                                                    }
+                                                    onClick={() =>
+                                                        stepGuest(type, -1)
+                                                    }
+                                                    whileTap={
+                                                        guestDraft[type] > min
+                                                            ? { scale: 0.9 }
+                                                            : undefined
+                                                    }
+                                                    transition={springPop}
+                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                    −
+                                                </motion.button>
+                                                <i className='min-w-[18px] text-center text-[15px] not-italic font-medium text-it-ink tabular-nums'>
+                                                    {guestDraft[type]}
+                                                </i>
+                                                <motion.button
+                                                    type='button'
+                                                    aria-label={`Increase ${type}`}
+                                                    disabled={
+                                                        guestDraft[type] >= 20
+                                                    }
+                                                    onClick={() =>
+                                                        stepGuest(type, 1)
+                                                    }
+                                                    whileTap={
+                                                        guestDraft[type] < 20
+                                                            ? { scale: 0.9 }
+                                                            : undefined
+                                                    }
+                                                    transition={springPop}
+                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                    +
+                                                </motion.button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                                 <motion.button
                                     type='button'
                                     onClick={() => onGuestsOpenChange(false)}
@@ -508,7 +506,7 @@ export function ToursFilterBar({
                         />
                         {dict.filters}
                         {activeFilterCount > 0 && (
-                            <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-extrabold leading-none text-it-white tabular-nums'>
+                            <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-medium leading-none text-it-white tabular-nums'>
                                 {activeFilterCount}
                             </span>
                         )}
@@ -532,9 +530,8 @@ export function ToursFilterBar({
                                 control). Desktop: grow + wrap. */}
                             <div className='flex items-center gap-1.5 max-md:w-max max-md:flex-none max-md:flex-nowrap md:min-w-0 md:flex-1 md:flex-wrap'>
                                 {categories.map(cat => {
-                                    const active = optimisticCategories.includes(
-                                        cat.slug
-                                    );
+                                    const active =
+                                        optimisticCategories.includes(cat.slug);
                                     // Prefetch the toggled-on result (the common intent).
                                     const prefetch = () =>
                                         !active &&
@@ -711,3 +708,4 @@ export function ToursFilterBar({
         </>
     );
 }
+

@@ -21,7 +21,10 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { InboxService } from '@/inbox/inbox.service';
 import { PrismaService } from '@/prisma/prisma.service';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import {
+  isPlatformWideRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import { dateKey, localNow } from '@/common/utils/timezone.util';
 import {
   containsBannedWord,
@@ -866,7 +869,13 @@ export class ReviewsService {
    * with reviewer names and booking references attached.
    */
   async listForActor(query: AdminReviewsQueryDto, actor: Actor) {
-    if (actor.role === Role.ADMIN) return this.adminList(query);
+    // Platform-wide, not ADMIN-only. Testing for ADMIN alone sent an invited
+    // platform staff member (Operations Manager, holding VIEW_REVIEWS and
+    // APPROVE_REVIEW) down the operator branch, where `resolveOperatorId`
+    // throws because they have no operator record - so the moderation queue
+    // answered an error instead of the platform's reviews (test report
+    // 2026-08-01 §Admin.4). Operators still resolve to their own scope below.
+    if (isPlatformWideRole(actor.role)) return this.adminList(query);
     return this.operatorList(query, actor);
   }
 

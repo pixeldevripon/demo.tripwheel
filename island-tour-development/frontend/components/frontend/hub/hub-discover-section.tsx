@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { Reveal } from '../reveal';
 import { HubDiscoverCard, type HubDiscoverItem } from './hub-discover-card';
 import { HubScrollButton } from './hub-scroll-button';
@@ -95,7 +94,7 @@ export function HubDiscoverSection({
                 <Reveal className='flex md:justify-center'>
                     <HubScrollButton
                         targetId={bookTripTargetId}
-                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
+                        className='inline-flex h-[46px] w-full cursor-pointer items-center justify-center rounded-it-full border border-it-primary bg-transparent px-10 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors hover:bg-it-primary/5 md:h-12 md:w-auto md:text-[16px]'>
                         {dict.bookTrip}
                     </HubScrollButton>
                 </Reveal>

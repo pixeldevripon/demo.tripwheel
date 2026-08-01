@@ -9,7 +9,10 @@ import {
 import { generateSlug } from '@/common/utils/slug.util';
 import { mergeTranslation } from '@/common/utils/translation.util';
 import { dateKey } from '@/common/utils/timezone.util';
-import { resolveOperatorId } from '@/common/utils/operator.util';
+import {
+  isPlatformWideRole,
+  resolveOperatorId,
+} from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
@@ -67,6 +70,31 @@ import {
  * what the range guard compares against so it cannot disagree with the row.
  */
 const DEFAULT_MAX_PARTY_SIZE = 10;
+
+/**
+ * Statuses an operator may ASK Island Tours to look at - and therefore the
+ * statuses an admin may approve or reject a request from.
+ *
+ * Conflict #1 says going live is always ours: `publish`, `unpause` and
+ * `restore` are MANAGE_TRIPS and stay that way. But the matching half of that
+ * rule is that the operator must be able to ASK, and `submit-for-review` used
+ * to accept DRAFT only. That left PAUSED and ARCHIVED as dead ends: every exit
+ * from them is MANAGE_TRIPS, so an operator whose tour was paused had exactly
+ * one action available (archive it, i.e. further down) and one whose tour was
+ * archived had none at all. Reported 2026-08-01 (operator pass §02).
+ *
+ * Submitting does NOT move `status` - it only stamps `approvalStatus =
+ * PENDING` and queues the request. The upward move is still an admin's, so
+ * this widens who can knock on the door, never who may open it.
+ *
+ * LIVE is excluded on purpose: a live tour is already published, and asking to
+ * review it is not a thing - pause or archive it first.
+ */
+const REVIEWABLE_STATUSES: readonly TourStatus[] = [
+  TourStatus.DRAFT,
+  TourStatus.PAUSED,
+  TourStatus.ARCHIVED,
+];
 
 @Injectable()
 export class ToursService {
@@ -1708,12 +1736,28 @@ export class ToursService {
 
   // ── Operator "my tours" ───────────────────────────────────────────────────────
 
+  /**
+   * The dashboard's tours list, scoped by WHO is asking.
+   *
+   * An operator gets their own catalogue - that is the whole point of the
+   * route. A platform-wide role (ADMIN / STAFF / EDITOR) has no operator record
+   * to resolve, and resolution throws for them, so this used to answer
+   * "No operator profile found. Please complete your operator registration
+   * first." to an invited platform staff member - who saw an empty Tours screen
+   * (test report 2026-08-01 §Admin.4). They get the platform catalogue instead,
+   * which is what `VIEW_TRIPS` means on that side of the line.
+   *
+   * No widening for operators: the operator branch is unchanged, and the scope
+   * is decided from the SESSION role, never from a query param.
+   */
   async findMyTours(userId: string, userRole: Role, query: MyToursQueryDto) {
-    const operatorId = await this.resolveOperatorId(userId, userRole);
+    const operatorId = isPlatformWideRole(userRole)
+      ? null
+      : await this.resolveOperatorId(userId, userRole);
     const { search, status, destinationId, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.TourWhereInput = { operatorId };
+    const where: Prisma.TourWhereInput = operatorId ? { operatorId } : {};
     if (search) where.name = { contains: search, mode: 'insensitive' };
     if (status) where.status = status;
     if (destinationId) where.destinationId = destinationId;
@@ -1738,6 +1782,22 @@ export class ToursService {
             },
           },
           hubs: { select: { hubId: true, hub: { select: { name: true } } } },
+          // Only meaningful on the platform-wide read: an operator looking at
+          // their own catalogue already knows whose it is, and `flattenCounts`
+          // drops the relation when it is absent. Same shape as
+          // `findAllAdmin`, so the dashboard's Operator column reads one field
+          // whichever route answered.
+          ...(operatorId
+            ? {}
+            : {
+                operator: {
+                  select: {
+                    id: true,
+                    companyInfo: { select: { companyName: true } },
+                    user: { select: { name: true, email: true } },
+                  },
+                },
+              }),
           _count: {
             select: {
               images: true,
@@ -2915,9 +2975,9 @@ export class ToursService {
   async submitForReview(id: string, userId: string, userRole: Role) {
     const tour = await this.loadTourForReadiness(id);
     await this.assertOwnership(tour, userId, userRole);
-    if (tour.status !== TourStatus.DRAFT) {
+    if (!REVIEWABLE_STATUSES.includes(tour.status)) {
       throw new BadRequestException(
-        'Only a DRAFT tour can be submitted for review',
+        'A live tour is already published - pause or archive it first',
       );
     }
     if (tour.approvalStatus === TourApprovalStatus.PENDING) {
@@ -2966,11 +3026,11 @@ export class ToursService {
   async approveTour(id: string, adminId: string, note?: string) {
     const tour = await this.findTourOrThrow(id);
     if (
-      tour.status !== TourStatus.DRAFT ||
+      !REVIEWABLE_STATUSES.includes(tour.status) ||
       tour.approvalStatus !== TourApprovalStatus.PENDING
     ) {
       throw new ConflictException(
-        'Only a DRAFT tour awaiting review can be approved',
+        'Only a tour awaiting review can be approved',
       );
     }
     const updated = await this.prisma.tour.update({
@@ -3003,11 +3063,11 @@ export class ToursService {
   async rejectTour(id: string, adminId: string, note: string) {
     const tour = await this.findTourOrThrow(id);
     if (
-      tour.status !== TourStatus.DRAFT ||
+      !REVIEWABLE_STATUSES.includes(tour.status) ||
       tour.approvalStatus !== TourApprovalStatus.PENDING
     ) {
       throw new ConflictException(
-        'Only a DRAFT tour awaiting review can be rejected',
+        'Only a tour awaiting review can be rejected',
       );
     }
     const updated = await this.prisma.tour.update({

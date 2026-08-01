@@ -1,13 +1,13 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
-import { useState } from 'react';
-import { springPop, swapFade } from '@/lib/motion';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { buildCheckoutQuery, toDateParam } from '@/lib/checkout/checkout';
 import { leaveTo } from '@/lib/checkout/leave-to';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { springPop, swapFade } from '@/lib/motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
+import { useState } from 'react';
 import { Collapse } from './collapse';
 
 /**
@@ -232,3 +232,4 @@ function TrustLink({
         </motion.button>
     );
 }
+

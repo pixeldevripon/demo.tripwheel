@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
+import { Reveal } from '@/components/frontend/reveal';
 import { SearchPagination } from '@/components/frontend/search-pagination';
 import { SearchBrowser } from '@/components/frontend/search/search-browser';
-import { Reveal } from '@/components/frontend/reveal';
 import { TourCard } from '@/components/frontend/tour-card';
 import { getActiveDestinations, searchTours } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
@@ -85,11 +85,14 @@ export async function SearchResultsSection({
     return (
         <SearchBrowser
             header={
-                ((results && results.total > 0) || destinationName) ? (
+                (results && results.total > 0) || destinationName ? (
                     <div className='flex flex-col gap-2'>
                         {results && results.total > 0 && (
                             <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
-                                {(results.total === 1 ? t.resultFor : t.resultsFor)
+                                {(results.total === 1
+                                    ? t.resultFor
+                                    : t.resultsFor
+                                )
                                     .replace('{count}', String(results.total))
                                     .replace('{query}', query)}
                             </p>
@@ -142,7 +145,7 @@ export async function SearchResultsSection({
 function EmptyState({ title, hint }: { title: string; hint: string }) {
     return (
         <div className='flex flex-col items-center gap-2 py-16 text-center'>
-            <p className='m-0 font-medium text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
+            <p className='m-0 font-normal text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
                 {title}
             </p>
             <p className='m-0 max-w-md text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>

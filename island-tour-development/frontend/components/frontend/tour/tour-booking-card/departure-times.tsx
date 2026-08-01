@@ -1,5 +1,7 @@
 'use client';
 
+import { useBooking } from '@/hooks/tours/use-booking';
+import { shakeTransition, shakeX, springPop, swapFade } from '@/lib/motion';
 import {
     animate,
     motion,
@@ -7,13 +9,6 @@ import {
     useReducedMotion,
 } from 'framer-motion';
 import { useEffect } from 'react';
-import { useBooking } from '@/hooks/tours/use-booking';
-import {
-    shakeTransition,
-    shakeX,
-    springPop,
-    swapFade,
-} from '@/lib/motion';
 import { Collapse } from './collapse';
 import { formatTime } from './lib/booking.utils';
 
@@ -168,3 +163,4 @@ export function DepartureTimes() {
         </Collapse>
     );
 }
+

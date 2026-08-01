@@ -12,10 +12,7 @@ export type HubDiscoverItem = {
     image?: string | null;
 };
 
-export type HubDiscoverCardDict = {
-    learnMore: string;
-    readLess: string;
-};
+export type HubDiscoverCardDict = { learnMore: string; readLess: string };
 
 /**
  * One "Discover {hub}" editorial card (Figma node 48371:20785 desktop /
@@ -67,11 +64,12 @@ export function HubDiscoverCard({
                 </p>
                 <button
                     type='button'
-                    onClick={() => setExpanded((v) => !v)}
-                    className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:text-it-primary md:hidden'>
+                    onClick={() => setExpanded(v => !v)}
+                    className='-mt-1 self-start cursor-pointer border-none bg-transparent p-0 font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors hover:text-it-primary md:hidden'>
                     {expanded ? dict.readLess : dict.learnMore}
                 </button>
             </div>
         </article>
     );
 }
+

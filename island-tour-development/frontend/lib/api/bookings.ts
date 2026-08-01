@@ -81,6 +81,11 @@ export interface QuoteRequest {
  * Fetch a server-authoritative quote for a live widget selection. Throws (via
  * `apiFetch`) on a non-2xx response; the caller keeps its optimistic client
  * estimate on failure. Pass an `AbortSignal` to cancel a superseded request.
+ *
+ * `retryOnThrottle` because this POST is a pure price computation - it claims
+ * no seats and writes no rows, so repeating it is as safe as repeating a GET.
+ * Without it a quote caught by the backend's burst tier failed outright while
+ * every dashboard GET beside it quietly self-healed (test report 2026-08-01).
  */
 export async function quoteBooking(
     req: QuoteRequest,
@@ -89,6 +94,7 @@ export async function quoteBooking(
     return apiFetch<BookingQuote>('/bookings/quote', {
         method: 'POST',
         body: JSON.stringify(req),
+        retryOnThrottle: true,
         signal,
     });
 }

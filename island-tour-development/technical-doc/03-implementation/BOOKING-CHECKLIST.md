@@ -234,6 +234,22 @@ These are ranked. Each is expanded in its section below.
   entirely for `heldOnly` releases - an abandoned checkout hold is inventory housekeeping, not news.
   `Code:` `bookings.service.ts:cancel/sendCancellationConfirmedNotices`
 - [x] **Tokenized cancel confirmation page (no raw-click cancel) + account fallback - COMPLETE.** PAGE BUILT 2026-07-16 per master 6.4: locale-less `/cancel/{publicRef}` (proxy rewrite, noindex), "Cancel {tour}, {date}?" + refund chip only when paid > 0 (C23) + after-window locked copy; `POST /bookings/typ/:publicRef/cancellation-request` stamps `utcCancellationRequestedAt` on FIRST request and emails admin + traveller ack + operator notice. The B.34 account fallback (email+display_ref booking-lookup login) was built 2026-07-19 with the login hardening (`POST /bookings/lookup`, rate-capped, 24h HMAC session) - ledger verified 2026-07-25. `Ref:` [Guide §14 flow](./BOOKING-FLOW-DESIGN-GUIDE.md#14-cancellation-flow) · `Code:` `bookings.service.ts:requestCancellation`, `frontend app/(frontend)/[locale]/cancel/`
+- [x] **Cancellation is reversible on both sides (QA report fix, 2026-08-01).** (1) Traveller
+  WITHDRAW of a pending request: `POST /bookings/typ/:publicRef/cancellation-request/withdraw`
+  (same session-ownership gate + human-pace throttle + 5/hr per-booking cap as the request) clears
+  `utcCancellationRequestedAt` while nothing was executed; notifies admin FIRST ("do not process"),
+  traveller ack, operator heads-up + `BOOKING_CANCELLATION_WITHDRAWN` inbox event; account panel
+  gains a "Keep my booking - withdraw the request" button (7-locale `cancelWithdraw*`), proxied via
+  `app/api/traveller/cancellation-withdraw`. (2) Admin RESTORE of an executed cancellation:
+  `POST /bookings/:id/restore` (MANAGE_BOOKINGS + in-service ADMIN check) - guarded seat re-claim
+  (refuses resold seats; exclusive needs the departure empty; CANCELLED departures are a dead end),
+  booking + unit items back to CONFIRMED, ALL cancellation/operator-report stamps cleared,
+  REVERSED settlement reinstated to RECORDED (net recomputed), confirmation email re-sent,
+  `BOOKING_RESTORED` inbox event + availability fan-out. Hard refusals: refund settled/in-flight,
+  departed, forfeited, hold-only. Dashboard: "Restore booking" row action + ConfirmDialog on
+  CANCELLED non-forfeited rows. Migration `20260801130000_booking_restore_withdraw_inbox_events`
+  (additive enum values, applied via `migrate deploy`). `Code:`
+  `bookings.service.ts:withdrawCancellationRequest/restore`, dashboard `booking-row-actions.tsx`.
 - [x] **Repeat cancellation requests refused server-side + cancellation state on the TYP.**
   EXECUTED 2026-07-20. Two halves of one hole: (1) `submitCancellationRequest` waved re-submits
   through as "idempotent", but each one re-sent the admin email, the traveller ack AND the operator

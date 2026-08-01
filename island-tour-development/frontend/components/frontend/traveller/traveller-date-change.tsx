@@ -5,15 +5,15 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import type { Locale } from '@/lib/constants/locales';
-import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { TravellerBooking } from '@/lib/api/public/traveller';
-import { crossFade } from '@/lib/motion';
 import {
     changeDateClient,
     getDateChangeOptionsClient,
     type DateChangeOption,
 } from '@/lib/api/traveller-login';
+import type { Locale } from '@/lib/constants/locales';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+import { crossFade } from '@/lib/motion';
 
 import { formatDayShort } from './traveller-format';
 
@@ -70,7 +70,9 @@ export function TravellerDateChange({
     }
 
     const optionLabel = (o: DateChangeOption) =>
-        [formatDayShort(o.date, locale), o.startTime].filter(Boolean).join(' · ');
+        [formatDayShort(o.date, locale), o.startTime]
+            .filter(Boolean)
+            .join(' · ');
 
     return (
         <div>
@@ -83,7 +85,7 @@ export function TravellerDateChange({
                         exit={{ opacity: 0, y: -8 }}
                         transition={crossFade}
                         className='rounded-[12px] bg-it-surface p-4'>
-                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading'>
+                        <p className='m-0 text-[14px] leading-[1.6] font-normal text-it-heading'>
                             {dict.dateChangeTitle}
                         </p>
                         <p className='mt-1 mb-0 text-[13px] leading-[1.6] text-it-text-muted'>
@@ -166,3 +168,4 @@ export function TravellerDateChange({
         </div>
     );
 }
+

@@ -1,7 +1,7 @@
 import { Reveal } from '@/components/frontend/reveal';
+import type { Locale } from '@/lib/constants/locales';
 import { formatMoney } from '@/lib/currency/current';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { Locale } from '@/lib/constants/locales';
 import type { ThankYouBooking } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
@@ -18,7 +18,7 @@ const labelClass =
 const valueClass = 'min-w-0 text-right font-bold text-it-ink';
 /** Faint sub-line under a value (time range, card used). */
 const subClass =
-    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-ink-muted';
+    'mt-[3px] block text-[12px] font-normal leading-[1.5] text-it-ink-muted';
 /** Tappable contact value (mailto/tel/map) - deep-orange underlined. */
 const rowLink =
     'break-words font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
@@ -43,7 +43,13 @@ function DetailRow({
     return (
         <div className={rowClass}>
             <span className={labelClass}>
-                <Image src={icon} alt='' width={24} height={24} className='size-4' />
+                <Image
+                    src={icon}
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-4'
+                />
                 {label}
             </span>
             <span className={valueClass}>
@@ -119,7 +125,9 @@ export function ThankYouSummary({
                                         label={dict.pickup}>
                                         {booking.pickupMapQuery ? (
                                             <a
-                                                href={mapUrl(booking.pickupMapQuery)}
+                                                href={mapUrl(
+                                                    booking.pickupMapQuery
+                                                )}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
                                                 className={rowLink}>
@@ -128,6 +136,35 @@ export function ThankYouSummary({
                                         ) : (
                                             booking.pickupLabel
                                         )}
+                                    </DetailRow>
+                                )}
+                                {/* The traveller's OWN booking facts, before any
+                                    logistics or policy - and well before the
+                                    operator, who now has a card of their own. */}
+                                <DetailRow
+                                    icon='/icons/thank-you/detail-travelers.svg'
+                                    label={dict.traveler}>
+                                    {booking.partyLabel}
+                                </DetailRow>
+                                {booking.guestLead && (
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-profile.svg'
+                                        label={dict.guestLead}>
+                                        {booking.guestLead}
+                                    </DetailRow>
+                                )}
+                                {booking.extras.length > 0 && (
+                                    // Same plus-tier icon as the operator row:
+                                    // there is no dedicated Figma "extras" glyph
+                                    // yet - swap it in when one exists.
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-trip.svg'
+                                        label={dict.extras}>
+                                        <span className='flex flex-col items-end gap-0.5'>
+                                            {booking.extras.map(line => (
+                                                <span key={line}>{line}</span>
+                                            ))}
+                                        </span>
                                     </DetailRow>
                                 )}
                                 <DetailRow
@@ -144,157 +181,165 @@ export function ThankYouSummary({
                                     }>
                                     {dict.beforeDate.replace(
                                         '{date}',
-                                        booking.freeCancelBeforeLabel,
+                                        booking.freeCancelBeforeLabel
                                     )}
                                 </DetailRow>
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-trip.svg'
-                                    label={dict.trip}>
-                                    {booking.operatorName}
-                                </DetailRow>
-                                {booking.operatorEmail && (
-                                    <DetailRow
-                                        icon='/icons/thank-you/detail-sms.svg'
-                                        label={dict.email}>
-                                        <a
-                                            href={`mailto:${booking.operatorEmail}`}
-                                            className={rowLink}>
-                                            {booking.operatorEmail}
-                                        </a>
-                                    </DetailRow>
-                                )}
-                                {booking.operatorPhone && (
-                                    <DetailRow
-                                        icon='/icons/thank-you/detail-call.svg'
-                                        label={dict.phoneNumber}>
-                                        <a
-                                            href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
-                                            className={rowLink}>
-                                            {booking.operatorPhone}
-                                        </a>
-                                    </DetailRow>
-                                )}
-                                <DetailRow
-                                    icon='/icons/thank-you/detail-travelers.svg'
-                                    label={dict.traveler}>
-                                    {booking.partyLabel}
-                                </DetailRow>
-                                {booking.extras.length > 0 && (
-                                    // Same plus-tier icon as the trip row: there is
-                                    // no dedicated Figma "extras" glyph yet - swap
-                                    // it in when one exists.
-                                    <DetailRow
-                                        icon='/icons/thank-you/detail-trip.svg'
-                                        label={dict.extras}>
-                                        <span className='flex flex-col items-end gap-0.5'>
-                                            {booking.extras.map(line => (
-                                                <span key={line}>{line}</span>
-                                            ))}
-                                        </span>
-                                    </DetailRow>
-                                )}
-                                {booking.guestLead && (
-                                    <DetailRow
-                                        icon='/icons/thank-you/detail-profile.svg'
-                                        label={dict.guestLead}>
-                                        {booking.guestLead}
-                                    </DetailRow>
-                                )}
                             </div>
                         </div>
                     </Reveal>
-                    <Reveal delay={0.3}>
-                        <div className={cardClass}>
-                            <h3 className={cardHead}>{dict.paymentTitle}</h3>
-                            <div className='flex flex-col'>
-                                {paidInFull ? (
-                                    <DetailRow
-                                        icon='/icons/check-green.svg'
-                                        label={dict.paidInFull}>
-                                        <span className='tabular-nums'>
-                                            {money(payment.depositPaid)}
-                                        </span>
-                                    </DetailRow>
-                                ) : (
-                                    payment.depositPaid > 0 && (
+                    {/* Right column stacks PAYMENT over OPERATOR CONTACT - the
+                        tour card is the tall one, so this balances the band and
+                        keeps the mobile reading order "your booking, what you
+                        paid, who to call". */}
+                    <div className='flex flex-col gap-2 md:gap-5'>
+                        <Reveal delay={0.3}>
+                            <div className={cardClass}>
+                                <h3 className={cardHead}>
+                                    {dict.paymentTitle}
+                                </h3>
+                                <div className='flex flex-col'>
+                                    {paidInFull ? (
                                         <DetailRow
                                             icon='/icons/check-green.svg'
-                                            label={dict.depositPaid}
-                                            sub={
-                                                payment.cardLabel
-                                                    ? dict.paidVia
-                                                          .replace(
-                                                              '{pct}',
-                                                              String(payment.depositPct),
-                                                          )
-                                                          .replace(
-                                                              '{card}',
-                                                              payment.cardLabel,
-                                                          )
-                                                    : `${payment.depositPct}%`
-                                            }>
+                                            label={dict.paidInFull}>
                                             <span className='tabular-nums'>
                                                 {money(payment.depositPaid)}
                                             </span>
                                         </DetailRow>
-                                    )
-                                )}
-                                {payment.balance > 0 && (
-                                    <>
-                                        <DetailRow
-                                            icon='/icons/thank-you/pay-balance-soft.svg'
-                                            label={dict.remainingBalance}>
-                                            <span className='tabular-nums'>
-                                                {money(payment.balance)}
-                                            </span>
-                                        </DetailRow>
-                                        <DetailRow
-                                            icon='/icons/thank-you/detail-clock.svg'
-                                            label={dict.payBefore}>
-                                            {payment.payBeforeLabel}
-                                        </DetailRow>
-                                    </>
-                                )}
-                                {/* Total: heavier top rule, larger value (.brow2.tot). */}
-                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
-                                    <span className='font-bold text-it-ink'>
-                                        {dict.total}
-                                    </span>
-                                    <span className='text-right text-[16px] font-bold text-it-ink tabular-nums'>
-                                        {money(payment.total)}
-                                    </span>
-                                </div>
-                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6]'>
-                                    <span className={labelClass}>{dict.ref}</span>
-                                    <code className='text-right font-mono text-[13.5px] font-bold tracking-[0.02em] text-it-ink'>
-                                        {booking.displayRef}
-                                    </code>
-                                </div>
-                                {/* Master B.85: an operator_link balance runs on the
-                                    operator's own rails, so every surface stays NEUTRAL
-                                    about how they collect - no "card only" claims. */}
-                                {payment.balance > 0 ? (
-                                    <p className='m-0 mt-3.5 text-[12.5px] leading-[1.55] text-it-text-muted'>
-                                        {renderTemplate(dict.operatorLinkNote, {
-                                            operator: (
-                                                <b className='font-bold text-it-ink'>
-                                                    {booking.operatorShortName}
-                                                </b>
-                                            ),
-                                        })}
-                                    </p>
-                                ) : (
-                                    paidInFull && (
+                                    ) : (
+                                        payment.depositPaid > 0 && (
+                                            <DetailRow
+                                                icon='/icons/check-green.svg'
+                                                label={dict.depositPaid}
+                                                sub={
+                                                    payment.cardLabel
+                                                        ? dict.paidVia
+                                                              .replace(
+                                                                  '{pct}',
+                                                                  String(
+                                                                      payment.depositPct
+                                                                  )
+                                                              )
+                                                              .replace(
+                                                                  '{card}',
+                                                                  payment.cardLabel
+                                                              )
+                                                        : `${payment.depositPct}%`
+                                                }>
+                                                <span className='tabular-nums'>
+                                                    {money(payment.depositPaid)}
+                                                </span>
+                                            </DetailRow>
+                                        )
+                                    )}
+                                    {payment.balance > 0 && (
+                                        <>
+                                            <DetailRow
+                                                icon='/icons/thank-you/pay-balance-soft.svg'
+                                                label={dict.remainingBalance}>
+                                                <span className='tabular-nums'>
+                                                    {money(payment.balance)}
+                                                </span>
+                                            </DetailRow>
+                                            <DetailRow
+                                                icon='/icons/thank-you/detail-clock.svg'
+                                                label={dict.payBefore}>
+                                                {payment.payBeforeLabel}
+                                            </DetailRow>
+                                        </>
+                                    )}
+                                    {/* Total: heavier top rule, larger value (.brow2.tot). */}
+                                    <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
+                                        <span className='font-bold text-it-ink'>
+                                            {dict.total}
+                                        </span>
+                                        <span className='text-right text-[16px] font-bold text-it-ink tabular-nums'>
+                                            {money(payment.total)}
+                                        </span>
+                                    </div>
+                                    <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6]'>
+                                        <span className={labelClass}>
+                                            {dict.ref}
+                                        </span>
+                                        <code className='text-right font-mono text-[13.5px] font-bold tracking-[0.02em] text-it-ink'>
+                                            {booking.displayRef}
+                                        </code>
+                                    </div>
+                                    {/* Master B.85: an operator_link balance runs on the
+                                        operator's own rails, so every surface stays NEUTRAL
+                                        about how they collect - no "card only" claims. */}
+                                    {payment.balance > 0 ? (
                                         <p className='m-0 mt-3.5 text-[12.5px] leading-[1.55] text-it-text-muted'>
-                                            {dict.paidFullNote}
+                                            {renderTemplate(
+                                                dict.operatorLinkNote,
+                                                {
+                                                    operator: (
+                                                        <b className='font-bold text-it-ink'>
+                                                            {
+                                                                booking.operatorShortName
+                                                            }
+                                                        </b>
+                                                    ),
+                                                }
+                                            )}
                                         </p>
-                                    )
-                                )}
+                                    ) : (
+                                        paidInFull && (
+                                            <p className='m-0 mt-3.5 text-[12.5px] leading-[1.55] text-it-text-muted'>
+                                                {dict.paidFullNote}
+                                            </p>
+                                        )
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </Reveal>
+                        </Reveal>
+                        {/* OPERATOR CONTACT - its own card (test report 2026-08-01
+                            §Traveler.2). These three rows used to sit mid-way down
+                            the tour card, ABOVE the traveller's own details, so the
+                            summary opened with somebody else's name, email and
+                            phone. Email and phone are identity, so they arrive null
+                            on the masked shared-link payload and simply do not
+                            render there; the operator name always does. */}
+                        <Reveal delay={0.45}>
+                            <div className={cardClass}>
+                                <h3 className={cardHead}>
+                                    {dict.operatorContact}
+                                </h3>
+                                <div className='flex flex-col'>
+                                    <DetailRow
+                                        icon='/icons/thank-you/detail-trip.svg'
+                                        label={dict.trip}>
+                                        {booking.operatorName}
+                                    </DetailRow>
+                                    {booking.operatorEmail && (
+                                        <DetailRow
+                                            icon='/icons/thank-you/detail-sms.svg'
+                                            label={dict.email}>
+                                            <a
+                                                href={`mailto:${booking.operatorEmail}`}
+                                                className={rowLink}>
+                                                {booking.operatorEmail}
+                                            </a>
+                                        </DetailRow>
+                                    )}
+                                    {booking.operatorPhone && (
+                                        <DetailRow
+                                            icon='/icons/thank-you/detail-call.svg'
+                                            label={dict.phoneNumber}>
+                                            <a
+                                                href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
+                                                className={rowLink}>
+                                                {booking.operatorPhone}
+                                            </a>
+                                        </DetailRow>
+                                    )}
+                                </div>
+                            </div>
+                        </Reveal>
+                    </div>
                 </div>
             </div>
         </section>
     );
 }
+

@@ -117,7 +117,7 @@ export function StatusScreen({
                     {eyebrow}
                 </span>
 
-                <h1 className='m-0 max-w-175 font-it-display font-extrabold text-[clamp(30px,4vw,46px)] leading-[1.08] tracking-[-0.018em] text-it-ink'>
+                <h1 className='m-0 max-w-175 font-it-display font-medium text-[clamp(30px,4vw,46px)] leading-[1.08] tracking-[-0.018em] text-it-ink'>
                     {title}
                 </h1>
 
@@ -149,3 +149,4 @@ export const statusPrimaryClass =
 
 export const statusSecondaryClass =
     'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
+

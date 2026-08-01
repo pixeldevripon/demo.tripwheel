@@ -43,10 +43,7 @@ export function ExploreIslands({
                     {/* Island tiles - photo card with meta block (design v2) */}
                     <div className='grid gap-5 md:grid-cols-3'>
                         {islands.map(island => (
-                            <Reveal
-                                key={island.slug}
-                                width='auto'
-                                listItem>
+                            <Reveal key={island.slug} width='auto' listItem>
                                 <MotionLink
                                     href={localizeHref(
                                         locale,

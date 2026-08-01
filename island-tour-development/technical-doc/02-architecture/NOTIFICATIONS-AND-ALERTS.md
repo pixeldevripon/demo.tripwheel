@@ -82,6 +82,8 @@ nobody found out until someone opened it.
 | Booking confirmed | Operator | Traveller **and** operator | `VIEW_BOOKINGS` | the booking |
 | Booking cancelled (admin executes) | Operator | Traveller and operator | `VIEW_BOOKINGS` | the booking |
 | Traveller requests a cancellation | **Platform** | `ADMIN_EMAIL` + traveller ack + operator heads-up | `EDIT_BOOKING` | the booking |
+| Traveller withdraws the request | **Platform** | `ADMIN_EMAIL` first ("do not process") + traveller ack + operator heads-up | `EDIT_BOOKING` | the booking |
+| Booking restored (admin reverses a cancellation) | Operator | Traveller (confirmation email re-sent) | `VIEW_BOOKINGS` | the booking |
 | Operator reports they must cancel | **Platform** | `ADMIN_EMAIL` | `EDIT_BOOKING` | the booking |
 | Operator reports non-payment | **Platform** | — | `MANAGE_PAYMENTS` | the booking |
 
@@ -113,9 +115,9 @@ booking confirmation, pre-tour reminder, and the post-tour review request.
 
 ## 4. What an admin actually receives
 
-Six platform events: tour submitted for review, spotlight requested, cancellation requested,
-operator-reported cancellation, operator-reported non-payment, review submitted — plus the two
-`both` events (tier demoted, tour unlisted).
+Seven platform events: tour submitted for review, spotlight requested, cancellation requested,
+cancellation request withdrawn, operator-reported cancellation, operator-reported non-payment,
+review submitted — plus the two `both` events (tier demoted, tour unlisted).
 
 Every one of them is **work waiting for a decision by Island Tours**. That is the design: the admin
 bell is a to-do list, not an activity feed. If it is empty, there is nothing waiting — which is also

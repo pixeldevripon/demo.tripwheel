@@ -1,12 +1,12 @@
 import { Info } from 'lucide-react';
 import Link from 'next/link';
 
-import { localizeHref, type Locale } from '@/lib/constants/locales';
-import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type {
     TravellerLedgerTotals,
     TravellerPayment,
 } from '@/lib/api/public/traveller';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 import { paymentTone, TravellerChip } from './traveller-chip';
 import { formatDay, lookupLabel, money } from './traveller-format';
@@ -154,7 +154,7 @@ export function TravellerPaymentsList({
                                                     locale,
                                                     `/traveller/receipt/${payment.id}`
                                                 )}
-                                                className='font-sans font-medium text-it-primary no-underline transition-opacity hover:opacity-80'>
+                                                className='font-sans font-normal text-it-primary no-underline transition-opacity hover:opacity-80'>
                                                 {dict.receiptLink}
                                             </Link>
                                         )}
@@ -162,7 +162,7 @@ export function TravellerPaymentsList({
                                 </div>
                                 <div className='flex shrink-0 flex-col items-end gap-1.5'>
                                     <strong
-                                        className={`block font-medium text-[20px] leading-[1.3] tracking-[-0.012em] ${
+                                        className={`block font-normal text-[20px] leading-[1.3] tracking-[-0.012em] ${
                                             isRefund
                                                 ? 'text-it-green'
                                                 : 'text-it-heading'
@@ -194,7 +194,7 @@ export function TravellerPaymentsList({
 
 function TotalChip({ children }: { children: string }) {
     return (
-        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[13px] font-medium text-it-heading'>
+        <span className='inline-flex items-center rounded-full border border-it-heading/15 bg-it-white px-3.5 py-1.5 text-[13px] font-normal text-it-heading'>
             {children}
         </span>
     );
@@ -203,3 +203,4 @@ function TotalChip({ children }: { children: string }) {
 function capitalize(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1);
 }
+

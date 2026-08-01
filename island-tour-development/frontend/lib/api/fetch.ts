@@ -35,25 +35,47 @@ const sleep = (base: number) =>
         setTimeout(resolve, base + Math.floor(Math.random() * base)),
     );
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export interface ApiFetchInit extends RequestInit {
+  /**
+   * Retry a throttled/unavailable response even though this is not a GET.
+   *
+   * Only for endpoints that are POSTs purely because they take a body, and
+   * that change NOTHING server-side - `/bookings/quote` is the case this
+   * exists for (it prices a selection; it claims no seats and writes no rows).
+   * Never set it on a real mutation: the retry would double-apply it.
+   */
+  retryOnThrottle?: boolean;
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init?: ApiFetchInit,
+): Promise<T> {
+  const { retryOnThrottle, ...fetchInit } = init ?? {};
   const request = () =>
     fetch(`${BASE_URL}${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
-      ...init,
+      headers: { 'Content-Type': 'application/json', ...fetchInit.headers },
+      ...fetchInit,
     });
 
   let res = await request();
-  // Retry only transient 429/503, and only for idempotent GETs (default) - a
-  // retried POST/PATCH/DELETE could double-apply a mutation.
-  const method = (init?.method ?? 'GET').toUpperCase();
-  if (method === 'GET') {
+  // Retry only transient 429/503, and only where a repeat is provably safe:
+  // idempotent GETs (the default) or a caller that opted in above. A retried
+  // POST/PATCH/DELETE could otherwise double-apply a mutation.
+  const method = (fetchInit.method ?? 'GET').toUpperCase();
+  if (method === 'GET' || retryOnThrottle) {
     for (
       let attempt = 0;
       (res.status === 429 || res.status === 503) && attempt < RETRY_BACKOFF_MS.length;
       attempt++
     ) {
       await sleep(RETRY_BACKOFF_MS[attempt]);
+      // The caller gave up while we were waiting (the booking widget aborts a
+      // superseded quote on every selection change). Retrying now would only
+      // add load to a throttle we are already backing off from, for an answer
+      // nobody will read.
+      if (fetchInit.signal?.aborted) break;
       res = await request();
     }
   }

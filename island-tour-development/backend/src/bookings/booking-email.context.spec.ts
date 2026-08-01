@@ -257,6 +257,18 @@ describe('buildConfirmationEmailContext', () => {
       expect(ctx.tourLanguage).toBe('English, Spanish, Dutch');
     });
 
+    // Founder 2026-08-01: "showing language, does this have any meaning?" - the
+    // wireframe's bare "Language:" read as the language of the EMAIL once a
+    // tour listed more than one. The label has to say whose language it is.
+    it("labels the languages as the tour's, not the reader's", () => {
+      const ctx = buildConfirmationEmailContext(
+        input({ tour: { ...input().tour, languageCodes: ['en', 'es', 'nl'] } }),
+      );
+      const text = buildConfirmationEmailText(ctx);
+      expect(text).toContain('Guided in: English, Spanish, Dutch');
+      expect(text).not.toContain('Language:');
+    });
+
     it('localizes language names for the reader', () => {
       const ctx = buildConfirmationEmailContext(
         input({

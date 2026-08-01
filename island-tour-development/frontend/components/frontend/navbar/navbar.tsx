@@ -219,7 +219,7 @@ export function Navbar({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-6'
+                                className='size-5'
                             />
                         </motion.button>
                     )}
@@ -228,8 +228,11 @@ export function Navbar({
 
                     <AccountMenu locale={locale} dict={dict} />
 
+                    {/* flex, not the default inline button: without it the
+                        icon sits on the TEXT BASELINE, ~3px above the other
+                        icons' centers - the reported nav misalignment. */}
                     <motion.button
-                        className='bg-transparent border-none cursor-pointer p-0 text-it-ink'
+                        className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'
                         whileTap={{ scale: 0.9 }}
                         transition={pressSpring}
                         aria-label={mobileOpen ? dict.close : dict.menu}
@@ -242,10 +245,13 @@ export function Navbar({
                                 animate={{ rotate: 0, opacity: 1 }}
                                 exit={{ rotate: 90, opacity: 0 }}
                                 transition={{ duration: 0.18 }}>
+                                {/* 20px matches the optical weight of the 18px
+                                    globe/account icons beside it (24px read as
+                                    a size mismatch across the cluster). */}
                                 {mobileOpen ? (
-                                    <X size={24} strokeWidth={1.5} />
+                                    <X size={20} strokeWidth={1.5} />
                                 ) : (
-                                    <Menu size={24} strokeWidth={1.5} />
+                                    <Menu size={20} strokeWidth={1.5} />
                                 )}
                             </motion.span>
                         </AnimatePresence>

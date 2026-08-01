@@ -1,13 +1,13 @@
-import Image from 'next/image';
 import { MotionLink } from '@/components/frontend/motion-link';
 import { MountReveal } from '@/components/frontend/mount-reveal';
-import { springPop } from '@/lib/motion';
 import { ReviewSubmitFlow } from '@/components/frontend/review/review-submit-flow';
 import { ReviewCardSkeleton } from '@/components/frontend/skeletons/review-card-skeleton';
 import { getReviewInvitation } from '@/lib/api/public/review-invitation';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
+import { springPop } from '@/lib/motion';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
@@ -60,7 +60,7 @@ async function ReviewBody({
                         height={56}
                         className='mx-auto size-14 opacity-25'
                     />
-                    <h1 className='mx-auto mt-6 mb-0 max-w-md font-medium text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
+                    <h1 className='mx-auto mt-6 mb-0 max-w-md font-normal text-[24px] leading-[1.25] tracking-[-0.012em] text-it-heading sm:text-[28px]'>
                         {rd.invalidTitle}
                     </h1>
                     <p className='mx-auto mt-3 mb-0 max-w-md text-[15px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -74,14 +74,14 @@ async function ReviewBody({
                             href={localizeHref(locale, '/bookings')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='flex w-full items-center justify-center rounded-it-full bg-it-primary px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover sm:w-auto'>
+                            className='flex w-full items-center justify-center rounded-it-full bg-it-primary px-8 py-[13px] font-normal text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover sm:w-auto'>
                             {rd.invalidFindBooking}
                         </MotionLink>
                         <MotionLink
                             href={localizeHref(locale, '/')}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
-                            className='flex w-full items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading sm:w-auto'>
+                            className='flex w-full items-center justify-center rounded-it-full border border-it-border bg-it-white px-8 py-[13px] font-normal text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading no-underline transition-colors hover:border-it-heading sm:w-auto'>
                             {rd.invalidBrowse}
                         </MotionLink>
                     </div>

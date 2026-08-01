@@ -1,5 +1,5 @@
-import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 import { SearchResultsSection } from '@/components/frontend/search/search-results-section';
 import { SearchResultsSkeleton } from '@/components/frontend/skeletons/search-page-skeleton';
@@ -42,7 +42,12 @@ export default async function SearchPage({
     searchParams,
 }: {
     params: Promise<{ locale: string }>;
-    searchParams: Promise<{ q?: string; page?: string; destination?: string; date?: string }>;
+    searchParams: Promise<{
+        q?: string;
+        page?: string;
+        destination?: string;
+        date?: string;
+    }>;
 }) {
     const { locale } = await params;
     if (!isLocale(locale)) notFound();
@@ -53,7 +58,7 @@ export default async function SearchPage({
         <section className='it-section bg-it-white'>
             <div className='it-container flex flex-col gap-8'>
                 {/* ── Heading (static shell) ───────────────────────────────── */}
-                <h1 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 font-normal text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                     {dict.search.title}
                 </h1>
 
@@ -69,3 +74,4 @@ export default async function SearchPage({
         </section>
     );
 }
+

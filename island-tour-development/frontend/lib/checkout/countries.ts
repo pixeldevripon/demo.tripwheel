@@ -271,3 +271,43 @@ export function composePhone(countryCode: string, phone: string): string {
     const local = trimmed.replace(/[^\d]/g, '').replace(/^0+/, '');
     return `+${dial}${local}`;
 }
+
+/**
+ * The inverse of `composePhone`, for putting a STORED number back into the
+ * split country-select + number field (checkout prefill).
+ *
+ * `countryCode` is the country stored alongside the number, and it wins when
+ * its dial code matches - several countries share one (+1 covers the US,
+ * Canada and most of the Caribbean), so peeling the prefix off alone would
+ * silently move a Canadian traveller to the United States. Only when it does
+ * NOT match do we fall back to the longest dial code that fits, longest-first
+ * so +599 is never mistaken for +5.
+ *
+ * A number we cannot split (unknown prefix, or no leading "+") is returned
+ * whole in `local`: `composePhone` passes a leading "+" straight through, so
+ * it round-trips unchanged rather than being mangled.
+ */
+export function splitPhone(
+    phone: string | null | undefined,
+    countryCode?: string | null
+): { country: string | null; local: string } {
+    const trimmed = (phone ?? '').trim();
+    if (!trimmed) return { country: countryCode || null, local: '' };
+    if (!trimmed.startsWith('+')) {
+        return { country: countryCode || null, local: trimmed };
+    }
+    const digits = trimmed.slice(1).replace(/\D/g, '');
+
+    const stored = countryCode ? dialCode(countryCode) : null;
+    if (stored && digits.startsWith(stored)) {
+        return { country: countryCode!, local: digits.slice(stored.length) };
+    }
+
+    let best: Country | null = null;
+    for (const c of COUNTRIES) {
+        if (!digits.startsWith(c.dial)) continue;
+        if (!best || c.dial.length > best.dial.length) best = c;
+    }
+    if (!best) return { country: countryCode || null, local: trimmed };
+    return { country: best.code, local: digits.slice(best.dial.length) };
+}

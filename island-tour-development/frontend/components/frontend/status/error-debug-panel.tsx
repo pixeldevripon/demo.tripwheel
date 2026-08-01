@@ -49,9 +49,9 @@ export function ErrorDebugPanel({
     error: Error & { digest?: string };
 }) {
     const [server, setServer] = useState<ServerEntry[] | null>(null);
-    const [lookup, setLookup] = useState<'idle' | 'loading' | 'done' | 'failed'>(
-        'idle',
-    );
+    const [lookup, setLookup] = useState<
+        'idle' | 'loading' | 'done' | 'failed'
+    >('idle');
 
     const digest = error.digest;
 
@@ -90,7 +90,7 @@ export function ErrorDebugPanel({
     return (
         <div className='w-full max-w-3xl text-left'>
             <div className='mb-3 flex items-center justify-between gap-4'>
-                <span className='text-[13px] font-medium leading-none tracking-[-0.012em] text-it-error'>
+                <span className='text-[13px] font-normal leading-none tracking-[-0.012em] text-it-error'>
                     Debug details (temporary - NEXT_PUBLIC_ERROR_DEBUG)
                 </span>
                 <button
@@ -155,7 +155,7 @@ function detailLine(entry: ServerEntry): string {
  */
 function lookupNote(
     lookup: 'idle' | 'loading' | 'done' | 'failed',
-    digest: string | undefined,
+    digest: string | undefined
 ): string {
     if (!digest) return 'client-side error - no server entry expected';
     if (lookup === 'loading') return 'looking up...';
@@ -163,3 +163,4 @@ function lookupNote(
         return 'lookup unavailable (endpoint off?) - grep the frontend log for [server-error]';
     return 'not in this instance buffer - grep the frontend log for the digest above';
 }
+

@@ -6,11 +6,11 @@
  * the tour list rows.
  */
 
-import Image from 'next/image';
-import Link from 'next/link';
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { cn } from '@/lib/utils';
 import type { CollectionLocalized } from '@/types/collection';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export interface CollectionCardProps {
     collection: CollectionLocalized;
@@ -40,7 +40,7 @@ export function CollectionCard({
                     '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
                     // Same uniform row height as the mobile tour cards.
                     'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
-                    className,
+                    className
                 )}>
                 {/* ── Image area ─────────────────────────────────────────── */}
                 <div className='relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
@@ -62,7 +62,7 @@ export function CollectionCard({
 
                 {/* ── Card info ──────────────────────────────────────────── */}
                 <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                    <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                    <h3 className='m-0 font-it-body font-medium text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
                         {collection.name}
                     </h3>
 
@@ -85,3 +85,4 @@ export function CollectionCard({
         </Link>
     );
 }
+

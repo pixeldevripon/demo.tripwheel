@@ -79,7 +79,7 @@ export function Hero({
                 <div className='flex flex-col items-center gap-7 w-full max-w-[680px]'>
                     {/* Heading + subtitle */}
                     <Reveal className='flex flex-col items-center gap-3 text-center'>
-                        <h1 className='m-0 font-it-display font-extrabold text-[clamp(31px,3.7vw,48px)] leading-[1.04] tracking-[-0.02em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
+                        <h1 className='m-0 font-it-display font-medium text-[clamp(31px,3.7vw,48px)] leading-[1.04] tracking-[-0.02em] text-balance text-it-white [text-shadow:0_2px_22px_rgba(0,0,0,0.32)]'>
                             {dict.title}
                         </h1>
                         <p className='m-0 text-[16px] md:text-[17px] font-semibold leading-[1.6] text-it-white/95 [text-shadow:0_1px_14px_rgba(0,0,0,0.34)]'>
@@ -128,5 +128,4 @@ export function Hero({
         </section>
     );
 }
-
 

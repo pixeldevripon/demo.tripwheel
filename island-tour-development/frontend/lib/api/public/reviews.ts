@@ -32,6 +32,8 @@ export async function getTourReviews(params: {
   sort?: ReviewSort;
   page?: number;
   limit?: number;
+  /** Only reviews carrying photos - feeds the guest-photo strip. */
+  withPhotos?: boolean;
 }): Promise<PublicReviewList> {
   'use cache';
   cacheLife('days');
@@ -39,9 +41,10 @@ export async function getTourReviews(params: {
   // editing that tour) refreshes only its reviews, not every tour's.
   cacheTag('reviews', `tour:${params.tourId}`);
 
-  const { tourId, locale = DEFAULT_LOCALE, sort, page, limit } = params;
+  const { tourId, locale = DEFAULT_LOCALE, sort, page, limit, withPhotos } =
+    params;
   const res = await publicGet<PublicReviewList>(
-    `/reviews${buildQuery({ tourId, locale, sort, page, limit })}`,
+    `/reviews${buildQuery({ tourId, locale, sort, page, limit, withPhotos })}`,
   );
   return res ?? { total: 0, page: 1, limit: limit ?? 10, data: [] };
 }

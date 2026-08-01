@@ -188,7 +188,7 @@ export function HubTourCard({
                     surcharge note keeps its space and wraps on narrow cards). */}
                 <p className='m-0 mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {dict.from}
-                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-extrabold tracking-[-0.01em] text-it-ink tabular-nums'>
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.01em] text-it-ink tabular-nums'>
                         {tour.priceDisplay}
                     </b>
                     <span className='ml-0.5'>

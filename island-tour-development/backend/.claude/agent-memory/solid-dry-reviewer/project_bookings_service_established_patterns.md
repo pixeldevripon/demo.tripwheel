@@ -4,9 +4,15 @@ description: Baseline conventions already established in backend/src/bookings/bo
 type: project
 ---
 
-`backend/src/bookings/bookings.service.ts` is large (4000+ lines) and has its own established
-sub-conventions that sometimes diverge from the general CLAUDE.md rules. When reviewing new code in
-this file, compare against these rather than flagging divergence from CLAUDE.md's generic defaults:
+`backend/src/bookings/bookings.service.ts` is large (6463 lines as of 2026-08-01, was 4000+ in
+2026-07-19 - it keeps growing every time a booking-lifecycle feature lands) and has its own
+established sub-conventions that sometimes diverge from the general CLAUDE.md rules. When
+reviewing new code in this file, compare against these rather than flagging divergence from
+CLAUDE.md's generic defaults. The size itself is a standing SRP/god-class observation - flag it
+ONCE per review cycle (plausible extraction seams: a `BookingCancellationService` for
+request/withdraw/cancel/restore, a `TravellerAccountService` for login-code/session/receipt/
+contact/summary/payments), don't re-flag it every time a new method is appended, and don't propose
+doing the extraction inline with an unrelated bugfix diff.
 
 - **`include:` not `select:` for list-shaped queries.** CLAUDE.md says "always use select: - never
   include", but the big list queries in this file (`list()`, `listTravellerBookings()`,

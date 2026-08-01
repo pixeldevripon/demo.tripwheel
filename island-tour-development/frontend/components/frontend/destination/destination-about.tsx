@@ -16,10 +16,7 @@ export type AboutDict = {
  * null only on the bundled fallback set, which has never had body copy - those
  * render as the bare headings they have always been.
  */
-export type AboutSection = {
-    heading: string;
-    body: string | null;
-};
+export type AboutSection = { heading: string; body: string | null };
 
 /**
  * The three bundled labels, used when an island has no authored sections yet.
@@ -85,7 +82,7 @@ export function DestinationAbout({
                             <div
                                 key={section.heading}
                                 className='flex flex-col gap-2.5 border-t-2 border-it-peach-border pt-[18px]'>
-                                <h3 className='m-0 text-[19px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
+                                <h3 className='m-0 text-[19px] font-medium leading-[1.3] tracking-[-0.01em] text-it-ink'>
                                     {section.heading}
                                 </h3>
                                 {section.body && (
@@ -101,3 +98,4 @@ export function DestinationAbout({
         </section>
     );
 }
+

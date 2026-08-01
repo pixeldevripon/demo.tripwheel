@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 import type {
     TravellerBooking,
@@ -126,7 +126,7 @@ export function TravellerView({
                     <MountReveal>
                         <div className='flex flex-wrap items-start justify-between gap-4'>
                             <div>
-                                <h1 className='m-0 font-medium text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading md:text-[40px]'>
+                                <h1 className='m-0 font-normal text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading md:text-[40px]'>
                                     {dict.title}
                                 </h1>
                                 <p className='mt-2 mb-0 text-[15px] leading-[1.6] text-it-text-muted md:text-[16px]'>
@@ -174,7 +174,7 @@ export function TravellerView({
                                 aria-selected={tab === t.key}
                                 aria-controls='traveller-tabpanel'
                                 onClick={() => selectTab(t.key)}
-                                className={`relative -mb-px cursor-pointer border-none bg-transparent px-0 pb-3.5 text-[16px] font-medium tracking-[-0.012em] transition-colors ${
+                                className={`relative -mb-px cursor-pointer border-none bg-transparent px-0 pb-3.5 text-[16px] font-normal tracking-[-0.012em] transition-colors ${
                                     tab === t.key
                                         ? 'text-it-heading'
                                         : 'text-it-text-muted hover:text-it-heading'
@@ -313,7 +313,7 @@ export function TravellerView({
                         <MountReveal>
                             <div className='flex flex-wrap items-center justify-between gap-4 rounded-[16px] border border-it-heading/10 bg-it-white px-6 py-5'>
                                 <div>
-                                    <strong className='block font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                                    <strong className='block font-normal text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                         {dict.needHelpTitle}
                                     </strong>
                                     <p className='mt-1 mb-0 text-[14px] leading-[1.6] text-it-text-muted'>
@@ -367,7 +367,7 @@ function CollapsibleGroup({
                 aria-expanded={open}
                 aria-controls={id}
                 onClick={() => setOpen(v => !v)}
-                className={`flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-medium tracking-[-0.012em] transition-colors ${
+                className={`flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-normal tracking-[-0.012em] transition-colors ${
                     muted
                         ? 'text-[17px] text-it-text-muted hover:text-it-heading'
                         : 'text-[20px] leading-[1.3] text-it-heading'
@@ -421,7 +421,7 @@ function EmptyState({
             animate={{ opacity: 1 }}
             transition={crossFade}
             className='rounded-[16px] border border-dashed border-it-heading/15 bg-it-white px-6 py-16 text-center'>
-            <strong className='block font-medium text-[18px] text-it-heading'>
+            <strong className='block font-normal text-[18px] text-it-heading'>
                 {title}
             </strong>
             <p className='mx-auto mt-2 mb-0 max-w-90 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -431,3 +431,4 @@ function EmptyState({
         </motion.div>
     );
 }
+

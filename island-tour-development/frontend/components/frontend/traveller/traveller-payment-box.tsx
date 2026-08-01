@@ -87,7 +87,7 @@ export function TravellerPaymentBox({
                 <span className='text-[14.5px] leading-[1.6] text-it-green'>
                     {dict.payPaidInFull}
                 </span>
-                <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-green'>
+                <span className='text-right text-[14.5px] leading-[1.6] font-normal text-it-green'>
                     {total}
                 </span>
             </div>
@@ -109,7 +109,11 @@ export function TravellerPaymentBox({
                             ? dict.payDepositPaidPct.replace('{pct}', pct)
                             : typDict.depositPaid
                     }
-                    value={money(booking.depositAmount, booking.currency, locale)}
+                    value={money(
+                        booking.depositAmount,
+                        booking.currency,
+                        locale
+                    )}
                 />
             )}
             {showBalance && (
@@ -136,26 +140,28 @@ export function TravellerPaymentBox({
                     <Note>{dict.forfeitedNote}</Note>
                 ) : null)}
 
-            {active && !requested && booking.paymentModel === 'OPERATOR_LINK' && (
-                <>
-                    {showBalance && (
-                        <Note>
-                            {windowOpen && deadline
-                                ? dict.payLinkBefore
-                                      .replace('{operator}', operatorName)
-                                      .replace(
-                                          '{deadline}',
-                                          formatDeadline(deadline, locale)
-                                      )
-                                : dict.payLinkAfter
-                                      .replace('{amount}', balance)
-                                      .replace('{operator}', operatorName)}
-                        </Note>
-                    )}
-                    {/* Locked anti-fraud line - operator_link box only. */}
-                    <Micro>{dict.antiFraud}</Micro>
-                </>
-            )}
+            {active &&
+                !requested &&
+                booking.paymentModel === 'OPERATOR_LINK' && (
+                    <>
+                        {showBalance && (
+                            <Note>
+                                {windowOpen && deadline
+                                    ? dict.payLinkBefore
+                                          .replace('{operator}', operatorName)
+                                          .replace(
+                                              '{deadline}',
+                                              formatDeadline(deadline, locale)
+                                          )
+                                    : dict.payLinkAfter
+                                          .replace('{amount}', balance)
+                                          .replace('{operator}', operatorName)}
+                            </Note>
+                        )}
+                        {/* Locked anti-fraud line - operator_link box only. */}
+                        <Micro>{dict.antiFraud}</Micro>
+                    </>
+                )}
             {active && !requested && booking.paymentModel === 'ON_ARRIVAL' && (
                 <Note>
                     {booking.onArrivalPayment === 'CASH_ONLY'
@@ -173,7 +179,7 @@ function MoneyRow({ label, value }: { label: string; value: string }) {
             <span className='text-[14.5px] leading-[1.6] text-it-text-muted'>
                 {label}
             </span>
-            <span className='text-right text-[14.5px] leading-[1.6] font-medium text-it-heading'>
+            <span className='text-right text-[14.5px] leading-[1.6] font-normal text-it-heading'>
                 {value}
             </span>
         </div>
@@ -195,3 +201,4 @@ function Micro({ children }: { children: string }) {
         </p>
     );
 }
+

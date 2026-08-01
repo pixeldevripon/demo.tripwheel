@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { useBooking } from '@/hooks/tours/use-booking';
 import type { BookingNoticeKind } from '@/lib/tours/booking';
+import Image from 'next/image';
 
 /**
  * The notice cards stacked beneath the booking card (master §3.6 / §3.7).
@@ -106,3 +106,4 @@ export function BookingNotices() {
         </div>
     );
 }
+

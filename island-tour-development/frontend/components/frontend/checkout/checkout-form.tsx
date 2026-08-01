@@ -1,5 +1,10 @@
 'use client';
 
+import { useCheckoutPrefill } from '@/hooks/checkout/use-checkout-prefill';
+import {
+    readBookingSelection,
+    writeBookingSelection,
+} from '@/hooks/tours/use-booking-selection-persistence';
 import {
     createPaymentIntent,
     reserveBooking,
@@ -11,22 +16,27 @@ import {
     formatCheckoutMoney,
     type BookingSelectionPayload,
 } from '@/lib/checkout/checkout';
-import { leaveTo } from '@/lib/checkout/leave-to';
 import {
-    readBookingSelection,
-    writeBookingSelection,
-} from '@/hooks/tours/use-booking-selection-persistence';
-import {
-    COUNTRIES,
     composePhone,
+    COUNTRIES,
     DEFAULT_COUNTRY_CODE,
     POPULAR_CODES,
+    splitPhone,
 } from '@/lib/checkout/countries';
-import { localizeHref, type Currency, type Locale } from '@/lib/constants/locales';
+import { leaveTo } from '@/lib/checkout/leave-to';
+import {
+    localizeHref,
+    type Currency,
+    type Locale,
+} from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
 import { readAttribution } from '@/lib/tracking/attribution';
-import { storeTravelerSession } from '@/lib/traveler-booking';
+import {
+    reconcileTravellerIdentity,
+    signOutTraveller,
+    storeTravelerSession,
+} from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import {
@@ -61,14 +71,14 @@ const countryLabel = (c: { name: string; dial: string }) =>
     `${c.name} (+${c.dial})`;
 
 /** Full ISO country list rendered as an option (alphabetical). */
-const ALL_COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
+const ALL_COUNTRY_OPTIONS = COUNTRIES.map(c => ({
     value: c.code,
     label: countryLabel(c),
 }));
 
 /** Launch islands + top source markets, pinned to a "Popular" group. */
-const POPULAR_COUNTRY_OPTIONS = POPULAR_CODES.map((code) => {
-    const c = COUNTRIES.find((x) => x.code === code)!;
+const POPULAR_COUNTRY_OPTIONS = POPULAR_CODES.map(code => {
+    const c = COUNTRIES.find(x => x.code === code)!;
     return { value: c.code, label: countryLabel(c) };
 });
 
@@ -89,7 +99,10 @@ interface CheckoutFormProps {
     onPhaseChange: (phase: CheckoutPhase) => void;
     /** Publishes the chosen pickup (zone id + label) so the summary mirrors it
      *  live and the parent can re-quote a priced zone (null id = no zone). */
-    onPickupChange: (pickup: { id: string | null; label: string | null }) => void;
+    onPickupChange: (pickup: {
+        id: string | null;
+        label: string | null;
+    }) => void;
     /** Pickup options from the tour; empty hides the pickup field. */
     pickupOptions: CheckoutPickupOption[];
     /** Formatted "(From $X p.p.)" suffix for the pickup label, or null. */
@@ -243,13 +256,13 @@ export function CheckoutForm({
         if (pickupOptions.length === 0) return;
         const saved = readBookingSelection(tourId)?.pickup;
         if (!saved) return;
-        const zone = pickupOptions.find((o) => o.id === saved);
+        const zone = pickupOptions.find(o => o.id === saved);
         const valid =
             zone != null ||
             saved === 'other' ||
             (saved === 'none' && !pickupRequired);
         if (!valid) return;
-        setContact((prev) => ({ ...prev, pickup: saved }));
+        setContact(prev => ({ ...prev, pickup: saved }));
         onPickupChange({
             id: zone?.id ?? null,
             label: zone
@@ -266,11 +279,78 @@ export function CheckoutForm({
     const [formError, setFormError] = useState<string | null>(null);
     const specialId = useId();
 
-    const set = useCallback(
-        (key: keyof typeof contact, value: string) =>
-            setContact((prev) => ({ ...prev, [key]: value })),
-        []
-    );
+    /**
+     * Write a contact field and drop any error sitting on it.
+     *
+     * The errors map is rebuilt only on submit, so a message used to survive
+     * the traveller fixing the field: a filled-in box kept its red border and
+     * "This field is required" until they pressed Continue again (test report
+     * 2026-08-01, seen on the card postal code and true of every field here).
+     * Pickup had grown its own hand-rolled version of this; clearing centrally
+     * means the next field added cannot forget to.
+     *
+     * Clears rather than re-validates - checking on each keystroke would flash
+     * the error back while a value is half-typed. Submit stays the authority.
+     */
+    const set = useCallback((key: keyof typeof contact, value: string) => {
+        setContact(prev => ({ ...prev, [key]: value }));
+        setErrors(prev => {
+            if (!prev[key]) return prev;
+            const { [key]: _cleared, ...rest } = prev;
+            return rest;
+        });
+    }, []);
+
+    // ── Signed-in traveller: prefill, and pin the booking to their account ──
+    // §Traveler.1 and §Traveler.4 of the 2026-08-01 test report are one root
+    // cause seen from two sides. The form knew nothing about the session, so a
+    // returning traveller retyped everything they had already given us AND
+    // could type any address - and a different one silently opened a SECOND
+    // customer account with the booking attached to it, orphaned from the one
+    // they were signed into. Now the session email is asserted, not asked for.
+    const [prefillKey, setPrefillKey] = useState(0);
+    const prefill = useCheckoutPrefill(prefillKey);
+    // Only once the lookup settles: locking on a loading answer would flash a
+    // disabled field at a guest who has no session at all.
+    const lockedEmail = prefill.resolved ? prefill.email : null;
+
+    // Fill what the traveller has not typed. Deliberately never overwrites
+    // input: someone who started filling the form before the lookup landed
+    // keeps every character of it. The email is the exception - it is asserted,
+    // and the field renders read-only below.
+    useEffect(() => {
+        const email = prefill.resolved ? prefill.email : null;
+        if (!email) return;
+        const { country, local } = splitPhone(prefill.phone, prefill.country);
+        setContact(prev => ({
+            ...prev,
+            firstName: prev.firstName || (prefill.firstName ?? ''),
+            lastName: prev.lastName || (prefill.lastName ?? ''),
+            email,
+            phone: prev.phone || local,
+            // Only when still on the untouched default - a country the
+            // traveller picked themselves outranks the stored one.
+            country:
+                prev.country === DEFAULT_COUNTRY_CODE
+                    ? (country ?? prev.country)
+                    : prev.country,
+        }));
+        // Anything the prefill just filled cannot still be "required".
+        setErrors({});
+    }, [prefill]);
+
+    /**
+     * "Use a different email". Booking under another address means booking as
+     * someone else, so this signs the traveller out rather than pretending the
+     * two identities can coexist - which is exactly the confusion the report
+     * describes. It also releases the HttpOnly session, leaving checkout free
+     * to mint this booking's own token at the contact step.
+     */
+    async function handleUseAnotherEmail() {
+        await signOutTraveller();
+        setContact(prev => ({ ...prev, email: '' }));
+        setPrefillKey(k => k + 1);
+    }
 
     const countryGroups = useMemo(
         () => [
@@ -292,7 +372,7 @@ export function CheckoutForm({
                 label={dict.country}
                 required
                 value={contact.country}
-                onChange={(v) => set('country', v)}
+                onChange={v => set('country', v)}
                 groups={countryGroups}
             />
         ),
@@ -384,9 +464,22 @@ export function CheckoutForm({
             // The contact patch issues a traveler session for the booker's
             // email - park it in the HttpOnly cookie now so the TYP (and the
             // cancel page) render verified from the very first load.
+            //
+            // The email rides along so the route can refuse a DOWNGRADE: this
+            // token unlocks one booking, and blindly overwriting an already
+            // signed-in traveller's account session with it is what logged
+            // them out the moment they booked (report §Traveler.4).
+            const bookerEmail = contact.email.trim();
             if (withContact.sessionToken) {
-                await storeTravelerSession(withContact.sessionToken);
+                await storeTravelerSession(
+                    withContact.sessionToken,
+                    bookerEmail
+                );
             }
+            // Keep the chrome honest: the navbar reads a client-readable
+            // identity cookie that nothing used to touch here, so after
+            // checkout the header still named whoever was signed in BEFORE.
+            reconcileTravellerIdentity(bookerEmail);
 
             // Phase-1 intent: Stripe creates its PaymentIntent here; Mollie
             // only returns the Components profile (the payment is created at
@@ -440,7 +533,7 @@ export function CheckoutForm({
         o.price != null && o.price > 0
             ? `${o.label} ${dict.pickupPricePP.replace(
                   '{price}',
-                  formatCheckoutMoney(o.price, currencySymbol, locale),
+                  formatCheckoutMoney(o.price, currencySymbol, locale)
               )}`
             : o.label;
     // Required pickup drops "No pickup" and starts on a choose-me placeholder;
@@ -449,7 +542,7 @@ export function CheckoutForm({
         ...(pickupRequired
             ? [{ value: '', label: dict.pickupSelect }]
             : [{ value: 'none', label: dict.pickupNone }]),
-        ...pickupOptions.map((o) => ({ value: o.id, label: zoneLabel(o) })),
+        ...pickupOptions.map(o => ({ value: o.id, label: zoneLabel(o) })),
         { value: 'other', label: dict.pickupOther },
     ];
 
@@ -467,9 +560,7 @@ export function CheckoutForm({
             mountedRef.current = true;
             return;
         }
-        const target = contactDone
-            ? paymentHeaderRef.current
-            : cardRef.current;
+        const target = contactDone ? paymentHeaderRef.current : cardRef.current;
         // Wait for the OTHER section to finish collapsing first. It shrinks
         // over COLLAPSE_MS, so the document height keeps changing underneath a
         // scroll started now - the smooth scroll aims at an offset that has
@@ -542,219 +633,230 @@ export function CheckoutForm({
 
             {/* ── Contact form body (collapses once contact completes) ── */}
             <Collapse open={!contactDone}>
-                    <div className='flex flex-col px-[22px] pb-6 pt-0.5'>
-                        <div className='flex flex-col gap-4'>
-                            {/* Split names (mockup .row2) */}
-                            <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
-                                <Field
-                                    className='flex-1'
-                                    label={dict.firstName}
-                                    required
-                                    value={contact.firstName}
-                                    onChange={(v) => set('firstName', v)}
-                                    error={errors.firstName}
-                                />
-                                <Field
-                                    className='flex-1'
-                                    label={dict.lastName}
-                                    required
-                                    value={contact.lastName}
-                                    onChange={(v) => set('lastName', v)}
-                                    error={errors.lastName}
-                                />
-                            </div>
+                <div className='flex flex-col px-[22px] pb-6 pt-0.5'>
+                    <div className='flex flex-col gap-4'>
+                        {/* Split names (mockup .row2) */}
+                        <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
+                            <Field
+                                className='flex-1'
+                                label={dict.firstName}
+                                required
+                                value={contact.firstName}
+                                onChange={v => set('firstName', v)}
+                                error={errors.firstName}
+                            />
+                            <Field
+                                className='flex-1'
+                                label={dict.lastName}
+                                required
+                                value={contact.lastName}
+                                onChange={v => set('lastName', v)}
+                                error={errors.lastName}
+                            />
+                        </div>
 
-                            {/* Email */}
-                            <div className='flex flex-col gap-1.5'>
-                                <Field
-                                    label={dict.email}
-                                    required
-                                    type='email'
-                                    inputMode='email'
-                                    value={contact.email}
-                                    onChange={(v) => set('email', v)}
-                                    error={errors.email}
-                                />
+                        {/* Email. Locked to the signed-in traveller's own
+                                address: the booking is filed under whatever is
+                                typed here, so a free-text field let a signed-in
+                                traveller quietly file their trip on a second,
+                                unreachable account (report §Traveler.4). */}
+                        <div className='flex flex-col gap-1.5'>
+                            <Field
+                                label={dict.email}
+                                required
+                                type='email'
+                                inputMode='email'
+                                value={contact.email}
+                                onChange={v => set('email', v)}
+                                error={errors.email}
+                                readOnly={!!lockedEmail}
+                            />
+                            {lockedEmail ? (
+                                <span
+                                    className={`${helperClass} flex flex-wrap items-center gap-x-1.5 gap-y-0.5`}>
+                                    {dict.signedInAs.replace(
+                                        '{email}',
+                                        lockedEmail
+                                    )}
+                                    <button
+                                        type='button'
+                                        onClick={() =>
+                                            void handleUseAnotherEmail()
+                                        }
+                                        className='cursor-pointer border-none bg-transparent p-0 font-semibold text-it-primary underline underline-offset-2'>
+                                        {dict.useAnotherEmail}
+                                    </button>
+                                </span>
+                            ) : (
                                 <span className={helperClass}>
                                     {dict.emailHelper}
                                 </span>
-                            </div>
-
-                            {/* Country + phone */}
-                            <div className='flex flex-col gap-1.5'>
-                                <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
-                                    {countryField}
-                                    <Field
-                                        className='flex-1'
-                                        label={dict.phone}
-                                        required
-                                        type='tel'
-                                        inputMode='tel'
-                                        value={contact.phone}
-                                        onChange={(v) => set('phone', v)}
-                                        placeholder={dict.phonePlaceholder}
-                                        error={errors.phone}
-                                    />
-                                </div>
-                                <span className={helperClass}>
-                                    {dict.phoneHelper}
-                                </span>
-                            </div>
-
-                            {/* Pickup (only when the tour offers pickup) */}
-                            {pickupOptions.length > 0 && (
-                                <div className='flex flex-col gap-2'>
-                                    <SelectField
-                                        label={
-                                            pickupFromLabel
-                                                ? `${dict.pickup} ${pickupFromLabel}`
-                                                : dict.pickup
-                                        }
-                                        value={contact.pickup}
-                                        onChange={(v) => {
-                                            set('pickup', v);
-                                            // Survive a round-trip back to the
-                                            // widget and returning here again.
-                                            writeBookingSelection(tourId, {
-                                                pickup: v,
-                                            });
-                                            if (errors.pickup) {
-                                                setErrors((prev) => {
-                                                    const rest = { ...prev };
-                                                    delete rest.pickup;
-                                                    return rest;
-                                                });
-                                            }
-                                            // Publish zone id + label: the label
-                                            // mirrors into the summary card, the id
-                                            // re-quotes a priced zone's total.
-                                            const zone = pickupOptions.find(
-                                                (o) => o.id === v,
-                                            );
-                                            onPickupChange({
-                                                id: zone?.id ?? null,
-                                                label: zone
-                                                    ? zone.label
-                                                    : v === 'other'
-                                                      ? dict.pickupOther
-                                                      : null,
-                                            });
-                                        }}
-                                        options={pickupSelectOptions}
-                                        placeholderValue={
-                                            pickupRequired ? '' : 'none'
-                                        }
-                                    />
-                                    <FieldError error={errors.pickup} />
-                                </div>
                             )}
-
-                            {/* Special requests */}
-                            <div className='flex flex-col gap-1.5'>
-                                <label
-                                    className={labelClass}
-                                    htmlFor={specialId}>
-                                    {dict.specialRequests}
-                                </label>
-                                <textarea
-                                    id={specialId}
-                                    value={contact.special}
-                                    maxLength={500}
-                                    onChange={(e) =>
-                                        set('special', e.target.value)
-                                    }
-                                    placeholder={
-                                        dict.specialRequestsPlaceholder
-                                    }
-                                    className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[14px] leading-[1.5] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary'
-                                />
-                                <span className={helperClass}>
-                                    {dict.maxChars}
-                                </span>
-                            </div>
                         </div>
 
-                        {/* Form-level error (reserve / payment-setup failure). */}
-                        <AnimatePresence initial={false}>
-                            {formError && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -4, height: 0 }}
-                                    animate={{
-                                        opacity: 1,
-                                        y: 0,
-                                        height: 'auto',
-                                    }}
-                                    exit={{ opacity: 0, y: -4, height: 0 }}
-                                    transition={{
-                                        duration: 0.2,
-                                        ease: [0.4, 0, 0.2, 1],
-                                    }}
-                                    className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
-                                    {formError}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {/* Country + phone */}
+                        <div className='flex flex-col gap-1.5'>
+                            <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
+                                {countryField}
+                                <Field
+                                    className='flex-1'
+                                    label={dict.phone}
+                                    required
+                                    type='tel'
+                                    inputMode='tel'
+                                    value={contact.phone}
+                                    onChange={v => set('phone', v)}
+                                    placeholder={dict.phonePlaceholder}
+                                    error={errors.phone}
+                                />
+                            </div>
+                            <span className={helperClass}>
+                                {dict.phoneHelper}
+                            </span>
+                        </div>
 
-                        <div className='mt-5'>
-                            <CtaButton
-                                onClick={handleContactContinue}
-                                disabled={reserving}>
-                                <AnimatePresence mode='wait' initial={false}>
-                                    {reserving ? (
-                                        <motion.span
-                                            key='reserving'
-                                            initial={{ opacity: 0, y: 6 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -6 }}
-                                            transition={{ duration: 0.15 }}
-                                            className='flex items-center gap-2.5'>
-                                            <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
-                                            {dict.processing}
-                                        </motion.span>
-                                    ) : (
-                                        <motion.span
-                                            key='continue'
-                                            initial={{ opacity: 0, y: 6 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -6 }}
-                                            transition={{ duration: 0.15 }}
-                                            className='flex items-center gap-[9px]'>
-                                            {/* operator_full has no payment step:
+                        {/* Pickup (only when the tour offers pickup) */}
+                        {pickupOptions.length > 0 && (
+                            <div className='flex flex-col gap-2'>
+                                <SelectField
+                                    label={
+                                        pickupFromLabel
+                                            ? `${dict.pickup} ${pickupFromLabel}`
+                                            : dict.pickup
+                                    }
+                                    value={contact.pickup}
+                                    onChange={v => {
+                                        set('pickup', v);
+                                        // Survive a round-trip back to the
+                                        // widget and returning here again.
+                                        writeBookingSelection(tourId, {
+                                            pickup: v,
+                                        });
+                                        if (errors.pickup) {
+                                            setErrors(prev => {
+                                                const rest = { ...prev };
+                                                delete rest.pickup;
+                                                return rest;
+                                            });
+                                        }
+                                        // Publish zone id + label: the label
+                                        // mirrors into the summary card, the id
+                                        // re-quotes a priced zone's total.
+                                        const zone = pickupOptions.find(
+                                            o => o.id === v
+                                        );
+                                        onPickupChange({
+                                            id: zone?.id ?? null,
+                                            label: zone
+                                                ? zone.label
+                                                : v === 'other'
+                                                  ? dict.pickupOther
+                                                  : null,
+                                        });
+                                    }}
+                                    options={pickupSelectOptions}
+                                    placeholderValue={
+                                        pickupRequired ? '' : 'none'
+                                    }
+                                />
+                                <FieldError error={errors.pickup} />
+                            </div>
+                        )}
+
+                        {/* Special requests */}
+                        <div className='flex flex-col gap-1.5'>
+                            <label className={labelClass} htmlFor={specialId}>
+                                {dict.specialRequests}
+                            </label>
+                            <textarea
+                                id={specialId}
+                                value={contact.special}
+                                maxLength={500}
+                                onChange={e => set('special', e.target.value)}
+                                placeholder={dict.specialRequestsPlaceholder}
+                                className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[14px] leading-[1.5] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary'
+                            />
+                            <span className={helperClass}>{dict.maxChars}</span>
+                        </div>
+                    </div>
+
+                    {/* Form-level error (reserve / payment-setup failure). */}
+                    <AnimatePresence initial={false}>
+                        {formError && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -4, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                exit={{ opacity: 0, y: -4, height: 0 }}
+                                transition={{
+                                    duration: 0.2,
+                                    ease: [0.4, 0, 0.2, 1],
+                                }}
+                                className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
+                                {formError}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div className='mt-5'>
+                        <CtaButton
+                            onClick={handleContactContinue}
+                            disabled={reserving}>
+                            <AnimatePresence mode='wait' initial={false}>
+                                {reserving ? (
+                                    <motion.span
+                                        key='reserving'
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -6 }}
+                                        transition={{ duration: 0.15 }}
+                                        className='flex items-center gap-2.5'>
+                                        <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                                        {dict.processing}
+                                    </motion.span>
+                                ) : (
+                                    <motion.span
+                                        key='continue'
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -6 }}
+                                        transition={{ duration: 0.15 }}
+                                        className='flex items-center gap-[9px]'>
+                                        {/* operator_full has no payment step:
                                                 this button IS the commit (mockup
                                                 .commitblock - bare reserve CTA). */}
-                                            {hasPayment
-                                                ? dict.continue
-                                                : dict.reserve}
-                                            {hasPayment && (
-                                                <Image
-                                                    src='/icons/checkout/arrow-right-white.svg'
-                                                    alt=''
-                                                    width={24}
-                                                    height={24}
-                                                    className='size-4 shrink-0'
-                                                />
-                                            )}
-                                        </motion.span>
-                                    )}
-                                </AnimatePresence>
-                            </CtaButton>
-                        </div>
+                                        {hasPayment
+                                            ? dict.continue
+                                            : dict.reserve}
+                                        {hasPayment && (
+                                            <Image
+                                                src='/icons/checkout/arrow-right-white.svg'
+                                                alt=''
+                                                width={24}
+                                                height={24}
+                                                className='size-4 shrink-0'
+                                            />
+                                        )}
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
+                        </CtaButton>
+                    </div>
 
-                        {/* operator_full: the free-cancel + consent reassurance
+                    {/* operator_full: the free-cancel + consent reassurance
                             belongs to the committing action, which is THIS
                             button when no payment section follows. */}
-                        {!hasPayment && (
-                            <>
-                                <FreeCancelNote label={freeCancelLabel} />
-                                <ConsentLine
-                                    consent={dict.consent}
-                                    consentTerms={dict.consentTerms}
-                                    consentPrivacy={dict.consentPrivacy}
-                                    locale={locale}
-                                />
-                            </>
-                        )}
-                    </div>
+                    {!hasPayment && (
+                        <>
+                            <FreeCancelNote label={freeCancelLabel} />
+                            <ConsentLine
+                                consent={dict.consent}
+                                consentTerms={dict.consentTerms}
+                                consentPrivacy={dict.consentPrivacy}
+                                locale={locale}
+                            />
+                        </>
+                    )}
+                </div>
             </Collapse>
 
             {/* ── Payment section - expands in place once contact completes
@@ -949,3 +1051,4 @@ function Collapse({
         </motion.div>
     );
 }
+

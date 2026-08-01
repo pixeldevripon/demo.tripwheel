@@ -2,15 +2,14 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState } from 'react';
 
 import {
     ALL_LOCALES,
-    LOCALE_COOKIE,
     LOCALE_NATIVE_LABELS,
     type Locale,
 } from '@/lib/constants/locales';
+import { useLocaleSwitch } from '@/lib/i18n/use-locale-switch';
 
 import {
     dropdownItemMotion,
@@ -34,27 +33,24 @@ export function LocaleSelector({
     dict: NavDict;
     variant: 'desktop' | 'mobile';
 }) {
-    const pathname = usePathname();
-    const router = useRouter();
     const [open, setOpen] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const { isPending, prefetchLocales, switchLocale } =
+        useLocaleSwitch(locale);
     const ref = useRef<HTMLDivElement>(null);
     useClickOutside(ref, () => setOpen(false), open);
 
-    function switchLocale(next: Locale) {
-        setOpen(false);
-        if (next === locale) return;
-
-        const segments = pathname.split('/');
-        segments[1] = next; // [0] is '' (leading slash), [1] is the locale
-        const nextPath = segments.join('/') || `/${next}`;
-
-        document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-        // scroll: false keeps the reader where they are; startTransition swaps the
-        // localized content in place instead of flashing a loading state.
-        startTransition(() => {
-            router.push(nextPath, { scroll: false });
+    function toggleOpen() {
+        setOpen(v => {
+            // Warm the other locale variants while the reader scans the menu,
+            // so the eventual switch commits instantly.
+            if (!v) prefetchLocales();
+            return !v;
         });
+    }
+
+    function pickLocale(next: Locale) {
+        setOpen(false);
+        switchLocale(next);
     }
 
     const menuWidth = variant === 'desktop' ? 'min-w-45' : 'min-w-48';
@@ -62,7 +58,7 @@ export function LocaleSelector({
     return (
         <div ref={ref} className='relative'>
             <motion.button
-                onClick={() => setOpen(v => !v)}
+                onClick={toggleOpen}
                 aria-label={dict.language}
                 aria-expanded={open}
                 aria-busy={isPending}
@@ -81,7 +77,9 @@ export function LocaleSelector({
                        widest locale code, so switching locales never shifts
                        the rest of the header. */
                     <span className='inline-grid justify-items-start text-[13px] font-semibold text-it-ink uppercase'>
-                        <span className='col-start-1 row-start-1'>{locale}</span>
+                        <span className='col-start-1 row-start-1'>
+                            {locale}
+                        </span>
                         {ALL_LOCALES.map(code => (
                             <span
                                 key={code}
@@ -102,9 +100,9 @@ export function LocaleSelector({
                         {ALL_LOCALES.map(code => (
                             <motion.li key={code} {...dropdownItemMotion}>
                                 <button
-                                    onClick={() => switchLocale(code)}
+                                    onClick={() => pickLocale(code)}
                                     aria-current={code === locale}
-                                    className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                    className={`flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm bg-transparent border-none cursor-pointer transition-colors hover:bg-it-surface ${code === locale ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
                                     <span>{LOCALE_NATIVE_LABELS[code]}</span>
                                     <span className='uppercase text-xs text-it-ink-muted'>
                                         {code}
@@ -118,3 +116,4 @@ export function LocaleSelector({
         </div>
     );
 }
+

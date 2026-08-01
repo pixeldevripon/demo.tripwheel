@@ -4,10 +4,10 @@ import { Loader2, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { useTravellerIdentity } from '@/hooks/use-traveller-identity';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { signOutTraveller } from '@/lib/traveler-booking';
-import { useTravellerIdentity } from '@/hooks/use-traveller-identity';
 
 import { maskEmail } from './traveller-format';
 
@@ -48,9 +48,12 @@ export function TravellerSessionRow({
                 type='button'
                 onClick={() => void handleLogout()}
                 disabled={busy}
-                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-medium text-it-heading transition-colors hover:text-it-primary disabled:opacity-60'>
+                className='inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[13.5px] font-normal text-it-heading transition-colors hover:text-it-primary disabled:opacity-60'>
                 {busy ? (
-                    <Loader2 className='size-3.5 animate-spin' strokeWidth={2} />
+                    <Loader2
+                        className='size-3.5 animate-spin'
+                        strokeWidth={2}
+                    />
                 ) : (
                     <LogOut className='size-3.5' strokeWidth={2} />
                 )}
@@ -59,3 +62,4 @@ export function TravellerSessionRow({
         </p>
     );
 }
+

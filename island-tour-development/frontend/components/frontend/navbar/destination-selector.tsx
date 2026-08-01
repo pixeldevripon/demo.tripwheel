@@ -47,7 +47,7 @@ export function DestinationSelector({
                 onClick={() => setOpen(v => !v)}
                 aria-label={dict.selectIsland}
                 aria-expanded={open}
-                whileTap={{ scale: .98 }}
+                whileTap={{ scale: 0.98 }}
                 transition={pressSpring}
                 className={
                     variant === 'desktop'
@@ -107,12 +107,19 @@ export function DestinationSelector({
                         {...dropdownMotion}
                         className={`absolute top-[calc(100%+18px)] ${menuAlign} min-w-45 bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50`}>
                         {islands.map(island => (
-                            <motion.div key={island.slug} {...dropdownItemMotion}>
+                            <motion.div
+                                key={island.slug}
+                                {...dropdownItemMotion}>
                                 <Link
-                                    href={localizeHref(locale, `/${island.slug}`)}
+                                    href={localizeHref(
+                                        locale,
+                                        `/${island.slug}`
+                                    )}
                                     onClick={() => setOpen(false)}
-                                    aria-current={island.slug === currentIsland?.slug}
-                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-medium' : 'text-it-ink'}`}>
+                                    aria-current={
+                                        island.slug === currentIsland?.slug
+                                    }
+                                    className={`block px-5 py-3 text-sm no-underline hover:bg-it-surface transition-colors ${island.slug === currentIsland?.slug ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
                                     {island.name}
                                 </Link>
                             </motion.div>
@@ -123,3 +130,4 @@ export function DestinationSelector({
         </div>
     );
 }
+

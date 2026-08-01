@@ -72,26 +72,40 @@ export async function requestTravellerCodeClient(
 }
 
 /**
- * Redeem a code. Returns the history-scoped session token, or null for ANY
- * failure - wrong code, expired, already used, attempts exhausted, network.
- * The backend answers all of those with one generic 401 on purpose, so the
- * caller shows a single uniform message.
+ * The outcome of redeeming a code. `bad` covers EVERY credential failure -
+ * wrong code, expired, already used, attempts exhausted, network - because the
+ * backend answers all of them with one generic 401 on purpose, so the caller
+ * shows a single uniform message.
+ *
+ * `locked` is the one exception, and it is not a credential answer: the
+ * per-email guess budget is spent, so no code entered on this screen can
+ * succeed for a while. Telling those apart matters - "that code is wrong"
+ * invites another guess, which is exactly what a locked-out traveller must
+ * not be sent back to do.
  */
+export type VerifyCodeResult =
+    | { status: 'ok'; token: string }
+    | { status: 'bad' }
+    | { status: 'locked' };
+
 export async function verifyTravellerCodeClient(
     email: string,
     code: string
-): Promise<string | null> {
+): Promise<VerifyCodeResult> {
     try {
         const res = await fetch(`${BASE_URL}/bookings/traveller/verify-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, code }),
         });
-        if (!res.ok) return null;
+        if (res.status === 429) return { status: 'locked' };
+        if (!res.ok) return { status: 'bad' };
         const body = (await res.json()) as { sessionToken?: string };
-        return body.sessionToken ?? null;
+        return body.sessionToken
+            ? { status: 'ok', token: body.sessionToken }
+            : { status: 'bad' };
     } catch {
-        return null;
+        return { status: 'bad' };
     }
 }
 
@@ -113,6 +127,26 @@ export async function requestCancellationClient(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ publicRef, reason }),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Withdraw a pending cancellation request - the way back for a traveller who
+ * asked by mistake. Same proxy route pattern as the request; only works while
+ * the request is still pending (an executed cancellation needs an admin).
+ */
+export async function withdrawCancellationClient(
+    publicRef: string
+): Promise<boolean> {
+    try {
+        const res = await fetch('/api/traveller/cancellation-withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicRef }),
         });
         return res.ok;
     } catch {

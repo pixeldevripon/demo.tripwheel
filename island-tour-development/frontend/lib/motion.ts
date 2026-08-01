@@ -40,6 +40,19 @@ export const shakeX = [0, -5, 5, -3, 3, 0];
 export const shakeTransition = { duration: 0.35, ease: 'easeInOut' } as const;
 
 /**
+ * Draggable strip physics (guest-photo strip and future carousels): the
+ * release glide + the spring that catches the track at its constraints.
+ * Tuned for a short row of tiles - a longer timeConstant reads as ice,
+ * a shorter one kills the momentum the drag earned.
+ */
+export const dragGlide = {
+    power: 0.28,
+    timeConstant: 240,
+    bounceStiffness: 320,
+    bounceDamping: 34,
+} as const;
+
+/**
  * Sitewide page-enter (PageTransition): a whole page needs a longer, softer
  * settle than a card swap - same easing family as `Reveal` so route entrances
  * and section reveals feel like one system. Pair with y 16.

@@ -10,10 +10,7 @@ import {
     statusPrimaryClass,
     statusSecondaryClass,
 } from '@/components/frontend/status/status-screen';
-import {
-    TourCard,
-    type TourCardDict,
-} from '@/components/frontend/tour-card';
+import { TourCard, type TourCardDict } from '@/components/frontend/tour-card';
 import { isLocale, localizeHref } from '@/lib/constants/locales';
 import { getStatusCopy, localeFromPathname } from '@/lib/i18n/status-copy';
 import { springPop } from '@/lib/motion';
@@ -33,11 +30,7 @@ export type NotFoundQuickLink = { name: string; path: string };
  * only - no stand-in art. When it is null the figure keeps its `bg-it-border`
  * fallback background, exactly like every tour-card image container sitewide.
  */
-export type NotFoundHub = {
-    src: string | null;
-    caption: string;
-    path: string;
-};
+export type NotFoundHub = { src: string | null; caption: string; path: string };
 
 /**
  * "Popular right now" strip data, fetched server-side in the default locale
@@ -134,11 +127,11 @@ export function NotFoundScreen({
                                 coral block. */}
                             <span
                                 aria-hidden
-                                className='block font-it-display font-extrabold text-[clamp(84px,11vw,138px)] leading-[0.92] tracking-[-2px] text-it-peach-border select-none'>
+                                className='block font-it-display font-medium text-[clamp(84px,11vw,138px)] leading-[0.92] tracking-[-2px] text-it-peach-border select-none'>
                                 404
                             </span>
 
-                            <h1 className='m-0 mt-2.5 font-it-display font-extrabold text-[clamp(34px,4.4vw,52px)] leading-[1.05] tracking-[-0.5px] text-it-ink'>
+                            <h1 className='m-0 mt-2.5 font-it-display font-medium text-[clamp(34px,4.4vw,52px)] leading-[1.05] tracking-[-0.5px] text-it-ink'>
                                 {copy.title}
                             </h1>
 
@@ -197,7 +190,7 @@ export function NotFoundScreen({
                                         href={whatsappUrl}
                                         target='_blank'
                                         rel='noreferrer'
-                                        className='font-medium text-it-heading underline underline-offset-3 transition-colors duration-300 hover:text-it-primary'>
+                                        className='font-normal text-it-heading underline underline-offset-3 transition-colors duration-300 hover:text-it-primary'>
                                         {copy.helpLinkLabel}
                                     </a>{' '}
                                     {copy.helpSuffix}
@@ -224,7 +217,7 @@ export function NotFoundScreen({
                                             className='object-cover'
                                         />
                                     )}
-                                    <figcaption className='absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-it-full bg-it-white/90 px-4 py-2 text-[13px] font-medium leading-none tracking-[-0.012em] text-it-heading shadow-it-sm backdrop-blur-sm'>
+                                    <figcaption className='absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-it-full bg-it-white/90 px-4 py-2 text-[13px] font-normal leading-none tracking-[-0.012em] text-it-heading shadow-it-sm backdrop-blur-sm'>
                                         <span
                                             aria-hidden
                                             className='size-1.5 rounded-full bg-it-green'
@@ -245,7 +238,7 @@ export function NotFoundScreen({
                         <Reveal>
                             <div className='mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10'>
                                 <div>
-                                    <h2 className='m-0 font-it-display text-[27px] font-extrabold leading-[1.2] tracking-[-0.3px] text-it-ink'>
+                                    <h2 className='m-0 font-it-display text-[27px] font-medium leading-[1.2] tracking-[-0.3px] text-it-ink'>
                                         {copy.popularTitle}
                                     </h2>
                                     <p className='m-0 mt-2 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted md:text-[16px]'>
@@ -295,3 +288,4 @@ export function NotFoundScreen({
         </div>
     );
 }
+

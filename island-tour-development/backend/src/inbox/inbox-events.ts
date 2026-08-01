@@ -123,6 +123,20 @@ export const INBOX_EVENTS: Record<InboxEvent, InboxEventDefinition> = {
     audience: 'platform',
     permission: Permission.EDIT_BOOKING,
   },
+  // The counter-notice to the request: whoever would have processed it must
+  // hear it is off the table before they act. Same audience, same gate.
+  [InboxEvent.BOOKING_CANCELLATION_WITHDRAWN]: {
+    category: InboxCategory.CANCELLATIONS,
+    audience: 'platform',
+    permission: Permission.EDIT_BOOKING,
+  },
+  // Restore is the admin reversing BOOKING_CANCELLED - the operator's seats
+  // just became booked again, so it lands where the cancellation landed.
+  [InboxEvent.BOOKING_RESTORED]: {
+    category: InboxCategory.BOOKINGS,
+    audience: 'operator',
+    permission: Permission.VIEW_BOOKINGS,
+  },
   [InboxEvent.BOOKING_OPERATOR_REPORTED_CANCELLATION]: {
     category: InboxCategory.CANCELLATIONS,
     audience: 'platform',

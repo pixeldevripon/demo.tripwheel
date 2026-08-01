@@ -58,7 +58,12 @@ export interface ThankYouBooking {
      */
     verified: boolean;
     publicRef: string;
-    displayRef: string;
+    /**
+     * Null on the masked view. The reference identifies the traveller to
+     * support, so a forwarded link does not carry it - see the backend note in
+     * `getThankYou`. Every surface that prints it must handle the absence.
+     */
+    displayRef: string | null;
     /** Real booking status; the TYP is normally reached only once CONFIRMED. */
     status: string;
     /**
@@ -408,7 +413,9 @@ export function buildCalendarUrl(booking: ThankYouBooking): string {
         action: 'TEMPLATE',
         text: booking.tourTitle,
         dates: `${compact(booking.startsAtIso)}/${compact(booking.endsAtIso)}`,
-        details: `Booking ref: ${booking.displayRef}`,
+        // Only the owner's payload carries a reference; on the masked view the
+        // event still saves, just without it.
+        details: booking.displayRef ? `Booking ref: ${booking.displayRef}` : '',
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -421,7 +428,7 @@ export function buildOutlookCalendarUrl(booking: ThankYouBooking): string {
         subject: booking.tourTitle,
         startdt: booking.startsAtIso,
         enddt: booking.endsAtIso,
-        body: `Booking ref: ${booking.displayRef}`,
+        body: booking.displayRef ? `Booking ref: ${booking.displayRef}` : '',
     });
     return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
 }

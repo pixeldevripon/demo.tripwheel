@@ -3,28 +3,23 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Image from 'next/image';
-import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
+import type { TravellerBooking } from '@/lib/api/public/traveller';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { TravellerBooking } from '@/lib/api/public/traveller';
 import { crossFade } from '@/lib/motion';
 
 import { TravellerBookingPanel } from './traveller-booking-panel';
-import { isCancelledFamily } from './traveller-groups';
 import {
     bookingTone,
     paymentTone,
     TravellerChip,
     TravellerPayChip,
 } from './traveller-chip';
-import {
-    formatDay,
-    lookupLabel,
-    money,
-    partyLabel,
-} from './traveller-format';
+import { formatDay, lookupLabel, money, partyLabel } from './traveller-format';
+import { isCancelledFamily } from './traveller-groups';
 
 /**
  * One booking card (review 5.4). ONE expand affordance: the whole header row
@@ -107,7 +102,7 @@ export function TravellerBookingCard({
                 )}
                 <span className='min-w-0 flex-1'>
                     <strong
-                        className={`block font-medium leading-[1.4] tracking-[-0.012em] text-it-heading ${
+                        className={`block font-normal leading-[1.4] tracking-[-0.012em] text-it-heading ${
                             variant === 'full' ? 'text-[19px]' : 'text-[17px]'
                         }`}>
                         {booking.tourName}
@@ -124,7 +119,7 @@ export function TravellerBookingCard({
                     </span>
                 </span>
                 <span className='hidden shrink-0 text-right sm:block'>
-                    <span className='block font-medium text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                    <span className='block font-normal text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {money(booking.totalRetail, booking.currency, locale)}
                     </span>
                     <span className='mt-0.5 block font-mono text-[12.5px] text-it-text-muted'>
@@ -194,3 +189,4 @@ export function paymentChipFor(
         />
     );
 }
+

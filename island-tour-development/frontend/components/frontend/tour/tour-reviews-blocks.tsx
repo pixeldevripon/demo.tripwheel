@@ -2,7 +2,7 @@ import { connection } from 'next/server';
 import type { ComponentProps } from 'react';
 import { type Locale } from '@/lib/constants/locales';
 import { getTourReviews } from '@/lib/api/public/reviews';
-import { REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
+import { PHOTO_STRIP_LIMIT, REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { ReviewFacet, ThemeFacet } from '@/types/review';
@@ -101,11 +101,26 @@ export async function TourReviewsBlock({
     dict,
 }: TourReviewsBlockProps) {
     await connection();
-    const reviewList = await getTourReviews({
-        tourId,
-        locale,
-        limit: REVIEWS_PAGE_SIZE,
-    });
+    // The strip must show EVERY guest photo, not just those on the first page
+    // of reviews (QA follow-up 2026-08-02) - so it gets its own withPhotos
+    // fetch. Both hit the same cached loader and run in parallel.
+    const [reviewList, photoReviewList] = await Promise.all([
+        getTourReviews({
+            tourId,
+            locale,
+            limit: REVIEWS_PAGE_SIZE,
+        }),
+        photoCount > 0
+            ? getTourReviews({
+                  tourId,
+                  locale,
+                  limit: PHOTO_STRIP_LIMIT,
+                  withPhotos: true,
+              })
+            : Promise.resolve(null),
+    ]);
+    const stripPhotos =
+        photoReviewList?.data.flatMap(r => r.photos ?? []) ?? [];
     const fullReviews = reviewList.data.map(r =>
         toFullReview(r, locale, hostLabel, dict.responseByPlatform),
     );
@@ -146,6 +161,7 @@ export async function TourReviewsBlock({
                 guestTypes={guestTypes}
                 languages={languages}
                 photoCount={photoCount}
+                stripPhotos={stripPhotos}
                 initialReviews={fullReviews}
                 total={reviewList.total}
                 pageSize={REVIEWS_PAGE_SIZE}

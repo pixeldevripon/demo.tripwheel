@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import 'dotenv/config';
 import { auth } from '../src/auth/auth.instance';
+import { seedTeamDesignations } from './seed-designations';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -93,6 +94,10 @@ async function main() {
   await seedHubs();
   await seedAttributes();
   await seedRecommendations();
+  // Default operator-team designation templates: operators.service.create
+  // provisions NEW operators; this backfills the ones that predate the
+  // feature. Standalone: `pnpm prisma:seed:designations[:clean]`.
+  await seedTeamDesignations(prisma);
 }
 
 // ── Island Tours' post-booking recommendations (thank-you page / email promo) ──

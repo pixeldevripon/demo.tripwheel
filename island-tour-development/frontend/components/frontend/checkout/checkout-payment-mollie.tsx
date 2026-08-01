@@ -83,7 +83,7 @@ export function CheckoutPaymentMollie({
         let cancelled = false;
         const mounted: MollieComponent[] = [];
 
-        void loadMollieJs().then((Mollie) => {
+        void loadMollieJs().then(Mollie => {
             if (cancelled) return;
             if (!Mollie) {
                 setCardState('unavailable');
@@ -122,11 +122,10 @@ export function CheckoutPaymentMollie({
                 if (!target) continue;
                 const component = mollie.createComponent(type, { styles });
                 component.mount(target);
-                component.addEventListener('change', (state) => {
-                    setErrors((prev) => ({
+                component.addEventListener('change', state => {
+                    setErrors(prev => ({
                         ...prev,
-                        [key]:
-                            state.error && state.touched ? state.error : '',
+                        [key]: state.error && state.touched ? state.error : '',
                     }));
                 });
                 mounted.push(component);
@@ -221,7 +220,7 @@ export function CheckoutPaymentMollie({
                    inside one; Enter in a field dispatches its submit). */
                 <form
                     className='flex flex-col'
-                    onSubmit={(e) => {
+                    onSubmit={e => {
                         e.preventDefault();
                         void handlePay();
                     }}>
@@ -283,8 +282,8 @@ export function CheckoutPaymentMollie({
                     {testmode && cardState === 'ready' && (
                         <p className='pt-1.5 text-[12.5px] leading-[1.6] text-it-ink-muted'>
                             Test mode - use card 4543 4740 0224 9996 (Visa) or
-                            2223 0000 1047 9399 (Mastercard), any future
-                            expiry, any CVV, any name.
+                            2223 0000 1047 9399 (Mastercard), any future expiry,
+                            any CVV, any name.
                         </p>
                     )}
                 </form>
@@ -319,50 +318,50 @@ export function CheckoutPaymentMollie({
             </AnimatePresence>
 
             <div className='mt-5'>
-            <CtaButton
-                onClick={handlePay}
-                disabled={processing || cardState === 'loading'}>
-                <AnimatePresence mode='wait' initial={false}>
-                    {processing ? (
-                        <motion.span
-                            key='processing'
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.15 }}
-                            className='flex items-center gap-2.5'>
-                            <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
-                            {dict.processing}
-                        </motion.span>
-                    ) : (
-                        <motion.span
-                            key='label'
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.15 }}
-                            className='flex items-center gap-[9px]'>
-                            <Image
-                                src='/icons/checkout/lock-white.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-[15px] shrink-0'
-                            />
-                            {dict.reserve}
-                            {payToday > 0 && (
-                                <>
-                                    {' · '}
-                                    {dict.reservePay.replace(
-                                        '{amount}',
-                                        money(payToday)
-                                    )}
-                                </>
-                            )}
-                        </motion.span>
-                    )}
-                </AnimatePresence>
-            </CtaButton>
+                <CtaButton
+                    onClick={handlePay}
+                    disabled={processing || cardState === 'loading'}>
+                    <AnimatePresence mode='wait' initial={false}>
+                        {processing ? (
+                            <motion.span
+                                key='processing'
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.15 }}
+                                className='flex items-center gap-2.5'>
+                                <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                                {dict.processing}
+                            </motion.span>
+                        ) : (
+                            <motion.span
+                                key='label'
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.15 }}
+                                className='flex items-center gap-[9px]'>
+                                <Image
+                                    src='/icons/checkout/lock-white.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className='size-[15px] shrink-0'
+                                />
+                                {dict.reserve}
+                                {payToday > 0 && (
+                                    <>
+                                        {' · '}
+                                        {dict.reservePay.replace(
+                                            '{amount}',
+                                            money(payToday)
+                                        )}
+                                    </>
+                                )}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </CtaButton>
             </div>
 
             {/* Free-cancellation + implied consent (same as the Stripe panel). */}
@@ -377,3 +376,4 @@ export function CheckoutPaymentMollie({
         </div>
     );
 }
+

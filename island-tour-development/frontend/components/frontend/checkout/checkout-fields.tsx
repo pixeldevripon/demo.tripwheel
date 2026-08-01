@@ -132,6 +132,7 @@ export function Field({
     error,
     className,
     inputMode,
+    readOnly,
 }: {
     label: string;
     required?: boolean;
@@ -142,6 +143,13 @@ export function Field({
     error?: string;
     className?: string;
     inputMode?: 'text' | 'email' | 'tel' | 'numeric';
+    /**
+     * Value is fixed by something outside the form (checkout locks the email to
+     * the signed-in traveller). `readOnly`, never `disabled`: the value still
+     * submits, still reads to a screen reader, and stays selectable/copyable -
+     * a disabled input would look like a bug on a field that shows real data.
+     */
+    readOnly?: boolean;
 }) {
     const id = useId();
     return (
@@ -155,11 +163,12 @@ export function Field({
                 inputMode={inputMode}
                 value={value}
                 placeholder={placeholder}
-                onChange={(e) => onChange(e.target.value)}
+                readOnly={readOnly}
+                onChange={e => onChange(e.target.value)}
                 aria-invalid={error ? true : undefined}
                 className={`${inputBase} h-[46px] ${
                     error ? 'border-it-primary' : 'border-it-border'
-                }`}
+                } ${readOnly ? 'bg-it-surface text-it-text-muted focus:border-it-border' : ''}`}
             />
             <FieldError error={error} />
         </div>
@@ -257,21 +266,21 @@ export function SelectField({
                 <select
                     id={id}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={e => onChange(e.target.value)}
                     className={`${inputBase} h-[46px] cursor-pointer appearance-none border-it-border pr-11 ${
                         value === placeholderValue ? 'text-it-ink-muted' : ''
                     }`}>
                     {groups
-                        ? groups.map((g) => (
+                        ? groups.map(g => (
                               <optgroup key={g.label} label={g.label}>
-                                  {g.options.map((o) => (
+                                  {g.options.map(o => (
                                       <option key={o.value} value={o.value}>
                                           {o.label}
                                       </option>
                                   ))}
                               </optgroup>
                           ))
-                        : options?.map((o) => (
+                        : options?.map(o => (
                               <option key={o.value} value={o.value}>
                                   {o.label}
                               </option>
@@ -342,3 +351,4 @@ export function CtaButton({
         </motion.button>
     );
 }
+

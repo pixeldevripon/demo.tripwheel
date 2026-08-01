@@ -1,5 +1,5 @@
-import { MotionA } from '@/components/frontend/motion-primitives';
 import { MotionLink } from '@/components/frontend/motion-link';
+import { MotionA } from '@/components/frontend/motion-primitives';
 import { Reveal } from '@/components/frontend/reveal';
 import type { PublicRecommendation } from '@/lib/api/public/recommendation';
 import { localizeHref } from '@/lib/constants/locales';
@@ -12,7 +12,8 @@ import { Fragment, type ReactNode } from 'react';
 type ThankYouDict = Dictionary['thankYou'];
 
 const factText = 'text-[13px] font-semibold leading-[1.6] text-it-ink';
-const factTextSm = 'text-[13px] leading-[1.5] tracking-[-0.012em] text-it-heading/70';
+const factTextSm =
+    'text-[13px] leading-[1.5] tracking-[-0.012em] text-it-heading/70';
 
 /**
  * The brand palm that opens the eyebrow line (design v2 .apteyebrow). Rendered
@@ -35,7 +36,7 @@ const dot = (
 );
 
 const ctaClassSm =
-    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[13.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
+    'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-normal text-[13.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
 
 /**
  * Post-booking recommendations section. Admin-managed (Dashboard > Recommendations),
@@ -91,7 +92,7 @@ export function ThankYouRecommendations({
 function buildFacts(
     r: PublicRecommendation,
     dict: ThankYouDict,
-    size: 'md' | 'sm',
+    size: 'md' | 'sm'
 ): { key: string; node: ReactNode }[] {
     const cls = size === 'sm' ? factTextSm : factText;
     const facts: { key: string; node: ReactNode }[] = [];
@@ -334,7 +335,7 @@ function GridCard({
                         {EyebrowMark} {eyebrow}
                     </span>
                 )}
-                <h3 className='m-0 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
+                <h3 className='m-0 font-normal text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
                     {title}
                 </h3>
                 {facts.length > 0 && (
@@ -371,3 +372,4 @@ function GridCard({
         </CardLink>
     );
 }
+

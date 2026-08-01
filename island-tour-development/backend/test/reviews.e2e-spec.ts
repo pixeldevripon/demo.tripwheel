@@ -157,6 +157,10 @@ describe('Reviews (e2e)', () => {
         status: BookingStatus.REDEEMED,
         paymentModel: PaymentModel.OPERATOR_LINK,
         currency: Currency.USD,
+        // Required since the column lost its default: a booking always records
+        // the destination it was sold under, so the TYP URL survives a slug
+        // rename.
+        island: 'curacao',
         localDate: dateOnly(-3),
         startTime: '09:00',
         tourStartDateTime: new Date(dateOnly(-3).getTime() + 9 * 3600e3),

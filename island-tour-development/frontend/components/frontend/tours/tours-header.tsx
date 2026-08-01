@@ -39,7 +39,8 @@ export async function ToursHeader({
     // The bundled subtitle is a template ("… on {destination}"), so it names the
     // island it is actually rendering on. A pre-resolved override is used as-is.
     const subtitle =
-        subtitleOverride ?? dict.subtitle.replace('{destination}', destinationName);
+        subtitleOverride ??
+        dict.subtitle.replace('{destination}', destinationName);
     const count = dict.availableCount.replace('{count}', String(total));
 
     return (
@@ -58,3 +59,4 @@ export async function ToursHeader({
         </div>
     );
 }
+

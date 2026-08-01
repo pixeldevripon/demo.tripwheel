@@ -2,7 +2,10 @@ import { MotionA } from '@/components/frontend/motion-primitives';
 import { MountReveal } from '@/components/frontend/mount-reveal';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
-import { buildCalendarUrl, type ThankYouBooking } from '@/lib/thank-you/thank-you';
+import {
+    buildCalendarUrl,
+    type ThankYouBooking,
+} from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
 import { BookingRefCopy, ResendEmailLine } from './thank-you-hero-actions';
 
@@ -74,7 +77,8 @@ export function BookingManageHeader({
     // No calendar CTA while a cancellation request is pending either -
     // calendaring a trip the traveller just asked to cancel reads as the
     // platform not listening (same logic as hiding the resend line below).
-    const showCalendar = !cancelled && !cancellationPending && !booking.departed;
+    const showCalendar =
+        !cancelled && !cancellationPending && !booking.departed;
 
     const stateNote = cancelled
         ? dict.cancelledNote
@@ -92,12 +96,12 @@ export function BookingManageHeader({
                             className={`size-1.5 shrink-0 rounded-full ${statusChip.dot}`}
                         />
                         <span
-                            className={`text-[13px] font-medium leading-[1.2] tracking-[-0.012em] ${statusChip.text}`}>
+                            className={`text-[13px] font-normal leading-[1.2] tracking-[-0.012em] ${statusChip.text}`}>
                             {statusChip.label}
                         </span>
                     </span>
                     <div className='flex flex-col gap-1'>
-                        <h1 className='m-0 font-medium text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <h1 className='m-0 font-normal text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             {dict.manageTitle}
                         </h1>
                         <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
@@ -107,20 +111,25 @@ export function BookingManageHeader({
                                 .replace('{time}', booking.startTimeLabel)}
                         </p>
                     </div>
-                    <div className='mt-1 flex items-center gap-2.5 self-start rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
-                        <span className='text-it-text-muted'>
-                            {dict.bookingRef}
-                        </span>
-                        <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
-                            {booking.displayRef}
-                        </code>
-                        <BookingRefCopy
-                            displayRef={booking.displayRef}
-                            copyLabel={dict.copy}
-                            copiedLabel={dict.copied}
-                            ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
-                        />
-                    </div>
+                    {/* Verified viewers only - see the hero. In practice this
+                        header is reached with a session, so the chip is
+                        normally present. */}
+                    {booking.displayRef && (
+                        <div className='mt-1 flex items-center gap-2.5 self-start rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
+                            <span className='text-it-text-muted'>
+                                {dict.bookingRef}
+                            </span>
+                            <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
+                                {booking.displayRef}
+                            </code>
+                            <BookingRefCopy
+                                displayRef={booking.displayRef}
+                                copyLabel={dict.copy}
+                                copiedLabel={dict.copied}
+                                ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
+                            />
+                        </div>
+                    )}
                     {/* Says what is happening, so a traveller whose request is
                         pending is not left guessing whether it registered -
                         the reason the cancel form kept getting re-submitted. */}
@@ -140,7 +149,7 @@ export function BookingManageHeader({
                     <MountReveal delay={0.05}>
                         <div className='flex flex-col gap-3 rounded-[16px] border border-it-border bg-it-surface p-5 sm:flex-row sm:items-center sm:justify-between'>
                             <div className='flex flex-col gap-1'>
-                                <span className='font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                                <span className='font-normal text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                                     {dict.reviewPrompt}
                                 </span>
                                 <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
@@ -151,7 +160,7 @@ export function BookingManageHeader({
                                 href={reviewHref}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='flex shrink-0 items-center justify-center rounded-full bg-it-primary px-7 py-[11px] font-medium text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
+                                className='flex shrink-0 items-center justify-center rounded-full bg-it-primary px-7 py-[11px] font-normal text-[15px] leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors hover:bg-it-primary-hover'>
                                 {dict.reviewCta}
                             </MotionA>
                         </div>
@@ -161,41 +170,41 @@ export function BookingManageHeader({
                 {/* Skipped entirely when neither action applies, or the row
                     would animate in an empty container. */}
                 {(showCalendar || canCancel) && (
-                <MountReveal
-                    delay={0.1}
-                    className='flex flex-col gap-4 sm:flex-row sm:items-center'>
-                    {showCalendar && (
-                    <MotionA
-                        href={buildCalendarUrl(booking)}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        whileTap={{ scale: 0.98 }}
-                        transition={springPop}
-                        className='flex items-center justify-center gap-2.5 rounded-full bg-it-primary px-8 py-[13px] transition-colors hover:bg-it-primary-hover'>
-                        <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                            {dict.addToCalendar}
-                        </span>
-                        <Image
-                            src='/icons/thank-you/arrow-down-white.svg'
-                            alt=''
-                            width={16}
-                            height={16}
-                            className='size-4'
-                        />
-                    </MotionA>
-                    )}
-                    {canCancel && (
-                        <MotionA
-                            href={cancelHref}
-                            whileTap={{ scale: 0.98 }}
-                            transition={springPop}
-                            className='flex items-center justify-center gap-2.5 rounded-full border-[1.5px] border-it-heading/15 px-8 py-[11.5px] transition-colors hover:border-it-heading/35'>
-                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                {dict.cancelBooking}
-                            </span>
-                        </MotionA>
-                    )}
-                </MountReveal>
+                    <MountReveal
+                        delay={0.1}
+                        className='flex flex-col gap-4 sm:flex-row sm:items-center'>
+                        {showCalendar && (
+                            <MotionA
+                                href={buildCalendarUrl(booking)}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                whileTap={{ scale: 0.98 }}
+                                transition={springPop}
+                                className='flex items-center justify-center gap-2.5 rounded-full bg-it-primary px-8 py-[13px] transition-colors hover:bg-it-primary-hover'>
+                                <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                    {dict.addToCalendar}
+                                </span>
+                                <Image
+                                    src='/icons/thank-you/arrow-down-white.svg'
+                                    alt=''
+                                    width={16}
+                                    height={16}
+                                    className='size-4'
+                                />
+                            </MotionA>
+                        )}
+                        {canCancel && (
+                            <MotionA
+                                href={cancelHref}
+                                whileTap={{ scale: 0.98 }}
+                                transition={springPop}
+                                className='flex items-center justify-center gap-2.5 rounded-full border-[1.5px] border-it-heading/15 px-8 py-[11.5px] transition-colors hover:border-it-heading/35'>
+                                <span className='font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                    {dict.cancelBooking}
+                                </span>
+                            </MotionA>
+                        )}
+                    </MountReveal>
                 )}
 
                 {/* Re-sending "You're booked!" while a cancellation request
@@ -219,3 +228,4 @@ export function BookingManageHeader({
         </section>
     );
 }
+

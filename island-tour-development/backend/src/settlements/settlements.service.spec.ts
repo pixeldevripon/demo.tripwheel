@@ -397,5 +397,35 @@ describe('SettlementsService', () => {
       expect(res.data[0].payoutHeld).toBe(true);
       expect(res.data[0].payoutEligible).toBe(false);
     });
+
+    // Test report 2026-08-01 §Admin.4. Scoping used to ask "is this an ADMIN",
+    // which threw platform staff into operator resolution - and they have no
+    // operator record, so the whole payout ledger 400'd for them.
+    it.each([
+      ['STAFF', Role.STAFF],
+      ['EDITOR', Role.EDITOR],
+    ])('reads the ledger platform-wide for %s', async (_label, role) => {
+      prisma.settlement.count.mockResolvedValue(1);
+      prisma.settlement.findMany.mockResolvedValue([row()]);
+
+      await svc.list({}, { id: 'staff-1', role });
+
+      expect(
+        prisma.settlement.findMany.mock.calls[0][0].where.operatorId,
+      ).toBeUndefined();
+      expect(prisma.operator.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('still scopes a TOUR_OPERATOR to their own settlements', async () => {
+      prisma.operator.findUnique.mockResolvedValue({ id: 'op-9' });
+      prisma.settlement.count.mockResolvedValue(0);
+      prisma.settlement.findMany.mockResolvedValue([]);
+
+      await svc.list({}, { id: 'operator-1', role: Role.TOUR_OPERATOR });
+
+      expect(prisma.settlement.findMany.mock.calls[0][0].where.operatorId).toBe(
+        'op-9',
+      );
+    });
   });
 });

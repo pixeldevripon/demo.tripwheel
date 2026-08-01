@@ -91,7 +91,7 @@ export function BookingCalendar() {
     const firstAvailable = useMemo(() => {
         if (!isLive || !calendarDays) return null;
         const open = Object.keys(calendarDays)
-            .filter((k) => calendarDays[k].available)
+            .filter(k => calendarDays[k].available)
             .sort();
         return open[0] ?? null;
     }, [isLive, calendarDays]);
@@ -102,8 +102,8 @@ export function BookingCalendar() {
     useEffect(() => {
         if (!firstAvailable || selectedDate) return;
         const [y, m] = firstAvailable.split('-').map(Number);
-        setView((v) =>
-            v.year === y && v.month === m - 1 ? v : { year: y, month: m - 1 },
+        setView(v =>
+            v.year === y && v.month === m - 1 ? v : { year: y, month: m - 1 }
         );
     }, [firstAvailable, selectedDate]);
 
@@ -137,7 +137,7 @@ export function BookingCalendar() {
     }, [view]);
 
     const shiftMonth = (delta: number) =>
-        setView((v) => {
+        setView(v => {
             const d = new Date(v.year, v.month + delta, 1);
             return { year: d.getFullYear(), month: d.getMonth() };
         });
@@ -158,9 +158,7 @@ export function BookingCalendar() {
                 }`}>
                 <span
                     className={`text-[14px] font-semibold leading-[1.6] ${
-                        selectedDate
-                            ? 'text-it-ink'
-                            : 'text-it-ink-muted'
+                        selectedDate ? 'text-it-ink' : 'text-it-ink-muted'
                     }`}>
                     {selectedDate
                         ? formatSelectedDate(selectedDate, locale)
@@ -205,7 +203,7 @@ export function BookingCalendar() {
                                         onClick={() => shiftMonth(-1)}
                                         whileTap={{ scale: 0.99 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                         <Image
                                             src='/icons/booking-arrow.svg'
                                             alt=''
@@ -216,10 +214,10 @@ export function BookingCalendar() {
                                         {monthName(
                                             view.month,
                                             view.year,
-                                            locale,
+                                            locale
                                         )}
                                     </motion.button>
-                                    <span className='font-medium text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                                    <span className='font-normal text-[20px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                                         {view.year}
                                     </span>
                                     <motion.button
@@ -227,7 +225,7 @@ export function BookingCalendar() {
                                         onClick={() => shiftMonth(1)}
                                         whileTap={{ scale: 0.99 }}
                                         transition={springPop}
-                                        className='flex cursor-pointer items-center gap-2 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        className='flex cursor-pointer items-center gap-2 font-normal text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                         {monthName(
                                             view.month === 11
                                                 ? 0
@@ -235,7 +233,7 @@ export function BookingCalendar() {
                                             view.month === 11
                                                 ? view.year + 1
                                                 : view.year,
-                                            locale,
+                                            locale
                                         )}
                                         <Image
                                             src='/icons/booking-arrow.svg'
@@ -258,10 +256,10 @@ export function BookingCalendar() {
                                             ? 'animate-pulse'
                                             : ''
                                     }`}>
-                                    {weekdays.map((w) => (
+                                    {weekdays.map(w => (
                                         <span
                                             key={w}
-                                            className='font-medium text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            className='font-normal text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                                             {w}
                                         </span>
                                     ))}
@@ -287,7 +285,7 @@ export function BookingCalendar() {
                                             selectedDate != null &&
                                             startOfDay(date).getTime() ===
                                                 startOfDay(
-                                                    selectedDate,
+                                                    selectedDate
                                                 ).getTime();
                                         // Hover hint: why a future in-month day can't be
                                         // picked (live only). Absent day = no schedule,
@@ -319,7 +317,7 @@ export function BookingCalendar() {
                                                     hint
                                                         ? () =>
                                                               setHoveredKey(
-                                                                  null,
+                                                                  null
                                                               )
                                                         : undefined
                                                 }>
@@ -338,7 +336,7 @@ export function BookingCalendar() {
                                                     transition={springPop}
                                                     className={`grid size-9 place-items-center rounded-it-full text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${
                                                         isSelected
-                                                            ? 'bg-it-primary font-medium text-it-white'
+                                                            ? 'bg-it-primary font-normal text-it-white'
                                                             : disabled
                                                               ? 'cursor-not-allowed text-it-ink-muted/50'
                                                               : 'cursor-pointer text-it-heading hover:bg-it-surface'
@@ -382,8 +380,9 @@ export function BookingCalendar() {
                             </motion.div>
                         )}
                     </AnimatePresence>,
-                    document.body,
+                    document.body
                 )}
         </div>
     );
 }
+

@@ -210,7 +210,7 @@ function DefaultTourCard({
                 // (the foot stays pinned), so the stack reads as equal rows.
                 mobileRow &&
                     'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
-                className,
+                className
             )}>
             {/* ── Image area ──────────────────────────────────────────────── */}
             <div
@@ -218,7 +218,7 @@ function DefaultTourCard({
                     // Mockup .tc .im: photo eases to 1.03 on card hover (260ms).
                     'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
                     mobileRow &&
-                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none',
+                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'
                 )}>
                 <TourCardCarousel
                     images={tour.images}
@@ -277,7 +277,7 @@ function DefaultTourCard({
             {/* ── Card info (design v2 .tc .body) ─────────────────────────── */}
             <div
                 className={cn(
-                    'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5',
+                    'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
                 )}>
                 {/* Rating row - amber star glyph + soft count (above title). */}
                 {isRated && (
@@ -292,7 +292,7 @@ function DefaultTourCard({
                 )}
 
                 {/* Tour title */}
-                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
+                <h3 className='m-0 font-it-body font-medium text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
                     {tour.title}
                 </h3>
 
@@ -329,7 +329,7 @@ function DefaultTourCard({
                 <div className='mt-auto flex flex-col gap-[3px] pt-2'>
                     <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                         <span>{dict.from}</span>
-                        <span className='font-extrabold text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.01em] text-it-ink tabular-nums'>
+                        <span className='font-medium text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.01em] text-it-ink tabular-nums'>
                             {tour.priceDisplay}
                         </span>
                         <span>{priceLabel}</span>
@@ -351,7 +351,7 @@ function DefaultTourCard({
                                 'm-0 inline-flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text',
                                 // Mockup hides the note on the compact mobile
                                 // row card - the price line closes the card.
-                                mobileRow && 'max-sm:hidden',
+                                mobileRow && 'max-sm:hidden'
                             )}>
                             <Image
                                 src='/icons/check-green.svg'
@@ -418,14 +418,14 @@ function RankedTourCard({
                 '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
                 mobileRow &&
                     'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
-                className,
+                className
             )}>
             {/* ── Image area ──────────────────────────────────────────────── */}
             <div
                 className={cn(
                     'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
                     mobileRow &&
-                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none',
+                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'
                 )}>
                 <TourCardCarousel
                     images={tour.images}
@@ -438,7 +438,7 @@ function RankedTourCard({
                 )}
                 {/* Rank circle (top-left) + Wishlist (top-right) */}
                 <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2'>
-                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-extrabold text-it-white shadow-it-sm tabular-nums'>
+                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-medium text-it-white shadow-it-sm tabular-nums'>
                         {rank}
                     </span>
                     <motion.button
@@ -518,7 +518,7 @@ function RankedTourCard({
                 {/* Price - pinned to the card foot. */}
                 <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {dict.from}
-                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-extrabold tracking-[-0.01em] text-it-ink tabular-nums'>
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-medium tracking-[-0.01em] text-it-ink tabular-nums'>
                         {tour.priceDisplay}
                     </b>
                 </div>

@@ -40,3 +40,4 @@ export function CollectionShareButton({ label }: { label: string }) {
         </button>
     );
 }
+

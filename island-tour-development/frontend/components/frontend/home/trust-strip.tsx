@@ -53,3 +53,4 @@ export function TrustStrip({ items }: { items: TrustItem[] }) {
         </section>
     );
 }
+

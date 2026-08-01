@@ -28,9 +28,9 @@
  *   import { DestinationListings } from '@/components/frontend/destination/destination-listings';
  */
 
+import { localizeHref, type Locale } from '@/lib/constants/locales';
 import Image from 'next/image';
 import Link from 'next/link';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { Reveal } from '../reveal';
 import type { TourCardDict, TourListing } from '../tour-card';
 import { TourCard } from '../tour-card';
@@ -102,7 +102,7 @@ export function DestinationListings({
                         <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
                             {kicker}
                         </div>
-                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-medium text-it-ink'>
                             {title}
                         </h2>
                     </div>
@@ -113,10 +113,7 @@ export function DestinationListings({
                         sm: 3-col grid · lg: 4-col grid (DIT-13). */}
                     <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
                         {tours.map((tour, i) => (
-                            <Reveal
-                                key={tour.id}
-                                width='auto'
-                                listItem>
+                            <Reveal key={tour.id} width='auto' listItem>
                                 <TourCard
                                     tour={tour}
                                     dict={cardDict}
@@ -131,7 +128,7 @@ export function DestinationListings({
                     <div className='mt-2 flex justify-center'>
                         <Link
                             href={browseHref}
-                            className='inline-flex items-center justify-center gap-2.5 rounded-it-sm bg-it-primary px-7 py-3.5 text-[16.5px] md:text-[19px] font-bold text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full'>
+                            className='inline-flex items-center justify-center gap-2.5 rounded-it-sm bg-it-primary px-7 py-3.5 text-[16.5px] md:text-[19px] font-medium text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full'>
                             {browseLabel}
                             <Image
                                 src='/icons/hero-arrow-right.svg'

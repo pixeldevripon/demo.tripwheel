@@ -1,9 +1,7 @@
-import Image from 'next/image';
 import { type Locale } from '@/lib/constants/locales';
+import Image from 'next/image';
 
-export type TourHeaderDict = {
-    localsFavorite: string;
-};
+export type TourHeaderDict = { localsFavorite: string };
 
 /**
  * Tour detail title block (design v2 .titleblock) - sits directly under the
@@ -39,14 +37,14 @@ export function TourHeader({
                 <span className='tabular-nums'>
                     ({new Intl.NumberFormat(locale).format(reviewCount)})
                 </span>
-            </span>,
+            </span>
         );
     }
     if (isLocalsFavourite) {
         metaItems.push(
             <span key='locals' className='font-bold text-it-primary-hover'>
                 ✦ {dict.localsFavorite}
-            </span>,
+            </span>
         );
     }
     if (locationLabel) {
@@ -60,7 +58,7 @@ export function TourHeader({
                     className='size-3.5 shrink-0'
                 />
                 {locationLabel}
-            </span>,
+            </span>
         );
     }
 
@@ -72,7 +70,7 @@ export function TourHeader({
                         {title}
                     </h1>
                     {metaItems.length > 0 && (
-                        <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-medium leading-[1.6] text-it-text-muted'>
+                        <div className='mt-2.5 flex flex-wrap items-center gap-[7px] text-[13.5px] font-normal leading-[1.6] text-it-text-muted'>
                             {metaItems.map((item, i) => (
                                 <span
                                     key={i}
@@ -92,3 +90,4 @@ export function TourHeader({
         </section>
     );
 }
+

@@ -1,8 +1,8 @@
 'use client';
 
+import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { springPop } from '@/lib/motion';
 
 /** Circular +/- stepper button (Figma node 49212:8122). */
 function StepperButton({
@@ -60,7 +60,7 @@ export function Stepper({
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
             />
-            <span className='min-w-4 text-center font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <span className='min-w-4 text-center font-normal text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                 {value}
             </span>
             <StepperButton
@@ -72,3 +72,4 @@ export function Stepper({
         </div>
     );
 }
+

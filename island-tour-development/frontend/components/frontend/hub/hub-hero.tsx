@@ -11,8 +11,8 @@ import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Fragment, useState } from 'react';
-import { useOptionalHubDate } from './hub-date-context';
 import { MountReveal } from '../mount-reveal';
+import { useOptionalHubDate } from './hub-date-context';
 
 type HubHeroDict = {
     tagline: string;
@@ -117,10 +117,12 @@ export function HubHero({
                 <div className='flex w-full flex-col items-start'>
                     {/* Title + tagline */}
                     <MountReveal className='flex flex-col items-start'>
-                        <h1 className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white' : 'text-it-ink'}`}>
+                        <h1
+                            className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white' : 'text-it-ink'}`}>
                             {title}
                         </h1>
-                        <p className={`m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
+                        <p
+                            className={`m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
@@ -133,39 +135,40 @@ export function HubHero({
                             the Figma mobile layout); desktop is a single row. */}
                         {meta.length > 0 && (
                             <MountReveal delay={0.12} yOffset={14}>
-                            {/* .factline: white facts split by hairline bars
+                                {/* .factline: white facts split by hairline bars
                                 on desktop, stacked plain on mobile. */}
-                            <ul className='m-0 mt-[18px] flex list-none flex-col items-start gap-[7px] p-0 md:flex-row md:flex-wrap md:items-center md:gap-0'>
-                                {meta.map((item, i) => (
-                                    <Fragment key={item.label}>
-                                        {i > 0 && (
-                                            <li
-                                                aria-hidden='true'
-                                                className={`hidden h-[15px] w-px shrink-0 md:block ${image ? 'bg-it-white/42' : 'bg-it-border'}`}
-                                            />
-                                        )}
-                                        <li className='flex items-center gap-2 py-0.5 md:px-[18px] md:first:pl-0'>
-                                            <Image
-                                                src={
-                                                    image
-                                                        ? item.icon
-                                                        : item.icon.replace(
-                                                              '.svg',
-                                                              '-soft.svg'
-                                                          )
-                                                }
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-4 shrink-0 opacity-92'
-                                            />
-                                            <span className={`whitespace-nowrap text-[14px] font-semibold leading-[1.6] ${image ? 'text-it-white' : 'text-it-ink'}`}>
-                                                {item.label}
-                                            </span>
-                                        </li>
-                                    </Fragment>
-                                ))}
-                            </ul>
+                                <ul className='m-0 mt-[18px] flex list-none flex-col items-start gap-[7px] p-0 md:flex-row md:flex-wrap md:items-center md:gap-0'>
+                                    {meta.map((item, i) => (
+                                        <Fragment key={item.label}>
+                                            {i > 0 && (
+                                                <li
+                                                    aria-hidden='true'
+                                                    className={`hidden h-[15px] w-px shrink-0 md:block ${image ? 'bg-it-white/42' : 'bg-it-border'}`}
+                                                />
+                                            )}
+                                            <li className='flex items-center gap-2 py-0.5 md:px-[18px] md:first:pl-0'>
+                                                <Image
+                                                    src={
+                                                        image
+                                                            ? item.icon
+                                                            : item.icon.replace(
+                                                                  '.svg',
+                                                                  '-soft.svg'
+                                                              )
+                                                    }
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-4 shrink-0 opacity-92'
+                                                />
+                                                <span
+                                                    className={`whitespace-nowrap text-[14px] font-semibold leading-[1.6] ${image ? 'text-it-white' : 'text-it-ink'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </li>
+                                        </Fragment>
+                                    ))}
+                                </ul>
                             </MountReveal>
                         )}
 
@@ -174,76 +177,81 @@ export function HubHero({
                             delay={0.24}
                             yOffset={14}
                             className='w-full max-w-[460px]'>
-                        {/* .herodate: white date field + orange Go */}
-                        <div className='mt-[22px] flex w-full items-stretch gap-2.5'>
-                            <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                                {/* Clear control as a SIBLING of the trigger -
+                            {/* .herodate: white date field + orange Go */}
+                            <div className='mt-[22px] flex w-full items-stretch gap-2.5'>
+                                <Popover
+                                    open={dateOpen}
+                                    onOpenChange={setDateOpen}>
+                                    {/* Clear control as a SIBLING of the trigger -
                                     a button's descendants are presentational
                                     to the accessibility tree, so a nested
                                     control would be unreachable. */}
-                                <div className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-it-sm bg-it-white px-4 ${image ? '' : 'border border-it-border'}`}>
-                                    <PopoverTrigger asChild>
-                                        <motion.button
-                                            type='button'
-                                            aria-label={dict.selectDate}
-                                            className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-text-muted'}`}>
-                                            <Image
-                                                src='/icons/calendar-soft.svg'
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-[17px] shrink-0'
-                                            />
-                                            {date
-                                                ? format(date, 'd MMM yyyy')
-                                                : dict.selectDate}
-                                        </motion.button>
-                                    </PopoverTrigger>
-                                    {date && (
-                                        <motion.button
-                                            type='button'
-                                            aria-label={dict.clearDate}
-                                            whileTap={{ scale: 0.9 }}
-                                            transition={springPop}
-                                            onClick={() => setDate(undefined)}
-                                            className='grid shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
-                                            <Image
-                                                src='/icons/filters/close-circle.svg'
-                                                alt=''
-                                                width={20}
-                                                height={20}
-                                                className='size-5 shrink-0'
-                                            />
-                                        </motion.button>
-                                    )}
-                                </div>
-                                <PopoverContent
-                                    align='start'
-                                    sideOffset={28}
-                                    className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
-                                    <Calendar
-                                        mode='single'
-                                        selected={date}
-                                        onSelect={selected => {
-                                            setDate(selected);
-                                            setDateOpen(false);
-                                        }}
-                                        disabled={{ before: new Date() }}
-                                        autoFocus
-                                        className='bg-it-white [--cell-radius:8px]'
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                                    <div
+                                        className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-it-sm bg-it-white px-4 ${image ? '' : 'border border-it-border'}`}>
+                                        <PopoverTrigger asChild>
+                                            <motion.button
+                                                type='button'
+                                                aria-label={dict.selectDate}
+                                                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-text-muted'}`}>
+                                                <Image
+                                                    src='/icons/calendar-soft.svg'
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-[17px] shrink-0'
+                                                />
+                                                {date
+                                                    ? format(date, 'd MMM yyyy')
+                                                    : dict.selectDate}
+                                            </motion.button>
+                                        </PopoverTrigger>
+                                        {date && (
+                                            <motion.button
+                                                type='button'
+                                                aria-label={dict.clearDate}
+                                                whileTap={{ scale: 0.9 }}
+                                                transition={springPop}
+                                                onClick={() =>
+                                                    setDate(undefined)
+                                                }
+                                                className='grid shrink-0 cursor-pointer place-items-center border-none bg-transparent p-0'>
+                                                <Image
+                                                    src='/icons/filters/close-circle.svg'
+                                                    alt=''
+                                                    width={20}
+                                                    height={20}
+                                                    className='size-5 shrink-0'
+                                                />
+                                            </motion.button>
+                                        )}
+                                    </div>
+                                    <PopoverContent
+                                        align='start'
+                                        sideOffset={28}
+                                        className='w-auto rounded-[8px] bg-it-white p-0 text-it-heading duration-300 ease-[cubic-bezier(0.21,0.47,0.32,0.98)]'>
+                                        <Calendar
+                                            mode='single'
+                                            selected={date}
+                                            onSelect={selected => {
+                                                setDate(selected);
+                                                setDateOpen(false);
+                                            }}
+                                            disabled={{ before: new Date() }}
+                                            autoFocus
+                                            className='bg-it-white [--cell-radius:8px]'
+                                        />
+                                    </PopoverContent>
+                                </Popover>
 
-                            <motion.button
-                                type='button'
-                                onClick={handleCheckAvailability}
-                                whileTap={{ scale: 0.98 }}
-                                transition={springPop}
-                                className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
-                                {dict.checkAvailability}
-                            </motion.button>
-                        </div>
+                                <motion.button
+                                    type='button'
+                                    onClick={handleCheckAvailability}
+                                    whileTap={{ scale: 0.98 }}
+                                    transition={springPop}
+                                    className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                                    {dict.checkAvailability}
+                                </motion.button>
+                            </div>
                         </MountReveal>
                     </div>
                 </div>

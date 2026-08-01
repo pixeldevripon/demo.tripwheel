@@ -56,7 +56,11 @@ import {
   verifyTravelerSession,
 } from './traveler-session.util';
 import { CustomerProvisioningService } from '@/customers/customer-provisioning.service';
-import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
+import {
+  LookupRateLimiter,
+  TargetRateLimiter,
+  type TargetWindow,
+} from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
 import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
 import { InboxService } from '@/inbox/inbox.service';
@@ -2000,6 +2004,217 @@ export class BookingsService {
   }
 
   /**
+   * Traveller-initiated WITHDRAWAL of a pending cancellation request (QA
+   * report 2026-08-01: once requested there was no way back for the guest).
+   * Clears the request stamp so the booking simply stands again - and so a
+   * later, genuine request re-stamps a fresh eligibility instant. Only works
+   * while the request is still pending: once an admin executed the
+   * cancellation, restoring is an admin action (`restore`), because money may
+   * already have moved.
+   *
+   * Same ownership gate as the request itself, and the admin is told in the
+   * same channels the request used - otherwise they might execute a
+   * cancellation the traveller no longer wants.
+   */
+  async withdrawCancellationRequest(
+    publicRef: string,
+    sessionToken?: string | null,
+  ): Promise<{ withdrawn: boolean }> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { publicRef },
+      select: CANCELLATION_REQUEST_SELECT,
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (
+      !sessionOwnsBooking(verifyTravelerSession(sessionToken), {
+        id: booking.id,
+        contactEmail: booking.contactEmail,
+      })
+    ) {
+      throw new UnauthorizedException(
+        'Verify with your email and booking reference to withdraw a cancellation request',
+      );
+    }
+
+    // Same per-booking cap as the request: bounds mailbox noise from loops.
+    this.targetLimiter.consume('cancel-withdraw', booking.publicRef, [
+      { max: 5, windowMs: 60 * 60 * 1000 },
+    ]);
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new ConflictException(
+        'This booking was already cancelled - contact us and we can restore it for you',
+      );
+    }
+    // Nothing pending: the goal state ("no open request") is already true, so
+    // a repeat submit is a quiet success rather than an error.
+    if (!booking.utcCancellationRequestedAt) return { withdrawn: true };
+
+    // Guarded consume (security review 2026-08-01): of two racing withdraws
+    // (double-click) only one matches the still-set stamp; the loser is a
+    // quiet success WITHOUT notices, so one logical action can never send the
+    // admin/traveller/operator trio twice.
+    const consumed = await this.prisma.booking.updateMany({
+      where: {
+        id: booking.id,
+        utcCancellationRequestedAt: { not: null },
+      },
+      data: { utcCancellationRequestedAt: null },
+    });
+    if (consumed.count === 0) return { withdrawn: true };
+
+    await this.sendCancellationWithdrawnNotices(booking);
+
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_CANCELLATION_WITHDRAWN,
+      operatorId: booking.operatorId,
+      title: `Cancellation request withdrawn: ${booking.displayRef}`,
+      body: 'The traveller kept their booking - nothing to process.',
+      url: `/bookings?ref=${booking.displayRef}`,
+      entityType: 'booking',
+      entityId: booking.id,
+    });
+
+    this.logger.log(`Cancellation request withdrawn for ${booking.displayRef}`);
+    return { withdrawn: true };
+  }
+
+  /**
+   * Admin + traveller ack + operator notice for a withdrawn cancellation
+   * request - the exact audience the request itself notified, so nobody is
+   * left acting on a request that no longer exists. Best-effort: the stamp is
+   * already cleared, and the dashboard worklist reads the stamp, so a dead
+   * mailbox here cannot cause a wrong cancellation.
+   */
+  private async sendCancellationWithdrawnNotices(
+    booking: CancellationRequestBooking,
+  ): Promise<void> {
+    const [operator, site] = await Promise.all([
+      this.prisma.operator.findUnique({
+        where: { id: booking.operatorId },
+        select: {
+          contactEmail: true,
+          companyInfo: { select: { companyEmail: true, companyName: true } },
+        },
+      }),
+      this.prisma.siteInfo.findFirst({ select: { logo: true } }),
+    ]);
+    const siteBase = islandToursBase();
+    const dashBase = dashboardAppBase();
+    const tourName = booking.tour?.name ?? 'Your tour';
+    const guestName =
+      booking.contactFullName ??
+      ([booking.contactFirstName, booking.contactLastName]
+        .filter(Boolean)
+        .join(' ') ||
+        'The traveller');
+    const shared = {
+      emailIconBase: emailIconBase(),
+      siteLogoUrl: emailSafeLogoUrl(site?.logo) ?? '',
+      bookingRef: booking.displayRef,
+      tourName,
+      startTime: booking.startTime ?? '',
+    };
+
+    // The admin FIRST - they are the one who might still execute the request.
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          Locale.en,
+        ),
+        noticeTitle: 'Cancellation request withdrawn.',
+        noticeParagraphs: [
+          `${guestName} withdrew their cancellation request for booking ${booking.displayRef} (${tourName}).`,
+          'The booking stands - do not process the earlier request.',
+        ],
+        ctaUrl: `${dashBase}/bookings`,
+        ctaLabel: 'View booking in the dashboard',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          adminEmail,
+          `Cancellation request withdrawn - ${booking.displayRef}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Withdrawal notice to admin failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+
+    // Traveller ack, in their locale.
+    if (booking.contactEmail) {
+      const locale = toLocale(booking.customerLocale);
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          locale,
+        ),
+        noticeTitle: 'Your booking stands.',
+        noticeParagraphs: [
+          'We cancelled your cancellation request - your booking is unchanged and your spot is still yours.',
+          'Change your plans again? You can request a cancellation from your booking page at any time within your free-cancellation window.',
+        ],
+        ctaUrl: `${siteBase}/${booking.island}/thank-you/${booking.publicRef}`,
+        ctaLabel: 'View your booking',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          booking.contactEmail,
+          `Your booking stands - ${booking.displayRef}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Withdrawal ack to traveller failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+
+    // Operator heads-up (company inbox first, same as the request notice).
+    const operatorEmail =
+      operator?.companyInfo?.companyEmail ?? operator?.contactEmail ?? null;
+    if (operatorEmail) {
+      const ctx: EmailTemplateContext = {
+        ...shared,
+        dateLong: formatDateLong(
+          booking.tourStartDateTime ?? booking.localDate,
+          Locale.en,
+        ),
+        noticeTitle: 'Cancellation request withdrawn.',
+        noticeParagraphs: [
+          `${guestName} withdrew the cancellation request for booking ${booking.displayRef} (${tourName}).`,
+          'The booking stands as confirmed - no action needed.',
+        ],
+        ctaUrl: `${dashBase}/bookings`,
+        ctaLabel: 'View booking in your dashboard',
+      };
+      try {
+        await this.mail.sendBookingNoticeEmail(
+          operatorEmail,
+          `Cancellation request withdrawn - ${booking.displayRef}: ${tourName}`,
+          ctx,
+          buildNoticeText(ctx),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Withdrawal notice to operator failed for ${booking.displayRef}`,
+          err as Error,
+        );
+      }
+    }
+  }
+
+  /**
    * The ownership-gate-free core of a cancellation request: per-booking cap,
    * status check, first-request stamp, admin email, traveller/operator
    * notices. The caller MUST have proven ownership already - today that means
@@ -2611,6 +2826,230 @@ export class BookingsService {
       );
     }
     return mapBookingForActor(updated, actor);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // Restore - reverse a mistaken cancellation (QA report 2026-08-01)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Admin-only reversal of an executed cancellation: re-takes the seats,
+   * flips the booking (and its unit items) back to CONFIRMED, clears every
+   * cancellation stamp, reinstates the settlement obligation and re-sends the
+   * confirmation email. Exists because a cancellation can be executed by
+   * mistake (traveller-reported) and "rebook and repay" is not an answer when
+   * the traveller's money never moved.
+   *
+   * Hard refusals - each names the state that makes a restore wrong:
+   * - money already went back (a REFUND payment settled or in flight): the
+   *   paid amounts on the booking would be a lie. Rebook instead.
+   * - the departure already ran, or was itself cancelled: there is nothing to
+   *   restore the seats INTO.
+   * - the seats were resold meanwhile: restoring would overbook the boat.
+   * - a forfeited booking: forfeit is its own terminal path (kept commission,
+   *   different money story) - never quietly reversible.
+   */
+  async restore(id: string, actor: { id: string; role: Role }) {
+    const booking = await this.loadOr404(id);
+
+    // Same conflict-#2 boundary as executing the cancellation: only an admin
+    // reverses one. (The route also carries MANAGE_BOOKINGS; this guard keeps
+    // a second entry point from ever skipping it.)
+    if (actor.role !== Role.ADMIN) {
+      throw new ForbiddenException(
+        'Only an Island Tours admin can restore a cancelled booking',
+      );
+    }
+
+    // Idempotent: restoring a booking that is already back (or never left)
+    // returns its current state - a double-click must not error.
+    if (booking.status === BookingStatus.CONFIRMED) {
+      return mapBookingForActor(booking, actor);
+    }
+    if (booking.status !== BookingStatus.CANCELLED) {
+      throw new ConflictException(`Cannot restore a ${booking.status} booking`);
+    }
+    if (booking.utcConfirmedAt === null) {
+      throw new ConflictException(
+        'This booking never confirmed - it was a checkout hold, there is nothing to restore',
+      );
+    }
+    if (booking.utcForfeitedAt !== null) {
+      throw new ConflictException(
+        'A forfeited booking cannot be restored - the deposit was kept under the non-payment policy',
+      );
+    }
+    if (hasDeparted(booking)) {
+      throw new ConflictException(
+        'This departure has already run - there is nothing to restore the booking into',
+      );
+    }
+    // A settled or in-flight refund means the traveller's money is on its way
+    // back - restoring would advertise a paid booking that is not paid.
+    const refunded = await this.prisma.payment.findFirst({
+      where: {
+        bookingId: booking.id,
+        kind: PaymentKind.REFUND,
+        status: {
+          in: [
+            PaymentStatus.REFUNDED,
+            PaymentStatus.SUCCEEDED,
+            PaymentStatus.PROCESSING,
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    if (refunded) {
+      throw new ConflictException(
+        'The traveller was already refunded - a restored booking would claim money we returned. Ask them to rebook instead.',
+      );
+    }
+
+    const seats = booking.unitItems.length;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // The concurrency gate, FIRST (security review 2026-08-01): the WHERE
+      // re-evaluates status under the row lock, so of two racing restores
+      // (dashboard double-click) exactly one flips CANCELLED -> CONFIRMED;
+      // the loser matches 0 rows and aborts BEFORE touching seats - without
+      // this both would pass the pre-transaction status check and the
+      // departure would absorb the same booking's seats twice.
+      const flipped = await tx.booking.updateMany({
+        where: { id: booking.id, status: BookingStatus.CANCELLED },
+        data: {
+          status: BookingStatus.CONFIRMED,
+          utcCancelledAt: null,
+          utcCancellationRequestedAt: null,
+          cancellationRefund: null,
+          cancellationReason: null,
+          cancelledBy: null,
+          utcOperatorCancellationReportedAt: null,
+          operatorCancellationReason: null,
+        },
+      });
+      if (flipped.count === 0) {
+        throw new ConflictException('This booking was already restored');
+      }
+      if (booking.departureId) {
+        const dep = await tx.departure.findUnique({
+          where: { id: booking.departureId },
+          select: { capacity: true, status: true },
+        });
+        if (!dep || dep.status === DepartureStatus.CANCELLED) {
+          throw new ConflictException(
+            'This departure was cancelled - the booking cannot be restored into it',
+          );
+        }
+        // Guarded seat re-claim, mirroring the reserve-time claim: the WHERE
+        // re-evaluates fill under concurrency, so a restore can never overbook
+        // seats that were resold after the cancellation. Unlike reserve it
+        // accepts a SOLD_OUT/CLOSED departure (sticky states stop NEW sales,
+        // not the return of a seat that was wrongly released) - only a
+        // CANCELLED departure is a dead end, checked above.
+        const claim = booking.exclusiveDeparture
+          ? await tx.departure.updateMany({
+              where: {
+                id: booking.departureId,
+                status: { not: DepartureStatus.CANCELLED },
+                bookedCount: 0,
+              },
+              data: { bookedCount: dep.capacity },
+            })
+          : await tx.departure.updateMany({
+              where: {
+                id: booking.departureId,
+                status: { not: DepartureStatus.CANCELLED },
+                bookedCount: { lte: dep.capacity - seats },
+              },
+              data: { bookedCount: { increment: seats } },
+            });
+        if (claim.count === 0) {
+          throw new ConflictException(
+            booking.exclusiveDeparture
+              ? 'The departure was rebooked after the cancellation - the private charter cannot be restored'
+              : 'Not enough seats left on this departure to restore the booking',
+          );
+        }
+        await this.recomputeStoredStatus(tx, booking.departureId);
+      }
+      await tx.bookingUnitItem.updateMany({
+        where: { bookingId: booking.id },
+        data: { status: BookingStatus.CONFIRMED },
+      });
+      // The guarded flip above already wrote every field - this is just the
+      // fresh row for the return value and the notices.
+      return tx.booking.findUniqueOrThrow({
+        where: { id: booking.id },
+        include: { unitItems: true },
+      });
+    });
+
+    this.logger.log(`Booking ${updated.displayRef} restored by admin`);
+
+    // Reinstate the settlement obligation the cancellation reversed - the
+    // booking delivers again, so the operator payout is owed again.
+    await this.reinstateSettlement(updated.id);
+
+    // The traveller was told "cancellation confirmed" - the confirmation
+    // email going out again is the counter-notice that their spot is back.
+    // Best-effort like the confirm-time send: the restore itself committed.
+    await this.sendConfirmationEmail(updated);
+
+    this.inbox.notify({
+      event: InboxEvent.BOOKING_RESTORED,
+      operatorId: updated.operatorId,
+      title: `Booking ${updated.displayRef} was restored`,
+      body: 'The cancellation was reversed - the seats are booked again and the traveller has been re-sent their confirmation.',
+      url: `/bookings?ref=${updated.displayRef}`,
+      entityType: 'booking',
+      entityId: updated.id,
+      actorUserId: actor.id,
+    });
+
+    // Seats re-taken + status changed: same availability/materialization fan-out
+    // as the cancellation that released them.
+    this.emitBookingEvents(updated, { availability: !!booking.departureId });
+    if (updated.userId) {
+      void this.customerProvisioning.recomputeAggregates(
+        updated.userId,
+        updated.operatorId,
+      );
+    }
+    return mapBookingForActor(updated, actor);
+  }
+
+  /**
+   * Undo `reverseSettlement` for a restored booking: a REVERSED row returns to
+   * RECORDED with its net obligation recomputed from the untouched historical
+   * amounts. A PAID_OUT row is left alone (that money moved; clawback logic
+   * does not belong here). Best-effort, like its counterpart.
+   */
+  private async reinstateSettlement(bookingId: string): Promise<void> {
+    try {
+      const row = await this.prisma.settlement.findUnique({
+        where: { bookingId },
+        select: {
+          status: true,
+          amountCollected: true,
+          commissionOwed: true,
+        },
+      });
+      if (!row || row.status !== SettlementStatus.REVERSED) return;
+      await this.prisma.settlement.update({
+        where: { bookingId },
+        data: {
+          status: SettlementStatus.RECORDED,
+          netPosition: row.amountCollected
+            .minus(row.commissionOwed)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Settlement reinstatement failed for booking ${bookingId} - backfill needed`,
+        err as Error,
+      );
+    }
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -3526,6 +3965,18 @@ export class BookingsService {
   private static readonly LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
   /** Guesses allowed against a single code before it is burned. */
   private static readonly LOGIN_CODE_MAX_ATTEMPTS = 5;
+  /**
+   * Guess budget per EMAIL, independent of both the per-code cap and the
+   * per-IP throttle (pentest 2026-08-01: the per-IP tiers reset in seconds, so
+   * a caller who simply paces requests - or spreads them over a handful of IPs
+   * - never hits a wall). Sized well above legitimate use: the request side
+   * only mints 5 codes per inbox per day and each allows 5 tries, so a real
+   * traveller can never reach these numbers by mistyping.
+   */
+  private static readonly LOGIN_VERIFY_WINDOWS: TargetWindow[] = [
+    { max: 12, windowMs: 15 * 60 * 1000 },
+    { max: 30, windowMs: 24 * 60 * 60 * 1000 },
+  ];
 
   /**
    * Email a one-time login code for the traveller account area.
@@ -3672,26 +4123,76 @@ export class BookingsService {
     const email = dto.email.trim().toLowerCase();
     const invalid = () => new UnauthorizedException('Invalid or expired code');
 
+    // Per-EMAIL guess budget, spent BEFORE anything is read. Two holes it
+    // closes (pentest 2026-08-01):
+    //
+    // 1. The per-IP throttle is not a lockout. Its windows reset in seconds,
+    //    so guessing slowly - or from a second IP - never gets blocked. This
+    //    cap follows the TARGET, so it holds however the traffic is spread.
+    // 2. When no code is live the method used to return a free 401 forever:
+    //    no row meant no attempt counter, so the endpoint answered an
+    //    unlimited number of guesses at zero cost. Charging here first makes
+    //    every call cost something, including that path.
+    //
+    // Deliberately counts attempts, not failures: a success ends the flow, so
+    // the two are the same for anyone who is not guessing.
+    try {
+      this.targetLimiter.consume(
+        'traveller-otp-verify',
+        email,
+        BookingsService.LOGIN_VERIFY_WINDOWS,
+        'Too many sign-in attempts for this email. Please wait a few minutes and try again.',
+      );
+    } catch (err) {
+      if (
+        err instanceof HttpException &&
+        err.getStatus() === HttpStatus.TOO_MANY_REQUESTS
+      ) {
+        // The client treats EVERY 429 here as "stop guessing" (the per-IP
+        // guard's 429 means the same thing on this step), so the marker is
+        // for the API and the logs: it separates a target that is locked out
+        // from a client that is simply going too fast.
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: err.message,
+            reason: 'too-many-attempts',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw err;
+    }
+
     const row = await this.prisma.travelerLoginCode.findFirst({
       where: { email, consumedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     });
     if (!row) throw invalid();
 
-    if (row.attempts >= BookingsService.LOGIN_CODE_MAX_ATTEMPTS) {
+    // Take a guess ATOMICALLY. The cap has to be evaluated by the write, not
+    // against the snapshot above: parallel submissions all read the same
+    // `attempts` value, so a stale `row.attempts >= MAX` check let a burst of
+    // N concurrent requests each spend a try on a code that was only ever
+    // allowed 5 - the whole per-code cap collapsed under concurrency. Postgres
+    // serializes the row lock, so exactly MAX of any burst can match.
+    const { count: consumedAttempt } =
+      await this.prisma.travelerLoginCode.updateMany({
+        where: {
+          id: row.id,
+          consumedAt: null,
+          attempts: { lt: BookingsService.LOGIN_CODE_MAX_ATTEMPTS },
+        },
+        data: { attempts: { increment: 1 } },
+      });
+    if (consumedAttempt !== 1) {
+      // Out of tries (or redeemed by a racing request) - burn what is left.
       await this.prisma.travelerLoginCode.updateMany({
         where: { id: row.id, consumedAt: null },
         data: { consumedAt: new Date() },
       });
       throw invalid();
     }
-
-    // Count the attempt BEFORE comparing: parallel guesses must not race extra
-    // tries out of the same code.
-    await this.prisma.travelerLoginCode.update({
-      where: { id: row.id },
-      data: { attempts: { increment: 1 } },
-    });
 
     if (!loginCodeMatches(email, dto.code, row.codeHash)) throw invalid();
 
@@ -3815,6 +4316,44 @@ export class BookingsService {
         ...mapTravellerBookingItem(row, locale),
         review: this.reviewStateForRow(row),
       })),
+    };
+  }
+
+  /**
+   * Checkout prefill for a signed-in traveller (test report 2026-08-01 §1): the
+   * contact block off their most recent booking, so a returning traveller does
+   * not retype their own name and phone on every trip.
+   *
+   * `email` is the SESSION email, never the stored contactEmail - the two are
+   * the same by definition here (the list is scoped by contact email), and
+   * returning the proven one keeps checkout's locked email field honest even if
+   * an older booking carries a different casing.
+   *
+   * Same HISTORY-scoped gate as the rest of the account area: a pair-login or
+   * checkout token proves inbox knowledge, not ownership, and must not be able
+   * to read a stranger's name and phone number back out.
+   */
+  async getTravellerContact(sessionToken?: string) {
+    const email = this.requireTravellerEmail(sessionToken);
+    const last = await this.prisma.booking.findFirst({
+      where: { contactEmail: { equals: email, mode: 'insensitive' } },
+      // Latest wins: a traveller who moved country or changed number expects
+      // the details they used most recently, not their first ever booking.
+      orderBy: { createdAt: 'desc' },
+      select: {
+        contactFirstName: true,
+        contactLastName: true,
+        contactPhone: true,
+        contactCountry: true,
+      },
+    });
+    return {
+      hasHistory: last !== null,
+      email,
+      firstName: last?.contactFirstName ?? null,
+      lastName: last?.contactLastName ?? null,
+      phone: last?.contactPhone ?? null,
+      country: last?.contactCountry ?? null,
     };
   }
 
@@ -4550,7 +5089,14 @@ export class BookingsService {
           : null,
       },
       publicRef: booking.publicRef,
-      displayRef: booking.displayRef,
+      // WITHHELD unverified (pentest 2026-08-01). The reference is not a tour
+      // fact, it is the identifier a traveller quotes to support - so handing
+      // it to anyone holding a forwarded link turns a read-only capability
+      // into the makings of an impersonation ("hi, it's IT-2026-MADK2, please
+      // refund me"). It is also half of the `/bookings` pair login. Nobody who
+      // cannot prove ownership has a use for it: the owner already has it in
+      // their confirmation email.
+      displayRef: verified ? booking.displayRef : null,
       status: booking.status,
       displayStatus: deriveBookingDisplayStatus(booking),
       tourId: booking.tourId,

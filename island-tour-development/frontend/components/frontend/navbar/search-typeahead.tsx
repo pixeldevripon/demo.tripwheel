@@ -45,7 +45,7 @@ function EntityRow({
                     {icon}
                 </span>
                 <span className='min-w-0 flex-1'>
-                    <span className='block truncate text-sm font-medium text-it-ink'>
+                    <span className='block truncate text-sm font-normal text-it-ink'>
                         {label}
                     </span>
                     {subtitle && (
@@ -155,7 +155,7 @@ function TourRow({
                             <span className='truncate'>{contextLabel}</span>
                         </span>
                     )}
-                    <span className='block truncate text-sm font-medium text-it-ink'>
+                    <span className='block truncate text-sm font-normal text-it-ink'>
                         {hit.title}
                     </span>
                     {meta.length > 0 && (
@@ -175,7 +175,7 @@ function TourRow({
                         </span>
                     )}
                     <span className='mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs'>
-                        <span className='font-medium text-it-ink'>
+                        <span className='font-normal text-it-ink'>
                             {dict.from}{' '}
                             {formatPriceFrom(
                                 hit.money?.priceFrom ??
@@ -284,7 +284,9 @@ export function SearchTypeahead({
                                     key={d.slug}
                                     href={destinationHref(d.slug)}
                                     onSelect={onSelect}
-                                    icon={<MapPin size={18} strokeWidth={1.5} />}
+                                    icon={
+                                        <MapPin size={18} strokeWidth={1.5} />
+                                    }
                                     label={d.name}
                                 />
                             ))}
@@ -337,10 +339,7 @@ export function SearchTypeahead({
                         <>
                             {islandName && (
                                 <SectionHeader>
-                                    {dict.toursIn.replace(
-                                        '{name}',
-                                        islandName
-                                    )}
+                                    {dict.toursIn.replace('{name}', islandName)}
                                 </SectionHeader>
                             )}
                             <ul className='m-0 list-none p-0 pb-1.5'>
@@ -361,36 +360,38 @@ export function SearchTypeahead({
                     )}
 
                     {/* ── Beyond the active island ── */}
-                    {islandName && !!suggest && suggest.beyondTours.length > 0 && (
-                        <>
-                            <SectionHeader>
-                                {dict.beyond.replace('{name}', islandName)}
-                            </SectionHeader>
-                            <ul className='m-0 list-none p-0 pb-1.5'>
-                                {suggest.beyondTours.map(hit => (
-                                    <TourRow
-                                        key={hit.id}
-                                        hit={hit}
-                                        contextLabel={
-                                            hit.destinationName ?? null
-                                        }
-                                        contextKind='destination'
-                                        locale={locale}
-                                        currency={currency}
-                                        dict={dict}
-                                        href={tourHref(hit)}
-                                        onSelect={onSelect}
-                                    />
-                                ))}
-                            </ul>
-                        </>
-                    )}
+                    {islandName &&
+                        !!suggest &&
+                        suggest.beyondTours.length > 0 && (
+                            <>
+                                <SectionHeader>
+                                    {dict.beyond.replace('{name}', islandName)}
+                                </SectionHeader>
+                                <ul className='m-0 list-none p-0 pb-1.5'>
+                                    {suggest.beyondTours.map(hit => (
+                                        <TourRow
+                                            key={hit.id}
+                                            hit={hit}
+                                            contextLabel={
+                                                hit.destinationName ?? null
+                                            }
+                                            contextKind='destination'
+                                            locale={locale}
+                                            currency={currency}
+                                            dict={dict}
+                                            href={tourHref(hit)}
+                                            onSelect={onSelect}
+                                        />
+                                    ))}
+                                </ul>
+                            </>
+                        )}
 
                     {!!suggest && suggest.total > 0 && (
                         <Link
                             href={searchHref(query)}
                             onClick={onSelect}
-                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-medium text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-normal text-it-primary no-underline transition-colors hover:bg-it-surface'>
                             {dict.seeAll.replace(
                                 '{count}',
                                 String(suggest.total)
@@ -402,3 +403,4 @@ export function SearchTypeahead({
         </motion.div>
     );
 }
+

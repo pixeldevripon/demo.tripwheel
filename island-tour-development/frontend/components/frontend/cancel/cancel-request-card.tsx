@@ -1,5 +1,6 @@
 'use client';
 
+import { ConfirmDialog } from '@/components/frontend/confirm-dialog';
 import { requestBookingCancellation } from '@/lib/api/bookings';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade } from '@/lib/motion';
@@ -30,13 +31,20 @@ export function CancelRequestCard({
     publicRef: string;
     /** Master-format title, already substituted: "Cancel {tour}, {date}?" */
     title: string;
-    displayRef: string;
+    /**
+     * Null only in theory: this card renders behind the page's verified gate,
+     * and the reference is withheld from unverified payloads. Typed honestly
+     * so the reference row is skipped rather than printing "Reference null".
+     */
+    displayRef: string | null;
     /** "Refund $48" - null when nothing was paid to Island Tours (C23). */
     refundLabel: string | null;
     /** "Keep my booking" returns the traveller to their TYP. */
     thankYouHref: string;
 }) {
     const [state, setState] = useState<SubmitState>('idle');
+    /** The are-you-sure modal (QA follow-up 2026-08-02). */
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const [reason, setReason] = useState('');
 
     async function submit() {
@@ -49,6 +57,8 @@ export function CancelRequestCard({
             // Covers the hard throttle (429) and transport errors alike - the
             // traveller retries or takes the WhatsApp route.
             setState('failed');
+        } finally {
+            setConfirmOpen(false);
         }
     }
 
@@ -62,7 +72,7 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col gap-2.5'>
-                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {dict.sentTitle}
                         </span>
                         <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -73,7 +83,7 @@ export function CancelRequestCard({
                             the thank-you page. */}
                         <Link
                             href={thankYouHref}
-                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                            className='mt-3 w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                             {dict.seeStatus}
                         </Link>
                     </motion.div>
@@ -84,15 +94,17 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col'>
-                        <span className='font-medium text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </span>
-                        <span className='mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
-                            {dict.reference} {displayRef}
-                        </span>
+                        {displayRef && (
+                            <span className='mt-2 text-[13px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                                {dict.reference} {displayRef}
+                            </span>
+                        )}
 
                         {refundLabel && (
-                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-medium leading-[1.6] tracking-[-0.012em] text-it-green'>
+                            <span className='mt-3 w-fit rounded-full bg-it-green/8 px-3 py-1 text-[14px] font-normal leading-[1.6] tracking-[-0.012em] text-it-green'>
                                 {refundLabel}
                             </span>
                         )}
@@ -127,20 +139,41 @@ export function CancelRequestCard({
                             <motion.button
                                 type='button'
                                 whileTap={{ scale: 0.97 }}
-                                onClick={submit}
+                                onClick={() => setConfirmOpen(true)}
                                 disabled={state === 'sending'}
-                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60'>
-                                {state === 'sending' ? dict.sending : dict.confirm}
+                                className='cursor-pointer rounded-[10px] border-none bg-it-heading px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-white transition-opacity duration-300 hover:opacity-90 disabled:cursor-default disabled:opacity-60'>
+                                {state === 'sending'
+                                    ? dict.sending
+                                    : dict.confirm}
                             </motion.button>
                             <Link
                                 href={thankYouHref}
-                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-medium leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                                className='rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
                                 {dict.keep}
                             </Link>
                         </div>
+                        {/* One more explicit yes before the request fires
+                            (QA follow-up 2026-08-02). Reuses the card's own
+                            already-substituted question and refund note. */}
+                        <ConfirmDialog
+                            open={confirmOpen}
+                            title={title}
+                            body={
+                                refundLabel
+                                    ? `${refundLabel}. ${dict.refundNote} ${dict.refundMethod}`
+                                    : dict.refundNote
+                            }
+                            confirmLabel={dict.confirm}
+                            cancelLabel={dict.keep}
+                            busy={state === 'sending'}
+                            destructive
+                            onConfirm={() => void submit()}
+                            onClose={() => setConfirmOpen(false)}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
     );
 }
+

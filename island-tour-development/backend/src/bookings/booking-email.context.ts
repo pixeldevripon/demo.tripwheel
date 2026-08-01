@@ -119,6 +119,13 @@ function formatDeadline(date: Date, locale: Locale | null): string {
  * ISO 639-1 codes ("en", "es", "nl") rendered as names in the reader's language
  * ("English, Spanish, Dutch"). `TourLanguage.language` stores codes; emailing them
  * raw is a bug the design caught ("Language: en, es, nl").
+ *
+ * These are the languages the TOUR is run in. The row is labelled "Guided in:"
+ * rather than the wireframe's "Language:" because that label was ambiguous the
+ * moment a tour had more than one (founder, 2026-08-01: "showing language, does
+ * this have any meaning?") - it read as the language of the email or of the
+ * booking. "Guided in" says whose language it is and stays grammatical for any
+ * number of them.
  */
 function formatLanguages(
   codes: readonly string[],
@@ -749,7 +756,7 @@ export function buildConfirmationEmailText(ctx: EmailTemplateContext): string {
     optional(get('endPoint'), (v) => `Ends at: ${v}`),
     `Guests: ${get('partyBreakdown')}`,
     optional(get('duration'), (v) => `Duration: ${v}`),
-    optional(get('tourLanguage'), (v) => `Language: ${v}`),
+    optional(get('tourLanguage'), (v) => `Guided in: ${v}`),
     '',
     'PAYMENT',
     optional(

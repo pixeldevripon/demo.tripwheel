@@ -105,15 +105,61 @@ operator removes its seats (and the service additionally deletes the seat users'
    ADMIN accounts are never staff-managed. Going forward, `OperatorsService.create` writes the
    OWNER seat row for every new operator, so the seat model is uniform forever.
 2. **Seeded 3 platform system designations** (`isSystem = true`):
-   - *Operations Manager* - bookings/payments/review moderation/analytics (16 permissions)
+   - *Operations Manager* - bookings/payments/review moderation/analytics (17 permissions)
    - *Content Editor* - catalog + editorial + media (18 permissions)
-   - *Support Agent* - read-mostly support surface (13 permissions)
+   - *Support Agent* - read-mostly support surface (14 permissions)
    None of them references the enum values added in the same migration (Postgres forbids using a
    new enum value inside the transaction that added it).
+
+   > **Backfilled 2026-08-01** (`20260801200000_system_designations_booking_financials`).
+   > `VIEW_BOOKING_FINANCIALS` arrived later, in `20260728022458`, and the seeded templates
+   > were never updated - so Operations Manager (16) and Support Agent (13) held
+   > `VIEW_PAYMENTS` without the financials pairing that every money surface additionally
+   > requires. The result was a 403 on `/analytics/dashboard`, `/payments`, `/settlements` and
+   > `/customers`: an Overview that errored and four tables that rendered empty. **When a new
+   > permission is added to an existing surface, check whether a system designation needs it
+   > too** - the effective set never falls back to `ROLE_PERMISSIONS`, so a gap here is silent.
 
 Related schema touches: `User` gained `staffMember StaffMember?` + `staffInvitesSent` relations;
 `Operator` gained `staffMembers` + `staffDesignations`; `schema.prisma`'s file list comment names
 `staff.prisma`.
+
+### 2.5 Default TEAM designations (2026-08-02)
+
+Operator teams get the same head start the platform side has had since day one. Four
+operator-scoped templates ship for **every** operator, defined once in
+`backend/src/config/team-designations.config.ts` (all inside `OPERATOR_SEAT_CEILING`, enforced by
+`team-designations.config.spec.ts`; the base floor `VIEW_PROFILE`/`EDIT_PROFILE` is deliberately
+NOT listed - the engine adds it regardless, and listing it overflows the dashboard's "N/total"
+counts):
+
+| Template | Grants | Idea |
+|---|---|---|
+| *Operations Manager* | 25 (= the full seat ceiling minus catalog-hidden perms) | runs everything except payouts/team (owner-only) |
+| *Reservations Agent* | 8 | bookings desk: full booking rows + availability + stop-sell |
+| *Content Editor* | 12 | listings/copy/media, no bookings or money |
+| *Guide* | 3 | manifest projection (`VIEW_BOOKINGS` **without** `VIEW_BOOKING_FINANCIALS`) + stop-sell |
+
+Rows are `isSystem: true` - **same semantics as the platform rows: rename/delete blocked,
+permission sets stay owner-editable** (editing re-computes every holder instantly).
+
+Three write sites share `defaultTeamDesignationRows()` so they can never drift:
+
+1. `OperatorsService.create` - right after the OWNER seat row, for every new operator.
+2. `prisma/seed-designations.ts` - the backfill for pre-existing operators, run inside the base
+   seed (`pnpm prisma:seed`) and standalone via **`pnpm prisma:seed:designations`** /
+   **`pnpm prisma:seed:designations:clean`** (clean removes only *memberless* seeded rows -
+   a template a member holds is kept and logged). Idempotent two ways: `skipDuplicates` on the
+   `(operatorId, name)` unique plus a case-insensitive pre-filter mirroring the service's
+   uniqueness rule.
+3. The demo seed (`prisma/demo/users-operators.ts`) - demo operators created after the base seed
+   get the same set.
+
+Dashboard: the invite dialog's Designation dropdown carries an **"Add designation"** action
+(both scopes - platform "Invite user" and team "Invite team member") that opens the
+`DesignationEditSheet` in create mode stacked over the dialog and auto-selects the new template
+on save (`onCreated`). The dialog guards `onInteractOutside`/`onEscapeKeyDown` while the sheet is
+open, or interacting with the portaled sheet would dismiss the dialog underneath.
 
 ---
 
@@ -433,7 +479,7 @@ From the end-to-end smoke against the running backend with real logins:
 
 | Check | Result |
 |---|---|
-| Invited platform staff with "Operations Manager" | `effectivePermissions` = 16 (template + floor) |
+| Invited platform staff with "Operations Manager" | `effectivePermissions` = 17 (template + floor; 16 before the 2026-08-01 financials backfill) |
 | Staff `GET /bookings` with `VIEW_BOOKINGS` granted | 200, platform-wide (total 254) |
 | Same staff, `VIEW_BOOKINGS` revoked via override | 403 on the very next request |
 | Staff `GET /staff` (MANAGE_STAFF gated) | 403 always (outside ceiling) |

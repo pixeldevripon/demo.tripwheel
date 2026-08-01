@@ -1,6 +1,6 @@
+import { springPop } from '@/lib/motion';
 import Image from 'next/image';
 import { MotionA } from '../motion-primitives';
-import { springPop } from '@/lib/motion';
 
 type MapLink = { label: string; href: string };
 
@@ -91,3 +91,4 @@ export function TourMeetingCard({
         </div>
     );
 }
+
