@@ -28,14 +28,18 @@ export function WishlistLink({
         <Link
             href={localizeHref(locale, '/wishlist')}
             aria-label={dict.wishlist}
-            className='relative flex items-center no-underline'>
+            className='relative flex items-center gap-1.5 no-underline'>
+            {/* Mockup navpill: "Saved" label beside the heart. */}
+            <span className='text-[13px] font-semibold text-it-ink'>
+                {dict.saved}
+            </span>
             <motion.span className='inline-flex' {...iconPress}>
                 <Image
                     src='/icons/nav-heart.svg'
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6'
+                    className='size-4.5'
                 />
             </motion.span>
             <AnimatePresence>
@@ -46,7 +50,7 @@ export function WishlistLink({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={pressSpring}
-                        className='absolute -top-2 -right-2 flex h-4.5 min-w-4.5 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white'>
+                        className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-bold leading-none text-it-white tabular-nums'>
                         {count}
                     </motion.span>
                 )}

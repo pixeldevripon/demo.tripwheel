@@ -5,7 +5,6 @@ import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
 import { PRICE_MAX, PRICE_MIN } from '@/lib/tours/filters';
 import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -27,6 +26,8 @@ export type ToursFilterModalDict = {
     cancellationLabel: string;
     cancellation: { '24h': string; '48h': string; '72h': string };
     pickupAvailable: string;
+    /** Sub-copy under the pickup toggle - expectation-setting line. */
+    pickupNote: string;
     ratings: string;
     ratingsNote: string;
     clearAll: string;
@@ -73,100 +74,41 @@ export function countActiveFilters(
     );
 }
 
-/* ── Control atoms ─────────────────────────────────────────────────── */
+/* ── Control atoms (design v2) ─────────────────────────────────────── */
 
-export function Checkbox({
-    checked,
-    onChange,
-    label,
+/**
+ * Option chip (.fopt): bordered pill; the selected state swaps to the warm
+ * cta tint with the deep-orange text. One atom for multi-select (durations,
+ * times) and single-select (cancellation, ratings) alike - the caller owns
+ * the toggle semantics.
+ */
+function OptChip({
+    on,
+    onClick,
+    children,
 }: {
-    checked: boolean;
-    onChange: () => void;
-    label: string;
+    on: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
 }) {
     return (
         <motion.button
             type='button'
-            role='checkbox'
-            aria-checked={checked}
-            onClick={onChange}
+            aria-pressed={on}
+            onClick={onClick}
+            whileTap={{ scale: 0.97 }}
             transition={springPop}
-            className='flex cursor-pointer items-center gap-4 border-none bg-transparent p-0 text-left'>
-            <span
-                className={`grid size-5 shrink-0 place-items-center rounded-[3px] border transition-colors ${
-                    checked
-                        ? 'border-it-primary bg-it-primary'
-                        : 'border-it-text-muted bg-it-white'
-                }`}>
-                <AnimatePresence initial={false}>
-                    {checked && (
-                        <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={springPop}
-                            className='inline-flex'>
-                            <Image
-                                src='/icons/filters/check-white.svg'
-                                alt=''
-                                width={16}
-                                height={16}
-                                className='size-4'
-                            />
-                        </motion.span>
-                    )}
-                </AnimatePresence>
-            </span>
-            <span
-                className={`text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors ${
-                    checked ? 'text-it-heading' : 'text-it-text-muted'
-                }`}>
-                {label}
-            </span>
+            className={`cursor-pointer whitespace-nowrap rounded-it-full border px-[15px] py-2 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
+                on
+                    ? 'border-it-primary bg-it-primary-subtle font-bold text-it-primary-hover'
+                    : 'border-it-border bg-it-white font-semibold text-it-ink'
+            }`}>
+            {children}
         </motion.button>
     );
 }
 
-function Radio({
-    checked,
-    onChange,
-    label,
-}: {
-    checked: boolean;
-    onChange: () => void;
-    label: React.ReactNode;
-}) {
-    return (
-        <motion.button
-            type='button'
-            role='radio'
-            aria-checked={checked}
-            onClick={onChange}
-            transition={springPop}
-            className='flex cursor-pointer items-center gap-4 border-none bg-transparent p-0 text-left'>
-            <span
-                className={`grid size-5 shrink-0 place-items-center rounded-full border transition-colors ${
-                    checked ? 'border-it-primary' : 'border-it-text-muted'
-                }`}>
-                <AnimatePresence initial={false}>
-                    {checked && (
-                        <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            transition={springPop}
-                            className='size-2.5 rounded-full bg-it-primary'
-                        />
-                    )}
-                </AnimatePresence>
-            </span>
-            <span className='flex items-center gap-1.5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                {label}
-            </span>
-        </motion.button>
-    );
-}
-
+/** Green switch (.toggle): 46x26 pill, green when on. */
 function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
     return (
         <motion.button
@@ -175,41 +117,15 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
             aria-checked={on}
             onClick={onChange}
             transition={springPop}
-            className={`relative h-6 w-[47px] shrink-0 cursor-pointer rounded-it-full border-none p-0 transition-colors duration-300 ${
-                on ? 'bg-it-primary' : 'bg-[#d9d9d9]'
+            className={`relative h-[26px] w-[46px] shrink-0 cursor-pointer rounded-it-full border-none p-0 transition-colors duration-(--it-duration-sm) ease-(--it-ease) ${
+                on ? 'bg-it-green' : 'bg-it-border'
             }`}>
             <motion.span
-                animate={{ x: on ? 23 : 0 }}
+                animate={{ x: on ? 20 : 0 }}
                 transition={springPop}
-                className='absolute left-0.5 top-1/2 size-5 -translate-y-1/2 rounded-full bg-it-white'
+                className='absolute left-[3px] top-[3px] size-5 rounded-full bg-it-white shadow-it-sm'
             />
         </motion.button>
-    );
-}
-
-function Stars({ rating }: { rating: number }) {
-    return (
-        <span className='flex items-center gap-1.5'>
-            {[0, 1, 2, 3, 4].map(i => {
-                const full = i + 1 <= rating;
-                const half = !full && i + 0.5 <= rating;
-                const src = full
-                    ? '/icons/star-listings.svg'
-                    : half
-                      ? '/icons/star-half.svg'
-                      : '/icons/star-empty.svg';
-                return (
-                    <Image
-                        key={i}
-                        src={src}
-                        alt=''
-                        width={16}
-                        height={16}
-                        className='size-4'
-                    />
-                );
-            })}
-        </span>
     );
 }
 
@@ -254,12 +170,12 @@ export function PriceRange({
     }, [drag, value, onChange, span]);
 
     return (
-        // Figma 48248:5397: a 16px-tall pill track (r-30) with the selected
-        // span in ink and 16px white handles riding INSIDE the pill.
-        <div ref={trackRef} className='relative flex h-4 items-center'>
-            <span className='absolute inset-0 rounded-[30px] bg-it-border' />
+        // Design v2 slider: slim track, the selected span in the cta orange,
+        // white handles riding the track.
+        <div ref={trackRef} className='relative my-1.5 flex h-4 items-center'>
+            <span className='absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-it-full bg-it-border' />
             <span
-                className='absolute inset-y-0 rounded-[30px] bg-it-heading'
+                className='absolute top-1/2 h-1.5 -translate-y-1/2 rounded-it-full bg-it-primary'
                 style={{
                     left: `${pct(value[0])}%`,
                     right: `${100 - pct(value[1])}%`,
@@ -272,14 +188,14 @@ export function PriceRange({
                     aria-label={i === 0 ? 'Minimum price' : 'Maximum price'}
                     onPointerDown={() => setDrag(i)}
                     style={{ left: `calc(8px + ${pct(value[i])}% * 0.96)` }}
-                    className='absolute size-4 -translate-x-1/2 cursor-grab touch-none rounded-full border-none bg-it-white shadow-it-sm active:cursor-grabbing'
+                    className='absolute size-4 -translate-x-1/2 cursor-grab touch-none rounded-full border border-it-border bg-it-white shadow-it-sm active:cursor-grabbing'
                 />
             ))}
         </div>
     );
 }
 
-/** Section wrapper - title + content, with the Figma bottom divider. */
+/** Section wrapper (.fsec): title + content with the divider hairline. */
 function Section({
     title,
     children,
@@ -288,11 +204,11 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <div className='flex flex-col gap-2 border-b border-it-heading/10 py-4 sm:gap-4 sm:py-8'>
+        <div className='flex flex-col border-b border-it-divider py-4 last:border-b-0'>
             {title && (
-                <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <h4 className='m-0 mb-3 text-[14px] font-bold leading-[1.6] text-it-ink'>
                     {title}
-                </h3>
+                </h4>
             )}
             {children}
         </div>
@@ -389,29 +305,29 @@ export function ToursFilterModal({
         { key: '72h', label: dict.cancellation['72h'] },
     ];
     const ratingItems = [
-        { key: '3', label: '3.0+', stars: 3 },
-        { key: '4', label: '4.0+', stars: 4 },
-        { key: '4.5', label: '4.5+', stars: 4.5 },
+        { key: '3', label: '3.0+' },
+        { key: '4', label: '4.0+' },
+        { key: '4.5', label: '4.5+' },
     ];
 
     return (
         <AnimatePresence>
             {open && (
                 <motion.div
-                    className='fixed inset-0 z-100 flex items-center justify-center p-4'
+                    className='fixed inset-0 z-100 flex items-center justify-center p-5'
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}>
-                    {/* Overlay */}
+                    {/* Overlay (.mback) */}
                     <div
-                        className='absolute inset-0 bg-it-heading/40'
+                        className='absolute inset-0 bg-it-dark/50'
                         onClick={onClose}
                         aria-hidden='true'
                     />
 
-                    {/* Panel — flex-col; header + footer are shrink-0 so only
-                         the middle section div scrolls (flex-1 min-h-0). */}
+                    {/* Panel (.fmodal) — flex-col; header + footer are shrink-0
+                         so only the middle section div scrolls (flex-1 min-h-0). */}
                     <motion.div
                         role='dialog'
                         aria-modal='true'
@@ -423,11 +339,11 @@ export function ToursFilterModal({
                             duration: 0.22,
                             ease: [0.21, 0.47, 0.32, 0.98],
                         }}
-                        className='relative flex max-h-[96vh] w-full max-w-210 flex-col rounded-it-lg bg-it-white'>
+                        className='relative flex max-h-[88vh] w-full max-w-[560px] flex-col rounded-it-lg bg-it-white'>
 
-                        {/* Header — never scrolls */}
-                        <div className='flex shrink-0 items-center justify-between border-b border-it-heading/10 px-5 pb-4 pt-5 sm:px-8 sm:pb-6 sm:pt-8'>
-                            <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        {/* Header (.mhead) — never scrolls */}
+                        <div className='flex shrink-0 items-center justify-between border-b border-it-divider px-6 py-[18px]'>
+                            <h2 className='m-0 font-it-display text-[19px] font-bold leading-[1.2] text-it-ink'>
                                 {dict.title}
                             </h2>
                             <motion.button
@@ -436,20 +352,14 @@ export function ToursFilterModal({
                                 onClick={onClose}
                                 whileTap={{ scale: 0.9 }}
                                 transition={springPop}
-                                className='inline-flex cursor-pointer border-none bg-transparent p-0'>
-                                <Image
-                                    src='/icons/filters/close-circle.svg'
-                                    alt=''
-                                    width={32}
-                                    height={32}
-                                    className='size-8'
-                                />
+                                className='grid size-[34px] shrink-0 cursor-pointer place-items-center rounded-full border-none bg-it-bg text-[15px] leading-none text-it-text-muted'>
+                                ✕
                             </motion.button>
                         </div>
 
                         {/* Scrollable body — flex-1 + min-h-0 is required for
                              overflow-y:auto to trigger inside a flex-col parent. */}
-                        <div className='it-modal-scroll min-h-0 flex-1 px-5 sm:px-8'>
+                        <div className='it-modal-scroll min-h-0 flex-1 px-6 pb-1 pt-2'>
 
                             {/* Price */}
                             <Section title={dict.price}>
@@ -460,7 +370,7 @@ export function ToursFilterModal({
                                         setDraft(d => ({ ...d, price }))
                                     }
                                 />
-                                <div className='flex items-center justify-between text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                <div className='flex items-center justify-between text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                                     <span>
                                         {formatPriceFrom(
                                             draft.price[0],
@@ -480,83 +390,88 @@ export function ToursFilterModal({
 
                             {/* Duration */}
                             <Section title={dict.duration}>
-                                <div className='grid grid-cols-1 gap-x-12 gap-y-2.5 sm:grid-cols-2'>
+                                <div className='flex flex-wrap gap-2'>
                                     {durationItems.map(item => (
-                                        <Checkbox
+                                        <OptChip
                                             key={item.key}
-                                            label={item.label}
-                                            checked={draft.durations.includes(
+                                            on={draft.durations.includes(
                                                 item.key
                                             )}
-                                            onChange={() =>
-                                                toggleArray('durations', item.key)
-                                            }
-                                        />
+                                            onClick={() =>
+                                                toggleArray(
+                                                    'durations',
+                                                    item.key
+                                                )
+                                            }>
+                                            {item.label}
+                                        </OptChip>
                                     ))}
                                 </div>
                             </Section>
 
                             {/* Time of day */}
                             <Section title={dict.timeOfDay}>
-                                <div className='grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                                <div className='flex flex-wrap gap-2'>
                                     {timeItems.map(item => (
-                                        <Checkbox
+                                        <OptChip
                                             key={item.key}
-                                            label={item.label}
-                                            checked={draft.times.includes(item.key)}
-                                            onChange={() =>
+                                            on={draft.times.includes(item.key)}
+                                            onClick={() =>
                                                 toggleArray('times', item.key)
-                                            }
-                                        />
+                                            }>
+                                            {item.label}
+                                        </OptChip>
                                     ))}
                                 </div>
                             </Section>
 
-                            {/* Free cancellation */}
-                            <Section>
-                                <div className='flex flex-col'>
-                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        {dict.freeCancellation}
-                                    </h3>
-                                    <p className='m-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                        {dict.freeCancellationNote}{' '}
-                                        {dict.cancellationLabel}
-                                    </p>
-                                </div>
-                                <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                            {/* Free cancellation - single-select chips */}
+                            <Section title={dict.freeCancellation}>
+                                <p className='-mt-2 mb-3 text-[13px] leading-[1.6] text-it-text-muted'>
+                                    {dict.freeCancellationNote}{' '}
+                                    {dict.cancellationLabel}
+                                </p>
+                                <div className='flex flex-wrap gap-2'>
                                     {cancellationItems.map(item => (
-                                        <Radio
+                                        <OptChip
                                             key={item.key}
-                                            label={item.label}
-                                            checked={
+                                            on={
                                                 draft.cancellation === item.key
                                             }
-                                            onChange={() =>
+                                            onClick={() =>
                                                 setDraft(d => ({
                                                     ...d,
                                                     cancellation:
-                                                        d.cancellation === item.key
+                                                        d.cancellation ===
+                                                        item.key
                                                             ? null
                                                             : item.key,
                                                 }))
-                                            }
-                                        />
+                                            }>
+                                            {item.label}
+                                        </OptChip>
                                     ))}
                                 </div>
                             </Section>
 
-                            {/* Pickup available */}
+                            {/* Pickup available - toggle + expectation note */}
                             <Section>
-                                <div className='flex items-center justify-between'>
-                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        {dict.pickupAvailable}
-                                    </h3>
+                                <div className='flex items-center justify-between gap-4'>
+                                    <div>
+                                        <h4 className='m-0 mb-1 text-[14px] font-bold leading-[1.6] text-it-ink'>
+                                            {dict.pickupAvailable}
+                                        </h4>
+                                        <p className='m-0 max-w-[380px] text-[13px] leading-[1.6] text-it-text-muted'>
+                                            {dict.pickupNote}
+                                        </p>
+                                    </div>
                                     <Toggle
                                         on={draft.pickupAvailable}
                                         onChange={() =>
                                             setDraft(d => ({
                                                 ...d,
-                                                pickupAvailable: !d.pickupAvailable,
+                                                pickupAvailable:
+                                                    !d.pickupAvailable,
                                             }))
                                         }
                                     />
@@ -566,43 +481,37 @@ export function ToursFilterModal({
                             {/* Ratings — hidden until catalogue has reviews */}
                             {hasReviews && (
                                 <Section title={dict.ratings}>
-                                    <div className='grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-3'>
+                                    <div className='flex flex-wrap gap-2'>
                                         {ratingItems.map(item => (
-                                            <Radio
+                                            <OptChip
                                                 key={item.key}
-                                                checked={draft.rating === item.key}
-                                                onChange={() =>
+                                                on={draft.rating === item.key}
+                                                onClick={() =>
                                                     setDraft(d => ({
                                                         ...d,
                                                         rating:
-                                                            d.rating === item.key
+                                                            d.rating ===
+                                                            item.key
                                                                 ? null
                                                                 : item.key,
                                                     }))
-                                                }
-                                                label={
-                                                    <>
-                                                        <Stars rating={item.stars} />
-                                                        <span className='ml-1.5'>
-                                                            {item.label}
-                                                        </span>
-                                                    </>
-                                                }
-                                            />
+                                                }>
+                                                {item.label}
+                                            </OptChip>
                                         ))}
                                     </div>
                                 </Section>
                             )}
                         </div>
 
-                        {/* Footer — never scrolls, always visible */}
-                        <div className='flex shrink-0 items-center justify-between border-t border-it-heading/10 px-5 pb-5 pt-4 sm:px-8 sm:pb-8 sm:pt-6'>
+                        {/* Footer (.mfoot) — never scrolls, always visible */}
+                        <div className='flex shrink-0 items-center justify-between gap-3.5 border-t border-it-divider px-6 py-3.5'>
                             <motion.button
                                 type='button'
                                 onClick={() => setDraft(EMPTY_FILTERS)}
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
-                                className='cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors duration-300 hover:text-it-primary'>
+                                className='cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
                                 {dict.clearAll}
                             </motion.button>
                             <motion.button
@@ -610,7 +519,7 @@ export function ToursFilterModal({
                                 onClick={() => onApply(draft)}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='inline-flex h-12 cursor-pointer items-center justify-center rounded-it-full border-none bg-it-primary px-8 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover'>
+                                className='cursor-pointer rounded-it-sm border-none bg-it-primary px-[26px] py-3 text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
                                 {dict.applyFilters}
                             </motion.button>
                         </div>
@@ -620,4 +529,3 @@ export function ToursFilterModal({
         </AnimatePresence>
     );
 }
-

@@ -12,12 +12,12 @@ export type TourMeetingInfo = {
 };
 
 /**
- * Meeting & Pickup info card (Figma node 47936:3746). A surface card with three
- * labeled blocks - Meeting Point (with an "Open in Google Maps" link), Hotel
- * Pickup, and Departure Time. Each block: an icon + uppercase caption, then a
- * title + muted detail indented under the caption.
+ * Meeting & Pickup card (design v2 .mpcard, LD19): a white bordered card of
+ * STACKED sub-blocks separated by hairlines. Each block: a 15px bold h3 with
+ * an 18px orange icon, then the body copy; the meeting block carries the
+ * "Open in Google Maps" text link (no embedded map).
  */
-function InfoBlock({
+function SubBlock({
     icon,
     info,
     children,
@@ -27,29 +27,22 @@ function InfoBlock({
     children?: React.ReactNode;
 }) {
     return (
-        <div className='flex flex-col gap-4'>
-            <div className='flex flex-col gap-2'>
-                <div className='flex items-center gap-2'>
-                    <Image
-                        src={icon}
-                        alt=''
-                        width={24}
-                        height={24}
-                        className='size-6 shrink-0'
-                    />
-                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading uppercase'>
-                        {info.label}
-                    </span>
-                </div>
-                <div className='flex flex-col gap-0.5 pl-8'>
-                    <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        {info.title}
-                    </span>
-                    <span className='whitespace-pre-line text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                        {info.detail}
-                    </span>
-                </div>
-            </div>
+        <div className='flex flex-col px-5 py-[18px]'>
+            <h3 className='m-0 mb-1.5 flex items-center gap-[9px] text-[15px] font-bold leading-[1.6] text-it-ink'>
+                <Image
+                    src={icon}
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-[18px] shrink-0'
+                />
+                {info.label}
+            </h3>
+            {(info.title || info.detail) && (
+                <p className='m-0 whitespace-pre-line text-[14px] leading-[1.6] text-it-ink'>
+                    {[info.title, info.detail].filter(Boolean).join('\n')}
+                </p>
+            )}
             {children}
         </div>
     );
@@ -66,46 +59,35 @@ export function TourMeetingCard({
     mapLink?: MapLink | null;
     /** Hotel-pickup block, shown only when the tour offers pickup. */
     pickup?: TourMeetingInfo | null;
-    /** Departure-time block (right column), shown when start times exist. */
+    /** Departure-time block, shown when start times exist. */
     departure?: TourMeetingInfo | null;
 }) {
     return (
-        <div className='rounded-[16px] border border-it-border bg-it-surface p-6'>
-            <div className='flex flex-col gap-10 md:flex-row md:gap-10'>
-                <div className='flex flex-1 flex-col gap-10'>
-                    <InfoBlock icon='/icons/meeting-location.svg' info={meeting}>
-                        {mapLink && (
-                            <MotionA
-                                href={mapLink.href}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                whileTap={{ scale: 0.97 }}
-                                transition={springPop}
-                                className='flex w-fit items-center gap-1 pl-8 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors duration-300 hover:text-it-primary-hover'>
-                                {mapLink.label}
-                                <Image
-                                    src='/icons/cta-arrow-right.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-6 shrink-0'
-                                />
-                            </MotionA>
-                        )}
-                    </InfoBlock>
-                    {pickup && (
-                        <InfoBlock icon='/icons/meeting-car.svg' info={pickup} />
-                    )}
-                </div>
-                {departure && (
-                    <div className='md:w-68.5'>
-                        <InfoBlock
-                            icon='/icons/meeting-clock.svg'
-                            info={departure}
+        <div className='mt-1 divide-y divide-it-divider rounded-it-lg border border-it-border bg-it-white shadow-it-sm'>
+            <SubBlock icon='/icons/qi-pin.svg' info={meeting}>
+                {mapLink && (
+                    <MotionA
+                        href={mapLink.href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        whileTap={{ scale: 0.97 }}
+                        transition={springPop}
+                        className='mt-2 flex w-fit items-center gap-[7px] text-[13.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                        <Image
+                            src='/icons/pin-deep.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-[15px] shrink-0'
                         />
-                    </div>
+                        {mapLink.label}
+                    </MotionA>
                 )}
-            </div>
+            </SubBlock>
+            {pickup && <SubBlock icon='/icons/qi-car.svg' info={pickup} />}
+            {departure && (
+                <SubBlock icon='/icons/qi-clock.svg' info={departure} />
+            )}
         </div>
     );
 }

@@ -58,10 +58,10 @@ function SelectorPill({
                 onClick={onToggle}
                 
                 transition={springPop}
-                className={`flex h-12.5 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 py-3 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
-                <span className='flex items-center gap-2'>
+                className={`flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
+                <span className='flex items-center gap-2.5'>
                     {icon}
-                    <span className='text-sm leading-[1.6] tracking-[-0.012em] text-it-heading lg:text-base'>
+                    <span className='text-[13.5px] font-semibold leading-[1.6] text-it-ink'>
                         {label}
                     </span>
                 </span>
@@ -69,7 +69,7 @@ function SelectorPill({
                     className='inline-flex'
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={{ duration: 0.2 }}>
-                    <Image src='/footer/arrow-down.svg' alt='' width={24} height={24} className='size-6' />
+                    <Image src='/footer/arrow-down.svg' alt='' width={24} height={24} className='size-4' />
                 </motion.span>
             </motion.button>
             <AnimatePresence>{open && children}</AnimatePresence>
@@ -85,7 +85,7 @@ function SelectorMenu({ children }: { children: React.ReactNode }) {
     return (
         <motion.ul
             {...dropdownUpMotion}
-            className='absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 m-0 list-none origin-bottom overflow-hidden rounded-it-lg border border-it-border bg-it-white p-0 shadow-it-lg'>
+            className='absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 m-0 list-none origin-bottom overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white p-0 shadow-it-lg'>
             {children}
         </motion.ul>
     );

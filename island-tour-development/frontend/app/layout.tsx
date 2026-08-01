@@ -11,25 +11,34 @@ import { getSiteUrl } from '@/lib/seo/site-url';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { JetBrains_Mono } from 'next/font/google';
+import {
+    Bricolage_Grotesque,
+    JetBrains_Mono,
+    Source_Sans_3,
+} from 'next/font/google';
 import './globals.css';
 
 /**
- * The ONLY webfont this app loads.
- *
- * Every route group wraps its tree in `.frontend-root` - `(frontend)`,
- * `(login)`, and the three root error/not-found screens - and that scope sets
- * the family to the SF Pro SYSTEM stack (`frontend-tokens.css`
- * `--it-font-display` / `--it-font-body`). So the sans/display webfonts that
- * used to load here (DM Sans, Playfair Display, Noto Sans, GeneralSans) were
- * never painted anywhere: 6 preloaded woff2 files, ~225 KB, competing with the
- * LCP image for early bandwidth on every single request.
+ * The site's brand fonts (design v2 contract, technical-doc/homepage):
+ * Bricolage Grotesque for display/headings, Source Sans 3 for body copy.
+ * Both are variable fonts self-hosted by next/font, exposed as CSS variables
+ * that `globals.css` / `frontend-tokens.css` fold into the `--it-font-*`
+ * stacks (system SF Pro remains the fallback while they load).
  *
  * JetBrains Mono stays because it IS painted - `font-mono` renders the booking
  * references in the traveller account area (`traveller-booking-card.tsx`,
- * `traveller-payments-list.tsx`). Everything else falls back to the system
- * stacks mapped in `globals.css`.
+ * `traveller-payments-list.tsx`).
  */
+const bricolage = Bricolage_Grotesque({
+    variable: '--font-bricolage',
+    subsets: ['latin', 'latin-ext'],
+});
+
+const sourceSans = Source_Sans_3({
+    variable: '--font-source-sans',
+    subsets: ['latin', 'latin-ext'],
+});
+
 const jetbrainsMono = JetBrains_Mono({
     variable: '--font-jetbrains-mono',
     subsets: ['latin'],
@@ -158,6 +167,8 @@ export default function RootLayout({
             suppressHydrationWarning
             className={cn(
                 'h-full antialiased',
+                bricolage.variable,
+                sourceSans.variable,
                 jetbrainsMono.variable,
                 'font-sans'
             )}>

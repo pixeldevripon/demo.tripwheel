@@ -1,4 +1,3 @@
-import { ToursDatePill } from '@/components/frontend/tours/tours-date-pill';
 import { getCurrentYear } from '@/lib/current-year';
 
 export type ToursHeaderDict = {
@@ -12,28 +11,21 @@ export type ToursHeaderDict = {
 };
 
 /**
- * Tours listing heading - title, subtitle and total-count line. Shared by the
- * All-Tours page (`{destination}` + `{year}` template) and the Category page
- * (pre-resolved `title`/`subtitle` overrides). Matches Figma nodes 47167:4025
- * (all-tours) and 47070:3468 (category) - identical layout, 48px H1, uniform
- * muted count.
+ * Tours listing heading - design v2 `.pagehead`: display H1, the muted
+ * orientation line beneath it, and the faint tabular availability count.
+ * Shared by the All-Tours page (`{destination}` + `{year}` template) and the
+ * Category page (pre-resolved `title`/`subtitle` overrides).
  */
 export async function ToursHeader({
     dict,
     destinationName,
     total,
-    selectDateLabel,
-    clearDateLabel,
     title: titleOverride,
     subtitle: subtitleOverride,
 }: {
     dict: ToursHeaderDict;
     destinationName: string;
     total: number;
-    /** "Select date" label - drives the mobile date pill beside the count line. */
-    selectDateLabel: string;
-    /** Accessible label for the pill's clear-date control. */
-    clearDateLabel: string;
     /** Pre-resolved title - skips the `dict.title` template (category page). */
     title?: string;
     /** Pre-resolved subtitle - overrides `dict.subtitle` (category page). */
@@ -52,31 +44,17 @@ export async function ToursHeader({
 
     return (
         // No own entrance animation: this header renders in the STATIC shell, so
-        // the sitewide PageTransition already animates it in on navigation - a
-        // second MountReveal on top stacked two transforms with different curves
-        // and visibly juddered ("shake"). MountReveal is for Suspense-STREAMED
-        // content only, which appears after the page transition has settled.
-        <div className='flex flex-col gap-4 md:gap-2'>
-            <div className='flex flex-col gap-2 md:gap-1'>
-                <h1 className='m-0 font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                    {title}
-                </h1>
-                <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    {subtitle}
-                </p>
-            </div>
-            {/* Count + date - date pill sits on this row on mobile (Figma), and
-                lives in the toolbar on desktop. Count is one uniform muted line. */}
-            <div className='flex items-center justify-between gap-2'>
-                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                    <span className='font-semibold text-it-heading'>{count}</span> {dict.availableLabel}
-                </p>
-                <ToursDatePill
-                    selectDateLabel={selectDateLabel}
-                    clearDateLabel={clearDateLabel}
-                    className='md:hidden'
-                />
-            </div>
+        // the sitewide PageTransition already animates it in on navigation.
+        <div className='flex flex-col'>
+            <h1 className='m-0 font-it-display font-bold text-[clamp(24px,3vw,32px)] leading-[1.12] tracking-[-0.015em] text-it-ink'>
+                {title}
+            </h1>
+            <p className='m-0 mt-2 max-w-[640px] text-[14.5px] leading-[1.6] text-it-text-muted'>
+                {subtitle}
+            </p>
+            <p className='m-0 mt-1.5 text-[12.5px] leading-[1.6] text-it-ink-muted tabular-nums'>
+                {count} {dict.availableLabel}
+            </p>
         </div>
     );
 }

@@ -114,7 +114,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
     };
 
     return (
-        <section className='it-section bg-it-white'>
+        <section className='bg-it-white pt-7 pb-16'>
             <div className='it-container'>
                 {/* Sticky scope: the bar's containing block ends here, so it
                     releases when the trailing (Discover) sections begin. */}
@@ -122,7 +122,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
                     {/* Sticky scroll-nav - sits below the fixed navbar. */}
                     <div
                         ref={tabBarRef}
-                        className='sticky top-18 z-40 bg-it-white md:top-20'>
+                        className='sticky top-16 z-40 bg-(--it-frow-bg) backdrop-blur-[8px]'>
                         <HubTripsTabs
                             tabs={dict.tabs}
                             active={active}
@@ -131,7 +131,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
                     </div>
 
                     {/* Sticky-scoped sections - each is a scroll target. */}
-                    <div className='flex flex-col gap-16 pt-6 md:gap-25 md:pt-10'>
+                    <div className='flex flex-col gap-12 pt-6 md:gap-[72px] md:pt-9'>
                         {dict.panels
                             .slice(0, stickyEnd)
                             .map((panel, i) => renderPanel(panel, i))}
@@ -142,7 +142,7 @@ export function HubTripsSection({ dict }: { dict: HubTripsDict }) {
                     tab bar is no longer sticky here. The leading spacing matches
                     the inter-section gap above. */}
                 {stickyEnd < dict.panels.length && (
-                    <div className='flex flex-col gap-16 pt-16 md:gap-25 md:pt-25'>
+                    <div className='flex flex-col gap-12 pt-12 md:gap-[72px] md:pt-[72px]'>
                         {dict.panels
                             .slice(stickyEnd)
                             .map((panel, offset) =>

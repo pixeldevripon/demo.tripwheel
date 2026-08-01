@@ -225,6 +225,10 @@ async function CheckoutBody({
             destination={destination}
             slug={slug}
             paymentFailed={paymentFailed}
+            freeCancelLabel={dict.freeCancellationLong.replace(
+                '{hours}',
+                String(data.cancellationHours),
+            )}
             summary={
                 <CheckoutSummary
                     dict={dict}

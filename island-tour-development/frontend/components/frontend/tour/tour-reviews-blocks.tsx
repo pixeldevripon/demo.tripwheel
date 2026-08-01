@@ -50,15 +50,7 @@ export async function TourReviewsPreview({
         .slice(0, 2)
         .map(r => toTourReview(r, locale));
 
-    return (
-        <TourReviews
-            rating={rating}
-            reviewCount={reviewCount}
-            reviews={previewReviews}
-            locale={locale}
-            dict={dict}
-        />
-    );
+    return <TourReviews reviews={previewReviews} dict={dict} />;
 }
 
 interface TourReviewsBlockProps {

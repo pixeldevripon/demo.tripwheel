@@ -105,6 +105,7 @@ export async function DestinationHeroSection({
                     dict={dict.destination.exploreTypes}
                     locale={locale}
                     destinationSlug={destination}
+                    destinationName={destinationName}
                     categories={exploreTypes}
                 />
             )}

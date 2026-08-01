@@ -32,14 +32,14 @@ export function HubAlsoWorthSection({
         <section className='it-section max-md:py-[32px]! bg-it-white'>
             <div className='it-container'>
                 {/* 24px heading→cards on mobile, 48px on desktop (Figma). */}
-                <Reveal className='flex flex-col gap-6 md:gap-12'>
-                    <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <Reveal className='flex flex-col gap-[22px]'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {title}
                     </h2>
 
                     {/* Mobile: horizontal snap-scroll of 274px cards (16px gap).
                         lg+: static 3-column grid (24px gap). */}
-                    <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible'>
+                    <div className='flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-3 lg:gap-4 lg:overflow-visible'>
                         {items.map(item => (
                             <Reveal key={item.slug} delay={0.02} listItem>
                                 <Link
@@ -47,22 +47,24 @@ export function HubAlsoWorthSection({
                                         locale,
                                         `/${destinationSlug}/${item.slug}`
                                     )}
-                                    className='group relative block aspect-274/210 w-68.5 shrink-0 snap-start overflow-hidden rounded-[8px] bg-it-border lg:aspect-384/361 lg:w-auto lg:rounded-[16px]'>
+                                    className='group relative flex aspect-274/210 w-68.5 shrink-0 snap-start items-end overflow-hidden rounded-it-lg bg-it-bg p-[18px] lg:aspect-[3/3.4] lg:w-auto'>
                                     {item.image && (
                                         <Image
                                             src={item.image}
                                             alt={item.name}
                                             fill
                                             sizes='(min-width: 1024px) 384px, 274px'
-                                            className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
+                                            className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.04]'
                                         />
                                     )}
-                                    {/* Bottom scrim - transparent → #1a1a1a; bottom
-                                    139px on mobile, 247px on desktop (Figma). */}
-                                    <div className='pointer-events-none absolute inset-x-0 bottom-0 h-34.75 bg-linear-to-b from-transparent to-it-ink lg:h-[247px]' />
-                                    {/* Label - bottom-left 16px on mobile, centred
-                                    24px on desktop (Figma). */}
-                                    <span className='absolute bottom-6 left-6 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white lg:left-1/2 lg:-translate-x-1/2 lg:text-[24px] lg:leading-[1.2]'>
+                                    {/* Scrim over real photos only - the flat
+                                        paper fallback stays gradient-free, and
+                                        the label flips to ink on it. */}
+                                    {item.image && (
+                                        <div className='pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-40% to-it-dark/78' />
+                                    )}
+                                    <span
+                                        className={`relative z-2 font-it-display text-[18px] font-bold leading-[1.3] tracking-[-0.01em] ${item.image ? 'text-it-white' : 'text-it-ink'}`}>
                                         {item.name}
                                     </span>
                                 </Link>

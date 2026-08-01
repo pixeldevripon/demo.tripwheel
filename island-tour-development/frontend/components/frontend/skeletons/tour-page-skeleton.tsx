@@ -115,9 +115,9 @@ function TourGallerySkeleton() {
     return (
         <div className='flex flex-col gap-6'>
             {/* Mobile: single tile. */}
-            <Bar className='aspect-396/300 w-full rounded-[16px] lg:hidden' />
+            <Bar className='aspect-396/300 w-full rounded-it-lg lg:hidden' />
             {/* Desktop: 5-tile collage (big tile + 2x2). */}
-            <div className='hidden gap-2 lg:grid lg:aspect-792/448 lg:grid-cols-[396fr_190fr_190fr] lg:grid-rows-2'>
+            <div className='hidden overflow-hidden rounded-it-lg lg:grid lg:grid-cols-[2fr_1fr_1fr] lg:grid-rows-[175px_175px] lg:gap-2.5'>
                 <Bar className='h-full w-full rounded-[16px] lg:row-span-2' />
                 <Bar className='h-full w-full rounded-[16px]' />
                 <Bar className='h-full w-full rounded-[16px]' />
@@ -239,10 +239,10 @@ export function TourReviewsPreviewSkeleton() {
                 </div>
                 <Bar className='h-4 w-2/3 max-w-md' />
             </div>
-            {/* Two preview cards (min-h-[281px], rounded-[16px]). */}
-            <div className='grid gap-4 md:grid-cols-2 md:gap-6'>
-                <Bar className='h-[281px] w-full rounded-[16px]' />
-                <Bar className='h-[281px] w-full rounded-[16px]' />
+            {/* Two preview cards inside the paper panel (design v2 .rpreview). */}
+            <div className='grid gap-3 md:grid-cols-2'>
+                <Bar className='h-[110px] w-full' />
+                <Bar className='h-[110px] w-full' />
             </div>
         </section>
     );
@@ -296,22 +296,24 @@ export function TourReviewsSectionSkeleton({
     );
 }
 
-/** Related-tours block: two heading + 3-card grids (mirrors TourRelatedSection). */
+/** Related-tours block: two heading + 3-card grids (mirrors TourRelatedTours,
+ *  which renders INSIDE the detail column - plain block, no own container). */
 export function TourRelatedSkeleton() {
     return (
-        <section className='it-section pt-0! bg-it-white'>
-            <div className='it-container flex flex-col gap-16 md:gap-24'>
-                {Array.from({ length: 2 }).map((_, g) => (
-                    <div key={g} className='flex flex-col gap-6 md:gap-12'>
-                        <Bar className='h-8 w-2/3 max-w-md md:h-12' />
-                        <div className={CARD_GRID}>
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <TourCardSkeleton key={i} />
-                            ))}
-                        </div>
+        <div className='flex flex-col gap-8 pt-2.5'>
+            {Array.from({ length: 2 }).map((_, g) => (
+                <div key={g} className='flex flex-col gap-3.5'>
+                    <Bar className='h-6 w-2/3 max-w-sm' />
+                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4'>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <TourCardSkeleton
+                                key={i}
+                                className='max-sm:aspect-auto max-sm:h-[170px]'
+                            />
+                        ))}
                     </div>
-                ))}
-            </div>
-        </section>
+                </div>
+            ))}
+        </div>
     );
 }

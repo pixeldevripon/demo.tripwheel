@@ -20,6 +20,34 @@ export function useIsMobile() {
     return isMobile;
 }
 
+const emptySubscribe = () => () => {};
+
+/**
+ * True only for components mounted by CLIENT-side rendering (soft
+ * navigations); false for anything whose HTML came from the server -
+ * including late-streamed Suspense content.
+ *
+ * Why: framer's `initial={{ opacity: 0 }}` is serialized into the server HTML
+ * as an inline style, so everything below the hero renders INVISIBLE until the
+ * JS bundle arrives and hydrates - on a slow connection that reads as a blank
+ * page (and it is what search engines paint). Server-rendered content
+ * therefore renders visible with no entrance (the sitewide "static shell → no
+ * mount animation" rule), and only client-side mounts animate.
+ *
+ * `useSyncExternalStore` is the one primitive whose server snapshot is used
+ * for BOTH the SSR pass and the hydration render, so the two sides always
+ * agree - a module flag or effect-set state mismatches on streamed sections
+ * (their HTML renders before hydration, but they hydrate after the layout's
+ * effects have already run).
+ */
+function useIsClientMount() {
+    return React.useSyncExternalStore(
+        emptySubscribe,
+        () => true, // client renders after hydration (soft navigations)
+        () => false, // SSR + the hydration render of server HTML
+    );
+}
+
 interface RevealProps {
     children: React.ReactNode;
     /** Wrapper width - '100%' (default), shrink to content, or 'auto' to set
@@ -70,6 +98,7 @@ export const Reveal = ({
 }: RevealProps) => {
     const reduceMotion = useReducedMotion();
     const isMobile = useIsMobile();
+    const animateEntrance = useIsClientMount();
 
     // List/grid cells on phones render statically - a column of individually
     // fading cards reads as jank there, and delayed items waste scroll time.
@@ -85,7 +114,11 @@ export const Reveal = ({
 
     return (
         <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: yOffset }}
+            initial={
+                reduceMotion || !animateEntrance
+                    ? false
+                    : { opacity: 0, y: yOffset }
+            }
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once, amount, margin }}
             transition={{

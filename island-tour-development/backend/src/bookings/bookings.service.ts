@@ -3540,12 +3540,6 @@ export class BookingsService {
     dto: RequestTravellerCodeDto,
   ): Promise<RequestTravellerCodeResponseDto> {
     const email = dto.email.trim().toLowerCase();
-    // Per-TARGET caps (the per-IP throttle alone cannot stop a distributed
-    // mail-bomb of one inbox), mirroring the recover-reference limits.
-    this.targetLimiter.consume('traveller-otp', email, [
-      { max: 1, windowMs: 60 * 1000 },
-      { max: 5, windowMs: 24 * 60 * 60 * 1000 },
-    ]);
 
     // Opportunistic cleanup instead of a cron: rows are worthless once they
     // have been expired for a day, and this is the only writer.
@@ -3562,6 +3556,15 @@ export class BookingsService {
     // Existence + the address to send to, nothing more. The sign-in code email
     // says nothing about any particular booking, so the tour name, dates and
     // reference this used to load were all read straight into the bin.
+    //
+    // Checked BEFORE the per-email limiter on purpose: an unknown email must
+    // answer `sent: false` CONSISTENTLY. When the limiter ran first, the
+    // second click inside its 60s window 429ed before this lookup, and the
+    // login card reads 429 as "a code was already sent - go enter it", so an
+    // address with no bookings advanced to a code screen that could never
+    // succeed. Unknown-email probing stays bounded by the per-IP throttle,
+    // and nothing is ever sent for it, so the mail-bomb caps below have
+    // nothing to protect on this path.
     const booking = await this.prisma.booking.findFirst({
       where: { contactEmail: { equals: email, mode: 'insensitive' } },
       orderBy: { createdAt: 'desc' },
@@ -3570,10 +3573,48 @@ export class BookingsService {
     if (!booking) {
       // `sent: false` is DELIBERATE enumeration: the founder chose the honest
       // "we can't find bookings under this email" UX over the always-positive
-      // lock (login spec 5.9) on 2026-07-30. The per-IP throttle + the
-      // per-email caps above bound probing. Revert = return { sent: true }.
+      // lock (login spec 5.9) on 2026-07-30. The per-IP throttle bounds
+      // probing. Revert = return { sent: true }.
       this.logger.log('Traveller login code requested for an unknown email');
       return { sent: false };
+    }
+
+    // Per-TARGET caps (the per-IP throttle alone cannot stop a distributed
+    // mail-bomb of one inbox), mirroring the recover-reference limits. Only
+    // real inboxes ever consume a slot - see the ordering note above.
+    //
+    // The re-thrown 429 carries `reason: 'otp-pending'` so the login card can
+    // tell "a code for this inbox is already live - go enter it" apart from
+    // the GENERIC per-IP 429 the ThrottlerGuard throws before this handler
+    // ever runs. The guard's 429 proves nothing about the email (it fires for
+    // unknown addresses too), so the client must never advance on it - and
+    // because this marker is only reachable AFTER the existence check above,
+    // advancing on it is always correct.
+    try {
+      this.targetLimiter.consume(
+        'traveller-otp',
+        email,
+        [
+          { max: 1, windowMs: 60 * 1000 },
+          { max: 5, windowMs: 24 * 60 * 60 * 1000 },
+        ],
+        'A sign-in code was requested for this email very recently. Check your inbox, or wait a minute and try again.',
+      );
+    } catch (err) {
+      if (
+        err instanceof HttpException &&
+        err.getStatus() === HttpStatus.TOO_MANY_REQUESTS
+      ) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: err.message,
+            reason: 'otp-pending',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw err;
     }
 
     // Only the newest code may ever be live: requesting a second one

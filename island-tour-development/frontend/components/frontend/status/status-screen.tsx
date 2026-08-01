@@ -113,15 +113,15 @@ export function StatusScreen({
                     uppercase + wide-tracking label is a DASHBOARD convention and
                     appears nowhere on the traveler-facing pages. */}
                 <span
-                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[13px] font-medium leading-none tracking-[-0.012em] ${EYEBROW[eyebrowTone]}`}>
+                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[12px] font-bold uppercase leading-none tracking-[0.1em] ${EYEBROW[eyebrowTone]}`}>
                     {eyebrow}
                 </span>
 
-                <h1 className='m-0 max-w-175 font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 max-w-175 font-it-display font-extrabold text-[clamp(30px,4vw,46px)] leading-[1.08] tracking-[-0.018em] text-it-ink'>
                     {title}
                 </h1>
 
-                <p className='m-0 mt-4 max-w-150 text-[16px] md:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className='m-0 mt-4 max-w-[54ch] text-[17px] leading-[1.6] text-it-text-muted'>
                     {description}
                 </p>
 
@@ -145,7 +145,7 @@ export function StatusScreen({
  * `whileTap` on the caller's MotionLink/MotionButton.
  */
 export const statusPrimaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-it-full border-none bg-it-primary px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover md:px-10';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-2.5 rounded-it-full border border-subtle bg-transparent px-8 py-[15px] text-[16px] font-medium leading-[1.6] tracking-[-0.012em] text-it-ink no-underline transition-colors duration-300 hover:bg-it-ink hover:text-it-white md:px-10';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';

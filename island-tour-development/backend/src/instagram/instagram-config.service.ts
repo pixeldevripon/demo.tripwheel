@@ -88,6 +88,16 @@ export class InstagramConfigService {
    * this singleton row - a stale igUserId paired with a fresh token would
    * otherwise read the wrong account's media.
    *
+   * THE HANDLE GOES WITH IT. `username` and `profileUrl` are not settings - they
+   * are resolved from whichever account the token belongs to, and neither is in
+   * any update DTO (the dashboard renders the handle as read-only text). Leaving
+   * them behind was wrong in both directions: after REMOVING a token the panel
+   * kept displaying a handle for an account we no longer have any credential
+   * for, and after SWAPPING tokens it showed the previous account's handle until
+   * a sync happened to succeed. Clearing them means the field states the truth
+   * at all times - blank, with "Resolved on the first sync" - and the next sync
+   * refills it.
+   *
    * Re-submitting the token ALREADY stored is not a reconnect, it is a no-op.
    * The dashboard's token input is write-only and can re-send an unchanged value
    * (a browser/password-manager autofill, or a form whose dirty state outlived
@@ -125,6 +135,9 @@ export class InstagramConfigService {
         lastSyncedAt: null,
         lastSyncStatus: null,
         lastSyncError: null,
+        // Derived from the account the old token belonged to - see above.
+        username: null,
+        profileUrl: null,
       },
       create: { id: ACCOUNT_ID, configAccessToken },
     });

@@ -31,8 +31,9 @@ import { searchHitToListing } from '@/lib/tours/listing';
  * section and streams the new result behind the same skeleton.
  */
 
-// Tours per page; the backend paginates and returns the destination-wide total.
-const TOURS_LIMIT = 12;
+// Tours per page (design v2 catalog: DIT-13 4-up, 16 per page); the backend
+// paginates and returns the destination-wide total.
+const TOURS_LIMIT = 16;
 
 interface ListingSectionProps {
     destinationId: string;

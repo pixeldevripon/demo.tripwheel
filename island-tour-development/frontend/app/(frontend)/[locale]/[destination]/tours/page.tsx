@@ -143,36 +143,33 @@ export default async function AllToursPage({
                 dict={dict.destination.allTours.breadcrumb}
             />
 
-            <section className='bg-it-white pb-8 md:pb-32.5'>
+            {/* No bottom padding: the trust strip's own 56px top margin sets
+                the gap below the pager (mockup .truststrip). */}
+            <section className='bg-it-white'>
+                {/* Page header (.pagehead) in the container; the sticky filter
+                    row + grid stream below at FULL WIDTH (the toolbar owns its
+                    own containers so its sticky band bleeds edge to edge). */}
                 <div className='it-container'>
-                    {/* Content stack - 60px below the breadcrumb, 40px between blocks. */}
-                    <div className='flex flex-col max-md:gap-8 gap-10 pt-8 md:pt-15'>
-                        {/* Header is a cheap cached count on a prerendered route,
-                            so it bakes into the static shell (instant, no skeleton
-                            flash). Only the searchParams-driven listing below
-                            streams. */}
-                        <ToursHeaderSection
-                            destinationId={dest.id}
-                            destinationName={destinationName}
-                            dict={dict}
-                        />
-
-                        <div
-                            className='h-px w-full bg-it-heading/10'
-                            aria-hidden='true'
-                        />
-
-                        <Suspense fallback={<ToursListingSkeleton />}>
-                            <ToursListingSection
-                                destinationId={dest.id}
-                                destination={destination}
-                                locale={locale as Locale}
-                                dict={dict}
-                                searchParams={searchParams}
-                            />
-                        </Suspense>
-                    </div>
+                    {/* Header is a cheap cached count on a prerendered route,
+                        so it bakes into the static shell (instant, no skeleton
+                        flash). Only the searchParams-driven listing below
+                        streams. */}
+                    <ToursHeaderSection
+                        destinationId={dest.id}
+                        destinationName={destinationName}
+                        dict={dict}
+                    />
                 </div>
+
+                <Suspense fallback={<ToursListingSkeleton />}>
+                    <ToursListingSection
+                        destinationId={dest.id}
+                        destination={destination}
+                        locale={locale as Locale}
+                        dict={dict}
+                        searchParams={searchParams}
+                    />
+                </Suspense>
             </section>
 
             <ToursTrustStrip dict={dict.destination.allTours.trust} />

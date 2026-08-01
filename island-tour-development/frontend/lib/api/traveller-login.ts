@@ -17,9 +17,23 @@ const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:505
  * `unknown` = the address has no bookings, so no code was sent - surfaced as
  * a validation message (founder 2026-07-30, deliberately trading the
  * anti-enumeration lock for honest UX; the endpoint's throttles bound
- * probing). `throttled` keeps the form from looking broken during the wait.
+ * probing). The two 429 shapes are DELIBERATELY distinct:
+ *
+ * - `otp-pending`: the backend's per-EMAIL cap, thrown only AFTER the email
+ *   passed the existence check - a code for this inbox is genuinely live, so
+ *   advancing to the code screen is always correct.
+ * - `throttled`: the generic per-IP guard, which fires before the handler
+ *   ever checks the email. It proves nothing (unknown addresses hit it too),
+ *   so the caller must stay on the email step. Collapsing these two into one
+ *   value is the bug that let an address with no bookings "log in" to a code
+ *   screen by clicking twice (or reloading and clicking again).
  */
-export type RequestCodeResult = 'sent' | 'unknown' | 'throttled';
+export type RequestCodeResult =
+    | 'sent'
+    | 'unknown'
+    | 'invalid'
+    | 'otp-pending'
+    | 'throttled';
 
 export async function requestTravellerCodeClient(
     email: string
@@ -30,7 +44,21 @@ export async function requestTravellerCodeClient(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
-        if (res.status === 429) return 'throttled';
+        if (res.status === 429) {
+            try {
+                const body = (await res.json()) as { reason?: string };
+                if (body.reason === 'otp-pending') return 'otp-pending';
+            } catch {
+                // Bodyless 429 (proxy, guard) - treat as the generic form.
+            }
+            return 'throttled';
+        }
+        // The backend's @IsEmail() is the AUTHORITY on address validity - the
+        // client-side shape check is only a typo-catcher and is deliberately
+        // looser. Without this branch a shape-passing-but-invalid address
+        // (e.g. `a@b..com`) fell through to the `sent` fallback and advanced
+        // to a code screen that could never succeed.
+        if (res.status === 400) return 'invalid';
         if (res.ok) {
             const body = (await res.json()) as { sent?: boolean };
             if (body.sent === false) return 'unknown';

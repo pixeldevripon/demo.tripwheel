@@ -128,6 +128,40 @@ describe('InstagramConfigService', () => {
       expect(upsert.mock.calls[0][0].update.configAccessToken).toBeNull();
     });
 
+    /**
+     * The handle is NOT a setting - it is resolved from whichever account the
+     * token belongs to, and the dashboard renders it as read-only text. Removing
+     * the token used to leave it on screen, so the panel advertised an account we
+     * no longer had any credential for.
+     */
+    it('clears the resolved handle when the token is removed', async () => {
+      findUnique.mockResolvedValue({
+        configAccessToken: encrypt('a-real-token'),
+      });
+
+      await service.saveCredentials({ accessToken: '' });
+
+      expect(upsert.mock.calls[0][0].update).toMatchObject({
+        configAccessToken: null,
+        username: null,
+        profileUrl: null,
+      });
+    });
+
+    /** Same reason, the other direction: a swap must not show the OLD handle. */
+    it('clears the resolved handle when the token is swapped', async () => {
+      findUnique.mockResolvedValue({
+        configAccessToken: encrypt('the-old-token'),
+      });
+
+      await service.saveCredentials({ accessToken: 'a-different-token' });
+
+      expect(upsert.mock.calls[0][0].update).toMatchObject({
+        username: null,
+        profileUrl: null,
+      });
+    });
+
     it('an omitted token is a no-op (leaves the stored value)', async () => {
       await service.saveCredentials({});
       expect(upsert).not.toHaveBeenCalled();

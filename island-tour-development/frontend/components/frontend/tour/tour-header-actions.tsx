@@ -57,14 +57,14 @@ export function TourHeaderActions({
         }
     }
 
-    // Plain text buttons: no pill, background, or container border - icon + label
-    // with an underline (border-bottom) under the label only.
+    // Design v2 .wtool pills: bordered white pills above the booking widget
+    // (GAP-18), 13px bold, paper hover.
     const actionClass =
-        'inline-flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading transition-colors duration-300 hover:text-it-primary';
-    const actionLabel = 'underline decoration-1.5 underline-offset-2';
+        'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-bold leading-[1.2] text-it-ink transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg';
+    const actionLabel = '';
 
     return (
-        <div className='flex shrink-0 items-center gap-6'>
+        <div className='flex shrink-0 items-center justify-end gap-2'>
             <motion.button
                 type='button'
                 aria-pressed={saved}
@@ -81,7 +81,7 @@ export function TourHeaderActions({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4 shrink-0'
                 />
                 <span className={actionLabel}>{dict.save}</span>
             </motion.button>
@@ -96,7 +96,7 @@ export function TourHeaderActions({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4 shrink-0'
                 />
                 <AnimatePresence mode='wait' initial={false}>
                     <motion.span

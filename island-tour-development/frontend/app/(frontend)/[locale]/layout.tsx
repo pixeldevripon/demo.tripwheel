@@ -48,29 +48,35 @@ export default async function LocaleLayout({
                 cookie (nav search, wishlist, footer pill) resolves in its own
                 mount effect, which React runs after this one. */}
             <CurrencyAutoDetect locale={locale as Locale} />
-            <Navbar
-                locale={locale}
-                dict={dict.nav}
-                search={{
-                    ...dict.search,
-                    // Card meta labels live in the shared listings dictionary.
-                    pickupAvailable: dict.destination.listings.pickupAvailable,
-                    freeCancellation:
-                        dict.destination.listings.freeCancellation,
-                    from: dict.destination.listings.from,
-                }}
-                islands={islands}
-                logo={siteInfo.logo}
-                siteName={siteInfo.siteName}
-            />
-            {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
-                as a dynamic hole so request-time routes don't block the shell.
-                PageTransition adds the sitewide enter animation on client
-                navigations only (first paint stays un-animated for LCP). */}
-            <main className='pt-18 md:pt-20'>
-                <PageTransition>{children}</PageTransition>
-            </main>
-            <Footer locale={locale} dict={dict.footer} />
+            {/* Viewport-filling column: short pages (wishlist, status screens)
+                stretch `main` so the footer always closes the viewport with no
+                dead space below it. */}
+            <div className='flex min-h-svh flex-col'>
+                <Navbar
+                    locale={locale}
+                    dict={dict.nav}
+                    search={{
+                        ...dict.search,
+                        // Card meta labels live in the shared listings dictionary.
+                        pickupAvailable:
+                            dict.destination.listings.pickupAvailable,
+                        freeCancellation:
+                            dict.destination.listings.freeCancellation,
+                        from: dict.destination.listings.from,
+                    }}
+                    islands={islands}
+                    logo={siteInfo.logo}
+                    siteName={siteInfo.siteName}
+                />
+                {/* Cached static shell (Navbar/Footer) prerenders; the page streams in
+                    as a dynamic hole so request-time routes don't block the shell.
+                    PageTransition adds the sitewide enter animation on client
+                    navigations only (first paint stays un-animated for LCP). */}
+                <main className='flex-1 pt-16'>
+                    <PageTransition>{children}</PageTransition>
+                </main>
+                <Footer locale={locale} dict={dict.footer} />
+            </div>
         </WishlistProvider>
     );
 }

@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils';
  * from the live grid they stand in for.
  */
 
-/** A single shimmering placeholder bar (frontend-tokened, no layout of its own). */
+/** A single shimmering placeholder bar (frontend-tokened, no layout of its
+ *  own). The shimmer itself is the shared `.it-skeleton` utility (design v2
+ *  light-sweep on the paper surface); pass a `rounded-*` class to override the
+ *  default 12px radius. */
 export function Bar({ className }: { className?: string }) {
-    return (
-        <div className={cn('animate-pulse rounded-md bg-it-heading/10', className)} />
-    );
+    return <div className={cn('it-skeleton rounded-it-md', className)} />;
 }
 
 /**
@@ -32,10 +33,10 @@ export const HUB_GRID =
     'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
 
 /**
- * Cards a full paginated page renders - kept equal to the real page limits
- * (`TOURS_LIMIT` in `tours-listing-section`, `PAGE_SIZE` in
- * `search-results-section`), so a skeleton grid is the same height as a full
- * first page and doesn't shift when the tours stream in.
+ * Cards a full paginated page renders - kept equal to `PAGE_SIZE` in
+ * `search-results-section`, so a skeleton grid is the same height as a full
+ * first page and doesn't shift when the results stream in. (The tours listing
+ * pages use their own 8-block mockup skeleton - see `tours-page-skeleton`.)
  */
 export const GRID_PAGE_SIZE = 12;
 
@@ -71,7 +72,7 @@ export const DESTINATION_RAIL =
  * `COLLECTION_CARD_CELL` (carousel widths persist until lg).
  */
 export const COLLECTION_RAIL =
-    '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden';
+    'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5';
 
 /**
  * The collection page's tour grid, mirroring `collection-tours-section`:
@@ -82,6 +83,5 @@ export const COLLECTION_TOURS_GRID =
 export const DESTINATION_CARD_CELL =
     'w-[82vw] min-[480px]:w-[64vw] shrink-0 snap-start sm:w-auto';
 
-/** Collection-rail cells keep carousel widths until the lg grid takes over. */
-export const COLLECTION_CARD_CELL =
-    'w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto';
+/** Collection-rail cells: the grid owns sizing at every width now. */
+export const COLLECTION_CARD_CELL = '';

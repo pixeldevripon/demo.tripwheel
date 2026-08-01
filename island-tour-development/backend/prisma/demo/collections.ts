@@ -57,7 +57,8 @@ const COLLECTIONS: CollectionDef[] = [
     type: CollectionType.MANUAL,
     displayStyle: CollectionDisplayStyle.NUMBERED,
     overview: 'The tours our team books for visiting friends, ranked.',
-    curationNote: 'Chosen by Islanders who live and play here.',
+    // Design v2 locked note (collection.html mockup, 5.6).
+    curationNote: "Chosen by Islanders, in the order we'd book them.",
     eyebrowLabel: 'BEST THINGS TO DO',
     about:
       'A hand-ranked list of the experiences that show Curaçao at its best — from Klein Curaçao day trips to the reefs and the old town. Updated as new gems earn their place.',

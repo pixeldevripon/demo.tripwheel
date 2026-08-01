@@ -30,25 +30,30 @@ import {
   ISLAND_FACTS,
 } from './dest-sections';
 
-// Destination-page FAQ set (Figma node 47361:19834): trust-focused questions
-// about booking with Island Tours, with the island name woven in.
+// Destination-page FAQ set (design v2 locked copy, final design/destination.html):
+// trust-focused questions about booking with Island Tours, with the island name
+// woven into the "how far ahead" row.
 function faqsFor(label: string): { q: string; a: string }[] {
   return [
     {
       q: `Can I cancel if my plans change?`,
-      a: `Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email.`,
+      a: `Every tour can be cancelled for free. How late you can cancel differs per tour; the exact cut-off is on the tour page and in your confirmation email. No forms, no questions asked.`,
     },
     {
       q: `Do I have to pay in full now?`,
-      a: `No. On most tours you pay as little as 20% today to lock in your spot and settle the rest closer to your trip. The exact split is shown on each tour page before you book.`,
+      a: `Usually not. Most tours reserve with a small deposit and you settle the rest later or on arrival, depending on the tour. A few tours charge in full or take nothing at booking; the tour page always states exactly how it works before you commit.`,
     },
     {
-      q: `Who is behind Island Tours?`,
-      a: `We are locals. We grew up on these islands, we know every operator on ${label} personally, and we only list tours we would send our own friends and family on.`,
+      q: `How far ahead should I book on ${label}?`,
+      a: `A few days is usually enough. The most popular boats and small-group tours on ${label} fill first, especially December to April and around holidays; land tours often have room a day ahead.`,
     },
     {
-      q: `What if my tour gets cancelled?`,
-      a: `If an operator has to cancel - usually for weather or safety - you choose between a full refund or a free rebooking on the next available departure. We message you as soon as anything changes.`,
+      q: `What happens if the operator has to cancel?`,
+      a: `Weather and safety calls happen on real islands. When a tour is called off, you choose: your money back in full, or a free move to a new date.`,
+    },
+    {
+      q: `Not sure which tour fits?`,
+      a: `Message us on WhatsApp with who's coming and what you like. You get a short list of picks that fit, not a catalog dump.`,
     },
   ];
 }
@@ -255,10 +260,58 @@ const CATEGORY_FAQ_DETAIL: Record<string, CategoryFaqDetail> = {
   },
 };
 
+/**
+ * Design-v2 locked category FAQ sets (mockup category.html, MCK-05). A slug
+ * listed here bypasses the 4-item template entirely - the mockup copy is the
+ * arbiter. Non-EN locales fall back to English for these (the template
+ * translations are aligned to the OLD questions and would mismatch).
+ */
+const CATEGORY_FAQS_LOCKED: Record<string, { q: string; a: string }[]> = {
+  'boat-tours': [
+    {
+      q: "What's the difference between a catamaran and a speedboat trip?",
+      a: "Catamarans are the slow, social way over: big decks, shade, a grill, and about 1 hour 45 minutes each way to Klein Curaçao. Speedboats cut the crossing time and spend it on reach: more stops, smaller groups, more spray. If the day is about the island, take the catamaran; if it's about the water, take the speedboat.",
+    },
+    {
+      q: "What's included on a Klein Curaçao catamaran tour?",
+      a: 'The full-package boats include breakfast, a BBQ lunch from the grill, an open bar, and the crossing itself. Snorkel masks are usually free on board in limited numbers; fins are not provided. Each tour page lists exactly what its boat carries.',
+    },
+    {
+      q: 'Are boat tours suitable for young children?',
+      a: 'Family-friendly boats take all ages, and infants usually sail free. The open-ocean crossing to Klein Curaçao can be bouncy, so families with small children often pick the calmer sunset cruises or west coast routes; every tour page states its own age guidance.',
+    },
+    {
+      q: 'What happens if the weather is bad on my tour date?',
+      a: 'Skippers make the call, and safety wins every time. When an operator cancels a sailing you choose between a full refund and a free move to a new date, and every tour can also be cancelled for free by you; the exact cut-off is on the tour page.',
+    },
+    {
+      q: 'Do boats sail year-round in Curaçao?',
+      a: 'Yes. Curaçao sits south of the hurricane belt, so the season never really closes. January to July is the windy stretch: crossings can run longer and the morning swell picks up, which is also when the sailing is at its best.',
+    },
+  ],
+};
+
+/**
+ * Design-v2 locked category page copy (overview = the header orientation
+ * line, about = the "About {category}" body). Same arbiter as the FAQ sets.
+ */
+const CATEGORY_COPY_LOCKED: Record<
+  string,
+  { overview: string; about: string }
+> = {
+  'boat-tours': {
+    overview:
+      'Every boat here does this island differently. The catamarans sail all day to Klein Curaçao with lunch off the grill, sunset cruises give you the golden two hours, and speedboats trade deck space for reach. Know the shape of your day before you filter.',
+    about:
+      "Boat tours are the spine of a Curaçao holiday: the island's best beaches, reefs, and its most famous day trip all sit on the water. The classic is the Klein Curaçao catamaran day trip, a full day with BBQ and open bar. Shorter on time? A sunset cruise runs 2.5 to 3 hours off the south coast, and the west coast snorkel routes fit inside a morning. Most boats leave from Jan Thiel or Willemstad; December to April fills first, so book those weeks a few days ahead.",
+  },
+};
+
 function categoryFaqsFor(
   label: string,
   slug?: string,
 ): { q: string; a: string }[] {
+  if (slug && CATEGORY_FAQS_LOCKED[slug]) return CATEGORY_FAQS_LOCKED[slug];
   const lower = label.toLowerCase();
   const singular = lower.split('&')[0].trim().replace(/s$/, '');
   const d = (slug && CATEGORY_FAQ_DETAIL[slug]) || {
@@ -751,9 +804,13 @@ export async function seedEntityContent(): Promise<void> {
   let catTr = 0;
   let catPc = 0;
   for (const c of categories) {
-    const overview = `Browse the best ${c.name.toLowerCase()} across the islands — each one vetted, instantly bookable, and backed by free cancellation. Compare prices, departure times, and real traveller reviews before you commit.`;
-    const about = `Looking for ${c.name.toLowerCase()}? You are in the right place. Compare options by price, duration, and traveller rating, then book the one that fits your trip. Every operator is vetted by our local team, and every booking confirms instantly with free cancellation up to the window shown on the tour page.`;
-    const h1 = `Best ${c.name}`;
+    const locked = CATEGORY_COPY_LOCKED[c.slug];
+    const overview =
+      locked?.overview ??
+      `Browse the best ${c.name.toLowerCase()} across the islands — each one vetted, instantly bookable, and backed by free cancellation. Compare prices, departure times, and real traveller reviews before you commit.`;
+    const about =
+      locked?.about ??
+      `Looking for ${c.name.toLowerCase()}? You are in the right place. Compare options by price, duration, and traveller rating, then book the one that fits your trip. Every operator is vetted by our local team, and every booking confirms instantly with free cancellation up to the window shown on the tour page.`;
     // Fill the entity-level gaps the prod seed leaves empty. The OG image reuses
     // the category's curated topical hero (set by the prod seed) so the share
     // card matches the page. Icon stays null - the frontend falls back to
@@ -780,7 +837,9 @@ export async function seedEntityContent(): Promise<void> {
           // carry their real localized category name.
           name: t ? localName : null,
           overview: t ? t.catOverview(localName) : overview,
-          h1Override: t ? t.catH1(localName) : h1,
+          // Design v2: no H1 override - the category page renders the
+          // "{category} in {destination}" template.
+          h1Override: null,
           breadcrumbLabel: t ? localName : null,
           isMachineTranslated: locale !== Locale.en,
         };
@@ -812,7 +871,11 @@ export async function seedEntityContent(): Promise<void> {
       c.name,
       categoryFaqsFor(c.name, c.slug),
       (locale) =>
-        tpl(locale)?.catFaqs(categoryName(c.slug, locale, c.name)) ?? [],
+        // Locked mockup sets skip the template translations (they are
+        // aligned to the old questions) - ensureFaqs falls back to English.
+        CATEGORY_FAQS_LOCKED[c.slug]
+          ? []
+          : (tpl(locale)?.catFaqs(categoryName(c.slug, locale, c.name)) ?? []),
     );
   }
 

@@ -1,14 +1,8 @@
 'use client';
 
 import {
-    getListingPending,
-    getListingPendingServer,
-    subscribeListingPending,
-} from '@/lib/tours/listing-pending';
-import {
     createContext,
     useContext,
-    useSyncExternalStore,
     useTransition,
     type ReactNode,
 } from 'react';
@@ -62,27 +56,20 @@ export function ToursBrowser({
 }) {
     const [isPending, startTransition] = useTransition();
     const startNav = (fn: () => void) => startTransition(fn);
-    // The mobile date pill lives in the streamed HEADER (outside this subtree),
-    // so its refresh transition arrives through the shared store instead of the
-    // context - either source dims the results while the new page streams.
-    const externalPending = useSyncExternalStore(
-        subscribeListingPending,
-        getListingPending,
-        getListingPendingServer
-    );
-    const busy = isPending || externalPending;
+    const busy = isPending;
 
     return (
         <ToursNavContext.Provider value={{ startNav, isPending }}>
-            <div className='flex flex-col gap-8'>
-                {toolbar}
-                <div
-                    aria-busy={busy}
-                    className={`transition-opacity duration-200 ${
-                        busy ? 'pointer-events-none opacity-50' : 'opacity-100'
-                    }`}>
-                    {results}
-                </div>
+            {/* The toolbar renders its own full-width sticky band + container
+                rows (design v2 .frow/.gridhead); the results grid gets the
+                container here. */}
+            {toolbar}
+            <div
+                aria-busy={busy}
+                className={`it-container transition-opacity duration-200 ${
+                    busy ? 'pointer-events-none opacity-50' : 'opacity-100'
+                }`}>
+                {results}
             </div>
         </ToursNavContext.Provider>
     );

@@ -26,18 +26,18 @@ export function HubWhySection({
 
     return (
         // Mobile py 32px (vs the it-section 64px default); desktop keeps 130px.
-        <section className='it-section max-md:py-8! bg-it-surface'>
+        <section className='bg-it-white pt-16 pb-2.5 max-md:pt-8'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-4 md:gap-12'>
-                    <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <Reveal className='flex flex-col gap-3.5'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {title}
                     </h2>
 
-                    <div className='flex flex-col gap-6'>
+                    <div className='flex max-w-[720px] flex-col gap-3'>
                         {paragraphs.map((paragraph, i) => (
                             <p
                                 key={i}
-                                className={`m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted ${
+                                className={`m-0 text-[15.5px] leading-[1.7] text-it-ink first:font-it-display first:text-[19px] first:font-bold first:tracking-[-0.01em] ${
                                     !expanded && i === 0
                                         ? 'line-clamp-5 md:line-clamp-none'
                                         : ''

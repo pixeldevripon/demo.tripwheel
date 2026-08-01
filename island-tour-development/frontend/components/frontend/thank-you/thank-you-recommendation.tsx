@@ -11,20 +11,29 @@ import { Fragment, type ReactNode } from 'react';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-const metaText = 'text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70';
-const metaTextSm = 'text-[13px] leading-[1.5] tracking-[-0.012em] text-it-heading/70';
+const factText = 'text-[13px] font-semibold leading-[1.6] text-it-ink';
+const factTextSm = 'text-[13px] leading-[1.5] tracking-[-0.012em] text-it-heading/70';
 
 /**
- * The palm that opens the eyebrow line. Rendered here rather than stored, in the
- * dictionary or typed by an admin: it is part of the card's design, identical in
- * every language, and an emoji living in seven translation files is seven places
- * for it to go missing.
+ * The brand palm that opens the eyebrow line (design v2 .apteyebrow). Rendered
+ * here rather than stored in the dictionary or typed by an admin: it is part
+ * of the card's design, identical in every language.
  */
-const EYEBROW_MARK = '🌴';
-const dot = <span className='size-1 shrink-0 rounded-full bg-it-heading/20' />;
+const EyebrowMark = (
+    <Image
+        src='/logo/it-palm-orange.svg'
+        alt=''
+        width={12}
+        height={16}
+        className='h-4 w-auto shrink-0'
+    />
+);
+const dot = (
+    <span aria-hidden='true' className='text-it-ink-muted'>
+        ·
+    </span>
+);
 
-const ctaClass =
-    'flex h-12 w-full max-w-[340px] items-center justify-center rounded-full bg-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
 const ctaClassSm =
     'flex h-10 w-full items-center justify-center rounded-full bg-it-primary px-4 font-medium text-[13.5px] leading-none tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover';
 
@@ -32,9 +41,10 @@ const ctaClassSm =
  * Post-booking recommendations section. Admin-managed (Dashboard > Recommendations),
  * shown after a booking in celebratory mode.
  *
- * LAYOUT SWITCH: up to 3 picks stack as full-width photo-and-details cards; more
- * than 3 flips to a responsive 4-column grid of compact cards (same shape as the
- * tour grid), because a long stack of big cards reads as a wall.
+ * LAYOUT SWITCH: up to 3 picks stack as the single-row .aptcard (photo left,
+ * details right, visually smaller than the upsell grid); more than 3 flips to a
+ * responsive 4-column grid of compact cards (same shape as the tour grid),
+ * because a long stack of big cards reads as a wall.
  *
  * A card can be an EXTERNAL place (off-site link, new tab) or an INTERNAL entity (a
  * tour / destination / collection / hub, linked same-tab). The section gates on the
@@ -53,8 +63,8 @@ export function ThankYouRecommendations({
     const asGrid = recommendations.length > 3;
 
     return (
-        <section className='it-section !pt-0 bg-it-white'>
-            <div className='it-container'>
+        <section className='bg-it-white pt-12 pb-0'>
+            <div className={asGrid ? 'it-container' : 'it-wrap'}>
                 {asGrid ? (
                     <div className='grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-8 lg:grid-cols-4'>
                         {recommendations.map((rec, i) => (
@@ -64,10 +74,10 @@ export function ThankYouRecommendations({
                         ))}
                     </div>
                 ) : (
-                    <div className='flex flex-col gap-6'>
+                    <div className='flex flex-col gap-4'>
                         {recommendations.map((rec, i) => (
                             <Reveal key={i}>
-                                <FullCard recommendation={rec} dict={dict} />
+                                <AptCard recommendation={rec} dict={dict} />
                             </Reveal>
                         ))}
                     </div>
@@ -83,30 +93,17 @@ function buildFacts(
     dict: ThankYouDict,
     size: 'md' | 'sm',
 ): { key: string; node: ReactNode }[] {
-    const cls = size === 'sm' ? metaTextSm : metaText;
-    const priceSize =
-        size === 'sm'
-            ? 'font-medium text-[15px] leading-[1.5] tracking-[-0.012em] text-it-heading'
-            : 'font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading';
+    const cls = size === 'sm' ? factTextSm : factText;
     const facts: { key: string; node: ReactNode }[] = [];
 
     if (r.rating !== null) {
         facts.push({
             key: 'rating',
             node: (
-                <span className='flex items-center gap-1.5'>
-                    <Image
-                        src='/icons/star-listings.svg'
-                        alt=''
-                        width={16}
-                        height={16}
-                        className='size-4'
-                    />
-                    <span className={cls}>
-                        {r.rating}
-                        {r.reviewCount !== null &&
-                            ` (${r.reviewCount.toLocaleString('en-US')})`}
-                    </span>
+                <span className={`${cls} font-bold text-it-star`}>
+                    ★ {r.rating}
+                    {r.reviewCount !== null &&
+                        ` (${r.reviewCount.toLocaleString('en-US')})`}
                 </span>
             ),
         });
@@ -125,19 +122,15 @@ function buildFacts(
         facts.push({
             key: 'price',
             node: (
-                <span className='flex items-baseline gap-1'>
-                    <span className={cls}>{dict.from}</span>
+                <span className={cls}>
+                    {dict.from}{' '}
                     {/* The record's OWN currency, never a literal '$'. */}
-                    <span className={priceSize}>
-                        {currencySymbol(r.currency)}
-                        {r.priceAmount}
-                    </span>
+                    {currencySymbol(r.currency)}
+                    {r.priceAmount}
                     {/* "/per night" is a STAY unit - only shown when the pick has
                         a "sleeps" (hotel/apartment/villa). A tour or car reads
                         "from $X" with no per-night suffix. */}
-                    {r.sleeps !== null && (
-                        <span className={cls}>{dict.perNight}</span>
-                    )}
+                    {r.sleeps !== null && dict.perNight}
                 </span>
             ),
         });
@@ -148,12 +141,12 @@ function buildFacts(
 /** EXTERNAL opens off-site (new tab); INTERNAL keeps client-side nav same-tab. */
 function Cta({
     r,
-    label,
     className,
+    children,
 }: {
     r: PublicRecommendation;
-    label: string;
     className: string;
+    children: ReactNode;
 }) {
     return r.external ? (
         <MotionA
@@ -163,7 +156,7 @@ function Cta({
             whileTap={{ scale: 0.98 }}
             transition={springPop}
             className={className}>
-            {label}
+            {children}
         </MotionA>
     ) : (
         <MotionLink
@@ -171,7 +164,7 @@ function Cta({
             whileTap={{ scale: 0.98 }}
             transition={springPop}
             className={className}>
-            {label}
+            {children}
         </MotionLink>
     );
 }
@@ -211,8 +204,13 @@ function CardLink({
     );
 }
 
-/** The full-width photo-and-details card (the ≤3 stack). */
-function FullCard({
+/**
+ * The single-row card (design v2 .aptcard, the ≤3 stack): 280px photo left,
+ * centred details right - palm eyebrow, display title, one-line pitch, facts
+ * with the amber star, then a quiet outline CTA (subtle border, paper hover -
+ * never a dark border).
+ */
+function AptCard({
     recommendation,
     dict,
 }: {
@@ -224,71 +222,67 @@ function FullCard({
     const facts = buildFacts(recommendation, dict, 'md');
 
     const inner = (
-        <div className='grid overflow-hidden rounded-[16px] border border-it-heading/10 bg-it-surface lg:grid-cols-2'>
-            <div className='relative h-[240px] bg-it-border lg:h-auto lg:min-h-[379px]'>
+        <div className='grid overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm md:grid-cols-[280px_1fr]'>
+            <div className='relative h-[170px] bg-it-bg md:h-auto md:min-h-[220px]'>
                 <Image
                     src={imageUrl}
                     alt={title}
                     fill
-                    sizes='(min-width: 1024px) 588px, 100vw'
+                    sizes='(min-width: 768px) 280px, 100vw'
                     className='object-cover'
                 />
             </div>
-            <div className='flex flex-col justify-between gap-6 p-6 lg:py-8 lg:pl-[42px] lg:pr-[22px]'>
-                <div className='flex flex-col gap-6'>
-                    {/* Eyebrow + area are admin copy; absent on internal picks. */}
-                    {(eyebrow || recommendation.areaLabel) && (
-                        <div className='flex items-center gap-4'>
-                            {eyebrow && (
-                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-[#858585]'>
-                                    {EYEBROW_MARK} {eyebrow}
-                                </span>
-                            )}
-                            {recommendation.areaLabel && (
-                                <>
-                                    {eyebrow && dot}
-                                    <span className={metaText}>
-                                        {recommendation.areaLabel}
-                                    </span>
-                                </>
-                            )}
-                        </div>
-                    )}
-                    <div className='flex flex-col gap-5'>
-                        <div className='flex flex-col gap-1'>
-                            <h3 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                {title}
-                            </h3>
-                            {facts.length > 0 && (
-                                <div className='flex flex-wrap items-center gap-4'>
-                                    {facts.map((fact, index) => (
-                                        <Fragment key={fact.key}>
-                                            {index > 0 && dot}
-                                            {fact.node}
-                                        </Fragment>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        {recommendation.descriptionLines.length > 0 && (
-                            <div className='flex flex-col'>
-                                {recommendation.descriptionLines.map(line => (
-                                    <p
-                                        key={line}
-                                        className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                        {line}
-                                    </p>
-                                ))}
-                            </div>
-                        )}
+            <div className='flex flex-col items-start justify-center px-5 py-5 md:px-7 md:py-6'>
+                {/* Eyebrow + area are admin copy; absent on internal picks. */}
+                {(eyebrow || recommendation.areaLabel) && (
+                    <div className='flex items-center gap-2 text-[11px] font-bold uppercase leading-[1.4] tracking-[0.12em] text-it-text-muted'>
+                        {EyebrowMark}
+                        <span className='flex items-center gap-2'>
+                            {eyebrow}
+                            {eyebrow && recommendation.areaLabel && dot}
+                            {recommendation.areaLabel}
+                        </span>
                     </div>
-                </div>
+                )}
+                <h3 className='m-0 mt-2 font-it-display text-[20px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
+                    {title}
+                </h3>
+                {recommendation.descriptionLines.length > 0 && (
+                    <div className='mt-1 flex flex-col'>
+                        {recommendation.descriptionLines.map(line => (
+                            <p
+                                key={line}
+                                className='m-0 text-[14px] leading-[1.6] text-it-text-muted'>
+                                {line}
+                            </p>
+                        ))}
+                    </div>
+                )}
+                {facts.length > 0 && (
+                    <div className='mt-2 flex flex-wrap items-center gap-2'>
+                        {facts.map((fact, index) => (
+                            <Fragment key={fact.key}>
+                                {index > 0 && dot}
+                                {fact.node}
+                            </Fragment>
+                        ))}
+                    </div>
+                )}
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        label={ctaLabel}
-                        className={ctaClass}
-                    />
+                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-bold leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
+                        {ctaLabel}
+                        {recommendation.external && (
+                            <Image
+                                src='/icons/thank-you/external-arrow.svg'
+                                alt=''
+                                width={16}
+                                height={16}
+                                className='size-4 shrink-0'
+                            />
+                        )}
+                    </Cta>
                 )}
             </div>
         </div>
@@ -336,8 +330,8 @@ function GridCard({
                 {/* Eyebrow is admin copy (OUR VILLA / WHERE TO EAT). Absent on
                     internal picks, which then read like a plain tour card. */}
                 {eyebrow && (
-                    <span className='flex items-center gap-1 text-[11px] uppercase leading-[1.4] tracking-[0.04em] text-[#858585]'>
-                        {EYEBROW_MARK} {eyebrow}
+                    <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
+                        {EyebrowMark} {eyebrow}
                     </span>
                 )}
                 <h3 className='m-0 font-medium text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
@@ -364,11 +358,9 @@ function GridCard({
             <div className='group flex h-full flex-col'>
                 {body}
                 <div className='pt-3'>
-                    <Cta
-                        r={recommendation}
-                        label={ctaLabel}
-                        className={ctaClassSm}
-                    />
+                    <Cta r={recommendation} className={ctaClassSm}>
+                        {ctaLabel}
+                    </Cta>
                 </div>
             </div>
         );

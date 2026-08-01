@@ -98,21 +98,23 @@ export function ToursListing({
     }
 
     return (
-        <Reveal className='flex flex-col gap-12 sm:gap-18'>
+        <Reveal className='flex flex-col gap-7.5'>
             {/* ── Tour grid ───────────────────────────────────────────────
-                Sitewide tour grid: 2-col mobile (compact cards - <TourCard>
-                switches variants below a 220px container width, Figma node
-                48540:16790), 3-col from sm with wider gaps, 4-col from lg. */}
-            <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
+                Design v2 catalog grid (.tcgrid, DIT-13): stacked row cards on
+                mobile, 3-col from sm, 4-col from lg (20px row / 16px column
+                gaps). */}
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
                 {tours.map((tour, i) => (
                     <MountReveal key={tour.id} listItem>
                         <TourCard
                             tour={tour}
                             dict={dict}
+                            mobileRow
                             tinted={peachFirst && page === 1 && i === 0}
-                            // First card of the list renders pre-highlighted
-                            // (static hover treatment - top placement marker).
-                            highlighted={page === 1 && i === 0}
+                            // Peach top placement is sanctioned on All Tours
+                            // only (§B.63) - category pages render card #1
+                            // flat, so the highlight rides the same gate.
+                            highlighted={peachFirst && page === 1 && i === 0}
                             // First ROW only (4 at lg, the widest layout) - the
                             // LCP candidate lives here. Preloading the whole
                             // page of cards just delays it.

@@ -41,7 +41,7 @@ export type HubTripsFilterDict = {
 };
 
 const GRID =
-    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
+    'grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-[18px] sm:gap-y-[22px]';
 
 /**
  * One panel of the hub trips/charters listing - a heading + its own date chip,
@@ -132,7 +132,7 @@ export function HubTripsPanel({
             {/* Heading + date chip */}
             <Reveal className='flex flex-col gap-4 md:gap-6'>
                 <div className='flex flex-col gap-1'>
-                    <h2 className='m-0 font-medium text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {panel.title}
                     </h2>
                     <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -243,7 +243,7 @@ export function HubTripsPanel({
                                   <div className='flex flex-col gap-6'>
                                       {group.title && (
                                           <Reveal>
-                                              <h3 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                                              <h3 className='m-0 mt-4 border-t border-it-divider pt-[22px] text-[13px] font-extrabold uppercase tracking-[0.06em] text-it-ink'>
                                                   {group.title}
                                               </h3>
                                           </Reveal>

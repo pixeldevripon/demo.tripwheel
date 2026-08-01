@@ -8,16 +8,21 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * The TYP hero's interactive client leaves (STRONG RULE: the hero shell stays
- * a server component). Both are self-contained: the ref chip owns the
- * copy-to-clipboard state, the resend line owns its request + result state.
+ * a server component). All are self-contained: the copy button owns the
+ * clipboard state, the calendar menu its open state, the resend line its
+ * request + result state.
  */
 
-/** Booking-ref chip - tap copies the ref; the icon springs to a green check. */
-export function BookingRefChip({
+/** "Copy" text button inside the booking-ref pill - flips to "Copied". */
+export function BookingRefCopy({
     displayRef,
+    copyLabel,
+    copiedLabel,
     ariaLabel,
 }: {
     displayRef: string;
+    copyLabel: string;
+    copiedLabel: string;
     ariaLabel: string;
 }) {
     const [copied, setCopied] = useState(false);
@@ -43,32 +48,166 @@ export function BookingRefChip({
             whileTap={{ scale: 0.97 }}
             transition={springPop}
             aria-label={ariaLabel}
-            className='flex h-[42px] w-[204px] cursor-pointer items-center justify-between rounded-[8px] bg-it-surface px-4'>
-            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                {displayRef}
-            </span>
-            <AnimatePresence mode='wait' initial={false}>
-                <motion.span
-                    key={copied ? 'copied' : 'copy'}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    transition={springPop}
-                    className='flex size-5 items-center justify-center'>
-                    <Image
-                        src={
-                            copied
-                                ? '/icons/check-green.svg'
-                                : '/icons/thank-you/copy.svg'
-                        }
-                        alt=''
-                        width={20}
-                        height={20}
-                        className='size-5'
-                    />
-                </motion.span>
-            </AnimatePresence>
+            aria-live='polite'
+            className='cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.4] text-it-primary-hover underline underline-offset-2'>
+            {copied ? copiedLabel : copyLabel}
         </motion.button>
+    );
+}
+
+export type AddToCalendarLabels = {
+    button: string;
+    google: string;
+    apple: string;
+    outlook: string;
+    ics: string;
+};
+
+/**
+ * "Add to calendar" split control (design v2 .calbtn/.calpanel, DELTA-01):
+ * orange CTA that opens a 230px dropdown of provider targets - Google/Outlook
+ * deeplinks in a new tab, Apple + "Download .ics" both hitting the backend's
+ * one-event .ics.
+ */
+export function AddToCalendar({
+    googleUrl,
+    outlookUrl,
+    icsUrl,
+    labels,
+}: {
+    googleUrl: string;
+    outlookUrl: string;
+    icsUrl: string;
+    labels: AddToCalendarLabels;
+}) {
+    const [open, setOpen] = useState(false);
+    const wrapRef = useRef<HTMLDivElement>(null);
+
+    // Light-dismiss: outside click or Escape closes the panel.
+    useEffect(() => {
+        if (!open) return;
+        function onPointerDown(event: MouseEvent | TouchEvent) {
+            if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
+        }
+        function onKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') setOpen(false);
+        }
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [open]);
+
+    const itemClass =
+        'flex w-full cursor-pointer items-center gap-2.5 rounded-it-sm px-3 py-2.5 text-left text-[13.5px] font-semibold leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg';
+
+    const options = [
+        {
+            key: 'google',
+            label: labels.google,
+            href: googleUrl,
+            icon: '/icons/thank-you/cal-google-soft.svg',
+            newTab: true,
+            download: false,
+        },
+        {
+            key: 'apple',
+            label: labels.apple,
+            href: icsUrl,
+            icon: '/icons/thank-you/cal-google-soft.svg',
+            newTab: false,
+            download: false,
+        },
+        {
+            key: 'outlook',
+            label: labels.outlook,
+            href: outlookUrl,
+            icon: '/icons/thank-you/cal-google-soft.svg',
+            newTab: true,
+            download: false,
+        },
+        {
+            key: 'ics',
+            label: labels.ics,
+            href: icsUrl,
+            icon: '/icons/thank-you/cal-download-soft.svg',
+            newTab: false,
+            download: true,
+        },
+    ];
+
+    return (
+        <div ref={wrapRef} className='relative inline-block'>
+            <motion.button
+                type='button'
+                onClick={() => setOpen(v => !v)}
+                whileTap={{ scale: 0.98 }}
+                transition={springPop}
+                aria-expanded={open}
+                aria-haspopup='menu'
+                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[16px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                <Image
+                    src='/icons/thank-you/calendar-white.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-[17px] shrink-0'
+                />
+                {labels.button}
+                <Image
+                    src='/icons/thank-you/arrow-down-white.svg'
+                    alt=''
+                    width={16}
+                    height={16}
+                    className={`size-3.5 shrink-0 transition-transform duration-(--it-duration-xs) ${open ? 'rotate-180' : ''}`}
+                />
+            </motion.button>
+            <AnimatePresence>
+                {open && (
+                    // Centering transform lives on this STATIC wrapper - motion
+                    // writes an inline transform, so translateX(-50%) on the
+                    // animated node itself would be overwritten mid-animation.
+                    <div className='absolute left-1/2 top-[calc(100%+8px)] z-40 -translate-x-1/2'>
+                        <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            transition={swapFade}
+                            role='menu'
+                            className='w-[230px] rounded-it-md bg-it-white p-2 text-left shadow-it-lg'>
+                            {options.map(option => (
+                                <a
+                                    key={option.key}
+                                    href={option.href}
+                                    role='menuitem'
+                                    onClick={() => setOpen(false)}
+                                    className={itemClass}
+                                    {...(option.newTab
+                                        ? {
+                                              target: '_blank',
+                                              rel: 'noopener noreferrer',
+                                          }
+                                        : {})}
+                                    {...(option.download ? { download: '' } : {})}>
+                                    <Image
+                                        src={option.icon}
+                                        alt=''
+                                        width={24}
+                                        height={24}
+                                        className='size-4 shrink-0'
+                                    />
+                                    {option.label}
+                                </a>
+                            ))}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }
 
@@ -142,7 +281,7 @@ export function ResendEmailLine({
                         onClick={handleResend}
                         disabled={state === 'sending'}
                         aria-live='polite'
-                        className='cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60'>
+                        className='cursor-pointer font-bold text-it-primary-hover underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60'>
                         {state === 'sending' ? sendingLabel : resendLabel}
                     </button>
                 </motion.p>

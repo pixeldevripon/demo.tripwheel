@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Select your Island",
+        "island": "Island",
         "wishlist": "Wishlist",
+        "saved": "Saved",
         "account": "Account",
         "logout": "Log out",
         "menu": "Menu",
@@ -10,7 +12,9 @@
         "categories": "Categories",
         "search": "Search for",
         "myBookings": "My bookings",
-        "myAccount": "Accounts"
+        "myAccount": "Accounts",
+        "tours": "tours",
+        "allIslandTours": "All {destination} tours"
     },
     "footer": {
         "tagline": "Built by Islanders.",
@@ -90,8 +94,8 @@
                 "body": "Free cancellation on every tour, no questions asked"
             },
             {
-                "title": "Help when you need it",
-                "body": "Message us on WhatsApp, 08:00 - 20:00"
+                "title": "We're locals. Here to help",
+                "body": "Message us on WhatsApp, 08:00 to 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +109,8 @@
             }
         },
         "explore": {
-            "title": "Explore our islands",
+            "title": "Choose your island",
+            "subtitle": "Three islands, one standard.",
             "tours": "tours",
             "seeMore": "See more islands"
         },
@@ -123,7 +128,7 @@
         "faq": {
             "title": "Need help before booking?",
             "subtitle": "We're locals. We grew up here, we know these tours, and we want you to have the best time on these islands.",
-            "whatsapp": "Chat on WhatsApp",
+            "whatsapp": "WhatsApp us",
             "guarantees": [
                 "Free cancellation, no questions asked",
                 "Pay as little as 20% today, the rest later"
@@ -131,61 +136,66 @@
             "items": [
                 {
                     "q": "Can I cancel if my plans change?",
-                    "a": "Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email."
+                    "a": "Every tour can be cancelled for free. How late you can cancel differs per tour; the exact cut-off is on the tour page and in your confirmation email. No forms, no questions asked."
                 },
                 {
                     "q": "Do I have to pay in full now?",
-                    "a": "No — you can secure your spot with just 20% upfront and pay the remaining balance closer to your tour date."
+                    "a": "Usually not. Most tours reserve with a small deposit and you settle the rest later or on arrival, depending on the tour. A few tours charge in full or take nothing at booking; the tour page always states exactly how it works before you commit."
+                },
+                {
+                    "q": "What happens if the operator has to cancel?",
+                    "a": "Weather and safety calls happen on real islands. When a tour is called off, you choose: your money back in full, or a free move to a new date."
                 },
                 {
                     "q": "Who is behind Island Tours?",
-                    "a": "We're a team of islanders who grew up on Curaçao, Aruba, and Sint Maarten. Every tour is one we've personally vetted."
+                    "a": "Island Tours is run by ITG B.V., a company registered on Curaçao (KvK 169950). The people building and answering it live and work on the islands."
                 },
                 {
-                    "q": "What if my tour gets cancelled?",
-                    "a": "If a tour is cancelled by the operator, you get a full refund within 24 hours — no questions asked."
-                },
-                {
-                    "q": "Not sure which tour? We'll help.",
-                    "a": "Chat with us on WhatsApp anytime. Tell us what you're after and we'll give you honest, local recommendations."
+                    "q": "Not sure which tour fits?",
+                    "a": "Message us on WhatsApp with who's coming and what you like. You get a short list of picks that fit, not a catalog dump."
                 }
             ]
+        },
+        "cta": {
+            "title": "Ready when you are.",
+            "body": "Lock your date with a small deposit. Cancel free up to each tour's cut-off."
         }
     },
     "destination": {
         "allTours": {
             "breadcrumb": {
                 "home": "Home",
-                "current": "All Tours"
+                "current": "All tours"
             },
             "heading": {
                 "title": "All {destination} tours & activities in {year}",
                 "categoryTitle": "{category} in {destination}",
-                "subtitle": "Every tour we offer on {destination}, in one place.",
+                "subtitle": "From day trips to buggy adventures. Every tour we offer on {destination}.",
                 "availableCount": "{count} tours",
                 "availableLabel": "available"
             },
             "toolbar": {
                 "filters": "Filters",
-                "selectDate": "Select date",
+                "selectDate": "Date",
                 "clearDate": "Clear date",
                 "guestTypes": {
                     "adults": {
                         "label": "Adults",
-                        "hint": "Age 13+",
-                        "word": "adults"
+                        "hint": "12 or older",
+                        "word": "Adults"
                     },
                     "children": {
                         "label": "Children",
-                        "hint": "Age 2–12",
-                        "word": "children"
+                        "hint": "4 to 11",
+                        "word": "Children"
                     },
                     "infants": {
                         "label": "Infants",
-                        "hint": "Under 2",
-                        "word": "infants"
+                        "hint": "Under 4 · Free on most tours",
+                        "word": "Infants"
                     }
                 },
+                "applyGuests": "Apply",
                 "resultsCount": "{shown} of {total}",
                 "toursWord": "tours",
                 "clearAll": "Clear all",
@@ -196,38 +206,28 @@
                 "description": "Try adjusting or clearing your filters to see more tours."
             },
             "sort": {
-                "localsFavorites": "Locals' Favorites",
-                "priceLowHigh": "Price (Low to High)",
-                "priceHighLow": "Price (High to Low)",
-                "defaultSuffix": "(Default)"
+                "localsFavorites": "Locals' favorites",
+                "priceLowHigh": "Price: low to high",
+                "priceHighLow": "Price: high to low"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Built by locals",
-                    "subtitle": "Who grew up here"
-                },
-                "freeCancellation": {
-                    "title": "Free cancellation",
-                    "subtitle": "No questions asked"
-                },
-                "message": {
-                    "title": "We're locals",
-                    "subtitle": "Message us on WhatsApp"
-                },
-                "pay": {
-                    "title": "Pay as little as 20%",
-                    "subtitle": "today, the rest later"
-                }
+                "checks": [
+                    "Free cancellation, no questions asked",
+                    "Pay as little as 20% today, the rest later",
+                    "Confirmed in seconds",
+                    "Safe & secure checkout"
+                ],
+                "whatsapp": "Questions? Chat on WhatsApp →"
             },
             "filterModal": {
-                "title": "Filter",
+                "title": "Filters",
                 "price": "Price",
                 "duration": "Duration",
                 "durations": {
-                    "upTo2": "Up to 2 hours",
-                    "2to4": "2 to 4 hours",
-                    "4to6": "4 to 6 hours",
-                    "fullDay": "Full day (6+ hours)"
+                    "upTo2": "Up to 2h",
+                    "2to4": "2 to 4h",
+                    "4to6": "4 to 6h",
+                    "fullDay": "Full day 6h+"
                 },
                 "timeOfDay": "Time of day",
                 "times": {
@@ -237,16 +237,17 @@
                 },
                 "freeCancellation": "Free cancellation",
                 "freeCancellationNote": "All tours include free cancellation.",
-                "cancellationLabel": "Filter by how late you can cancel:",
+                "cancellationLabel": "Filter by how late you can cancel.",
                 "cancellation": {
                     "24h": "Up to 24h before",
-                    "48h": "48h before",
-                    "72h": "72h before"
+                    "48h": "Up to 48h before",
+                    "72h": "Up to 72h before"
                 },
                 "pickupAvailable": "Pickup available",
+                "pickupNote": "Tours where pickup can be added or is part of the price. Never an expectation of free pickup.",
                 "ratings": "Ratings",
                 "ratingsNote": "(hidden until reviews exist)",
-                "clearAll": "Clear All",
+                "clearAll": "Reset all",
                 "applyFilters": "Apply Filters"
             }
         },
@@ -260,7 +261,8 @@
         },
         "exploreTypes": {
             "title": "Explore by type",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "All {destination} tours"
         },
         "youMightLike": "You might also like",
         "hub": {
@@ -351,6 +353,12 @@
             "linkCopied": "Link copied",
             "localsFavorite": "Locals' favorite",
             "showAllPhotos": "Show all photos",
+            "quickInfo": {
+                "durationSub": "Tour duration",
+                "pickupIncluded": "Included in the price",
+                "pickupPaid": "Paid add-on",
+                "languagesSub": "Crew languages"
+            },
             "booking": {
                 "from": "From",
                 "perPerson": "per person",
@@ -568,6 +576,7 @@
             "viewMore": "View more on Instagram"
         },
         "listings": {
+            "kicker": "Chosen by people who live here",
             "title": "Locals' favorites",
             "seeAllCount": "See all {count} tours in {destination}",
             "seeAll": "See all {destination} tours",
@@ -638,6 +647,8 @@
         "requiredError": "This field is required",
         "emailError": "Enter a valid email address",
         "selectPaymentMethod": "Select a payment method",
+        "secureCheckout": "Secure checkout",
+        "poweredBy": "Powered by",
         "card": "Card",
         "cardNumber": "Card number",
         "expiry": "Expiry",
@@ -656,6 +667,7 @@
         "bookingSummary": "Booking summary",
         "noPickup": "No pickup",
         "freeCancellation": "Free cancellation up to {hours}h",
+        "freeCancellationLong": "Free cancellation up to {hours}h before the tour starts, full refund.",
         "total": "Total",
         "payToday": "Pay today",
         "balanceLater": "Balance later",
@@ -666,7 +678,6 @@
         "applePay": "Apple Pay",
         "googlePay": "Google Pay",
         "backToTour": "Back to tour",
-        "fullName": "Full name",
         "backToContact": "Back to contact",
         "processing": "Processing...",
         "paymentError": "Your payment couldn't be completed. Please check your card details and try again.",
@@ -703,13 +714,19 @@
         "verifyCta": "Verify with email + reference"
     },
     "thankYou": {
-        "title": "You're booked, {name}! 🌴",
+        "title": "You're booked, {name}!",
         "subtitle": "Your {tour} is reserved for {date} at {time}.",
         "bookingRef": "Booking ref:",
+        "copy": "Copy",
+        "copied": "Copied",
         "reviewPrompt": "How was your tour?",
         "reviewPromptBody": "It takes one tap. Your review helps the next traveller choose.",
         "reviewCta": "Leave a review",
         "addToCalendar": "Add to calendar",
+        "calGoogle": "Google Calendar",
+        "calApple": "Apple Calendar",
+        "calOutlook": "Outlook",
+        "calIcs": "Download .ics",
         "emailSentTo": "Confirmation email sent to {email}",
         "emailHelpPrefix": "Don't see it? Check spam, or",
         "resendEmail": "Resend email",
@@ -724,26 +741,27 @@
         "pickup": "Pickup",
         "freeCancel": "Free cancel",
         "beforeDate": "Before {date}",
-        "trip": "Trip",
+        "trip": "Operator",
         "email": "Email",
         "phoneNumber": "Phone number",
         "traveler": "Traveler",
         "extras": "Extras",
         "guestLead": "Guest lead",
-        "depositPaid": "Deposit paid",
-        "percentPaid": "{pct}% Paid",
+        "depositPaid": "Deposit paid today",
+        "paidVia": "{pct}% via {card}",
+        "paidInFull": "Paid in full",
+        "paidFullNote": "Your tour is fully paid. Just bring your booking ref and ID.",
         "remainingBalance": "Remaining balance",
-        "percentUnpaid": "{pct}% unpaid",
-        "operatorLinkNote": "{operator} will email you a payment link",
+        "operatorLinkNote": "{operator} will email you a payment link for the remaining balance.",
         "payBefore": "Pay before",
         "total": "Total",
         "ref": "Ref",
         "nextTitle": "What happens next",
-        "step1Title": "Booking confirm email",
-        "step1Sub": "Check spam if missing",
-        "step2Title": "Payment link from operator",
-        "step2Sub": "Pay before {date}. Card only",
-        "step3Title": "Show up and enjoy",
+        "step1Title": "Booking confirmation email",
+        "step1Sub": "We've emailed your booking confirmation. Check your spam folder if it's not in your inbox.",
+        "step2Title": "Payment link from your operator",
+        "step2Sub": "{operator} will email you a payment link for the remaining balance. Pay before {date}.",
+        "step3Title": "Show up & enjoy",
         "relatedTitle": "Islanders also love...",
         "relatedSubtitle": "Picked to pair with your booking",
         "browsePicks": "Browse the Islanders' top picks",
@@ -752,7 +770,7 @@
         "from": "from",
         "perNight": "/per night",
         "aptCta": "See availability on Airbnb",
-        "questionTitle": "Got a question about tour?",
+        "questionTitle": "Got a question about your tour?",
         "talkLocals": "Talk to the locals running it, they know it best:",
         "issueTitle": "Booking or payment issue?",
         "issueBody": "Email {email} and include your ref ({ref})",

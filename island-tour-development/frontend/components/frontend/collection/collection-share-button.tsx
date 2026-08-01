@@ -26,15 +26,15 @@ export function CollectionShareButton({ label }: { label: string }) {
             type='button'
             onClick={handleShare}
             aria-label={label}
-            className='inline-flex cursor-pointer items-center gap-2 rounded-it-full bg-it-white px-3 py-2.5 transition-opacity hover:opacity-90 active:opacity-75 xl:px-4 xl:py-3'>
+            className='inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white/92 px-[15px] py-[9px] shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:-translate-y-px'>
             <Image
                 src='/icons/share-outline.svg'
                 alt=''
                 width={24}
                 height={24}
-                className='size-5 shrink-0 xl:size-6'
+                className='size-[15px] shrink-0'
             />
-            <span className='font-medium text-[14px] xl:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <span className='text-[13px] font-bold leading-[1.4] text-it-ink'>
                 {label}
             </span>
         </button>

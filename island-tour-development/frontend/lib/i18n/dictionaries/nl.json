@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Kies je eiland",
+        "island": "Eiland",
         "wishlist": "Verlanglijst",
+        "saved": "Bewaard",
         "account": "Account",
         "logout": "Uitloggen",
         "menu": "Menu",
@@ -10,7 +12,9 @@
         "categories": "Categorieën",
         "search": "Zoeken naar",
         "myBookings": "Mijn boekingen",
-        "myAccount": "Accounts"
+        "myAccount": "Accounts",
+        "tours": "tours",
+        "allIslandTours": "Alle tours op {destination}"
     },
     "footer": {
         "tagline": "Gemaakt door eilandbewoners.",
@@ -90,8 +94,8 @@
                 "body": "Gratis annuleren bij elke tour, geen vragen"
             },
             {
-                "title": "Hulp wanneer je het nodig hebt",
-                "body": "Stuur ons een bericht op WhatsApp, 08:00 - 20:00"
+                "title": "Wij zijn locals. We helpen je graag",
+                "body": "Stuur ons een bericht op WhatsApp, 08:00 tot 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +109,8 @@
             }
         },
         "explore": {
-            "title": "Ontdek onze eilanden",
+            "title": "Kies je eiland",
+            "subtitle": "Drie eilanden, één standaard.",
             "tours": "tours",
             "seeMore": "Bekijk meer eilanden"
         },
@@ -123,7 +128,7 @@
         "faq": {
             "title": "Hulp nodig voordat je boekt?",
             "subtitle": "Wij zijn locals. We zijn hier opgegroeid, we kennen deze tours en we willen dat je de beste tijd hebt op deze eilanden.",
-            "whatsapp": "Chat op WhatsApp",
+            "whatsapp": "WhatsApp ons",
             "guarantees": [
                 "Gratis annuleren, geen vragen",
                 "Betaal vandaag al vanaf 20%, de rest later"
@@ -131,25 +136,29 @@
             "items": [
                 {
                     "q": "Kan ik annuleren als mijn plannen veranderen?",
-                    "a": "De meeste tours kunnen tot 24 uur voor aanvang kosteloos worden geannuleerd, met volledige terugbetaling. Geen formulieren, geen gedoe. Annuleer direct vanuit je bevestigingsmail."
+                    "a": "Elke tour kan gratis worden geannuleerd. Tot wanneer je kunt annuleren verschilt per tour; de exacte deadline staat op de tourpagina en in je bevestigingsmail. Geen formulieren, geen vragen."
                 },
                 {
-                    "q": "Moet ik nu het volledige bedrag betalen?",
-                    "a": "Nee — je kunt je plek vastleggen met slechts 20% vooraf en het resterende bedrag dichter bij je tourdatum betalen."
+                    "q": "Moet ik nu alles betalen?",
+                    "a": "Meestal niet. De meeste tours reserveer je met een kleine aanbetaling en de rest betaal je later of bij aankomst, afhankelijk van de tour. Een enkele tour rekent het volledige bedrag of vraagt niets bij het boeken; op de tourpagina staat altijd precies hoe het werkt voordat je boekt."
+                },
+                {
+                    "q": "Wat gebeurt er als de operator moet annuleren?",
+                    "a": "Weer en veiligheid horen bij echte eilanden. Als een tour wordt afgelast, kies jij: je geld volledig terug, of gratis verplaatsen naar een nieuwe datum."
                 },
                 {
                     "q": "Wie zit er achter Island Tours?",
-                    "a": "We zijn een team van eilandbewoners die zijn opgegroeid op Curaçao, Aruba en Sint Maarten. Elke tour is er een die we persoonlijk hebben gecontroleerd."
+                    "a": "Island Tours wordt gerund door ITG B.V., een bedrijf geregistreerd op Curaçao (KvK 169950). De mensen die het bouwen en je te woord staan, wonen en werken op de eilanden."
                 },
                 {
-                    "q": "Wat als mijn tour wordt geannuleerd?",
-                    "a": "Als een tour door de aanbieder wordt geannuleerd, krijg je binnen 24 uur een volledige terugbetaling — geen vragen gesteld."
-                },
-                {
-                    "q": "Niet zeker welke tour? Wij helpen.",
-                    "a": "Chat altijd met ons op WhatsApp. Vertel ons wat je zoekt en we geven je eerlijke, lokale aanbevelingen."
+                    "q": "Weet je niet welke tour past?",
+                    "a": "Stuur ons een WhatsApp met wie er meegaat en wat je leuk vindt. Je krijgt een korte lijst met passende keuzes, geen catalogus."
                 }
             ]
+        },
+        "cta": {
+            "title": "Klaar wanneer jij het bent.",
+            "body": "Zet je datum vast met een kleine aanbetaling. Annuleer gratis tot de deadline van elke tour."
         }
     },
     "destination": {
@@ -161,31 +170,32 @@
             "heading": {
                 "title": "Alle {destination} tours & activiteiten in {year}",
                 "categoryTitle": "{category} in {destination}",
-                "subtitle": "Alle tours die we op {destination} aanbieden, bij elkaar.",
+                "subtitle": "Van dagtochten tot buggy-avonturen. Elke tour die we op {destination} aanbieden.",
                 "availableCount": "{count} tours",
                 "availableLabel": "beschikbaar"
             },
             "toolbar": {
                 "filters": "Filters",
-                "selectDate": "Datum kiezen",
+                "selectDate": "Datum",
                 "clearDate": "Datum wissen",
                 "guestTypes": {
                     "adults": {
                         "label": "Volwassenen",
-                        "hint": "13+ jaar",
-                        "word": "volwassenen"
+                        "hint": "12 jaar of ouder",
+                        "word": "Volwassenen"
                     },
                     "children": {
                         "label": "Kinderen",
-                        "hint": "2–12 jaar",
-                        "word": "kinderen"
+                        "hint": "4 tot 11 jaar",
+                        "word": "Kinderen"
                     },
                     "infants": {
                         "label": "Baby's",
-                        "hint": "Onder 2",
-                        "word": "baby's"
+                        "hint": "Onder de 4 · Gratis op de meeste tours",
+                        "word": "Baby's"
                     }
                 },
+                "applyGuests": "Toepassen",
                 "resultsCount": "{shown} van {total}",
                 "toursWord": "tours",
                 "clearAll": "Alles wissen",
@@ -197,37 +207,27 @@
             },
             "sort": {
                 "localsFavorites": "Favorieten van locals",
-                "priceLowHigh": "Prijs (laag naar hoog)",
-                "priceHighLow": "Prijs (hoog naar laag)",
-                "defaultSuffix": "(Standaard)"
+                "priceLowHigh": "Prijs: laag naar hoog",
+                "priceHighLow": "Prijs: hoog naar laag"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Gebouwd door locals",
-                    "subtitle": "Die hier zijn opgegroeid"
-                },
-                "freeCancellation": {
-                    "title": "Gratis annuleren",
-                    "subtitle": "Geen vragen"
-                },
-                "message": {
-                    "title": "Wij zijn locals",
-                    "subtitle": "Stuur ons een bericht op WhatsApp"
-                },
-                "pay": {
-                    "title": "Betaal vanaf 20%",
-                    "subtitle": "Vandaag, de rest later"
-                }
+                "checks": [
+                    "Gratis annuleren, zonder vragen",
+                    "Betaal vandaag slechts 20%, de rest later",
+                    "Binnen seconden bevestigd",
+                    "Veilig afrekenen"
+                ],
+                "whatsapp": "Vragen? Chat via WhatsApp →"
             },
             "filterModal": {
-                "title": "Filter",
+                "title": "Filters",
                 "price": "Prijs",
                 "duration": "Duur",
                 "durations": {
-                    "upTo2": "Tot 2 uur",
-                    "2to4": "2 tot 4 uur",
-                    "4to6": "4 tot 6 uur",
-                    "fullDay": "Hele dag (6+ uur)"
+                    "upTo2": "Tot 2u",
+                    "2to4": "2 tot 4u",
+                    "4to6": "4 tot 6u",
+                    "fullDay": "Hele dag 6u+"
                 },
                 "timeOfDay": "Tijdstip",
                 "times": {
@@ -237,16 +237,17 @@
                 },
                 "freeCancellation": "Gratis annuleren",
                 "freeCancellationNote": "Alle tours zijn gratis te annuleren.",
-                "cancellationLabel": "Filter op hoe laat je kunt annuleren:",
+                "cancellationLabel": "Filter op hoe laat je kunt annuleren.",
                 "cancellation": {
                     "24h": "Tot 24u van tevoren",
-                    "48h": "48u van tevoren",
-                    "72h": "72u van tevoren"
+                    "48h": "Tot 48u van tevoren",
+                    "72h": "Tot 72u van tevoren"
                 },
                 "pickupAvailable": "Ophalen beschikbaar",
+                "pickupNote": "Tours waar ophalen kan worden toegevoegd of bij de prijs is inbegrepen. Nooit een verwachting van gratis ophalen.",
                 "ratings": "Beoordelingen",
                 "ratingsNote": "(verborgen tot er reviews zijn)",
-                "clearAll": "Alles wissen",
+                "clearAll": "Alles resetten",
                 "applyFilters": "Filters toepassen"
             }
         },
@@ -260,7 +261,8 @@
         },
         "exploreTypes": {
             "title": "Verken op type",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "Alle tours op {destination}"
         },
         "youMightLike": "Misschien vind je dit ook leuk",
         "hub": {
@@ -351,6 +353,12 @@
             "linkCopied": "Link gekopieerd",
             "localsFavorite": "Favoriet van locals",
             "showAllPhotos": "Alle foto's tonen",
+            "quickInfo": {
+                "durationSub": "Duur van de tour",
+                "pickupIncluded": "Bij de prijs inbegrepen",
+                "pickupPaid": "Betaalde extra",
+                "languagesSub": "Talen van de crew"
+            },
             "booking": {
                 "from": "Vanaf",
                 "perPerson": "per persoon",
@@ -568,6 +576,7 @@
             "viewMore": "Meer bekijken op Instagram"
         },
         "listings": {
+            "kicker": "Gekozen door mensen die hier wonen",
             "title": "Favorieten van locals",
             "seeAllCount": "Bekijk alle {count} tours in {destination}",
             "seeAll": "Bekijk alle tours in {destination}",
@@ -636,6 +645,8 @@
         "requiredError": "Dit veld is verplicht",
         "emailError": "Voer een geldig e-mailadres in",
         "selectPaymentMethod": "Kies een betaalmethode",
+        "secureCheckout": "Veilig afrekenen",
+        "poweredBy": "Mogelijk gemaakt door",
         "card": "Kaart",
         "cardNumber": "Kaartnummer",
         "expiry": "Vervaldatum",
@@ -654,6 +665,7 @@
         "bookingSummary": "Boekingsoverzicht",
         "noPickup": "Geen ophaalservice",
         "freeCancellation": "Gratis annuleren tot {hours} uur van tevoren",
+        "freeCancellationLong": "Gratis annuleren tot {hours} uur voor de start van de tour, volledige terugbetaling.",
         "total": "Totaal",
         "payToday": "Nu betalen",
         "balanceLater": "Restbedrag later",
@@ -664,7 +676,6 @@
         "applePay": "Apple Pay",
         "googlePay": "Google Pay",
         "backToTour": "Terug naar tour",
-        "fullName": "Volledige naam",
         "backToContact": "Terug naar contact",
         "processing": "Verwerken...",
         "paymentError": "Je betaling kon niet worden voltooid. Controleer je kaartgegevens en probeer het opnieuw.",
@@ -703,13 +714,19 @@
         "verifyCta": "Verifieer met e-mail + referentie"
     },
     "thankYou": {
-        "title": "Je bent geboekt, {name}! 🌴",
+        "title": "Je bent geboekt, {name}!",
         "subtitle": "Je {tour} is gereserveerd voor {date} om {time}.",
         "bookingRef": "Boekingsref:",
+        "copy": "Kopieer",
+        "copied": "Gekopieerd",
         "reviewPrompt": "Hoe was je tour?",
         "reviewPromptBody": "Eén tik is genoeg. Je review helpt de volgende reiziger kiezen.",
         "reviewCta": "Schrijf een review",
         "addToCalendar": "Zet in agenda",
+        "calGoogle": "Google Calendar",
+        "calApple": "Apple Calendar",
+        "calOutlook": "Outlook",
+        "calIcs": "Download .ics",
         "emailSentTo": "Bevestigingsmail verzonden naar {email}",
         "emailHelpPrefix": "Niets ontvangen? Check je spam, of",
         "resendEmail": "Mail opnieuw versturen",
@@ -724,25 +741,26 @@
         "pickup": "Ophaalservice",
         "freeCancel": "Gratis annuleren",
         "beforeDate": "Voor {date}",
-        "trip": "Trip",
+        "trip": "Aanbieder",
         "email": "E-mail",
         "phoneNumber": "Telefoonnummer",
         "traveler": "Reizigers",
         "extras": "Extra's",
         "guestLead": "Hoofdgast",
-        "depositPaid": "Aanbetaling voldaan",
-        "percentPaid": "{pct}% betaald",
+        "depositPaid": "Vandaag aanbetaald",
+        "paidVia": "{pct}% via {card}",
+        "paidInFull": "Volledig betaald",
+        "paidFullNote": "Je tour is volledig betaald. Neem alleen je boekingsreferentie en ID mee.",
         "remainingBalance": "Resterend saldo",
-        "percentUnpaid": "{pct}% openstaand",
-        "operatorLinkNote": "{operator} mailt je een betaallink",
+        "operatorLinkNote": "{operator} mailt je een betaallink voor het resterende bedrag.",
         "payBefore": "Betaal voor",
         "total": "Totaal",
         "ref": "Ref",
         "nextTitle": "Wat er nu gebeurt",
-        "step1Title": "Bevestigingsmail",
-        "step1Sub": "Check je spam als je niets ziet",
-        "step2Title": "Betaallink van de operator",
-        "step2Sub": "Betaal voor {date}. Alleen kaart",
+        "step1Title": "Bevestigingsmail van je boeking",
+        "step1Sub": "We hebben je boekingsbevestiging gemaild. Check je spamfolder als je hem niet ziet.",
+        "step2Title": "Betaallink van je aanbieder",
+        "step2Sub": "{operator} mailt je een betaallink voor het resterende bedrag. Betaal vóór {date}.",
         "step3Title": "Kom langs en geniet",
         "relatedTitle": "Eilanders houden ook van...",
         "relatedSubtitle": "Gekozen als aanvulling op je boeking",

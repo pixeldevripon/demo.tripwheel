@@ -1,7 +1,9 @@
 {
     "nav": {
         "selectIsland": "Escolha a sua ilha",
+        "island": "Ilha",
         "wishlist": "Lista de desejos",
+        "saved": "Salvos",
         "account": "Conta",
         "logout": "Sair",
         "menu": "Menu",
@@ -10,7 +12,9 @@
         "categories": "Categorias",
         "search": "Pesquisar",
         "myBookings": "Minhas reservas",
-        "myAccount": "Contas"
+        "myAccount": "Contas",
+        "tours": "passeios",
+        "allIslandTours": "Todos os passeios em {destination}"
     },
     "footer": {
         "tagline": "Feito por ilhéus.",
@@ -90,8 +94,8 @@
                 "body": "Cancelamento gratuito em todos os tours, sem perguntas"
             },
             {
-                "title": "Ajuda quando precisar",
-                "body": "Fale connosco no WhatsApp, 08:00 - 20:00"
+                "title": "Somos locais. Estamos aqui para ajudar",
+                "body": "Fale conosco no WhatsApp, das 08:00 às 20:00"
             }
         ],
         "experiences": {
@@ -105,7 +109,8 @@
             }
         },
         "explore": {
-            "title": "Explore as nossas ilhas",
+            "title": "Escolha a sua ilha",
+            "subtitle": "Três ilhas, um só padrão.",
             "tours": "tours",
             "seeMore": "Ver mais ilhas"
         },
@@ -123,33 +128,37 @@
         "faq": {
             "title": "Precisa de ajuda antes de reservar?",
             "subtitle": "Somos locais. Crescemos aqui, conhecemos estes tours e queremos que tenha a melhor experiência nestas ilhas.",
-            "whatsapp": "Conversar no WhatsApp",
+            "whatsapp": "Fale conosco no WhatsApp",
             "guarantees": [
                 "Cancelamento gratuito, sem perguntas",
                 "Pague a partir de 20% hoje, o resto depois"
             ],
             "items": [
                 {
-                    "q": "Posso cancelar se os meus planos mudarem?",
-                    "a": "A maioria dos tours pode ser cancelada até 24h antes do início, com reembolso total. Sem formulários, sem perguntas. Cancele direto pelo seu e-mail de confirmação."
+                    "q": "Posso cancelar se meus planos mudarem?",
+                    "a": "Todos os passeios podem ser cancelados gratuitamente. O prazo para cancelar varia por passeio; a data limite exata está na página do passeio e no seu e-mail de confirmação. Sem formulários, sem perguntas."
                 },
                 {
-                    "q": "Tenho de pagar tudo agora?",
-                    "a": "Não — pode garantir o seu lugar com apenas 20% adiantado e pagar o restante mais perto da data do tour."
+                    "q": "Preciso pagar tudo agora?",
+                    "a": "Geralmente não. A maioria dos passeios é reservada com um pequeno depósito e o restante é pago depois ou na chegada, dependendo do passeio. Alguns passeios cobram o valor total ou nada na reserva; a página do passeio sempre informa exatamente como funciona antes de você confirmar."
+                },
+                {
+                    "q": "O que acontece se o operador precisar cancelar?",
+                    "a": "Clima e segurança fazem parte de ilhas de verdade. Se um passeio for cancelado, você escolhe: seu dinheiro de volta integralmente ou uma remarcação gratuita para uma nova data."
                 },
                 {
                     "q": "Quem está por trás da Island Tours?",
-                    "a": "Somos uma equipa de ilhéus que cresceu em Curaçao, Aruba e Sint Maarten. Cada tour é verificado pessoalmente por nós."
+                    "a": "A Island Tours é operada pela ITG B.V., uma empresa registrada em Curaçau (KvK 169950). As pessoas que a constroem e respondem a você vivem e trabalham nas ilhas."
                 },
                 {
-                    "q": "E se o meu tour for cancelado?",
-                    "a": "Se um tour for cancelado pelo operador, recebe um reembolso total em 24 horas — sem perguntas."
-                },
-                {
-                    "q": "Não sabe qual tour escolher? Nós ajudamos.",
-                    "a": "Converse connosco no WhatsApp a qualquer momento. Diga-nos o que procura e daremos recomendações locais honestas."
+                    "q": "Não sabe qual passeio combina?",
+                    "a": "Mande uma mensagem no WhatsApp dizendo quem vai e do que vocês gostam. Você recebe uma lista curta de sugestões certeiras, não um catálogo."
                 }
             ]
+        },
+        "cta": {
+            "title": "Prontos quando você estiver.",
+            "body": "Garanta a sua data com um pequeno depósito. Cancele grátis até o prazo de cada passeio."
         }
     },
     "destination": {
@@ -161,31 +170,32 @@
             "heading": {
                 "title": "Todos os tours e atividades em {destination} em {year}",
                 "categoryTitle": "{category} em {destination}",
-                "subtitle": "Todos os passeios que oferecemos em {destination}, num só lugar.",
+                "subtitle": "De passeios de um dia a aventuras de buggy. Todos os tours que oferecemos em {destination}.",
                 "availableCount": "{count} tours",
                 "availableLabel": "disponíveis"
             },
             "toolbar": {
                 "filters": "Filtros",
-                "selectDate": "Selecionar data",
+                "selectDate": "Data",
                 "clearDate": "Limpar data",
                 "guestTypes": {
                     "adults": {
                         "label": "Adultos",
-                        "hint": "13+ anos",
-                        "word": "adultos"
+                        "hint": "12 anos ou mais",
+                        "word": "Adultos"
                     },
                     "children": {
                         "label": "Crianças",
-                        "hint": "2–12 anos",
-                        "word": "crianças"
+                        "hint": "4 a 11 anos",
+                        "word": "Crianças"
                     },
                     "infants": {
                         "label": "Bebés",
-                        "hint": "Menores de 2",
-                        "word": "bebés"
+                        "hint": "Menores de 4 · Grátis na maioria dos tours",
+                        "word": "Bebés"
                     }
                 },
+                "applyGuests": "Aplicar",
                 "resultsCount": "{shown} de {total}",
                 "toursWord": "tours",
                 "clearAll": "Limpar tudo",
@@ -197,37 +207,27 @@
             },
             "sort": {
                 "localsFavorites": "Favoritos dos locais",
-                "priceLowHigh": "Preço (do menor ao maior)",
-                "priceHighLow": "Preço (do maior ao menor)",
-                "defaultSuffix": "(Padrão)"
+                "priceLowHigh": "Preço: do menor ao maior",
+                "priceHighLow": "Preço: do maior ao menor"
             },
             "trust": {
-                "builtByLocals": {
-                    "title": "Feito por locais",
-                    "subtitle": "Que cresceram aqui"
-                },
-                "freeCancellation": {
-                    "title": "Cancelamento gratuito",
-                    "subtitle": "Sem perguntas"
-                },
-                "message": {
-                    "title": "Somos locais",
-                    "subtitle": "Fale connosco no WhatsApp"
-                },
-                "pay": {
-                    "title": "Pague a partir de 20%",
-                    "subtitle": "Hoje, o resto depois"
-                }
+                "checks": [
+                    "Cancelamento grátis, sem perguntas",
+                    "Pague apenas 20% hoje, o resto depois",
+                    "Confirmado em segundos",
+                    "Checkout seguro"
+                ],
+                "whatsapp": "Dúvidas? Fale no WhatsApp →"
             },
             "filterModal": {
-                "title": "Filtrar",
+                "title": "Filtros",
                 "price": "Preço",
                 "duration": "Duração",
                 "durations": {
-                    "upTo2": "Até 2 horas",
-                    "2to4": "2 a 4 horas",
-                    "4to6": "4 a 6 horas",
-                    "fullDay": "Dia inteiro (6+ horas)"
+                    "upTo2": "Até 2h",
+                    "2to4": "2 a 4h",
+                    "4to6": "4 a 6h",
+                    "fullDay": "Dia inteiro 6h+"
                 },
                 "timeOfDay": "Hora do dia",
                 "times": {
@@ -237,16 +237,17 @@
                 },
                 "freeCancellation": "Cancelamento gratuito",
                 "freeCancellationNote": "Todos os tours incluem cancelamento gratuito.",
-                "cancellationLabel": "Filtrar por até quando pode cancelar:",
+                "cancellationLabel": "Filtrar por até quando pode cancelar.",
                 "cancellation": {
                     "24h": "Até 24h antes",
-                    "48h": "48h antes",
-                    "72h": "72h antes"
+                    "48h": "Até 48h antes",
+                    "72h": "Até 72h antes"
                 },
                 "pickupAvailable": "Recolha disponível",
+                "pickupNote": "Tours onde o transfer pode ser adicionado ou está incluído no preço. Nunca uma expectativa de transfer gratuito.",
                 "ratings": "Avaliações",
                 "ratingsNote": "(oculto até existirem avaliações)",
-                "clearAll": "Limpar tudo",
+                "clearAll": "Repor tudo",
                 "applyFilters": "Aplicar filtros"
             }
         },
@@ -260,7 +261,8 @@
         },
         "exploreTypes": {
             "title": "Explore por tipo",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "Todos os passeios em {destination}"
         },
         "youMightLike": "Você também pode gostar",
         "hub": {
@@ -351,6 +353,12 @@
             "linkCopied": "Link copiado",
             "localsFavorite": "Favorito dos locais",
             "showAllPhotos": "Ver todas as fotos",
+            "quickInfo": {
+                "durationSub": "Duração do tour",
+                "pickupIncluded": "Incluído no preço",
+                "pickupPaid": "Extra pago",
+                "languagesSub": "Idiomas da tripulação"
+            },
             "booking": {
                 "from": "A partir de",
                 "perPerson": "por pessoa",
@@ -568,6 +576,7 @@
             "viewMore": "Ver mais no Instagram"
         },
         "listings": {
+            "kicker": "Escolhidos por quem vive aqui",
             "title": "Favoritos locais",
             "seeAllCount": "Ver os {count} tours em {destination}",
             "seeAll": "Ver todos os tours em {destination}",
@@ -636,6 +645,8 @@
         "requiredError": "Este campo é obrigatório",
         "emailError": "Introduza um e-mail válido",
         "selectPaymentMethod": "Escolha um método de pagamento",
+        "secureCheckout": "Pagamento seguro",
+        "poweredBy": "Fornecido por",
         "card": "Cartão",
         "cardNumber": "Número do cartão",
         "expiry": "Validade",
@@ -654,6 +665,7 @@
         "bookingSummary": "Resumo da reserva",
         "noPickup": "Sem recolha",
         "freeCancellation": "Cancelamento gratuito até {hours} h antes",
+        "freeCancellationLong": "Cancelamento gratuito até {hours} h antes do início do tour, reembolso total.",
         "total": "Total",
         "payToday": "Pagar hoje",
         "balanceLater": "Saldo mais tarde",
@@ -664,7 +676,6 @@
         "applePay": "Apple Pay",
         "googlePay": "Google Pay",
         "backToTour": "Voltar ao passeio",
-        "fullName": "Nome completo",
         "backToContact": "Voltar ao contato",
         "processing": "Processando...",
         "paymentError": "Não foi possível concluir o teu pagamento. Verifica os dados do teu cartão e tenta novamente.",
@@ -703,13 +714,19 @@
         "verifyCta": "Verificar com e-mail + referência"
     },
     "thankYou": {
-        "title": "Reserva confirmada, {name}! 🌴",
+        "title": "Reserva confirmada, {name}!",
         "subtitle": "Seu {tour} está reservado para {date} às {time}.",
         "bookingRef": "Ref. da reserva:",
+        "copy": "Copiar",
+        "copied": "Copiado",
         "reviewPrompt": "Como foi a sua excursão?",
         "reviewPromptBody": "Basta um toque. A sua avaliação ajuda o próximo viajante a escolher.",
         "reviewCta": "Deixar uma avaliação",
         "addToCalendar": "Adicionar ao calendário",
+        "calGoogle": "Google Calendar",
+        "calApple": "Apple Calendar",
+        "calOutlook": "Outlook",
+        "calIcs": "Transferir .ics",
         "emailSentTo": "E-mail de confirmação enviado para {email}",
         "emailHelpPrefix": "Não recebeu? Verifique o spam, ou",
         "resendEmail": "Reenviar e-mail",
@@ -724,25 +741,26 @@
         "pickup": "Traslado",
         "freeCancel": "Cancelamento grátis",
         "beforeDate": "Antes de {date}",
-        "trip": "Trip",
+        "trip": "Operador",
         "email": "E-mail",
         "phoneNumber": "Telefone",
         "traveler": "Viajantes",
         "extras": "Extras",
         "guestLead": "Hóspede principal",
-        "depositPaid": "Depósito pago",
-        "percentPaid": "{pct}% pago",
+        "depositPaid": "Depósito pago hoje",
+        "paidVia": "{pct}% com {card}",
+        "paidInFull": "Pago na totalidade",
+        "paidFullNote": "O seu tour está totalmente pago. Basta levar a referência da reserva e um documento de identificação.",
         "remainingBalance": "Saldo restante",
-        "percentUnpaid": "{pct}% pendente",
-        "operatorLinkNote": "{operator} enviará um link de pagamento por e-mail",
+        "operatorLinkNote": "{operator} enviará por e-mail um link de pagamento para o valor restante.",
         "payBefore": "Pague antes de",
         "total": "Total",
         "ref": "Ref.",
         "nextTitle": "Próximos passos",
-        "step1Title": "E-mail de confirmação",
-        "step1Sub": "Verifique o spam se não chegar",
-        "step2Title": "Link de pagamento do operador",
-        "step2Sub": "Pague antes de {date}. Somente cartão",
+        "step1Title": "E-mail de confirmação da reserva",
+        "step1Sub": "Enviámos a confirmação da sua reserva por e-mail. Verifique o spam se não a encontrar.",
+        "step2Title": "Link de pagamento do seu operador",
+        "step2Sub": "{operator} enviará por e-mail um link de pagamento para o valor restante. Pague antes de {date}.",
         "step3Title": "Apareça e aproveite",
         "relatedTitle": "Os ilhéus também amam...",
         "relatedSubtitle": "Escolhidos para combinar com sua reserva",

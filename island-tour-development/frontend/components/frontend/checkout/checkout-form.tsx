@@ -39,10 +39,12 @@ import {
     type ReactNode,
 } from 'react';
 import {
-    cardClass,
-    DarkButton,
+    ConsentLine,
+    CtaButton,
     EMAIL_RE,
     Field,
+    FieldError,
+    FreeCancelNote,
     helperClass,
     labelClass,
     SelectField,
@@ -97,6 +99,9 @@ interface CheckoutFormProps {
     /** Amount charged today; 0 means operator_full (no card step). */
     payToday: number;
     currencySymbol: string;
+    /** "Free cancellation up to 48h before the tour starts, full refund." -
+     *  composed by the page (it owns cancellationHours), shown under the pay CTA. */
+    freeCancelLabel: string;
 
     // ── Live booking inputs (from the widget selection, carried in the URL) ──
     tourId: string;
@@ -122,14 +127,6 @@ interface CheckoutFormProps {
  */
 const COLLAPSE_MS = 350;
 
-/** "Full name" → first / last for the backend ContactDto (both NOT NULL). */
-function splitName(fullName: string): { firstName: string; lastName: string } {
-    const parts = fullName.trim().split(/\s+/).filter(Boolean);
-    const firstName = parts[0] ?? '';
-    const lastName = parts.slice(1).join(' ') || firstName;
-    return { firstName, lastName };
-}
-
 /**
  * Two-phase checkout ACCORDION (master §5.8; Figma 47659:2424 Contact +
  * 47667:15365 Payment): both sections live in one card. Completing Contact
@@ -153,6 +150,7 @@ export function CheckoutForm({
     pickupRequired,
     payToday,
     currencySymbol,
+    freeCancelLabel,
     tourId,
     departureId,
     currency,
@@ -223,8 +221,11 @@ export function CheckoutForm({
     // `processingBase` carries no `?ref`, and that page redirects to the tours
     // list without one - so this only ever warmed a redirect.
 
+    // Split names (mockup + dev spec §2: Enhanced Conversions match rate) -
+    // the backend ContactDto takes firstName/lastName separately anyway.
     const [contact, setContact] = useState({
-        fullName: '',
+        firstName: '',
+        lastName: '',
         email: '',
         country: DEFAULT_COUNTRY_CODE,
         phone: '',
@@ -288,7 +289,8 @@ export function CheckoutForm({
         () => (
             <SelectField
                 className='flex-1'
-                label={`${dict.country}*`}
+                label={dict.country}
+                required
                 value={contact.country}
                 onChange={(v) => set('country', v)}
                 groups={countryGroups}
@@ -301,16 +303,17 @@ export function CheckoutForm({
     // unrelated keystrokes during an "Edit contact" round trip.
     const paymentContact = useMemo(
         () => ({
-            fullName: contact.fullName,
+            fullName: `${contact.firstName} ${contact.lastName}`.trim(),
             email: contact.email.trim(),
             country: contact.country,
         }),
-        [contact.fullName, contact.email, contact.country]
+        [contact.firstName, contact.lastName, contact.email, contact.country]
     );
 
     function validateContact(): boolean {
         const next: Record<string, string> = {};
-        if (!contact.fullName.trim()) next.fullName = dict.requiredError;
+        if (!contact.firstName.trim()) next.firstName = dict.requiredError;
+        if (!contact.lastName.trim()) next.lastName = dict.requiredError;
         if (!contact.email.trim()) next.email = dict.requiredError;
         else if (!EMAIL_RE.test(contact.email.trim()))
             next.email = dict.emailError;
@@ -364,12 +367,11 @@ export function CheckoutForm({
                 attribution: readAttribution() ?? undefined,
             });
 
-            const { firstName, lastName } = splitName(contact.fullName);
             const withContact = await updateBookingContact(
                 booking.id,
                 {
-                    firstName,
-                    lastName,
+                    firstName: contact.firstName.trim(),
+                    lastName: contact.lastName.trim(),
                     email: contact.email.trim(),
                     phone:
                         composePhone(contact.country, contact.phone) ||
@@ -481,40 +483,45 @@ export function CheckoutForm({
     }, [contactDone]);
 
     return (
-        <div ref={cardRef} className={`${cardClass} scroll-mt-24`}>
+        // Design v2 .acc: one white card, sections divided by hairlines; the
+        // heads carry the padding so the card itself has none.
+        <div
+            ref={cardRef}
+            className='scroll-mt-24 overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Failed-charge return banner (?payment=failed): the traveller is
                 back from the PSP with money NOT moved - say so at the very top
                 before they re-enter anything. */}
             {paymentFailed && (
-                <div className='mb-8 rounded-[8px] border border-it-primary/30 bg-it-primary/5 px-4 py-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
-                    {dict.paymentError}
+                <div className='px-[22px] pt-[18px]'>
+                    <div className='rounded-it-sm border border-it-primary/30 bg-it-primary-subtle px-3.5 py-3 text-[13.5px] leading-[1.6] text-it-primary-hover'>
+                        {dict.paymentError}
+                    </div>
                 </div>
             )}
             {/* ── Contact header - swaps to the done-summary row (green check +
                 name/email + Edit) once contact completes ── */}
-            <div className='flex min-w-0 items-center justify-between gap-4'>
-                <div className='flex min-w-0 items-center gap-3'>
-                    <SectionBadge
-                        number={1}
-                        state={contactDone ? 'done' : 'active'}
-                    />
-                    <span className={`${titleClass} shrink-0`}>
-                        {dict.contactDetails}
-                    </span>
-                    <AnimatePresence initial={false}>
-                        {contactDone && (
-                            <motion.span
-                                key='contact-summary'
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className='min-w-0 truncate text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/60'>
-                                {contact.fullName} · {contact.email.trim()}
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </div>
+            <div className='flex min-w-0 items-center gap-3 px-[22px] py-[18px]'>
+                <SectionBadge
+                    number={1}
+                    state={contactDone ? 'done' : 'active'}
+                />
+                <span className={`${titleClass} shrink-0`}>
+                    {dict.contactDetails}
+                </span>
+                <AnimatePresence initial={false}>
+                    {contactDone && (
+                        <motion.span
+                            key='contact-summary'
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className='min-w-0 truncate text-[13px] leading-[1.6] text-it-text-muted'>
+                            · {contact.firstName} {contact.lastName} ·{' '}
+                            {contact.email.trim()}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
                 <AnimatePresence initial={false}>
                     {contactDone && (
                         <motion.button
@@ -526,7 +533,7 @@ export function CheckoutForm({
                             exit={{ opacity: 0 }}
                             whileTap={{ scale: 0.97 }}
                             transition={{ duration: 0.2 }}
-                            className='shrink-0 cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors hover:text-it-primary'>
+                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                             {dict.edit}
                         </motion.button>
                     )}
@@ -535,20 +542,33 @@ export function CheckoutForm({
 
             {/* ── Contact form body (collapses once contact completes) ── */}
             <Collapse open={!contactDone}>
-                    <div className='flex flex-col gap-12 pt-8'>
+                    <div className='flex flex-col px-[22px] pb-6 pt-0.5'>
                         <div className='flex flex-col gap-4'>
-                            {/* Full name */}
-                            <Field
-                                label={`${dict.fullName}*`}
-                                value={contact.fullName}
-                                onChange={(v) => set('fullName', v)}
-                                error={errors.fullName}
-                            />
+                            {/* Split names (mockup .row2) */}
+                            <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
+                                <Field
+                                    className='flex-1'
+                                    label={dict.firstName}
+                                    required
+                                    value={contact.firstName}
+                                    onChange={(v) => set('firstName', v)}
+                                    error={errors.firstName}
+                                />
+                                <Field
+                                    className='flex-1'
+                                    label={dict.lastName}
+                                    required
+                                    value={contact.lastName}
+                                    onChange={(v) => set('lastName', v)}
+                                    error={errors.lastName}
+                                />
+                            </div>
 
                             {/* Email */}
-                            <div className='flex flex-col gap-2'>
+                            <div className='flex flex-col gap-1.5'>
                                 <Field
-                                    label={`${dict.email}*`}
+                                    label={dict.email}
+                                    required
                                     type='email'
                                     inputMode='email'
                                     value={contact.email}
@@ -561,12 +581,13 @@ export function CheckoutForm({
                             </div>
 
                             {/* Country + phone */}
-                            <div className='flex flex-col gap-2'>
-                                <div className='flex flex-col gap-4 sm:flex-row sm:gap-2'>
+                            <div className='flex flex-col gap-1.5'>
+                                <div className='flex flex-col gap-4 sm:flex-row sm:gap-3.5'>
                                     {countryField}
                                     <Field
                                         className='flex-1'
-                                        label={`${dict.phone}*`}
+                                        label={dict.phone}
+                                        required
                                         type='tel'
                                         inputMode='tel'
                                         value={contact.phone}
@@ -624,35 +645,29 @@ export function CheckoutForm({
                                             pickupRequired ? '' : 'none'
                                         }
                                     />
-                                    {errors.pickup && (
-                                        <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-primary'>
-                                            {errors.pickup}
-                                        </span>
-                                    )}
+                                    <FieldError error={errors.pickup} />
                                 </div>
                             )}
 
                             {/* Special requests */}
-                            <div className='flex flex-col gap-2'>
-                                <div className='flex flex-col gap-2'>
-                                    <label
-                                        className={labelClass}
-                                        htmlFor={specialId}>
-                                        {dict.specialRequests}
-                                    </label>
-                                    <textarea
-                                        id={specialId}
-                                        value={contact.special}
-                                        maxLength={500}
-                                        onChange={(e) =>
-                                            set('special', e.target.value)
-                                        }
-                                        placeholder={
-                                            dict.specialRequestsPlaceholder
-                                        }
-                                        className='w-full rounded-[8px] border border-it-heading/20 bg-it-white px-4 py-3 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-heading/30 outline-none transition-colors focus:border-it-primary h-[95px] resize-none'
-                                    />
-                                </div>
+                            <div className='flex flex-col gap-1.5'>
+                                <label
+                                    className={labelClass}
+                                    htmlFor={specialId}>
+                                    {dict.specialRequests}
+                                </label>
+                                <textarea
+                                    id={specialId}
+                                    value={contact.special}
+                                    maxLength={500}
+                                    onChange={(e) =>
+                                        set('special', e.target.value)
+                                    }
+                                    placeholder={
+                                        dict.specialRequestsPlaceholder
+                                    }
+                                    className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[14px] leading-[1.5] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary'
+                                />
                                 <span className={helperClass}>
                                     {dict.maxChars}
                                 </span>
@@ -674,65 +689,86 @@ export function CheckoutForm({
                                         duration: 0.2,
                                         ease: [0.4, 0, 0.2, 1],
                                     }}
-                                    className='-mt-8 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                                    className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
                                     {formError}
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        <DarkButton
-                            onClick={handleContactContinue}
-                            disabled={reserving}>
-                            <AnimatePresence mode='wait' initial={false}>
-                                {reserving ? (
-                                    <motion.span
-                                        key='reserving'
-                                        initial={{ opacity: 0, y: 6 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -6 }}
-                                        transition={{ duration: 0.15 }}
-                                        className='flex items-center gap-2.5'>
-                                        <span className='size-5 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
-                                        {dict.processing}
-                                    </motion.span>
-                                ) : (
-                                    <motion.span
-                                        key='continue'
-                                        initial={{ opacity: 0, y: 6 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -6 }}
-                                        transition={{ duration: 0.15 }}
-                                        className='flex items-center gap-2.5'>
-                                        {dict.continue}
-                                        <Image
-                                            src='/icons/checkout/arrow-right-white.svg'
-                                            alt=''
-                                            width={24}
-                                            height={24}
-                                            className='size-6 shrink-0'
-                                        />
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
-                        </DarkButton>
+                        <div className='mt-5'>
+                            <CtaButton
+                                onClick={handleContactContinue}
+                                disabled={reserving}>
+                                <AnimatePresence mode='wait' initial={false}>
+                                    {reserving ? (
+                                        <motion.span
+                                            key='reserving'
+                                            initial={{ opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -6 }}
+                                            transition={{ duration: 0.15 }}
+                                            className='flex items-center gap-2.5'>
+                                            <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                                            {dict.processing}
+                                        </motion.span>
+                                    ) : (
+                                        <motion.span
+                                            key='continue'
+                                            initial={{ opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -6 }}
+                                            transition={{ duration: 0.15 }}
+                                            className='flex items-center gap-[9px]'>
+                                            {/* operator_full has no payment step:
+                                                this button IS the commit (mockup
+                                                .commitblock - bare reserve CTA). */}
+                                            {hasPayment
+                                                ? dict.continue
+                                                : dict.reserve}
+                                            {hasPayment && (
+                                                <Image
+                                                    src='/icons/checkout/arrow-right-white.svg'
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-4 shrink-0'
+                                                />
+                                            )}
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
+                            </CtaButton>
+                        </div>
+
+                        {/* operator_full: the free-cancel + consent reassurance
+                            belongs to the committing action, which is THIS
+                            button when no payment section follows. */}
+                        {!hasPayment && (
+                            <>
+                                <FreeCancelNote label={freeCancelLabel} />
+                                <ConsentLine
+                                    consent={dict.consent}
+                                    consentTerms={dict.consentTerms}
+                                    consentPrivacy={dict.consentPrivacy}
+                                    locale={locale}
+                                />
+                            </>
+                        )}
                     </div>
             </Collapse>
 
             {/* ── Payment section - expands in place once contact completes
-                (Figma 47659:2424 collapsed footer / 47667:15365 expanded) ── */}
+                (design v2 .acc-sec, hairline-divided) ── */}
             {hasPayment && (
                 <>
-                    <div className='-mx-6 mt-8 h-px bg-it-heading/10' />
                     <div
                         ref={paymentHeaderRef}
-                        className='mt-8 flex scroll-mt-24 items-center justify-between gap-4'>
-                        <div className='flex items-center gap-3'>
-                            <SectionBadge
-                                number={2}
-                                state={contactDone ? 'active' : 'upcoming'}
-                            />
-                            <span className={titleClass}>{dict.payment}</span>
-                        </div>
+                        className='flex scroll-mt-24 items-center gap-3 border-t border-it-divider px-[22px] py-[18px]'>
+                        <SectionBadge
+                            number={2}
+                            state={contactDone ? 'active' : 'upcoming'}
+                        />
+                        <span className={titleClass}>{dict.payment}</span>
                         <AnimatePresence initial={false}>
                             {!contactDone && (
                                 <motion.span
@@ -741,7 +777,7 @@ export function CheckoutForm({
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className='text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading/50'>
+                                    className='ml-auto text-right text-[12.5px] leading-[1.6] text-it-ink-muted'>
                                     {dict.completeContactFirst}
                                 </motion.span>
                             )}
@@ -766,7 +802,7 @@ export function CheckoutForm({
                                 duration: 0.3,
                                 ease: [0.4, 0, 0.2, 1],
                             }}
-                            className='pt-8'>
+                            className='px-[22px] pb-6 pt-0.5'>
                             {/* Mounted from the first successful continue on -
                                 collapsing back to edit contact keeps the Stripe
                                 fields (and their entries) alive. */}
@@ -781,6 +817,7 @@ export function CheckoutForm({
                                     currency={currency}
                                     currencySymbol={currencySymbol}
                                     eligibleMethods={intent.methodTypes}
+                                    freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
                                         intent.publicRef
                                     )}
@@ -797,6 +834,7 @@ export function CheckoutForm({
                                     testmode={intent.testmode}
                                     payToday={payToday}
                                     currencySymbol={currencySymbol}
+                                    freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
                                         intent.publicRef
                                     )}
@@ -815,8 +853,8 @@ export function CheckoutForm({
 type SectionBadgeState = 'active' | 'done' | 'upcoming';
 
 /**
- * 32px numbered circle for a section header: primary-filled while active,
- * green with a white check once done, outlined while upcoming.
+ * 26px numbered circle for a section header (design v2 .h-num): orange-filled
+ * while active, green with a white check once done, subtle-ringed upcoming.
  */
 function SectionBadge({
     number,
@@ -827,12 +865,12 @@ function SectionBadge({
 }) {
     return (
         <span
-            className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors duration-300 ${
+            className={`grid size-[26px] shrink-0 place-items-center rounded-full transition-colors duration-300 ${
                 state === 'done'
                     ? 'bg-it-green'
                     : state === 'active'
                       ? 'bg-it-primary'
-                      : 'border border-it-heading/20 bg-it-white'
+                      : 'border-[1.5px] border-it-border bg-it-white'
             }`}>
             <AnimatePresence mode='wait' initial={false}>
                 {state === 'done' ? (
@@ -844,11 +882,11 @@ function SectionBadge({
                         transition={springPop}
                         className='grid place-items-center'>
                         <Image
-                            src='/icons/filters/check-white.svg'
+                            src='/icons/checkout/check-tick-white.svg'
                             alt=''
-                            width={16}
-                            height={16}
-                            className='size-4 shrink-0'
+                            width={24}
+                            height={24}
+                            className='size-[13px] shrink-0'
                         />
                     </motion.span>
                 ) : (
@@ -858,10 +896,10 @@ function SectionBadge({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={springPop}
-                        className={`font-medium text-[15px] leading-none tracking-[-0.012em] ${
+                        className={`text-[12.5px] font-bold leading-none tabular-nums ${
                             state === 'active'
                                 ? 'text-it-white'
-                                : 'text-it-heading/50'
+                                : 'text-it-text-muted'
                         }`}>
                         {number}
                     </motion.span>

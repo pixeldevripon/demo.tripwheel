@@ -89,6 +89,6 @@ All technical documentation lives in [`technical-doc/`](./technical-doc/). The c
 
 ---
 
-## Claude Code
+## Claude Code..
 
 Active instructions are in [`CLAUDE.md`](./CLAUDE.md) (root) and [`CLAUDE-reference.md`](./CLAUDE-reference.md). test

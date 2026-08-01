@@ -119,7 +119,7 @@ export function AccountMenu({
             alt=''
             width={24}
             height={24}
-            className='size-6'
+            className='size-4.5'
         />
     );
 
@@ -156,7 +156,7 @@ export function AccountMenu({
                        menu feel heavy. */
                     <motion.div
                         {...dropdownMotion}
-                        className='absolute top-[calc(100%+18px)] right-0 w-64 origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50'>
+                        className='absolute top-[calc(100%+18px)] right-0 w-64 origin-top-right bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50'>
                         {/* The email the traveller signed in with - the only
                             identity the public site has. */}
                         <motion.div

@@ -66,7 +66,7 @@ export function BookingCta() {
     // shows a disabled notice in place of the CTA and trust lines.
     if (bookingBlocked) {
         return (
-            <div className='flex w-full items-center justify-center rounded-it-full bg-it-border px-10 py-[19px] text-center font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink-muted'>
+            <div className='flex w-full items-center justify-center rounded-it-sm bg-it-bg px-8 py-3.5 text-center text-[14px] font-semibold leading-[1.6] text-it-ink-muted'>
                 {dict.bookingUnavailable}
             </div>
         );
@@ -107,7 +107,7 @@ export function BookingCta() {
     const cancelLink = fillPolicy(dict.freeCancellationLink);
 
     return (
-        <div className='flex flex-col gap-5'>
+        <div className='flex flex-col gap-3.5'>
             {/* While choosing the party, if the plus button is capped, say why
                 (master §3.3.1): genuine slot scarcity vs the per-booking max. */}
             {editingParty && atCapacity && (
@@ -139,7 +139,7 @@ export function BookingCta() {
                     aria-busy={navigating || undefined}
                     whileTap={navigating ? undefined : { scale: 0.98 }}
                     transition={springPop}
-                    className={`flex w-full items-center justify-center rounded-it-full border-none bg-it-primary px-10 py-[19px] font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors hover:bg-it-primary-hover ${
+                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                         navigating
                             ? 'cursor-default opacity-80'
                             : 'cursor-pointer'
@@ -169,7 +169,7 @@ export function BookingCta() {
                     </AnimatePresence>
                 </motion.button>
             </div>
-            <div className='flex flex-col gap-2'>
+            <div className='flex flex-col gap-[7px]'>
                 {/* Free cancellation (always). */}
                 <TrustRow>
                     {cancelBefore}
@@ -200,13 +200,13 @@ export function BookingCta() {
 /** A trust line: the check icon + its (partly clickable) copy. */
 function TrustRow({ children }: { children: React.ReactNode }) {
     return (
-        <span className='flex items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+        <span className='flex items-center gap-2 text-[13px] font-semibold leading-[1.6] text-it-ink'>
             <Image
-                src='/icons/booking-check.svg'
+                src='/icons/trust-check-green.svg'
                 alt=''
                 width={20}
                 height={20}
-                className='size-5 shrink-0'
+                className='size-[15px] shrink-0'
             />
             <span>{children}</span>
         </span>
@@ -227,7 +227,7 @@ function TrustLink({
             onClick={onClick}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='cursor-pointer border-none bg-transparent p-0 text-left text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline underline-offset-2 transition-colors duration-300 hover:text-it-primary'>
+            className='cursor-pointer border-none bg-transparent p-0 text-left text-[13px] font-semibold leading-[1.6] text-it-ink underline decoration-it-border underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
             {children}
         </motion.button>
     );

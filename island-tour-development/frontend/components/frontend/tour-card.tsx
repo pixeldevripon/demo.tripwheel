@@ -18,7 +18,6 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
 import { TourCardCarousel } from './tour-card-carousel';
 
@@ -131,18 +130,17 @@ export interface TourCardProps {
      */
     wishlistVariant?: 'heart' | 'remove';
     /**
-     * Peach tint (master §B.63): resting background #FFF5EE instead of white.
-     * Position-based, applied by the LISTING (card #1 of All Tours / curated
-     * persona lists, default sort only) - never set it from tour data. The
-     * hover / highlighted cream (#fdf6f0) still takes over when active.
+     * Peach card (master §B.63 + design v2 .tc.peach): the warm surface with
+     * its hairline border. Position-based, applied by the LISTING (card #1 of
+     * All Tours / curated persona lists, default sort only) - never set it
+     * from tour data. Since design v2 this renders identically to
+     * `highlighted`; both exist so listings keep expressing WHY the card is
+     * marked (tint rule vs top placement).
      */
     tinted?: boolean;
     /**
-     * Pre-highlighted card: renders the hover treatment statically (cream fill,
-     * image merged into the content). POSITION-BASED - the listing passes it
-     * for its FIRST card only, marking the top placement. The content inset is
-     * permanent on every card, so neither hover nor highlight ever reflows
-     * text (no layout shift).
+     * Top-placement card (design v2 .tc.peach): the listing passes it for its
+     * FIRST card only. Renders the peach surface + peach hairline border.
      */
     highlighted?: boolean;
     /**
@@ -158,6 +156,13 @@ export interface TourCardProps {
      * connection budget across images nobody is looking at yet.
      */
     priority?: boolean;
+    /**
+     * Design v2 mobile layout (<sm): a horizontal row card - image 40%,
+     * content 60% (mockup 3.5 locked mobile card). Opt-in per LISTING: only
+     * grids that stack cards full-width on mobile may set it; carousel
+     * surfaces keep the vertical card.
+     */
+    mobileRow?: boolean;
 }
 
 /**
@@ -179,60 +184,55 @@ function DefaultTourCard({
     tinted = false,
     highlighted = false,
     priority = false,
+    mobileRow = false,
 }: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
     const isRemove = wishlistVariant === 'remove';
-    const [isHovered, setIsHovered] = useState(false);
-    // Cream state: hover, or the listing's first card (`highlighted`). Only the
-    // background + image corner radius react - the content inset is STATIC on
-    // the highlighted card and never animates on hover, so text never re-wraps
-    // and the grid never shifts.
-    const creamed = isHovered || highlighted;
     const isRated = tour.rating !== undefined;
     const priceLabel = dict[tour.priceUnit];
+    // Design v2 .tc.peach: the highlighted (first) / tinted card sits on the
+    // warm peach surface with its hairline border; every other card is white
+    // and flat, lifting 2px with the card-hover shadow.
+    const peach = highlighted || tinted;
 
     const card = (
-        <motion.article
+        <article
             aria-label={tour.title}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            animate={{
-                backgroundColor: creamed
-                    ? '#fdf6f0'
-                    : tinted
-                      ? '#FFF5EE'
-                      : '#ffffff',
-            }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className={[
+            className={cn(
                 // @container: the card adapts its own typography to its width -
-                // compact at ~172px (mobile carousel), full size in wide grid cells.
-                '@container group flex flex-col rounded-[16px] @[220px]:rounded-[24px] overflow-hidden',
-                // Class fallbacks so the first-card highlight / peach tint are
-                // already painted in the server HTML (framer animate styles only
-                // apply post-hydration).
-                highlighted ? 'bg-[#fdf6f0]' : tinted ? 'bg-[#FFF5EE]' : '',
+                // compact at ~172px (mobile carousel), full size in wide cells.
+                '@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
+                peach
+                    ? 'bg-it-peach border-it-peach-border'
+                    : 'bg-it-white border-transparent hover:border-it-card-hover-border',
+                // Uniform row height on mobile lists: shorter cards stretch
+                // (the foot stays pinned), so the stack reads as equal rows.
+                mobileRow &&
+                    'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
                 className,
-            ].join(' ')}>
+            )}>
             {/* ── Image area ──────────────────────────────────────────────── */}
-            <motion.div
-                className='relative aspect-[86/74] w-full shrink-0 overflow-hidden bg-it-border @[220px]:aspect-[64/45]'
-                animate={{
-                    borderTopLeftRadius: '16px',
-                    borderTopRightRadius: '16px',
-                    borderBottomLeftRadius: '0px',
-                    borderBottomRightRadius: '0px',
-                }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}>
+            <div
+                className={cn(
+                    // Mockup .tc .im: photo eases to 1.03 on card hover (260ms).
+                    'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
+                    mobileRow &&
+                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none',
+                )}>
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
                     sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
                     priority={priority}
                 />
+                {/* Soft bottom scrim over the photo edge (design v2) - only
+                    when a photo exists; the empty paper fallback stays flat. */}
+                {tour.images.length > 0 && (
+                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                )}
                 {/* Badge (top-left) + Wishlist button (top-right) */}
-                <div className='absolute inset-x-4 top-4 flex items-start justify-between gap-2 z-10'>
+                <div className='absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2 z-10'>
                     <BadgeChip type={tour.badge} dict={dict} />
 
                     <motion.button
@@ -249,10 +249,10 @@ function DefaultTourCard({
                         }}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-shadow duration-300 hover:shadow-it-md'>
+                        className='ml-auto flex size-[30px] @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
                         {isRemove ? (
                             <X
-                                className='size-4 @[220px]:size-5 text-it-heading'
+                                className='size-4 text-it-ink'
                                 strokeWidth={1.5}
                                 aria-hidden='true'
                             />
@@ -266,125 +266,107 @@ function DefaultTourCard({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-5 @[220px]:size-6'
+                                className='size-4 @[220px]:size-[17px]'
                                 aria-hidden='true'
                             />
                         )}
                     </motion.button>
                 </div>
-            </motion.div>
+            </div>
 
-            {/* ── Card info ──────────────────────────────────────────────────
-                Original behavior: the inset animates in on hover; the
-                highlighted (first) card carries it statically via the class
-                fallback so its server HTML is already inset. */}
-            <motion.div
+            {/* ── Card info (design v2 .tc .body) ─────────────────────────── */}
+            <div
                 className={cn(
-                    'flex flex-col gap-1 pt-3 pb-1 @[220px]:gap-3 @[220px]:pt-4 @[220px]:pb-5',
-                    highlighted && 'px-4',
-                    !isRated && 'pt-8 @[220px]:pt-6',
-                    className
-                )}
-                animate={{ paddingLeft: 16, paddingRight: 16 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}>
-                {/* Star rating row - only when the tour has a rating (an empty
-                    spacer row reads as a hole above the title). */}
+                    'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5',
+                )}>
+                {/* Rating row - amber star glyph + soft count (above title). */}
                 {isRated && (
-                    <div className='flex items-center gap-1 h-4 @[220px]:gap-1.5 @[220px]:h-[22px]'>
-                        <Image
-                            src='/icons/star-listings.svg'
-                            alt='Star'
-                            width={16}
-                            height={16}
-                            className='size-4'
-                            aria-hidden='true'
-                        />
-                        <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                            {tour.rating}{' '}
-                            <span className='text-it-heading/50'>
-                                ({tour.reviewCount?.toLocaleString()})
-                            </span>
+                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        <span className='font-bold text-it-star'>
+                            ★ {tour.rating}
+                        </span>
+                        <span className='text-it-text-muted tabular-nums'>
+                            ({tour.reviewCount?.toLocaleString()})
                         </span>
                     </div>
                 )}
 
                 {/* Tour title */}
-                <h3 className='m-0 font-medium text-[12px] @[220px]:text-[16px] leading-[1.4] tracking-[-0.012em] text-it-heading line-clamp-2'>
+                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
                     {tour.title}
                 </h3>
 
-                {/* Duration · Pickup */}
-                <div className='flex items-center flex-wrap'>
-                    <span className='flex items-center gap-[2px] @[220px]:gap-1'>
+                {/* Meta column: duration, pickup (design v2 .tc .meta) */}
+                <div className='flex flex-col items-start gap-[3px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                    <span className='inline-flex items-center gap-1.5'>
                         <Image
-                            src='/icons/clock.svg'
+                            src='/icons/meta-clock.svg'
                             alt=''
-                            width={16}
-                            height={16}
-                            className='size-3 @[220px]:size-4'
+                            width={24}
+                            height={24}
+                            className='size-3.5 shrink-0'
                             aria-hidden='true'
                         />
-                        <span className='text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                            {tour.duration}
-                        </span>
+                        {tour.duration}
                     </span>
 
                     {tour.pickupAvailable && (
-                        <>
-                            <span
-                                className='mx-2 @[220px]:mx-3 size-1 rounded-full bg-it-heading/20 flex-none'
+                        <span className='inline-flex items-center gap-1.5'>
+                            <Image
+                                src='/icons/meta-pickup.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-3.5 shrink-0'
                                 aria-hidden='true'
                             />
-                            <span className='flex items-center gap-[2px] @[220px]:gap-1'>
-                                <Image
-                                    src='/icons/car.svg'
-                                    alt=''
-                                    width={16}
-                                    height={16}
-                                    className='size-3 @[220px]:size-4'
+                            {dict.pickupAvailable}
+                        </span>
+                    )}
+                </div>
+
+                {/* Foot: price + free cancellation (pinned to the bottom) */}
+                <div className='mt-auto flex flex-col gap-[3px] pt-2'>
+                    <div className='flex items-baseline flex-wrap gap-x-1 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                        <span>{dict.from}</span>
+                        <span className='font-extrabold text-[14px] @[220px]:text-[17px] leading-[1.3] tracking-[-0.01em] text-it-ink tabular-nums'>
+                            {tour.priceDisplay}
+                        </span>
+                        <span>{priceLabel}</span>
+
+                        {tour.priceVaries && (
+                            <>
+                                <span
+                                    className='mx-1 size-1 rounded-full bg-it-ink-muted/60 self-center flex-none'
                                     aria-hidden='true'
                                 />
-                                <span className='text-[9px] @[220px]:text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                                    {dict.pickupAvailable}
-                                </span>
-                            </span>
-                        </>
-                    )}
-                </div>
+                                <span>{dict.priceVaries}</span>
+                            </>
+                        )}
+                    </div>
 
-                {/* Price */}
-                <div className='flex items-baseline flex-wrap gap-x-1'>
-                    <span className='text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50'>
-                        {dict.from}
-                    </span>
-                    <span className='font-medium text-[12px] @[220px]:text-[16px] leading-[1.25] tracking-[-0.012em] text-it-ink'>
-                        {tour.priceDisplay}
-                    </span>
-                    <span className='text-[10px] @[220px]:text-[12px] leading-[1.6] text-it-heading/50'>
-                        {priceLabel}
-                    </span>
-
-                    {tour.priceVaries && (
-                        <>
-                            <span
-                                className='mx-1 size-1 rounded-full bg-it-heading/20 self-center flex-none'
+                    {tour.freeCancellation && (
+                        <p
+                            className={cn(
+                                'm-0 inline-flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text',
+                                // Mockup hides the note on the compact mobile
+                                // row card - the price line closes the card.
+                                mobileRow && 'max-sm:hidden',
+                            )}>
+                            <Image
+                                src='/icons/check-green.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-3.5 shrink-0'
                                 aria-hidden='true'
                             />
-                            <span className='text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                                {dict.priceVaries}
-                            </span>
-                        </>
+                            {dict.freeCancellation}
+                        </p>
                     )}
                 </div>
-
-                {/* Free cancellation */}
-                {tour.freeCancellation && (
-                    <p className='m-0 text-[10px] @[220px]:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading/70'>
-                        {dict.freeCancellation}
-                    </p>
-                )}
-            </motion.div>
-        </motion.article>
+            </div>
+        </article>
     );
 
     // When the data source supplies a detail URL, the whole card links to the
@@ -395,7 +377,7 @@ function DefaultTourCard({
             <Link
                 href={tour.href}
                 aria-label={tour.title}
-                className='block rounded-[16px] @[220px]:rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
+                className='block h-full rounded-it-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                 {card}
             </Link>
         );
@@ -413,45 +395,50 @@ function DefaultTourCard({
  * cancellation note. Carries the same top-right wishlist heart as the
  * standard card (it stops propagation, so the card link never fires).
  */
-function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
+function RankedTourCard({
+    tour,
+    dict,
+    className = '',
+    priority = false,
+    mobileRow = false,
+}: TourCardProps) {
     const { isSaved, toggle } = useWishlist();
     const wishlisted = isSaved(tour.id);
-    const [isHovered, setIsHovered] = useState(false);
     const rank = String(tour.rank).padStart(2, '0');
     const isRated = tour.rating !== undefined;
+
+    // Design v2 collection card (5.6): the standard v2 chassis + a 34px orange
+    // rank circle on the photo, the italic curation rationale under the title,
+    // and a "star · duration" meta line. No peach, no badges - the rank IS the
+    // signal.
     const card = (
-        // @container: the card adapts its own typography to its width - compact in
-        // a 2-col mobile grid (~177px), full size in a wide desktop cell - mirroring
-        // the shared <TourCard>. On hover it fills cream and the image's bottom
-        // corners square off so it merges into the content (same as <TourCard>).
-        <motion.article
+        <article
             aria-label={tour.title}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            animate={{ backgroundColor: isHovered ? '#fdf6f0' : '#f8f8f8' }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
             className={cn(
-                '@container group flex flex-col gap-3 overflow-hidden rounded-[16px] pb-3 @[220px]:gap-4 @[220px]:rounded-[24px] @[220px]:pb-4',
-                className
+                '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
+                mobileRow &&
+                    'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
+                className,
             )}>
-            {/* Image carousel + rank badge (top-left) */}
-            <motion.div
-                className='relative aspect-[384/270] w-full shrink-0 overflow-hidden bg-it-border'
-                animate={{
-                    borderTopLeftRadius: '16px',
-                    borderTopRightRadius: '16px',
-                    borderBottomLeftRadius: '0px',
-                    borderBottomRightRadius: '0px',
-                }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}>
+            {/* ── Image area ──────────────────────────────────────────────── */}
+            <div
+                className={cn(
+                    'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
+                    mobileRow &&
+                        'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none',
+                )}>
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
-                    sizes='(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 384px'
+                    sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
+                    priority={priority}
                 />
-                {/* Rank badge (top-left) + Wishlist button (top-right) */}
-                <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2 @[220px]:inset-x-4 @[220px]:top-4'>
-                    <span className='grid size-8 place-items-center rounded-it-full bg-it-primary font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-white @[220px]:size-10 @[220px]:text-[16px]'>
+                {tour.images.length > 0 && (
+                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                )}
+                {/* Rank circle (top-left) + Wishlist (top-right) */}
+                <div className='absolute inset-x-2.5 top-2.5 z-10 flex items-start justify-between gap-2'>
+                    <span className='grid size-[34px] place-items-center rounded-it-full bg-it-primary text-[13px] font-extrabold text-it-white shadow-it-sm tabular-nums'>
                         {rank}
                     </span>
                     <motion.button
@@ -468,7 +455,7 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                         }}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='ml-auto flex size-8 @[220px]:size-10 shrink-0 items-center justify-center rounded-full bg-it-white shadow-it-sm border-none cursor-pointer transition-shadow duration-300 hover:shadow-it-md'>
+                        className='ml-auto flex size-[30px] @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
                         <Image
                             src={
                                 wishlisted
@@ -478,91 +465,65 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
                             alt=''
                             width={24}
                             height={24}
-                            className='size-5 @[220px]:size-6'
+                            className='size-4 @[220px]:size-[17px]'
                             aria-hidden='true'
                         />
                     </motion.button>
                 </div>
-            </motion.div>
+            </div>
 
-            {/* Info */}
-            <div
-                className={cn(
-                    'flex flex-col gap-2 px-2.5 @[220px]:gap-3 @[220px]:px-4',
-                    !isRated && 'py-4'
-                )}>
-                {/* Rating - a taller fixed row than the standard card so it
-                    breathes between the image and the title/description stack. */}
-                {isRated && (
-                    <div className='flex items-center gap-1.5  @[220px]:gap-2 @[220px]:h-7'>
-                        <Image
-                            src='/icons/star-listings.svg'
-                            alt=''
-                            width={16}
-                            height={16}
-                            className='size-3.5 shrink-0 @[220px]:size-4'
-                            aria-hidden='true'
-                        />
-                        <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
-                            {tour.rating}{' '}
-                            <span className='text-it-heading/50'>
-                                ({tour.reviewCount?.toLocaleString()})
-                            </span>
-                        </span>
-                    </div>
+            {/* ── Card info ───────────────────────────────────────────────── */}
+            <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
+                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                    {tour.title}
+                </h3>
+
+                {/* Curation rationale - the required CMS line, italic. */}
+                {tour.description && (
+                    <p className='m-0 text-[11px] @[220px]:text-[12.5px] italic leading-[1.5] text-it-text-muted line-clamp-2'>
+                        {tour.description}
+                    </p>
                 )}
 
-                <div className='flex flex-col gap-1 @[220px]:gap-1.5'>
-                    {/* Title + description */}
-                    <div className='flex flex-col gap-1 @[220px]:gap-1.5'>
-                        <h3 className='m-0 font-medium text-[12px] leading-[1.4] tracking-[-0.012em] text-it-heading @[220px]:text-[16px]'>
-                            {tour.title}
-                        </h3>
-                        {tour.description && (
-                            <p className='m-0 text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading line-clamp-2 @[220px]:text-[14px]'>
-                                {tour.description}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Duration · From $price */}
-                    <div className='flex items-center gap-2 @[220px]:gap-4'>
-                        <span className='flex items-center gap-1'>
-                            <Image
-                                src='/icons/clock.svg'
-                                alt=''
-                                width={16}
-                                height={16}
-                                className='size-3.5 shrink-0 @[220px]:size-4'
-                                aria-hidden='true'
-                            />
-                            <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
-                                {tour.duration}
+                {/* Meta: ★ rating (count) · duration */}
+                <div className='mt-0.5 flex flex-wrap items-center gap-[5px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                    {isRated && (
+                        <>
+                            <span className='font-bold text-it-star'>
+                                ★ {tour.rating}
                             </span>
-                        </span>
-                        <span
-                            aria-hidden='true'
-                            className='size-1 shrink-0 rounded-full bg-it-heading'
-                        />
-                        <span className='flex items-baseline gap-1'>
-                            <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[12px]'>
-                                {dict.from}
+                            <span className='tabular-nums'>
+                                ({tour.reviewCount?.toLocaleString()})
                             </span>
-                            <span className='font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[16px]'>
-                                {tour.priceDisplay}
-                            </span>
-                        </span>
-                    </div>
-
-                    {/* Free cancellation */}
-                    {tour.freeCancellation && (
-                        <p className='m-0 text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading @[220px]:text-[14px]'>
-                            {dict.freeCancellation}
-                        </p>
+                            <span className='text-it-ink-muted'>·</span>
+                        </>
                     )}
+                    <span>{tour.duration}</span>
+                </div>
+
+                {tour.freeCancellation && (
+                    <span className='mt-0.5 flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text max-sm:hidden'>
+                        <Image
+                            src='/icons/trust-check-green.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-[13px] shrink-0'
+                            aria-hidden='true'
+                        />
+                        {dict.freeCancellation}
+                    </span>
+                )}
+
+                {/* Price - pinned to the card foot. */}
+                <div className='mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                    {dict.from}
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-extrabold tracking-[-0.01em] text-it-ink tabular-nums'>
+                        {tour.priceDisplay}
+                    </b>
                 </div>
             </div>
-        </motion.article>
+        </article>
     );
 
     if (tour.href) {
@@ -570,7 +531,7 @@ function RankedTourCard({ tour, dict, className = '' }: TourCardProps) {
             <Link
                 href={tour.href}
                 aria-label={tour.title}
-                className='block rounded-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary @[220px]:rounded-[24px]'>
+                className='block h-full rounded-it-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
                 {card}
             </Link>
         );

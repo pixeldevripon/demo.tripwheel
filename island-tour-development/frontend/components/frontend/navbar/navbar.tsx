@@ -112,7 +112,14 @@ export function Navbar({
         fetchDestinationCategoriesClient(slug, locale)
             .then(rows => {
                 if (ignore) return;
-                const mapped = rows.map(c => ({ name: c.name, slug: c.slug }));
+                const mapped = rows.map(c => ({
+                    name: c.name,
+                    slug: c.slug,
+                    tours: c.publishedTourCount,
+                    // Only the category's OWN photo - never the generic
+                    // ogImage default. Missing = the grey fallback surface.
+                    image: c.heroImage ?? null,
+                }));
                 categoryCache.current.set(cacheKey, mapped);
                 setCategories(mapped);
             })
@@ -125,8 +132,8 @@ export function Navbar({
     }, [currentIsland?.slug, locale]);
 
     return (
-        <header className='fixed top-0 left-0 right-0 z-100 h-18 md:h-20 bg-it-white border-b border-it-border'>
-            <div className='it-container h-full flex items-center justify-between gap-6'>
+        <header className='fixed top-0 left-0 right-0 z-100 h-16 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
+            <div className='it-container h-full flex items-center gap-3.5'>
                 {/* ── Left: logo + island + categories ── */}
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
                     <Link href={localizeHref(locale, '/')} className='shrink-0'>
@@ -136,7 +143,7 @@ export function Navbar({
                             width={68}
                             height={50}
                             priority
-                            className='h-9 w-auto object-contain md:h-12.5'
+                            className='h-8 w-auto object-contain md:h-10'
                         />
                     </Link>
 
@@ -159,6 +166,18 @@ export function Navbar({
                             show={!isHome}
                         />
                     </div>
+
+                    {/* Mobile: the island pill sits LEFT, beside the logo
+                        (mockup nav order), not in the action cluster. */}
+                    <div className='md:hidden'>
+                        <DestinationSelector
+                            variant='mobile'
+                            locale={locale}
+                            dict={dict}
+                            islands={islands}
+                            currentIsland={currentIsland}
+                        />
+                    </div>
                 </div>
 
                 {/* ── Middle: search (desktop pill + mobile overlay) ── */}
@@ -174,7 +193,7 @@ export function Navbar({
                 />
 
                 {/* ── Desktop right: language + wishlist + account ── */}
-                <div className='hidden md:flex items-center gap-6 shrink-0'>
+                <div className='hidden md:flex items-center gap-5 shrink-0 ml-auto'>
                     <LocaleSelector variant='desktop' locale={locale} dict={dict} />
                     <div className='w-px h-5 bg-it-border' />
                     <WishlistLink locale={locale} dict={dict} />
@@ -182,8 +201,8 @@ export function Navbar({
                     <AccountMenu locale={locale} dict={dict} />
                 </div>
 
-                {/* ── Mobile right: search + island + language + account + menu ── */}
-                <div className='flex md:hidden items-center gap-5'>
+                {/* ── Mobile right: search + language + account + menu ── */}
+                <div className='flex md:hidden items-center gap-5 ml-auto'>
                     {!isHome && (
                         <motion.button
                             type='button'
@@ -205,13 +224,6 @@ export function Navbar({
                         </motion.button>
                     )}
 
-                    <DestinationSelector
-                        variant='mobile'
-                        locale={locale}
-                        dict={dict}
-                        islands={islands}
-                        currentIsland={currentIsland}
-                    />
                     <LocaleSelector variant='mobile' locale={locale} dict={dict} />
 
                     <AccountMenu locale={locale} dict={dict} />

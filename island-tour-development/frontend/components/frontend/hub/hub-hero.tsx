@@ -92,63 +92,74 @@ export function HubHero({
         // Figma: 465px (mobile) / 533px (desktop) band. Content is bottom-anchored
         // (not centered) - 49px bottom gap on mobile, 100px on desktop - which
         // reproduces the exact 152/154px top gaps at each breakpoint.
-        <section className='relative flex h-136.75 md:h-150 2xl:h-180 items-end justify-center overflow-hidden bg-it-hero-bg  pb-12.25 md:pb-25'>
+        // Design v2 .hubhero: a 400px photo band, content LEFT-aligned and
+        // vertically centred, under the side-wash hub scrim.
+        <section
+            className={`relative flex min-h-[400px] items-center overflow-hidden ${image ? 'bg-it-dark' : 'bg-it-bg'}`}>
             {image && (
-                <>
-                    <Image
-                        src={image}
-                        alt={imageAlt || title}
-                        fill
-                        priority
-                        className='object-cover'
-                    />
-                    {/* Legibility overlay over the photo */}
-                    <div className='absolute inset-0 bg-black/50' />
-                </>
+                <Image
+                    src={image}
+                    alt={imageAlt || title}
+                    fill
+                    priority
+                    className='object-cover object-[center_55%]'
+                />
+            )}
+            {image && (
+                <div className='absolute inset-0 bg-[image:var(--it-scrim-hub)]' />
             )}
 
-            <div className='it-container relative z-10 flex w-full justify-center'>
+            <div className='it-container relative z-10 w-full py-14'>
                 {/* Smooth hero entry: the hub page arrives via the entity
                     route's loading.tsx (streamed, inserted post-paint), so
                     mount animations are the right pattern here. The three hero
                     blocks cascade - title, meta pills, date bar. */}
-                <div className='flex w-full max-w-172.25 flex-col items-center gap-10'>
-                    {/* Title + italic tagline - gap 4 */}
-                    <MountReveal className='flex flex-col items-center gap-1 text-center'>
-                        <h1 className='m-0 font-it-body font-medium text-[32px] md:text-[48px] leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
+                <div className='flex w-full flex-col items-start'>
+                    {/* Title + tagline */}
+                    <MountReveal className='flex flex-col items-start'>
+                        <h1 className={`m-0 font-it-display text-[clamp(30px,4.4vw,46px)] font-bold leading-[1.05] tracking-[-0.02em] ${image ? 'text-it-white' : 'text-it-ink'}`}>
                             {title}
                         </h1>
-                        <p className='m-0 text-[16px] md:text-[18px] italic leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                        <p className={`m-0 mt-2.5 text-[16px] font-semibold leading-[1.6] ${image ? 'text-it-white/92' : 'text-it-text-muted'}`}>
                             {tagline || dict.tagline}
                         </p>
                     </MountReveal>
 
-                    {/* Search group - pills + date bar. Mobile gap 16, desktop gap 12. */}
-                    <div className='flex w-full flex-col items-center gap-4 md:gap-3'>
+                    {/* Fact line + date row */}
+                    <div className='flex w-full flex-col items-start'>
                         {/* Meta pills - translucent, white 1px border, radius 10.
                             Mobile wraps to 2×2 (max-width forces the wrap, so the
                             divider after pill #1 falls to the start of row 2 - exactly
                             the Figma mobile layout); desktop is a single row. */}
                         {meta.length > 0 && (
                             <MountReveal delay={0.12} yOffset={14}>
-                            <ul className='m-0 flex w-fit max-w-66 flex-wrap items-center justify-center gap-2 rounded-[10px] border border-white px-3 py-2 md:max-w-none md:gap-x-4 md:px-5.5 md:py-3'>
+                            {/* .factline: white facts split by hairline bars
+                                on desktop, stacked plain on mobile. */}
+                            <ul className='m-0 mt-[18px] flex list-none flex-col items-start gap-[7px] p-0 md:flex-row md:flex-wrap md:items-center md:gap-0'>
                                 {meta.map((item, i) => (
                                     <Fragment key={item.label}>
                                         {i > 0 && (
                                             <li
                                                 aria-hidden='true'
-                                                className='h-4.5 w-px shrink-0 bg-white'
+                                                className={`hidden h-[15px] w-px shrink-0 md:block ${image ? 'bg-it-white/42' : 'bg-it-border'}`}
                                             />
                                         )}
-                                        <li className='flex items-center gap-2'>
+                                        <li className='flex items-center gap-2 py-0.5 md:px-[18px] md:first:pl-0'>
                                             <Image
-                                                src={item.icon}
+                                                src={
+                                                    image
+                                                        ? item.icon
+                                                        : item.icon.replace(
+                                                              '.svg',
+                                                              '-soft.svg'
+                                                          )
+                                                }
                                                 alt=''
                                                 width={24}
                                                 height={24}
-                                                className='size-5 shrink-0 md:size-6'
+                                                className='size-4 shrink-0 opacity-92'
                                             />
-                                            <span className='whitespace-nowrap text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
+                                            <span className={`whitespace-nowrap text-[14px] font-semibold leading-[1.6] ${image ? 'text-it-white' : 'text-it-ink'}`}>
                                                 {item.label}
                                             </span>
                                         </li>
@@ -162,19 +173,27 @@ export function HubHero({
                         <MountReveal
                             delay={0.24}
                             yOffset={14}
-                            className='w-full'>
-                        <div className='flex w-full items-center justify-between gap-2 rounded-it-full bg-it-white py-2.5 pl-5 pr-2.5 md:py-3 md:pl-9 md:pr-2.5'>
+                            className='w-full max-w-[460px]'>
+                        {/* .herodate: white date field + orange Go */}
+                        <div className='mt-[22px] flex w-full items-stretch gap-2.5'>
                             <Popover open={dateOpen} onOpenChange={setDateOpen}>
                                 {/* Clear control as a SIBLING of the trigger -
                                     a button's descendants are presentational
                                     to the accessibility tree, so a nested
                                     control would be unreachable. */}
-                                <div className='flex min-w-0 shrink items-center gap-1.5'>
+                                <div className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-it-sm bg-it-white px-4 ${image ? '' : 'border border-it-border'}`}>
                                     <PopoverTrigger asChild>
                                         <motion.button
                                             type='button'
                                             aria-label={dict.selectDate}
-                                            className={`flex shrink-0 cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'text-it-text-muted'}`}>
+                                            className={`flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-[13px] pl-0 text-left text-[14.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-text-muted'}`}>
+                                            <Image
+                                                src='/icons/calendar-soft.svg'
+                                                alt=''
+                                                width={24}
+                                                height={24}
+                                                className='size-[17px] shrink-0'
+                                            />
                                             {date
                                                 ? format(date, 'd MMM yyyy')
                                                 : dict.selectDate}
@@ -221,7 +240,7 @@ export function HubHero({
                                 onClick={handleCheckAvailability}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='grid h-10 min-w-37 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary px-5 font-medium text-[14px] md:h-12 md:min-w-45 md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white transition-colors duration-300 hover:bg-it-primary-hover'>
+                                className='shrink-0 cursor-pointer rounded-it-sm border-none bg-it-primary px-[22px] py-[13px] text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
                                 {dict.checkAvailability}
                             </motion.button>
                         </div>

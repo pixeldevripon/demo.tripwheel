@@ -62,7 +62,8 @@ export default async function LocaleNotFound() {
               getDestinationTours({
                   destinationId: primary.id,
                   sort: 'recommended',
-                  limit: 4,
+                  // Mockup MCK-10: the popular row is the 3-up relgrid.
+                  limit: 3,
               }),
               getDestinationHubs(primary.slug),
               getDestinationCategories(primary.slug),

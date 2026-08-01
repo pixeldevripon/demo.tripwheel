@@ -74,13 +74,13 @@ export function LocaleSelector({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-6 shrink-0'
+                    className='size-4.5 shrink-0'
                 />
                 {variant === 'desktop' && (
                     /* One-cell grid: invisible spans reserve the width of the
                        widest locale code, so switching locales never shifts
                        the rest of the header. */
-                    <span className='inline-grid justify-items-start text-base font-medium text-it-ink uppercase'>
+                    <span className='inline-grid justify-items-start text-[13px] font-semibold text-it-ink uppercase'>
                         <span className='col-start-1 row-start-1'>{locale}</span>
                         {ALL_LOCALES.map(code => (
                             <span
@@ -98,7 +98,7 @@ export function LocaleSelector({
                 {open && (
                     <motion.ul
                         {...dropdownMotion}
-                        className={`absolute top-[calc(100%+18px)] right-0 m-0 p-0 list-none ${menuWidth} origin-top-right bg-it-white border border-it-border rounded-it-lg shadow-it-lg overflow-hidden z-50`}>
+                        className={`absolute top-[calc(100%+18px)] right-0 m-0 p-0 list-none ${menuWidth} origin-top-right bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50`}>
                         {ALL_LOCALES.map(code => (
                             <motion.li key={code} {...dropdownItemMotion}>
                                 <button

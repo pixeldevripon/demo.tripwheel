@@ -1,4 +1,5 @@
 import {
+    TourRelatedSkeleton,
     TourReviewsPreviewSkeleton,
     TourReviewsSectionSkeleton,
 } from '@/components/frontend/skeletons/tour-page-skeleton';
@@ -26,9 +27,11 @@ import { MountReveal } from '../mount-reveal';
 import { Reveal } from '../reveal';
 import { TourBookingCard } from './tour-booking-card/tour-booking-card';
 import { TourDetailTabs, type TourTab } from './tour-detail-tabs';
-import { TourGallery, type TourGalleryMeta } from './tour-gallery';
+import { TourGallery } from './tour-gallery';
 import { TourHeader } from './tour-header';
+import { TourHeaderActions } from './tour-header-actions';
 import { TourMeetingCard } from './tour-meeting-card';
+import { TourRelatedTours } from './tour-related-tours';
 import { TourReviewsBlock, TourReviewsPreview } from './tour-reviews-blocks';
 import { TourSection } from './tour-section';
 import { ToursBreadcrumb, type BreadcrumbAnchor } from '../tours/tours-breadcrumb';
@@ -43,16 +46,6 @@ const FALLBACK_GALLERY_IMAGES = [
     '/images/tours/tour-2-1.jpg',
     '/images/tours/tour-2-3.jpg',
 ];
-
-/**
- * Compact language pill from ISO 639-1 codes: "EN", "EN, NL", "EN, NL, +2".
- * (The gallery meta strip, Figma node 47940:12742.)
- */
-function formatLanguageCodes(codes: string[]): string {
-    const upper = codes.map(c => c.toUpperCase());
-    if (upper.length <= 2) return upper.join(', ');
-    return `${upper.slice(0, 2).join(', ')}, +${upper.length - 2}`;
-}
 
 // A wall-clock "HH:MM" start time formatted for the locale (12h + AM/PM in en,
 // 24h in most others). Built on a fixed UTC date so only the clock time shows.
@@ -194,27 +187,46 @@ export async function TourDetailContent({
             title,
     }));
 
-    // Meta strip pills - only the applicable ones render (duration / pickup /
-    // languages), all localized.
-    const galleryMeta: TourGalleryMeta[] = [];
+    // Quick-info badges under the gallery (design v2 .quickinfo, LD7: at most
+    // three) - duration / pickup / crew languages, each a bordered card with a
+    // peach icon tile, a bold line and a muted sub-line.
+    const qiDict = tourDict.quickInfo;
     const durationLabel = formatDuration(
         detail.durationMinutesFrom,
         detail.durationMinutesTo,
         dict.search
     );
+    const languageNames = new Intl.DisplayNames(locale, { type: 'language' });
+    const quickInfo: { icon: string; title: string; sub: string }[] = [];
     if (durationLabel) {
-        galleryMeta.push({ icon: '/icons/clock.svg', label: durationLabel });
+        quickInfo.push({
+            icon: '/icons/qi-clock.svg',
+            title: durationLabel,
+            sub: qiDict.durationSub,
+        });
     }
     if (detail.pickupModel !== 'NONE') {
-        galleryMeta.push({
-            icon: '/icons/car.svg',
-            label: dict.destination.listings.pickupAvailable,
+        quickInfo.push({
+            icon: '/icons/qi-car.svg',
+            title: dict.destination.listings.pickupAvailable,
+            sub:
+                detail.pickupModel === 'INCLUDED'
+                    ? qiDict.pickupIncluded
+                    : qiDict.pickupPaid,
         });
     }
     if (detail.languages.length > 0) {
-        galleryMeta.push({
-            icon: '/icons/nav-globe.svg',
-            label: formatLanguageCodes(detail.languages),
+        const names = detail.languages
+            .map(code => {
+                const name = languageNames.of(code.toLowerCase());
+                if (!name) return code.toUpperCase();
+                return name.charAt(0).toUpperCase() + name.slice(1);
+            })
+            .join(', ');
+        quickInfo.push({
+            icon: '/icons/qi-globe.svg',
+            title: names,
+            sub: qiDict.languagesSub,
         });
     }
 
@@ -328,14 +340,18 @@ export async function TourDetailContent({
         {
             title: infoDict.notSuitableFor,
             items: detail.translation?.notSuitableFor ?? [],
+            // .warnlist - the caution list carries amber bullets.
+            warn: true,
         },
         {
             title: infoDict.knowBeforeYouGo,
             items: detail.translation?.knowBeforeYouGo ?? [],
+            warn: false,
         },
         {
             title: infoDict.whatToBring,
             items: detail.translation?.whatToBring ?? [],
+            warn: false,
         },
     ].filter(g => g.items.length > 0);
 
@@ -346,6 +362,14 @@ export async function TourDetailContent({
         /\{hours\}/g,
         String(detail.cancellationHours)
     );
+    // The locked policy copy renders as separate paragraphs in the .cancelbox;
+    // the "Plans change. No problem." lead opens the first paragraph (mockup
+    // renders them as one line).
+    const cancellationParagraphs = cancellationBody
+        .split(/\n+/)
+        .map(para => para.trim())
+        .filter(Boolean)
+        .map((para, i) => (i === 0 ? `${cancelDict.title} ${para}` : para));
 
     // Reviews aggregate + histogram come off the tour payload (same source as the
     // header rating); the individual cards stream in a separate boundary from the
@@ -432,19 +456,13 @@ export async function TourDetailContent({
             />
             <MountReveal>
             <TourHeader
-                tourId={detail.id}
                 title={title}
                 rating={rating}
                 reviewCount={reviewCount}
                 isLocalsFavourite={isLocalsFavourite}
                 locationLabel={locationLabel}
                 locale={locale}
-                dict={{
-                    save: tourDict.save,
-                    share: tourDict.share,
-                    linkCopied: tourDict.linkCopied,
-                    localsFavorite: tourDict.localsFavorite,
-                }}
+                dict={{ localsFavorite: tourDict.localsFavorite }}
             />
             </MountReveal>
 
@@ -471,9 +489,35 @@ export async function TourDetailContent({
                             <TourGallery
                                 images={galleryImages}
                                 title={title}
-                                meta={galleryMeta}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
                             />
+                            {quickInfo.length > 0 && (
+                                <div className='mt-[18px] flex flex-wrap gap-2 md:gap-3'>
+                                    {quickInfo.map(qi => (
+                                        <div
+                                            key={qi.sub}
+                                            className='flex items-center gap-[11px] rounded-it-md border border-it-divider bg-it-white px-3 py-[9px] md:px-4 md:py-[11px]'>
+                                            <span className='grid size-[34px] shrink-0 place-items-center rounded-it-sm bg-it-peach'>
+                                                <Image
+                                                    src={qi.icon}
+                                                    alt=''
+                                                    width={24}
+                                                    height={24}
+                                                    className='size-[17px]'
+                                                />
+                                            </span>
+                                            <span className='flex flex-col'>
+                                                <b className='text-[13.5px] font-bold leading-[1.5] tracking-[-0.005em] text-it-ink'>
+                                                    {qi.title}
+                                                </b>
+                                                <span className='text-[12px] leading-[1.5] text-it-text-muted'>
+                                                    {qi.sub}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Booking card - right rail, sticky across the whole page
@@ -494,6 +538,19 @@ export async function TourDetailContent({
                                 Real availability (remaining spots, sold-out) still
                                 lands with the availability wiring (checklist §4). */}
                             <MountReveal delay={0.15}>
+                                {/* Save/Share (.wtools) live above the widget
+                                    in the rail (GAP-18), not in the header. */}
+                                <div className='mb-2.5'>
+                                    <TourHeaderActions
+                                        tourId={detail.id}
+                                        title={title}
+                                        dict={{
+                                            save: tourDict.save,
+                                            share: tourDict.share,
+                                            linkCopied: tourDict.linkCopied,
+                                        }}
+                                    />
+                                </div>
                                 <TourBookingCard
                                     dict={tourDict.booking}
                                     data={buildTourBookingData(detail)}
@@ -530,117 +587,111 @@ export async function TourDetailContent({
                             <TourDetailTabs tabs={sectionTabs} />
 
                         {/* Content sections - left-aligned readable measure. */}
-                        <div className='flex max-w-178.5 flex-col gap-10'>
+                        <div className='flex max-w-178.5 flex-col gap-[34px]'>
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
-                                {(overviewParagraphs.length > 0 ||
-                                    highlights.length > 0) && (
-                                    <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                {overviewParagraphs.length > 0 && (
+                                    <div className='flex flex-col gap-4 text-[14.5px] leading-[1.68] text-it-ink'>
                                         {overviewParagraphs.map((p, i) => (
                                             <p key={i} className='m-0'>
                                                 {p}
                                             </p>
                                         ))}
-                                        {highlights.length > 0 && (
-                                            <ul className='m-0 list-disc pl-5'>
-                                                {highlights.map((h, i) => (
-                                                    <li key={i}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem>
-                                                            {h}
-                                                        </Reveal>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
+                                    </div>
+                                )}
+                                {/* Merged highlights (.hl): two-column list
+                                    with the orange bullet glyph. */}
+                                {highlights.length > 0 && (
+                                    <div className='grid grid-cols-1 gap-x-[22px] gap-y-2 sm:grid-cols-2'>
+                                        {highlights.map((h, i) => (
+                                            <Reveal
+                                                key={i}
+                                                width='auto'
+                                                listItem
+                                                className='flex items-start gap-[9px] text-[14px] font-semibold leading-[1.6] text-it-ink'>
+                                                <span
+                                                    aria-hidden='true'
+                                                    className='font-extrabold text-it-primary'>
+                                                    •
+                                                </span>
+                                                {h}
+                                            </Reveal>
+                                        ))}
                                     </div>
                                 )}
                                 {/* Local tip callout (Figma node): bold headline
                                     over a muted description. Renders when either
                                     line is present; each line only if it exists. */}
                                 {(localTipTitle || localTipBody) && (
-                                    <div className='flex items-start gap-2 rounded-[8px] border border-it-primary/30 bg-it-primary/5 p-6'>
+                                    <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[13.5px] leading-[1.6]'>
                                         <Image
-                                            src='/icons/tip-bulb.svg'
+                                            src='/icons/tip-sun.svg'
                                             alt=''
                                             width={24}
                                             height={24}
-                                            className='size-6 shrink-0'
+                                            className='mt-0.5 size-5 shrink-0'
                                         />
-                                        <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                        <div>
                                             {localTipTitle && (
-                                                <span className='text-[#8b390e]'>
+                                                <b className='mb-[3px] block text-[12px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
                                                     {localTipTitle}
-                                                </span>
+                                                </b>
                                             )}
                                             {localTipBody && (
-                                                <span className='text-[#8b390e]/60'>
+                                                <span className='text-it-ink'>
                                                     {localTipBody}
                                                 </span>
                                             )}
-                                        </p>
+                                        </div>
                                     </div>
                                 )}
                             </TourSection>
 
-                            <div className='h-px w-full bg-it-heading/10' />
-
+                            
                             {(includedItems.length > 0 ||
                                 excludedItems.length > 0) && (
                                 <>
                                     <TourSection
                                         id='tour-included'
                                         title={tourDict.sections.included}>
-                                        <div className='grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-16 md:gap-y-0'>
-                                            {includedItems.length > 0 && (
-                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {includedItems.map(item => (
-                                                        <li key={item.id}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem
-                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                            <Image
-                                                                src='/icons/check-green.svg'
-                                                                alt=''
-                                                                width={20}
-                                                                height={20}
-                                                                className='size-5 shrink-0'
-                                                            />
-                                                            {item.label}
-                                                        </Reveal>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {excludedItems.length > 0 && (
-                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {excludedItems.map(item => (
-                                                        <li key={item.id}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem
-                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                            <Image
-                                                                src='/icons/exclude-cross.svg'
-                                                                alt=''
-                                                                width={20}
-                                                                height={20}
-                                                                className='size-5 shrink-0'
-                                                            />
-                                                            {item.label}
-                                                        </Reveal>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
+                                        <div className='grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2'>
+                                            {includedItems.map(item => (
+                                                <Reveal
+                                                    key={item.id}
+                                                    width='auto'
+                                                    listItem
+                                                    className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-ink'>
+                                                    <Image
+                                                        src='/icons/trust-check-green.svg'
+                                                        alt=''
+                                                        width={24}
+                                                        height={24}
+                                                        className='mt-[3px] size-[15px] shrink-0'
+                                                    />
+                                                    {item.label}
+                                                </Reveal>
+                                            ))}
+                                            {excludedItems.map(item => (
+                                                <Reveal
+                                                    key={item.id}
+                                                    width='auto'
+                                                    listItem
+                                                    className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-text-muted'>
+                                                    <Image
+                                                        src='/icons/x-faint.svg'
+                                                        alt=''
+                                                        width={24}
+                                                        height={24}
+                                                        className='mt-[3px] size-[15px] shrink-0'
+                                                    />
+                                                    {item.label}
+                                                </Reveal>
+                                            ))}
                                         </div>
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {(expectIntro || expectSteps.length > 0) && (
@@ -649,7 +700,7 @@ export async function TourDetailContent({
                                         id='tour-expect'
                                         title={tourDict.sections.expect}>
                                         {expectIntro && (
-                                            <p className='m-0 max-w-172 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                            <p className='m-0 max-w-172 text-[14.5px] leading-[1.68] text-it-text-muted'>
                                                 {expectIntro}
                                             </p>
                                         )}
@@ -676,18 +727,18 @@ export async function TourDetailContent({
                                                                 1 && (
                                                             <span
                                                                 aria-hidden='true'
-                                                                className='absolute top-10 bottom-0 left-5 w-px -translate-x-1/2 bg-it-heading/15'
+                                                                className='absolute top-9 bottom-0 left-[15px] w-px -translate-x-1/2 bg-it-divider'
                                                             />
                                                         )}
-                                                        <span className='relative z-10 grid size-10 shrink-0 place-items-center rounded-it-full bg-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                        <span className='relative z-10 grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[13px] font-extrabold text-it-primary-hover tabular-nums'>
                                                             {i + 1}
                                                         </span>
-                                                        <div className='flex flex-col gap-1 pt-1'>
-                                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        <div className='flex flex-col gap-0.5'>
+                                                            <span className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                                                 {step.title}
                                                             </span>
                                                             {step.detail && (
-                                                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                                <span className='text-[13.5px] leading-[1.6] text-it-text-muted'>
                                                                     {
                                                                         step.detail
                                                                     }
@@ -701,8 +752,7 @@ export async function TourDetailContent({
                                         )}
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {meetingBlock && (
@@ -718,8 +768,7 @@ export async function TourDetailContent({
                                         />
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {infoGroups.length > 0 && (
@@ -727,20 +776,25 @@ export async function TourDetailContent({
                                     <TourSection
                                         id='tour-info'
                                         title={tourDict.sections.info}>
-                                        <div className='flex flex-col gap-6'>
+                                        <div className='flex flex-col gap-[18px]'>
                                             {infoGroups.map(group => (
                                                 <Reveal
                                                     key={group.title}
                                                     listItem
-                                                    className='flex flex-col gap-2'>
-                                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                    className='flex flex-col gap-1.5'>
+                                                    <h3 className='m-0 text-[15px] font-bold leading-[1.6] text-it-ink'>
                                                         {group.title}
                                                     </h3>
-                                                    <ul className='m-0 list-disc pl-5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                    <ul className='m-0 mt-1 list-none p-0'>
                                                         {group.items.map(
                                                             (item, i) => (
                                                                 <li
-                                                                    key={`${group.title}-${i}`}>
+                                                                    key={`${group.title}-${i}`}
+                                                                    className='relative py-[5px] pl-[22px] text-[14px] leading-[1.6] text-it-ink'>
+                                                                    <span
+                                                                        aria-hidden='true'
+                                                                        className={`absolute top-[13px] left-1 size-[5px] rounded-it-full ${group.warn ? 'bg-it-star' : 'bg-it-ink-muted'}`}
+                                                                    />
                                                                     {item}
                                                                 </li>
                                                             )
@@ -751,32 +805,20 @@ export async function TourDetailContent({
                                         </div>
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             <TourSection
                                 id='tour-cancellation'
                                 title={tourDict.sections.cancellation}>
-                                <div className='flex flex-col gap-4'>
-                                    <div className='flex flex-col gap-2'>
-                                        <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {cancelDict.title}
-                                        </h3>
-                                        <p className='m-0 whitespace-pre-line text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                            {cancellationBody}
+                                <div className='flex flex-col gap-2.5 rounded-it-md border border-it-divider bg-it-white px-5 py-[18px]'>
+                                    {cancellationParagraphs.map((para, i) => (
+                                        <p
+                                            key={i}
+                                            className='m-0 text-[14.5px] leading-[1.68] text-it-ink'>
+                                            {para}
                                         </p>
-                                    </div>
-                                    {detail.operatorName && (
-                                        <span className='self-end font-medium text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                            <span className='text-it-text-muted'>
-                                                {cancelDict.suppliedBy}
-                                            </span>{' '}
-                                            <span className='text-it-heading'>
-                                                {detail.operatorName}
-                                            </span>
-                                        </span>
-                                    )}
+                                    ))}
                                 </div>
                             </TourSection>
 
@@ -787,8 +829,7 @@ export async function TourDetailContent({
                                 not end on a hairline under the last section. */}
                             {hasReviewsSection && (
                                 <>
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                    <Suspense
+                                                                        <Suspense
                                         fallback={
                                             <TourReviewsSectionSkeleton
                                                 count={Math.min(10, ownReviewCount)}
@@ -818,7 +859,31 @@ export async function TourDetailContent({
                                     </Suspense>
                                 </>
                             )}
+
+                            {/* LD14 supplied-by tail line. */}
+                            {detail.operatorName && (
+                                <p className='m-0 text-[12.5px] leading-[1.6] text-it-ink-muted'>
+                                    {cancelDict.suppliedBy}{' '}
+                                    {detail.operatorName}
+                                </p>
+                            )}
                         </div>
+
+                        {/* Related tours (LD33) - INSIDE the detail column so
+                            the grids keep the content width, and the sticky
+                            rail (row-span-2) keeps sticking past them until
+                            the section ends at the footer. Own boundary: it
+                            fetches the destination listings and must not hold
+                            the sections above hostage. */}
+                        <Suspense fallback={<TourRelatedSkeleton />}>
+                            <TourRelatedTours
+                                destinationSlug={destinationSlug}
+                                slug={slug}
+                                destinationName={destinationName}
+                                locale={locale}
+                                dict={dict}
+                            />
+                        </Suspense>
                         </div>
                     </div>
                 </div>

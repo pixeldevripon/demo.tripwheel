@@ -1,60 +1,64 @@
 import Image from 'next/image';
+import { getPublicSiteInfo } from '@/lib/api/public/settings';
+import { buildWhatsappUrl } from '@/lib/whatsapp';
 import { Reveal } from '../reveal';
 
-type TrustItem = { title: string; subtitle: string };
-
 export type ToursTrustDict = {
-    builtByLocals: TrustItem;
-    freeCancellation: TrustItem;
-    message: TrustItem;
-    pay: TrustItem;
+    /** The four checkmark lines, in display order. */
+    checks: string[];
+    /** WhatsApp link label - e.g. "Questions? Chat on WhatsApp →" */
+    whatsapp: string;
 };
 
-// Fixed display order - icon paired with its dictionary key (icons exported from Figma).
-const ITEMS: { key: keyof ToursTrustDict; icon: string }[] = [
-    { key: 'builtByLocals', icon: '/icons/trust-strip/built-by-locals.svg' },
-    { key: 'freeCancellation', icon: '/icons/trust-strip/free-cancellation.svg' },
-    { key: 'message', icon: '/icons/trust-strip/message.svg' },
-    { key: 'pay', icon: '/icons/trust-strip/wallet.svg' },
-];
-
 /**
- * All Tours trust strip ("Trust strip / D", Figma node 47626:9337).
- * Four icon-left, two-line items spaced across a #f8f8f8 band.
+ * All Tours compact trust strip (design v2 .truststrip, master 3.11): a paper
+ * band with four green checkmarks and the WhatsApp link - no payment logos,
+ * no FAQ. The checks stack vertically on mobile.
+ *
+ * Reads the WhatsApp number itself (same pattern as FaqSection): the link is
+ * hidden entirely when Settings disables the chat or holds no usable number.
  */
-export function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
+export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
+    const site = await getPublicSiteInfo();
+    const whatsappUrl = buildWhatsappUrl(
+        site.whatsappNumber,
+        site.enableWhatsappChat,
+    );
+
     return (
-        <section className='bg-it-surface'>
+        // 56px above (from the pager), 80px below (to the footer) - mockup
+        // .truststrip / footer.ft margins.
+        <section className='mt-14 mb-20 bg-it-bg py-7'>
             <div className='it-container'>
-                {/* Mobile: 2×2 grid of compact 14px items, 16px row gaps,
-                    32px band padding (Figma node 48540:16942).
-                    md+: single justified row of 16px items (node 47626:9337). */}
-                <div className='grid grid-cols-2 gap-x-4 gap-y-4 py-8 md:flex md:items-center md:justify-between md:gap-x-6 md:py-22.5'>
-                    {ITEMS.map(({ key, icon }) => {
-                        const item = dict[key];
-                        return (
-                            <Reveal key={key} width='auto' listItem>
-                            <div className='flex items-start gap-3 md:gap-4'>
+                <Reveal className='flex flex-wrap items-center justify-between gap-[18px]'>
+                    <div className='flex flex-wrap gap-x-[22px] gap-y-2.5 max-md:flex-col'>
+                        {dict.checks.map(check => (
+                            <span
+                                key={check}
+                                className='flex items-center gap-2 text-[13.5px] font-semibold leading-[1.6] text-it-ink'>
                                 <Image
-                                    src={icon}
+                                    src='/icons/trust-check-green.svg'
                                     alt=''
                                     width={24}
                                     height={24}
-                                    className='size-6 shrink-0'
+                                    className='size-4 shrink-0'
+                                    aria-hidden='true'
                                 />
-                                <div className='flex flex-col'>
-                                    <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                        {item.title}
-                                    </span>
-                                    <span className='text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                        {item.subtitle}
-                                    </span>
-                                </div>
-                            </div>
-                            </Reveal>
-                        );
-                    })}
-                </div>
+                                {check}
+                            </span>
+                        ))}
+                    </div>
+
+                    {whatsappUrl && (
+                        <a
+                            href={whatsappUrl}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='whitespace-nowrap text-[13.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                            {dict.whatsapp}
+                        </a>
+                    )}
+                </Reveal>
             </div>
         </section>
     );

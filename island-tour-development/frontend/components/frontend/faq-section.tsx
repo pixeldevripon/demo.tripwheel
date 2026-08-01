@@ -65,31 +65,43 @@ export async function FaqSection({
         dict.items.map((it) => ({ question: it.q, answer: it.a })),
     );
 
+    // Minimal (category page, design v2 .catcontent): a plain "Frequently
+    // asked questions" sub-head + the accordion in the 760px reading column on
+    // the white surface - no host/WhatsApp/payments rail.
+    if (minimal) {
+        return (
+            <>
+                <JsonLd data={faqJsonLd} />
+                <section className='bg-it-white pb-20'>
+                    <div className='it-container'>
+                        <Reveal className='flex max-w-[760px] flex-col gap-3'>
+                            <h2 className='m-0 mt-7 text-[16px] font-bold leading-[1.6] text-it-ink'>
+                                {dict.title}
+                            </h2>
+                            <FaqAccordion items={dict.items} />
+                        </Reveal>
+                    </div>
+                </section>
+            </>
+        );
+    }
+
     return (
         <>
             <JsonLd data={faqJsonLd} />
         <section className='it-section max-md:pb-[32px]! bg-it-surface'>
             <div className='it-container'>
-                <Reveal
-                    className={`flex flex-col lg:flex-row lg:gap-[118px] ${minimal ? 'gap-4' : 'gap-12'}`}>
-                    {/* Minimal (category page, Figma 47070:2456): title only on the left. */}
-                    {minimal ? (
-                        <div className='lg:w-113 lg:shrink-0'>
-                            <h2 className='m-0 font-medium text-[24px] lg:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
-                                {dict.title}
-                            </h2>
-                        </div>
-                    ) : (
-                        /* Left - help, WhatsApp, guarantees, payments.
-                        On mobile this block sits above the accordion (matches Figma). */
-                        <div className='flex flex-col gap-8 lg:w-115 lg:gap-14'>
-                            <div className='flex flex-col gap-12 lg:gap-14'>
+                <Reveal className='flex flex-col gap-10 lg:flex-row lg:gap-12'>
+                    {/* Left - help, WhatsApp, guarantees, payments. On mobile
+                        this block sits above the accordion (matches Figma). */}
+                    <div className='flex flex-col gap-8 lg:w-115 lg:gap-10'>
+                            <div className='flex flex-col gap-8 lg:gap-10'>
                                 {/* Heading */}
-                                <div className='flex flex-col gap-4 lg:gap-6'>
-                                    <h2 className='m-0 font-medium text-[32px] lg:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                                <div className='flex flex-col gap-2.5'>
+                                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
                                         {dict.title}
                                     </h2>
-                                    <p className='m-0 max-w-[452px] text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                    <p className='m-0 max-w-[400px] text-[14px] leading-[1.6] text-it-text-muted'>
                                         {dict.subtitle}
                                     </p>
                                 </div>
@@ -134,7 +146,7 @@ export async function FaqSection({
                                                 href={whatsappUrl}
                                                 target='_blank'
                                                 rel='noopener noreferrer'
-                                                className='flex items-center gap-2.5 rounded-it-full bg-it-green px-10 py-3 no-underline lg:py-[19px] hover:bg-it-green/90 transition-colors'
+                                                className='flex items-center gap-2 rounded-it-full bg-it-whatsapp px-5 py-[11px] no-underline hover:bg-it-whatsapp/90 transition-colors'
                                                 whileTap={{ scale: 0.98 }}
                                                 transition={springPop}>
                                                 <Image
@@ -142,9 +154,9 @@ export async function FaqSection({
                                                     alt=''
                                                     width={24}
                                                     height={24}
-                                                    className='size-6'
+                                                    className='size-4'
                                                 />
-                                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-white'>
                                                     {dict.whatsapp}
                                                 </span>
                                             </MotionA>
@@ -163,7 +175,7 @@ export async function FaqSection({
                                                     height={24}
                                                     className='size-6 shrink-0'
                                                 />
-                                                <span className='font-medium text-[14px] lg:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                <span className='font-semibold text-[14px] leading-[1.6] text-it-ink'>
                                                     {g}
                                                 </span>
                                             </li>
@@ -189,7 +201,6 @@ export async function FaqSection({
                                 ))}
                             </div>
                         </div>
-                    )}
 
                     {/* Right - accordion (the interactive client leaf) */}
                     <FaqAccordion items={dict.items} />

@@ -3,7 +3,7 @@
 import { createPaymentIntent } from '@/lib/api/bookings';
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
 import { leaveTo } from '@/lib/checkout/leave-to';
-import { localizeHref, type Locale } from '@/lib/constants/locales';
+import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
     loadMollieJs,
@@ -13,9 +13,14 @@ import {
 } from '@/lib/mollie/mollie-js';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { DarkButton, FieldShell, labelClass, Radio } from './checkout-fields';
+import {
+    ConsentLine,
+    CtaButton,
+    FieldShell,
+    FreeCancelNote,
+    Radio,
+} from './checkout-fields';
 
 type CheckoutDict = Dictionary['checkout'];
 
@@ -40,6 +45,7 @@ export function CheckoutPaymentMollie({
     testmode,
     payToday,
     currencySymbol,
+    freeCancelLabel,
     processingHref,
 }: {
     dict: CheckoutDict;
@@ -50,6 +56,8 @@ export function CheckoutPaymentMollie({
     testmode: boolean;
     payToday: number;
     currencySymbol: string;
+    /** Composed free-cancellation reassurance line under the pay CTA. */
+    freeCancelLabel: string;
     /** Relative processing path (with ?ref&tour) - Mollie's returnUrl is built from it. */
     processingHref: string;
 }) {
@@ -206,23 +214,38 @@ export function CheckoutPaymentMollie({
     const mountClass = 'w-full';
 
     return (
-        <div className='flex flex-col gap-10'>
+        <div className='flex flex-col'>
             {cardState !== 'unavailable' ? (
                 /* Inline card (Mollie Components) - mirrors the Stripe card
                    form. The <form> is REQUIRED by mollie.js (components live
                    inside one; Enter in a field dispatches its submit). */
                 <form
-                    className='flex flex-col gap-2.5'
+                    className='flex flex-col'
                     onSubmit={(e) => {
                         e.preventDefault();
                         void handlePay();
                     }}>
-                    <span className={labelClass}>
+                    <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
                         {dict.selectPaymentMethod}
                     </span>
-                    <div className='flex w-full items-center gap-4 rounded-[8px] border border-it-primary bg-it-white px-4 py-3'>
+                    <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
+                        <Image
+                            src='/icons/checkout/lock-ink.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-4 shrink-0'
+                        />
+                        {dict.secureCheckout}
+                        <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
+                            {dict.poweredBy} <b>Mollie</b>
+                        </span>
+                    </div>
+                    <div className='flex w-full items-center gap-3 rounded-t-it-md border-[1.5px] border-b-0 border-it-border bg-it-primary-subtle px-4 py-3.5'>
                         <Radio selected />
-                        <span className={labelClass}>{dict.card}</span>
+                        <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
+                            {dict.card}
+                        </span>
                         <Image
                             src='/icons/checkout/pay-card.svg'
                             alt=''
@@ -231,7 +254,7 @@ export function CheckoutPaymentMollie({
                             className='ml-auto h-3.5 w-11 shrink-0'
                         />
                     </div>
-                    <div className='flex flex-col gap-4 pt-1.5'>
+                    <div className='flex flex-col gap-3.5 rounded-b-it-md border-[1.5px] border-t-0 border-it-border px-4 pb-[18px] pt-2.5'>
                         <FieldShell
                             label={dict.cardNumber}
                             error={errors.number}>
@@ -258,7 +281,7 @@ export function CheckoutPaymentMollie({
                     {/* Test-mode aid (operator-facing, never rendered on a live
                         key - so deliberately not in the 7-locale dictionaries). */}
                     {testmode && cardState === 'ready' && (
-                        <p className='pt-1.5 text-[13px] leading-[1.5] tracking-[-0.012em] text-it-heading/50'>
+                        <p className='pt-1.5 text-[12.5px] leading-[1.6] text-it-ink-muted'>
                             Test mode - use card 4543 4740 0224 9996 (Visa) or
                             2223 0000 1047 9399 (Mastercard), any future
                             expiry, any CVV, any name.
@@ -268,13 +291,13 @@ export function CheckoutPaymentMollie({
             ) : (
                 /* Hosted fallback: no profileId configured (or mollie.js
                    blocked) - a single always-selected hand-off row. */
-                <div className='flex items-start gap-4 rounded-[8px] border border-it-primary bg-it-white px-4 py-3'>
+                <div className='flex items-start gap-3 rounded-it-md border-[1.5px] border-it-border bg-it-primary-subtle px-4 py-3.5'>
                     <Radio selected />
-                    <div className='flex min-w-0 flex-col gap-1 pt-0.5'>
-                        <span className={labelClass}>
+                    <div className='flex min-w-0 flex-col gap-1'>
+                        <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
                             {dict.hostedCheckoutTitle}
                         </span>
-                        <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-heading/60'>
+                        <span className='text-[12.5px] leading-[1.6] text-it-text-muted'>
                             {dict.redirectNote}
                         </span>
                     </div>
@@ -289,13 +312,14 @@ export function CheckoutPaymentMollie({
                         animate={{ opacity: 1, y: 0, height: 'auto' }}
                         exit={{ opacity: 0, y: -4, height: 0 }}
                         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className='-mt-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
+                        className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
                         {formError}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            <DarkButton
+            <div className='mt-5'>
+            <CtaButton
                 onClick={handlePay}
                 disabled={processing || cardState === 'loading'}>
                 <AnimatePresence mode='wait' initial={false}>
@@ -307,7 +331,7 @@ export function CheckoutPaymentMollie({
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.15 }}
                             className='flex items-center gap-2.5'>
-                            <span className='size-5 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                            <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
                             {dict.processing}
                         </motion.span>
                     ) : (
@@ -317,11 +341,18 @@ export function CheckoutPaymentMollie({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -6 }}
                             transition={{ duration: 0.15 }}
-                            className='flex items-center gap-4'>
+                            className='flex items-center gap-[9px]'>
+                            <Image
+                                src='/icons/checkout/lock-white.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-[15px] shrink-0'
+                            />
                             {dict.reserve}
                             {payToday > 0 && (
                                 <>
-                                    <span className='size-1 shrink-0 rounded-full bg-it-white' />
+                                    {' · '}
                                     {dict.reservePay.replace(
                                         '{amount}',
                                         money(payToday)
@@ -331,34 +362,18 @@ export function CheckoutPaymentMollie({
                         </motion.span>
                     )}
                 </AnimatePresence>
-            </DarkButton>
+            </CtaButton>
+            </div>
 
-            {/* Same implied-consent line as the Stripe panel (legibility floor). */}
-            <p className='-mt-8 text-center text-[13px] leading-[1.5] text-[#6B7280]'>
-                {dict.consent
-                    .split(/(\{terms\}|\{privacy\})/)
-                    .map((part, i) => {
-                        if (part === '{terms}')
-                            return (
-                                <Link
-                                    key={i}
-                                    href={localizeHref(locale, '/terms')}
-                                    className='text-[#6B7280] underline underline-offset-2'>
-                                    {dict.consentTerms}
-                                </Link>
-                            );
-                        if (part === '{privacy}')
-                            return (
-                                <Link
-                                    key={i}
-                                    href={localizeHref(locale, '/privacy')}
-                                    className='text-[#6B7280] underline underline-offset-2'>
-                                    {dict.consentPrivacy}
-                                </Link>
-                            );
-                        return <span key={i}>{part}</span>;
-                    })}
-            </p>
+            {/* Free-cancellation + implied consent (same as the Stripe panel). */}
+            <FreeCancelNote label={freeCancelLabel} />
+            <ConsentLine
+                consent={dict.consent}
+                consentTerms={dict.consentTerms}
+                consentPrivacy={dict.consentPrivacy}
+                securePayment={dict.securePayment}
+                locale={locale}
+            />
         </div>
     );
 }

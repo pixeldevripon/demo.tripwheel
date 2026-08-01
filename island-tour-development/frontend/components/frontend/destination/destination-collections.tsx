@@ -29,24 +29,23 @@ export function DestinationCollections({
     if (collections.length === 0) return null;
 
     return (
-        <section id="collections" className='it-section bg-it-white !pt-0'>
+        <section id="collections" className='bg-it-white pt-11 md:pt-14'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-12'>
-                    {/* ── Section heading ───────────────────────────────────── */}
-                    <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <Reveal className='flex flex-col gap-5'>
+                    {/* ── Section heading (design v2 sechead) ───────────────── */}
+                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
                         {dict.title}
                     </h2>
 
                     {/* ── Collections ────────────────────────────────────────────────
-                        Mobile: horizontal swipe carousel of compact cards.
-                        sm+: standard 2 × 3 grid. */}
-                    <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-3 lg:gap-x-6 lg:gap-y-10 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden'>
+                        Mobile: stacked list (same rhythm as the tour grid).
+                        sm: 2-col · lg: 4-col grid. */}
+                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5'>
                         {collections.map(collection => (
                             <Reveal
                                 key={collection.id}
                                 width='auto'
-                                listItem
-                                className='w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto'>
+                                listItem>
                                 <CollectionCard
                                     collection={collection}
                                     locale={locale}

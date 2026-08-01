@@ -58,44 +58,25 @@ export function HubDiscoverSection({
     dict: HubDiscoverDict;
 }) {
     return (
-        <div className='flex flex-col gap-10 md:gap-[90px]'>
-            {/* Full-viewport banner - heading + summary bottom-left. Square
-                corners, edge-to-edge like the hero (Figma 1440x533 / 402x332).
-                Mobile: 332px min-height, 49px bottom padding.
-                Desktop: 533px min-height, 90px bottom padding.
-                The inner it-container re-aligns the heading to the page content. */}
+        // Design v2 .hs: plain white section head over the 2-col editorial
+        // grid - the old full-bleed banner band is gone.
+        <div className='flex flex-col gap-6'>
             <Reveal>
-                <div
-                    className={`relative flex min-h-[332px] items-end overflow-hidden bg-it-border md:min-h-[533px] ${FULL_BLEED}`}>
-                    {bannerImage ? (
-                        <Image
-                            src={bannerImage}
-                            alt={dict.title}
-                            fill
-                            className='object-cover'
-                            sizes='100vw'
-                        />
-                    ) : (
-                        <div className='absolute inset-0 bg-it-border' />
-                    )}
-                    <div className='it-container relative z-10 w-full pb-[49px] md:pb-[90px]'>
-                        <div className='flex max-w-[645px] flex-col gap-1'>
-                            <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                                {dict.title}
-                            </h2>
-                            <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                {dict.subtitle}
-                            </p>
-                        </div>
-                    </div>
+                <div className='flex max-w-[640px] flex-col gap-2'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
+                        {dict.title}
+                    </h2>
+                    <p className='m-0 text-[14.5px] leading-[1.6] text-it-text-muted'>
+                        {dict.subtitle}
+                    </p>
                 </div>
             </Reveal>
 
             {/* Editorial grid + CTA.
                 Mobile: 16px gap between cards, 24px gap to CTA.
                 Desktop: 24px gap between cards, 56px gap to CTA. */}
-            <div className='flex flex-col gap-6 md:gap-14'>
-                <Reveal className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6'>
+            <div className='flex flex-col gap-7'>
+                <Reveal className='grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-x-5 md:gap-y-[22px]'>
                     {items.map((item, i) => (
                         <Reveal key={i} delay={0.02} listItem>
                             <HubDiscoverCard

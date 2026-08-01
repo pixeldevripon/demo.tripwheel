@@ -34,6 +34,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
           ? (responseBody as Record<string, unknown>).message
           : 'Internal server error';
 
+    // A machine-readable discriminator some endpoints attach to an ambiguous
+    // status (e.g. the OTP request's 429 `reason: 'otp-pending'`, which the
+    // login card must tell apart from the generic per-IP throttle). Carried
+    // through verbatim - this filter otherwise rebuilds the body and would
+    // silently strip it.
+    const reason =
+      typeof responseBody === 'object' &&
+      responseBody !== null &&
+      'reason' in responseBody
+        ? (responseBody as Record<string, unknown>).reason
+        : undefined;
+
     if (status >= 500) {
       this.logger.error(
         `${req.method} ${req.url} → ${status}`,
@@ -46,6 +58,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: req.url,
       message,
+      ...(reason !== undefined ? { reason } : {}),
     });
   }
 }

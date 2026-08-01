@@ -42,7 +42,7 @@ function TourBookingCardLayout() {
     useBookingSelectionPersistence();
 
     return (
-        <div className='flex flex-col gap-4'>
+        <div className='flex flex-col gap-3.5'>
             {/* Main booking card — a viewport-capped flex column (mirrors the
                 tours filter modal): the price header and the CTA stay pinned,
                 and EVERYTHING the traveller fills in between them - date,
@@ -61,7 +61,7 @@ function TourBookingCardLayout() {
                 alone means the card is always whole and the notices simply
                 take whatever is left, coming back into view when the rail
                 releases at the end of the page. */}
-            <div className='flex flex-col rounded-[16px] bg-it-surface lg:max-h-[calc(100vh-7rem)]'>
+            <div className='flex flex-col rounded-it-lg border border-it-border bg-it-white shadow-it-md lg:max-h-[calc(100vh-7rem)]'>
                 {/* Price header — never scrolls */}
                 <div className='shrink-0'>
                     <PriceHeader />

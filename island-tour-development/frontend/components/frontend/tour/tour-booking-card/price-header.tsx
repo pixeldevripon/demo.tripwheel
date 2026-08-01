@@ -46,20 +46,16 @@ export function PriceHeader() {
     const isPrivateCharter = isUnit && data.bookingType === 'PRIVATE';
 
     return (
-        <div className='flex flex-col gap-1 border-b border-it-heading/10 px-4 py-4 text-it-heading'>
-            <div className='flex items-baseline gap-1'>
-                <span className='text-[24px] leading-[1.2] tracking-[-0.012em]'>
-                    {dict.from}
-                </span>
-                <span className='font-bold text-[28px] leading-[1.4] tracking-[-0.012em]'>
+        <div className='flex flex-col gap-0.5 border-b border-it-divider px-5 pb-3.5 pt-4'>
+            <div className='flex items-baseline gap-1 text-[13px] leading-[1.5] text-it-text-muted'>
+                <span>{dict.from}</span>
+                <b className='mr-1 text-[22px] font-extrabold leading-[1.2] tracking-[-0.01em] text-it-ink tabular-nums'>
                     {money(data.priceFrom)}
-                </span>
-                <span className='text-[24px] leading-[1.2] tracking-[-0.012em]'>
-                    {unitLabel}
-                </span>
+                </b>
+                <span>{unitLabel}</span>
             </div>
             {subLine && (
-                <span className='text-[14px] leading-[1.5] tracking-[-0.012em] text-it-ink-muted'>
+                <span className='text-[12.5px] leading-[1.5] text-it-ink-muted'>
                     {subLine}
                 </span>
             )}
