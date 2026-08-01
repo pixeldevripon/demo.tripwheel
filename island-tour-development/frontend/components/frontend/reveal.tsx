@@ -20,26 +20,32 @@ export function useIsMobile() {
     return isMobile;
 }
 
+const emptySubscribe = () => () => {};
+
 /**
- * False during SSR and the hydration render, true for every component that
- * mounts AFTER the first client effect ran (client navigations, streamed
- * Suspense content).
+ * True only for components mounted by CLIENT-side rendering (soft
+ * navigations); false for anything whose HTML came from the server -
+ * including late-streamed Suspense content.
  *
  * Why: framer's `initial={{ opacity: 0 }}` is serialized into the server HTML
  * as an inline style, so everything below the hero renders INVISIBLE until the
  * JS bundle arrives and hydrates - on a slow connection that reads as a blank
- * page (and it is what search engines paint). First-paint content therefore
- * renders visible with no entrance (the sitewide "static shell → no mount
- * animation" rule), and only post-hydration mounts animate.
+ * page (and it is what search engines paint). Server-rendered content
+ * therefore renders visible with no entrance (the sitewide "static shell → no
+ * mount animation" rule), and only client-side mounts animate.
+ *
+ * `useSyncExternalStore` is the one primitive whose server snapshot is used
+ * for BOTH the SSR pass and the hydration render, so the two sides always
+ * agree - a module flag or effect-set state mismatches on streamed sections
+ * (their HTML renders before hydration, but they hydrate after the layout's
+ * effects have already run).
  */
-let pageHydrated = false;
-
-function useMountedAfterHydration() {
-    const [mountedAfterHydration] = React.useState(() => pageHydrated);
-    React.useEffect(() => {
-        pageHydrated = true;
-    }, []);
-    return mountedAfterHydration;
+function useIsClientMount() {
+    return React.useSyncExternalStore(
+        emptySubscribe,
+        () => true, // client renders after hydration (soft navigations)
+        () => false, // SSR + the hydration render of server HTML
+    );
 }
 
 interface RevealProps {
@@ -92,7 +98,7 @@ export const Reveal = ({
 }: RevealProps) => {
     const reduceMotion = useReducedMotion();
     const isMobile = useIsMobile();
-    const animateEntrance = useMountedAfterHydration();
+    const animateEntrance = useIsClientMount();
 
     // List/grid cells on phones render statically - a column of individually
     // fading cards reads as jank there, and delayed items waste scroll time.
