@@ -271,8 +271,13 @@ export class SettingsController {
    * Switch the checkout PSP. Rejected (400) when the target provider has no
    * usable credentials yet - a switch must never brick the checkout.
    * Security: requires MANAGE_SETTINGS.
+   *
+   * Throttle: 12/min, not the old 5/min - the settings card is a toggle now
+   * and an admin flipping back and forth while testing hit the limit on the
+   * sixth click (QA 2026-08-02). 12/min still stops a runaway script; the
+   * permission gate is the real guard.
    */
-  @Throttle({ medium: { limit: 5, ttl: 60000 } })
+  @Throttle({ medium: { limit: 12, ttl: 60000 } })
   @Patch('payment/provider')
   @RequirePermissions(Permission.MANAGE_SETTINGS)
   @ApiUpdatePaymentProviderDocs()
