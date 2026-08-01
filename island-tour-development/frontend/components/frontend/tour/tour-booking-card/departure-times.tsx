@@ -88,7 +88,7 @@ export function DepartureTimes() {
                             // Same height as a real time chip (py-2 + time +
                             // note lines + border), so resolving slots never
                             // jolts the card.
-                            className='h-[74px] animate-pulse rounded-[8px] bg-it-border'
+                            className='h-[74px] it-skeleton rounded-[8px]'
                         />
                     ))}
                 </motion.div>

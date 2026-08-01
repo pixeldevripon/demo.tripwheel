@@ -203,7 +203,7 @@ function DefaultTourCard({
             className={cn(
                 // @container: the card adapts its own typography to its width -
                 // compact at ~172px (mobile carousel), full size in wide cells.
-                '@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
+                '@container group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover',
                 peach
                     ? 'bg-it-peach border-it-peach-border'
                     : 'bg-it-white border-transparent hover:border-it-card-hover-border',

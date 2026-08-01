@@ -28,7 +28,7 @@ export function TravellerPageSkeleton() {
                         + chips + actions right (traveller-next-trip.tsx). */}
                     <div className='overflow-hidden rounded-[16px] border border-it-heading/10 bg-it-white'>
                         <div className='md:flex'>
-                            <div className='h-[200px] shrink-0 animate-pulse bg-it-border md:h-auto md:min-h-[280px] md:w-[340px]' />
+                            <div className='h-[200px] shrink-0 it-skeleton rounded-none md:h-auto md:min-h-[280px] md:w-[340px]' />
                             <div className='min-w-0 flex-1 p-5 sm:p-7'>
                                 <Bar className='h-3 w-32' />
                                 <Bar className='mt-3 h-6 w-3/5' />
