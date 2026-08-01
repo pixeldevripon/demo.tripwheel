@@ -5,14 +5,15 @@ import Image from 'next/image';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-/** Highlighted, tappable contact value (mailto/tel) - Figma 47745-12375. */
-const contactText =
-    'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80';
+/** Deep-orange tappable contact value (mailto/tel). */
+const contactLink =
+    'font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
 
 /**
- * "Got a question about tour?" support card (Figma 47745-12375): operator
- * contact on the left, platform booking/payment support on the right, split
- * by a vertical divider on desktop.
+ * Support card (design v2 .supportcard): a single 560px centred white card -
+ * operator contact first ("talk to the locals running it"), a hairline
+ * divider, then the Island Tours fallback for booking/payment issues with the
+ * mono booking ref inline.
  */
 export function ThankYouQuestion({
     booking,
@@ -22,87 +23,84 @@ export function ThankYouQuestion({
     dict: ThankYouDict;
 }) {
     // "Email {email} and include your ref ({ref})" - the support address
-    // becomes a mailto link inside the sentence.
+    // becomes a mailto link and the ref renders mono, inside the sentence.
     const [issueBefore, issueAfterRaw = ''] = dict.issueBody.split('{email}');
-    const issueAfter = issueAfterRaw.replace('{ref}', booking.displayRef);
+    const [afterBeforeRef, afterAfterRef = ''] = issueAfterRaw.split('{ref}');
+    const hasRefToken = issueAfterRaw.includes('{ref}');
 
     return (
         <section className='bg-it-white pt-14 pb-[72px]'>
-            <div className='it-container flex flex-col gap-12'>
-                <Reveal>
-                    <h2 className='m-0 font-it-display text-[19px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
-                        {dict.questionTitle}
-                    </h2>
-                </Reveal>
-                <Reveal>
-                    <div className='relative grid rounded-[16px] bg-it-white lg:min-h-[222px] lg:grid-cols-2'>
-                        <span className='absolute inset-y-0 left-1/2 hidden w-px bg-[#d9d9d9] lg:block' />
-                        <div className='flex flex-col gap-7 p-6 lg:p-8'>
-                            <h3 className='m-0 max-w-[418px] font-medium text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                {dict.talkLocals}
-                            </h3>
-                            <div className='flex flex-col gap-4'>
-                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                    {booking.operatorName}
-                                </span>
-                                {/* Operator contact is withheld on the unverified
-                                    (masked) payload - render each link only when
-                                    present so the shared-link view stays clean. */}
-                                <div className='flex flex-col gap-1'>
-                                    {booking.operatorEmail && (
-                                        <a
-                                            href={`mailto:${booking.operatorEmail}`}
-                                            className='flex w-fit items-center gap-2.5'>
-                                            <Image
-                                                src='/icons/thank-you/contact-sms.svg'
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-6'
-                                            />
-                                            <span className={contactText}>
-                                                {booking.operatorEmail}
-                                            </span>
-                                        </a>
-                                    )}
-                                    {booking.operatorPhone && (
-                                        <a
-                                            href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
-                                            className='flex w-fit items-center gap-2.5'>
-                                            <Image
-                                                src='/icons/thank-you/contact-call.svg'
-                                                alt=''
-                                                width={24}
-                                                height={24}
-                                                className='size-6'
-                                            />
-                                            <span className={contactText}>
-                                                {booking.operatorPhone}
-                                            </span>
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
+            <div className='it-wrap'>
+                <Reveal className='mx-auto w-full max-w-[560px]'>
+                    <div className='rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-8 md:py-7'>
+                        <h3 className='m-0 font-it-display text-[19px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
+                            {dict.questionTitle}
+                        </h3>
+                        <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted'>
+                            {dict.talkLocals}
+                        </p>
+                        <div className='mt-4'>
+                            <b className='mb-1.5 block text-[15px] font-bold leading-[1.6] text-it-ink'>
+                                {booking.operatorName}
+                            </b>
+                            {/* Operator contact is withheld on the unverified
+                                (masked) payload - render each link only when
+                                present so the shared-link view stays clean. */}
+                            {booking.operatorEmail && (
+                                <a
+                                    href={`mailto:${booking.operatorEmail}`}
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6]'>
+                                    <Image
+                                        src='/icons/thank-you/detail-sms.svg'
+                                        alt=''
+                                        width={24}
+                                        height={24}
+                                        className='size-4 shrink-0'
+                                    />
+                                    <span className={contactLink}>
+                                        {booking.operatorEmail}
+                                    </span>
+                                </a>
+                            )}
+                            {booking.operatorPhone && (
+                                <a
+                                    href={`tel:${booking.operatorPhone.replace(/\s/g, '')}`}
+                                    className='flex w-fit items-center gap-[9px] py-1 text-[14px] leading-[1.6]'>
+                                    <Image
+                                        src='/icons/thank-you/detail-call.svg'
+                                        alt=''
+                                        width={24}
+                                        height={24}
+                                        className='size-4 shrink-0'
+                                    />
+                                    <span className={contactLink}>
+                                        {booking.operatorPhone}
+                                    </span>
+                                </a>
+                            )}
                         </div>
-                        <div className='flex flex-col gap-7 p-6 lg:py-8 lg:pl-[61px] lg:pr-8'>
-                            <h3 className='m-0 font-medium text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                {dict.issueTitle}
-                            </h3>
-                            <div className='flex flex-col gap-2'>
-                                <p className='m-0 max-w-[488px] text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
-                                    {issueBefore}
-                                    <a
-                                        href={`mailto:${booking.supportEmail}`}
-                                        className='text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80'>
-                                        {booking.supportEmail}
-                                    </a>
-                                    {issueAfter}
-                                </p>
-                                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink'>
-                                    {dict.replyTime}
-                                </p>
-                            </div>
-                        </div>
+                        <div className='my-[18px] border-t border-it-divider' />
+                        <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
+                            {dict.issueTitle}
+                        </b>
+                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                            {issueBefore}
+                            <a
+                                href={`mailto:${booking.supportEmail}`}
+                                className={contactLink}>
+                                {booking.supportEmail}
+                            </a>
+                            {afterBeforeRef}
+                            {hasRefToken && (
+                                <code className='font-mono text-[12.5px] font-bold text-it-ink'>
+                                    {booking.displayRef}
+                                </code>
+                            )}
+                            {afterAfterRef}
+                        </p>
+                        <p className='m-0 mt-1 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                            {dict.replyTime}
+                        </p>
                     </div>
                 </Reveal>
             </div>

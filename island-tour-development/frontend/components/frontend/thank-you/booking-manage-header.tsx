@@ -4,7 +4,7 @@ import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
 import { buildCalendarUrl, type ThankYouBooking } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
-import { BookingRefChip, ResendEmailLine } from './thank-you-hero-actions';
+import { BookingRefCopy, ResendEmailLine } from './thank-you-hero-actions';
 
 type ThankYouDict = Dictionary['thankYou'];
 
@@ -107,12 +107,17 @@ export function BookingManageHeader({
                                 .replace('{time}', booking.startTimeLabel)}
                         </p>
                     </div>
-                    <div className='mt-1 flex items-center gap-2'>
-                        <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <div className='mt-1 flex items-center gap-2.5 self-start rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
+                        <span className='text-it-text-muted'>
                             {dict.bookingRef}
                         </span>
-                        <BookingRefChip
+                        <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
+                            {booking.displayRef}
+                        </code>
+                        <BookingRefCopy
                             displayRef={booking.displayRef}
+                            copyLabel={dict.copy}
+                            copiedLabel={dict.copied}
                             ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
                         />
                     </div>

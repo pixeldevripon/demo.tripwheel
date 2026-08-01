@@ -469,6 +469,19 @@
         .it-container { padding-inline: var(--it-container-px); }
     }
 
+    /* Narrow reading column (design v2 .wrap) - the thank-you page runs on an
+       880px measure instead of the 1200px container. */
+    .it-wrap {
+        width: 100%;
+        max-width: 55rem; /* 880px */
+        margin-inline: auto;
+        padding-inline: var(--it-container-px-sm);
+    }
+
+    @media (min-width: 768px) {
+        .it-wrap { padding-inline: var(--it-container-px); }
+    }
+
     .it-section {
         padding-block: var(--it-section-py-sm);
     }

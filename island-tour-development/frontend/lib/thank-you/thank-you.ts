@@ -399,8 +399,8 @@ export async function getThankYouRelatedTours(params: {
 }
 
 /**
- * Google Calendar "add event" URL for the booked departure - the demo target
- * of the hero CTA until a proper multi-provider menu is designed.
+ * Google Calendar "add event" URL for the booked departure - one target of the
+ * hero's add-to-calendar menu (design v2 .calpanel).
  */
 export function buildCalendarUrl(booking: ThankYouBooking): string {
     const compact = (iso: string) => iso.replace(/[-:]/g, '');
@@ -411,4 +411,26 @@ export function buildCalendarUrl(booking: ThankYouBooking): string {
         details: `Booking ref: ${booking.displayRef}`,
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/** Outlook-web "add event" deeplink - same event fields as the Google URL. */
+export function buildOutlookCalendarUrl(booking: ThankYouBooking): string {
+    const params = new URLSearchParams({
+        path: '/calendar/action/compose',
+        rru: 'addevent',
+        subject: booking.tourTitle,
+        startdt: booking.startsAtIso,
+        enddt: booking.endsAtIso,
+        body: `Booking ref: ${booking.displayRef}`,
+    });
+    return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+}
+
+/**
+ * The backend's one-event .ics for this booking (same file the confirmation
+ * email links) - the menu's Apple Calendar and "Download .ics" targets.
+ */
+export function buildIcsUrl(booking: ThankYouBooking): string {
+    const base = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+    return `${base}/bookings/typ/${booking.publicRef}/calendar.ics`;
 }

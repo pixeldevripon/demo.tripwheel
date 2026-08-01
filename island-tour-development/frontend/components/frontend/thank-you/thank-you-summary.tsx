@@ -5,59 +5,59 @@ import type { Locale } from '@/lib/constants/locales';
 import type { ThankYouBooking } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
+import { renderTemplate } from './render-template';
 
 type ThankYouDict = Dictionary['thankYou'];
 
-const rowValue =
-    'text-right text-[14px] font-bold leading-[1.6] text-it-ink';
-const rowLabel =
-    'text-[14px] font-semibold leading-[1.6] text-it-text-muted';
-/** Highlighted, tappable contact value (mailto/tel/map) - Figma 47744-9211. */
+/* Design v2 .brow2: hairline-divided rows, muted icon label left, bold value
+   right. The LAST row drops its divider via `last:`. */
+const rowClass =
+    'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0';
+const labelClass =
+    'flex flex-none items-center gap-[9px] font-semibold text-it-text-muted';
+const valueClass = 'min-w-0 text-right font-bold text-it-ink';
+/** Faint sub-line under a value (time range, card used). */
+const subClass =
+    'mt-[3px] block text-[12px] font-medium leading-[1.5] text-it-ink-muted';
+/** Tappable contact value (mailto/tel/map) - deep-orange underlined. */
 const rowLink =
-    'text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80';
+    'break-words font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80';
 
 /** Google Maps search link for a meeting-point address. */
 const mapUrl = (query: string) =>
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
-/** Icon + muted label | right-aligned value (TOUR DETAILS rows). */
+/** Icon + muted label | right-aligned bold value, on a hairline row. */
 function DetailRow({
     icon,
     label,
+    sub,
     children,
 }: {
     icon: string;
     label: string;
+    /** Faint 12px line under the value. */
+    sub?: ReactNode;
     children: ReactNode;
 }) {
     return (
-        <div className='flex items-center justify-between gap-4'>
-            <span className='flex shrink-0 items-center gap-2.5'>
-                <Image src={icon} alt='' width={24} height={24} className='size-6' />
-                <span className={rowLabel}>{label}</span>
+        <div className={rowClass}>
+            <span className={labelClass}>
+                <Image src={icon} alt='' width={24} height={24} className='size-4' />
+                {label}
             </span>
-            <span className={`min-w-0 ${rowValue}`}>{children}</span>
+            <span className={valueClass}>
+                {children}
+                {sub && <small className={subClass}>{sub}</small>}
+            </span>
         </div>
     );
 }
 
-/** Percentage status chip (green = paid, orange = unpaid). */
-function PctChip({ tone, children }: { tone: 'paid' | 'unpaid'; children: ReactNode }) {
-    return (
-        <span
-            className={`flex h-6 shrink-0 items-center justify-center rounded-full px-2.5 text-[12.5px] font-bold leading-none ${
-                tone === 'paid'
-                    ? 'bg-it-green/8 text-it-green'
-                    : 'bg-it-primary/8 text-it-primary'
-            }`}>
-            {children}
-        </span>
-    );
-}
-
 /**
- * "Your booking summary" section (Figma 47744-9211): TOUR DETAILS and PAYMENT
- * cards side by side on the surface band. Zero-amount money rows are hidden
+ * "Your booking summary" section (design v2 .bookband): TOUR DETAILS and
+ * PAYMENT cards side by side on the paper band, both built from hairline
+ * `.brow2` rows. Zero-amount money rows are hidden
  * (BOOKING-FLOW-DESIGN-GUIDE.md §13 rule applied to the TYP as well).
  */
 export function ThankYouSummary({
@@ -82,30 +82,31 @@ export function ThankYouSummary({
     // Identity rows (pickup, operator contact, guest lead) come back empty/null
     // on the unverified payload; each is rendered only when it has a value, so
     // the shared-link view shows non-identifying tour facts only.
+    const paidInFull = payment.depositPaid > 0 && payment.balance <= 0;
+
+    const cardClass =
+        'rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-[26px]';
+    const cardHead =
+        'm-0 mb-3 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted';
 
     return (
         <section className='bg-it-bg py-[52px]'>
-            <div className='it-container flex flex-col gap-6'>
+            <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 font-it-display text-[clamp(21px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
+                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {dict.summaryTitle}
                     </h2>
                 </Reveal>
-                <div className='grid gap-6 lg:grid-cols-2'>
+                <div className='grid items-start gap-2 md:grid-cols-2 md:gap-5'>
                     <Reveal>
-                        <div className='flex h-full flex-col gap-3 rounded-it-lg border border-it-divider bg-it-white px-[26px] py-[22px] shadow-it-sm'>
-                            <h3 className='m-0 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted'>
-                                {dict.tourDetails}
-                            </h3>
-                            <div className='flex flex-col gap-3.5'>
+                        <div className={cardClass}>
+                            <h3 className={cardHead}>{dict.tourDetails}</h3>
+                            <div className='flex flex-col'>
                                 <DetailRow
                                     icon='/icons/thank-you/detail-calendar.svg'
-                                    label={dict.dateTime}>
-                                    <span className='flex items-center gap-4'>
-                                        {booking.dateLabel}
-                                        <span className='size-1.5 shrink-0 rounded-full bg-it-heading/20' />
-                                        {booking.timeRangeLabel}
-                                    </span>
+                                    label={dict.dateTime}
+                                    sub={booking.timeRangeLabel}>
+                                    {booking.dateLabel}
                                 </DetailRow>
                                 <DetailRow
                                     icon='/icons/thank-you/detail-clock.svg'
@@ -131,20 +132,20 @@ export function ThankYouSummary({
                                 )}
                                 <DetailRow
                                     icon='/icons/thank-you/detail-cancel.svg'
-                                    label={dict.freeCancel}>
-                                    <span className='flex flex-col items-end gap-0.5'>
-                                        {dict.beforeDate.replace(
-                                            '{date}',
-                                            booking.freeCancelBeforeLabel,
-                                        )}
-                                        {cancelHref && (
+                                    label={dict.freeCancel}
+                                    sub={
+                                        cancelHref ? (
                                             <a
                                                 href={cancelHref}
-                                                className='text-[13px] leading-[1.4] tracking-[-0.012em] text-it-primary underline underline-offset-2 transition-opacity hover:opacity-80'>
+                                                className='font-semibold text-it-primary-hover underline underline-offset-2 transition-opacity hover:opacity-80'>
                                                 {dict.needToCancel}
                                             </a>
-                                        )}
-                                    </span>
+                                        ) : undefined
+                                    }>
+                                    {dict.beforeDate.replace(
+                                        '{date}',
+                                        booking.freeCancelBeforeLabel,
+                                    )}
                                 </DetailRow>
                                 <DetailRow
                                     icon='/icons/thank-you/detail-trip.svg'
@@ -203,85 +204,92 @@ export function ThankYouSummary({
                         </div>
                     </Reveal>
                     <Reveal delay={0.3}>
-                        <div className='flex h-full flex-col gap-3 rounded-it-lg border border-it-divider bg-it-white px-[26px] py-[22px] shadow-it-sm'>
-                            <h3 className='m-0 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted'>
-                                {dict.paymentTitle}
-                            </h3>
-                            <div className='flex flex-col gap-3.5'>
-                                {payment.depositPaid > 0 && (
-                                    <div className='flex justify-between gap-4'>
-                                        <span className={rowLabel}>{dict.depositPaid}</span>
-                                        <span className='flex flex-col items-end gap-2'>
-                                            <span className='flex items-center gap-2'>
-                                                <span className={rowValue}>
-                                                    {money(payment.depositPaid)}
-                                                </span>
-                                                <PctChip tone='paid'>
-                                                    {dict.percentPaid.replace(
-                                                        '{pct}',
-                                                        String(payment.depositPct),
-                                                    )}
-                                                </PctChip>
-                                            </span>
-                                            {/* Withheld in masked mode (unverified viewer) - hide the row, no blank line. */}
-                                            {payment.cardLabel && (
-                                                <span className={rowValue}>
-                                                    {payment.cardLabel}
-                                                </span>
-                                            )}
+                        <div className={cardClass}>
+                            <h3 className={cardHead}>{dict.paymentTitle}</h3>
+                            <div className='flex flex-col'>
+                                {paidInFull ? (
+                                    <DetailRow
+                                        icon='/icons/check-green.svg'
+                                        label={dict.paidInFull}>
+                                        <span className='tabular-nums'>
+                                            {money(payment.depositPaid)}
                                         </span>
-                                    </div>
+                                    </DetailRow>
+                                ) : (
+                                    payment.depositPaid > 0 && (
+                                        <DetailRow
+                                            icon='/icons/check-green.svg'
+                                            label={dict.depositPaid}
+                                            sub={
+                                                payment.cardLabel
+                                                    ? dict.paidVia
+                                                          .replace(
+                                                              '{pct}',
+                                                              String(payment.depositPct),
+                                                          )
+                                                          .replace(
+                                                              '{card}',
+                                                              payment.cardLabel,
+                                                          )
+                                                    : `${payment.depositPct}%`
+                                            }>
+                                            <span className='tabular-nums'>
+                                                {money(payment.depositPaid)}
+                                            </span>
+                                        </DetailRow>
+                                    )
                                 )}
                                 {payment.balance > 0 && (
                                     <>
-                                        <div className='flex justify-between gap-4'>
-                                            <span className={rowLabel}>
-                                                {dict.remainingBalance}
+                                        <DetailRow
+                                            icon='/icons/thank-you/pay-balance-soft.svg'
+                                            label={dict.remainingBalance}>
+                                            <span className='tabular-nums'>
+                                                {money(payment.balance)}
                                             </span>
-                                            <span className='flex flex-col items-end gap-2'>
-                                                <span className='flex items-center gap-2'>
-                                                    <span className={rowValue}>
-                                                        {money(payment.balance)}
-                                                    </span>
-                                                    <PctChip tone='unpaid'>
-                                                        {dict.percentUnpaid.replace(
-                                                            '{pct}',
-                                                            String(payment.balancePct),
-                                                        )}
-                                                    </PctChip>
-                                                </span>
-                                                <span className={rowValue}>
-                                                    {dict.operatorLinkNote.replace(
-                                                        '{operator}',
-                                                        booking.operatorShortName,
-                                                    )}
-                                                </span>
-                                            </span>
-                                        </div>
-                                        {/* Master B.85: an operator_link balance runs on the
-                                            operator's own rails, so every surface stays NEUTRAL
-                                            about it - we cannot verify how they collect. A
-                                            "Card payment only" line used to sit here; it was
-                                            hardcoded, in no spec, and simply a guess. The
-                                            card/cash statement is only legitimate on on_arrival,
-                                            where Tour.onArrivalPayment actually tells us. */}
-                                        <div className='flex justify-between gap-4'>
-                                            <span className={rowLabel}>{dict.payBefore}</span>
-                                            <span className='text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary'>
-                                                {payment.payBeforeLabel}
-                                            </span>
-                                        </div>
+                                        </DetailRow>
+                                        <DetailRow
+                                            icon='/icons/thank-you/detail-clock.svg'
+                                            label={dict.payBefore}>
+                                            {payment.payBeforeLabel}
+                                        </DetailRow>
                                     </>
                                 )}
-                                <div className='h-px bg-it-heading/10' />
-                                <div className='flex items-center justify-between gap-1'>
-                                    <span className={rowLabel}>{dict.total}</span>
-                                    <span className={rowValue}>{money(payment.total)}</span>
+                                {/* Total: heavier top rule, larger value (.brow2.tot). */}
+                                <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
+                                    <span className='font-bold text-it-ink'>
+                                        {dict.total}
+                                    </span>
+                                    <span className='text-right text-[16px] font-bold text-it-ink tabular-nums'>
+                                        {money(payment.total)}
+                                    </span>
                                 </div>
-                                <div className='flex items-center justify-between gap-1'>
-                                    <span className={rowLabel}>{dict.ref}</span>
-                                    <span className={rowValue}>{booking.displayRef}</span>
+                                <div className='flex items-start justify-between gap-[18px] py-[11px] text-[14px] leading-[1.6]'>
+                                    <span className={labelClass}>{dict.ref}</span>
+                                    <code className='text-right font-mono text-[13.5px] font-bold tracking-[0.02em] text-it-ink'>
+                                        {booking.displayRef}
+                                    </code>
                                 </div>
+                                {/* Master B.85: an operator_link balance runs on the
+                                    operator's own rails, so every surface stays NEUTRAL
+                                    about how they collect - no "card only" claims. */}
+                                {payment.balance > 0 ? (
+                                    <p className='m-0 mt-3.5 text-[12.5px] leading-[1.55] text-it-text-muted'>
+                                        {renderTemplate(dict.operatorLinkNote, {
+                                            operator: (
+                                                <b className='font-bold text-it-ink'>
+                                                    {booking.operatorShortName}
+                                                </b>
+                                            ),
+                                        })}
+                                    </p>
+                                ) : (
+                                    paidInFull && (
+                                        <p className='m-0 mt-3.5 text-[12.5px] leading-[1.55] text-it-text-muted'>
+                                            {dict.paidFullNote}
+                                        </p>
+                                    )
+                                )}
                             </div>
                         </div>
                     </Reveal>
