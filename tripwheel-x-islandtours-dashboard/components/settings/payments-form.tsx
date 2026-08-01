@@ -31,107 +31,58 @@ import {
     TextField,
 } from './settings-fields';
 
-// ── Active provider switch ──────────────────────────────────────────────────
+// ── Active provider switching ───────────────────────────────────────────────
 // Exactly ONE provider charges travellers at checkout (Stripe = inline card
-// fields, Mollie = hosted redirect page). Switching goes through a CONFIRM
-// dialog - it changes how every new booking is charged. The backend REJECTS
-// switching to a provider without usable credentials, so a switch can never
-// brick checkout. Never retroactive: existing payments keep their provider
-// for webhooks/refunds.
+// fields, Mollie = hosted redirect page). Each provider card carries a header
+// SWITCH (founder call 2026-08-02 - the separate Active Provider card was one
+// section too many): toggling opens the CONFIRM dialog, because it changes how
+// every new booking is charged. With exactly two providers, either gesture
+// means "move checkout to the other one" - toggling the inactive card ON asks
+// to activate it, toggling the active card OFF asks to activate the other
+// (checkout can never be left with none). The backend REJECTS switching to a
+// provider without usable credentials, so a switch can never brick checkout.
+// Never retroactive: existing payments keep their provider for webhooks and
+// refunds.
 
-const PROVIDERS: { value: PaymentProvider; label: string }[] = [
-    { value: 'STRIPE', label: 'Stripe' },
-    { value: 'MOLLIE', label: 'Mollie' },
-];
+const PROVIDER_LABELS: Record<PaymentProvider, string> = {
+    STRIPE: 'Stripe',
+    MOLLIE: 'Mollie',
+};
 
-function ActiveProviderCard() {
-    const { data, isLoading } = usePaymentProvider();
-    const { mutate, isPending } = useUpdatePaymentProvider();
-    // The provider awaiting confirmation; the dialog is open while set.
-    const [pending, setPending] = useState<PaymentProvider | null>(null);
-
-    if (isLoading) return <SettingsCardSkeleton />;
-
-    const current = data?.activeProvider ?? 'STRIPE';
-    const pendingLabel = PROVIDERS.find(p => p.value === pending)?.label;
-
+/** Minimal accessible switch - the repo has no ui/switch primitive yet. */
+function ProviderSwitch({
+    checked,
+    disabled,
+    label,
+    onRequestSwitch,
+}: {
+    checked: boolean;
+    disabled: boolean;
+    label: string;
+    onRequestSwitch: () => void;
+}) {
     return (
-        <SettingsCard
-            title='Active Provider'
-            description='Which provider charges travelers at checkout. Existing payments keep their original provider for refunds.'
-            onSubmit={() => {}}
-            isSaving={false}
-            canSave={false}>
-            <div className='flex flex-wrap gap-2'>
-                {PROVIDERS.map(opt => {
-                    const isCurrent = current === opt.value;
-                    return (
-                        <button
-                            key={opt.value}
-                            type='button'
-                            disabled={isPending}
-                            onClick={() => {
-                                if (!isCurrent) setPending(opt.value);
-                            }}
-                            aria-pressed={isCurrent}
-                            className={`flex w-full flex-1 items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
-                                isCurrent
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-border hover:border-primary/40'
-                            } ${isPending ? 'opacity-60' : ''}`}>
-                            <span
-                                className={`grid size-4 shrink-0 place-items-center rounded-full border ${
-                                    isCurrent
-                                        ? 'border-primary'
-                                        : 'border-muted-foreground/40'
-                                }`}>
-                                {isCurrent && (
-                                    <span className='size-2 rounded-full bg-primary' />
-                                )}
-                            </span>
-                            <span className='text-sm font-medium'>
-                                {opt.label}
-                            </span>
-                            {isCurrent && (
-                                <span className='ml-auto rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success-fg'>
-                                    Active
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-
-            <AlertDialog
-                open={pending !== null}
-                onOpenChange={open => !open && setPending(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Switch checkout payments to {pendingLabel}?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Every new booking will be charged through{' '}
-                            {pendingLabel} immediately. Its API keys must be
-                            configured below or the switch is rejected. Existing
-                            payments keep their original provider for refunds
-                            and webhooks.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (pending)
-                                    mutate({ activeProvider: pending });
-                                setPending(null);
-                            }}>
-                            Switch to {pendingLabel}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </SettingsCard>
+        <span className='ml-auto flex items-center gap-2'>
+            <span className='text-xs font-medium text-muted-foreground normal-case tracking-normal'>
+                {checked ? 'Active at checkout' : 'Inactive'}
+            </span>
+            <button
+                type='button'
+                role='switch'
+                aria-checked={checked}
+                aria-label={`${label} charges travellers at checkout`}
+                disabled={disabled}
+                onClick={onRequestSwitch}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                    checked ? 'bg-primary' : 'bg-muted-foreground/25'
+                } ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'}`}>
+                <span
+                    className={`size-4 rounded-full bg-white shadow transition-transform ${
+                        checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+                    }`}
+                />
+            </button>
+        </span>
     );
 }
 
@@ -148,7 +99,7 @@ const stripeSchema = z.object({
 });
 type StripeFormValues = z.infer<typeof stripeSchema>;
 
-function StripeCard() {
+function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
     const { data, isLoading } = useStripeConfig();
     const { mutate, isPending } = useUpdateStripeConfig();
 
@@ -198,7 +149,12 @@ function StripeCard() {
             description='Card and local payment processing via Stripe.'
             onSubmit={handleSubmit(onSubmit)}
             isSaving={isPending}
-            status={<ConnectionStatus connected={!!data?.secretKey} />}>
+            status={
+                <>
+                    <ConnectionStatus connected={!!data?.secretKey} />
+                    {activeControl}
+                </>
+            }>
             <div className='grid gap-6 sm:grid-cols-2'>
                 <TextField
                     label='Payment Label'
@@ -252,7 +208,7 @@ const mollieSchema = z.object({
 });
 type MollieFormValues = z.infer<typeof mollieSchema>;
 
-function MollieCard() {
+function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
     const { data, isLoading } = useMollieConfig();
     const { mutate, isPending } = useUpdateMollieConfig();
 
@@ -298,7 +254,12 @@ function MollieCard() {
             description='Hosted checkout via Mollie (cards, iDEAL, Bancontact, PayPal and more).'
             onSubmit={handleSubmit(onSubmit)}
             isSaving={isPending}
-            status={<ConnectionStatus connected={!!data?.apiKey} />}>
+            status={
+                <>
+                    <ConnectionStatus connected={!!data?.apiKey} />
+                    {activeControl}
+                </>
+            }>
             <div className='grid gap-6 sm:grid-cols-2'>
                 <TextField
                     label='Payment Label'
@@ -334,11 +295,68 @@ function MollieCard() {
 }
 
 export function PaymentsForm() {
+    const { data, isLoading } = usePaymentProvider();
+    const { mutate, isPending } = useUpdatePaymentProvider();
+    // The provider awaiting confirmation; the dialog is open while set.
+    const [pending, setPending] = useState<PaymentProvider | null>(null);
+
+    const current = data?.activeProvider ?? 'STRIPE';
+    const other = (p: PaymentProvider): PaymentProvider =>
+        p === 'STRIPE' ? 'MOLLIE' : 'STRIPE';
+    // Toggling the active card OFF = activating the other; toggling the
+    // inactive card ON = activating it. Both land in the same confirm dialog.
+    const requestSwitch = (card: PaymentProvider) =>
+        setPending(current === card ? other(card) : card);
+
+    const switchFor = (card: PaymentProvider) => (
+        <ProviderSwitch
+            checked={current === card}
+            disabled={isLoading || isPending}
+            label={PROVIDER_LABELS[card]}
+            onRequestSwitch={() => requestSwitch(card)}
+        />
+    );
+
+    const pendingLabel = pending ? PROVIDER_LABELS[pending] : '';
+
     return (
         <div className='space-y-6'>
-            <ActiveProviderCard />
-            <StripeCard />
-            <MollieCard />
+            <p className='text-sm text-muted-foreground normal-case tracking-normal font-light'>
+                The switched-on provider charges travelers at checkout. Existing
+                payments keep their original provider for refunds and webhooks.
+            </p>
+            <StripeCard activeControl={switchFor('STRIPE')} />
+            <MollieCard activeControl={switchFor('MOLLIE')} />
+
+            <AlertDialog
+                open={pending !== null}
+                onOpenChange={open => !open && setPending(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Switch checkout payments to {pendingLabel}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Every new booking will be charged through{' '}
+                            {pendingLabel} immediately. Its API keys must be
+                            configured or the switch is rejected. Existing
+                            payments keep their original provider for refunds
+                            and webhooks.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (pending)
+                                    mutate({ activeProvider: pending });
+                                setPending(null);
+                            }}>
+                            Switch to {pendingLabel}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
