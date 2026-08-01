@@ -80,6 +80,17 @@ export const TRANSLATABLE_ENTITY_PERMISSIONS: Record<
     recommendation: ['MANAGE_EDITORIAL'],
 };
 
+/**
+ * ANY-of gate for the Translations NAV ITEM: the union of the per-entity write
+ * permissions above. Derived, not hand-listed, so the sidebar can never show
+ * Translations to a seat the matrix would refuse ("You do not have permission
+ * to translate any content" - access-roles matrix follow-up 2026-08-02: a
+ * seat with only VIEW_TRIPS saw the item and a dead page).
+ */
+export const ANY_TRANSLATE_PERMISSIONS: PermissionKey[] = [
+    ...new Set(Object.values(TRANSLATABLE_ENTITY_PERMISSIONS).flat()),
+];
+
 export interface TranslatableFieldDef {
     /** RHF register name AND upsert payload key. */
     name: string;
