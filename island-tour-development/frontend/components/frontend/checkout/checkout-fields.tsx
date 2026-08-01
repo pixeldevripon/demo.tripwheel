@@ -27,15 +27,18 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Green free-cancellation reassurance line under a commit CTA (5.8). */
 export function FreeCancelNote({ label }: { label: string }) {
     return (
-        <div className='mt-3 flex items-center justify-center gap-[7px] text-center text-[13px] font-semibold leading-[1.5] text-it-green-text'>
+        // items-start + the icon's optical offset: when the line WRAPS on a
+        // narrow viewport the check stays with the first line instead of
+        // floating centred between both.
+        <div className='mt-3 flex items-start justify-center gap-[7px] text-center text-[13px] font-semibold leading-[1.5] text-it-green-text'>
             <Image
                 src='/icons/booking-check.svg'
                 alt=''
                 width={20}
                 height={20}
-                className='size-3.5 shrink-0'
+                className='mt-[3px] size-3.5 shrink-0'
             />
-            {label}
+            <span>{label}</span>
         </div>
     );
 }
