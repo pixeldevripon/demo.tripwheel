@@ -207,7 +207,10 @@ function DefaultTourCard({
                 peach
                     ? 'bg-it-peach border-it-peach-border'
                     : 'bg-it-white border-transparent hover:border-it-card-hover-border',
-                mobileRow && 'max-sm:flex-row max-sm:border-it-divider',
+                // Uniform row height on mobile lists: shorter cards stretch
+                // (the foot stays pinned), so the stack reads as equal rows.
+                mobileRow &&
+                    'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
                 className,
             )}>
             {/* ── Image area ──────────────────────────────────────────────── */}

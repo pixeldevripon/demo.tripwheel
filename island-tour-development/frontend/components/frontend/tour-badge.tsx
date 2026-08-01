@@ -46,13 +46,15 @@ export function TourBadgeChip({
   const style = BADGE_STYLE[type];
   const sizeClass =
     size === 'responsive'
-      ? 'px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px]'
-      : 'h-5 px-2.5 text-[11px]';
+      ? // min-w-0 + truncate: on narrow image areas (mobile row cards) the
+        // chip shortens with an ellipsis instead of running under the heart.
+        'min-w-0 truncate px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px]'
+      : 'h-5 shrink-0 px-2.5 text-[11px]';
   return (
     <span
       className={[
         // Design v2 .badge: small radius (6px), bold, tight tracking
-        'inline-flex shrink-0 items-center justify-center rounded-[6px] font-bold leading-[1.4] tracking-[0.01em]',
+        'inline-flex items-center justify-center rounded-[6px] font-bold leading-[1.4] tracking-[0.01em]',
         sizeClass,
         style.className,
         className,

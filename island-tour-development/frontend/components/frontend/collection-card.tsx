@@ -38,7 +38,8 @@ export function CollectionCard({
             <article
                 className={cn(
                     '@container group flex h-full flex-col overflow-hidden rounded-it-md border border-transparent bg-it-white will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover hover:border-it-card-hover-border',
-                    'max-sm:flex-row max-sm:border-it-divider',
+                    // Same uniform row height as the mobile tour cards.
+                    'max-sm:flex-row max-sm:border-it-divider max-sm:min-h-[170px]',
                     className,
                 )}>
                 {/* ── Image area ─────────────────────────────────────────── */}
