@@ -117,8 +117,15 @@ export function useUpdatePaymentProvider() {
         `${data.activeProvider === 'MOLLIE' ? 'Mollie' : 'Stripe'} is now taking checkout payments`,
       );
     },
-    // Backend rejects a switch to an unconfigured provider with a clear message.
-    onError,
+    // Backend rejects a switch to an unconfigured provider with a clear
+    // message. The rate limit's raw "ThrottlerException" is the one backend
+    // message NOT fit to show - translate it (QA 2026-08-02).
+    onError: (err: Error) =>
+      toast.error(
+        /throttler|too many requests/i.test(err.message)
+          ? 'Too many switches in a row - wait a minute and try again.'
+          : err.message || 'Failed to switch provider',
+      ),
   });
 }
 
