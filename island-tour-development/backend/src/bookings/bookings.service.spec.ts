@@ -3754,6 +3754,15 @@ describe('BookingsService', () => {
     });
 
     describe('verifyTravellerLoginCode', () => {
+      /** The conditional attempt-take succeeds; later writes use `rest`. */
+      function attemptTaken(...rest: { count: number }[]) {
+        const mock = m.travelerLoginCode.updateMany.mockResolvedValueOnce({
+          count: 1,
+        });
+        for (const r of rest) mock.mockResolvedValueOnce(r);
+        return mock;
+      }
+
       it('rejects with the SAME generic 401 when no live code exists', async () => {
         m.travelerLoginCode.findFirst.mockResolvedValue(null);
         await expect(
@@ -3761,23 +3770,71 @@ describe('BookingsService', () => {
         ).rejects.toBeInstanceOf(UnauthorizedException);
       });
 
-      it('counts the attempt BEFORE comparing, so parallel guesses cannot race extra tries', async () => {
+      // The pentest finding (2026-08-01): with no live code this method used
+      // to answer 401 at zero cost forever, because the attempt counter lives
+      // on the code row. The per-email budget is charged FIRST, so the free
+      // oracle is gone.
+      it('charges the per-email guess budget even when there is no code to guess at', async () => {
+        m.travelerLoginCode.findFirst.mockResolvedValue(null);
+
+        await expect(
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '123456' }),
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+
+        expect(targetLimiter.consume).toHaveBeenCalledWith(
+          'traveller-otp-verify',
+          EMAIL,
+          [
+            { max: 12, windowMs: 15 * 60 * 1000 },
+            { max: 30, windowMs: 24 * 60 * 60 * 1000 },
+          ],
+          expect.stringContaining('Too many sign-in attempts'),
+        );
+      });
+
+      it("refuses a locked-out email with 429 reason 'too-many-attempts'", async () => {
+        (targetLimiter.consume as jest.Mock).mockImplementationOnce(() => {
+          throw new HttpException('nope', HttpStatus.TOO_MANY_REQUESTS);
+        });
+        m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('424242'));
+
+        await expect(
+          svc.verifyTravellerLoginCode({ email: EMAIL, code: '424242' }),
+        ).rejects.toMatchObject({
+          status: HttpStatus.TOO_MANY_REQUESTS,
+          response: { reason: 'too-many-attempts' },
+        });
+        // The budget is charged BEFORE anything is read, so a locked-out
+        // guesser gets neither a query nor a try - not even with the CORRECT
+        // code in hand.
+        expect(m.travelerLoginCode.findFirst).not.toHaveBeenCalled();
+        expect(m.travelerLoginCode.updateMany).not.toHaveBeenCalled();
+      });
+
+      // The cap must be enforced by the WRITE. Checking `row.attempts` from
+      // the findFirst snapshot let N concurrent guesses all see the same value
+      // and each spend a try on a code that allows five.
+      it('spends the attempt with a capped conditional write, never a blind increment', async () => {
         m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('111111'));
+        attemptTaken();
 
         await expect(
           svc.verifyTravellerLoginCode({ email: EMAIL, code: '999999' }),
         ).rejects.toBeInstanceOf(UnauthorizedException);
 
-        expect(m.travelerLoginCode.update).toHaveBeenCalledWith({
-          where: { id: 'code1' },
+        expect(m.travelerLoginCode.updateMany).toHaveBeenCalledWith({
+          where: { id: 'code1', consumedAt: null, attempts: { lt: 5 } },
           data: { attempts: { increment: 1 } },
         });
+        expect(m.travelerLoginCode.update).not.toHaveBeenCalled();
       });
 
       it('burns the code once the attempt budget is spent', async () => {
         m.travelerLoginCode.findFirst.mockResolvedValue(
           liveCodeRow('111111', { attempts: 5 }),
         );
+        // The capped write matches nothing - that IS the out-of-tries signal.
+        m.travelerLoginCode.updateMany.mockResolvedValue({ count: 0 });
 
         await expect(
           svc.verifyTravellerLoginCode({ email: EMAIL, code: '111111' }),
@@ -3785,7 +3842,7 @@ describe('BookingsService', () => {
 
         // Consumed, not merely refused - a spent code is dead even if the
         // right digits arrive next.
-        expect(m.travelerLoginCode.updateMany).toHaveBeenCalledWith({
+        expect(m.travelerLoginCode.updateMany).toHaveBeenLastCalledWith({
           where: { id: 'code1', consumedAt: null },
           data: { consumedAt: expect.any(Date) },
         });
@@ -3793,7 +3850,7 @@ describe('BookingsService', () => {
 
       it('mints a HISTORY session on the right code and consumes it', async () => {
         m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('424242'));
-        m.travelerLoginCode.updateMany.mockResolvedValue({ count: 1 });
+        attemptTaken({ count: 1 });
 
         const { sessionToken } = await svc.verifyTravellerLoginCode({
           email: ' Guest@Example.TEST ',
@@ -3816,7 +3873,7 @@ describe('BookingsService', () => {
       // snapshot, so only the guarded write can decide who actually redeemed.
       it('issues NO session to the loser of a concurrent redemption race', async () => {
         m.travelerLoginCode.findFirst.mockResolvedValue(liveCodeRow('424242'));
-        m.travelerLoginCode.updateMany.mockResolvedValue({ count: 0 });
+        attemptTaken({ count: 0 });
 
         await expect(
           svc.verifyTravellerLoginCode({ email: EMAIL, code: '424242' }),

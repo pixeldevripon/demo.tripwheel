@@ -56,7 +56,11 @@ import {
   verifyTravelerSession,
 } from './traveler-session.util';
 import { CustomerProvisioningService } from '@/customers/customer-provisioning.service';
-import { LookupRateLimiter, TargetRateLimiter } from './lookup-rate-limiter';
+import {
+  LookupRateLimiter,
+  TargetRateLimiter,
+  type TargetWindow,
+} from './lookup-rate-limiter';
 import { TrackingService } from '@/tracking/tracking.service';
 import { computeHashedPii, toGoogleUserData } from '@/tracking/pii-hash.util';
 import { InboxService } from '@/inbox/inbox.service';
@@ -3526,6 +3530,18 @@ export class BookingsService {
   private static readonly LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
   /** Guesses allowed against a single code before it is burned. */
   private static readonly LOGIN_CODE_MAX_ATTEMPTS = 5;
+  /**
+   * Guess budget per EMAIL, independent of both the per-code cap and the
+   * per-IP throttle (pentest 2026-08-01: the per-IP tiers reset in seconds, so
+   * a caller who simply paces requests - or spreads them over a handful of IPs
+   * - never hits a wall). Sized well above legitimate use: the request side
+   * only mints 5 codes per inbox per day and each allows 5 tries, so a real
+   * traveller can never reach these numbers by mistyping.
+   */
+  private static readonly LOGIN_VERIFY_WINDOWS: TargetWindow[] = [
+    { max: 12, windowMs: 15 * 60 * 1000 },
+    { max: 30, windowMs: 24 * 60 * 60 * 1000 },
+  ];
 
   /**
    * Email a one-time login code for the traveller account area.
@@ -3672,26 +3688,76 @@ export class BookingsService {
     const email = dto.email.trim().toLowerCase();
     const invalid = () => new UnauthorizedException('Invalid or expired code');
 
+    // Per-EMAIL guess budget, spent BEFORE anything is read. Two holes it
+    // closes (pentest 2026-08-01):
+    //
+    // 1. The per-IP throttle is not a lockout. Its windows reset in seconds,
+    //    so guessing slowly - or from a second IP - never gets blocked. This
+    //    cap follows the TARGET, so it holds however the traffic is spread.
+    // 2. When no code is live the method used to return a free 401 forever:
+    //    no row meant no attempt counter, so the endpoint answered an
+    //    unlimited number of guesses at zero cost. Charging here first makes
+    //    every call cost something, including that path.
+    //
+    // Deliberately counts attempts, not failures: a success ends the flow, so
+    // the two are the same for anyone who is not guessing.
+    try {
+      this.targetLimiter.consume(
+        'traveller-otp-verify',
+        email,
+        BookingsService.LOGIN_VERIFY_WINDOWS,
+        'Too many sign-in attempts for this email. Please wait a few minutes and try again.',
+      );
+    } catch (err) {
+      if (
+        err instanceof HttpException &&
+        err.getStatus() === HttpStatus.TOO_MANY_REQUESTS
+      ) {
+        // The client treats EVERY 429 here as "stop guessing" (the per-IP
+        // guard's 429 means the same thing on this step), so the marker is
+        // for the API and the logs: it separates a target that is locked out
+        // from a client that is simply going too fast.
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: err.message,
+            reason: 'too-many-attempts',
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+      throw err;
+    }
+
     const row = await this.prisma.travelerLoginCode.findFirst({
       where: { email, consumedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     });
     if (!row) throw invalid();
 
-    if (row.attempts >= BookingsService.LOGIN_CODE_MAX_ATTEMPTS) {
+    // Take a guess ATOMICALLY. The cap has to be evaluated by the write, not
+    // against the snapshot above: parallel submissions all read the same
+    // `attempts` value, so a stale `row.attempts >= MAX` check let a burst of
+    // N concurrent requests each spend a try on a code that was only ever
+    // allowed 5 - the whole per-code cap collapsed under concurrency. Postgres
+    // serializes the row lock, so exactly MAX of any burst can match.
+    const { count: consumedAttempt } =
+      await this.prisma.travelerLoginCode.updateMany({
+        where: {
+          id: row.id,
+          consumedAt: null,
+          attempts: { lt: BookingsService.LOGIN_CODE_MAX_ATTEMPTS },
+        },
+        data: { attempts: { increment: 1 } },
+      });
+    if (consumedAttempt !== 1) {
+      // Out of tries (or redeemed by a racing request) - burn what is left.
       await this.prisma.travelerLoginCode.updateMany({
         where: { id: row.id, consumedAt: null },
         data: { consumedAt: new Date() },
       });
       throw invalid();
     }
-
-    // Count the attempt BEFORE comparing: parallel guesses must not race extra
-    // tries out of the same code.
-    await this.prisma.travelerLoginCode.update({
-      where: { id: row.id },
-      data: { attempts: { increment: 1 } },
-    });
 
     if (!loginCodeMatches(email, dto.code, row.codeHash)) throw invalid();
 

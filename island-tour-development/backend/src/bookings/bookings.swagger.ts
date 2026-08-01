@@ -7,6 +7,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import {
   ConflictErrorDto,
   NotFoundErrorDto,
   PaymentRequiredErrorDto,
+  TooManyRequestsErrorDto,
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import {
@@ -262,9 +264,11 @@ export const ApiVerifyTravellerCodeDocs = () =>
       description:
         'Step 2 of the account login. Returns a 24h HISTORY-scoped session token (proves live ' +
         'inbox ownership, so it unlocks the account surface as well as everything an ' +
-        'email-scoped token can do). Single-use code, max 5 attempts, and every failure - ' +
+        'email-scoped token can do). Single-use code, max 5 attempts (enforced by a ' +
+        'conditional write, so concurrent guesses cannot exceed it), and every failure - ' +
         'unknown email, wrong/expired/used code, attempts exhausted - returns the same ' +
-        'generic 401.',
+        'generic 401. Guessing is bounded per EMAIL as well as per IP: 12 attempts per 15 ' +
+        'minutes and 30 per day, charged before the code is even looked up.',
     }),
     ApiOkResponse({ type: VerifyTravellerCodeResponseDto }),
     ApiUnauthorizedResponse({
@@ -272,6 +276,12 @@ export const ApiVerifyTravellerCodeDocs = () =>
       description: 'Invalid or expired code (uniform for every failure mode).',
     }),
     ApiBadRequestResponse({ type: BadRequestErrorDto }),
+    ApiTooManyRequestsResponse({
+      type: TooManyRequestsErrorDto,
+      description:
+        'Per-IP throttle, or the per-email guess budget (body carries ' +
+        "`reason: 'too-many-attempts'`). No code can succeed until it clears.",
+    }),
   );
 
 export const ApiTravellerBookingsDocs = () =>

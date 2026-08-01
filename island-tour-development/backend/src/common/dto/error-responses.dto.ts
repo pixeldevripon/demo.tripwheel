@@ -62,6 +62,22 @@ export class PaymentRequiredErrorDto extends ErrorResponseDto {
   error: string = 'Payment Required';
 }
 
+export class TooManyRequestsErrorDto extends ErrorResponseDto {
+  @ApiProperty({ example: 429 })
+  statusCode: number = 429;
+
+  @ApiProperty({ example: 'Too Many Requests' })
+  error: string = 'Too Many Requests';
+
+  /**
+   * Present only where an endpoint throws more than one KIND of 429 and the
+   * caller must act differently (today: the traveller OTP endpoints, where a
+   * per-target cap means something the generic per-IP guard does not).
+   */
+  @ApiProperty({ required: false, example: 'too-many-attempts' })
+  reason?: string;
+}
+
 export class InternalServerErrorDto extends ErrorResponseDto {
   @ApiProperty({ example: 500 })
   statusCode: number = 500;

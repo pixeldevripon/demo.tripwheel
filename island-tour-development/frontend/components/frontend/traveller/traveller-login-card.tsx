@@ -203,16 +203,23 @@ export function TravellerLoginCard({
         if (busy) return;
         setBusy(true);
         setError(null);
-        const token = await verifyTravellerCodeClient(email.trim(), value);
-        if (!token) {
+        const result = await verifyTravellerCodeClient(email.trim(), value);
+        if (result.status !== 'ok') {
             setBusy(false);
             setCode('');
-            setError(dict.codeError);
+            // A lockout is not a verdict on the code they typed. Saying "that
+            // code is wrong" would send them straight back to guess again,
+            // when nothing they enter can work until the window passes.
+            setError(
+                result.status === 'locked'
+                    ? dict.codeLockedError
+                    : dict.codeError
+            );
             return;
         }
         // Park the token in the first-party HttpOnly cookie BEFORE refreshing,
         // so the very next server render is already signed in.
-        await storeTravelerSession(token);
+        await storeTravelerSession(result.token);
         // The navbar cannot read the HttpOnly cookie, so mirror the identity
         // into its display cookie - otherwise the account menu still shows the
         // signed-out state right after signing in.
