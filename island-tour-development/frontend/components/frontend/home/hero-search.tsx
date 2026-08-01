@@ -178,7 +178,7 @@ export function HeroSearch({
                             alt=''
                             width={24}
                             height={24}
-                            className='size-4.5'
+                            className='size-4'
                         />
                     </motion.span>
                     <span className='text-[15px] md:text-[16px] font-bold text-it-white'>
