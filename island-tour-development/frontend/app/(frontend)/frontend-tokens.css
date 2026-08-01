@@ -524,10 +524,13 @@
      * One shimmer definition for every loading placeholder: paper surface,
      * 12px radius, a white light-sweep crossing every 1.2s. Compose via the
      * shared <Bar> in components/frontend/skeletons/skeleton-bar.tsx. */
+    /* Surface is overridable per-spot via the --it-skeleton-bg custom
+     * property (e.g. `[--it-skeleton-bg:var(--it-white)]` for blocks sitting
+     * ON the paper band, where paper-on-paper would be invisible). */
     .it-skeleton {
         position: relative;
         overflow: hidden;
-        background: var(--it-bg);
+        background: var(--it-skeleton-bg, var(--it-bg));
     }
 
     .it-skeleton::before {

@@ -49,8 +49,10 @@ export async function InstagramSection({
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
                     {/* Handle row (design v2 .ighead): dark mark + @handle,
-                        follow link on the right. */}
-                    <div className='flex items-center gap-3'>
+                        follow link on the right. Long handles truncate and the
+                        link wraps under them on narrow screens instead of
+                        cropping off the edge. */}
+                    <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5'>
                         <span className='flex size-10 shrink-0 items-center justify-center rounded-it-md bg-it-dark'>
                             <Image
                                 src='/icons/instagram-mark.svg'
@@ -60,14 +62,14 @@ export async function InstagramSection({
                                 className='size-5'
                             />
                         </span>
-                        <h2 className='m-0 font-it-body text-[15.5px] font-bold leading-[1.4] text-it-ink'>
+                        <h2 className='m-0 min-w-0 flex-1 truncate font-it-body text-[15.5px] font-bold leading-[1.4] text-it-ink'>
                             @{feed.username}
                         </h2>
                         <a
                             href={profileUrl}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='ml-auto text-[13.5px] font-bold text-it-primary-hover underline underline-offset-[3px] whitespace-nowrap'>
+                            className='ml-auto shrink-0 whitespace-nowrap text-[13.5px] font-bold text-it-primary-hover underline underline-offset-[3px] max-sm:ml-0 max-sm:basis-full max-sm:pl-[52px]'>
                             {dict.viewMore || 'View more on Instagram'}
                         </a>
                     </div>

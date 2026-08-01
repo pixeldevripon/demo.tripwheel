@@ -72,7 +72,7 @@ export const DESTINATION_RAIL =
  * `COLLECTION_CARD_CELL` (carousel widths persist until lg).
  */
 export const COLLECTION_RAIL =
-    '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:snap-none lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden';
+    'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5';
 
 /**
  * The collection page's tour grid, mirroring `collection-tours-section`:
@@ -83,6 +83,5 @@ export const COLLECTION_TOURS_GRID =
 export const DESTINATION_CARD_CELL =
     'w-[82vw] min-[480px]:w-[64vw] shrink-0 snap-start sm:w-auto';
 
-/** Collection-rail cells keep carousel widths until the lg grid takes over. */
-export const COLLECTION_CARD_CELL =
-    'w-[82vw] min-[480px]:w-[64vw] sm:w-[42vw] shrink-0 snap-start lg:w-auto';
+/** Collection-rail cells: the grid owns sizing at every width now. */
+export const COLLECTION_CARD_CELL = '';

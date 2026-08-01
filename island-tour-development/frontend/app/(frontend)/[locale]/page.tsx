@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 import { FaqSection } from '@/components/frontend/faq-section';
+import { HomePageSkeleton } from '@/components/frontend/skeletons/home-page-skeleton';
 import { CtaCard } from '@/components/frontend/home/cta-card';
 import { EditorialBanner } from '@/components/frontend/home/editorial-banner';
 import { ExploreIslands } from '@/components/frontend/home/explore-islands';
@@ -51,7 +53,24 @@ export async function generateMetadata({
     };
 }
 
-export default async function HomePage({
+export default function HomePage({
+    params,
+}: {
+    params: Promise<{ locale: string }>;
+}) {
+    // STREAMING SHAPE (same as the destination route): return the <Suspense>
+    // shell without awaiting anything, so a cold path (expired cache entry,
+    // dev compile) paints the design v2 skeleton instantly and streams,
+    // instead of blocking on the backend. Prerendered locales resolve the
+    // boundary at build - their baked page is unchanged (no skeleton flash).
+    return (
+        <Suspense fallback={<HomePageSkeleton />}>
+            <HomeContent params={params} />
+        </Suspense>
+    );
+}
+
+async function HomeContent({
     params,
 }: {
     params: Promise<{ locale: string }>;
