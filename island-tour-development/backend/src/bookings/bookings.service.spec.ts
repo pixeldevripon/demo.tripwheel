@@ -22,6 +22,8 @@ jest.mock('@/auth/auth.instance', () => ({
 import {
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -3665,7 +3667,7 @@ describe('BookingsService', () => {
         expect(mail.sendTravellerLoginCodeEmail).not.toHaveBeenCalled();
       });
 
-      it('caps per target email (1/min, 5/day) before touching the database', async () => {
+      it('caps per target email (1/min, 5/day) for KNOWN emails, after the existence check', async () => {
         m.booking.findFirst.mockResolvedValue(bookingForCodeEmail());
 
         await svc.requestTravellerLoginCode({ email: EMAIL });
@@ -3677,7 +3679,43 @@ describe('BookingsService', () => {
             { max: 1, windowMs: 60 * 1000 },
             { max: 5, windowMs: 24 * 60 * 60 * 1000 },
           ],
+          expect.stringContaining('sign-in code'),
         );
+      });
+
+      // Ordering guarantee (founder 2026-07-31): an unknown address must
+      // answer sent:false CONSISTENTLY. When the limiter ran first, the
+      // second click 429ed before the lookup and the login card advanced an
+      // unknown email to a code screen that could never succeed.
+      it('never consumes the per-email limiter for an unknown email', async () => {
+        m.booking.findFirst.mockResolvedValue(null);
+
+        await expect(
+          svc.requestTravellerLoginCode({ email: 'nobody@example.test' }),
+        ).resolves.toEqual({ sent: false });
+
+        expect(targetLimiter.consume).not.toHaveBeenCalled();
+      });
+
+      // The per-email 429 is the ONLY 429 the login card may advance on, so
+      // it must be distinguishable from the generic per-IP guard's: it fires
+      // post-existence-check and carries `reason: 'otp-pending'`.
+      it("marks the per-email 429 with reason 'otp-pending'", async () => {
+        m.booking.findFirst.mockResolvedValue(bookingForCodeEmail());
+        (targetLimiter.consume as jest.Mock).mockImplementationOnce(() => {
+          throw new HttpException(
+            'recently requested',
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
+        });
+
+        await expect(
+          svc.requestTravellerLoginCode({ email: EMAIL }),
+        ).rejects.toMatchObject({
+          status: HttpStatus.TOO_MANY_REQUESTS,
+          response: expect.objectContaining({ reason: 'otp-pending' }),
+        });
+        expect(m.travelerLoginCode.create).not.toHaveBeenCalled();
       });
 
       it('stores only a keyed hash - never the code itself - and mails the stored address', async () => {
