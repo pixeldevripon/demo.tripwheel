@@ -39,9 +39,9 @@ export function HubDiscoverCard({
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <article className='flex h-full flex-col overflow-hidden rounded-[8px] border border-it-border-subtle bg-it-surface md:rounded-[16px]'>
+        <article className='group flex h-full flex-col overflow-hidden rounded-it-lg border border-it-divider bg-it-white shadow-it-sm'>
             {/* Image - aspect 370:178 mobile / 588:300 desktop; card clips the top corners */}
-            <div className='relative aspect-370/178 w-full bg-it-border md:aspect-588/300'>
+            <div className='relative aspect-[16/8.5] w-full overflow-hidden bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]'>
                 {item.image && (
                     <Image
                         src={item.image}
@@ -55,12 +55,12 @@ export function HubDiscoverCard({
 
             {/* Text content - inset 16px sides / 16px bottom / 10px top (mobile),
                 24px all (desktop); 8px title->body gap. */}
-            <div className='flex flex-col gap-2 px-4 pt-2.5 pb-4 md:px-6 md:pt-6 md:pb-6'>
-                <h3 className='m-0 font-medium text-[18px] md:text-[24px] leading-[1.6] tracking-[-0.012em] text-it-heading md:leading-[1.2]'>
+            <div className='flex flex-col gap-1.5 px-[22px] pt-[18px] pb-[22px]'>
+                <h3 className='m-0 text-[16px] font-bold leading-[1.4] tracking-[-0.005em] text-it-ink'>
                     {item.title}
                 </h3>
                 <p
-                    className={`m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted ${
+                    className={`m-0 text-[13.5px] leading-[1.65] text-it-text-muted ${
                         expanded ? '' : 'line-clamp-4 md:line-clamp-none'
                     }`}>
                     {item.body}

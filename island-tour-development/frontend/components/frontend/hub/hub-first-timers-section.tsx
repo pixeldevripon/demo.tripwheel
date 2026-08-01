@@ -33,11 +33,11 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
     return (
         <section className='it-section pt-0! bg-it-white'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-10 md:gap-12'>
+                <Reveal className='flex flex-col gap-[26px]'>
                     {/* Heading + quick takeaways (grouped: 24px gap on mobile,
                         48px on desktop). */}
-                    <div className='flex flex-col gap-6 md:gap-12'>
-                        <h2 className='m-0 font-medium text-[24px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <div className='flex flex-col gap-[22px]'>
+                        <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                             {dict.title}
                         </h2>
 
@@ -45,45 +45,43 @@ export function HubFirstTimersSection({ dict }: { dict: HubFirstTimersDict }) {
                             Hidden when the hub has no HIGHLIGHT sections. */}
                         {dict.highlights.length > 0 && (
                             <div className='flex flex-col gap-6 md:gap-10'>
-                                <ul className='m-0 flex list-none flex-col gap-2 p-0 md:flex-row md:flex-wrap md:justify-between md:gap-x-6 md:gap-y-3'>
+                                {/* .checksrow: three bordered white cards */}
+                                <ul className='m-0 grid list-none grid-cols-1 gap-3.5 p-0 md:grid-cols-3'>
                                     {dict.highlights.map((highlight, i) => (
                                         <li
                                             key={i}
-                                            className='flex items-center gap-2'>
+                                            className='flex items-center gap-[9px] rounded-it-md border border-it-divider bg-it-white px-4 py-3.5 shadow-it-sm'>
                                             <Image
-                                                src='/icons/check-green.svg'
+                                                src='/icons/trust-check-green.svg'
                                                 alt=''
                                                 width={24}
                                                 height={24}
-                                                className='size-6 shrink-0'
+                                                className='size-4 shrink-0'
                                             />
-                                            <span className='font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                            <span className='text-[14px] font-bold leading-[1.6] text-it-ink'>
                                                 {highlight}
                                             </span>
                                         </li>
                                     ))}
                                 </ul>
-                                <div
-                                    className='h-px w-full bg-it-border-subtle'
-                                    aria-hidden='true'
-                                />
                             </div>
                         )}
                     </div>
 
                     {/* Tips - title + orange-ruled body */}
-                    <div className='flex flex-col gap-6 md:gap-8'>
+                    {/* .tips: titled tips over the peach left rule */}
+                    <div className='flex max-w-[820px] flex-col gap-5'>
                         {dict.tips.map(tip => (
                             <Reveal
                                 key={tip.title}
                                 delay={0.02}
                                 listItem
-                                className='flex flex-col gap-2'>
-                                <h3 className='m-0 font-medium text-[16px] md:text-[20px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                className='flex flex-col gap-1'>
+                                <h3 className='m-0 text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                     {tip.title}
                                 </h3>
-                                <div className='border-l-2 border-it-primary pl-4 md:border-l-[3px] md:pl-5'>
-                                    <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                <div className='border-l-[3px] border-it-peach-border py-0.5 pl-4'>
+                                    <p className='m-0 text-[14px] leading-[1.65] text-it-text-muted'>
                                         {tip.body}
                                     </p>
                                 </div>

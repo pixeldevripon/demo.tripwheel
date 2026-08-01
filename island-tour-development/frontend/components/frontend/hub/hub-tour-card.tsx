@@ -50,9 +50,9 @@ export type HubTourCardDict = {
 
 // Badge background/text per type (Figma node 48024:11222).
 const BADGE_STYLE: Record<Exclude<HubTourBadge, null>, string> = {
-    sponsored: 'bg-it-surface text-it-heading',
+    sponsored: 'bg-[#f8f8f8] text-[#2c2c2c]',
     mostPopular: 'bg-it-primary text-it-white',
-    likelyToSellOut: 'bg-[#193d5e] text-it-white',
+    likelyToSellOut: 'bg-[#193c5e] text-it-white',
 };
 
 /**
@@ -87,21 +87,28 @@ export function HubTourCard({
     const card = (
         <article
             aria-label={tour.title}
-            className={`group flex flex-col overflow-hidden rounded-[8px] transition-colors duration-300 ease-in-out hover:bg-[#fdf6f0] md:rounded-[16px] ${highlighted ? 'bg-[#fdf6f0]' : 'bg-it-white'}`}>
+            className={`group flex h-full flex-col overflow-hidden rounded-it-md border will-change-transform transition-all duration-(--it-duration-md) ease-(--it-ease) hover:-translate-y-0.5 hover:shadow-it-card-hover max-sm:flex-row max-sm:min-h-[170px] ${
+                highlighted
+                    ? 'bg-it-peach border-it-peach-border'
+                    : 'bg-it-white border-transparent hover:border-it-card-hover-border max-sm:border-it-divider'
+            }`}>
             {/* Image - single photo, badge top-left + wishlist top-right. The
                 bottom corners are ALWAYS squared so the image merges into the
                 inset content area; only the card fill reacts to hover (mirrors
                 the latest <TourCard>). */}
-            <div className='relative aspect-177/148 w-full shrink-0 overflow-hidden rounded-t-[8px] bg-it-border md:aspect-384/270 md:rounded-t-[16px]'>
+            <div className='relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
-                    sizes='(max-width: 1024px) 50vw, 384px'
+                    sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
                 />
+                {tour.images.length > 0 && (
+                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                )}
                 <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between p-2.5 md:p-4'>
                     {badgeLabel ? (
                         <span
-                            className={`inline-flex h-7 items-center rounded-it-full px-3 text-[10px] leading-[1.6] tracking-[-0.012em] md:h-8 md:px-3.5 md:text-[14px] ${BADGE_STYLE[tour.badge!]}`}>
+                            className={`inline-flex min-w-0 items-center truncate rounded-[6px] px-[7px] py-[3px] text-[10px] font-bold leading-[1.5] @[220px]:px-[9px] @[220px]:py-[4px] @[220px]:text-[11.5px] ${BADGE_STYLE[tour.badge!]}`}>
                             {badgeLabel}
                         </span>
                     ) : (
@@ -118,7 +125,7 @@ export function HubTourCard({
                         aria-pressed={saved}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='pointer-events-auto grid size-8 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white shadow-it-sm transition-shadow duration-300 hover:shadow-it-md md:size-10'>
+                        className='pointer-events-auto grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white/92 shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] @[220px]:size-[34px]'>
                         <Image
                             src={
                                 saved
@@ -128,7 +135,7 @@ export function HubTourCard({
                             alt=''
                             width={24}
                             height={24}
-                            className='size-5 md:size-6'
+                            className='size-4 @[220px]:size-[17px]'
                         />
                     </motion.button>
                 </div>
@@ -137,30 +144,26 @@ export function HubTourCard({
             {/* Content - PERMANENT inset (mirrors the latest <TourCard>): the
                 padding never animates, so hover only tints the card and nothing
                 re-wraps or shifts. */}
-            <div className='flex flex-col gap-1.5 px-3 pt-2 pb-3 md:gap-3 md:px-4 md:pt-4 md:pb-4'>
+            <div className='@container flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
                 {/* Rating - only when the tour actually has one. Rendering a
                     defaulted 0 here advertised a brand-new tour as "0 (0)",
                     which reads as a terrible tour rather than a new one. */}
                 {tour.rating !== undefined && (
-                    <div className='flex items-center gap-2'>
-                        <Image
-                            src='/icons/star-listings.svg'
-                            alt=''
-                            width={16}
-                            height={16}
-                            className='size-4 shrink-0'
-                        />
-                        <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 md:text-[14px]'>
-                            {tour.rating}
-                            {tour.reviewCount !== undefined &&
-                                ` (${tour.reviewCount.toLocaleString()})`}
+                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        <span className='font-bold text-it-star'>
+                            ★ {tour.rating}
                         </span>
+                        {tour.reviewCount !== undefined && (
+                            <span className='text-it-text-muted tabular-nums'>
+                                ({tour.reviewCount.toLocaleString()})
+                            </span>
+                        )}
                     </div>
                 )}
 
                 {/* Title + attribute tags */}
                 <div className='flex flex-col gap-1 md:gap-1.5'>
-                    <h3 className='m-0 font-medium text-[12px] leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[16px]'>
+                    <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
                         {tour.title}
                     </h3>
                     <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0'>
@@ -169,10 +172,10 @@ export function HubTourCard({
                                 {i > 0 && (
                                     <li
                                         aria-hidden='true'
-                                        className='size-1 shrink-0 rounded-full bg-it-heading/30'
+                                        className='size-[3px] shrink-0 rounded-full bg-it-ink-muted'
                                     />
                                 )}
-                                <li className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading/70 md:text-[14px]'>
+                                <li className='text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                                     {attr}
                                 </li>
                             </Fragment>
@@ -183,14 +186,12 @@ export function HubTourCard({
                 {/* Price - "from $140/per" or charter "from $2,200/10 people +
                     $220 per extra person" (Figma: unit sits flush to the price, the
                     surcharge note keeps its space and wraps on narrow cards). */}
-                <p className='m-0 leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                    <span className='text-[10px] text-it-heading/70 md:text-[12px]'>
-                        {dict.from}{' '}
-                    </span>
-                    <span className='font-medium text-[12px] md:text-[16px]'>
+                <p className='m-0 mt-auto pt-2 text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
+                    {dict.from}
+                    <b className='ml-1 text-[14px] @[220px]:text-[17px] font-extrabold tracking-[-0.01em] text-it-ink tabular-nums'>
                         {tour.priceDisplay}
-                    </span>
-                    <span className='text-[10px] text-it-heading/70 md:text-[12px]'>
+                    </b>
+                    <span className='ml-0.5'>
                         {tour.priceUnit}
                         {tour.priceNote ? ` ${tour.priceNote}` : ''}
                     </span>
@@ -198,17 +199,15 @@ export function HubTourCard({
 
                 {/* Free cancellation */}
                 {tour.freeCancellation && (
-                    <div className='flex items-center gap-2'>
+                    <div className='flex items-center gap-1.5 text-[11px] @[220px]:text-[12.5px] font-semibold leading-[1.6] text-it-green-text max-sm:hidden'>
                         <Image
-                            src='/icons/check-green.svg'
+                            src='/icons/trust-check-green.svg'
                             alt=''
-                            width={20}
-                            height={20}
-                            className='size-4 shrink-0 md:size-5'
+                            width={24}
+                            height={24}
+                            className='size-[13px] shrink-0'
                         />
-                        <span className='text-[10px] leading-[1.6] tracking-[-0.012em] text-it-heading md:text-[14px]'>
-                            {dict.freeCancellation}
-                        </span>
+                        {dict.freeCancellation}
                     </div>
                 )}
             </div>

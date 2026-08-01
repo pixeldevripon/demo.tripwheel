@@ -26,7 +26,7 @@ export function HubPicks({ data }: { data: HubPicksData }) {
     return (
         <Reveal className='flex flex-col gap-10 md:gap-12'>
             <div className='flex flex-col gap-1'>
-                <h3 className='m-0 font-medium text-[24px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h3 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                     {data.title}
                 </h3>
                 <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>

@@ -94,7 +94,7 @@ export function HubCompareSection({
         <Reveal className='flex flex-col gap-6 md:gap-12'>
             {/* Header */}
             <header className='flex flex-col gap-1'>
-                <h2 className='m-0 font-medium text-[20px] md:text-[32px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                     {dict.title}
                 </h2>
                 <p className='m-0 max-w-[530px] text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
@@ -133,11 +133,11 @@ function CompareTableCard({
 
     return (
         <div
-            className='overflow-hidden rounded-[8px]!
+            className='overflow-hidden rounded-it-lg! border border-it-divider bg-it-white shadow-it-sm rounded-[8px]!
          border border-it-heading/10'>
             {/* Category bar */}
-            <div className='border-b border-it-heading/10 bg-it-surface px-4 py-4 lg:px-8 lg:py-[22px]'>
-                <span className='font-bold text-[16px] md:text-[18px] leading-[1.6] tracking-[-0.012em] uppercase text-it-primary'>
+            <div className='border-b border-it-peach-border bg-it-primary-subtle px-4 py-2.5 lg:px-4'>
+                <span className='text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-primary-hover'>
                     {title}
                 </span>
             </div>
