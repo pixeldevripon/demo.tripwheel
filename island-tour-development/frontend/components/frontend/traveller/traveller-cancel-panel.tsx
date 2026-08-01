@@ -13,6 +13,7 @@ import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade } from '@/lib/motion';
 
+import { ConfirmDialog } from '@/components/frontend/confirm-dialog';
 import { TravellerChip } from './traveller-chip';
 import {
     formatDay,
@@ -48,6 +49,8 @@ export function TravellerCancelPanel({
 }) {
     const router = useRouter();
     const [confirming, setConfirming] = useState(false);
+    /** The modal on top of the strip (QA follow-up 2026-08-02). */
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const [reason, setReason] = useState('');
     const [busy, setBusy] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -61,6 +64,9 @@ export function TravellerCancelPanel({
             reason.trim() || undefined
         );
         setBusy(false);
+        // The modal closes either way - success flips the row to its
+        // requested state, failure shows the strip's error line.
+        setConfirmOpen(false);
         if (!ok) {
             setFailed(true);
             return;
@@ -170,6 +176,19 @@ export function TravellerCancelPanel({
         );
     }
 
+    // One composed question ("Cancel {tour}, {date}? Refund {amount}.") shared
+    // by the strip heading and the confirm modal, so they can never disagree.
+    const stripTitle =
+        dict.cancelStripTitle
+            .replace('{tour}', booking.tourName)
+            .replace('{date}', formatDayShort(booking.localDate, locale)) +
+        (refundable && windowOpen
+            ? ` ${dict.cancelStripRefund.replace(
+                  '{amount}',
+                  money(booking.paidAmount, booking.currency, locale)
+              )}`
+            : '');
+
     return (
         <div>
             <p className='m-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
@@ -188,34 +207,17 @@ export function TravellerCancelPanel({
                         exit={{ opacity: 0, y: -8 }}
                         transition={crossFade}
                         className='mt-3 rounded-[12px] bg-it-surface p-4'>
-                        <p className='m-0 text-[14px] leading-[1.6] font-medium text-it-heading'>
-                            {dict.cancelStripTitle
-                                .replace('{tour}', booking.tourName)
-                                .replace(
-                                    '{date}',
-                                    formatDayShort(booking.localDate, locale)
-                                )}
-                            {/* Refund line only above zero (6.4 pattern). */}
-                            {refundable && windowOpen && (
-                                <>
-                                    {' '}
-                                    {dict.cancelStripRefund.replace(
-                                        '{amount}',
-                                        money(
-                                            booking.paidAmount,
-                                            booking.currency,
-                                            locale
-                                        )
-                                    )}
-                                </>
-                            )}
+                        {/* Refund segment only above zero (6.4 pattern) -
+                            composed into stripTitle above. */}
+                        <p className='m-0 text-[14px] leading-[1.6] font-normal text-it-heading'>
+                            {stripTitle}
                         </p>
                         <p className='mt-1.5 mb-0 text-[13px] leading-[1.6] text-it-text-muted'>
                             {dict.cancelStripNote}
                         </p>
                         <label
                             htmlFor={`cancel-reason-${booking.id}`}
-                            className='mt-3 mb-1.5 block text-[13px] font-medium text-it-heading'>
+                            className='mt-3 mb-1.5 block text-[13px] font-normal text-it-heading'>
                             {dict.cancelReasonLabel}
                         </label>
                         <textarea
@@ -234,11 +236,14 @@ export function TravellerCancelPanel({
                             </p>
                         )}
                         <div className='mt-3 flex flex-wrap gap-2.5'>
+                            {/* QA follow-up 2026-08-02: the red button asks
+                                one more time in a modal before the request
+                                actually fires. */}
                             <motion.button
                                 type='button'
                                 disabled={busy}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => void submit()}
+                                onClick={() => setConfirmOpen(true)}
                                 className='rounded-full border-[1.5px] border-it-error px-4.5 py-2.25 text-[14px] font-semibold text-it-error transition-colors hover:bg-it-error-subtle disabled:opacity-60'>
                                 {busy ? dict.cancelSending : dict.cancelConfirm}
                             </motion.button>
@@ -251,6 +256,17 @@ export function TravellerCancelPanel({
                                 {dict.cancelKeep}
                             </motion.button>
                         </div>
+                        <ConfirmDialog
+                            open={confirmOpen}
+                            title={stripTitle}
+                            body={dict.cancelStripNote}
+                            confirmLabel={dict.cancelConfirm}
+                            cancelLabel={dict.cancelKeep}
+                            busy={busy}
+                            destructive
+                            onConfirm={() => void submit()}
+                            onClose={() => setConfirmOpen(false)}
+                        />
                     </motion.div>
                 ) : (
                     <motion.button

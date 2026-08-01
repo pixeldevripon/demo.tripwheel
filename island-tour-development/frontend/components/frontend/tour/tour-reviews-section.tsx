@@ -1,16 +1,19 @@
 'use client';
 
-import { MotionButton } from '@/components/frontend/motion-primitives';
+import {
+    MotionButton,
+    MotionDiv,
+} from '@/components/frontend/motion-primitives';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
 import { fetchTourReviews, PHOTO_STRIP_LIMIT } from '@/lib/api/reviews';
 import { type Locale } from '@/lib/constants/locales';
-import { springPop } from '@/lib/motion';
+import { dragGlide, springPop } from '@/lib/motion';
 import { toFullReview } from '@/lib/reviews/review-view';
 import type { ReviewFacet, ReviewSort, ThemeFacet } from '@/types/review';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type ReviewHistogramRow = { stars: number; count: number };
 
@@ -231,9 +234,13 @@ export function TourReviewsSection({
     const [matchTotal, setMatchTotal] = useState(total);
     /** Index of the strip photo opened in the lightbox, or null. */
     const [stripLightbox, setStripLightbox] = useState<number | null>(null);
-    // Mouse users can't reach overflowed tiles behind a hidden scrollbar -
-    // drag-to-scroll gives the strip the same "swipe" touch already has.
-    const stripRef = useDragScroll<HTMLDivElement>();
+    // The strip is a framer drag track (mouse AND touch): real momentum on
+    // release instead of raw scrollLeft writes fighting the scroll snap.
+    // The viewport ref doubles as the drag constraint box.
+    const stripViewportRef = useRef<HTMLDivElement>(null);
+    // True while (and just after) a drag - a tile click at drag-end must not
+    // open the lightbox. Cleared a tick later so a real tap still works.
+    const stripDragging = useRef(false);
 
     /**
      * Hydration marker, for tests and for anything that needs to know this
@@ -711,30 +718,55 @@ export function TourReviewsSection({
                     </h3>
                     {/* Circle tiles (founder call 2026-08-02): the strip is a
                         teaser, and the lightbox shows the full uncropped
-                        photo. Click opens it; drag/swipe scrolls the strip. */}
-                    {/* No scroll-smooth here: the drag-to-scroll hook assigns
-                        scrollLeft directly, and smooth behaviour turns each
-                        assignment into a competing animation the snap then
-                        yanks back. */}
+                        photo. Click opens it. The row is a framer drag track
+                        (founder 2026-08-02: raw scrollLeft writes fought the
+                        scroll snap and felt laggy) - one physics model for
+                        mouse AND touch, with real momentum on release.
+                        touch-action pan-y keeps vertical page scroll native
+                        on mobile while the track owns the horizontal axis. */}
                     <div
-                        ref={stripRef}
-                        className='flex snap-x snap-mandatory gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        ref={stripViewportRef}
+                        className='overflow-hidden'>
+                        <MotionDiv
+                            drag='x'
+                            dragConstraints={stripViewportRef}
+                            dragElastic={0.12}
+                            dragTransition={dragGlide}
+                            onDragStart={() => {
+                                stripDragging.current = true;
+                            }}
+                            onDragEnd={() => {
+                                // Cleared a tick later: the click that follows
+                                // a drag-release must still see "dragging".
+                                setTimeout(() => {
+                                    stripDragging.current = false;
+                                }, 60);
+                            }}
+                            className='flex w-max gap-2'
+                            style={{ touchAction: 'pan-y' }}>
                         {photoStrip.map((src, i) => (
                             <button
                                 key={`${src}-${i}`}
                                 type='button'
-                                onClick={() => setStripLightbox(i)}
+                                onClick={() => {
+                                    if (stripDragging.current) return;
+                                    setStripLightbox(i);
+                                }}
                                 aria-label={dict.photoOpen}
-                                className='relative size-20 shrink-0 cursor-pointer snap-start overflow-hidden rounded-it-full border-0 bg-it-border p-0'>
+                                className='relative size-20 shrink-0 cursor-pointer overflow-hidden rounded-it-full border-0 bg-it-border p-0'>
                                 <Image
                                     src={src}
                                     alt=''
                                     fill
                                     sizes='80px'
-                                    className='object-cover transition-opacity duration-300 hover:opacity-90'
+                                    // Framer needs the pointer stream - a native
+                                    // image drag would cancel it mid-gesture.
+                                    draggable={false}
+                                    className='pointer-events-none object-cover transition-opacity duration-300 hover:opacity-90'
                                 />
                             </button>
                         ))}
+                        </MotionDiv>
                     </div>
                     {stripLightbox !== null && photoStrip[stripLightbox] && (
                         <PhotoLightbox
