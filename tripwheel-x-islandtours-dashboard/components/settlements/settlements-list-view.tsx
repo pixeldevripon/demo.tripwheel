@@ -2,6 +2,7 @@
 
 import { useTableState } from '@/components/data-table/use-table-state';
 import { useRole } from '@/contexts/role-context';
+import { isPlatformWideRole } from '@/lib/rbac-utils';
 import {
     useSettlementSummary,
     useSettlements,
@@ -18,7 +19,11 @@ import { SettlementsTable } from './settlements-table';
  */
 export function SettlementsListView() {
     const { role } = useRole();
-    const isAdmin = role === 'ADMIN';
+    // Platform-wide, not ADMIN-only: staff and editors read every operator's
+    // ledger, and the backend now scopes them that way. Wording the page from
+    // the operator's side ("paid to you") over platform-wide rows would be
+    // simply false (test report 2026-08-01 §Admin.4).
+    const isAdmin = isPlatformWideRole(role);
     const {
         page,
         limit,

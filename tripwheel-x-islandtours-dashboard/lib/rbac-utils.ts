@@ -68,6 +68,24 @@ export function resolvePermissions(
 export type SessionDoor = 'admin' | 'staff' | 'portal';
 
 /**
+ * Does this session read PLATFORM-WIDE rather than through one operator's
+ * scope? Mirrors `isPlatformWideRole` in the backend's
+ * `common/utils/operator.util.ts` - keep the two in step, because they decide
+ * the same thing on either side of the wire: the backend decides which rows
+ * come back, this decides how the screen labels them.
+ *
+ * Use this, NOT `role === 'ADMIN'`, wherever the question is "whose data is
+ * this". Platform STAFF and EDITOR sit on the same side of that line, and
+ * treating them as operators is what left an invited Operations Manager
+ * looking at operator-scoped copy over platform-wide rows (test report
+ * 2026-08-01 §Admin.4). It is NOT a substitute for a permission check - use
+ * `can()` for what someone may DO.
+ */
+export function isPlatformWideRole(role?: string): boolean {
+  return role === 'ADMIN' || role === 'STAFF' || role === 'EDITOR';
+}
+
+/**
  * The login door a session belongs to: the surface it ENTERED through when
  * stamped, else the role's canonical door (legacy surface-less sessions).
  * Shared by sign-out routing and the emailed password-change link so the two

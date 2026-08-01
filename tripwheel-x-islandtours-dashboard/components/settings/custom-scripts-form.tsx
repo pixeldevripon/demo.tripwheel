@@ -77,10 +77,16 @@ const POSITION_LABEL: Record<CustomScriptPosition, string> = {
   BODY_END: 'Footer',
 };
 
+// "Once the content is on screen" is what the Footer hint used to claim, and it
+// is not true: the snippet runs when the browser reaches the end of the HTML,
+// which on this site is BEFORE React has rendered the interactive chrome. An
+// admin who believed that hint wrote a document.querySelector one-liner, watched
+// it throw on null, and reported custom scripts as broken (test report
+// 2026-08-01 §Admin.1). Both hints now describe the moment, not the appearance.
 const POSITION_HINT: Record<CustomScriptPosition, string> = {
-  HEAD: 'Runs before any content is drawn. Only for consent managers and anti-flicker wrappers - everything here delays the site for every visitor. Verification <meta> and <link> tags are placed in the page head from either position.',
+  HEAD: 'Runs while the page is still loading, before any content is drawn. Only for consent managers and anti-flicker wrappers - everything here delays the site for every visitor. Verification <meta> and <link> tags are placed in the page head from either position.',
   BODY_END:
-    'Runs once the content is on screen. The right answer for analytics, pixels and chat widgets, and where a Tag Manager <noscript> belongs.',
+    'Runs when the page finishes loading, but still before the page is interactive. The right answer for analytics, pixels and chat widgets, and where a Tag Manager <noscript> belongs.',
 };
 
 interface ScriptDraft {

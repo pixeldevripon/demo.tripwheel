@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -142,7 +143,7 @@ function CustomerDetailBody({
         </div>
       </SheetHeader>
 
-      <div className="flex-1 divide-y overflow-y-auto px-4">
+      <SheetBody className="divide-y">
         <Section label="Contact">
           <Row
             label="Email"
@@ -199,7 +200,7 @@ function CustomerDetailBody({
             Copy email address
           </Button>
         </Section>
-      </div>
+      </SheetBody>
     </>
   );
 }

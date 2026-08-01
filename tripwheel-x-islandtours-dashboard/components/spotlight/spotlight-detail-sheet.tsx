@@ -15,6 +15,7 @@ import { Cancel01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -113,7 +114,7 @@ function SpotlightDetailBody({
         </div>
       </SheetHeader>
 
-      <div className="flex-1 divide-y overflow-y-auto px-4">
+      <SheetBody className="divide-y">
         <Section label="Tour">
           <Row
             label="Tour"
@@ -245,7 +246,7 @@ function SpotlightDetailBody({
             </p>
           </Section>
         )}
-      </div>
+      </SheetBody>
 
       {canApprove && req.status === 'REQUESTED' && (
         <SheetFooter className="flex-row justify-end gap-2 border-t">

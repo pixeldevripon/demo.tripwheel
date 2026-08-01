@@ -14,6 +14,7 @@ import { StarIcon } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -110,7 +111,7 @@ function LocalsFavouriteDetailBody({
         </div>
       </SheetHeader>
 
-      <div className="flex-1 divide-y overflow-y-auto px-4">
+      <SheetBody className="divide-y">
         <Section label="Tour">
           <Row
             label="Tour"
@@ -228,7 +229,7 @@ function LocalsFavouriteDetailBody({
           )}
           <Row label="Updated" value={formatDate(t.updatedAt, 'long')} />
         </Section>
-      </div>
+      </SheetBody>
 
       <SheetFooter className="flex-row justify-end gap-2 border-t">
         <Button

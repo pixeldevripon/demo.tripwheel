@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { PlusSignIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -20,11 +22,13 @@ import {
     Select,
     SelectContent,
     SelectItem,
+    SelectSeparator,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
 import { useDesignations, useInviteStaff } from '@/hooks/staff/use-staff';
 import type { StaffScope } from '@/types/staff';
+import { DesignationEditSheet } from './designation-edit-sheet';
 
 const inviteSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -79,6 +83,11 @@ export function StaffInviteDialog({
     const { mutate: invite, isPending } = useInviteStaff(scope);
     const [designationId, setDesignationId] = useState<string>(NO_DESIGNATION);
     const [seatRole, setSeatRole] = useState<'MANAGER' | 'STAFF'>('STAFF');
+    // The "Add designation" action inside the dropdown: the select must be
+    // controlled (the action closes it), and the create sheet stacks over
+    // this dialog (its portal means clicks inside it register as "outside").
+    const [designationSelectOpen, setDesignationSelectOpen] = useState(false);
+    const [createSheetOpen, setCreateSheetOpen] = useState(false);
 
     const {
         register,
@@ -111,7 +120,17 @@ export function StaffInviteDialog({
 
     return (
         <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(o) : close())}>
-            <DialogContent className='sm:max-w-md'>
+            <DialogContent
+                className='sm:max-w-md'
+                // While the create-designation sheet is stacked on top, every
+                // interaction inside it happens outside THIS dialog's portal -
+                // without the guards the dialog dismisses under the sheet.
+                onInteractOutside={(e) => {
+                    if (createSheetOpen) e.preventDefault();
+                }}
+                onEscapeKeyDown={(e) => {
+                    if (createSheetOpen) e.preventDefault();
+                }}>
                 <DialogHeader>
                     <DialogTitle>
                         {scope === 'platform'
@@ -192,6 +211,8 @@ export function StaffInviteDialog({
                     <Field>
                         <Label>Designation</Label>
                         <Select
+                            open={designationSelectOpen}
+                            onOpenChange={setDesignationSelectOpen}
                             value={designationId}
                             onValueChange={setDesignationId}>
                             <SelectTrigger className='w-full'>
@@ -208,6 +229,23 @@ export function StaffInviteDialog({
                                         {designation.name}
                                     </SelectItem>
                                 ))}
+                                <SelectSeparator />
+                                {/* Deliberately NOT a SelectItem - it must
+                                    never become the field's value. It swaps
+                                    the dropdown for the create sheet. */}
+                                <button
+                                    type='button'
+                                    className='flex w-full cursor-pointer items-center gap-2.5 rounded-sm py-2 pr-8 pl-3 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground'
+                                    onClick={() => {
+                                        setDesignationSelectOpen(false);
+                                        setCreateSheetOpen(true);
+                                    }}>
+                                    <HugeiconsIcon
+                                        icon={PlusSignIcon}
+                                        className='size-3.5 shrink-0'
+                                    />
+                                    Add designation
+                                </button>
                             </SelectContent>
                         </Select>
                         <FieldDescription>
@@ -215,6 +253,16 @@ export function StaffInviteDialog({
                         </FieldDescription>
                     </Field>
                 </form>
+
+                {/* Quick-create, stacked over the invite dialog; the new
+                    designation is auto-selected above once it exists. */}
+                <DesignationEditSheet
+                    scope={scope}
+                    open={createSheetOpen}
+                    onOpenChange={setCreateSheetOpen}
+                    designation={null}
+                    onCreated={(created) => setDesignationId(created.id)}
+                />
 
                 <DialogFooter>
                     <Button

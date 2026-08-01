@@ -260,3 +260,52 @@ export function isStepComplete(
         .filter(c => CHECK_STEP[c.key] === step)
         .every(c => c.passed);
 }
+
+/**
+ * Steps whose completeness is VACUOUS - they own no readiness check, so
+ * `isStepComplete` returns `[].every() === true` for them the instant a draft
+ * exists.
+ *
+ * That is the right answer to "is anything outstanding here" and the wrong one
+ * to "have you done this". On a freshly minted draft the rail ticked Booking
+ * rules, Location and Reach before the operator had opened any of them, which
+ * read as the wizard pre-completing the tour (operator test report 2026-08-01
+ * §01). `WizardProgress` uses this to hold the tick until the step has been
+ * visited - while CREATING only; editing is hub-and-spoke and a tick there
+ * correctly means "nothing left to do".
+ *
+ * `basics` is deliberately NOT in this set even though it owns no check: its
+ * requirements are enforced by `POST /tours`, so the draft's existence IS the
+ * proof it was filled.
+ */
+const VACUOUS_STEPS: readonly WizardStepId[] = ['rules', 'location', 'reach'];
+
+export function isStepVacuous(step: WizardStepId): boolean {
+    return VACUOUS_STEPS.includes(step);
+}
+
+/**
+ * Where a bare `/trips/{id}/edit` should land while a draft is still being
+ * created: the first step with work left on it.
+ *
+ * A bare URL used to fall through to the Review hub, which is right for a
+ * published tour and wrong for one mid-build - `/trips/{id}` redirects without
+ * a `?step=`, and so does any reload after an error, so an operator who was on
+ * step 2 was teleported to step 9 of a tour with nothing in it (operator test
+ * report 2026-08-01 §01).
+ *
+ * The overview check is treated as PASSING here on purpose. It lives on the
+ * translation record, not the tour, so honouring it would make this landing
+ * decision wait on a second request - and a landing that moves once the
+ * request resolves is worse than one that is occasionally one step optimistic.
+ * The rail still shows the step as incomplete, and Review still lists it.
+ */
+export function firstIncompleteStep(trip: TripListItem): WizardStepId {
+    const found = WIZARD_STEPS.find(
+        def =>
+            def.id !== REVIEW_STEP &&
+            !isStepVacuous(def.id) &&
+            !isStepComplete(def.id, trip, true),
+    );
+    return found?.id ?? REVIEW_STEP;
+}

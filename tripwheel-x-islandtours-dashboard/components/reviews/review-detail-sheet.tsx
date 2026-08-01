@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -135,7 +136,7 @@ export function ReviewDetailSheet({
                     </div>
                 </SheetHeader>
 
-                <div className='min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 pb-8'>
+                <SheetBody className='space-y-6 py-4 pb-8'>
                     {/* The traveler's words - the reason this sheet exists - come first. */}
                     <section>
                         {review.title && (
@@ -266,7 +267,7 @@ export function ReviewDetailSheet({
                             </p>
                         )}
                     </section>
-                </div>
+                </SheetBody>
 
                 {canApprove && (
                     <SheetFooter className='border-t'>

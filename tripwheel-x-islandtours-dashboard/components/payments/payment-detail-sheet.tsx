@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -98,7 +99,7 @@ function PaymentDetailBody({
         </div>
       </SheetHeader>
 
-      <div className="flex-1 divide-y overflow-y-auto px-4">
+      <SheetBody className="divide-y">
         <Section label="Payment">
           <div className="mb-2 divide-y rounded-lg border bg-muted/30">
             <MoneyRow
@@ -211,7 +212,7 @@ function PaymentDetailBody({
             </Button>
           </div>
         </Section>
-      </div>
+      </SheetBody>
     </>
   );
 }

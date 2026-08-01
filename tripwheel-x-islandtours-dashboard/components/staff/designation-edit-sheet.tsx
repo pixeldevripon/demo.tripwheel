@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
+    SheetBody,
     SheetContent,
     SheetDescription,
     SheetFooter,
@@ -29,6 +30,11 @@ interface DesignationEditSheetProps {
     onOpenChange: (open: boolean) => void;
     /** Null = create mode. */
     designation: StaffDesignation | null;
+    /**
+     * Create mode only: receives the created row before the sheet closes.
+     * The invite dialog uses it to auto-select the fresh designation.
+     */
+    onCreated?: (designation: StaffDesignation) => void;
 }
 
 /**
@@ -42,6 +48,7 @@ export function DesignationEditSheet({
     open,
     onOpenChange,
     designation,
+    onCreated,
 }: DesignationEditSheetProps) {
     const { data: catalog } = usePermissionCatalog(scope);
     const { mutate: createDesignation, isPending: creating } =
@@ -87,7 +94,10 @@ export function DesignationEditSheet({
             );
         } else {
             createDesignation(payload, {
-                onSuccess: () => onOpenChange(false),
+                onSuccess: (created) => {
+                    onCreated?.(created);
+                    onOpenChange(false);
+                },
             });
         }
     }
@@ -109,7 +119,7 @@ export function DesignationEditSheet({
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className='min-h-0 flex-1 space-y-4 overflow-y-auto p-4'>
+                <SheetBody className='space-y-4 py-4'>
                     <div className='grid gap-4 sm:grid-cols-2'>
                         <Field>
                             <Label>
@@ -150,7 +160,7 @@ export function DesignationEditSheet({
                             onChange={setPermissions}
                         />
                     </div>
-                </div>
+                </SheetBody>
 
                 <SheetFooter className='flex-row justify-end gap-2 border-t'>
                     <Button

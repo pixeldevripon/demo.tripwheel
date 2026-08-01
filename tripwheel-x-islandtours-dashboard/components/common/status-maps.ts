@@ -244,7 +244,7 @@ export const TRIP_STATUS: Record<TripStatus, StatusMeta> = {
     PAUSED: {
         label: 'Paused',
         variant: 'warning',
-        hint: 'Temporarily hidden; no new bookings. Resuming is done by Island Tours - contact us to go live again',
+        hint: 'Temporarily hidden; no new bookings. Island Tours resumes it - use "Ask to go live again" to request that',
     },
     ARCHIVED: {
         label: 'Archived',

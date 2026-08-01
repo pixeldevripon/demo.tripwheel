@@ -46,7 +46,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { tourUrl } from '@/lib/public-site';
-import type { TripListItem } from '@/types/trip';
+import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripDeleteDialog } from './trip-delete-dialog';
 import { TripArchiveDialog } from './trip-archive-dialog';
 
@@ -99,14 +99,37 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   // approves/rejects and publishes. Pause/archive stay available to the
   // operator (downward transitions are always safe).
   const isPlatform = can('MANAGE_TRIPS');
+  // Every exit from PAUSED and ARCHIVED is MANAGE_TRIPS (unpause / restore /
+  // publish), so an operator whose tour was paused had ONE action left -
+  // archive it, i.e. further down - and one whose tour was archived had none
+  // at all. A dead end they could not talk their way out of (operator test
+  // report 2026-08-01 §02). Asking is the half of conflict #1 that belongs to
+  // them: submitting stamps a request, it never moves the status.
+  const REQUESTABLE: TripStatus[] = ['DRAFT', 'PAUSED', 'ARCHIVED'];
   const canSubmitForReview =
     !isPlatform &&
     can('EDIT_TRIP') &&
-    trip.status === 'DRAFT' &&
+    REQUESTABLE.includes(trip.status) &&
     (trip.approvalStatus === 'NOT_SUBMITTED' ||
       trip.approvalStatus === 'REJECTED');
   const canDecideReview =
-    isPlatform && trip.status === 'DRAFT' && trip.approvalStatus === 'PENDING';
+    isPlatform &&
+    REQUESTABLE.includes(trip.status) &&
+    trip.approvalStatus === 'PENDING';
+
+  /**
+   * The same request reads differently depending on where the tour is, and the
+   * generic "Submit for review" told a paused-tour operator nothing about what
+   * they were asking for.
+   */
+  const submitLabel =
+    trip.status === 'PAUSED'
+      ? 'Ask to go live again'
+      : trip.status === 'ARCHIVED'
+        ? 'Ask to bring this back'
+        : trip.approvalStatus === 'REJECTED'
+          ? 'Resubmit for review'
+          : 'Submit for review';
 
   function handleSubmitForReview() {
     submitForReview(trip.id, {
@@ -230,9 +253,7 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
                 disabled={isLifecyclePending}
               >
                 <HugeiconsIcon icon={SentIcon} />
-                {trip.approvalStatus === 'REJECTED'
-                  ? 'Resubmit for review'
-                  : 'Submit for review'}
+                {submitLabel}
               </DropdownMenuItem>
             </>
           )}
