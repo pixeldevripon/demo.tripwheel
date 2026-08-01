@@ -133,6 +133,27 @@ function PaymentInner({
 
     const [card, setCard] = useState({ postal: '', name: '' });
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    /**
+     * Write a card field and drop any error sitting on it.
+     *
+     * The errors map is only ever rebuilt by `handleReserve`, so without this a
+     * "This field is required" message survived the traveller filling the field
+     * in - the postal code read 3724 with a red border and the required error
+     * still under it, until they pressed Pay again (test report 2026-08-01).
+     *
+     * Clears rather than re-validates, matching the rest of the site: checking
+     * on every keystroke flashes the error back while a value is half-typed.
+     * The submit path is still the authority on whether the field is valid.
+     */
+    const setCardField = (key: 'postal' | 'name', value: string) => {
+        setCard(p => ({ ...p, [key]: value }));
+        setErrors(p => {
+            if (!p[key]) return p;
+            const { [key]: _cleared, ...rest } = p;
+            return rest;
+        });
+    };
     const [formError, setFormError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
 
@@ -340,18 +361,14 @@ function PaymentInner({
                         <Field
                             label={dict.nameOnCard}
                             value={card.name}
-                            onChange={(v) =>
-                                setCard((p) => ({ ...p, name: v }))
-                            }
+                            onChange={v => setCardField('name', v)}
                             error={errors.name}
                         />
                         <Field
                             label={dict.postalCode}
                             required
                             value={card.postal}
-                            onChange={(v) =>
-                                setCard((p) => ({ ...p, postal: v }))
-                            }
+                            onChange={v => setCardField('postal', v)}
                             error={errors.postal}
                         />
                     </div>
