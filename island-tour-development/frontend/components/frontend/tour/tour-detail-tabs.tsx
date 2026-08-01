@@ -71,10 +71,15 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
     };
 
     return (
-        <div ref={barRef} className='sticky top-18 z-30 bg-it-white md:top-20'>
+        // Design v2 .toc: sticky under the navbar on the blurred white band
+        // with the divider hairline. (No position:fixed children may live in
+        // here - backdrop-filter creates a containing block.)
+        <div
+            ref={barRef}
+            className='sticky top-16 z-30 bg-(--it-frow-bg) backdrop-blur-[8px]'>
             <div
                 ref={scrollRef}
-                className='flex overflow-x-auto overflow-y-hidden border-b border-it-heading/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className='flex gap-0.5 overflow-x-auto overflow-y-hidden border-b border-it-divider [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (
@@ -83,10 +88,10 @@ export function TourDetailTabs({ tabs }: { tabs: TourTab[] }) {
                             type='button'
                             onClick={() => goTo(t.id)}
                             aria-current={isActive ? 'true' : undefined}
-                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-5 py-4 text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 md:px-7.5 md:py-5 md:text-[20px] ${
+                            className={`relative -mb-px shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent px-[13px] py-3 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                                 isActive
-                                    ? 'font-medium text-it-heading'
-                                    : 'font-normal text-it-text-muted hover:text-it-heading'
+                                    ? 'font-bold text-it-primary-hover'
+                                    : 'font-semibold text-it-text-muted hover:text-it-ink'
                             }`}>
                             {t.label}
                             {/* Underline slides between tabs (shared layoutId). */}

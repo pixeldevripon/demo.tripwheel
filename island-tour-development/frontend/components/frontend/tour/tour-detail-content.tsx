@@ -573,7 +573,7 @@ export async function TourDetailContent({
                             <TourDetailTabs tabs={sectionTabs} />
 
                         {/* Content sections - left-aligned readable measure. */}
-                        <div className='flex max-w-178.5 flex-col gap-10'>
+                        <div className='flex max-w-178.5 flex-col gap-[34px]'>
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
@@ -628,8 +628,7 @@ export async function TourDetailContent({
                                 )}
                             </TourSection>
 
-                            <div className='h-px w-full bg-it-heading/10' />
-
+                            
                             {(includedItems.length > 0 ||
                                 excludedItems.length > 0) && (
                                 <>
@@ -682,8 +681,7 @@ export async function TourDetailContent({
                                         </div>
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {(expectIntro || expectSteps.length > 0) && (
@@ -744,8 +742,7 @@ export async function TourDetailContent({
                                         )}
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {meetingBlock && (
@@ -761,8 +758,7 @@ export async function TourDetailContent({
                                         />
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             {infoGroups.length > 0 && (
@@ -794,8 +790,7 @@ export async function TourDetailContent({
                                         </div>
                                     </TourSection>
 
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                </>
+                                                                    </>
                             )}
 
                             <TourSection
@@ -830,8 +825,7 @@ export async function TourDetailContent({
                                 not end on a hairline under the last section. */}
                             {hasReviewsSection && (
                                 <>
-                                    <div className='h-px w-full bg-it-heading/10' />
-                                    <Suspense
+                                                                        <Suspense
                                         fallback={
                                             <TourReviewsSectionSkeleton
                                                 count={Math.min(10, ownReviewCount)}
