@@ -88,6 +88,17 @@ export function useSaveInstagramCredentials() {
  * `posts` is invalidated too. The tiles themselves survive - they are rows in
  * our database, not Instagram's - but the dashboard list labels which of them
  * reach the page, and after this none of them do.
+ *
+ * `account` as well, because the backend now clears the resolved handle with the
+ * token (it belongs to the account the token authenticated, and is not a setting
+ * anyone typed). Without this the panel kept the old @handle on screen until a
+ * reload - reading as though we were still connected to it.
+ *
+ * Safe HERE specifically, and not in `useSaveInstagramCredentials`: this button
+ * stands alone, whereas that one runs inside the settings form, which PATCHes
+ * the account immediately afterwards. Invalidating `account` there raced that
+ * write - see the note on that hook - and it needs no fix anyway, since the
+ * PATCH's own success invalidates `account` once the write has landed.
  */
 export function useRemoveInstagramCredentials() {
   const qc = useQueryClient();
@@ -97,6 +108,7 @@ export function useRemoveInstagramCredentials() {
       qc.invalidateQueries({ queryKey: instagramKeys.credentials() });
       qc.invalidateQueries({ queryKey: instagramKeys.connection() });
       qc.invalidateQueries({ queryKey: instagramKeys.posts() });
+      qc.invalidateQueries({ queryKey: instagramKeys.account() });
       toast.success('Access token removed. The Instagram section is now hidden.');
     },
     onError,
