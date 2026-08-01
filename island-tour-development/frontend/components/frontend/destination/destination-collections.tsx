@@ -29,7 +29,11 @@ export function DestinationCollections({
     if (collections.length === 0) return null;
 
     return (
-        <section id="collections" className='bg-it-white pt-11 md:pt-14'>
+        /* pb closes the white zone: with the Instagram feed disabled this is
+           the last white section, and the cards sat flush against the grey FAQ
+           band. When the feed IS on, it drops its own pt via the #collections+
+           sibling variant, so the gap never doubles. */
+        <section id="collections" className='bg-it-white pt-11 pb-11 md:pt-14 md:pb-16'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-5'>
                     {/* ── Section heading (design v2 sechead) ───────────────── */}

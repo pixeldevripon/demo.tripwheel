@@ -1,20 +1,23 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
+import type { TravellerBooking } from '@/lib/api/public/traveller';
+import {
+    requestCancellationClient,
+    withdrawCancellationClient,
+} from '@/lib/api/traveller-login';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import type { TravellerBooking } from '@/lib/api/public/traveller';
 import { crossFade } from '@/lib/motion';
-import { requestCancellationClient } from '@/lib/api/traveller-login';
 
 import { TravellerChip } from './traveller-chip';
 import {
-    formatDeadline,
     formatDay,
     formatDayShort,
+    formatDeadline,
     isPositive,
     money,
 } from './traveller-format';
@@ -67,6 +70,20 @@ export function TravellerCancelPanel({
         router.refresh();
     }
 
+    async function withdraw() {
+        if (busy) return;
+        setBusy(true);
+        setFailed(false);
+        const ok = await withdrawCancellationClient(booking.publicRef);
+        setBusy(false);
+        if (!ok) {
+            setFailed(true);
+            return;
+        }
+        // Re-render from the server so the row returns to its normal state.
+        router.refresh();
+    }
+
     if (booking.cancellationBlockedReason === 'ALREADY_REQUESTED') {
         const note =
             booking.requestedInFreeWindow === true
@@ -79,7 +96,10 @@ export function TravellerCancelPanel({
                   : null;
         return (
             <div className='rounded-[12px] bg-it-surface px-4 py-3.5'>
-                <TravellerChip label={dict.cancelRequestedChip} tone='pending' />
+                <TravellerChip
+                    label={dict.cancelRequestedChip}
+                    tone='pending'
+                />
                 <p className='mt-2 mb-0 text-[13.5px] leading-[1.6] text-it-text-muted'>
                     {dict.cancelRequestedOn.replace(
                         '{date}',
@@ -91,6 +111,24 @@ export function TravellerCancelPanel({
                         {note}
                     </p>
                 )}
+                {/* The way back (QA 2026-08-01): while the request is still
+                    pending - i.e. no admin has executed it - the traveller can
+                    withdraw it themselves and the booking simply stands. */}
+                {failed && (
+                    <p
+                        role='alert'
+                        className='mt-2 mb-0 text-[13px] text-it-error'>
+                        {dict.cancelFailed}
+                    </p>
+                )}
+                <motion.button
+                    type='button'
+                    disabled={busy}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => void withdraw()}
+                    className='mt-3 rounded-full border-[1.5px] border-it-heading/20 px-4.5 py-2.25 text-[14px] font-semibold text-it-heading transition-colors hover:border-it-heading/40 disabled:opacity-60'>
+                    {busy ? dict.cancelWithdrawing : dict.cancelWithdraw}
+                </motion.button>
             </div>
         );
     }
@@ -232,3 +270,4 @@ export function TravellerCancelPanel({
         </div>
     );
 }
+

@@ -1,14 +1,16 @@
 'use client';
 
+import { MotionButton } from '@/components/frontend/motion-primitives';
+import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { fetchTourReviews } from '@/lib/api/reviews';
+import { type Locale } from '@/lib/constants/locales';
+import { springPop } from '@/lib/motion';
+import { toFullReview } from '@/lib/reviews/review-view';
+import type { ReviewFacet, ReviewSort, ThemeFacet } from '@/types/review';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { type Locale } from '@/lib/constants/locales';
-import { fetchTourReviews } from '@/lib/api/reviews';
-import { toFullReview } from '@/lib/reviews/review-view';
-import { MotionButton } from '@/components/frontend/motion-primitives';
-import { springPop } from '@/lib/motion';
-import type { ReviewFacet, ReviewSort, ThemeFacet } from '@/types/review';
 
 export type ReviewHistogramRow = { stars: number; count: number };
 
@@ -76,6 +78,9 @@ export type TourReviewsSectionDict = {
     /** Phase 7 photo-forward cards. */
     photoOpen: string;
     photoClose: string;
+    /** Lightbox prev/next navigation. */
+    photoPrev: string;
+    photoNext: string;
     /** Phase 7 depth filters. */
     filterGuest: string;
     filterLanguage: string;
@@ -93,7 +98,10 @@ export type TourReviewsSectionDict = {
 // the endpoint that backed them took no identity at all, so the counter was
 // forgeable. `sortHelpful` stays in the dict (unused) so re-enabling it in V2 is
 // not a seven-locale copy change.
-const SORT_OPTIONS: { value: ReviewSort; labelKey: keyof TourReviewsSectionDict }[] = [
+const SORT_OPTIONS: {
+    value: ReviewSort;
+    labelKey: keyof TourReviewsSectionDict;
+}[] = [
     { value: 'newest', labelKey: 'sortNewest' },
     { value: 'rating_desc', labelKey: 'sortRatingHigh' },
     { value: 'rating_asc', labelKey: 'sortRatingLow' },
@@ -126,13 +134,13 @@ const GUEST_TYPE_KEYS: Record<string, keyof TourReviewsSectionDict> = {
 function languageLabel(code: string, locale: Locale): string {
     try {
         return (
-            new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code
+            new Intl.DisplayNames([locale], { type: 'language' }).of(code) ??
+            code
         );
     } catch {
         return code;
     }
 }
-
 
 /**
  * Full reviews section (Figma node 47936:3804) - the `#tour-reviews` target of
@@ -215,6 +223,11 @@ export function TourReviewsSection({
     const [photoFilter, setPhotoFilter] = useState(false);
     const [languageFilter, setLanguageFilter] = useState<string | null>(null);
     const [matchTotal, setMatchTotal] = useState(total);
+    /** Index of the strip photo opened in the lightbox, or null. */
+    const [stripLightbox, setStripLightbox] = useState<number | null>(null);
+    // Mouse users can't reach overflowed tiles behind a hidden scrollbar -
+    // drag-to-scroll gives the strip the same "swipe" touch already has.
+    const stripRef = useDragScroll<HTMLDivElement>();
 
     /**
      * Hydration marker, for tests and for anything that needs to know this
@@ -309,7 +322,9 @@ export function TourReviewsSection({
                 ...(f.photos && { withPhotos: true }),
                 ...(f.language !== null && { writtenIn: f.language }),
             });
-            const mapped = res.data.map(r => toFullReview(r, locale, hostLabel, dict.responseByPlatform));
+            const mapped = res.data.map(r =>
+                toFullReview(r, locale, hostLabel, dict.responseByPlatform)
+            );
             setReviews(prev => (append ? [...prev, ...mapped] : mapped));
             setMatchTotal(res.total);
             setLoadedPages(page);
@@ -460,7 +475,9 @@ export function TourReviewsSection({
                                     <MotionButton
                                         key={row.stars}
                                         type='button'
-                                        onClick={() => handleStarClick(row.stars)}
+                                        onClick={() =>
+                                            handleStarClick(row.stars)
+                                        }
                                         disabled={loading || row.count === 0}
                                         aria-pressed={active}
                                         aria-label={starLabel(row.stars)}
@@ -515,7 +532,9 @@ export function TourReviewsSection({
                                         : 'border-it-border bg-it-white text-it-heading hover:border-it-heading'
                                 }`}>
                                 {theme.tag}
-                                <span className='ml-2 opacity-60'>{theme.count}</span>
+                                <span className='ml-2 opacity-60'>
+                                    {theme.count}
+                                </span>
                             </MotionButton>
                         );
                     })}
@@ -534,14 +553,18 @@ export function TourReviewsSection({
                                 value={guestFilter ?? ''}
                                 disabled={loading}
                                 onChange={e =>
-                                    applyFilter({ guest: e.target.value || null })
+                                    applyFilter({
+                                        guest: e.target.value || null,
+                                    })
                                 }
                                 className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
                                 <option value=''>{dict.filterAny}</option>
                                 {guestTypes.map(g => (
                                     <option key={g.value} value={g.value}>
-                                        {(dict[GUEST_TYPE_KEYS[g.value]] ??
-                                            g.value) as string}{' '}
+                                        {
+                                            (dict[GUEST_TYPE_KEYS[g.value]] ??
+                                                g.value) as string
+                                        }{' '}
                                         ({g.count})
                                     </option>
                                 ))}
@@ -564,7 +587,8 @@ export function TourReviewsSection({
                                 <option value=''>{dict.filterAny}</option>
                                 {languages.map(l => (
                                     <option key={l.value} value={l.value}>
-                                        {languageLabel(l.value, locale)} ({l.count})
+                                        {languageLabel(l.value, locale)} (
+                                        {l.count})
                                     </option>
                                 ))}
                             </select>
@@ -574,7 +598,9 @@ export function TourReviewsSection({
                     {showPhotoFilter && (
                         <MotionButton
                             type='button'
-                            onClick={() => applyFilter({ photos: !photoFilter })}
+                            onClick={() =>
+                                applyFilter({ photos: !photoFilter })
+                            }
                             disabled={loading}
                             aria-pressed={photoFilter}
                             whileTap={{ scale: 0.95 }}
@@ -585,7 +611,9 @@ export function TourReviewsSection({
                                     : 'border-it-border bg-it-white text-it-heading hover:border-it-heading'
                             }`}>
                             {dict.filterWithPhotos}
-                            <span className='ml-2 opacity-60'>{photoCount}</span>
+                            <span className='ml-2 opacity-60'>
+                                {photoCount}
+                            </span>
                         </MotionButton>
                     )}
                 </div>
@@ -633,13 +661,17 @@ export function TourReviewsSection({
                                 <select
                                     value={sort}
                                     onChange={e =>
-                                        handleSortChange(e.target.value as ReviewSort)
+                                        handleSortChange(
+                                            e.target.value as ReviewSort
+                                        )
                                     }
                                     disabled={loading}
                                     aria-label={dict.sortBy}
                                     className='cursor-pointer appearance-none rounded-it-full border border-it-border bg-it-white py-2 pr-12 pl-6 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading disabled:cursor-default disabled:opacity-60'>
                                     {SORT_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>
+                                        <option
+                                            key={opt.value}
+                                            value={opt.value}>
                                             {dict[opt.labelKey]}
                                         </option>
                                     ))}
@@ -666,21 +698,42 @@ export function TourReviewsSection({
                     <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
                         {dict.photosTitle}
                     </h3>
-                    <div className='flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                    {/* 4:3 tiles rather than circles: a circle crop hides half
+                        the photo, and these exist to be looked at. Click opens
+                        the full image; drag/swipe scrolls the strip. */}
+                    {/* No scroll-smooth here: the drag-to-scroll hook assigns
+                        scrollLeft directly, and smooth behaviour turns each
+                        assignment into a competing animation the snap then
+                        yanks back. */}
+                    <div
+                        ref={stripRef}
+                        className='flex snap-x snap-mandatory gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                         {photoStrip.map((src, i) => (
-                            <div
+                            <button
                                 key={`${src}-${i}`}
-                                className='relative size-20 shrink-0 snap-start overflow-hidden rounded-it-full bg-it-border'>
+                                type='button'
+                                onClick={() => setStripLightbox(i)}
+                                aria-label={dict.photoOpen}
+                                className='relative aspect-[4/3] h-20 shrink-0 cursor-pointer snap-start overflow-hidden rounded-it-md border-0 bg-it-border p-0'>
                                 <Image
                                     src={src}
                                     alt=''
                                     fill
-                                    sizes='80px'
-                                    className='object-cover'
+                                    sizes='107px'
+                                    className='object-cover transition-opacity duration-300 hover:opacity-90'
                                 />
-                            </div>
+                            </button>
                         ))}
                     </div>
+                    {stripLightbox !== null && photoStrip[stripLightbox] && (
+                        <PhotoLightbox
+                            photos={photoStrip}
+                            index={stripLightbox}
+                            onClose={() => setStripLightbox(null)}
+                            onIndexChange={setStripLightbox}
+                            dict={dict}
+                        />
+                    )}
                 </div>
             )}
 
@@ -708,7 +761,11 @@ export function TourReviewsSection({
             ) : (
                 <div className='flex flex-col gap-4'>
                     {reviews.map(review => (
-                        <ReviewCard key={review.id} review={review} dict={dict} />
+                        <ReviewCard
+                            key={review.id}
+                            review={review}
+                            dict={dict}
+                        />
                     ))}
                 </div>
             )}
@@ -741,10 +798,14 @@ function ReviewCard({
     const [showingOriginal, setShowingOriginal] = useState(false);
     /** Index of the photo opened full-size, or null. */
     const [lightbox, setLightbox] = useState<number | null>(null);
+    const photoRowRef = useDragScroll<HTMLDivElement>();
     const hasPhotos = Boolean(review.photos && review.photos.length > 0);
-    const canToggle = review.isMachineTranslated && Boolean(review.originalText);
+    const canToggle =
+        review.isMachineTranslated && Boolean(review.originalText);
     const body =
-        showingOriginal && review.originalText ? review.originalText : review.text;
+        showingOriginal && review.originalText
+            ? review.originalText
+            : review.text;
 
     const guestKey = review.guestType
         ? GUEST_TYPE_KEYS[review.guestType]
@@ -798,9 +859,7 @@ function ReviewCard({
                                 {'★'.repeat(review.rating)}
                             </span>
                             {/* FE-8 travel month + guest type */}
-                            {meta.length > 0 && (
-                                <span>{meta.join(' · ')}</span>
-                            )}
+                            {meta.length > 0 && <span>{meta.join(' · ')}</span>}
                         </span>
                     </div>
                 </div>
@@ -812,7 +871,9 @@ function ReviewCard({
                     Horizontal scroll rather than wrap: a review with four
                     photos should not push the next card off the fold. */}
                 {hasPhotos && (
-                    <div className='-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                    <div
+                        ref={photoRowRef}
+                        className='-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                         {review.photos!.map((src, i) => (
                             <button
                                 key={`${src}-${i}`}
@@ -854,7 +915,7 @@ function ReviewCard({
                                 ? dict.showTranslation
                                 : dict.showOriginal.replace(
                                       '{language}',
-                                      review.originalLanguage,
+                                      review.originalLanguage
                                   )}
                         </MotionButton>
                     </div>
@@ -879,39 +940,107 @@ function ReviewCard({
                 </div>
             )}
             {/* Full-size view. A photo-forward card is only worth it if the
-                photo can actually be looked at; the inline tile is a preview.
-                Plain fixed overlay rather than a dialog library - it has one
-                job, closes on click and on Escape, and adds no dependency. */}
+                photo can actually be looked at; the inline tile is a preview. */}
             {lightbox !== null && review.photos?.[lightbox] && (
-                <div
-                    role='dialog'
-                    aria-modal='true'
-                    aria-label={dict.photoOpen}
-                    tabIndex={-1}
-                    onClick={() => setLightbox(null)}
-                    onKeyDown={e => {
-                        if (e.key === 'Escape') setLightbox(null);
-                    }}
-                    ref={el => el?.focus()}
-                    className='fixed inset-0 z-100 flex cursor-zoom-out items-center justify-center bg-black/80 p-4'>
-                    <div className='relative h-full max-h-[80vh] w-full max-w-4xl'>
-                        <Image
-                            src={review.photos[lightbox]}
-                            alt=''
-                            fill
-                            sizes='100vw'
-                            className='object-contain'
-                        />
-                    </div>
-                    <button
-                        type='button'
-                        aria-label={dict.photoClose}
-                        onClick={() => setLightbox(null)}
-                        className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading'>
-                        {dict.photoClose}
-                    </button>
-                </div>
+                <PhotoLightbox
+                    photos={review.photos}
+                    index={lightbox}
+                    onClose={() => setLightbox(null)}
+                    onIndexChange={setLightbox}
+                    dict={dict}
+                />
             )}
         </article>
     );
 }
+
+/**
+ * Full-size photo view shared by the guest-photo strip and the review cards.
+ * Plain fixed overlay rather than a dialog library - it has one job, closes on
+ * backdrop click and Escape, and adds no dependency. With more than one photo
+ * it pages via the arrow buttons or the keyboard arrows (wrapping), so a set
+ * can be browsed without reopening tile by tile.
+ */
+function PhotoLightbox({
+    photos,
+    index,
+    onClose,
+    onIndexChange,
+    dict,
+}: {
+    photos: string[];
+    index: number;
+    onClose: () => void;
+    onIndexChange: (next: number) => void;
+    dict: TourReviewsSectionDict;
+}) {
+    const hasMany = photos.length > 1;
+    const goPrev = () =>
+        onIndexChange((index - 1 + photos.length) % photos.length);
+    const goNext = () => onIndexChange((index + 1) % photos.length);
+
+    return (
+        <div
+            role='dialog'
+            aria-modal='true'
+            aria-label={dict.photoOpen}
+            tabIndex={-1}
+            onClick={onClose}
+            onKeyDown={e => {
+                if (e.key === 'Escape') onClose();
+                else if (hasMany && e.key === 'ArrowLeft') goPrev();
+                else if (hasMany && e.key === 'ArrowRight') goNext();
+            }}
+            // Inline on purpose: the callback's identity changes per render,
+            // so React re-runs it on every index change - which re-focuses
+            // the dialog after a prev/next button click steals focus, keeping
+            // the arrow keys and Escape working. Do not "stabilize" this ref.
+            ref={el => el?.focus()}
+            className='fixed inset-0 z-100 flex cursor-zoom-out items-center justify-center bg-black/80 p-4'>
+            <div className='relative h-full max-h-[80vh] w-full max-w-4xl'>
+                <Image
+                    src={photos[index]}
+                    alt=''
+                    fill
+                    sizes='100vw'
+                    className='object-contain'
+                />
+            </div>
+            {hasMany && (
+                <>
+                    <button
+                        type='button'
+                        aria-label={dict.photoPrev}
+                        onClick={e => {
+                            e.stopPropagation();
+                            goPrev();
+                        }}
+                        className='absolute left-4 top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border-0 bg-it-white/90 text-it-heading'>
+                        <ChevronLeft size={20} strokeWidth={1.5} />
+                    </button>
+                    <button
+                        type='button'
+                        aria-label={dict.photoNext}
+                        onClick={e => {
+                            e.stopPropagation();
+                            goNext();
+                        }}
+                        className='absolute right-4 top-1/2 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border-0 bg-it-white/90 text-it-heading'>
+                        <ChevronRight size={20} strokeWidth={1.5} />
+                    </button>
+                    <span className='absolute bottom-5 left-1/2 -translate-x-1/2 text-[13px] leading-[1.6] text-white/90 tabular-nums'>
+                        {index + 1} / {photos.length}
+                    </span>
+                </>
+            )}
+            <button
+                type='button'
+                aria-label={dict.photoClose}
+                onClick={onClose}
+                className='absolute top-5 right-5 cursor-pointer rounded-it-full border-0 bg-it-white/90 px-4 py-2 text-[14px] font-medium text-it-heading'>
+                {dict.photoClose}
+            </button>
+        </div>
+    );
+}
+

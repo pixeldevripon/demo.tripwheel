@@ -29,12 +29,14 @@ import {
   ListBookingsResponseDto,
   RecoverReferenceResponseDto,
   RequestCancellationResponseDto,
+  WithdrawCancellationResponseDto,
   RequestTravellerCodeResponseDto,
   ResendConfirmationResponseDto,
   ThankYouResponseDto,
   ChangeBookingDateResponseDto,
   DateChangeOptionsResponseDto,
   TravellerBookingsResponseDto,
+  TravellerContactDto,
   TravellerPaymentsResponseDto,
   TravellerReceiptDto,
   VerifyTravellerCodeResponseDto,
@@ -109,6 +111,27 @@ export const ApiCancelDocs = () =>
     }),
     ApiNotFoundResponse({ type: NotFoundErrorDto }),
     ApiConflictResponse({ type: ConflictErrorDto }),
+  );
+
+export const ApiRestoreDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Restore a cancelled booking (admin only)',
+      description:
+        'Reverses a mistaken cancellation: re-takes the seats (guarded - never ' +
+        'overbooks resold capacity), returns the booking and its unit items to ' +
+        'CONFIRMED, clears every cancellation stamp, reinstates the settlement ' +
+        'obligation and re-sends the confirmation email. Refused when a refund ' +
+        'already settled or is in flight, when the departure ran or was itself ' +
+        'cancelled, when the booking was forfeited, or when the seats were resold.',
+    }),
+    ApiOkResponse({ type: BookingResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description:
+        'Not restorable: refunded, departed, forfeited, or seats resold.',
+    }),
   );
 
 export const ApiReportNonPaymentDocs = () =>
@@ -302,6 +325,22 @@ export const ApiTravellerBookingsDocs = () =>
     }),
   );
 
+export const ApiTravellerContactDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Traveller account: checkout contact prefill',
+      description:
+        "The contact block from the caller's most recent booking, so a returning " +
+        'traveller does not retype it at checkout. `email` is always the session ' +
+        'email. `hasHistory: false` means no earlier booking - only the email is filled.',
+    }),
+    ApiOkResponse({ type: TravellerContactDto }),
+    ApiUnauthorizedResponse({
+      type: UnauthorizedErrorDto,
+      description: 'Missing, expired, or non-history session.',
+    }),
+  );
+
 export const ApiTravellerSummaryDocs = () =>
   applyDecorators(
     ApiOperation({
@@ -452,6 +491,25 @@ export const ApiRequestCancellationDocs = () =>
     ApiConflictResponse({
       type: ConflictErrorDto,
       description: 'Booking is not CONFIRMED, so there is nothing to cancel',
+    }),
+  );
+
+export const ApiWithdrawCancellationDocs = () =>
+  applyDecorators(
+    ApiOperation({
+      summary: 'Withdraw a pending cancellation request (public TYP token)',
+      description:
+        'Clears the cancellation-request stamp while the request is still pending, ' +
+        'so the booking simply stands. Notifies the admin, the traveller and the ' +
+        'operator (the exact audience the request notified). Refused once the ' +
+        'cancellation was executed - restoring is then an admin action. Requires ' +
+        'the owning traveler session, like the request itself.',
+    }),
+    ApiOkResponse({ type: WithdrawCancellationResponseDto }),
+    ApiNotFoundResponse({ type: NotFoundErrorDto }),
+    ApiConflictResponse({
+      type: ConflictErrorDto,
+      description: 'The booking was already cancelled.',
     }),
   );
 

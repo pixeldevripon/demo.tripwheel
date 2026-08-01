@@ -219,6 +219,10 @@ export class RequestCancellationResponseDto {
   @ApiProperty({ example: true }) requested!: boolean;
 }
 
+export class WithdrawCancellationResponseDto {
+  @ApiProperty({ example: true }) withdrawn!: boolean;
+}
+
 // ── Self-service date change (review 10.4, direct swap inside the free window) ──
 
 export class ChangeBookingDateDto {
@@ -987,6 +991,38 @@ export class TravellerBookingsResponseDto {
   @ApiProperty({ example: 20 }) limit!: number;
   @ApiProperty({ type: [TravellerBookingItemDto] })
   data!: TravellerBookingItemDto[];
+}
+
+/**
+ * Checkout prefill for a signed-in traveller: the contact block from their most
+ * recent booking, so a returning traveller does not retype what we already
+ * hold. `email` is always the SESSION email (never a stored value), because
+ * checkout binds the new booking to it.
+ *
+ * Traveler-safe by construction - it only ever echoes the caller's own contact
+ * details back to the caller, behind the same HISTORY-scoped session the rest
+ * of the account area uses.
+ */
+export class TravellerContactDto {
+  @ApiProperty({
+    example: true,
+    description:
+      'False when the session email has no earlier booking - only `email` is filled.',
+  })
+  hasHistory!: boolean;
+  @ApiProperty({ example: 'ada@example.com' }) email!: string;
+  @ApiPropertyOptional({ nullable: true, example: 'Ada' })
+  firstName!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'Byron' })
+  lastName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    example: '+5999123456',
+    description: 'E.164 as stored - checkout splits the dial code back out.',
+  })
+  phone!: string | null;
+  @ApiPropertyOptional({ nullable: true, example: 'CW' })
+  country!: string | null;
 }
 
 /**

@@ -1,26 +1,26 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
-import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
 import {
     ALL_CURRENCIES,
     ALL_LOCALES,
     CURRENCY_LABELS,
     CURRENCY_NAMES,
-    LOCALE_COOKIE,
     LOCALE_CURRENCY,
     LOCALE_NATIVE_LABELS,
     type Currency,
     type Locale,
 } from '@/lib/constants/locales';
 import { persistCurrency, storedCurrency } from '@/lib/currency/current';
+import { useLocaleSwitch } from '@/lib/i18n/use-locale-switch';
 import {
     dropdownUpItemMotion,
     dropdownUpMotion,
     springPop,
 } from '@/lib/motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 /**
  * Footer selector pills (language + currency) - the footer's ONLY interactive
@@ -56,7 +56,6 @@ function SelectorPill({
                 aria-expanded={open}
                 aria-busy={busy}
                 onClick={onToggle}
-                
                 transition={springPop}
                 className={`flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-it-full border-none bg-it-white px-4 transition-opacity duration-300 ${busy ? 'opacity-50' : 'opacity-100'}`}>
                 <span className='flex items-center gap-2.5'>
@@ -69,7 +68,13 @@ function SelectorPill({
                     className='inline-flex'
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={{ duration: 0.2 }}>
-                    <Image src='/footer/arrow-down.svg' alt='' width={24} height={24} className='size-4' />
+                    <Image
+                        src='/footer/arrow-down.svg'
+                        alt=''
+                        width={24}
+                        height={24}
+                        className='size-4'
+                    />
                 </motion.span>
             </motion.button>
             <AnimatePresence>{open && children}</AnimatePresence>
@@ -112,7 +117,7 @@ export function CurrencySelector({
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [currency, setCurrency] = useState<Currency>(
-        LOCALE_CURRENCY[locale] ?? 'EUR',
+        LOCALE_CURRENCY[locale] ?? 'EUR'
     );
     const ref = useRef<HTMLDivElement>(null);
 
@@ -126,7 +131,8 @@ export function CurrencySelector({
 
     useEffect(() => {
         function onPointerDown(event: PointerEvent) {
-            if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+            if (ref.current && !ref.current.contains(event.target as Node))
+                setOpen(false);
         }
         document.addEventListener('pointerdown', onPointerDown);
         return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -151,10 +157,18 @@ export function CurrencySelector({
             busy={isPending}
             label={CURRENCY_LABELS[currency]}
             open={open}
-            onToggle={() => setOpen((v) => !v)}
-            icon={<Image src='/footer/currency.svg' alt='' width={24} height={24} className='size-6' />}>
+            onToggle={() => setOpen(v => !v)}
+            icon={
+                <Image
+                    src='/footer/currency.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-6'
+                />
+            }>
             <SelectorMenu>
-                {ALL_CURRENCIES.map((code) => (
+                {ALL_CURRENCIES.map(code => (
                     <motion.li key={code} {...dropdownUpItemMotion}>
                         <button
                             type='button'
@@ -162,7 +176,9 @@ export function CurrencySelector({
                             aria-current={code === currency}
                             className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === currency ? 'font-medium text-it-primary' : 'text-it-ink'}`}>
                             <span>{CURRENCY_NAMES[code]}</span>
-                            <span className='text-xs uppercase text-it-ink-muted'>{code}</span>
+                            <span className='text-xs uppercase text-it-ink-muted'>
+                                {code}
+                            </span>
                         </button>
                     </motion.li>
                 ))}
@@ -172,33 +188,30 @@ export function CurrencySelector({
 }
 
 /** Interactive language selector - opens upward, switches locale (same behaviour as the navbar). */
-export function LanguageSelector({ locale, label }: { locale: Locale; label: string }) {
-    const pathname = usePathname();
-    const router = useRouter();
+export function LanguageSelector({
+    locale,
+    label,
+}: {
+    locale: Locale;
+    label: string;
+}) {
     const [open, setOpen] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const { isPending, prefetchLocales, switchLocale } =
+        useLocaleSwitch(locale);
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function onPointerDown(event: PointerEvent) {
-            if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+            if (ref.current && !ref.current.contains(event.target as Node))
+                setOpen(false);
         }
         document.addEventListener('pointerdown', onPointerDown);
         return () => document.removeEventListener('pointerdown', onPointerDown);
     }, []);
 
-    function switchLocale(next: Locale) {
+    function pickLocale(next: Locale) {
         setOpen(false);
-        if (next === locale) return;
-        const segments = pathname.split('/');
-        segments[1] = next;
-        const nextPath = segments.join('/') || `/${next}`;
-        document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-        // scroll: false keeps the reader in the footer; startTransition swaps the
-        // localized content in place instead of flashing a loading state.
-        startTransition(() => {
-            router.push(nextPath, { scroll: false });
-        });
+        switchLocale(next);
     }
 
     return (
@@ -208,18 +221,35 @@ export function LanguageSelector({ locale, label }: { locale: Locale; label: str
             busy={isPending}
             label={`${LOCALE_NATIVE_LABELS[locale]} (${locale.toUpperCase()})`}
             open={open}
-            onToggle={() => setOpen((v) => !v)}
-            icon={<Image src='/footer/globe.svg' alt='' width={24} height={24} className='size-6' />}>
+            onToggle={() =>
+                setOpen(v => {
+                    // Warm the other locale variants while the menu is open, so
+                    // the eventual switch commits instantly.
+                    if (!v) prefetchLocales();
+                    return !v;
+                })
+            }
+            icon={
+                <Image
+                    src='/footer/globe.svg'
+                    alt=''
+                    width={24}
+                    height={24}
+                    className='size-6'
+                />
+            }>
             <SelectorMenu>
-                {ALL_LOCALES.map((code) => (
+                {ALL_LOCALES.map(code => (
                     <motion.li key={code} {...dropdownUpItemMotion}>
                         <button
                             type='button'
-                            onClick={() => switchLocale(code)}
+                            onClick={() => pickLocale(code)}
                             aria-current={code === locale}
                             className={`flex w-full cursor-pointer items-center justify-between gap-3 border-none bg-transparent px-4 py-2.5 text-left text-sm transition-colors hover:bg-it-surface ${code === locale ? 'font-medium text-it-primary' : 'text-it-ink'}`}>
                             <span>{LOCALE_NATIVE_LABELS[code]}</span>
-                            <span className='text-xs uppercase text-it-ink-muted'>{code}</span>
+                            <span className='text-xs uppercase text-it-ink-muted'>
+                                {code}
+                            </span>
                         </button>
                     </motion.li>
                 ))}

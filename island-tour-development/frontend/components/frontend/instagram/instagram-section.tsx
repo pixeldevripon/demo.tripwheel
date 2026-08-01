@@ -5,9 +5,7 @@ import { Reveal } from '../reveal';
 import { InstagramGallery } from './instagram-gallery';
 import { InstagramGrid } from './instagram-grid';
 
-export type InstagramDict = {
-    viewMore: string;
-};
+export type InstagramDict = { viewMore: string };
 
 /**
  * The brand Instagram section - handle row plus tiles (master 3.9).
@@ -45,7 +43,9 @@ export async function InstagramSection({
         feed.profileUrl ?? `https://www.instagram.com/${feed.username}`;
 
     return (
-        <section className='bg-it-white pt-11 md:pt-14 pb-11 md:pb-16'>
+        /* The collections section right above (when it renders) already closes
+           with pb - the sibling variant drops this pt so the gap stays single. */
+        <section className='bg-it-white pt-11 md:pt-14 pb-11 md:pb-16 [#collections+&]:pt-0'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-4'>
                     {/* Handle row (design v2 .ighead): dark mark + @handle,
@@ -84,3 +84,4 @@ export async function InstagramSection({
         </section>
     );
 }
+

@@ -83,6 +83,13 @@ export function useDragScroll<T extends HTMLElement>() {
       }
     }
 
+    // Images are natively draggable: without this, a mouse-drag over an <img>
+    // starts an HTML drag-and-drop, which CANCELS the pointer stream and kills
+    // the scroll mid-gesture (photo strips were undraggable because of it).
+    const onDragStart = (e: DragEvent) => {
+      if (canScroll()) e.preventDefault()
+    }
+
     // Translate a vertical wheel into horizontal scroll, but yield to the page
     // once we hit either edge so normal vertical page scrolling still works.
     const onWheel = (e: WheelEvent) => {
@@ -99,6 +106,7 @@ export function useDragScroll<T extends HTMLElement>() {
     el.addEventListener("pointerup", endDrag)
     el.addEventListener("pointercancel", endDrag)
     el.addEventListener("click", onClickCapture, true) // capture phase
+    el.addEventListener("dragstart", onDragStart)
     el.addEventListener("wheel", onWheel, { passive: false })
 
     return () => {
@@ -107,6 +115,7 @@ export function useDragScroll<T extends HTMLElement>() {
       el.removeEventListener("pointerup", endDrag)
       el.removeEventListener("pointercancel", endDrag)
       el.removeEventListener("click", onClickCapture, true)
+      el.removeEventListener("dragstart", onDragStart)
       el.removeEventListener("wheel", onWheel)
     }
   }, [])

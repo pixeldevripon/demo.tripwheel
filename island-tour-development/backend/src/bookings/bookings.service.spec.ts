@@ -34,6 +34,7 @@ import {
   CancellationRefund,
   CancelledBy,
   DepartureStatus,
+  InboxEvent,
   PaymentKind,
   PaymentModel,
   PaymentStatus,
@@ -81,6 +82,7 @@ function mockPrisma() {
     reviewInvitation: { findUnique: jest.fn().mockResolvedValue(null) },
     booking: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -96,6 +98,9 @@ function mockPrisma() {
     settlement: {
       upsert: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      // restore()'s reinstatement reads the row first; default = none.
+      findUnique: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({}),
     },
     // B6 transactional outbox - written with the finalize guard / cancel tx.
     outboxEvent: { create: jest.fn().mockResolvedValue({}) },
@@ -3309,6 +3314,310 @@ describe('BookingsService', () => {
     });
   });
 
+  // QA report 2026-08-01: admin reversal of an executed cancellation.
+  describe('restore', () => {
+    const ADMIN = { id: 'admin1', role: Role.ADMIN };
+
+    /** A confirmed-then-cancelled booking - the only restorable shape. */
+    const cancelled = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CANCELLED,
+        utcConfirmedAt: new Date('2030-06-01T08:00:00.000Z'),
+        utcCancelledAt: new Date('2030-06-02T08:00:00.000Z'),
+        utcForfeitedAt: null,
+        cancelledBy: CancelledBy.ADMIN,
+        cancellationRefund: CancellationRefund.NONE,
+        island: 'curacao',
+        ...over,
+      });
+
+    const openDeparture = () => ({
+      capacity: 10,
+      bookedCount: 4,
+      status: DepartureStatus.OPEN,
+      soldOutAt: null,
+    });
+
+    beforeEach(() => {
+      m.departure.findUnique.mockResolvedValue(openDeparture());
+      // The fresh row read back at the end of the transaction. No
+      // contactEmail: the resend then no-ops, keeping these tests about the
+      // restore itself (the confirmation email has its own suite).
+      m.booking.findUniqueOrThrow.mockResolvedValue(
+        cancelled({ status: BookingStatus.CONFIRMED, utcCancelledAt: null }),
+      );
+    });
+
+    it('403s any non-admin actor - same conflict-#2 boundary as cancel', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      await expect(
+        svc.restore('b1', { id: 'op-user', role: Role.TOUR_OPERATOR }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('is an idempotent no-op on an already-CONFIRMED booking', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        cancelled({ status: BookingStatus.CONFIRMED, utcCancelledAt: null }),
+      );
+      const res = await svc.restore('b1', ADMIN);
+      expect(res.status).toBe(BookingStatus.CONFIRMED);
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+      expect(m.departure.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s a booking that never confirmed - a hold release has nothing to restore', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        cancelled({ utcConfirmedAt: null }),
+      );
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('409s a forfeited booking - forfeit is its own terminal path', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        cancelled({ utcForfeitedAt: new Date('2030-06-03') }),
+      );
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('409s once the departure has already run', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled({ localDate: PAST }));
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('409s when the traveller was already refunded (settled or in flight)', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      m.payment.findFirst.mockResolvedValueOnce({ id: 'refund-row' });
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      // Refused BEFORE any state is touched.
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+      const where = m.payment.findFirst.mock.calls[0][0].where;
+      expect(where.kind).toBe(PaymentKind.REFUND);
+      expect(where.status.in).toEqual(
+        expect.arrayContaining([
+          PaymentStatus.REFUNDED,
+          PaymentStatus.PROCESSING,
+        ]),
+      );
+    });
+
+    it('409s when a racing restore already flipped the booking (guarded status flip)', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      m.booking.updateMany.mockResolvedValueOnce({ count: 0 });
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      // The loser must abort BEFORE claiming seats.
+      expect(m.departure.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('409s when the seats were resold after the cancellation', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      m.departure.updateMany.mockResolvedValueOnce({ count: 0 });
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('409s when the departure itself was cancelled', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      m.departure.findUnique.mockResolvedValue({
+        ...openDeparture(),
+        status: DepartureStatus.CANCELLED,
+      });
+      await expect(svc.restore('b1', ADMIN)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('restores: guarded flip clears every cancellation stamp, re-claims seats, notifies', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+
+      const res = await svc.restore('b1', ADMIN);
+      expect(res.status).toBe(BookingStatus.CONFIRMED);
+
+      // The guarded CANCELLED->CONFIRMED flip carries every stamp clear.
+      const flip = m.booking.updateMany.mock.calls[0][0];
+      expect(flip.where).toEqual({
+        id: 'b1',
+        status: BookingStatus.CANCELLED,
+      });
+      expect(flip.data).toEqual(
+        expect.objectContaining({
+          status: BookingStatus.CONFIRMED,
+          utcCancelledAt: null,
+          utcCancellationRequestedAt: null,
+          cancellationRefund: null,
+          cancellationReason: null,
+          cancelledBy: null,
+          utcOperatorCancellationReportedAt: null,
+          operatorCancellationReason: null,
+        }),
+      );
+
+      // Seat re-claim is the same guarded count-up the reserve path uses.
+      const claim = m.departure.updateMany.mock.calls[0][0];
+      expect(claim.where.bookedCount).toEqual({ lte: 10 - 2 });
+      expect(claim.data).toEqual({ bookedCount: { increment: 2 } });
+
+      // Unit items travel with the booking.
+      expect(m.bookingUnitItem.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { status: BookingStatus.CONFIRMED },
+        }),
+      );
+
+      // The operator hears its seats are booked again.
+      expect(inbox.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ event: InboxEvent.BOOKING_RESTORED }),
+      );
+    });
+
+    it('reinstates a REVERSED settlement with its net obligation recomputed', async () => {
+      m.booking.findUnique.mockResolvedValue(cancelled());
+      m.settlement.findUnique.mockResolvedValueOnce({
+        status: 'REVERSED',
+        amountCollected: D('159.98'),
+        commissionOwed: D('31.99'),
+      });
+
+      await svc.restore('b1', ADMIN);
+
+      const update = m.settlement.update.mock.calls[0][0];
+      expect(update.data.status).toBe('RECORDED');
+      expect(update.data.netPosition.toString()).toBe('127.99');
+    });
+
+    it('claims the WHOLE unit for an exclusive charter, and only if still empty', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        cancelled({ exclusiveDeparture: true }),
+      );
+      m.departure.findUnique.mockResolvedValue({
+        ...openDeparture(),
+        bookedCount: 0,
+      });
+
+      await svc.restore('b1', ADMIN);
+
+      const claim = m.departure.updateMany.mock.calls[0][0];
+      expect(claim.where.bookedCount).toBe(0);
+      expect(claim.data).toEqual({ bookedCount: 10 });
+    });
+  });
+
+  // QA report 2026-08-01: traveller withdrawal of a pending request.
+  describe('withdrawCancellationRequest', () => {
+    const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+
+    const requested = (over: Record<string, unknown> = {}) =>
+      fakeBooking({
+        status: BookingStatus.CONFIRMED,
+        contactEmail: 'guest@example.test',
+        contactFirstName: 'Shahadat',
+        utcCancellationRequestedAt: new Date('2026-07-30T10:00:00.000Z'),
+        island: 'curacao',
+        tour: { name: 'Klein Curacao Day Trip' },
+        ...over,
+      });
+
+    const ownerToken = () => issueTravelerSession('guest@example.test');
+
+    beforeEach(() => {
+      process.env.ADMIN_EMAIL = 'admin@islandtours.test';
+    });
+
+    afterAll(() => {
+      process.env.ADMIN_EMAIL = ORIGINAL_ADMIN_EMAIL;
+    });
+
+    it('clears the stamp via a guarded consume and notifies admin + traveller + operator', async () => {
+      m.booking.findUnique.mockResolvedValue(requested());
+
+      await expect(
+        svc.withdrawCancellationRequest('p1', ownerToken()),
+      ).resolves.toEqual({ withdrawn: true });
+
+      // Guarded consume: only a still-set stamp matches, so racing withdraws
+      // can never notify twice.
+      const consume = m.booking.updateMany.mock.calls[0][0];
+      expect(consume.where.utcCancellationRequestedAt).toEqual({ not: null });
+      expect(consume.data).toEqual({ utcCancellationRequestedAt: null });
+
+      // The admin is told FIRST - they might still execute the old request.
+      const notices = mail.sendBookingNoticeEmail.mock.calls;
+      expect(notices.length).toBeGreaterThanOrEqual(2);
+      expect(notices[0][0]).toBe('admin@islandtours.test');
+      expect(notices[1][0]).toBe('guest@example.test');
+
+      expect(inbox.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: InboxEvent.BOOKING_CANCELLATION_WITHDRAWN,
+        }),
+      );
+    });
+
+    it('is a quiet success with NO notices when nothing is pending', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        requested({ utcCancellationRequestedAt: null }),
+      );
+      await expect(
+        svc.withdrawCancellationRequest('p1', ownerToken()),
+      ).resolves.toEqual({ withdrawn: true });
+      expect(m.booking.updateMany).not.toHaveBeenCalled();
+      expect(mail.sendBookingNoticeEmail).not.toHaveBeenCalled();
+    });
+
+    it('is a quiet success with NO notices when a racing withdraw won the consume', async () => {
+      m.booking.findUnique.mockResolvedValue(requested());
+      m.booking.updateMany.mockResolvedValueOnce({ count: 0 });
+      await expect(
+        svc.withdrawCancellationRequest('p1', ownerToken()),
+      ).resolves.toEqual({ withdrawn: true });
+      expect(mail.sendBookingNoticeEmail).not.toHaveBeenCalled();
+    });
+
+    it('409s once the booking was cancelled - restoring is an admin action', async () => {
+      m.booking.findUnique.mockResolvedValue(
+        requested({ status: BookingStatus.CANCELLED }),
+      );
+      await expect(
+        svc.withdrawCancellationRequest('p1', ownerToken()),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('401s without a traveler session - link possession alone cannot withdraw', async () => {
+      m.booking.findUnique.mockResolvedValue(requested());
+      await expect(
+        svc.withdrawCancellationRequest('p1', undefined),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('401s a session bound to a DIFFERENT email', async () => {
+      m.booking.findUnique.mockResolvedValue(requested());
+      await expect(
+        svc.withdrawCancellationRequest(
+          'p1',
+          issueTravelerSession('stranger@example.test'),
+        ),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('404s an unknown publicRef', async () => {
+      m.booking.findUnique.mockResolvedValue(null);
+      await expect(
+        svc.withdrawCancellationRequest('nope', ownerToken()),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
   describe('requestCancellation', () => {
     const ORIGINAL_ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
@@ -3957,6 +4266,68 @@ describe('BookingsService', () => {
         await expect(svc.listTravellerPayments({}, t)).rejects.toBeInstanceOf(
           UnauthorizedException,
         );
+        await expect(svc.getTravellerContact(t)).rejects.toBeInstanceOf(
+          UnauthorizedException,
+        );
+      });
+    });
+
+    // Checkout prefill (test report 2026-08-01 §Traveler.1).
+    describe('getTravellerContact', () => {
+      it('returns the most recent booking contact, scoped by session email', async () => {
+        m.booking.findFirst.mockResolvedValue({
+          contactFirstName: 'Jane',
+          contactLastName: 'Doe',
+          contactPhone: '+5999123456',
+          contactCountry: 'CW',
+        });
+
+        const res = await svc.getTravellerContact(historyToken());
+
+        expect(res).toEqual({
+          hasHistory: true,
+          email: EMAIL,
+          firstName: 'Jane',
+          lastName: 'Doe',
+          phone: '+5999123456',
+          country: 'CW',
+        });
+        const args = m.booking.findFirst.mock.calls[0][0];
+        expect(args.where).toEqual({
+          contactEmail: { equals: EMAIL, mode: 'insensitive' },
+        });
+        // Latest wins: a traveller who moved expects their newest details.
+        expect(args.orderBy).toEqual({ createdAt: 'desc' });
+      });
+
+      // A first-time traveller signed in at the account door still gets their
+      // proven email back - checkout locks the field on it either way.
+      it('still returns the session email when there is no earlier booking', async () => {
+        m.booking.findFirst.mockResolvedValue(null);
+
+        await expect(svc.getTravellerContact(historyToken())).resolves.toEqual({
+          hasHistory: false,
+          email: EMAIL,
+          firstName: null,
+          lastName: null,
+          phone: null,
+          country: null,
+        });
+      });
+
+      // The payload is the caller's own contact block and nothing else: no
+      // booking ids, no operator, no payment or commission context.
+      it('selects only the four contact columns', async () => {
+        m.booking.findFirst.mockResolvedValue(null);
+
+        await svc.getTravellerContact(historyToken());
+
+        expect(m.booking.findFirst.mock.calls[0][0].select).toEqual({
+          contactFirstName: true,
+          contactLastName: true,
+          contactPhone: true,
+          contactCountry: true,
+        });
       });
     });
 

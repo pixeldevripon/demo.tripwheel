@@ -134,6 +134,26 @@ export async function requestCancellationClient(
     }
 }
 
+/**
+ * Withdraw a pending cancellation request - the way back for a traveller who
+ * asked by mistake. Same proxy route pattern as the request; only works while
+ * the request is still pending (an executed cancellation needs an admin).
+ */
+export async function withdrawCancellationClient(
+    publicRef: string
+): Promise<boolean> {
+    try {
+        const res = await fetch('/api/traveller/cancellation-withdraw', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicRef }),
+        });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
 /** One switchable departure for the self-service date change (review 10.4). */
 export interface DateChangeOption {
     departureId: string;

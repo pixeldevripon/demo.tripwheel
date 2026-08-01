@@ -58,8 +58,11 @@ import {
   ApiRequestTravellerCodeDocs,
   ApiReserveDocs,
   ApiResendConfirmationDocs,
+  ApiRestoreDocs,
+  ApiWithdrawCancellationDocs,
   ApiThankYouDocs,
   ApiTravellerBookingsDocs,
+  ApiTravellerContactDocs,
   ApiTravellerPaymentsDocs,
   ApiTravellerReceiptDocs,
   ApiTravellerSummaryDocs,
@@ -119,6 +122,19 @@ export class BookingsController {
   ) {
     const actor = user ? { id: user.id, role: user.role } : undefined;
     return this.bookings.cancel(id, dto, actor);
+  }
+
+  /**
+   * POST /bookings/:id/restore - reverse a mistaken cancellation (QA report
+   * 2026-08-01). Admin-only twice over: MANAGE_BOOKINGS is admin-ceilinged,
+   * and the service re-checks the role so a second entry point can never skip
+   * the conflict-#2 boundary (restoring un-reverses real money obligations).
+   */
+  @Post(':id/restore')
+  @RequirePermissions(Permission.MANAGE_BOOKINGS)
+  @ApiRestoreDocs()
+  restore(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
+    return this.bookings.restore(id, { id: user.id, role: user.role });
   }
 
   // ── Non-payment forfeit (guide s15) - authenticated ops actions ──────────
@@ -324,6 +340,18 @@ export class BookingsController {
     return this.bookings.listTravellerBookings(query, sessionToken);
   }
 
+  /**
+   * GET /bookings/traveller/contact - checkout prefill for a signed-in
+   * traveller. Same HISTORY-scoped session gate as the rest of the account
+   * area, enforced in the service.
+   */
+  @Get('traveller/contact')
+  @Public()
+  @ApiTravellerContactDocs()
+  travellerContact(@Headers(TRAVELER_SESSION_HEADER) sessionToken?: string) {
+    return this.bookings.getTravellerContact(sessionToken);
+  }
+
   /** GET /bookings/traveller/summary - the account area's stat row. */
   @Get('traveller/summary')
   @Public()
@@ -451,6 +479,29 @@ export class BookingsController {
       dto.reason,
       sessionToken,
     );
+  }
+
+  /**
+   * POST /bookings/typ/:publicRef/cancellation-request/withdraw
+   *
+   * Undo of the request above while it is still pending (QA report
+   * 2026-08-01: a traveller who requested by mistake had no way back).
+   * Same session-ownership gate and the same human-pace throttle - it is a
+   * mutation reached from the same tokenized surfaces.
+   */
+  @Throttle({
+    short: { limit: 1, ttl: 10_000 },
+    medium: { limit: 3, ttl: 60_000 },
+    long: { limit: 10, ttl: 3_600_000 },
+  })
+  @Post('typ/:publicRef/cancellation-request/withdraw')
+  @Public()
+  @ApiWithdrawCancellationDocs()
+  withdrawCancellation(
+    @Param('publicRef') publicRef: string,
+    @Headers(TRAVELER_SESSION_HEADER) sessionToken?: string,
+  ) {
+    return this.bookings.withdrawCancellationRequest(publicRef, sessionToken);
   }
 
   /**
