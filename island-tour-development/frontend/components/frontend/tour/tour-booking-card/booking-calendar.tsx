@@ -153,14 +153,14 @@ export function BookingCalendar() {
                 transition={springPop}
                 // Blocked CTA click with no date: ring the field so the note
                 // above the button points somewhere concrete.
-                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-[8px] bg-it-white px-4 py-4 text-left transition-shadow duration-300 ${
+                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-left ${
                     ctaError === 'date' ? 'ring-1 ring-it-primary' : ''
                 }`}>
                 <span
-                    className={`text-[16px] leading-[1.6] tracking-[-0.012em] ${
+                    className={`text-[14px] font-semibold leading-[1.6] ${
                         selectedDate
-                            ? 'text-it-heading'
-                            : 'text-it-ink-placeholder'
+                            ? 'text-it-ink'
+                            : 'text-it-ink-muted'
                     }`}>
                     {selectedDate
                         ? formatSelectedDate(selectedDate, locale)

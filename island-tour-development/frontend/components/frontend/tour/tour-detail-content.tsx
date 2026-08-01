@@ -338,14 +338,18 @@ export async function TourDetailContent({
         {
             title: infoDict.notSuitableFor,
             items: detail.translation?.notSuitableFor ?? [],
+            // .warnlist - the caution list carries amber bullets.
+            warn: true,
         },
         {
             title: infoDict.knowBeforeYouGo,
             items: detail.translation?.knowBeforeYouGo ?? [],
+            warn: false,
         },
         {
             title: infoDict.whatToBring,
             items: detail.translation?.whatToBring ?? [],
+            warn: false,
         },
     ].filter(g => g.items.length > 0);
 
@@ -356,6 +360,14 @@ export async function TourDetailContent({
         /\{hours\}/g,
         String(detail.cancellationHours)
     );
+    // The locked policy copy renders as separate paragraphs in the .cancelbox;
+    // the "Plans change. No problem." lead opens the first paragraph (mockup
+    // renders them as one line).
+    const cancellationParagraphs = cancellationBody
+        .split(/\n+/)
+        .map(para => para.trim())
+        .filter(Boolean)
+        .map((para, i) => (i === 0 ? `${cancelDict.title} ${para}` : para));
 
     // Reviews aggregate + histogram come off the tour payload (same source as the
     // header rating); the individual cards stream in a separate boundary from the
@@ -577,53 +589,59 @@ export async function TourDetailContent({
                             <TourSection
                                 id='tour-overview'
                                 title={tourDict.sections.overview}>
-                                {(overviewParagraphs.length > 0 ||
-                                    highlights.length > 0) && (
-                                    <div className='flex flex-col gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                {overviewParagraphs.length > 0 && (
+                                    <div className='flex flex-col gap-4 text-[14.5px] leading-[1.68] text-it-ink'>
                                         {overviewParagraphs.map((p, i) => (
                                             <p key={i} className='m-0'>
                                                 {p}
                                             </p>
                                         ))}
-                                        {highlights.length > 0 && (
-                                            <ul className='m-0 list-disc pl-5'>
-                                                {highlights.map((h, i) => (
-                                                    <li key={i}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem>
-                                                            {h}
-                                                        </Reveal>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
+                                    </div>
+                                )}
+                                {/* Merged highlights (.hl): two-column list
+                                    with the orange bullet glyph. */}
+                                {highlights.length > 0 && (
+                                    <div className='grid grid-cols-1 gap-x-[22px] gap-y-2 sm:grid-cols-2'>
+                                        {highlights.map((h, i) => (
+                                            <Reveal
+                                                key={i}
+                                                width='auto'
+                                                listItem
+                                                className='flex items-start gap-[9px] text-[14px] font-semibold leading-[1.6] text-it-ink'>
+                                                <span
+                                                    aria-hidden='true'
+                                                    className='font-extrabold text-it-primary'>
+                                                    •
+                                                </span>
+                                                {h}
+                                            </Reveal>
+                                        ))}
                                     </div>
                                 )}
                                 {/* Local tip callout (Figma node): bold headline
                                     over a muted description. Renders when either
                                     line is present; each line only if it exists. */}
                                 {(localTipTitle || localTipBody) && (
-                                    <div className='flex items-start gap-2 rounded-[8px] border border-it-primary/30 bg-it-primary/5 p-6'>
+                                    <div className='mt-1 flex items-start gap-[11px] rounded-it-md border border-it-peach-border bg-it-peach px-4 py-3.5 text-[13.5px] leading-[1.6]'>
                                         <Image
-                                            src='/icons/tip-bulb.svg'
+                                            src='/icons/tip-sun.svg'
                                             alt=''
                                             width={24}
                                             height={24}
-                                            className='size-6 shrink-0'
+                                            className='mt-0.5 size-5 shrink-0'
                                         />
-                                        <p className='m-0 flex flex-col text-[16px] leading-[1.6] tracking-[-0.012em]'>
+                                        <div>
                                             {localTipTitle && (
-                                                <span className='text-[#8b390e]'>
+                                                <b className='mb-[3px] block text-[12px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
                                                     {localTipTitle}
-                                                </span>
+                                                </b>
                                             )}
                                             {localTipBody && (
-                                                <span className='text-[#8b390e]/60'>
+                                                <span className='text-it-ink'>
                                                     {localTipBody}
                                                 </span>
                                             )}
-                                        </p>
+                                        </div>
                                     </div>
                                 )}
                             </TourSection>
@@ -635,49 +653,39 @@ export async function TourDetailContent({
                                     <TourSection
                                         id='tour-included'
                                         title={tourDict.sections.included}>
-                                        <div className='grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-16 md:gap-y-0'>
-                                            {includedItems.length > 0 && (
-                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {includedItems.map(item => (
-                                                        <li key={item.id}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem
-                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                            <Image
-                                                                src='/icons/check-green.svg'
-                                                                alt=''
-                                                                width={20}
-                                                                height={20}
-                                                                className='size-5 shrink-0'
-                                                            />
-                                                            {item.label}
-                                                        </Reveal>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {excludedItems.length > 0 && (
-                                                <ul className='m-0 flex list-none flex-col gap-2 p-0'>
-                                                    {excludedItems.map(item => (
-                                                        <li key={item.id}>
-                                                        <Reveal
-                                                            width='auto'
-                                                            listItem
-                                                            className='flex items-start gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                                            <Image
-                                                                src='/icons/exclude-cross.svg'
-                                                                alt=''
-                                                                width={20}
-                                                                height={20}
-                                                                className='size-5 shrink-0'
-                                                            />
-                                                            {item.label}
-                                                        </Reveal>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
+                                        <div className='grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2'>
+                                            {includedItems.map(item => (
+                                                <Reveal
+                                                    key={item.id}
+                                                    width='auto'
+                                                    listItem
+                                                    className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-ink'>
+                                                    <Image
+                                                        src='/icons/trust-check-green.svg'
+                                                        alt=''
+                                                        width={24}
+                                                        height={24}
+                                                        className='mt-[3px] size-[15px] shrink-0'
+                                                    />
+                                                    {item.label}
+                                                </Reveal>
+                                            ))}
+                                            {excludedItems.map(item => (
+                                                <Reveal
+                                                    key={item.id}
+                                                    width='auto'
+                                                    listItem
+                                                    className='flex items-start gap-[9px] py-[5px] text-[14px] leading-[1.6] text-it-text-muted'>
+                                                    <Image
+                                                        src='/icons/x-faint.svg'
+                                                        alt=''
+                                                        width={24}
+                                                        height={24}
+                                                        className='mt-[3px] size-[15px] shrink-0'
+                                                    />
+                                                    {item.label}
+                                                </Reveal>
+                                            ))}
                                         </div>
                                     </TourSection>
 
@@ -690,7 +698,7 @@ export async function TourDetailContent({
                                         id='tour-expect'
                                         title={tourDict.sections.expect}>
                                         {expectIntro && (
-                                            <p className='m-0 max-w-172 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                            <p className='m-0 max-w-172 text-[14.5px] leading-[1.68] text-it-text-muted'>
                                                 {expectIntro}
                                             </p>
                                         )}
@@ -717,18 +725,18 @@ export async function TourDetailContent({
                                                                 1 && (
                                                             <span
                                                                 aria-hidden='true'
-                                                                className='absolute top-10 bottom-0 left-5 w-px -translate-x-1/2 bg-it-heading/15'
+                                                                className='absolute top-9 bottom-0 left-[15px] w-px -translate-x-1/2 bg-it-divider'
                                                             />
                                                         )}
-                                                        <span className='relative z-10 grid size-10 shrink-0 place-items-center rounded-it-full bg-it-primary font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
+                                                        <span className='relative z-10 grid size-[30px] shrink-0 place-items-center rounded-it-full bg-it-primary-subtle text-[13px] font-extrabold text-it-primary-hover tabular-nums'>
                                                             {i + 1}
                                                         </span>
-                                                        <div className='flex flex-col gap-1 pt-1'>
-                                                            <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                        <div className='flex flex-col gap-0.5'>
+                                                            <span className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
                                                                 {step.title}
                                                             </span>
                                                             {step.detail && (
-                                                                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                                <span className='text-[13.5px] leading-[1.6] text-it-text-muted'>
                                                                     {
                                                                         step.detail
                                                                     }
@@ -766,20 +774,25 @@ export async function TourDetailContent({
                                     <TourSection
                                         id='tour-info'
                                         title={tourDict.sections.info}>
-                                        <div className='flex flex-col gap-6'>
+                                        <div className='flex flex-col gap-[18px]'>
                                             {infoGroups.map(group => (
                                                 <Reveal
                                                     key={group.title}
                                                     listItem
-                                                    className='flex flex-col gap-2'>
-                                                    <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                                    className='flex flex-col gap-1.5'>
+                                                    <h3 className='m-0 text-[15px] font-bold leading-[1.6] text-it-ink'>
                                                         {group.title}
                                                     </h3>
-                                                    <ul className='m-0 list-disc pl-5 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                                    <ul className='m-0 mt-1 list-none p-0'>
                                                         {group.items.map(
                                                             (item, i) => (
                                                                 <li
-                                                                    key={`${group.title}-${i}`}>
+                                                                    key={`${group.title}-${i}`}
+                                                                    className='relative py-[5px] pl-[22px] text-[14px] leading-[1.6] text-it-ink'>
+                                                                    <span
+                                                                        aria-hidden='true'
+                                                                        className={`absolute top-[13px] left-1 size-[5px] rounded-it-full ${group.warn ? 'bg-it-star' : 'bg-it-ink-muted'}`}
+                                                                    />
                                                                     {item}
                                                                 </li>
                                                             )
@@ -796,25 +809,14 @@ export async function TourDetailContent({
                             <TourSection
                                 id='tour-cancellation'
                                 title={tourDict.sections.cancellation}>
-                                <div className='flex flex-col gap-4'>
-                                    <div className='flex flex-col gap-2'>
-                                        <h3 className='m-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {cancelDict.title}
-                                        </h3>
-                                        <p className='m-0 whitespace-pre-line text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                            {cancellationBody}
+                                <div className='flex flex-col gap-2.5 rounded-it-md border border-it-divider bg-it-white px-5 py-[18px]'>
+                                    {cancellationParagraphs.map((para, i) => (
+                                        <p
+                                            key={i}
+                                            className='m-0 text-[14.5px] leading-[1.68] text-it-ink'>
+                                            {para}
                                         </p>
-                                    </div>
-                                    {detail.operatorName && (
-                                        <span className='self-end font-medium text-[16px] leading-[1.6] tracking-[-0.012em]'>
-                                            <span className='text-it-text-muted'>
-                                                {cancelDict.suppliedBy}
-                                            </span>{' '}
-                                            <span className='text-it-heading'>
-                                                {detail.operatorName}
-                                            </span>
-                                        </span>
-                                    )}
+                                    ))}
                                 </div>
                             </TourSection>
 
@@ -854,6 +856,14 @@ export async function TourDetailContent({
                                         />
                                     </Suspense>
                                 </>
+                            )}
+
+                            {/* LD14 supplied-by tail line. */}
+                            {detail.operatorName && (
+                                <p className='m-0 text-[12.5px] leading-[1.6] text-it-ink-muted'>
+                                    {cancelDict.suppliedBy}{' '}
+                                    {detail.operatorName}
+                                </p>
                             )}
                         </div>
                         </div>

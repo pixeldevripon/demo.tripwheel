@@ -60,13 +60,13 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
         // `shrink-0`: the strip below scrolls as a whole when the rail is
         // squeezed, so an individual notice must keep its own height rather
         // than squashing its two lines of text.
-        <div className='flex shrink-0 items-start gap-1 rounded-[16px] bg-it-surface p-4'>
+        <div className='flex shrink-0 items-start gap-[11px] rounded-it-md border border-it-primary/30 bg-it-white px-4 py-3.5'>
             <Image
                 src={icon.src}
                 alt=''
                 width={icon.size}
                 height={icon.size}
-                className='size-6 shrink-0'
+                className='mt-0.5 size-[18px] shrink-0'
                 // Booking-card chrome: these sit beside the CTA in the sticky
                 // rail and are on screen for the whole scroll, so waiting in
                 // the lazy queue behind the page's ~190 images left the notices
@@ -75,11 +75,11 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
                 // competes with the gallery LCP.
                 loading='eager'
             />
-            <div className='flex flex-col gap-1'>
-                <span className='font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+            <div className='flex flex-col gap-0.5'>
+                <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
                     {copy.title}
                 </span>
-                <span className='text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <span className='text-[12.5px] leading-[1.5] text-it-text-muted'>
                     {copy.subtitle}
                 </span>
             </div>
@@ -99,7 +99,7 @@ export function BookingNotices() {
         // second scrollbar to reach the last line reads as broken, and clipping
         // them mid-sentence reads worse. They keep their full height and simply
         // sit where they land.
-        <div className='flex shrink-0 flex-col gap-4'>
+        <div className='flex shrink-0 flex-col gap-3.5'>
             {data.notices.map(kind => (
                 <BookingNotice key={kind} kind={kind} />
             ))}

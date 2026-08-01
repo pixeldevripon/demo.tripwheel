@@ -1,10 +1,5 @@
-import { MotionSpan } from '../motion-primitives';
 import { Reveal } from '../reveal';
-import { springPop } from '@/lib/motion';
-import Image from 'next/image';
-import { type Locale } from '@/lib/constants/locales';
 import { ExpandableText } from '../expandable-text';
-import { SmoothScrollLink } from '../smooth-scroll-link';
 
 export type TourReview = {
     id: string;
@@ -28,77 +23,26 @@ export type TourReviewsDict = {
 };
 
 /**
- * Reviews preview block (Figma node 47936:3499) - sits under the gallery in the
- * left column. A header ("What our guests say" + aggregate rating + a "See all
- * reviews" link) over a short subtitle, then two review cards (5-star row, name •
- * country, date • Verified, a clamped excerpt, and a "Read More" link).
+ * Review preview module (design v2 .rpreview, LD29) - the paper panel under
+ * the quick-info badges: a display heading over two white review cards, each
+ * with an amber score + "name · date · verified" top row and the excerpt.
  *
  * Localized fields fall back to canonical English on the backend; the review
  * bodies use the LD32 translate-with-show-original path (not built yet).
  */
 export function TourReviews({
-    rating,
-    reviewCount,
     reviews,
-    locale,
     dict,
 }: {
-    rating: number | null;
-    reviewCount: number;
     reviews: TourReview[];
-    locale: Locale;
     dict: TourReviewsDict;
 }) {
-    const muted = 'text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted';
-
     return (
-        <section className='flex flex-col gap-6'>
-            {/* Header */}
-            <div className='flex flex-col gap-2'>
-                <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2'>
-                    <div className='flex items-center gap-4'>
-                        <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                            {dict.title}
-                        </h2>
-                        {rating != null && (
-                            <span className='flex items-center gap-2'>
-                                <Image
-                                    src='/icons/star-listings.svg'
-                                    alt=''
-                                    width={20}
-                                    height={20}
-                                    className='size-5 shrink-0'
-                                />
-                                <span className={muted}>
-                                    {rating.toFixed(1)} ({new Intl.NumberFormat(locale).format(reviewCount)})
-                                </span>
-                            </span>
-                        )}
-                    </div>
-                    <MotionSpan
-                        whileTap={{ scale: 0.97 }}
-                        transition={springPop}
-                        className='inline-flex'>
-                        <SmoothScrollLink
-                            targetId='tour-reviews'
-                            offset={144}
-                            className='inline-flex items-center gap-1 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary no-underline transition-colors duration-300 hover:text-it-primary-hover'>
-                            {dict.seeAll}
-                            <Image
-                                src='/icons/cta-arrow-right.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-6 shrink-0'
-                            />
-                        </SmoothScrollLink>
-                    </MotionSpan>
-                </div>
-                <p className={`m-0 ${muted}`}>{dict.subtitle}</p>
-            </div>
-
-            {/* Review cards */}
-            <div className='grid gap-4 md:grid-cols-2 md:gap-6'>
+        <section className='rounded-it-lg bg-it-bg px-[22px] py-5'>
+            <h2 className='m-0 mb-3 font-it-display text-[18px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink'>
+                {dict.title}
+            </h2>
+            <div className='grid gap-3 md:grid-cols-2'>
                 {reviews.map(review => (
                     <Reveal key={review.id} listItem>
                         <ReviewCard review={review} dict={dict} />
@@ -117,61 +61,24 @@ function ReviewCard({
     dict: TourReviewsDict;
 }) {
     return (
-        <article className='flex min-h-[281px] flex-col justify-between gap-4 rounded-[16px] border border-it-border bg-it-white p-6'>
-            <div className='flex flex-col gap-2'>
-                {/* Star rating */}
-                <div className='flex items-center gap-1.5'>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <Image
-                            key={i}
-                            src={
-                                i < review.rating
-                                    ? '/icons/star-listings.svg'
-                                    : '/icons/star-empty.svg'
-                            }
-                            alt=''
-                            width={16}
-                            height={16}
-                            className='size-4 shrink-0'
-                        />
-                    ))}
-                </div>
-                {/* Name / country + date / verified */}
-                <div className='flex flex-col'>
-                    <span className='flex items-center gap-2.5 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        {review.name}
-                        <span className='size-[5px] shrink-0 rounded-it-full bg-it-heading' />
-                        {review.country}
-                    </span>
-                    <span className='flex items-center gap-2.5 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                        {review.date}
-                        {review.verified && (
-                            <>
-                                <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
-                                <span className='flex items-center gap-2'>
-                                    <Image
-                                        src='/icons/review-verified.svg'
-                                        alt=''
-                                        width={16}
-                                        height={16}
-                                        className='size-4 shrink-0'
-                                    />
-                                    {dict.verified}
-                                </span>
-                            </>
-                        )}
-                    </span>
-                </div>
+        <article className='h-full rounded-it-md border border-it-divider bg-it-white px-4 py-3.5'>
+            <div className='flex flex-wrap items-center gap-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
+                <span className='font-bold text-it-star'>
+                    ★ {review.rating.toFixed(1)}
+                </span>
+                <span>
+                    {[review.name, review.date, review.verified ? dict.verified : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                </span>
             </div>
-
-            {/* Excerpt with an inline, dynamic "Read More" / "Read less" toggle
-                right after the text (Figma: the link sits at the end of the
-                truncated copy, not on its own row). */}
-            <ExpandableText
-                text={review.text}
-                moreLabel={dict.readMore}
-                lessLabel={dict.readLess}
-            />
+            <div className='mt-1.5 text-[13.5px] leading-[1.55] text-it-ink'>
+                <ExpandableText
+                    text={review.text}
+                    moreLabel={dict.readMore}
+                    lessLabel={dict.readLess}
+                />
+            </div>
         </article>
     );
 }

@@ -97,8 +97,8 @@ export async function TourRelatedTours({
     );
 
     return (
-        <section className='it-section pt-0! bg-it-white'>
-            <div className='it-container flex flex-col gap-16 md:gap-24'>
+        <section className='bg-it-white pb-20'>
+            <div className='it-container flex flex-col gap-8 pt-11'>
                 <TourRelatedSection
                     title={similarTitle}
                     tours={similarTours}

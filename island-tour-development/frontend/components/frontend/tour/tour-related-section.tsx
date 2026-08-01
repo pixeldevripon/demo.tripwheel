@@ -19,16 +19,17 @@ export function TourRelatedSection({
     if (tours.length === 0) return null;
 
     return (
-        <div className='flex flex-col gap-6 md:gap-12'>
+        <div className='flex flex-col gap-3.5'>
             <Reveal>
-                <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h2 className='m-0 font-it-display text-[20px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink'>
                     {title}
                 </h2>
             </Reveal>
-            <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
+            {/* v2 .relgrid: three columns, stacked row cards on mobile. */}
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4'>
                 {tours.map(tour => (
                     <Reveal key={tour.id} listItem>
-                        <TourCard tour={tour} dict={dict} />
+                        <TourCard tour={tour} dict={dict} mobileRow />
                     </Reveal>
                 ))}
             </div>

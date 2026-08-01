@@ -133,22 +133,6 @@ function languageLabel(code: string, locale: Locale): string {
     }
 }
 
-function Stars({ rating, size }: { rating: number; size: 16 | 20 }) {
-    return (
-        <span className={`flex items-center ${size === 16 ? 'gap-1.5' : 'gap-1'}`}>
-            {Array.from({ length: 5 }).map((_, i) => (
-                <Image
-                    key={i}
-                    src={i < rating ? '/icons/star-listings.svg' : '/icons/star-empty.svg'}
-                    alt=''
-                    width={size}
-                    height={size}
-                    className={`${size === 16 ? 'size-4' : 'size-5'} shrink-0`}
-                />
-            ))}
-        </span>
-    );
-}
 
 /**
  * Full reviews section (Figma node 47936:3804) - the `#tour-reviews` target of
@@ -398,10 +382,17 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 font-medium text-[24px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                    <h2 className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink'>
                         {dict.title}
                     </h2>
-                    <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                    <p className='m-0 flex flex-wrap items-center gap-[7px] text-[13px] leading-[1.6] text-it-text-muted'>
+                        <Image
+                            src='/icons/trust-check-green.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className='size-3.5 shrink-0'
+                        />
                         {dict.subtitle}{' '}
                         {/* Omnibus Art. 7(6): the "how we verify" disclosure has to
                             be reachable from where the reviews are shown (FE-11). */}
@@ -413,7 +404,7 @@ export function TourReviewsSection({
                     </p>
                 </div>
 
-                <div className='flex flex-col gap-8'>
+                <div className='grid items-center gap-6 sm:grid-cols-[150px_1fr] sm:gap-[26px]'>
                     {/* LD11: when the rating is BORROWED from the operator, say so
                         in words. Showing an operator's 4.8 under a tour heading
                         with no explanation is the whole reason LD11 needed a
@@ -440,24 +431,19 @@ export function TourReviewsSection({
                     ) : (
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
-                        <div className='flex items-center gap-4 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                            <span className='flex items-center gap-1'>
-                                <Image
-                                    src='/icons/star-listings.svg'
-                                    alt=''
-                                    width={20}
-                                    height={20}
-                                    className='size-5 shrink-0'
-                                />
-                                <span className='font-medium'>{rating.toFixed(1)}</span>
-                            </span>
-                            <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
-                            <span>
+                        <div className='flex flex-col'>
+                            <div className='m-0 font-it-display text-[44px] font-extrabold leading-none tracking-[-0.02em] text-it-ink'>
+                                <span className='align-[6px] text-[26px] text-it-star'>
+                                    ★
+                                </span>{' '}
+                                {rating.toFixed(1)}
+                            </div>
+                            <div className='mt-1 text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
                                 {dict.reviewsCount.replace(
                                     '{count}',
                                     String(reviewCount)
                                 )}
-                            </span>
+                            </div>
                         </div>
                     )}
 
@@ -467,7 +453,7 @@ export function TourReviewsSection({
                         latter can be the operator's, which would scale every bar
                         against the wrong total. */}
                     {showChart && (
-                        <div className='flex max-w-91 flex-col gap-1'>
+                        <div className='flex max-w-91 flex-col gap-[5px]'>
                             {histogram.map(row => {
                                 const active = starFilter === row.stars;
                                 return (
@@ -483,29 +469,22 @@ export function TourReviewsSection({
                                         className={`flex cursor-pointer items-center gap-3 rounded-it-full px-2 py-0.5 text-left transition-colors hover:bg-it-surface disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent ${
                                             active ? 'bg-it-surface' : ''
                                         }`}>
-                                        <span className='flex w-9 shrink-0 items-center gap-2 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                                            {row.stars}
-                                            <Image
-                                                src='/icons/star-listings.svg'
-                                                alt=''
-                                                width={16}
-                                                height={16}
-                                                className='size-4 shrink-0'
-                                            />
+                                        <span className='w-[46px] shrink-0 text-left text-[12px] leading-[1.6] text-it-text-muted tabular-nums'>
+                                            {starLabel(row.stars)}
                                         </span>
-                                        <span className='relative h-2 flex-1 overflow-hidden rounded-it-full bg-[#dddfe3]'>
+                                        <span className='relative h-[7px] flex-1 overflow-hidden rounded-it-full bg-it-divider'>
                                             <span
                                                 className={`absolute inset-y-0 left-0 rounded-it-full transition-colors ${
                                                     active
-                                                        ? 'bg-it-heading'
-                                                        : 'bg-it-primary'
+                                                        ? 'bg-it-ink'
+                                                        : 'bg-it-star'
                                                 }`}
                                                 style={{
                                                     width: `${ownReviewCount ? (row.count / ownReviewCount) * 100 : 0}%`,
                                                 }}
                                             />
                                         </span>
-                                        <span className='w-6 shrink-0 text-right text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                        <span className='w-[26px] shrink-0 text-right text-[12px] leading-[1.6] text-it-text-muted tabular-nums'>
                                             {row.count}
                                         </span>
                                     </MotionButton>
@@ -781,44 +760,48 @@ function ReviewCard({
     ].filter(Boolean);
 
     return (
-        <article className='flex flex-col gap-4 rounded-[16px] border border-it-border bg-it-white p-6'>
+        <article className='flex flex-col gap-3 border-t border-it-divider py-4'>
             <div className='flex flex-col gap-2'>
-                <div className='flex flex-col gap-4'>
-                    <Stars rating={review.rating} size={16} />
-                    <div className='flex flex-col'>
-                        <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
-                            {review.name}
-                        </span>
-                        <span className='flex flex-wrap items-center gap-2.5 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <div className='flex items-center gap-2.5'>
+                    <span
+                        aria-hidden='true'
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-extrabold text-it-primary-hover'>
+                        {review.name
+                            .split(/\s+/)
+                            .map(part => part[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                    </span>
+                    <div className='flex flex-col text-[13px] leading-[1.5] text-it-text-muted'>
+                        <span className='flex flex-wrap items-center gap-x-2'>
+                            <b className='text-[13.5px] font-bold text-it-ink'>
+                                {review.name}
+                            </b>
                             {review.date}
                             {/* FE-5. A native `title` rather than a hand-rolled
                                 popover: it is the disclosure of last resort and
                                 must work with no JS, and the full Omnibus
                                 explanation already has a linked page of its own. */}
                             {review.verified && (
-                                <>
-                                    <span className='size-1 shrink-0 rounded-it-full bg-it-heading' />
-                                    <span
-                                        title={dict.verifiedTooltip}
-                                        className='flex cursor-help items-center gap-2'>
-                                        <Image
-                                            src='/icons/review-verified.svg'
-                                            alt=''
-                                            width={16}
-                                            height={16}
-                                            className='size-4 shrink-0'
-                                        />
-                                        {dict.verified}
-                                    </span>
-                                </>
+                                <span
+                                    title={dict.verifiedTooltip}
+                                    className='cursor-help'>
+                                    · {dict.verified}
+                                </span>
                             )}
                         </span>
-                        {/* FE-8 travel month + guest type */}
-                        {meta.length > 0 && (
-                            <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
-                                {meta.join(' · ')}
+                        <span className='flex flex-wrap items-center gap-x-2'>
+                            <span
+                                aria-label={`${review.rating} / 5`}
+                                className='text-[12.5px] tracking-[1px] text-it-star'>
+                                {'★'.repeat(review.rating)}
                             </span>
-                        )}
+                            {/* FE-8 travel month + guest type */}
+                            {meta.length > 0 && (
+                                <span>{meta.join(' · ')}</span>
+                            )}
+                        </span>
                     </div>
                 </div>
                 {/* Photo-forward (Phase 7). A guest's own photo is the most
@@ -849,7 +832,7 @@ function ReviewCard({
                     </div>
                 )}
 
-                <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                <p className='m-0 mt-1 text-[14px] leading-[1.6] text-it-ink'>
                     {body}
                 </p>
 
@@ -880,8 +863,8 @@ function ReviewCard({
 
             {review.response && (
                 <div className='flex flex-col gap-4'>
-                    <div className='flex flex-col gap-4 rounded-[12px] border border-it-border bg-it-surface p-6'>
-                        <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                    <div className='flex flex-col gap-3 rounded-it-md bg-it-bg px-4 py-3.5'>
+                        <p className='m-0 text-[13.5px] leading-[1.6] text-it-ink'>
                             {review.response.text}
                         </p>
                         <div className='flex flex-col'>

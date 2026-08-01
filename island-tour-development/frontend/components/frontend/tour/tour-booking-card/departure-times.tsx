@@ -88,7 +88,7 @@ export function DepartureTimes() {
                             // Same height as a real time chip (py-2 + time +
                             // note lines + border), so resolving slots never
                             // jolts the card.
-                            className='h-[74px] it-skeleton rounded-[8px]'
+                            className='h-[74px] it-skeleton rounded-it-sm'
                         />
                     ))}
                 </motion.div>
@@ -119,11 +119,14 @@ export function DepartureTimes() {
                         // Missing-slot error: pickable chips carry a soft
                         // primary border (a quieter cousin of the selected
                         // state) that clears the moment a time is picked.
+                        // Default chips carry the subtle hairline so they
+                        // read as pickable boxes on the white card (.slot);
+                        // the selected chip swaps to the orange tint (.slot.on).
                         const chipBorder = isSelected
-                            ? 'border-it-primary'
+                            ? 'border-it-primary bg-it-primary-subtle'
                             : missingSlot && !soldOut
                               ? 'border-it-primary/45'
-                              : 'border-transparent';
+                              : 'border-it-border';
                         return (
                             <motion.button
                                 key={slot.time}
@@ -139,16 +142,21 @@ export function DepartureTimes() {
                                 // scroll region's scrollbar to break "12:00 PM"
                                 // across two lines. Nothing moves visually -
                                 // the label is centred in the same box.
-                                className={`flex flex-col items-center gap-[3px] rounded-[8px] border bg-it-white px-2 py-2 transition-colors duration-300 ${chipBorder} ${
+                                className={`flex flex-col items-center gap-[3px] rounded-it-sm border bg-it-white px-2 py-2 transition-colors duration-300 ${chipBorder} ${
                                     soldOut
                                         ? 'cursor-not-allowed opacity-60'
                                         : 'cursor-pointer'
                                 }`}>
-                                <span className='whitespace-nowrap font-medium text-[18px] leading-[1.6] tracking-[-0.012em] text-it-heading'>
+                                <span
+                                    className={`whitespace-nowrap text-[14px] font-bold leading-[1.6] tabular-nums ${
+                                        isSelected
+                                            ? 'text-it-primary-hover'
+                                            : 'text-it-ink'
+                                    }`}>
                                     {formatTime(slot.time, locale)}
                                 </span>
                                 {note && (
-                                    <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                                    <span className='text-[12px] leading-[1.5] text-it-text-muted'>
                                         {note}
                                     </span>
                                 )}

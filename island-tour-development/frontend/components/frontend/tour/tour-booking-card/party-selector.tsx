@@ -56,7 +56,7 @@ export function PartySelector() {
     );
 
     return (
-        <div className='rounded-[8px] bg-it-white'>
+        <div className='rounded-it-sm border border-it-border bg-it-white transition-colors duration-(--it-duration-xs)'>
             {/* Header row. Pattern B (chevron): the WHOLE row is the toggle -
                 clicking anywhere on it opens the steppers, not just the small
                 chevron. Pattern A keeps the plain row (it holds the inline
@@ -68,7 +68,7 @@ export function PartySelector() {
                     onClick={() => togglePartyOpen()}
                     whileTap={{ scale: 0.99 }}
                     transition={springPop}
-                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-4 py-4 text-left'>
+                    className='flex w-full cursor-pointer items-center justify-between gap-2.5 border-none bg-transparent px-[13px] py-[11px] text-left'>
                     {headerLabel}
                     <Image
                         src='/icons/booking-chevron-down.svg'

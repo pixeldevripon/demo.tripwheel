@@ -24,7 +24,7 @@ function StepperButton({
             disabled={disabled}
             whileTap={disabled ? undefined : { scale: 0.9 }}
             transition={springPop}
-            className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border-subtle bg-transparent transition-colors duration-300 hover:border-it-heading/40 disabled:cursor-not-allowed disabled:opacity-35'>
+            className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border border-it-border-subtle bg-transparent transition-colors duration-300 hover:bg-it-bg disabled:cursor-not-allowed disabled:opacity-35'>
             <Image
                 src={`/icons/stepper-${sign}.svg`}
                 alt=''
