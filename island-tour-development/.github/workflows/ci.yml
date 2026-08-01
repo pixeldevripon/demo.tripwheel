@@ -1,16 +1,17 @@
 name: CI
 
-# Lint + build + unit tests for the backend on PRs and pushes to main that
-# touch backend code. The frontend deploys via Vercel's Git integration
-# (with its own build checks), so it is intentionally not covered here.
+# Lint + build + unit tests for the backend on PRs and pushes (main =
+# integration, prod = release) that touch backend code. The frontend deploys
+# via Vercel's Git integration (with its own build checks), so it is
+# intentionally not covered here.
 on:
   push:
-    branches: [main]
+    branches: [main, prod]
     paths:
       - 'backend/**'
       - '.github/workflows/ci.yml'
   pull_request:
-    branches: [main]
+    branches: [main, prod]
     paths:
       - 'backend/**'
       - '.github/workflows/ci.yml'

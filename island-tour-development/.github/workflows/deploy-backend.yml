@@ -1,11 +1,13 @@
 name: Deploy backend (VPS)
 
-# Deploys the backend to the Hostinger VPS on every push to main that touches
-# backend code or the compose stack. The frontend deploys itself via Vercel's
-# Git integration, so it is intentionally not handled here.
+# Deploys the backend to the Hostinger VPS on every push to prod that touches
+# backend code or the compose stack. prod is the release branch - main stays
+# the integration branch and never deploys. The frontend deploys itself via
+# Vercel's Git integration (production branch: prod), so it is intentionally
+# not handled here.
 on:
   push:
-    branches: [main]
+    branches: [prod]
     paths:
       - 'backend/**'
       - 'docker-compose.yml'
