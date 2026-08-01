@@ -1,7 +1,14 @@
 /** Shared navbar types - one island/category shape, the two dictionary slices. */
 
 export type Island = { name: string; slug: string };
-export type Category = { name: string; slug: string };
+export type Category = {
+    name: string;
+    slug: string;
+    /** Published tour count - shown in the categories dropdown rows. */
+    tours?: number;
+    /** Category thumbnail for the dropdown row; null keeps the peach slot. */
+    image?: string | null;
+};
 
 /** Strings the navbar chrome needs (labels, aria text). */
 export type NavDict = {
@@ -25,6 +32,10 @@ export type NavDict = {
     close: string;
     language: string;
     categories: string;
+    /** Count word for the categories dropdown rows - "15 tours". */
+    tours: string;
+    /** "All {destination} tours" - the categories dropdown footer link. */
+    allIslandTours: string;
     search: string;
 };
 

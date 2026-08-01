@@ -101,15 +101,16 @@ export function InstagramTile({
 
             <TileBadge post={post} />
 
-            {/* Hover: dim the photo and float the Instagram mark, so the tile
-                says where it goes before it is clicked. */}
-            <div className='absolute inset-0 flex items-center justify-center bg-it-heading/0 transition-colors duration-300 group-hover:bg-it-heading/35'>
+            {/* Hover: dim the photo with the warm-dark wash and float the
+                Instagram mark (design v2 .ov), so the tile says where it goes
+                before it is clicked. */}
+            <div className='absolute inset-0 flex items-center justify-center bg-it-dark/0 transition-colors duration-(--it-duration-sm) ease-(--it-ease) group-hover:bg-it-dark/35'>
                 <Image
-                    src='/icons/instagram-tile.svg'
+                    src='/icons/instagram-mark.svg'
                     alt=''
-                    width={10}
-                    height={10}
-                    className='size-6! opacity-0 transition-opacity duration-300 group-hover:opacity-100 md:size-9'
+                    width={22}
+                    height={22}
+                    className='size-[22px] opacity-0 transition-opacity duration-(--it-duration-sm) ease-(--it-ease) group-hover:opacity-100'
                 />
             </div>
         </a>

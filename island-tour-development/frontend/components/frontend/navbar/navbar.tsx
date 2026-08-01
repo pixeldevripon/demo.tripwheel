@@ -112,7 +112,12 @@ export function Navbar({
         fetchDestinationCategoriesClient(slug, locale)
             .then(rows => {
                 if (ignore) return;
-                const mapped = rows.map(c => ({ name: c.name, slug: c.slug }));
+                const mapped = rows.map(c => ({
+                    name: c.name,
+                    slug: c.slug,
+                    tours: c.publishedTourCount,
+                    image: c.heroImage ?? c.ogImage ?? null,
+                }));
                 categoryCache.current.set(cacheKey, mapped);
                 setCategories(mapped);
             })
@@ -126,7 +131,7 @@ export function Navbar({
 
     return (
         <header className='fixed top-0 left-0 right-0 z-100 h-16 bg-(--it-navbar-bg) backdrop-blur-[12px] backdrop-saturate-[1.3] shadow-it-navbar'>
-            <div className='it-container h-full flex items-center justify-between gap-5'>
+            <div className='it-container h-full flex items-center gap-3.5'>
                 {/* ── Left: logo + island + categories ── */}
                 <div className='flex items-center gap-6 lg:gap-12 shrink-0'>
                     <Link href={localizeHref(locale, '/')} className='shrink-0'>
@@ -186,7 +191,7 @@ export function Navbar({
                 />
 
                 {/* ── Desktop right: language + wishlist + account ── */}
-                <div className='hidden md:flex items-center gap-6 shrink-0'>
+                <div className='hidden md:flex items-center gap-5 shrink-0 ml-auto'>
                     <LocaleSelector variant='desktop' locale={locale} dict={dict} />
                     <div className='w-px h-5 bg-it-border' />
                     <WishlistLink locale={locale} dict={dict} />
@@ -194,8 +199,8 @@ export function Navbar({
                     <AccountMenu locale={locale} dict={dict} />
                 </div>
 
-                {/* ── Mobile right: search + island + language + account + menu ── */}
-                <div className='flex md:hidden items-center gap-5'>
+                {/* ── Mobile right: search + language + account + menu ── */}
+                <div className='flex md:hidden items-center gap-5 ml-auto'>
                     {!isHome && (
                         <motion.button
                             type='button'

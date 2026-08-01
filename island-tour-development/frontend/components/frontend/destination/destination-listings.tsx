@@ -47,6 +47,8 @@ const COUNT_CTA_THRESHOLD = 20;
 export type DestinationListingsDict = TourCardDict & {
     /** Section heading - e.g. "Locals' favorites" */
     title: string;
+    /** Kicker line above the heading - "Chosen by people who live here". */
+    kicker: string;
     /**
      * CTA when the tour count is high enough to be compelling (≥ 20).
      * Placeholders: `{count}` and `{destination}`.
@@ -80,7 +82,7 @@ export function DestinationListings({
     totalCount,
 }: DestinationListingsProps) {
     // Derive the subset of dict that TourCard needs.
-    const { title, seeAll, seeAllCount, ...cardDict } = dict;
+    const { title, kicker, seeAll, seeAllCount, ...cardDict } = dict;
 
     // Show the dynamic count only when it's compelling; otherwise drop the number.
     const browseLabel =
@@ -92,62 +94,51 @@ export function DestinationListings({
     const browseHref = localizeHref(locale, `/${destinationSlug}/tours`);
 
     return (
-        <section className='it-section bg-it-white'>
+        <section className='bg-it-white pt-11 md:pt-14'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-12'>
-                    {/* ── Section heading ───────────────────────────────────── */}
-                    <h2 className='m-0 font-medium text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                        {title}
-                    </h2>
+                <Reveal className='flex flex-col gap-5'>
+                    {/* ── Section head: kicker + title (design v2 sechead) ─── */}
+                    <div>
+                        <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
+                            {kicker}
+                        </div>
+                        <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                            {title}
+                        </h2>
+                    </div>
 
                     {/* ── Tours ────────────────────────────────────────────────
-                        Mobile (<640): horizontal swipe carousel that bleeds to the
-                        screen edges (-mx-4 cancels the it-container padding; px-4
-                        re-insets the first/last card). The cards adapt their own
-                        typography via container queries (see TourCard).
-                        sm: 3-col grid · lg: 4-col grid. */}
-                    <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden lg:grid-cols-4'>
+                        Mobile (<640): stacked horizontal row cards (mockup 3.5
+                        locked mobile card, image 40 / content 60).
+                        sm: 3-col grid · lg: 4-col grid (DIT-13). */}
+                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
                         {tours.map((tour, i) => (
-                            // Carousel cells are viewport fractions so a sliver of
-                            // the next card always peeks (~1.2 cards <480, 1.5 from
-                            // 480). Once the grid starts (sm) the GRID owns cell
-                            // sizing - width must reset to auto or the fixed vw
-                            // cells overflow their columns (width='auto' on Reveal
-                            // keeps className in charge; listItem = static on
-                            // mobile, no stagger).
                             <Reveal
                                 key={tour.id}
                                 width='auto'
-                                listItem
-                                className='w-[82vw] min-[480px]:w-[64vw] shrink-0 snap-start sm:w-auto'>
+                                listItem>
                                 <TourCard
                                     tour={tour}
                                     dict={cardDict}
                                     highlighted={i === 0}
+                                    mobileRow
                                 />
                             </Reveal>
                         ))}
                     </div>
 
-                    {/* ── "Browse all" footer CTA ───────────────────────────── */}
-                    <div className='relative flex items-center justify-center  mt-10 py-1'>
-                        {/* Horizontal divider */}
-                        <div
-                            className='absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-it-border'
-                            aria-hidden='true'
-                        />
-
-                        {/* CTA floats above the line on a white pill */}
+                    {/* ── See-all CTA (design v2 .seeall, C21 count rule) ──── */}
+                    <div className='mt-2 flex justify-center'>
                         <Link
                             href={browseHref}
-                            className='relative z-10 inline-flex items-center gap-1 bg-it-white px-5 py-2.5 font-medium text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary transition-colors duration-300 hover:text-it-primary-hover'>
+                            className='inline-flex items-center justify-center gap-2.5 rounded-it-sm bg-it-primary px-7 py-3.5 text-[16.5px] md:text-[19px] font-bold text-it-white no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-primary-hover max-sm:w-full'>
                             {browseLabel}
                             <Image
-                                src='/icons/cta-arrow-right.svg'
+                                src='/icons/hero-arrow-right.svg'
                                 alt=''
                                 width={20}
                                 height={20}
-                                className='size-5 shrink-0'
+                                className='size-4.5 shrink-0'
                             />
                         </Link>
                     </div>

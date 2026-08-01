@@ -12,7 +12,9 @@
         "categories": "Categorías",
         "search": "Buscar",
         "myBookings": "Mis reservas",
-        "myAccount": "Cuentas"
+        "myAccount": "Cuentas",
+        "tours": "tours",
+        "allIslandTours": "Todos los tours en {destination}"
     },
     "footer": {
         "tagline": "Hecho por isleños.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Explora por tipo",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "Todos los tours en {destination}"
         },
         "youMightLike": "También te puede gustar",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "Ver más en Instagram"
         },
         "listings": {
+            "kicker": "Elegidos por quienes viven aquí",
             "title": "Favoritos de los locales",
             "seeAllCount": "Ver los {count} tours en {destination}",
             "seeAll": "Ver todos los tours en {destination}",

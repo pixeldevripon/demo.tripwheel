@@ -12,7 +12,9 @@
         "categories": "Catégories",
         "search": "Rechercher",
         "myBookings": "Mes réservations",
-        "myAccount": "Comptes"
+        "myAccount": "Comptes",
+        "tours": "excursions",
+        "allIslandTours": "Toutes les excursions à {destination}"
     },
     "footer": {
         "tagline": "Créé par des insulaires.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Explorer par type",
-            "tours": "circuits"
+            "tours": "circuits",
+            "allTours": "Toutes les excursions à {destination}"
         },
         "youMightLike": "Vous aimerez aussi",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "Voir plus sur Instagram"
         },
         "listings": {
+            "kicker": "Choisis par ceux qui vivent ici",
             "title": "Coups de cœur des locaux",
             "seeAllCount": "Voir les {count} tours à {destination}",
             "seeAll": "Voir tous les tours à {destination}",

@@ -12,7 +12,9 @@
         "categories": "Kategorien",
         "search": "Suchen",
         "myBookings": "Meine Buchungen",
-        "myAccount": "Konten"
+        "myAccount": "Konten",
+        "tours": "Touren",
+        "allIslandTours": "Alle Touren auf {destination}"
     },
     "footer": {
         "tagline": "Von Inselbewohnern gemacht.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Nach Typ entdecken",
-            "tours": "Touren"
+            "tours": "Touren",
+            "allTours": "Alle Touren auf {destination}"
         },
         "youMightLike": "Das könnte dir auch gefallen",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "Mehr auf Instagram anzeigen"
         },
         "listings": {
+            "kicker": "Ausgewählt von Menschen, die hier leben",
             "title": "Favoriten der Einheimischen",
             "seeAllCount": "Alle {count} Touren in {destination} ansehen",
             "seeAll": "Alle Touren in {destination} ansehen",

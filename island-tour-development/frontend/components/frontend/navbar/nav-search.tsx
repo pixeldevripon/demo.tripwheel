@@ -177,22 +177,24 @@ export function NavSearch({
             {showDesktop && (
                 <div
                     ref={desktopRef}
-                    className='relative hidden md:block flex-1 max-w-141.25'>
+                    className='relative hidden md:block w-full min-w-[180px] max-w-[420px]'>
+                    {/* Compact scoped pill (design v2 .navsearch): paper
+                        surface, hairline border, faint 16px magnifier. */}
                     <form
                         onSubmit={submit}
                         role='search'
-                        className='flex w-full items-center gap-2 rounded-it-full border border-it-heading/20 px-4 py-3 bg-it-white transition-colors duration-300 focus-within:border-it-heading/40'>
+                        className='flex w-full items-center gap-2 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-within:border-it-ink-muted'>
                         <motion.button
                             type='submit'
                             aria-label={nav.search}
                             {...iconPress}
                             className='flex items-center bg-transparent border-none cursor-pointer p-0'>
                             <Image
-                                src='/icons/nav-search.svg'
+                                src='/icons/search-faint.svg'
                                 alt=''
-                                width={18}
-                                height={18}
-                                className='size-4.5 shrink-0'
+                                width={16}
+                                height={16}
+                                className='size-4 shrink-0'
                             />
                         </motion.button>
                         <span className='relative flex-1 min-w-0'>
@@ -203,7 +205,7 @@ export function NavSearch({
                                 onFocus={() => setFocused(true)}
                                 placeholder={rotating ? '' : nav.search}
                                 aria-label={nav.search}
-                                className='w-full bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                className='w-full bg-transparent border-none outline-none text-[13.5px] font-semibold text-it-ink placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
                             {rotating && query === '' && (
                                 <RotatingSearchPlaceholder
@@ -249,7 +251,7 @@ export function NavSearch({
                                     onChange={e => setQuery(e.target.value)}
                                     placeholder={rotating ? '' : nav.search}
                                     aria-label={nav.search}
-                                    className='w-full bg-transparent border-none outline-none text-base text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                    className='w-full bg-transparent border-none outline-none text-[15px] font-semibold text-it-ink placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                                 />
                                 {rotating && query === '' && (
                                     <RotatingSearchPlaceholder

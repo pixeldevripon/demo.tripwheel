@@ -7,6 +7,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { MotionLink } from '../motion-link';
 import { Reveal } from '../reveal';
@@ -25,11 +26,19 @@ export function DestinationExploreTypes({
     dict,
     locale,
     destinationSlug,
+    destinationName,
     categories,
 }: {
-    dict: { title: string; tours: string };
+    dict: {
+        title: string;
+        tours: string;
+        /** "All {destination} tours" - the section head's link label. */
+        allTours: string;
+    };
     locale: Locale;
     destinationSlug: string;
+    /** Island display name - the section head's kicker + link label. */
+    destinationName: string;
     categories: ExploreType[];
 }) {
     // Auto-advance: one card every AUTO_ADVANCE_MS. Pauses on hover
@@ -67,22 +76,41 @@ export function DestinationExploreTypes({
         };
     }, [emblaApi, onSelect]);
 
+    const allToursHref = localizeHref(locale, `/${destinationSlug}/tours`);
+
     return (
-        <section className='it-section bg-it-surface'>
+        <section className='bg-it-white pt-11 md:pt-14'>
             <div className='it-container'>
                 {/* Static-shell section: PageTransition owns the page-enter, so no
                     section-level mount animation (it would flash on hydration).
                     The cards stagger on scroll instead. */}
-                <Reveal className='flex flex-col gap-10 md:gap-12'>
-                    <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
-                        {dict.title}
-                    </h2>
+                <Reveal className='flex flex-col gap-5'>
+                    {/* Section head: kicker + title left, all-tours link right */}
+                    <div className='flex items-end justify-between gap-6'>
+                        <div>
+                            <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
+                                {destinationName}
+                            </div>
+                            <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink'>
+                                {dict.title}
+                            </h2>
+                        </div>
+                        <Link
+                            href={allToursHref}
+                            className='whitespace-nowrap text-sm font-bold text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                            {dict.allTours.replace(
+                                '{destination}',
+                                destinationName
+                            )}{' '}
+                            →
+                        </Link>
+                    </div>
 
                     <div className='relative'>
                         <div
                             ref={emblaRef}
                             className='overflow-x-scroll overflow-y-hidden it-scrollbar-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden '>
-                            <div className='flex gap-4 md:gap-6'>
+                            <div className='flex gap-3.5 px-1 py-1'>
                                 {categories.map(cat => (
                                     <Reveal
                                         key={cat.slug}
@@ -96,33 +124,32 @@ export function DestinationExploreTypes({
                                             )}
                                             whileTap={{ scale: 0.98 }}
                                             transition={springPop}
-                                            className='group relative block size-40 md:size-45 shrink-0 overflow-hidden rounded-[16px] bg-it-border'>
-                                            {cat.image && (
-                                                <Image
-                                                    src={cat.image}
-                                                    alt={cat.name}
-                                                    fill
-                                                    sizes='180px'
-                                                    className='object-cover transition-transform duration-500 ease-out group-hover:scale-105'
-                                                />
-                                            )}
-                                            {/* Bottom scrim - transparent → #1a1a1a over the lower 77% */}
-                                            <div className='pointer-events-none absolute inset-x-0 bottom-0 h-[77%] bg-linear-to-b from-transparent to-it-ink' />
-                                            <div className='absolute bottom-6 left-6 flex flex-col'>
-                                                <span className='font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-white'>
-                                                    {cat.name}
-                                                </span>
-                                                <span className='text-[14px] leading-[1.6] tracking-[-0.012em] text-it-white/70'>
-                                                    {cat.tours} {dict.tours}
-                                                </span>
+                                            className='group block w-[38vw] sm:w-[196px] shrink-0 rounded-it-md no-underline transition-transform duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-0.5'>
+                                            <div className='relative aspect-4/3 overflow-hidden rounded-it-md bg-it-bg'>
+                                                {cat.image && (
+                                                    <Image
+                                                        src={cat.image}
+                                                        alt={cat.name}
+                                                        fill
+                                                        sizes='196px'
+                                                        className='object-cover transition-transform duration-(--it-duration-md) ease-(--it-ease) group-hover:scale-[1.03]'
+                                                    />
+                                                )}
                                             </div>
+                                            <b className='mt-2.5 block text-[14.5px] font-bold tracking-[-0.005em] text-it-ink'>
+                                                {cat.name}
+                                            </b>
+                                            <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>
+                                                {cat.tours} {dict.tours}
+                                            </span>
                                         </MotionLink>
                                     </Reveal>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Side arrows - gutter-outset on desktop; swipe on smaller screens */}
+                        {/* Round rail arrows overlapping the edges (design v2
+                            .catnav); swipe on smaller screens */}
                         <motion.button
                             type='button'
                             aria-label='Previous'
@@ -130,8 +157,11 @@ export function DestinationExploreTypes({
                             disabled={!canPrev}
                             whileTap={canPrev ? { scale: 0.9 } : undefined}
                             transition={springPop}
-                            className='hidden lg:grid absolute top-1/2 left-0 size-12 -translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading-subtle enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
-                            <ChevronLeft className='size-7' strokeWidth={1.5} />
+                            className='hidden lg:flex absolute top-[calc(50%-34px)] -left-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
+                            <ChevronLeft
+                                className='size-4 text-it-ink'
+                                strokeWidth={1.5}
+                            />
                         </motion.button>
                         <motion.button
                             type='button'
@@ -140,9 +170,9 @@ export function DestinationExploreTypes({
                             disabled={!canNext}
                             whileTap={canNext ? { scale: 0.9 } : undefined}
                             transition={springPop}
-                            className='hidden lg:grid absolute top-1/2 right-0 size-12 translate-x-[calc(100%+16px)] -translate-y-1/2 place-items-center rounded-it-full border bg-transparent transition-colors enabled:cursor-pointer enabled:border-it-heading-subtle enabled:text-it-heading disabled:cursor-not-allowed disabled:border-[#8a8a8a]/50 disabled:text-[#8a8a8a]/50'>
+                            className='hidden lg:flex absolute top-[calc(50%-34px)] -right-3.5 z-5 size-9 items-center justify-center rounded-full border border-it-divider bg-it-white shadow-it-md transition-opacity enabled:cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed'>
                             <ChevronRight
-                                className='size-7'
+                                className='size-4 text-it-ink'
                                 strokeWidth={1.5}
                             />
                         </motion.button>

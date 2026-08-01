@@ -30,25 +30,30 @@ import {
   ISLAND_FACTS,
 } from './dest-sections';
 
-// Destination-page FAQ set (Figma node 47361:19834): trust-focused questions
-// about booking with Island Tours, with the island name woven in.
+// Destination-page FAQ set (design v2 locked copy, final design/destination.html):
+// trust-focused questions about booking with Island Tours, with the island name
+// woven into the "how far ahead" row.
 function faqsFor(label: string): { q: string; a: string }[] {
   return [
     {
       q: `Can I cancel if my plans change?`,
-      a: `Most tours can be cancelled up to 24h before the tour starts for a full refund. No forms, no questions asked. Cancel straight from your confirmation email.`,
+      a: `Every tour can be cancelled for free. How late you can cancel differs per tour; the exact cut-off is on the tour page and in your confirmation email. No forms, no questions asked.`,
     },
     {
       q: `Do I have to pay in full now?`,
-      a: `No. On most tours you pay as little as 20% today to lock in your spot and settle the rest closer to your trip. The exact split is shown on each tour page before you book.`,
+      a: `Usually not. Most tours reserve with a small deposit and you settle the rest later or on arrival, depending on the tour. A few tours charge in full or take nothing at booking; the tour page always states exactly how it works before you commit.`,
     },
     {
-      q: `Who is behind Island Tours?`,
-      a: `We are locals. We grew up on these islands, we know every operator on ${label} personally, and we only list tours we would send our own friends and family on.`,
+      q: `How far ahead should I book on ${label}?`,
+      a: `A few days is usually enough. The most popular boats and small-group tours on ${label} fill first, especially December to April and around holidays; land tours often have room a day ahead.`,
     },
     {
-      q: `What if my tour gets cancelled?`,
-      a: `If an operator has to cancel - usually for weather or safety - you choose between a full refund or a free rebooking on the next available departure. We message you as soon as anything changes.`,
+      q: `What happens if the operator has to cancel?`,
+      a: `Weather and safety calls happen on real islands. When a tour is called off, you choose: your money back in full, or a free move to a new date.`,
+    },
+    {
+      q: `Not sure which tour fits?`,
+      a: `Message us on WhatsApp with who's coming and what you like. You get a short list of picks that fit, not a catalog dump.`,
     },
   ];
 }

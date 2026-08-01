@@ -65,23 +65,22 @@ export function CategoriesMenu({
                     onAnimationStart={() => setCollapsing(true)}
                     onAnimationComplete={() => setCollapsing(false)}
                     className={collapsing ? 'overflow-hidden' : ''}>
-                    <div className='flex items-center gap-4 pl-4'>
-                        <div className='w-px h-5 bg-it-ink/40' />
+                    <div className='flex items-center gap-2 pl-2'>
                         <div ref={ref} className='relative'>
                             <motion.button
                                 onClick={() => setOpen(v => !v)}
                                 aria-expanded={open}
                                 whileTap={{ scale: 0.98 }}
                                 transition={pressSpring}
-                                className='flex items-center gap-2 bg-transparent border-none cursor-pointer p-0 text-it-ink'>
+                                className='flex items-center gap-[7px] rounded-it-full bg-transparent border-none cursor-pointer px-3 py-2 text-it-ink'>
                                 <Image
-                                    src='/icons/nav-category.svg'
+                                    src='/icons/nav-categories-grid.svg'
                                     alt=''
                                     width={24}
                                     height={24}
-                                    className='size-6 shrink-0'
+                                    className='size-4 shrink-0'
                                 />
-                                <span className='text-base font-medium text-it-ink whitespace-nowrap'>
+                                <span className='text-[13.5px] font-bold text-it-ink whitespace-nowrap'>
                                     {dict.categories}
                                 </span>
                             </motion.button>
@@ -90,7 +89,7 @@ export function CategoriesMenu({
                                 {open && items.length > 0 && (
                                     <motion.div
                                         {...dropdownMotion}
-                                        className='absolute top-[calc(100%+18px)] left-0 min-w-52 origin-top-left bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50'>
+                                        className='absolute top-[calc(100%+10px)] left-0 w-[340px] origin-top-left bg-it-white rounded-it-sm border border-it-border-subtle shadow-it-lg p-2.5 z-50'>
                                         {items.map(cat => (
                                             <motion.div
                                                 key={cat.slug}
@@ -100,11 +99,50 @@ export function CategoriesMenu({
                                                     onClick={() =>
                                                         setOpen(false)
                                                     }
-                                                    className='block px-5 py-3 text-it-ink text-sm no-underline hover:bg-it-surface transition-colors'>
-                                                    {cat.name}
+                                                    className='flex items-center gap-3 rounded-it-md px-2.5 py-2 no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
+                                                    {cat.image ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={cat.image}
+                                                            alt=''
+                                                            className='size-11 shrink-0 rounded-it-md object-cover bg-it-peach'
+                                                        />
+                                                    ) : (
+                                                        <span className='size-11 shrink-0 rounded-it-md bg-it-peach border border-dashed border-it-peach-border' />
+                                                    )}
+                                                    <span className='min-w-0'>
+                                                        <b className='block truncate text-sm font-bold text-it-ink'>
+                                                            {cat.name}
+                                                        </b>
+                                                        {cat.tours !== undefined && (
+                                                            <span className='text-xs text-it-text-muted tabular-nums'>
+                                                                {cat.tours}{' '}
+                                                                {dict.tours}
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </Link>
                                             </motion.div>
                                         ))}
+                                        {currentIsland && (
+                                            <div className='mt-1.5 border-t border-it-divider pt-2'>
+                                                <Link
+                                                    href={localizeHref(
+                                                        locale,
+                                                        `/${currentIsland.slug}/tours`
+                                                    )}
+                                                    onClick={() =>
+                                                        setOpen(false)
+                                                    }
+                                                    className='block rounded-it-md px-2.5 py-2 text-[13.5px] font-bold text-it-primary-hover no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg'>
+                                                    {dict.allIslandTours.replace(
+                                                        '{destination}',
+                                                        currentIsland.name
+                                                    )}{' '}
+                                                    →
+                                                </Link>
+                                            </div>
+                                        )}
                                     </motion.div>
                                 )}
                             </AnimatePresence>

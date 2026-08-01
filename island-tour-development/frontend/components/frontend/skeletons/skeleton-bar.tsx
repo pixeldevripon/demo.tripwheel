@@ -8,11 +8,12 @@ import { cn } from '@/lib/utils';
  * from the live grid they stand in for.
  */
 
-/** A single shimmering placeholder bar (frontend-tokened, no layout of its own). */
+/** A single shimmering placeholder bar (frontend-tokened, no layout of its
+ *  own). The shimmer itself is the shared `.it-skeleton` utility (design v2
+ *  light-sweep on the paper surface); pass a `rounded-*` class to override the
+ *  default 12px radius. */
 export function Bar({ className }: { className?: string }) {
-    return (
-        <div className={cn('animate-pulse rounded-md bg-it-heading/10', className)} />
-    );
+    return <div className={cn('it-skeleton rounded-it-md', className)} />;
 }
 
 /**

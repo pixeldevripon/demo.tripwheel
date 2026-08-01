@@ -56,12 +56,13 @@ export function DestinationAbout({
     dict: AboutDict;
 }) {
     return (
-        <section className='it-section pt-[32px]! bg-it-surface border-b border-it-heading/5'>
+        <section className='bg-it-white py-11 md:pt-14 md:pb-20'>
             <div className='it-container'>
-                <Reveal className='flex flex-col gap-10 md:gap-12'>
-                    {/* Top Section: Title & Body Copy */}
-                    <div className='flex flex-col gap-6 md:gap-8'>
-                        <h2 className='m-0 font-medium text-[32px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <Reveal className='flex flex-col gap-5'>
+                    {/* Kicker + body copy (design v2 .about: the section header
+                        carries the destination as a kicker line). */}
+                    <div className='flex flex-col gap-3'>
+                        <h2 className='m-0 font-it-body text-[11.5px] font-bold uppercase leading-[1.6] tracking-[0.13em] text-it-primary-hover'>
                             {dict.title.replace(
                                 '{destination}',
                                 destinationName
@@ -72,22 +73,23 @@ export function DestinationAbout({
                             description={description}
                             moreLabel={dict.learnMore}
                             lessLabel={dict.readLess}
-                            className='m-0 text-base md:text-lg leading-[1.6] tracking-[-0.012em] text-it-text-muted'
-                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-medium text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary'
+                            className='m-0 text-[14px] leading-[1.7] text-it-text-muted'
+                            buttonClassName='ml-1.5 inline cursor-pointer border-none bg-transparent p-0 font-semibold text-[14px] leading-[1.7] text-it-ink underline decoration-1 underline-offset-4 transition-colors duration-300 hover:text-it-primary'
                         />
                     </div>
 
-                    {/* Three authored columns, each under its own rule. */}
-                    <div className='grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-10'>
+                    {/* Exactly 3 authored columns, each under its own warm rule
+                        (design v2 .about .col). */}
+                    <div className='grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8'>
                         {sections.map(section => (
                             <div
                                 key={section.heading}
-                                className='flex flex-col gap-4 border-t border-it-heading/15 pt-6'>
-                                <h3 className='m-0 font-semibold text-[20px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                                className='flex flex-col gap-2.5 border-t-2 border-it-peach-border pt-[18px]'>
+                                <h3 className='m-0 text-[19px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
                                     {section.heading}
                                 </h3>
                                 {section.body && (
-                                    <p className='m-0 text-[15px] leading-[1.7] tracking-[-0.006em] text-it-text-muted'>
+                                    <p className='m-0 text-[14px] leading-[1.7] text-it-text-muted'>
                                         {section.body}
                                     </p>
                                 )}

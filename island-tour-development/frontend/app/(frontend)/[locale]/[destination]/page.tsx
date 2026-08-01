@@ -22,7 +22,8 @@ import {
 } from '@/lib/api/public';
 import { getSitemapEntries } from '@/lib/api/public/sitemap';
 import { JsonLd } from '@/components/frontend/seo/json-ld';
-import { isLocale, type Locale } from '@/lib/constants/locales';
+import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
+import Link from 'next/link';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { buildAlternates } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
@@ -275,6 +276,21 @@ async function DestinationContent({
         <>
             <JsonLd data={breadcrumbJsonLd} />
             <JsonLd data={touristDestinationJsonLd} />
+            {/* Breadcrumbs above the hero, desktop only (design v2 .crumbs;
+                LD8 divergence: hidden on mobile). */}
+            <nav
+                aria-label='Breadcrumb'
+                className='it-container hidden pt-3.5 pb-1 text-[12.5px] leading-[1.6] text-it-text-muted md:block'>
+                <Link
+                    href={localizeHref(locale, '/')}
+                    className='no-underline hover:underline'>
+                    {dict.destination.allTours.breadcrumb.home}
+                </Link>
+                <span className='mx-[7px] text-it-ink-muted'>›</span>
+                <span className='font-semibold text-it-ink'>
+                    {destinationName}
+                </span>
+            </nav>
             <DestinationHeroSection
                 destination={destination}
                 locale={locale as Locale}

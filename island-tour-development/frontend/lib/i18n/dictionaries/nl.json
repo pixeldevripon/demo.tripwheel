@@ -12,7 +12,9 @@
         "categories": "Categorieën",
         "search": "Zoeken naar",
         "myBookings": "Mijn boekingen",
-        "myAccount": "Accounts"
+        "myAccount": "Accounts",
+        "tours": "tours",
+        "allIslandTours": "Alle tours op {destination}"
     },
     "footer": {
         "tagline": "Gemaakt door eilandbewoners.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Verken op type",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "Alle tours op {destination}"
         },
         "youMightLike": "Misschien vind je dit ook leuk",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "Meer bekijken op Instagram"
         },
         "listings": {
+            "kicker": "Gekozen door mensen die hier wonen",
             "title": "Favorieten van locals",
             "seeAllCount": "Bekijk alle {count} tours in {destination}",
             "seeAll": "Bekijk alle tours in {destination}",

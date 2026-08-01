@@ -131,24 +131,30 @@ export function DestinationHeroSearch({
             <form
                 onSubmit={submit}
                 role='search'
-                className='flex h-15 w-full items-center gap-2 rounded-it-full border border-it-search-border bg-it-white pl-5 pr-2 md:h-20 md:gap-0 md:pl-9 md:pr-5'>
-                {/* Search field - fills the left region. h-full + the divider
-                    gap as padding, so the WHOLE left half of the pill focuses
-                    the input, not just the text line. */}
-                <input
-                    type='search'
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onFocus={() => setFocused(true)}
-                    placeholder={dict.searchPlaceholder}
-                    aria-label={dict.searchPlaceholder}
-                    className='min-w-0 h-full flex-1 pr-4 md:pr-8 bg-transparent border-none outline-none text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-heading placeholder:text-it-text-muted [&::-webkit-search-cancel-button]:appearance-none'
-                />
+                className='flex w-full gap-2 rounded-it-lg bg-it-white p-2 shadow-[0_18px_44px_rgba(0,0,0,0.3)] max-md:flex-col max-md:gap-1.5'>
+                {/* Search field (design v2 .hs-field): icon + text, the whole
+                    region focuses the input. */}
+                <label className='flex min-w-0 flex-1 cursor-text items-center gap-2.5 rounded-it-sm py-2.5 pl-3.5 pr-2 transition-colors hover:bg-it-bg'>
+                    <Image
+                        src='/icons/search-soft.svg'
+                        alt=''
+                        width={24}
+                        height={24}
+                        className='size-4.5 shrink-0'
+                    />
+                    <input
+                        type='search'
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        onFocus={() => setFocused(true)}
+                        placeholder={dict.searchPlaceholder}
+                        aria-label={dict.searchPlaceholder}
+                        className='min-w-0 w-full bg-transparent border-none outline-none text-[15px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                    />
+                </label>
 
-                {/* Vertical divider - between search field and date (mobile + desktop).
-                    No margins: the gaps live as padding on the clickable
-                    neighbours so there is no dead zone around the divider. */}
-                <span className='h-8.5 w-px shrink-0 bg-it-heading' />
+                {/* Vertical divider between the two fields (desktop only). */}
+                <span className='my-1.5 w-px shrink-0 bg-it-divider max-md:hidden' />
 
                 {/* Date picker - "Select date" text on both mobile and desktop.
                     h-full + flex-1 on desktop (absorbing the old spacer): the
@@ -160,13 +166,20 @@ export function DestinationHeroSearch({
                         tree, so a nested control would be unreachable. With no
                         date the trigger absorbs the whole region (flex-1);
                         with one it hugs the text so the clear sits beside it. */}
-                    <div className='flex h-full shrink-0 md:flex-1 items-center gap-1.5'>
+                    <div className='flex shrink-0 items-center gap-1.5 rounded-it-sm transition-colors hover:bg-it-bg md:w-[190px]'>
                         <PopoverTrigger asChild>
                             <motion.button
                                 type='button'
                                 aria-label={dict.selectDate}
                                 transition={springPop}
-                                className={`flex h-full cursor-pointer items-center whitespace-nowrap border-none bg-transparent p-0 pl-4 md:pl-8 text-left text-[14px] md:text-[16px] leading-[1.6] tracking-[-0.012em] transition-colors duration-300 ${date ? 'text-it-heading' : 'md:flex-1 text-it-text-muted'}`}>
+                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[15px] md:text-[15.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-ink-muted'}`}>
+                                <Image
+                                    src='/icons/calendar-soft.svg'
+                                    alt=''
+                                    width={24}
+                                    height={24}
+                                    className='size-4.5 shrink-0'
+                                />
                                 {date
                                     ? format(date, 'd MMM yyyy')
                                     : dict.selectDate}
@@ -208,21 +221,14 @@ export function DestinationHeroSearch({
                     </PopoverContent>
                 </Popover>
 
-                {/* Orange action button (the old flexible spacer is now part of
-                    the date trigger's clickable area) */}
+                {/* Orange labeled action button (design v2 .searchgo). */}
                 <motion.button
                     type='submit'
-                    aria-label={dict.searchPlaceholder}
+                    aria-label={search.title}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='grid size-10 shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-primary transition-colors hover:bg-it-primary-hover'>
-                    <Image
-                        src='/icons/hero-search-white.svg'
-                        alt=''
-                        width={18}
-                        height={18}
-                        className='size-4.5'
-                    />
+                    className='flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-it-md border-none bg-it-primary px-6 py-3 text-[16px] md:text-[19px] font-bold text-it-white transition-colors hover:bg-it-primary-hover'>
+                    {search.title}
                 </motion.button>
             </form>
 

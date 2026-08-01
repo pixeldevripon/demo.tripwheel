@@ -12,7 +12,9 @@
         "categories": "Categorias",
         "search": "Pesquisar",
         "myBookings": "Minhas reservas",
-        "myAccount": "Contas"
+        "myAccount": "Contas",
+        "tours": "passeios",
+        "allIslandTours": "Todos os passeios em {destination}"
     },
     "footer": {
         "tagline": "Feito por ilhéus.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Explore por tipo",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "Todos os passeios em {destination}"
         },
         "youMightLike": "Você também pode gostar",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "Ver mais no Instagram"
         },
         "listings": {
+            "kicker": "Escolhidos por quem vive aqui",
             "title": "Favoritos locais",
             "seeAllCount": "Ver os {count} tours em {destination}",
             "seeAll": "Ver todos os tours em {destination}",

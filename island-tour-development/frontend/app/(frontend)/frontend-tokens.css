@@ -223,7 +223,6 @@
 
     /* Search widget */
     --it-search-bg:     var(--it-white);
-    --it-search-border: rgba(44, 44, 44, 0.20);
     --it-search-radius: var(--it-radius-full);
     --it-search-shadow: var(--it-shadow-lg);
 
@@ -323,7 +322,6 @@
     --color-it-hub-hero-bg:     var(--it-hub-hero-bg);
     --color-it-hero-heading:    var(--it-hero-heading);
     --color-it-editorial-accent: var(--it-editorial-accent);
-    --color-it-search-border:     var(--it-search-border);
 
     --radius-it-xs:   var(--it-radius-xs);
     --radius-it-sm:   var(--it-radius-sm);
@@ -355,6 +353,19 @@
     --text-it-3xl:     var(--it-text-3xl);
     --text-it-4xl:     var(--it-text-4xl);
     --text-it-display: var(--it-text-display);
+}
+
+
+/* Skeleton light-sweep (design v2). Lives at top level: @keyframes inside
+   @layer utilities are still valid, but keeping them global makes the single
+   shimmer definition obvious. */
+@keyframes it-shimmer {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(100%);
+    }
 }
 
 
@@ -507,6 +518,35 @@
         box-shadow: var(--it-card-shadow);
         border: 1px solid var(--it-card-border);
         overflow: hidden;
+    }
+
+    /* ── Skeleton shimmer (design v2 .skl) ──────────────────────────────────
+     * One shimmer definition for every loading placeholder: paper surface,
+     * 12px radius, a white light-sweep crossing every 1.2s. Compose via the
+     * shared <Bar> in components/frontend/skeletons/skeleton-bar.tsx. */
+    .it-skeleton {
+        position: relative;
+        overflow: hidden;
+        background: var(--it-bg);
+    }
+
+    .it-skeleton::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            100deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.85) 50%,
+            transparent 70%
+        );
+        animation: it-shimmer 1.2s infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .it-skeleton::before {
+            animation: none;
+        }
     }
 
     /* Horizontal scroller with snap + hidden scrollbar (peek carousels) */

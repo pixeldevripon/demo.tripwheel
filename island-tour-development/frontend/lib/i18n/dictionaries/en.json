@@ -12,7 +12,9 @@
         "categories": "Categories",
         "search": "Search for",
         "myBookings": "My bookings",
-        "myAccount": "Accounts"
+        "myAccount": "Accounts",
+        "tours": "tours",
+        "allIslandTours": "All {destination} tours"
     },
     "footer": {
         "tagline": "Built by Islanders.",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "Explore by type",
-            "tours": "tours"
+            "tours": "tours",
+            "allTours": "All {destination} tours"
         },
         "youMightLike": "You might also like",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "View more on Instagram"
         },
         "listings": {
+            "kicker": "Chosen by people who live here",
             "title": "Locals' favorites",
             "seeAllCount": "See all {count} tours in {destination}",
             "seeAll": "See all {destination} tours",

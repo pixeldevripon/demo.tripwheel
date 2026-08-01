@@ -12,7 +12,9 @@
         "categories": "分类",
         "search": "搜索",
         "myBookings": "我的预订",
-        "myAccount": "账户"
+        "myAccount": "账户",
+        "tours": "个行程",
+        "allIslandTours": "{destination}全部行程"
     },
     "footer": {
         "tagline": "由岛民打造。",
@@ -267,7 +269,8 @@
         },
         "exploreTypes": {
             "title": "按类型探索",
-            "tours": "个项目"
+            "tours": "个项目",
+            "allTours": "{destination}全部行程"
         },
         "youMightLike": "您可能也喜欢",
         "hub": {
@@ -575,6 +578,7 @@
             "viewMore": "在Instagram上查看更多"
         },
         "listings": {
+            "kicker": "由生活在这里的人挑选",
             "title": "当地人最爱",
             "seeAllCount": "查看 {destination} 的全部 {count} 个旅行",
             "seeAll": "查看 {destination} 的所有旅行",

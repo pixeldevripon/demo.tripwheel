@@ -2,20 +2,20 @@ import type { InstagramTile as Tile } from '@/lib/api/public';
 import { InstagramTile } from './instagram-tile';
 
 /**
- * The curated band (the Figma design): 2 columns on phones, 3 on desktop,
- * rounded 384x337 cards with generous gutters. Reads as a section OF the page,
- * where the gallery layout reads as a feed embedded in it.
+ * The curated band (design v2 .iggrid): square rounded tiles - 2 columns on
+ * phones, 3 on tablet, 6 on desktop with tight gutters. Reads as a feed strip
+ * rather than a card section.
  */
 export function InstagramGrid({ posts }: { posts: Tile[] }) {
     return (
-        <div className='grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6'>
+        <div className='grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-6'>
             {posts.map(post => (
                 <InstagramTile
                     key={post.id}
                     post={post}
-                    className='rounded-[16px]'
-                    aspectRatio='384 / 337'
-                    sizes='(max-width: 768px) 50vw, 33vw'
+                    className='rounded-it-md'
+                    aspectRatio='1 / 1'
+                    sizes='(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 190px'
                 />
             ))}
         </div>
