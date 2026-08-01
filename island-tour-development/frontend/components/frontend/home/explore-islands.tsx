@@ -55,18 +55,22 @@ export function ExploreIslands({
                                     whileTap={{ scale: 0.99 }}
                                     transition={springPop}
                                     className='group block overflow-hidden rounded-it-md border border-it-divider bg-it-white no-underline transition-[box-shadow,border-color] duration-(--it-duration-sm) ease-(--it-ease) hover:border-it-card-hover-border hover:shadow-it-card-hover'>
-                                    <div className='relative aspect-video md:aspect-3/2 overflow-hidden bg-it-border'>
+                                    <div className='relative aspect-video md:aspect-3/2 overflow-hidden bg-it-bg'>
                                         {island.image && (
-                                            <Image
-                                                src={island.image}
-                                                alt={island.name}
-                                                fill
-                                                sizes='(max-width: 768px) 100vw, 384px'
-                                                className='object-cover transition-transform duration-(--it-duration-lg) ease-(--it-ease) group-hover:scale-[1.03]'
-                                            />
+                                            <>
+                                                <Image
+                                                    src={island.image}
+                                                    alt={island.name}
+                                                    fill
+                                                    sizes='(max-width: 768px) 100vw, 384px'
+                                                    className='object-cover transition-transform duration-(--it-duration-lg) ease-(--it-ease) group-hover:scale-[1.03]'
+                                                />
+                                                {/* Soft bottom scrim over the
+                                                    photo edge - photo only;
+                                                    the fallback stays flat. */}
+                                                <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-tile)]' />
+                                            </>
                                         )}
-                                        {/* Soft bottom scrim over the photo edge */}
-                                        <div className='pointer-events-none absolute inset-0 bg-[image:var(--it-scrim-tile)]' />
                                     </div>
 
                                     <div className='flex flex-col px-4 pt-3.5 pb-4'>

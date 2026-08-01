@@ -227,8 +227,11 @@ function DefaultTourCard({
                     sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
                     priority={priority}
                 />
-                {/* Soft bottom scrim over the photo edge (design v2). */}
-                <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                {/* Soft bottom scrim over the photo edge (design v2) - only
+                    when a photo exists; the empty paper fallback stays flat. */}
+                {tour.images.length > 0 && (
+                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                )}
                 {/* Badge (top-left) + Wishlist button (top-right) */}
                 <div className='absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2 z-10'>
                     <BadgeChip type={tour.badge} dict={dict} />

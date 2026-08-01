@@ -45,16 +45,19 @@ export function CollectionCard({
                 {/* ── Image area ─────────────────────────────────────────── */}
                 <div className='relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
                     {activeImage && (
-                        <Image
-                            src={activeImage}
-                            alt={collection.name}
-                            fill
-                            sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
-                            className='object-cover'
-                        />
+                        <>
+                            <Image
+                                src={activeImage}
+                                alt={collection.name}
+                                fill
+                                sizes='(max-width: 640px) 40vw, (max-width: 1024px) 50vw, 384px'
+                                className='object-cover'
+                            />
+                            {/* Soft bottom scrim over the photo edge (design
+                                v2) - photo only; the fallback stays flat. */}
+                            <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
+                        </>
                     )}
-                    {/* Soft bottom scrim over the photo edge (design v2). */}
-                    <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
                 </div>
 
                 {/* ── Card info ──────────────────────────────────────────── */}
