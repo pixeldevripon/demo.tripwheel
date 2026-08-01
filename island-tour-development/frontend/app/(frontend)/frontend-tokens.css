@@ -215,6 +215,9 @@
 
     /* ── Component Tokens ───────────────────────────────────────────────── */
 
+    /* Collection banner scrim (design v2 .colbanner) */
+    --it-scrim-banner: linear-gradient(76deg, rgba(35, 32, 27, 0.66) 0%, rgba(35, 32, 27, 0.34) 46%, rgba(35, 32, 27, 0.06) 72%);
+
     /* Listing filter row (design v2 .frow - sticky under the navbar) */
     --it-frow-bg:            rgba(255, 255, 255, 0.96);
 

@@ -47,9 +47,11 @@ export function CollectionHero({
     dict,
 }: CollectionHeroProps) {
     return (
+        // Design v2 .colbanner: a thin ~300px editorial band, content centred
+        // vertically, over the 76deg banner scrim.
         <section
             aria-label={title}
-            className='relative flex h-136.75 md:h-150 2xl:h-180 w-full items-end overflow-hidden bg-it-ink-placeholder'>
+            className='relative h-[300px] w-full overflow-hidden bg-it-dark'>
             {heroImage && (
                 <>
                     <Image
@@ -58,36 +60,35 @@ export function CollectionHero({
                         fill
                         priority
                         sizes='100vw'
-                        className='object-cover'
+                        className='object-cover object-[center_62%]'
                     />
-                    {/* Legibility overlay over the photo */}
-                    <div className='absolute inset-0 bg-black/50' />
+                    <div className='absolute inset-0 bg-[image:var(--it-scrim-banner)]' />
                 </>
             )}
 
             {/* ── Share pill: pinned top-right, aligned to the container gutter ── */}
-            <div className='it-container pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-end xl:top-6'>
+            <div className='pointer-events-none absolute inset-x-0 top-[18px] z-10 flex justify-end px-6'>
                 <div className='pointer-events-auto'>
                     <CollectionShareButton label={dict.share} />
                 </div>
             </div>
 
             {/* ── Text block: bottom-left, inside the container gutter ── */}
-            <div className='it-container relative z-10 w-full pb-8 md:pb-12 xl:pb-24.5'>
-                <div className='flex max-w-177.25 flex-col gap-5 md:gap-6'>
+            <div className='it-container absolute inset-0 z-10 flex flex-col justify-center'>
+                <div className='flex max-w-[640px] flex-col'>
                     {/* Eyebrow + H1 + subtitle - gap 4px */}
                     <MountReveal delay={0.1} yOffset={28}>
-                        <div className='flex flex-col gap-1'>
+                        <div className='flex flex-col'>
                             {eyebrow && (
-                                <p className='m-0 font-normal uppercase text-[14px] xl:text-[16px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                                <p className='m-0 text-[11.5px] font-bold uppercase tracking-[0.14em] text-it-white/85'>
                                     {eyebrow}
                                 </p>
                             )}
-                            <h1 className='m-0 font-medium text-[28px] md:text-[36px] xl:text-[48px] md:w-180 leading-[1.2] tracking-[-0.012em] text-it-primary-fg'>
+                            <h1 className='m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] text-it-white'>
                                 {title}
                             </h1>
                             {subtitle && (
-                                <p className='m-0 font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
+                                <p className='m-0 mt-2.5 text-[15px] font-semibold leading-[1.6] text-it-white/92'>
                                     {subtitle}
                                 </p>
                             )}
@@ -97,24 +98,19 @@ export function CollectionHero({
                     {/* Meta row: "{N} tours · From ${price}" - gap 16px */}
                     {tourCount > 0 && (
                         <MountReveal delay={0.2} yOffset={20}>
-                            <div className='flex items-center gap-4'>
-                                <span className='font-normal text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
+                            <div className='mt-2 flex items-center gap-2 text-[13px] font-semibold leading-[1.6] text-it-white/85 tabular-nums'>
+                                <span>
                                     {tourCount} {dict.tours}
                                 </span>
-
                                 {startingPrice != null && (
                                     <>
                                         <span
                                             aria-hidden='true'
-                                            className='size-1.25 shrink-0 rounded-it-full bg-it-white'
-                                        />
-                                        <span className='flex items-baseline gap-1'>
-                                            <span className='font-normal text-[12px] md:text-[13px] xl:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-primary-subtle'>
-                                                {dict.from}
-                                            </span>
-                                            <span className='font-medium text-[14px] md:text-[16px] xl:text-[18px] leading-[1.6] tracking-[-0.012em] text-it-primary-fg'>
-                                                {startingPrice}
-                                            </span>
+                                            className='text-it-white/55'>
+                                            ·
+                                        </span>
+                                        <span>
+                                            {dict.from} {startingPrice}
                                         </span>
                                     </>
                                 )}
