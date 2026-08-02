@@ -113,10 +113,10 @@ export function ReviewsTable({
               placeholder='Search reviewer or review text...'
             />
             <Select
-              value={filters.status ?? 'PENDING'}
+              value={filters.status ?? 'all'}
               onValueChange={(v) =>
-                // 'all' is passed through, NOT dropped: clearing the key would
-                // hit the list view's PENDING default and silently re-filter.
+                // 'all' is passed through, NOT dropped, so the control and the
+                // query agree on what "no status filter" means.
                 onFilterChange('status', v)
               }>
               <SelectTrigger className='w-36 shrink-0'>

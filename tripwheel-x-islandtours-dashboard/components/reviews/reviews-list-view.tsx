@@ -11,10 +11,13 @@ import { ReviewsTable } from './reviews-table';
  *
  * ## Two things worth knowing
  *
- * 1. **Pending is a filter DEFAULT, not a hard exclusion** (the same idiom as the
- *    cancellations queue). A moderation queue is a work list, so it opens on what
- *    still needs a decision - but the full history stays one dropdown away rather
- *    than being unreachable.
+ * 1. **It opens on EVERY review, ordered pending-first.** The status filter used
+ *    to default to PENDING, which answered "what needs a decision" by hiding
+ *    everything else. Ordering answers it without the hiding: the undecided
+ *    reviews sit on top and the rest of the history is already on the page, no
+ *    dropdown required. The sort is a SERVER sort (`pending_first`) because this
+ *    list is paginated server-side - sorting the fetched rows would only
+ *    rearrange the current page, so page 2 would still be arbitrary.
  *
  * 2. **Role decides the endpoint, not the filter.** An operator hits
  *    `/reviews/operator`, which the backend scopes to their own tours *after*
@@ -37,20 +40,21 @@ export function ReviewsListView() {
 
   const scope = can('APPROVE_REVIEW') ? 'admin' : 'operator';
 
-  // PENDING is the DEFAULT, not a floor. `?? 'PENDING'` treated "All statuses"
-  // (which the control sends as `all`) as "unset" and put the queue straight
-  // back on Pending, so the full history was unreachable - the exact opposite
-  // of the "history is one dropdown away" rule this list is built on.
-  const rawStatus = filters.status ?? 'PENDING';
+  // Every status by default; `pending_first` below is what surfaces the work.
+  // Narrowing to one status stays available, and "All statuses" is what the
+  // control sends as `all` - which must map to an ABSENT status param, not a
+  // literal, or the backend would filter on the string.
+  const rawStatus = filters.status ?? 'all';
   const status =
     rawStatus === 'all' ? undefined : (rawStatus as ReviewModerationStatus);
 
   const params: ReviewsQueryParams = {
     page,
     limit,
-    // Newest first - without this the backend falls back to its queue default
-    // (oldest-first), burying fresh reviews on the last page.
-    sort: 'newest',
+    // Undecided reviews on top, newest first within each status group. Without
+    // this the backend falls back to oldest-first across the whole list, which
+    // with no status filter buries today's pending reviews behind the archive.
+    sort: 'pending_first',
     // Omitted entirely on "all" - the backend treats an absent status as
     // "every status", and sending `undefined` explicitly would serialise.
     ...(status ? { status } : {}),
