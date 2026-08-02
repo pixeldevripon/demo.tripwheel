@@ -175,19 +175,55 @@ export function Field({
     );
 }
 
+/**
+ * ONE reveal for every error line on the checkout, field-level or form-level.
+ *
+ * `FieldError`'s docblock already promised it "mirrors the Field error
+ * treatment" - so the intent to have a single error motion was written down,
+ * and three call sites (the contact form and both payment panels) ignored it
+ * and inlined their own copy of the same AnimatePresence block.
+ */
+const ERROR_REVEAL = {
+    initial: { opacity: 0, y: -4, height: 0 },
+    animate: { opacity: 1, y: 0, height: 'auto' },
+    exit: { opacity: 0, y: -4, height: 0 },
+    transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+} as const;
+
 /** An animated inline error line (mirrors the Field error treatment). */
 export function FieldError({ error }: { error?: string }) {
     return (
         <AnimatePresence initial={false}>
             {error && (
                 <motion.span
-                    initial={{ opacity: 0, y: -4, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -4, height: 0 }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    {...ERROR_REVEAL}
                     className='text-[13px] leading-[1.5] text-it-primary'>
                     {error}
                 </motion.span>
+            )}
+        </AnimatePresence>
+    );
+}
+
+/**
+ * The FORM-level error line - same reveal, one step larger, and its own top
+ * margin because it sits under a control group rather than under one field.
+ */
+export function FormError({
+    error,
+    className = 'mt-3',
+}: {
+    error?: string | null;
+    className?: string;
+}) {
+    return (
+        <AnimatePresence initial={false}>
+            {error && (
+                <motion.div
+                    {...ERROR_REVEAL}
+                    className={`${className} text-[13.5px] leading-[1.6] text-it-primary`}>
+                    {error}
+                </motion.div>
             )}
         </AnimatePresence>
     );
@@ -352,3 +388,108 @@ export function CtaButton({
     );
 }
 
+/**
+ * The "Secure checkout · Powered by {PSP}" trust row.
+ *
+ * Identical in both payment panels but for the PSP name. It carries no
+ * integration logic at all, which is why it lives here rather than being
+ * duplicated alongside code that genuinely differs per PSP.
+ */
+export function SecureCheckoutRow({
+    psp,
+    dict,
+}: {
+    psp: string;
+    dict: { secureCheckout: string; poweredBy: string };
+}) {
+    return (
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
+            <Image
+                src='/icons/checkout/lock-ink.svg'
+                alt=''
+                width={24}
+                height={24}
+                className='size-4 shrink-0'
+            />
+            {dict.secureCheckout}
+            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
+                {dict.poweredBy} <b>{psp}</b>
+            </span>
+        </div>
+    );
+}
+
+/**
+ * The commit CTA - the button that takes the money.
+ *
+ * Shared deliberately. It was ~45 identical lines in both payment panels,
+ * differing only in the click handler and the disabled predicate, and a change
+ * to the amount format, the busy state or the lock affordance had to land twice
+ * or the two PSPs' Pay buttons drifted apart. `amountLabel` is passed in
+ * already formatted so this component never has to know about currencies.
+ *
+ * `amountLabel` MUST be the amount that will actually be charged - see
+ * `chargeToday` in `checkout-form`, which reads it from the payment intent
+ * rather than from client-side arithmetic.
+ */
+export function PayCtaButton({
+    onClick,
+    disabled,
+    processing,
+    dict,
+    amountLabel,
+}: {
+    onClick: () => void;
+    disabled: boolean;
+    processing: boolean;
+    dict: { processing: string; reserve: string; reservePay: string };
+    /** Formatted amount, or null when nothing is due now. */
+    amountLabel: string | null;
+}) {
+    return (
+        <div className='mt-5'>
+            <CtaButton onClick={onClick} disabled={disabled}>
+                <AnimatePresence mode='wait' initial={false}>
+                    {processing ? (
+                        <motion.span
+                            key='processing'
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.15 }}
+                            className='flex items-center gap-2.5'>
+                            <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
+                            {dict.processing}
+                        </motion.span>
+                    ) : (
+                        <motion.span
+                            key='label'
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.15 }}
+                            className='flex items-center gap-[9px]'>
+                            <Image
+                                src='/icons/checkout/lock-white.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-[15px] shrink-0'
+                            />
+                            {dict.reserve}
+                            {amountLabel && (
+                                <>
+                                    {' · '}
+                                    {dict.reservePay.replace(
+                                        '{amount}',
+                                        amountLabel
+                                    )}
+                                </>
+                            )}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
+            </CtaButton>
+        </div>
+    );
+}

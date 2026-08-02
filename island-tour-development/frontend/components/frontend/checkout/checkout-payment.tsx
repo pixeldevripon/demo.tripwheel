@@ -22,11 +22,13 @@ import Image from 'next/image';
 import { memo, useMemo, useState, type ReactNode } from 'react';
 import {
     ConsentLine,
-    CtaButton,
     Field,
     FieldShell,
+    FormError,
     FreeCancelNote,
+    PayCtaButton,
     Radio,
+    SecureCheckoutRow,
 } from './checkout-fields';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -261,19 +263,7 @@ function PaymentInner({
             <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
                 {dict.selectPaymentMethod}
             </span>
-            <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
-                <Image
-                    src='/icons/checkout/lock-ink.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-4 shrink-0'
-                />
-                {dict.secureCheckout}
-                <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
-                    {dict.poweredBy} <b>Stripe</b>
-                </span>
-            </div>
+            <SecureCheckoutRow psp='Stripe' dict={dict} />
 
             {/* Payment methods - ONE bordered radio list (design v2 .pm):
                 hairline-divided rows, tinted selected row, methods expand in
@@ -408,66 +398,16 @@ function PaymentInner({
             </div>
 
             {/* Form-level error (charge failure / unavailable). */}
-            <AnimatePresence initial={false}>
-                {formError && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -4, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -4, height: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
-                        {formError}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <FormError error={formError} />
 
             {/* Commit CTA: lock + exact amount ("Reserve my spot · Pay $71"). */}
-            <div className='mt-5'>
-                <CtaButton
-                    onClick={handleReserve}
-                    disabled={processing || !stripe}>
-                    <AnimatePresence mode='wait' initial={false}>
-                        {processing ? (
-                            <motion.span
-                                key='processing'
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.15 }}
-                                className='flex items-center gap-2.5'>
-                                <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
-                                {dict.processing}
-                            </motion.span>
-                        ) : (
-                            <motion.span
-                                key='label'
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.15 }}
-                                className='flex items-center gap-[9px]'>
-                                <Image
-                                    src='/icons/checkout/lock-white.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-[15px] shrink-0'
-                                />
-                                {dict.reserve}
-                                {payToday > 0 && (
-                                    <>
-                                        {' · '}
-                                        {dict.reservePay.replace(
-                                            '{amount}',
-                                            money(payToday)
-                                        )}
-                                    </>
-                                )}
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </CtaButton>
-            </div>
+            <PayCtaButton
+                onClick={handleReserve}
+                disabled={processing || !stripe}
+                processing={processing}
+                dict={dict}
+                amountLabel={payToday > 0 ? money(payToday) : null}
+            />
 
             {/* Free-cancellation + implied consent at the commit moment (5.8). */}
             <FreeCancelNote label={freeCancelLabel} />

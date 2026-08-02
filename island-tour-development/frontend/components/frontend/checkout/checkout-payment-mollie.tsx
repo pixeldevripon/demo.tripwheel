@@ -11,15 +11,16 @@ import {
     type MollieComponent,
     type MollieInstance,
 } from '@/lib/mollie/mollie-js';
-import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import {
     ConsentLine,
-    CtaButton,
     FieldShell,
+    FormError,
     FreeCancelNote,
+    PayCtaButton,
     Radio,
+    SecureCheckoutRow,
 } from './checkout-fields';
 
 type CheckoutDict = Dictionary['checkout'];
@@ -227,19 +228,7 @@ export function CheckoutPaymentMollie({
                     <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
                         {dict.selectPaymentMethod}
                     </span>
-                    <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
-                        <Image
-                            src='/icons/checkout/lock-ink.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-4 shrink-0'
-                        />
-                        {dict.secureCheckout}
-                        <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
-                            {dict.poweredBy} <b>Mollie</b>
-                        </span>
-                    </div>
+                    <SecureCheckoutRow psp='Mollie' dict={dict} />
                     <div className='flex w-full items-center gap-3 rounded-t-it-md border-[1.5px] border-b-0 border-it-border bg-it-primary-subtle px-4 py-3.5'>
                         <Radio selected />
                         <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
@@ -304,64 +293,16 @@ export function CheckoutPaymentMollie({
             )}
 
             {/* Form-level error (tokenization / payment-creation failure). */}
-            <AnimatePresence initial={false}>
-                {formError && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -4, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -4, height: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
-                        {formError}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <FormError error={formError} />
 
             <div className='mt-5'>
-                <CtaButton
+                <PayCtaButton
                     onClick={handlePay}
-                    disabled={processing || cardState === 'loading'}>
-                    <AnimatePresence mode='wait' initial={false}>
-                        {processing ? (
-                            <motion.span
-                                key='processing'
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.15 }}
-                                className='flex items-center gap-2.5'>
-                                <span className='size-4 shrink-0 animate-spin rounded-full border-2 border-it-white/30 border-t-it-white' />
-                                {dict.processing}
-                            </motion.span>
-                        ) : (
-                            <motion.span
-                                key='label'
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.15 }}
-                                className='flex items-center gap-[9px]'>
-                                <Image
-                                    src='/icons/checkout/lock-white.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-[15px] shrink-0'
-                                />
-                                {dict.reserve}
-                                {payToday > 0 && (
-                                    <>
-                                        {' · '}
-                                        {dict.reservePay.replace(
-                                            '{amount}',
-                                            money(payToday)
-                                        )}
-                                    </>
-                                )}
-                            </motion.span>
-                        )}
-                    </AnimatePresence>
-                </CtaButton>
+                    disabled={processing || cardState === 'loading'}
+                    processing={processing}
+                    dict={dict}
+                    amountLabel={payToday > 0 ? money(payToday) : null}
+                />
             </div>
 
             {/* Free-cancellation + implied consent (same as the Stripe panel). */}
