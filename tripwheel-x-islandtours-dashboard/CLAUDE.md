@@ -11,13 +11,16 @@ The operator + admin CRM for the Island Tours marketplace. Standalone Next.js 16
 
 | Repo | Push to | Base |
 |---|---|---|
-| `tripwheel-x-islandtours-dashboard` (this one) | **`origin`** | `main` |
+| `tripwheel-x-islandtours-dashboard` (this one) | **`pixelvega`** | `main` |
 | `island-tour-development` | **`pixelvega`** | `prod` |
-| `tripwheel-app` | **`pixelvega`** | |
+| `tripwheel-app` | **`pixelvega`** | `main` |
 
-**This repo is the odd one out** — it pushes to `origin` while its two siblings push to `pixelvega`.
-Name the remote explicitly on every push; assuming the convention carries over from a sibling repo
-sends work to the wrong GitHub org.
+`pixelvega` here is `pixeldevripon/dashbaord-tripwheel-x-islandtours` (note the typo in the repo
+name — it is real, not a mistake in this doc).
+
+**`origin` (devripon-tr) is stale — do not push there.** As of 2026-08-02 it sat 103 commits behind
+this repo's working branch, so a PR against it spans the whole backlog rather than your change.
+Name the remote explicitly on every push rather than relying on `origin` being the default.
 
 ---
 
