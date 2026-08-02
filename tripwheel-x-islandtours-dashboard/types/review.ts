@@ -108,8 +108,13 @@ export interface ReviewsQueryParams {
   from?: string;
   to?: string;
   search?: string;
-  /** Queue default is oldest-first: a backlog is cleared from the bottom. */
-  sort?: 'oldest' | 'newest';
+  /**
+   * Queue default is oldest-first: a backlog is cleared from the bottom.
+   * `pending_first` groups by moderation status (PENDING, then APPROVED, HELD,
+   * REJECTED) and is newest-first within each group - what the dashboard list
+   * uses so it can show every review without burying the undecided ones.
+   */
+  sort?: 'oldest' | 'newest' | 'pending_first';
 }
 
 export interface PaginatedReviews {

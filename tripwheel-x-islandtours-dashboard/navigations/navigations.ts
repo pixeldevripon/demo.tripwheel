@@ -10,7 +10,6 @@ import {
     File02Icon,
     FilterHorizontalIcon,
     Globe02Icon,
-    Home01Icon,
     Image02Icon,
     Layers01Icon,
     MapsIcon,
@@ -257,14 +256,13 @@ const dashboardNav: NavGroup[] = [
         label: 'Pages',
         items: [
             {
-                title: 'Homepage',
-                url: 'homepage',
-                icon: Home01Icon,
-                permissions: [Permission.MANAGE_EDITORIAL],
-            },
-            {
                 // The Pages system: legal/policy permalinks (terms,
                 // privacy-policy, ...) edited through the TipTap editor.
+                //
+                // The HOMEPAGE has no nav item of its own. It is one of the
+                // site's pages, so it is listed as a row in this table (pinned
+                // first) and edited at `/homepage` from there - a second
+                // top-level entry for a single page was the odd one out.
                 title: 'Pages',
                 url: 'pages',
                 icon: File02Icon,

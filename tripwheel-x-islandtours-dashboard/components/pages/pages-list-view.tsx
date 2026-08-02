@@ -24,8 +24,28 @@ import {
   usePages,
   useUpdatePageStatus,
 } from '@/hooks/pages/use-pages';
-import type { PageListItem } from '@/types/pages';
+import { HOMEPAGE_ROW_ID, type PagesTableRow } from '@/types/pages';
 import { PagesTable } from './pages-table';
+
+/**
+ * The homepage as a table row.
+ *
+ * It is not a `pages` record - it is a singleton behind `/home-page`, always
+ * live at the site root, with no id, permalink, or timestamp of its own. It
+ * appears here because it IS one of the site's pages to whoever edits it; it
+ * lost its own sidebar entry for the same reason.
+ *
+ * Listed first so the site's front door heads the list of its pages.
+ */
+const HOMEPAGE_ROW: PagesTableRow = {
+  id: HOMEPAGE_ROW_ID,
+  slug: '',
+  status: 'PUBLISHED',
+  publishedAt: null,
+  updatedAt: null,
+  title: 'Homepage',
+  isHomepage: true,
+};
 
 export function PagesListView() {
   const { can } = useRole();
@@ -34,9 +54,9 @@ export function PagesListView() {
   const { data: pages, isLoading } = usePages();
   const { mutate: setStatus } = useUpdatePageStatus();
   const { mutate: remove, isPending: removing } = useDeletePage();
-  const [target, setTarget] = useState<PageListItem | null>(null);
+  const [target, setTarget] = useState<PagesTableRow | null>(null);
 
-  const togglePublish = (page: PageListItem) => {
+  const togglePublish = (page: PagesTableRow) => {
     const next = page.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
     setStatus(
       { id: page.id, status: next },
@@ -62,7 +82,7 @@ export function PagesListView() {
         </div>
       ) : (
         <PagesTable
-          data={pages ?? []}
+          data={[HOMEPAGE_ROW, ...(pages ?? [])]}
           canManage={canManage}
           onPublishToggle={togglePublish}
           onDelete={setTarget}

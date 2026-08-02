@@ -26,6 +26,28 @@ export interface PageListItem {
   title: string | null;
 }
 
+/**
+ * A row in the Pages TABLE, which is the page list plus the homepage.
+ *
+ * The homepage is a singleton owned by its own backend module (`/home-page`),
+ * not a `pages` record - it has no id, no permalink of its own, and cannot be
+ * created or destroyed. It is still one of the site's pages to the person
+ * editing it, so it rides along as a synthetic first row rather than getting a
+ * second top-level nav item.
+ *
+ * `updatedAt` is nullable here only because of that row: the `/home-page`
+ * payload carries no timestamp, so the column renders a dash instead of a
+ * fabricated date.
+ */
+export interface PagesTableRow extends Omit<PageListItem, 'updatedAt'> {
+  updatedAt: string | null;
+  /** True for the pinned homepage row - it is edited and viewed, never published or deleted. */
+  isHomepage?: boolean;
+}
+
+/** Sentinel row id for the homepage; never a real `pages.id`. */
+export const HOMEPAGE_ROW_ID = '__homepage__';
+
 /** One locale's stored content. */
 export interface PageTranslationEntry {
   locale: Locale;
