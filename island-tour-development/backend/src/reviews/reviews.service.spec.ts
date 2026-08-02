@@ -751,4 +751,37 @@ describe('ReviewsService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
+
+  describe('adminList ordering', () => {
+    beforeEach(() => {
+      prisma.review.count.mockResolvedValue(0);
+      prisma.review.findMany.mockResolvedValue([]);
+    });
+
+    const orderByOf = () => prisma.review.findMany.mock.calls[0][0].orderBy;
+
+    // The dashboard opens on EVERY review with the undecided ones on top, so
+    // the sort has to group by status. It must run here: the route paginates,
+    // so a client-side reorder would only rearrange the fetched page.
+    it('pending_first groups by status, newest within each group', async () => {
+      await svc.adminList({ sort: 'pending_first' } as any);
+
+      expect(orderByOf()).toEqual([
+        { moderationStatus: 'asc' },
+        { createdAt: 'desc' },
+      ]);
+    });
+
+    it('newest is still plain newest-first', async () => {
+      await svc.adminList({ sort: 'newest' } as any);
+      expect(orderByOf()).toEqual([{ createdAt: 'desc' }]);
+    });
+
+    // Unchanged default: a backlog is cleared from the bottom, so an absent
+    // sort must not start returning the new grouping.
+    it('defaults to oldest-first when no sort is given', async () => {
+      await svc.adminList({});
+      expect(orderByOf()).toEqual([{ createdAt: 'asc' }]);
+    });
+  });
 });

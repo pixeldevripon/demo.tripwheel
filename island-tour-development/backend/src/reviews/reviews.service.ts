@@ -836,7 +836,8 @@ export class ReviewsService {
         },
         // Oldest-first by default: a queue is cleared from the bottom, and the
         // oldest pending review is the traveller who has waited longest.
-        orderBy: { createdAt: query.sort === 'newest' ? 'desc' : 'asc' },
+        // `pending_first` is for the unfiltered list - see adminOrderFor.
+        orderBy: this.adminOrderFor(query.sort),
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -931,6 +932,32 @@ export class ReviewsService {
       `${dateKey(booking.localDate)}T${booking.startTime ?? '00:00'}:00.000Z`,
     );
     return start <= localNow(tz);
+  }
+
+  /**
+   * Row order for the dashboard review list (`/reviews/admin`, `/reviews/operator`).
+   *
+   * `pending_first` sorts by `moderationStatus` ascending, which in Postgres is
+   * the ENUM DECLARATION order - PENDING, APPROVED, HELD, REJECTED - not
+   * alphabetical. PENDING is declared first, so the reviews still awaiting a
+   * decision float to the top of an otherwise unfiltered list. Reordering the
+   * enum would silently change this sort; the tiebreaker keeps rows stable
+   * within a group.
+   *
+   * This has to be a SERVER sort: the list is paginated here, so ordering on
+   * the client would only rearrange whichever page happened to be fetched.
+   */
+  private adminOrderFor(
+    sort?: AdminReviewsQueryDto['sort'],
+  ): Prisma.ReviewOrderByWithRelationInput[] {
+    switch (sort) {
+      case 'pending_first':
+        return [{ moderationStatus: 'asc' }, { createdAt: 'desc' }];
+      case 'newest':
+        return [{ createdAt: 'desc' }];
+      default:
+        return [{ createdAt: 'asc' }];
+    }
   }
 
   private orderFor(
