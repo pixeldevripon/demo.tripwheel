@@ -124,6 +124,7 @@ export function ReviewsForm() {
                             ? 'ChIJN1t_tDeuEmsRUsoyG83frY4'
                             : '46d6a890000064000500e0d2'
                     }
+                    autoComplete='new-password'
                 />
             </div>
 
@@ -136,6 +137,7 @@ export function ReviewsForm() {
                 }
                 registration={register('apiKey')}
                 error={errors.apiKey?.message}
+                autoComplete='new-password'
             />
 
             <CheckboxField
