@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { isSameOrigin } from '@/lib/api/same-origin';
 import { readServerErrors } from '@/lib/debug/server-error-log';
 
 /**
@@ -30,7 +31,33 @@ export function GET(request: NextRequest) {
         return new NextResponse(null, { status: 404 });
     }
 
+    // Same-origin only. This is a GET, so it is not a CSRF target - the point is
+    // that a third-party page (or a bare curl from a scanner) should not be able
+    // to read the buffer just because the flag got left on after an incident.
+    if (!isSameOrigin(request)) {
+        return new NextResponse(null, { status: 403 });
+    }
+
     const digest = request.nextUrl.searchParams.get('digest') ?? undefined;
+
+    // A DIGEST IS REQUIRED. Without one `readServerErrors` returns the whole
+    // ring buffer - the last 50 errors from EVERY visitor on this instance -
+    // and each entry carries the request URL *with its path*. On this site those
+    // paths are credentials: `/{locale}/review/<token>` is a write token (it
+    // authorizes submitting a review as that guest), and `/cancel/<publicRef>`,
+    // `.../thank-you/<publicRef>` and `/traveller/receipt/<paymentId>` are
+    // booking view capabilities. Polling this endpoint would harvest them.
+    //
+    // Nothing legitimate is lost: the only consumer, `error-debug-panel.tsx`,
+    // returns early when it has no digest and always sends one. The bulk read
+    // was pure attack surface.
+    if (!digest) {
+        return NextResponse.json(
+            { error: 'digest_required' },
+            { status: 400, headers: { 'Cache-Control': 'no-store' } },
+        );
+    }
+
     const entries = readServerErrors(digest);
 
     return NextResponse.json(

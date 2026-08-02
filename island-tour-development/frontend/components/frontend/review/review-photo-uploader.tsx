@@ -60,11 +60,22 @@ export function ReviewPhotoUploader({
 
     // Object URLs are a leak if they outlive their tile - the browser holds the
     // whole file in memory until each one is revoked.
+    //
+    // UNMOUNT ONLY, and read through a ref so nothing is captured. This used to
+    // depend on `pending`, which made the teardown fire on every APPEND: pick a
+    // second photo while the first is still uploading and React ran the cleanup
+    // captured over `[A]`, revoking A's preview while its tile was still on
+    // screen - a broken image mid-upload, on exactly the slow connection the
+    // optimistic preview exists to cover. The per-batch revoke in `accept`'s
+    // `finally` already handles the normal path; this only catches the guest who
+    // navigates away mid-upload.
+    const pendingRef = useRef<Pending[]>([]);
+    pendingRef.current = pending;
     useEffect(() => {
         return () => {
-            for (const p of pending) URL.revokeObjectURL(p.preview);
+            for (const p of pendingRef.current) URL.revokeObjectURL(p.preview);
         };
-    }, [pending]);
+    }, []);
 
     const room = MAX_PHOTOS - photos.length - pending.length;
     const full = room <= 0;

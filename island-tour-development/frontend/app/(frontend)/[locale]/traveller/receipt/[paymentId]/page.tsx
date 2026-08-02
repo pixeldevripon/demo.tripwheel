@@ -10,6 +10,7 @@ import {
     formatDay,
     lookupLabel,
     money,
+    paymentMethodLabel,
 } from '@/components/frontend/traveller/traveller-format';
 import { TravellerReceiptPrintButton } from '@/components/frontend/traveller/traveller-receipt-actions';
 import { getPublicSiteInfo } from '@/lib/api/public/settings';
@@ -102,11 +103,11 @@ async function ReceiptBody({
     const isRefund = receipt.kind === 'REFUND';
     const fmt = (amount: string | number) =>
         money(amount, receipt.currency, locale);
-    const method = receipt.methodBrand
-        ? `${capitalize(receipt.methodBrand)} ·· ${receipt.methodLast4 ?? ''}`.trim()
-        : receipt.methodType
-          ? capitalize(receipt.methodType)
-          : null;
+    const method = paymentMethodLabel(
+        receipt.methodBrand,
+        receipt.methodLast4,
+        receipt.methodType
+    );
 
     return (
         <section className='bg-it-surface py-10 md:py-14 print:bg-it-white print:py-0'>
@@ -371,7 +372,4 @@ function TotalRow({ label, value }: { label: string; value: string }) {
     );
 }
 
-function capitalize(value: string): string {
-    return value.charAt(0).toUpperCase() + value.slice(1);
-}
 

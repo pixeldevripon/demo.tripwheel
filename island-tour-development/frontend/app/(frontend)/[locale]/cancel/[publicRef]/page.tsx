@@ -5,6 +5,7 @@ import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import { formatMoney } from '@/lib/currency/current';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { DEMO_PUBLIC_REF, getThankYouBooking } from '@/lib/thank-you/thank-you';
+import { travelerBookingPath } from '@/lib/traveler-booking.shared';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -45,7 +46,16 @@ async function CancelBody({
     ]);
     if (!booking) notFound();
 
-    const thankYouHref = `/${booking.destinationSlug}/thank-you/${booking.publicRef}`;
+    // `travelerBookingPath`, not a bare template. `destinationSlug` is
+    // `typ.island ?? ''` and `island` is nullable, so interpolating it directly
+    // yields `//thank-you/{ref}` - a PROTOCOL-RELATIVE url, which navigates the
+    // traveller off-site to `http://thank-you/{ref}` rather than 404ing. This
+    // href is used four times on this page and twice more inside
+    // `CancelRequestCard`. Every sibling call site already guards the same way.
+    const thankYouHref = travelerBookingPath(
+        booking.destinationSlug || null,
+        booking.publicRef
+    );
     const cd = dict.cancelBooking;
 
     // Cancelling is a mutation, so link possession is not enough (master 6.4:

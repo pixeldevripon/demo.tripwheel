@@ -6,20 +6,33 @@
  * rather than summed - EUR and USD are not addable.
  */
 import type { Currency, Locale } from '@/lib/constants/locales';
-import { formatPriceFrom } from '@/lib/currency/current';
+import { formatMoney } from '@/lib/currency/current';
 
 /** Narrow a backend currency string to the union the formatter accepts. */
 export function toCurrency(value: string | null | undefined): Currency {
     return value === 'USD' ? 'USD' : 'EUR';
 }
 
-/** Format an exact decimal string in its own currency. */
+/**
+ * Format an exact decimal string in its own currency.
+ *
+ * `formatMoney`, NOT `formatPriceFrom`. The two differ on whole amounts:
+ * `formatPriceFrom` is the LISTING "From" price and renders 1750 bare as
+ * "$1,750", while `formatMoney` is the concrete-total formatter and always
+ * carries cents. This helper feeds booking cards, the next-trip hero, the
+ * payments ledger and the printable receipt - concrete totals, every one.
+ *
+ * Using the listing rule here made the account area disagree with the thank-you
+ * page one click away, which is the exact bug already documented in
+ * `thank-you-summary.tsx`: "a 1750 total rendered as $1750 ... while every other
+ * surface showed $1,750.00". A receipt that silently drops cents is worse still.
+ */
 export function money(
     amount: string | number,
     currency: string | null | undefined,
     locale: Locale
 ): string {
-    return formatPriceFrom(amount, toCurrency(currency), locale);
+    return formatMoney(amount, toCurrency(currency), locale);
 }
 
 /**
@@ -138,6 +151,32 @@ export function mapsUrl(
         lat != null && lng != null ? `${lat},${lng}` : (address ?? '').trim();
     if (!query) return null;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function capitalize(value: string): string {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * How a payment method is displayed: "Visa ·· 4242", or the bare method type
+ * when there is no card behind it.
+ *
+ * ONE definition on purpose. The receipt and the payments ledger used to build
+ * this separately and had already drifted: with a brand but no last4 the
+ * receipt rendered "Visa ··" (its `.trim()` stripped the trailing space but not
+ * the separator) while the ledger correctly rendered "Visa". The receipt is
+ * linked straight off a ledger row, so a traveller sees both spellings of the
+ * same payment.
+ */
+export function paymentMethodLabel(
+    brand: string | null | undefined,
+    last4: string | null | undefined,
+    type: string | null | undefined
+): string | null {
+    if (brand) {
+        return last4 ? `${capitalize(brand)} ·· ${last4}` : capitalize(brand);
+    }
+    return type ? capitalize(type) : null;
 }
 
 /**
