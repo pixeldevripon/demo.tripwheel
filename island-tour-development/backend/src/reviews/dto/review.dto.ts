@@ -475,16 +475,21 @@ export class AdminReviewsQueryDto {
   search?: string;
 
   @ApiPropertyOptional({
-    enum: ['oldest', 'newest'],
+    enum: ['oldest', 'newest', 'pending_first'],
     default: 'oldest',
     description:
       'Queue default is oldest-first: a moderation backlog is cleared from the ' +
       'bottom, and the oldest pending review is the one a traveller has been ' +
-      'waiting on longest.',
+      'waiting on longest. `pending_first` groups by moderation status instead ' +
+      '(PENDING, then APPROVED, HELD, REJECTED - the enum declaration order), ' +
+      'newest first within each group. It exists so the dashboard can default ' +
+      'to showing EVERY review while still floating the ones awaiting a ' +
+      'decision; ordering has to happen here because the list is paginated ' +
+      'server-side and a client sort would only reorder the current page.',
   })
   @IsOptional()
-  @IsIn(['oldest', 'newest'])
-  sort?: 'oldest' | 'newest';
+  @IsIn(['oldest', 'newest', 'pending_first'])
+  sort?: 'oldest' | 'newest' | 'pending_first';
 }
 
 export class ModerationQueueQueryDto {
