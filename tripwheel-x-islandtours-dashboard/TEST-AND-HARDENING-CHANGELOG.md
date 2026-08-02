@@ -271,5 +271,33 @@ User chose "safe helpers now, defer the big structural refactors (M1/M2 factory,
 - **M4 (split the 925-line `step-review` god-component + dedupe lifecycle dialogs)** — largest change,
   sits on publish/approve/reject. Needs its own pass with full create/edit re-verification.
 
-**Final suite:** **69/69 green · `tsc` 0 errors · ESLint 0 errors.** ~34 files changed, all on branch
-`test/trips-review-hardening`. Nothing committed or pushed.
+**Final suite (Groups A+B+C-safe):** **69/69 green · `tsc` 0 errors · ESLint 0 errors.** Committed as
+`70ff9d7` on `test/trips-review-hardening`.
+
+---
+
+## Deferred refactors (task #10) — now in progress
+
+### ✅ M1/M2 — mutation-hook factory `hooks/trips/use-trip-mutation.ts`
+- **What:** Added `useTripMutation(mutationFn, invalidate)` and migrated ALL ~40 trip mutation hooks
+  to it, deleting the repeated `useQueryClient` + `useMutation` + `invalidateQueries` boilerplate.
+  `use-trips.ts` went **1084 → 715 lines**.
+- **Behaviour preserved EXACTLY:** each hook passes its own invalidation key list, transcribed verbatim
+  from the original (shared `scheduleKeys`/`exceptionKeys` helpers where identical). The known M2
+  inconsistencies (e.g. some `update*` hooks don't invalidate detail) were **kept as-is** — "fixing"
+  them changes refetch behaviour and needs its own consent-gated change. `useConfirmAvailability`
+  maps to no-invalidate.
+- **Why necessary / safe:** the duplication was the root of M2's drift; a single factory makes the
+  invalidation contract declarative. mutationFn signatures are unchanged, so every `.mutate` /
+  `.mutateAsync` call site is untouched (tsc confirms).
+- 🧪 `hooks/trips/use-trip-mutation.test.tsx` (3 tests): invalidates exactly the declared keys from
+  variables, no invalidation on error, no-callback → no invalidation.
+- **Verified:** `tsc` 0 errors, ESLint 0 errors, **72/72** tests.
+
+### ⏸ L2 — kept deferred after analysis (LineListField stable keys)
+`LineListField` (`step-content.tsx`) is intentionally **stateless** — rows are derived from the
+newline-joined string each render, which is exactly why values survive. Adding stable per-row ids means
+converting it to a stateful `{id,text}[]` model that syncs back to the parent string on every keystroke,
+which reintroduces the external-sync/clobber risk we just removed — on a **tour-create input**, for a
+LOW-severity focus/IME edge case. Risk/reward is poor under the "don't break create/edit" guardrail, so
+it stays deferred. (The wrong-DOM-node reuse is real but cosmetic; values are never lost.)
