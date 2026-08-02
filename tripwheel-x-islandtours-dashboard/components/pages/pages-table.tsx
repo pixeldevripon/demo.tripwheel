@@ -16,14 +16,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PAGE_STATUS } from '@/components/common/status-maps';
-import { PAGE_STATUS_VALUES, type PageListItem, type PageStatus } from '@/types/pages';
+import { PAGE_STATUS_VALUES, type PagesTableRow, type PageStatus } from '@/types/pages';
 import { makePageColumns } from './page-columns';
 
 interface PagesTableProps {
-  data: PageListItem[];
+  data: PagesTableRow[];
   canManage: boolean;
-  onPublishToggle: (page: PageListItem) => void;
-  onDelete: (page: PageListItem) => void;
+  onPublishToggle: (page: PagesTableRow) => void;
+  onDelete: (page: PagesTableRow) => void;
   actionSlot?: React.ReactNode;
 }
 

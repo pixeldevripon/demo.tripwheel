@@ -62,7 +62,7 @@ export function AppSidebar({
                         <Link
                             href='/'
                             onClick={() => setOpenMobile(false)}
-                            className='flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-fast hover:bg-sidebar-accent/60'>
+                            className='flex items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-fast'>
                             <Image
                                 src='/logo/logo-light.svg'
                                 alt='Island Tours'
