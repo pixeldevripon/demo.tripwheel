@@ -23,20 +23,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { pageUrl } from '@/lib/public-site';
-import type { PageListItem } from '@/types/pages';
+import { homepageUrl, pageUrl } from '@/lib/public-site';
+import type { PagesTableRow } from '@/types/pages';
 
 export interface MakePageColumnsOptions {
   canManage: boolean;
-  onPublishToggle: (page: PageListItem) => void;
-  onDelete: (page: PageListItem) => void;
+  onPublishToggle: (page: PagesTableRow) => void;
+  onDelete: (page: PagesTableRow) => void;
+}
+
+/** Where a row's Edit action goes - the homepage has its own singleton screen. */
+function editHref(row: PagesTableRow): string {
+  return row.isHomepage ? '/homepage' : `/pages/${row.id}/edit`;
 }
 
 export function makePageColumns({
   canManage,
   onPublishToggle,
   onDelete,
-}: MakePageColumnsOptions): ColumnDef<PageListItem>[] {
+}: MakePageColumnsOptions): ColumnDef<PagesTableRow>[] {
   return [
     {
       accessorKey: 'title',
@@ -47,7 +52,7 @@ export function makePageColumns({
           return <span className="text-sm font-medium">{title}</span>;
         return (
           <Link
-            href={`/pages/${row.original.id}/edit`}
+            href={editHref(row.original)}
             className="text-sm font-medium hover:underline underline-offset-4"
           >
             {title}
@@ -61,7 +66,7 @@ export function makePageColumns({
       header: 'Permalink',
       cell: ({ row }) => (
         <code className="text-xs text-muted-foreground">
-          /{row.original.slug}
+          {row.original.isHomepage ? '/' : `/${row.original.slug}`}
         </code>
       ),
       enableSorting: true,
@@ -82,15 +87,22 @@ export function makePageColumns({
     {
       accessorKey: 'updatedAt',
       header: 'Updated',
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.updatedAt).toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}
-        </span>
-      ),
+      cell: ({ row }) => {
+        // The homepage carries no timestamp (`/home-page` returns none), so it
+        // renders a dash rather than a made-up date.
+        const updatedAt = row.original.updatedAt;
+        if (!updatedAt)
+          return <span className="text-xs text-muted-foreground">&mdash;</span>;
+        return (
+          <span className="text-xs text-muted-foreground">
+            {new Date(updatedAt).toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </span>
+        );
+      },
       enableSorting: true,
     },
     {
@@ -99,6 +111,10 @@ export function makePageColumns({
       cell: ({ row }) => {
         const page = row.original;
         const published = page.status === 'PUBLISHED';
+        // The homepage is permanent: it cannot be unpublished (the site root
+        // would 404) and it cannot be deleted (there is no record to delete).
+        // Edit and View live are the whole menu.
+        const isHomepage = page.isHomepage === true;
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -111,16 +127,16 @@ export function makePageColumns({
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               {canManage && (
                 <DropdownMenuItem asChild>
-                  <Link href={`/pages/${page.id}/edit`}>
+                  <Link href={editHref(page)}>
                     <HugeiconsIcon icon={PencilEdit02Icon} />
                     Edit
                   </Link>
                 </DropdownMenuItem>
               )}
-              {published && (
+              {(isHomepage || published) && (
                 <DropdownMenuItem asChild>
                   <a
-                    href={pageUrl(page.slug)}
+                    href={isHomepage ? homepageUrl() : pageUrl(page.slug)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -129,13 +145,13 @@ export function makePageColumns({
                   </a>
                 </DropdownMenuItem>
               )}
-              {canManage && (
+              {canManage && !isHomepage && (
                 <DropdownMenuItem onClick={() => onPublishToggle(page)}>
                   <HugeiconsIcon icon={published ? ViewOffSlashIcon : ViewIcon} />
                   {published ? 'Unpublish' : 'Publish'}
                 </DropdownMenuItem>
               )}
-              {canManage && (
+              {canManage && !isHomepage && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

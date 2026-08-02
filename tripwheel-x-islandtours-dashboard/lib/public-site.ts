@@ -30,6 +30,16 @@ export function pageUrl(slug: string, locale = 'en'): string {
 }
 
 /**
+ * The homepage - `/{locale}/`, the site root.
+ *
+ * Not `pageUrl('')`: that yields a trailing-slash-only path by accident rather
+ * than by intent, and the homepage is not a Page record with an empty slug.
+ */
+export function homepageUrl(locale = 'en'): string {
+  return `${PUBLIC_SITE_URL}/${locale}/`;
+}
+
+/**
  * A tour's live URL - the ONE canonical flat form, `/{locale}/{destination}/{tour-slug}/`.
  *
  * Hubs never appear in it: they are discovery tags with no URL effect, so
