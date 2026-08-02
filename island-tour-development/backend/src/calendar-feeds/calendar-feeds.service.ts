@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -23,6 +24,7 @@ import {
 } from '@/common/ics/ics.util';
 import {
   combineDateTime,
+  dateKey,
   localWallClockToUtc,
   timeOfDay,
 } from '@/common/utils/timezone.util';
@@ -56,6 +58,12 @@ const MS_PER_DAY = 86_400_000;
 const PAST_DAYS = 30;
 const FUTURE_DAYS_BOOKINGS = 364;
 const FUTURE_DAYS_DEPARTURES = 90;
+/**
+ * The channel feed runs a full year. It is one event per contiguous BLOCKED
+ * range for one tour - a handful of events, not thousands - and an OTA taking
+ * bookings ten months out needs to know about them.
+ */
+const FUTURE_DAYS_CHANNEL = 364;
 
 /** A tour with no recorded duration still needs an end instant. */
 const DEFAULT_DURATION_MINUTES = 60;
@@ -73,6 +81,9 @@ const REFRESH_INTERVAL = 'PT1H';
 const PERMISSION_FOR_KIND: Record<CalendarFeedKind, Permission> = {
   [CalendarFeedKind.BOOKINGS]: Permission.VIEW_BOOKINGS,
   [CalendarFeedKind.DEPARTURES]: Permission.MANAGE_AVAILABILITY,
+  // The channel feed carries no traveller data, so it costs the availability
+  // bar rather than the bookings one - it is inventory, published outward.
+  [CalendarFeedKind.CHANNEL]: Permission.MANAGE_AVAILABILITY,
 };
 
 /**
@@ -116,15 +127,7 @@ export class CalendarFeedsService {
     const operatorId = await resolveOperatorId(this.prisma, user.id, user.role);
     const feeds = await this.prisma.calendarFeed.findMany({
       where: { operatorId, revokedAt: null },
-      select: {
-        id: true,
-        kind: true,
-        label: true,
-        token: true,
-        lastFetchedAt: true,
-        fetchCount: true,
-        createdAt: true,
-      },
+      select: FEED_SELECT,
       orderBy: { createdAt: 'asc' },
     });
 
@@ -151,8 +154,20 @@ export class CalendarFeedsService {
     await this.assertMayUse(user, dto.kind);
     const operatorId = await resolveOperatorId(this.prisma, user.id, user.role);
 
+    // CHANNEL is per tour; the other two are operator-wide. `scopeKey` carries
+    // that difference into the unique index, since a nullable `tourId` in the
+    // key would let the operator-wide kinds be minted twice (Postgres treats
+    // NULLs as distinct).
+    const tourId =
+      dto.kind === CalendarFeedKind.CHANNEL
+        ? await this.assertChannelTour(user, dto.tourId)
+        : null;
+    const scopeKey = tourId ?? '*';
+
     const existing = await this.prisma.calendarFeed.findUnique({
-      where: { operatorId_kind: { operatorId, kind: dto.kind } },
+      where: {
+        operatorId_kind_scopeKey: { operatorId, kind: dto.kind, scopeKey },
+      },
       select: { id: true, revokedAt: true },
     });
 
@@ -175,6 +190,8 @@ export class CalendarFeedsService {
           data: {
             operatorId,
             kind: dto.kind,
+            tourId,
+            scopeKey,
             token: mintToken(),
             label: dto.label ?? null,
             createdBy: user.id,
@@ -229,11 +246,13 @@ export class CalendarFeedsService {
         id: true,
         kind: true,
         operatorId: true,
+        tourId: true,
         revokedAt: true,
         createdAt: true,
         operator: {
           select: { companyInfo: { select: { companyName: true } } },
         },
+        tour: { select: { name: true, timeZone: true } },
       },
     });
     if (!feed || feed.revokedAt) throw new NotFoundException('Feed not found');
@@ -242,14 +261,16 @@ export class CalendarFeedsService {
     const { events, lastModified } =
       feed.kind === CalendarFeedKind.BOOKINGS
         ? await this.bookingEvents(feed.operatorId)
-        : await this.departureEvents(feed.operatorId);
+        : feed.kind === CalendarFeedKind.CHANNEL
+          ? await this.channelEvents(feed.tourId)
+          : await this.departureEvents(feed.operatorId);
 
     // An empty feed still needs a stable stamp, or a brand-new subscription would
     // re-download on every poll until its first booking exists.
     const stamp = lastModified ?? feed.createdAt;
 
     const body = buildCalendar(events, {
-      name: calendarName(feed.kind, operatorName),
+      name: calendarName(feed.kind, operatorName, feed.tour?.name),
       refreshInterval: REFRESH_INTERVAL,
       dtstamp: stamp,
     });
@@ -381,6 +402,92 @@ export class CalendarFeedsService {
   }
 
   /**
+   * The feed an OTA consumes: which dates this tour cannot take another booking.
+   *
+   * ## Why "no remaining capacity" and not "has a booking"
+   * The naive rule - mark a date busy as soon as anything is booked - is wrong
+   * for the inventory we actually sell. One seat on a 60-seat catamaran would
+   * close the date on Airbnb and cost the other 59. Asking "can this tour still
+   * take a booking that day?" is correct for BOTH shapes without a setting: a
+   * whole-boat charter fills on its first booking and closes immediately, while
+   * a shared tour stays open until it genuinely sells out.
+   *
+   * ## Why departures alone are enough
+   * They already reflect everything - platform bookings fill `bookedCount`,
+   * operator closures and imported blocks arrive as exceptions the materializer
+   * projects into `status`. Reading them is what makes the hub topology work:
+   * a date blocked by Airbnb reaches Booking.com by passing through us.
+   *
+   * ## No PII, ever
+   * Dates and a generic summary. No names, no counts, no references - this URL
+   * goes to a company we have no relationship with.
+   */
+  private async channelEvents(
+    tourId: string | null,
+  ): Promise<{ events: IcsEvent[]; lastModified: Date | null }> {
+    if (!tourId) return { events: [], lastModified: null };
+    const { from, to } = feedWindow(FUTURE_DAYS_CHANNEL);
+
+    const departures = await this.prisma.departure.findMany({
+      where: { tourId, date: { gte: from, lte: to } },
+      select: {
+        date: true,
+        status: true,
+        capacity: true,
+        bookedCount: true,
+        updatedAt: true,
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    // A day with no departures at all is a day we do not sell - NOT a day the
+    // operator is busy. Publishing it would block dates on the channel for no
+    // reason, which is how an operator loses a season to a scheduling gap.
+    const byDate = new Map<string, { open: boolean; updatedAt: Date }>();
+    for (const departure of departures) {
+      const key = dateKey(departure.date);
+      const sellable =
+        departure.status === DepartureStatus.OPEN &&
+        departure.bookedCount < departure.capacity;
+      const entry = byDate.get(key);
+      byDate.set(key, {
+        open: (entry?.open ?? false) || sellable,
+        updatedAt:
+          entry && entry.updatedAt > departure.updatedAt
+            ? entry.updatedAt
+            : departure.updatedAt,
+      });
+    }
+
+    const blocked = [...byDate.entries()].filter(([, value]) => !value.open);
+    const occupied = blocked.map(([key]) => key).sort();
+
+    // Only the BLOCKED days move this feed, so a departure filling up on a day
+    // that stays sellable must not change the ETag and force every channel to
+    // re-download.
+    const lastModified = blocked.reduce<Date | null>(
+      (latest, [, value]) =>
+        !latest || value.updatedAt > latest ? value.updatedAt : latest,
+      null,
+    );
+
+    // One VEVENT per contiguous RANGE, not per day: a year of blocked dates as
+    // 365 separate events is a feed no channel enjoys parsing, and consecutive
+    // days are what "unavailable" actually means to them.
+    const events: IcsEvent[] = mergeRanges(occupied).map((range) => ({
+      uid: `it-${tourId}-${range.start}@island.tours`,
+      // All-day semantics: DTEND is EXCLUSIVE, so the day after the last busy one.
+      startUtc: new Date(`${range.start}T00:00:00.000Z`),
+      endUtc: new Date(`${addDayKey(range.end)}T00:00:00.000Z`),
+      allDay: true,
+      summary: 'Unavailable',
+      status: 'CONFIRMED',
+    }));
+
+    return { events, lastModified };
+  }
+
+  /**
    * One VEVENT per departure, with its fill, for capacity planning. Carries no
    * traveller data at all - this feed is safe to share with a guide.
    */
@@ -469,6 +576,41 @@ export class CalendarFeedsService {
     return feed;
   }
 
+  /**
+   * A CHANNEL feed must name a tour the caller's operator actually owns.
+   *
+   * Without the ownership check, a token minted here would publish another
+   * operator's occupied dates to whoever holds the URL.
+   */
+  private async assertChannelTour(
+    user: { id: string; role: Role },
+    tourId: string | undefined,
+  ): Promise<string> {
+    if (!tourId) {
+      throw new BadRequestException(
+        'tourId is required for a channel feed - a channel blocks dates on one listing.',
+      );
+    }
+    const tour = await this.prisma.tour.findUnique({
+      where: { id: tourId },
+      select: { operatorId: true },
+    });
+    if (!tour) throw new NotFoundException('Tour not found');
+    if (user.role !== Role.ADMIN) {
+      const operatorId = await resolveOperatorId(
+        this.prisma,
+        user.id,
+        user.role,
+      );
+      if (tour.operatorId !== operatorId) {
+        throw new ForbiddenException(
+          'You do not have permission to manage this tour',
+        );
+      }
+    }
+    return tourId;
+  }
+
   private async mayUse(
     user: { id: string; role: Role },
     kind: CalendarFeedKind,
@@ -493,6 +635,7 @@ export class CalendarFeedsService {
   private toDto(feed: {
     id: string;
     kind: CalendarFeedKind;
+    tourId: string | null;
     label: string | null;
     token: string;
     lastFetchedAt: Date | null;
@@ -502,6 +645,7 @@ export class CalendarFeedsService {
     return {
       id: feed.id,
       kind: feed.kind,
+      tourId: feed.tourId,
       label: feed.label,
       url: `${publicApiBase()}/api/v1/calendar-feeds/${feed.token}/calendar.ics`,
       lastFetchedAt: feed.lastFetchedAt?.toISOString() ?? null,
@@ -514,6 +658,7 @@ export class CalendarFeedsService {
 const FEED_SELECT = {
   id: true,
   kind: true,
+  tourId: true,
   label: true,
   token: true,
   lastFetchedAt: true,
@@ -539,9 +684,44 @@ function feedWindow(forwardDays: number): { from: Date; to: Date } {
 function calendarName(
   kind: CalendarFeedKind,
   operatorName: string | null,
+  tourName?: string | null,
 ): string {
+  // The channel feed is named after the TOUR, because that is the unit the
+  // other platform is blocking - "Miss Ann - Bookings" would be meaningless
+  // sitting beside one Airbnb listing.
+  if (kind === CalendarFeedKind.CHANNEL) {
+    return tourName ? `${tourName} - booked` : 'Island Tours - booked';
+  }
   const suffix = kind === CalendarFeedKind.BOOKINGS ? 'Bookings' : 'Departures';
   return operatorName
     ? `${operatorName} - ${suffix}`
     : `Island Tours ${suffix}`;
+}
+
+/** `YYYY-MM-DD` one day later. */
+function addDayKey(key: string): string {
+  const d = new Date(`${key}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Collapse sorted date keys into contiguous inclusive ranges.
+ *
+ * Exported for its own tests: an off-by-one here either advertises a bookable
+ * day to a channel as blocked, or hands them a day we have actually sold.
+ */
+export function mergeRanges(
+  sortedKeys: string[],
+): { start: string; end: string }[] {
+  const ranges: { start: string; end: string }[] = [];
+  for (const key of sortedKeys) {
+    const last = ranges[ranges.length - 1];
+    if (last && addDayKey(last.end) === key) {
+      last.end = key;
+    } else {
+      ranges.push({ start: key, end: key });
+    }
+  }
+  return ranges;
 }

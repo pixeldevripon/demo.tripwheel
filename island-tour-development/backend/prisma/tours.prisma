@@ -124,32 +124,34 @@ model Tour {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  operator           Operator                @relation(fields: [operatorId], references: [id])
-  destination        Destination             @relation(fields: [destinationId], references: [id])
-  ageBands           TourAgeBand[] // flat per-traveler pricing (Adult / Child / Infant …)
-  categories         TourCategory[] // 1+ categories, exactly one isPrimary
-  hubs               TourHub[] // 0–n hubs
-  attributes         TourAttribute[] // V2 §7 — filterable key-value properties
-  images             TourImage[]
-  addOns             TourAddOn[]
-  languages          TourLanguage[]
-  highlights         TourHighlight[]
-  inclusions         TourInclusion[]
-  exclusions         TourExclusion[]
-  features           TourFeature[] // OTHER OCTO feature types (terms, accessibility…) — DS1
-  locations          TourLocation[] // OCTO locations / itinerary
-  pickupLocations    PickupLocation[] // OCTO pickup points (octo/pickups)
-  translations       TourTranslation[]
-  schedules          AvailabilitySchedule[]
-  exceptions         AvailabilityException[]
-  departures         Departure[]
-  bookings           Booking[]
-  reviews            Review[]
-  wishlists          Wishlist[]
-  spotlightRequests  SpotlightRequest[]
-  hubOurPicks        HubOurPick[]
-  hubComparisonTours HubComparisonTour[]
-  collectionTours    CollectionTour[]
+  operator              Operator                @relation(fields: [operatorId], references: [id])
+  destination           Destination             @relation(fields: [destinationId], references: [id])
+  ageBands              TourAgeBand[] // flat per-traveler pricing (Adult / Child / Infant …)
+  categories            TourCategory[] // 1+ categories, exactly one isPrimary
+  hubs                  TourHub[] // 0–n hubs
+  attributes            TourAttribute[] // V2 §7 — filterable key-value properties
+  images                TourImage[]
+  addOns                TourAddOn[]
+  languages             TourLanguage[]
+  highlights            TourHighlight[]
+  inclusions            TourInclusion[]
+  exclusions            TourExclusion[]
+  features              TourFeature[] // OTHER OCTO feature types (terms, accessibility…) — DS1
+  locations             TourLocation[] // OCTO locations / itinerary
+  pickupLocations       PickupLocation[] // OCTO pickup points (octo/pickups)
+  translations          TourTranslation[]
+  schedules             AvailabilitySchedule[]
+  exceptions            AvailabilityException[]
+  departures            Departure[]
+  calendarSubscriptions CalendarSubscription[]
+  calendarFeeds         CalendarFeed[]
+  bookings              Booking[]
+  reviews               Review[]
+  wishlists             Wishlist[]
+  spotlightRequests     SpotlightRequest[]
+  hubOurPicks           HubOurPick[]
+  hubComparisonTours    HubComparisonTour[]
+  collectionTours       CollectionTour[]
 
   @@unique([destinationId, slug])
   @@index([operatorId])

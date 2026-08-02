@@ -335,6 +335,16 @@ enum AvailabilityExceptionType {
   @@map("availability_exception_type")
 }
 
+/// Who authored an availability exception. MANUAL is operator-authored and is
+/// only ever touched by a human; ICAL rows are owned by an inbound calendar
+/// subscription and are the ONLY rows its reconciler may create or delete.
+enum AvailabilityExceptionSource {
+  MANUAL @map("manual")
+  ICAL   @map("ical")
+
+  @@map("availability_exception_source")
+}
+
 enum DepartureStatus {
   OPEN      @map("open")
   CLOSED    @map("closed")
@@ -817,4 +827,9 @@ enum InboxEvent {
   SETTLEMENT_STATEMENT_READY
   // Team
   TEAM_SEAT_INVITED
+  // Calendar sync (inbound iCal). The conflict is the critical one: iCal is
+  // polled, not pushed, so a channel can sell a seat we only learn about hours
+  // later - this notification is the ONLY thing that surfaces that double-sale.
+  CALENDAR_SYNC_CONFLICT
+  CALENDAR_SYNC_FAILED
 }

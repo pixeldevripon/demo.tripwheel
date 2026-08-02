@@ -19,6 +19,7 @@ datasource db {
 //                            languages, inclusions, exclusions, features, locations, translations)
 //   availability.prisma   ← AvailabilitySchedule, AvailabilityException, Departure (= OCTO Availability)
 //   calendar-feeds.prisma ← CalendarFeed (tokenized read-only iCal export of bookings / departures)
+//   calendar-sync.prisma  ← CalendarSubscription, CalendarEvent, IcalSyncLog, CalendarConflict (inbound iCal import)
 //   bookings.prisma       ← Booking (OCTO reserve→confirm) + BookingUnitItem (= OCTO unit item)
 //   payments.prisma       ← Payment + StripeWebhookEvent (idempotent ledger)
 //   reviews.prisma        ← Review (per-tour, booking-gated) + ReviewTranslation

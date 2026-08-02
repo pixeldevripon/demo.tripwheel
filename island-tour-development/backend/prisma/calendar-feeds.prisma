@@ -6,14 +6,23 @@
 // platform, never INTO it. Inbound iCal (blocking dates from an external calendar)
 // is a separate, later concern and would go through AvailabilityException, not here.
 
-// Two feeds, two audiences. An operator may subscribe to either or both.
-//   BOOKINGS   - the operations calendar: one event per booking on their tours.
-//                Carries traveller-identifying detail (see CalendarFeed.token).
-//   DEPARTURES - the inventory calendar: one event per departure with its fill,
-//                for capacity planning. Carries no traveller data.
+// Three feeds, three audiences - and the third is not a variation of the other
+// two, it is a different product.
+//
+//   BOOKINGS   - the operator's own OPERATIONS calendar: one event per booking
+//                on their tours, carrying the traveller's name and party size.
+//                For their phone. NEVER for a sales channel.
+//   DEPARTURES - the operator's INVENTORY calendar: one event per departure with
+//                its fill, for capacity planning. No traveller data.
+//   CHANNEL    - for an OTA (Airbnb, Booking.com). Scoped to ONE tour, ZERO
+//                traveller data, contiguous all-day ranges with a generic
+//                summary. This is the only kind that may be given to a third
+//                party; handing them a BOOKINGS URL would publish customer
+//                names to a company we have no relationship with.
 enum CalendarFeedKind {
   BOOKINGS   @map("bookings")
   DEPARTURES @map("departures")
+  CHANNEL    @map("channel")
 
   @@map("calendar_feed_kind")
 }
@@ -22,6 +31,17 @@ model CalendarFeed {
   id         String           @id @default(uuid())
   operatorId String
   kind       CalendarFeedKind
+
+  /// Set only for `CHANNEL`, which is per TOUR. Airbnb blocks dates on ONE
+  /// listing, so an operator-wide feed would close every tour whenever any one
+  /// of them was busy. Null for the two operator-wide kinds.
+  tourId String?
+
+  /// `'*'` for the operator-wide kinds, the tour id for `CHANNEL`. Exists only
+  /// to make the unique below work: `tourId` is nullable and Postgres treats
+  /// NULLs as distinct, so a nullable column in the key would let BOOKINGS be
+  /// minted twice. Same trick as `AvailabilityException.slotKey`.
+  scopeKey String @default("*")
 
   /// The ONLY credential guarding the feed URL. Calendar clients cannot carry a
   /// session cookie, so the token IS the authentication - 32 random bytes, base64url.
@@ -49,10 +69,13 @@ model CalendarFeed {
   createdBy String? // user id that minted it (operator owner or a staff seat)
 
   operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  tour     Tour?    @relation(fields: [tourId], references: [id], onDelete: Cascade)
 
-  // One live feed per operator per kind - "get me my bookings URL" must be an
-  // idempotent answer, not a growing pile of subscriptions.
-  @@unique([operatorId, kind])
+  // One live feed per operator per kind per scope - "get me my bookings URL"
+  // must be an idempotent answer, not a growing pile of subscriptions, and
+  // "get me the Airbnb URL for THIS tour" must answer per tour.
+  @@unique([operatorId, kind, scopeKey])
   @@index([operatorId])
+  @@index([tourId])
   @@map("calendar_feeds")
 }
