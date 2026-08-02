@@ -7,8 +7,7 @@
 import { buildQuery } from '@/lib/api/query';
 import type { Locale } from '@/lib/constants/locales';
 import type { PublicReviewList, ReviewSort } from '@/types/review';
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /** Reviews page size - shared by the server's initial load and client paging. */
 export const REVIEWS_PAGE_SIZE = 10;
@@ -52,7 +51,7 @@ export async function fetchTourReviews(params: {
     writtenIn,
   } = params;
   const res = await fetch(
-    `${BASE_URL}/reviews${buildQuery({ tourId, locale, sort, page, limit, rating, themeTag, reviewerType, withPhotos, writtenIn })}`,
+    `${BACKEND_API_BASE}/reviews${buildQuery({ tourId, locale, sort, page, limit, rating, themeTag, reviewerType, withPhotos, writtenIn })}`,
     { headers: { 'Content-Type': 'application/json' } },
   );
   if (!res.ok) throw new Error(`Failed to load reviews (${res.status})`);

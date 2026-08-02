@@ -9,7 +9,12 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 
 import { paymentTone, TravellerChip } from './traveller-chip';
-import { formatDay, lookupLabel, money } from './traveller-format';
+import {
+    formatDay,
+    lookupLabel,
+    money,
+    paymentMethodLabel,
+} from './traveller-format';
 
 /**
  * The payments ledger (review 5.7): every charge and refund on the traveller's
@@ -111,11 +116,11 @@ export function TravellerPaymentsList({
                               '{date}',
                               formatDay(payment.bookingLocalDate, locale)
                           )}`;
-                    const method = payment.methodBrand
-                        ? `${capitalize(payment.methodBrand)}${payment.methodLast4 ? ` ·· ${payment.methodLast4}` : ''}`
-                        : payment.methodType
-                          ? capitalize(payment.methodType)
-                          : null;
+                    const method = paymentMethodLabel(
+                        payment.methodBrand,
+                        payment.methodLast4,
+                        payment.methodType
+                    );
                     const manageHref = payment.destinationSlug
                         ? `/${payment.destinationSlug}/thank-you/${payment.bookingPublicRef}`
                         : null;
@@ -200,7 +205,4 @@ function TotalChip({ children }: { children: string }) {
     );
 }
 
-function capitalize(value: string): string {
-    return value.charAt(0).toUpperCase() + value.slice(1);
-}
 

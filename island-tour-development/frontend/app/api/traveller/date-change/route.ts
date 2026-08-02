@@ -4,7 +4,13 @@ import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { travellerCacheTag } from '@/lib/api/public/traveller';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
-import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
+import {
+    DEPARTURE_ID_SHAPE,
+    PUBLIC_REF_SHAPE,
+    TRAVELER_SESSION_HEADER,
+} from '@/lib/traveler-session.shared';
+import { perVisitorThrottleHeaders } from '@/lib/api/visitor-throttle';
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Self-service date change (review 10.4), forwarding the HttpOnly traveler
@@ -17,18 +23,25 @@ import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
  *
  * The backend owns every decision: ownership, CONFIRMED-only, the free-window
  * judgement, capacity, and the per-booking flip-flop cap.
+ *
+ * THROTTLE KEYING DIFFERS BY VERB HERE, deliberately:
+ *
+ * - POST `/date-change` declares its own `@Throttle({ long: 10/hr })`, so
+ *   `perVisitorThrottleHeaders()` cannot bypass it and only re-keys the bucket
+ *   from our egress IP to the individual traveller. Without that, ten date
+ *   changes per hour was the whole platform's allowance.
+ * - GET `/date-change-options` has NO `@Throttle()` override, which means the
+ *   internal key would make `skipIf` true and remove its rate limit outright.
+ *   So the GET deliberately does not send those headers and keeps sharing the
+ *   egress bucket. See `lib/api/visitor-throttle.ts`.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
-const TOKEN_SHAPE = /^[A-Za-z0-9-]{1,64}$/;
 
 export async function GET(req: NextRequest) {
     if (!isSameOrigin(req)) {
         return NextResponse.json({ options: [] }, { status: 403 });
     }
     const publicRef = req.nextUrl.searchParams.get('ref') ?? '';
-    if (!TOKEN_SHAPE.test(publicRef)) {
+    if (!PUBLIC_REF_SHAPE.test(publicRef)) {
         return NextResponse.json({ options: [] }, { status: 400 });
     }
     const sessionToken = await getTravelerSessionToken();
@@ -37,7 +50,7 @@ export async function GET(req: NextRequest) {
     }
     try {
         const res = await fetch(
-            `${BASE_URL}/bookings/typ/${encodeURIComponent(publicRef)}/date-change-options`,
+            `${BACKEND_API_BASE}/bookings/typ/${encodeURIComponent(publicRef)}/date-change-options`,
             { headers: { [TRAVELER_SESSION_HEADER]: sessionToken } }
         );
         if (!res.ok) {
@@ -66,9 +79,9 @@ export async function POST(req: NextRequest) {
     }
     if (
         typeof publicRef !== 'string' ||
-        !TOKEN_SHAPE.test(publicRef) ||
+        !PUBLIC_REF_SHAPE.test(publicRef) ||
         typeof departureId !== 'string' ||
-        !TOKEN_SHAPE.test(departureId)
+        !DEPARTURE_ID_SHAPE.test(departureId)
     ) {
         return NextResponse.json({ ok: false }, { status: 400 });
     }
@@ -80,12 +93,13 @@ export async function POST(req: NextRequest) {
 
     try {
         const res = await fetch(
-            `${BASE_URL}/bookings/typ/${encodeURIComponent(publicRef)}/date-change`,
+            `${BACKEND_API_BASE}/bookings/typ/${encodeURIComponent(publicRef)}/date-change`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     [TRAVELER_SESSION_HEADER]: sessionToken,
+                    ...(await perVisitorThrottleHeaders()),
                 },
                 body: JSON.stringify({ departureId }),
             }

@@ -16,6 +16,8 @@
  * Client-only helpers (document.cookie) - do not import from Server Components.
  */
 
+import { travelerBookingPath } from './traveler-booking.shared';
+
 export const TRAVELER_BOOKING_COOKIE = 'it.travelerBooking';
 
 /** 90 days - comfortably past any booked tour date. */
@@ -30,12 +32,39 @@ export interface TravelerBooking {
     path: string;
 }
 
-/** Locale-less TYP path (served by the proxy rewrite). */
-export function travelerBookingPath(
-    destinationSlug: string | null,
-    publicRef: string,
-): string {
-    return `/${destinationSlug || 'curacao'}/thank-you/${publicRef}`;
+/**
+ * Re-exported so existing client callers keep their import path. The definition
+ * lives in `traveler-booking.shared.ts` because Server Components need it too
+ * and must not reach into this (document.cookie-touching) module.
+ */
+export { travelerBookingPath };
+
+/**
+ * Write one of this module's cookies.
+ *
+ * ONE writer, for one reason: `secure`. These cookies carry the traveller's
+ * email and their booking's public ref - PII plus a view capability - and were
+ * being written with `path`/`max-age`/`samesite` only. Without `secure` the
+ * browser attaches them to any `http://` request to this host (a mistyped URL
+ * on hostile wifi, an http subresource), in cleartext. The HttpOnly session
+ * cookie already sets it; these six writes each had to remember to, and none
+ * did.
+ *
+ * Conditional on the current protocol because a `secure` cookie is silently
+ * DROPPED on plain http - setting it unconditionally would break local dev on
+ * `http://localhost`.
+ */
+function writeCookie(name: string, value: string, maxAgeSeconds: number): void {
+    const secure =
+        typeof location !== 'undefined' && location.protocol === 'https:'
+            ? ';secure'
+            : '';
+    document.cookie = `${name}=${value};path=/;max-age=${maxAgeSeconds};samesite=lax${secure}`;
+}
+
+/** Expire a cookie. Same flags as the write, which is what makes it stick. */
+function deleteCookie(name: string): void {
+    writeCookie(name, '', 0);
 }
 
 export function saveTravelerBooking(record: {
@@ -49,7 +78,11 @@ export function saveTravelerBooking(record: {
         ref: record.displayRef,
         path: travelerBookingPath(record.destinationSlug, record.publicRef),
     };
-    document.cookie = `${TRAVELER_BOOKING_COOKIE}=${encodeURIComponent(JSON.stringify(value))};path=/;max-age=${COOKIE_MAX_AGE};samesite=lax`;
+    writeCookie(
+        TRAVELER_BOOKING_COOKIE,
+        encodeURIComponent(JSON.stringify(value)),
+        COOKIE_MAX_AGE,
+    );
     emitTravellerIdentityChange();
 }
 
@@ -85,8 +118,8 @@ export function readTravelerBooking(): TravelerBooking | null {
  * signing out goes through `signOutTraveller`, which awaits that round trip.
  */
 export function clearTravelerBooking(): void {
-    document.cookie = `${TRAVELER_BOOKING_COOKIE}=;path=/;max-age=0;samesite=lax`;
-    document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=;path=/;max-age=0;samesite=lax`;
+    deleteCookie(TRAVELER_BOOKING_COOKIE);
+    deleteCookie(TRAVELLER_ACCOUNT_COOKIE);
     emitTravellerIdentityChange();
 }
 
@@ -125,7 +158,11 @@ const TRAVELLER_ACCOUNT_MAX_AGE = 60 * 60 * 24;
 
 /** Remember who signed in at the account door (display identity only). */
 export function saveTravellerAccount(email: string): void {
-    document.cookie = `${TRAVELLER_ACCOUNT_COOKIE}=${encodeURIComponent(email)};path=/;max-age=${TRAVELLER_ACCOUNT_MAX_AGE};samesite=lax`;
+    writeCookie(
+        TRAVELLER_ACCOUNT_COOKIE,
+        encodeURIComponent(email),
+        TRAVELLER_ACCOUNT_MAX_AGE,
+    );
     emitTravellerIdentityChange();
 }
 
@@ -276,7 +313,11 @@ const JUST_BOOKED_MAX_AGE = 15 * 60;
  * management view once it clears.
  */
 export function markJustBooked(publicRef: string): void {
-    document.cookie = `${JUST_BOOKED_COOKIE}=${encodeURIComponent(publicRef)};path=/;max-age=${JUST_BOOKED_MAX_AGE};samesite=lax`;
+    writeCookie(
+        JUST_BOOKED_COOKIE,
+        encodeURIComponent(publicRef),
+        JUST_BOOKED_MAX_AGE,
+    );
 }
 
 /**
@@ -286,7 +327,7 @@ export function markJustBooked(publicRef: string): void {
  * a checkout even when the traveller came back through the login door.
  */
 export function clearJustBooked(): void {
-    document.cookie = `${JUST_BOOKED_COOKIE}=;path=/;max-age=0;samesite=lax`;
+    deleteCookie(JUST_BOOKED_COOKIE);
 }
 
 /**

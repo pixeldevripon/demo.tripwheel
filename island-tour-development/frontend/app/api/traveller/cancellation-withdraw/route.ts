@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { travellerCacheTag } from '@/lib/api/public/traveller';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
-import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
+import {
+    PUBLIC_REF_SHAPE,
+    TRAVELER_SESSION_HEADER,
+} from '@/lib/traveler-session.shared';
+import { perVisitorThrottleHeaders } from '@/lib/api/visitor-throttle';
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Withdraws a pending cancellation request from the traveller account area,
@@ -13,12 +18,13 @@ import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
  * session token must never be serialized into the page, and a user-triggered
  * write must not ride the internal key's throttle exemption. The backend owns
  * every decision; refusal here just means the state did not change.
+ *
+ * Sends `perVisitorThrottleHeaders()` for the same reason as its sibling: this
+ * backend route carries its OWN `@Throttle({ long: 10/hr })`, so the key cannot
+ * bypass it (`hasOwnThrottleOverride`) and only moves the bucket from our
+ * shared egress IP to the individual traveller. Without it the platform shares
+ * one ten-per-hour allowance.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
-/** Booking public refs are uuid-shaped tokens; reject anything else early. */
-const PUBLIC_REF_SHAPE = /^[A-Za-z0-9-]{1,64}$/;
 
 export async function POST(req: NextRequest) {
     if (!isSameOrigin(req)) {
@@ -42,12 +48,13 @@ export async function POST(req: NextRequest) {
 
     try {
         const res = await fetch(
-            `${BASE_URL}/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request/withdraw`,
+            `${BACKEND_API_BASE}/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request/withdraw`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     [TRAVELER_SESSION_HEADER]: sessionToken,
+                    ...(await perVisitorThrottleHeaders()),
                 },
                 body: JSON.stringify({}),
             }

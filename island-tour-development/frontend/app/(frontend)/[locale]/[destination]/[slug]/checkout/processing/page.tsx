@@ -1,8 +1,7 @@
 import { CheckoutProcessing } from '@/components/frontend/checkout/checkout-processing';
+import { checkoutShellParams } from '@/lib/checkout/prerender-params';
 import { ThankYouSummarySkeleton } from '@/components/frontend/skeletons/thank-you-page-skeleton';
 import { isLocale } from '@/lib/constants/locales';
-import { getActiveDestinations } from '@/lib/api/public';
-import { getDestinationTours } from '@/lib/api/public/tours';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -19,32 +18,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * checkout route. Cache Components requires at least one generateStaticParams
  * entry, else every layout await becomes a request-time Blocking Route error.
  */
-export async function generateStaticParams() {
-    try {
-        const destinations = await getActiveDestinations();
-        if (destinations && destinations.length > 0) {
-            const combos = await Promise.all(
-                destinations.map(async (d) => {
-                    const { data } = await getDestinationTours({
-                        destinationId: d.id,
-                        limit: 1,
-                    });
-                    return data.map((t) => ({
-                        destination: d.slug,
-                        slug: t.slug,
-                    }));
-                })
-            );
-            const flat = combos.flat();
-            if (flat.length > 0) return flat;
-        }
-    } catch {
-        // backend unavailable at build - fall through to the demo-seed tour
-    }
-    return [
-        { destination: 'curacao', slug: 'klein-curacao-super-yacht-beach-house' },
-    ];
-}
+export const generateStaticParams = checkoutShellParams;
 
 /** Read `ref` (the booking public ref) - request-time, so awaited in Suspense. */
 async function ProcessingBody({

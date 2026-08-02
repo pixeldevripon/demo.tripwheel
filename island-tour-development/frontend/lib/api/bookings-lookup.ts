@@ -1,3 +1,4 @@
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 /**
  * Client-side traveller booking lookup - backs the `/bookings` login surface
  * (browser, anonymous, NO auth cookie). Mirrors `lib/api/categories-public.ts`.
@@ -5,8 +6,6 @@
  * MUST stay a browser call: the endpoint is strictly throttled per IP and the
  * SSR internal-key bypass would skip that limit.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 export interface BookingLookupResult {
     publicRef: string;
@@ -29,7 +28,7 @@ export async function lookupBookingClient(
     reference: string,
 ): Promise<BookingLookupResult | null> {
     try {
-        const res = await fetch(`${BASE_URL}/bookings/lookup`, {
+        const res = await fetch(`${BACKEND_API_BASE}/bookings/lookup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, reference }),
@@ -53,7 +52,7 @@ export async function recoverReferenceClient(
     email: string
 ): Promise<'sent' | 'unknown'> {
     try {
-        const res = await fetch(`${BASE_URL}/bookings/lookup/recover-reference`, {
+        const res = await fetch(`${BACKEND_API_BASE}/bookings/lookup/recover-reference`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),

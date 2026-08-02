@@ -10,12 +10,9 @@ import {
 } from '@/lib/thank-you/thank-you';
 import Image from 'next/image';
 import { Fragment } from 'react';
+import { BookingRefPill } from './booking-ref-pill';
 import { renderTemplate } from './render-template';
-import {
-    AddToCalendar,
-    BookingRefCopy,
-    ResendEmailLine,
-} from './thank-you-hero-actions';
+import { AddToCalendar, ResendEmailLine } from './thank-you-hero-actions';
 
 type ThankYouDict = Dictionary['thankYou'];
 
@@ -83,8 +80,12 @@ export function ThankYouHero({
                     </p>
                     {metaItems.length > 0 && (
                         <div className='mt-2.5 flex flex-wrap items-center justify-center gap-2 text-[13.5px] leading-[1.6] text-it-text-muted'>
+                            {/* Index key: a fixed-position array of
+                                independent strings, where two entries CAN
+                                coincide (operator name == party label is
+                                unlikely but legal) and nothing reorders. */}
                             {metaItems.map((item, i) => (
-                                <Fragment key={item}>
+                                <Fragment key={i}>
                                     {i > 0 && (
                                         <span
                                             aria-hidden='true'
@@ -102,20 +103,11 @@ export function ThankYouHero({
                         the masked (shared-link) view does not carry it - and
                         the real owner already has it in their email. */}
                     {booking.displayRef && (
-                        <div className='mt-5 flex items-center gap-2.5 rounded-it-full border border-it-border bg-it-bg px-4 py-[9px] text-[13.5px] leading-[1.5]'>
-                            <span className='text-it-text-muted'>
-                                {dict.bookingRef}
-                            </span>
-                            <code className='font-mono font-bold tracking-[0.02em] text-it-ink'>
-                                {booking.displayRef}
-                            </code>
-                            <BookingRefCopy
-                                displayRef={booking.displayRef}
-                                copyLabel={dict.copy}
-                                copiedLabel={dict.copied}
-                                ariaLabel={`${dict.bookingRef} ${booking.displayRef}`}
-                            />
-                        </div>
+                        <BookingRefPill
+                            displayRef={booking.displayRef}
+                            dict={dict}
+                            className='mt-5'
+                        />
                     )}
                 </MountReveal>
                 <MountReveal

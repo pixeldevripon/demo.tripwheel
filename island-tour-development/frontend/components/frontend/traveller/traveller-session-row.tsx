@@ -38,6 +38,10 @@ export function TravellerSessionRow({
         // us is account-gated, so a race would flash the login card and back.
         await signOutTraveller();
         router.replace(localizeHref(locale, '/'));
+        // `replace` alone leaves this page's RSC payload - every booking and
+        // payment on the account - in the client router cache, readable by
+        // pressing Back on a shared machine. `refresh()` is what evicts it.
+        router.refresh();
     }
 
     return (

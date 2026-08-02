@@ -218,8 +218,9 @@ async function ThankYouBody({
 
 /**
  * Thank-you page - public URL `/{destination}/thank-you/{public_ref}` with NO
- * locale prefix (the only such route; a `beforeFiles` rewrite in
- * `next.config.ts` maps it onto this `[locale]` tree as English). Figma
+ * locale prefix (the only such route; a URL-preserving rewrite in `proxy.ts`
+ * maps it onto this `[locale]` tree as English - NOT a `next.config.ts`
+ * rewrite, which does not exist in this app). Figma
  * 47744-9184: hero, booking summary, next steps, cross-sell, apartment promo,
  * support card.
  *

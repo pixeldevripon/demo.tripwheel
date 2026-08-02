@@ -5,8 +5,7 @@
  */
 import type { Currency, Locale } from '@/lib/constants/locales';
 import type { SearchResults, SearchSuggest } from '@/types/search';
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Search LIVE tours from the browser. Terms shorter than 2 chars short-circuit
@@ -37,7 +36,7 @@ export async function searchToursClient(
   qs.set('limit', String(params.limit ?? 8));
 
   try {
-    const res = await fetch(`${BASE_URL}/search?${qs.toString()}`, {
+    const res = await fetch(`${BACKEND_API_BASE}/search?${qs.toString()}`, {
       headers: { 'Content-Type': 'application/json' },
       signal,
     });
@@ -79,7 +78,7 @@ export async function searchSuggestClient(
   if (params.destinationSlug) qs.set('destinationSlug', params.destinationSlug);
 
   try {
-    const res = await fetch(`${BASE_URL}/search/suggest?${qs.toString()}`, {
+    const res = await fetch(`${BACKEND_API_BASE}/search/suggest?${qs.toString()}`, {
       headers: { 'Content-Type': 'application/json' },
       signal,
     });

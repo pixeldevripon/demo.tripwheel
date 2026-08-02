@@ -9,7 +9,7 @@ import { Bar } from './skeleton-bar';
 export function TravellerReceiptSkeleton() {
     return (
         <section className='bg-it-surface py-10 md:py-14'>
-            <div className='mx-auto w-full max-w-[780px] px-4'>
+            <div className='mx-auto w-full max-w-195 px-4'>
                 <div className='rounded-[16px] border border-it-heading/10 bg-it-white p-7 sm:p-10'>
                     {/* Document head: logo | RECEIPT + number + date */}
                     <div className='flex flex-wrap items-start justify-between gap-6'>

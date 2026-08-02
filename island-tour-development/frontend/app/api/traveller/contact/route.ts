@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Checkout prefill for a signed-in traveller: name, phone and country from
@@ -22,8 +23,6 @@ import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
  * limiting. A user-triggered read has no business borrowing that.
  */
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
 export async function GET(req: NextRequest) {
     if (!isSameOrigin(req)) {
         return NextResponse.json({ ok: false }, { status: 403 });
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const res = await fetch(`${BASE_URL}/bookings/traveller/contact`, {
+        const res = await fetch(`${BACKEND_API_BASE}/bookings/traveller/contact`, {
             headers: { [TRAVELER_SESSION_HEADER]: sessionToken },
             // Per-traveller and per-session: never cached, at any layer.
             cache: 'no-store',

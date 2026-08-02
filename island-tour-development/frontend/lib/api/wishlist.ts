@@ -8,8 +8,7 @@
  */
 import type { Currency, Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /** A saved tour: the search-hit card shape (badge/isSponsored absent here). */
 export type WishlistTour = Omit<SearchHit, 'badge' | 'isSponsored'> &
@@ -30,7 +29,7 @@ export const wishlistApi = {
     if (locale) qs.set('locale', locale);
     if (currency) qs.set('currency', currency);
 
-    const res = await fetch(`${BASE_URL}/wishlist/resolve?${qs.toString()}`);
+    const res = await fetch(`${BACKEND_API_BASE}/wishlist/resolve?${qs.toString()}`);
     if (!res.ok) {
       let message = `Request failed with status ${res.status}`;
       try {

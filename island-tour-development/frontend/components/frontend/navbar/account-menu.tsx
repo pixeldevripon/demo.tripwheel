@@ -107,7 +107,13 @@ export function AccountMenu({
         setOpen(false);
         setSigningOut(false);
         if (isAccountGated(path)) {
+            // BOTH, and `refresh` is the one that matters for privacy.
+            // `replace` navigates but leaves the already-fetched
+            // `/{locale}/traveller` flight payload - the full booking and
+            // payment list - sitting in the in-memory router cache, where Back
+            // renders it again with no credential. Only `refresh()` clears it.
             router.replace(localizeHref(locale, '/'));
+            router.refresh();
         } else {
             router.refresh();
         }

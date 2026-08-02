@@ -115,14 +115,26 @@ export function TravellerBookingPanel({
                         label={typDict.traveler}>
                         {partyLabel(booking.partySize, dict)}
                     </DetailRow>
-                    {hasPickup ? (
+                    {/* ONE row, not two. Pickup and meeting point differed
+                        only in their label, their value and which buffer copy
+                        they use - everything else, including the Maps anchor
+                        and its classes, was a 26-line verbatim copy. The
+                        branch is already resolved above as `hasPickup`. */}
+                    {(hasPickup || booking.meetingPoint) && (
                         <DetailRow
                             icon='/icons/thank-you/detail-location.svg'
-                            label={dict.rowPickup}>
-                            {booking.pickupAddress}
+                            label={
+                                hasPickup ? dict.rowPickup : dict.rowMeetingPoint
+                            }>
+                            {hasPickup
+                                ? booking.pickupAddress
+                                : booking.meetingPoint}
                             {active && booking.arrivalBufferMinutes ? (
                                 <MutedInline>
-                                    {dict.beReadyEarly.replace(
+                                    {(hasPickup
+                                        ? dict.beReadyEarly
+                                        : dict.beThereEarly
+                                    ).replace(
                                         '{minutes}',
                                         String(booking.arrivalBufferMinutes)
                                     )}
@@ -141,33 +153,7 @@ export function TravellerBookingPanel({
                                 </>
                             )}
                         </DetailRow>
-                    ) : booking.meetingPoint ? (
-                        <DetailRow
-                            icon='/icons/thank-you/detail-location.svg'
-                            label={dict.rowMeetingPoint}>
-                            {booking.meetingPoint}
-                            {active && booking.arrivalBufferMinutes ? (
-                                <MutedInline>
-                                    {dict.beThereEarly.replace(
-                                        '{minutes}',
-                                        String(booking.arrivalBufferMinutes)
-                                    )}
-                                </MutedInline>
-                            ) : null}
-                            {maps && (
-                                <>
-                                    {' · '}
-                                    <a
-                                        href={maps}
-                                        target='_blank'
-                                        rel='noopener noreferrer'
-                                        className='font-normal text-it-primary no-underline hover:opacity-80'>
-                                        {dict.mapsLink}
-                                    </a>
-                                </>
-                            )}
-                        </DetailRow>
-                    ) : null}
+                    )}
                     {duration && (
                         <DetailRow
                             icon='/icons/thank-you/detail-clock.svg'

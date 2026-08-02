@@ -2,18 +2,11 @@
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import { quoteBooking, type QuoteRequest } from '@/lib/api/bookings';
+import { buildBookingSelection } from '@/lib/checkout/checkout';
 import { useEffect } from 'react';
 
 /** Debounce so quick stepper taps don't fire a quote per click. */
 const QUOTE_DEBOUNCE_MS = 350;
-
-/**
- * Ids the widget synthesises when a tour has no real age bands (`default-adult`)
- * or is unit-priced (`unit-guests`). They are NOT real `ageBandId`s, so a
- * PER_PERSON quote can't be built from them - such a selection stays on the
- * optimistic client estimate.
- */
-const SYNTHETIC_BAND_IDS = new Set(['default-adult', 'unit-guests']);
 
 /**
  * Keeps the booking store's server-authoritative quote in sync with the live
@@ -48,34 +41,29 @@ export function useBookingQuote(): void {
         .map(a => ({ addOnId: a.id, quantity: addOnQty[a.id] ?? 0 }))
         .filter(a => a.quantity > 0);
 
-    // Build the request for the current selection, or null when it can't be quoted
-    // (incomplete, over capacity, or synthetic-only bands). PER_PERSON sends one
-    // item per counted age band (spectators are age bands too); UNIT sends guests.
-    let req: QuoteRequest | null = null;
-    if (isLive && tourId && selectedDepartureId && travelerCount >= 1 && !overCapacity) {
-        if (data.pricingModel === 'UNIT') {
-            req = {
-                tourId,
-                departureId: selectedDepartureId,
-                guests: travelerCount,
-                currency,
-                ...(addOns.length > 0 ? { addOns } : {}),
-            };
-        } else {
-            const items = data.bands
-                .map(b => ({ ageBandId: b.id, quantity: counts[b.id] ?? 0 }))
-                .filter(i => i.quantity > 0);
-            if (items.length > 0 && !items.some(i => SYNTHETIC_BAND_IDS.has(i.ageBandId))) {
-                req = {
-                    tourId,
-                    departureId: selectedDepartureId,
-                    items,
-                    currency,
-                    ...(addOns.length > 0 ? { addOns } : {}),
-                };
-            }
-        }
-    }
+    // Build the request for the current selection, or null when it can't be
+    // quoted (incomplete, over capacity, or synthetic-only bands).
+    //
+    // `buildBookingSelection` is THE shared party-payload builder - its own
+    // docblock promises "the live quote and the checkout reserve always build
+    // the identical selection", and this hook used to re-implement it (plus its
+    // own copy of SYNTHETIC_BAND_IDS). That is not a cosmetic duplicate: the two
+    // must agree, or the price quoted in the widget is not the price reserved at
+    // checkout.
+    const selection =
+        isLive && tourId && selectedDepartureId && travelerCount >= 1 && !overCapacity
+            ? buildBookingSelection(data, counts)
+            : null;
+    const req: QuoteRequest | null =
+        selection && tourId && selectedDepartureId
+            ? {
+                  tourId,
+                  departureId: selectedDepartureId,
+                  ...selection,
+                  currency,
+                  ...(addOns.length > 0 ? { addOns } : {}),
+              }
+            : null;
 
     // Primitive trigger: the effect only refires when the request materially
     // changes; `req` itself is rebuilt from the key inside the effect.

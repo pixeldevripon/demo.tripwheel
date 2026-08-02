@@ -9,17 +9,12 @@
  * a traveller with a real booking must never be told it does not exist.
  */
 import 'server-only';
-import { headers } from 'next/headers';
 import { BackendUnavailableError, publicGetStrict, publicPost } from './fetch';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
-
-/**
- * Header a trusted first-party caller uses to forward the REAL visitor IP, so
- * the backend can rate-limit SSR-originated calls per visitor instead of per
- * renderer. Must match `INTERNAL_CLIENT_IP_HEADER` in the backend's
- * `auth/internal-origin.util.ts`.
- */
-const INTERNAL_CLIENT_IP_HEADER = 'x-real-client-ip';
+import {
+    INTERNAL_CLIENT_IP_HEADER,
+    visitorIp,
+} from '@/lib/api/visitor-throttle';
 
 /**
  * Conversion payload (master booking_complete contract; value = EUR commission).
@@ -264,21 +259,3 @@ export async function claimConversionPush(
     return res?.conversion ?? null;
 }
 
-/**
- * The visitor's own IP, for the forwarded-address header above. Null when it
- * cannot be determined - the backend then falls back to tracking by our egress
- * IP, which is the old behaviour rather than a failure.
- */
-async function visitorIp(): Promise<string | null> {
-    try {
-        const h = await headers();
-        // "client, proxy1, proxy2" - the client is first. `x-real-ip` is the
-        // single-value form some proxies send instead.
-        const forwarded = h.get('x-forwarded-for');
-        const first = forwarded?.split(',')[0]?.trim();
-        return first || h.get('x-real-ip') || null;
-    } catch {
-        // No request scope (shouldn't happen on this path) - fall back.
-        return null;
-    }
-}

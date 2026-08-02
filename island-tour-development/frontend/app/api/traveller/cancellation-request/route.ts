@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server';
 import { isSameOrigin } from '@/lib/api/same-origin';
 import { travellerCacheTag } from '@/lib/api/public/traveller';
 import { getTravelerSessionToken } from '@/lib/traveler-session.server';
-import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
+import {
+    PUBLIC_REF_SHAPE,
+    TRAVELER_SESSION_HEADER,
+} from '@/lib/traveler-session.shared';
+import { perVisitorThrottleHeaders } from '@/lib/api/visitor-throttle';
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Submits a cancellation request from the traveller account area, forwarding
@@ -23,16 +28,21 @@ import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
  * human, who confirms the outcome by email.
  *
  * NOTE: this deliberately does NOT use the `lib/api/public/fetch` helpers.
- * Those attach the internal API key, which the backend treats as a trusted
- * origin and exempts from rate limiting. The per-booking cap still applies
- * either way, but there is no reason to hand a user-triggered write the
- * server's throttle exemption.
+ * Those attach the internal API key AND nothing else, and on a route with no
+ * `@Throttle()` of its own that key is a full rate-limit bypass - which a
+ * user-triggered write has no business borrowing.
+ *
+ * It DOES send `perVisitorThrottleHeaders()`, which is the opposite thing.
+ * This backend route declares `@Throttle({ short: 1/10s, medium: 3/min,
+ * long: 10/hr })`, so `hasOwnThrottleOverride` keeps `skipIf` false and the
+ * tight limit survives; the key only lets the backend track by the forwarded
+ * visitor IP instead of our egress address. Without it, `req.ip` is this app's
+ * single outbound address for every traveller on the platform, so "10 per hour"
+ * meant ten cancellation requests per hour IN TOTAL - one looping traveller
+ * could hold the bucket empty while everyone else's request failed inside their
+ * free-cancellation window, seeing only a generic error. See
+ * `lib/api/visitor-throttle.ts` for when this is and is not safe.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-
-/** Booking public refs are uuid-shaped tokens; reject anything else early. */
-const PUBLIC_REF_SHAPE = /^[A-Za-z0-9-]{1,64}$/;
 
 export async function POST(req: NextRequest) {
     if (!isSameOrigin(req)) {
@@ -63,12 +73,13 @@ export async function POST(req: NextRequest) {
 
     try {
         const res = await fetch(
-            `${BASE_URL}/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request`,
+            `${BACKEND_API_BASE}/bookings/typ/${encodeURIComponent(publicRef)}/cancellation-request`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     [TRAVELER_SESSION_HEADER]: sessionToken,
+                    ...(await perVisitorThrottleHeaders()),
                 },
                 body: JSON.stringify(
                     reason && reason.trim() ? { reason: reason.trim() } : {}

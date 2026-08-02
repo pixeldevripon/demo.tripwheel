@@ -5,25 +5,24 @@ import {
     readBookingSelection,
     writeBookingSelection,
 } from '@/hooks/tours/use-booking-selection-persistence';
-import {
-    createPaymentIntent,
-    reserveBooking,
-    updateBookingContact,
-    type BookingAddOnSelection,
-    type ReserveRequest,
+import type {
+    BookingAddOnSelection,
+    ReserveRequest,
 } from '@/lib/api/bookings';
 import {
+    bookingIdKey,
     formatCheckoutMoney,
+    UUID_SHAPE,
     type BookingSelectionPayload,
 } from '@/lib/checkout/checkout';
 import {
-    composePhone,
     COUNTRIES,
     DEFAULT_COUNTRY_CODE,
     POPULAR_CODES,
     splitPhone,
 } from '@/lib/checkout/countries';
 import { leaveTo } from '@/lib/checkout/leave-to';
+import { reserveAndPay } from '@/lib/checkout/reserve-and-pay';
 import {
     localizeHref,
     type Currency,
@@ -31,12 +30,7 @@ import {
 } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { springPop } from '@/lib/motion';
-import { readAttribution } from '@/lib/tracking/attribution';
-import {
-    reconcileTravellerIdentity,
-    signOutTraveller,
-    storeTravelerSession,
-} from '@/lib/traveler-booking';
+import { signOutTraveller } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import {
@@ -54,6 +48,7 @@ import {
     EMAIL_RE,
     Field,
     FieldError,
+    FormError,
     FreeCancelNote,
     helperClass,
     labelClass,
@@ -111,7 +106,6 @@ interface CheckoutFormProps {
     pickupRequired: boolean;
     /** Amount charged today; 0 means operator_full (no card step). */
     payToday: number;
-    currencySymbol: string;
     /** "Free cancellation up to 48h before the tour starts, full refund." -
      *  composed by the page (it owns cancellationHours), shown under the pay CTA. */
     freeCancelLabel: string;
@@ -162,7 +156,6 @@ export function CheckoutForm({
     pickupFromLabel,
     pickupRequired,
     payToday,
-    currencySymbol,
     freeCancelLabel,
     tourId,
     departureId,
@@ -191,10 +184,49 @@ export function CheckoutForm({
         }
     }, [tourId]);
 
-    // Client idempotency key: a retried reserve (edit contact → Continue again)
-    // returns the same booking instead of double-booking. Lazy init dodges the
-    // react-hooks purity rule (no impure calls during render).
-    const [bookingId] = useState(() => crypto.randomUUID());
+    /**
+      * Client idempotency key: a retried reserve (edit contact → Continue
+      * again) returns the same booking instead of double-booking. Lazy init
+      * dodges the react-hooks purity rule (no impure calls during render).
+      *
+      * ON A FAILED-PAYMENT RETURN IT IS REUSED, which is the whole point of
+      * persisting it. A declined charge deliberately leaves the booking ON_HOLD
+      * with its seats still claimed (the backend never cancels it, so the
+      * traveller can retry), and the processing page bounces back here with
+      * `?payment=failed` - which REMOUNTS this component. Minting a fresh UUID
+      * there reserved a SECOND booking and claimed the party's seats a second
+      * time, for up to the 30-minute hold window. Two declines on an 8-seat
+      * boat left 9 of 8 seats held and the third attempt refused for a
+      * departure that was actually empty. Reserve is idempotent on this id and
+      * both PSPs handle a retried charge, so reusing it is the correct retry.
+      */
+    const [bookingId] = useState(() => {
+        if (paymentFailed) {
+            try {
+                const saved = window.sessionStorage.getItem(
+                    bookingIdKey(tourId)
+                );
+                // Shape-checked: sessionStorage is client-writable, and a
+                // non-uuid would just 400 at the backend.
+                if (saved && UUID_SHAPE.test(saved)) return saved;
+            } catch {
+                // Storage unavailable - a fresh key still books correctly.
+            }
+        }
+        return crypto.randomUUID();
+    });
+
+    // Persist it for exactly that retry. Written on mount rather than after a
+    // successful reserve: the charge can fail at any point after the reserve,
+    // and the key is useless to anyone else (the booking is worthless without
+    // its publicRef, which never lands here).
+    useEffect(() => {
+        try {
+            window.sessionStorage.setItem(bookingIdKey(tourId), bookingId);
+        } catch {
+            // Storage unavailable: retries mint a new booking, as before.
+        }
+    }, [tourId, bookingId]);
 
     // Set once the reserve + intent succeed; drives the Payment card. The shape
     // follows the admin-selected PSP: Stripe renders inline Card Elements,
@@ -207,6 +239,8 @@ export function CheckoutForm({
               publishableKey: string;
               publicRef: string;
               methodTypes: string[];
+              /** Backend's authoritative charge amount - see `chargeToday`. */
+              amount: number | null;
           }
         | {
               provider: 'MOLLIE';
@@ -214,10 +248,25 @@ export function CheckoutForm({
               publicRef: string;
               profileId: string | null;
               testmode: boolean;
+              amount: number | null;
           }
         | null
     >(null);
     const [reserving, setReserving] = useState(false);
+
+    /**
+     * What the Pay button promises - the BACKEND's figure once we have it.
+     *
+     * `payToday` is client-side arithmetic (`computeCheckoutTotals`), refreshed
+     * from `POST /bookings/quote` only when a priced pickup zone is chosen, and
+     * that re-quote swallows its own failures and keeps the previous totals. So
+     * a failed re-quote left the CTA reading "Reserve my spot · Pay $X" while
+     * `reserve` recomputed server-side WITH the pickup surcharge and charged
+     * $X + pickup. The backend hands us the real number on the payment intent
+     * and we were discarding it; a button that names a price must name the one
+     * that will be charged.
+     */
+    const chargeToday = intent?.amount ?? payToday;
 
     const processingBase = localizeHref(
         locale,
@@ -263,14 +312,7 @@ export function CheckoutForm({
             (saved === 'none' && !pickupRequired);
         if (!valid) return;
         setContact(prev => ({ ...prev, pickup: saved }));
-        onPickupChange({
-            id: zone?.id ?? null,
-            label: zone
-                ? zone.label
-                : saved === 'other'
-                  ? dict.pickupOther
-                  : null,
-        });
+        publishPickup(saved);
         // Mount-only restore; the props involved are stable for the page life.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -407,6 +449,27 @@ export function CheckoutForm({
         return Object.keys(next).length === 0;
     }
 
+    /**
+     * Publish the chosen pickup as {id, label} to the summary.
+     *
+     * ONE derivation. The restore path and the interactive path both have to
+     * produce the same shape - the label mirrors into the summary card, the id
+     * re-quotes a priced zone - and they were deriving it separately, so a
+     * change to the none/other labelling in one made the summary read
+     * differently after a checkout round-trip than after a fresh pick.
+     */
+    function publishPickup(value: string) {
+        const zone = pickupOptions.find((o) => o.id === value);
+        onPickupChange({
+            id: zone?.id ?? null,
+            label: zone
+                ? zone.label
+                : value === 'other'
+                  ? dict.pickupOther
+                  : null,
+        });
+    }
+
     /** Map the pickup select to the reserve pickup fields. */
     function pickupFields(): Pick<
         ReserveRequest,
@@ -431,99 +494,57 @@ export function CheckoutForm({
         }
 
         setReserving(true);
-        try {
-            const booking = await reserveBooking({
-                id: bookingId,
-                tourId,
-                departureId,
-                currency,
-                quoteId: quoteId ?? undefined,
-                ...reserveSelection,
-                ...(addOns.length > 0 ? { addOns } : {}),
-                ...pickupFields(),
-                notes: contact.special.trim() || undefined,
-                // Ad click ids + UTM captured on the landing page (master 8.1.6);
-                // written onto the booking on first reserve only.
-                attribution: readAttribution() ?? undefined,
-            });
+        // The transaction itself lives in `lib/checkout/reserve-and-pay.ts` so
+        // it can be unit-tested; everything below is the React half.
+        const result = await reserveAndPay({
+            bookingId,
+            tourId,
+            departureId,
+            currency,
+            quoteId,
+            selection: reserveSelection,
+            addOns,
+            pickup: pickupFields(),
+            locale,
+            contact,
+        });
 
-            const withContact = await updateBookingContact(
-                booking.id,
-                {
-                    firstName: contact.firstName.trim(),
-                    lastName: contact.lastName.trim(),
-                    email: contact.email.trim(),
-                    phone:
-                        composePhone(contact.country, contact.phone) ||
-                        undefined,
-                    country: contact.country || undefined,
-                    locales: [locale],
-                },
-                contact.special.trim() || undefined
-            );
-            // The contact patch issues a traveler session for the booker's
-            // email - park it in the HttpOnly cookie now so the TYP (and the
-            // cancel page) render verified from the very first load.
-            //
-            // The email rides along so the route can refuse a DOWNGRADE: this
-            // token unlocks one booking, and blindly overwriting an already
-            // signed-in traveller's account session with it is what logged
-            // them out the moment they booked (report §Traveler.4).
-            const bookerEmail = contact.email.trim();
-            if (withContact.sessionToken) {
-                await storeTravelerSession(
-                    withContact.sessionToken,
-                    bookerEmail
-                );
-            }
-            // Keep the chrome honest: the navbar reads a client-readable
-            // identity cookie that nothing used to touch here, so after
-            // checkout the header still named whoever was signed in BEFORE.
-            reconcileTravellerIdentity(bookerEmail);
-
-            // Phase-1 intent: Stripe creates its PaymentIntent here; Mollie
-            // only returns the Components profile (the payment is created at
-            // Pay, once the card token - or the hosted hand-off - exists).
-            const pi = await createPaymentIntent(booking.id);
-            if (!pi.paymentRequired) {
-                // Nothing due now (OPERATOR_FULL is born CONFIRMED at reserve).
-                leaveTo(processingHref(booking.publicRef));
+        switch (result.kind) {
+            case 'noPayment':
+                // Navigating; deliberately leave `reserving` true so the button
+                // stays busy until the document swaps.
+                leaveTo(processingHref(result.publicRef));
                 return;
-            }
-            if (pi.provider === 'MOLLIE') {
+            case 'mollie':
                 setIntent({
                     provider: 'MOLLIE',
-                    bookingId: booking.id,
-                    publicRef: booking.publicRef,
-                    profileId: pi.profileId ?? null,
-                    testmode: pi.testmode ?? false,
+                    bookingId: result.bookingId,
+                    publicRef: result.publicRef,
+                    profileId: result.profileId,
+                    testmode: result.testmode,
+                    amount: result.amount,
                 });
                 onPhaseChange('payment');
-                return;
-            }
-            if (!pi.clientSecret || !pi.publishableKey) {
+                break;
+            case 'stripe':
+                setIntent({
+                    provider: 'STRIPE',
+                    clientSecret: result.clientSecret,
+                    publishableKey: result.publishableKey,
+                    publicRef: result.publicRef,
+                    methodTypes: result.methodTypes,
+                    amount: result.amount,
+                });
+                onPhaseChange('payment');
+                break;
+            case 'paymentUnavailable':
                 setFormError(dict.paymentUnavailable);
-                setReserving(false);
-                return;
-            }
-            setIntent({
-                provider: 'STRIPE',
-                clientSecret: pi.clientSecret,
-                publishableKey: pi.publishableKey,
-                publicRef: booking.publicRef,
-                methodTypes: pi.paymentMethodTypes ?? [],
-            });
-            onPhaseChange('payment');
-        } catch (err) {
-            // Log the raw error for debugging; show a clean message (a bare 500
-            // "Internal server error" isn't actionable to the traveller).
-            console.error('[checkout] reserve/pay failed:', err);
-            const raw = err instanceof Error ? err.message : '';
-            const isServer500 = /internal server error/i.test(raw);
-            setFormError(raw && !isServer500 ? raw : dict.reserveError);
-        } finally {
-            setReserving(false);
+                break;
+            case 'error':
+                setFormError(result.message ?? dict.reserveError);
+                break;
         }
+        setReserving(false);
     }
 
     // Priced zones carry their per-person price inline (master 5.8: "operator
@@ -533,7 +554,7 @@ export function CheckoutForm({
         o.price != null && o.price > 0
             ? `${o.label} ${dict.pickupPricePP.replace(
                   '{price}',
-                  formatCheckoutMoney(o.price, currencySymbol, locale)
+                  formatCheckoutMoney(o.price, currency, locale)
               )}`
             : o.label;
     // Required pickup drops "No pickup" and starts on a choose-me placeholder;
@@ -726,33 +747,17 @@ export function CheckoutForm({
                                     }
                                     value={contact.pickup}
                                     onChange={v => {
+                                        // `set` already clears errors.pickup -
+                                        // pickup used to hand-roll its own
+                                        // clear, which is the exact thing
+                                        // centralising `set` was meant to stop.
                                         set('pickup', v);
                                         // Survive a round-trip back to the
                                         // widget and returning here again.
                                         writeBookingSelection(tourId, {
                                             pickup: v,
                                         });
-                                        if (errors.pickup) {
-                                            setErrors(prev => {
-                                                const rest = { ...prev };
-                                                delete rest.pickup;
-                                                return rest;
-                                            });
-                                        }
-                                        // Publish zone id + label: the label
-                                        // mirrors into the summary card, the id
-                                        // re-quotes a priced zone's total.
-                                        const zone = pickupOptions.find(
-                                            o => o.id === v
-                                        );
-                                        onPickupChange({
-                                            id: zone?.id ?? null,
-                                            label: zone
-                                                ? zone.label
-                                                : v === 'other'
-                                                  ? dict.pickupOther
-                                                  : null,
-                                        });
+                                        publishPickup(v);
                                     }}
                                     options={pickupSelectOptions}
                                     placeholderValue={
@@ -781,21 +786,7 @@ export function CheckoutForm({
                     </div>
 
                     {/* Form-level error (reserve / payment-setup failure). */}
-                    <AnimatePresence initial={false}>
-                        {formError && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -4, height: 0 }}
-                                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                                exit={{ opacity: 0, y: -4, height: 0 }}
-                                transition={{
-                                    duration: 0.2,
-                                    ease: [0.4, 0, 0.2, 1],
-                                }}
-                                className='mt-3 text-[13.5px] leading-[1.6] text-it-primary'>
-                                {formError}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    <FormError error={formError} />
 
                     <div className='mt-5'>
                         <CtaButton
@@ -915,9 +906,8 @@ export function CheckoutForm({
                                     publishableKey={intent.publishableKey}
                                     clientSecret={intent.clientSecret}
                                     contact={paymentContact}
-                                    payToday={payToday}
+                                    payToday={chargeToday}
                                     currency={currency}
-                                    currencySymbol={currencySymbol}
                                     eligibleMethods={intent.methodTypes}
                                     freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
@@ -934,8 +924,8 @@ export function CheckoutForm({
                                     bookingId={intent.bookingId}
                                     profileId={intent.profileId}
                                     testmode={intent.testmode}
-                                    payToday={payToday}
-                                    currencySymbol={currencySymbol}
+                                    payToday={chargeToday}
+                                    currency={currency}
                                     freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
                                         intent.publicRef

@@ -10,6 +10,7 @@
 import { getTypByRef, type TypResponse } from '@/lib/api/public/bookings';
 import { getDestinationBySlug } from '@/lib/api/public/destinations';
 import { getDestinationTours } from '@/lib/api/public/tours';
+import { bookingIcsUrl } from '@/lib/booking-ics';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { currencySymbol } from '@/lib/tours/booking';
 import type { SearchHit } from '@/types/search';
@@ -438,6 +439,5 @@ export function buildOutlookCalendarUrl(booking: ThankYouBooking): string {
  * email links) - the menu's Apple Calendar and "Download .ics" targets.
  */
 export function buildIcsUrl(booking: ThankYouBooking): string {
-    const base = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
-    return `${base}/bookings/typ/${encodeURIComponent(booking.publicRef)}/calendar.ics`;
+    return bookingIcsUrl(booking.publicRef);
 }

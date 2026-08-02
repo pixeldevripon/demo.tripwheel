@@ -139,14 +139,27 @@ function buildFacts(
     return facts;
 }
 
-/** EXTERNAL opens off-site (new tab); INTERNAL keeps client-side nav same-tab. */
-function Cta({
+/**
+ * A recommendation link. EXTERNAL opens off-site in a new tab; INTERNAL keeps
+ * client-side nav same-tab and localizes the href.
+ *
+ * ONE definition. `Cta` and `CardLink` were the same twenty lines - the same
+ * `external` branch, the same `rel='noopener noreferrer'`, the same non-null
+ * assertions on `linkUrl`, the same `localizeHref` - differing only in a tap
+ * scale of 0.98 vs 0.99. That routing rule is the fact being shared: a
+ * `prefetch` hint or a click-tracking hook would otherwise have to be added
+ * twice, and a miss would silently send external picks through client-side nav.
+ */
+function RecLink({
     r,
     className,
+    tapScale = 0.98,
     children,
 }: {
     r: PublicRecommendation;
     className: string;
+    /** Whole-card links tap a touch shallower than a button does. */
+    tapScale?: number;
     children: ReactNode;
 }) {
     return r.external ? (
@@ -154,7 +167,7 @@ function Cta({
             href={r.linkUrl!}
             target='_blank'
             rel='noopener noreferrer'
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: tapScale }}
             transition={springPop}
             className={className}>
             {children}
@@ -162,7 +175,7 @@ function Cta({
     ) : (
         <MotionLink
             href={localizeHref(r.locale, r.linkUrl!)}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: tapScale }}
             transition={springPop}
             className={className}>
             {children}
@@ -170,39 +183,26 @@ function Cta({
     );
 }
 
+/** The button-style CTA. */
+function Cta(props: {
+    r: PublicRecommendation;
+    className: string;
+    children: ReactNode;
+}) {
+    return <RecLink {...props} />;
+}
+
 /**
  * Wrap the WHOLE card in a link - used for picks with no CTA label (internal picks
  * that carry no copy of their own), so the card behaves like a tour card: no
  * button, the whole thing clickable.
  */
-function CardLink({
-    r,
-    className,
-    children,
-}: {
+function CardLink(props: {
     r: PublicRecommendation;
     className: string;
     children: ReactNode;
 }) {
-    return r.external ? (
-        <MotionA
-            href={r.linkUrl!}
-            target='_blank'
-            rel='noopener noreferrer'
-            whileTap={{ scale: 0.99 }}
-            transition={springPop}
-            className={className}>
-            {children}
-        </MotionA>
-    ) : (
-        <MotionLink
-            href={localizeHref(r.locale, r.linkUrl!)}
-            whileTap={{ scale: 0.99 }}
-            transition={springPop}
-            className={className}>
-            {children}
-        </MotionLink>
-    );
+    return <RecLink {...props} tapScale={0.99} />;
 }
 
 /**

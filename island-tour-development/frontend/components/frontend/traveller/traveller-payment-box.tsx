@@ -16,7 +16,13 @@ import type { TravellerBooking } from '@/lib/api/public/traveller';
 import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 
-import { formatDeadline, isPositive, money } from './traveller-format';
+import {
+    isPositive,
+    money,
+    onArrivalLine,
+    payBalanceLine,
+} from './traveller-format';
+import { freeWindowOpen } from './traveller-groups';
 
 function depositPct(deposit: string, total: string): string {
     const d = Number(deposit);
@@ -52,7 +58,7 @@ export function TravellerPaymentBox({
         booking.displayStatus === 'OPERATOR_CANCELLATION_REPORTED';
     const pct = depositPct(booking.depositAmount, booking.totalRetail);
     const deadline = booking.freeCancelDeadline;
-    const windowOpen = deadline ? new Date(deadline).getTime() > nowMs : false;
+    const windowOpen = freeWindowOpen(deadline, nowMs);
     const total = money(booking.totalRetail, booking.currency, locale);
 
     // ── operator_full: Island Tours never touched money on this booking ─────
@@ -146,16 +152,16 @@ export function TravellerPaymentBox({
                     <>
                         {showBalance && (
                             <Note>
-                                {windowOpen && deadline
-                                    ? dict.payLinkBefore
-                                          .replace('{operator}', operatorName)
-                                          .replace(
-                                              '{deadline}',
-                                              formatDeadline(deadline, locale)
-                                          )
-                                    : dict.payLinkAfter
-                                          .replace('{amount}', balance)
-                                          .replace('{operator}', operatorName)}
+                                {payBalanceLine(
+                                    {
+                                        balance,
+                                        operatorName,
+                                        deadline,
+                                        windowOpen,
+                                    },
+                                    dict,
+                                    locale
+                                )}
                             </Note>
                         )}
                         {/* Locked anti-fraud line - operator_link box only. */}
@@ -163,11 +169,7 @@ export function TravellerPaymentBox({
                     </>
                 )}
             {active && !requested && booking.paymentModel === 'ON_ARRIVAL' && (
-                <Note>
-                    {booking.onArrivalPayment === 'CASH_ONLY'
-                        ? dict.payOnArrivalCash
-                        : dict.payOnArrivalCard}
-                </Note>
+                <Note>{onArrivalLine(booking.onArrivalPayment, dict)}</Note>
             )}
         </>
     );

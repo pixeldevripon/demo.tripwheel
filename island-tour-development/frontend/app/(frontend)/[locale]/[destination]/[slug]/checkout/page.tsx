@@ -1,9 +1,10 @@
 import { CheckoutClient } from '@/components/frontend/checkout/checkout-client';
+import { formatTime } from '@/components/frontend/tour/tour-booking-card/lib/booking.utils';
+import { checkoutShellParams } from '@/lib/checkout/prerender-params';
 import type { CheckoutPickupOption } from '@/components/frontend/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/frontend/checkout/checkout-summary';
 import { CheckoutPageSkeleton } from '@/components/frontend/skeletons/checkout-page-skeleton';
-import { getActiveDestinations } from '@/lib/api/public';
-import { getDestinationTours, getTourBySlug } from '@/lib/api/public/tours';
+import { getTourBySlug } from '@/lib/api/public/tours';
 import {
     buildBookingSelection,
     buildPartyLabel,
@@ -39,44 +40,8 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * request-time Blocking Route error. All other tours render on demand (default
  * `dynamicParams`), streaming behind the route's skeleton.
  */
-export async function generateStaticParams() {
-    try {
-        const destinations = await getActiveDestinations();
-        if (destinations && destinations.length > 0) {
-            const combos = await Promise.all(
-                destinations.map(async d => {
-                    const { data } = await getDestinationTours({
-                        destinationId: d.id,
-                        limit: 1,
-                    });
-                    return data.map(t => ({
-                        destination: d.slug,
-                        slug: t.slug,
-                    }));
-                })
-            );
-            const flat = combos.flat();
-            if (flat.length > 0) return flat;
-        }
-    } catch {
-        // backend unavailable at build - fall through to the demo-seed tour
-    }
-    return [
-        { destination: 'curacao', slug: 'klein-curacao-super-yacht-beach-house' },
-    ];
-}
+export const generateStaticParams = checkoutShellParams;
 
-/** Wall-clock "HH:MM" -> localized "8:00 AM" (fixed UTC date, clock only). */
-function formatClock(hhmm: string, locale: string): string {
-    const [h, m] = hhmm.split(':').map(Number);
-    if (Number.isNaN(h)) return hhmm;
-    const date = new Date(Date.UTC(2000, 0, 1, h, m || 0));
-    return new Intl.DateTimeFormat(locale, {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'UTC',
-    }).format(date);
-}
 
 /**
  * Streamed checkout body. `searchParams` (the widget's selection, incl. the
@@ -145,7 +110,7 @@ async function CheckoutBody({
                   '{price}',
                   formatCheckoutMoney(
                       Math.min(...pricedZones),
-                      data.currencySymbol,
+                      data.currency,
                       locale
                   )
               )
@@ -163,7 +128,7 @@ async function CheckoutBody({
     // Per-line breakdown for the summary (same "label x qty x unit" shape the
     // widget shows under "Show details"); a pickup re-quote swaps in live lines.
     const fmt = (n: number) =>
-        formatCheckoutMoney(n, data.currencySymbol, locale);
+        formatCheckoutMoney(n, data.currency, locale);
     const breakdownRows = [
         // UNIT charters (and free bands) have no meaningful per-seat price -
         // drop the "x $0" tail instead of printing it.
@@ -202,7 +167,7 @@ async function CheckoutBody({
           }).format(selectedDate)
         : null;
     const timeLabel = selection.time
-        ? formatClock(selection.time, locale)
+        ? formatTime(selection.time, locale)
         : null;
     const partyLabel = buildPartyLabel(totals.lineItems);
 
@@ -215,7 +180,6 @@ async function CheckoutBody({
             pickupFromLabel={pickupFromLabel}
             pickupRequired={data.pickupRequired}
             totals={totals}
-            currencySymbol={data.currencySymbol}
             tourId={detail.id}
             departureId={selection.departureId}
             currency={currency}
@@ -243,7 +207,7 @@ async function CheckoutBody({
                     cancellationHours={data.cancellationHours}
                     totals={totals}
                     breakdownRows={breakdownRows}
-                    currencySymbol={data.currencySymbol}
+                    currency={data.currency}
                 />
             }
         />

@@ -1,3 +1,4 @@
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 /**
  * Client-side OTP login for the traveller account area (`/{locale}/traveller`).
  *
@@ -10,8 +11,6 @@
  * MUST stay browser calls: both endpoints are throttled per IP, and the SSR
  * internal-key bypass would skip every one of those limits.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 /**
  * `unknown` = the address has no bookings, so no code was sent - surfaced as
@@ -39,7 +38,7 @@ export async function requestTravellerCodeClient(
     email: string
 ): Promise<RequestCodeResult> {
     try {
-        const res = await fetch(`${BASE_URL}/bookings/traveller/request-code`, {
+        const res = await fetch(`${BACKEND_API_BASE}/bookings/traveller/request-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
@@ -93,7 +92,7 @@ export async function verifyTravellerCodeClient(
     code: string
 ): Promise<VerifyCodeResult> {
     try {
-        const res = await fetch(`${BASE_URL}/bookings/traveller/verify-code`, {
+        const res = await fetch(`${BACKEND_API_BASE}/bookings/traveller/verify-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, code }),

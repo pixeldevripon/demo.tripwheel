@@ -83,6 +83,23 @@ This repo is **not** the whole system. Three sibling checkouts live under
 | `tripwheel-x-islandtours-dashboard` | Operator + admin CRM. Standalone Next.js, shares no code with the public site | 3001 |
 | `tripwheel-app` | Tripwheel system-admin door. Currently only `app/(auth)` — login/forgot/reset | 3002 |
 
+### Push remotes — per repo, and NOT a shared convention
+
+| Repo | Push to | Base |
+|---|---|---|
+| `island-tour-development` (this one) | **`pixelvega`** | `prod` |
+| `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
+| `tripwheel-app` | **`pixelvega`** | `main` |
+
+**This repo has FOUR remotes** — `org` (tripwheel-io), `org-personal` (devripon-tr), `origin`
+(Deveripon) and `pixelvega` (pixeldevripon/island-tours). Only the last is the push target, and the
+base branch is `prod`, not `main`. Name the remote and the branch explicitly on every push: a bare
+`git push` sends work to whichever remote the branch happens to track, across four different GitHub
+accounts.
+
+`origin` is stale in the dashboard repo too (devripon-tr, 103 commits behind as of 2026-08-02) — a
+PR opened against it spans the whole backlog instead of your change.
+
 **Only `backend/` owns a database.** The dashboard and the public site have no Prisma client and
 no `DATABASE_URL` — every read and write is an HTTP call to `:5050`. This is rule #14 ("only one
 Prisma instance per process") expressed across repos.

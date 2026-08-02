@@ -6,20 +6,33 @@
  * rather than summed - EUR and USD are not addable.
  */
 import type { Currency, Locale } from '@/lib/constants/locales';
-import { formatPriceFrom } from '@/lib/currency/current';
+import { formatMoney } from '@/lib/currency/current';
 
 /** Narrow a backend currency string to the union the formatter accepts. */
 export function toCurrency(value: string | null | undefined): Currency {
     return value === 'USD' ? 'USD' : 'EUR';
 }
 
-/** Format an exact decimal string in its own currency. */
+/**
+ * Format an exact decimal string in its own currency.
+ *
+ * `formatMoney`, NOT `formatPriceFrom`. The two differ on whole amounts:
+ * `formatPriceFrom` is the LISTING "From" price and renders 1750 bare as
+ * "$1,750", while `formatMoney` is the concrete-total formatter and always
+ * carries cents. This helper feeds booking cards, the next-trip hero, the
+ * payments ledger and the printable receipt - concrete totals, every one.
+ *
+ * Using the listing rule here made the account area disagree with the thank-you
+ * page one click away, which is the exact bug already documented in
+ * `thank-you-summary.tsx`: "a 1750 total rendered as $1750 ... while every other
+ * surface showed $1,750.00". A receipt that silently drops cents is worse still.
+ */
 export function money(
     amount: string | number,
     currency: string | null | undefined,
     locale: Locale
 ): string {
-    return formatPriceFrom(amount, toCurrency(currency), locale);
+    return formatMoney(amount, toCurrency(currency), locale);
 }
 
 /**
@@ -107,6 +120,45 @@ export function partyLabel(
         : dict.guests.replace('{count}', String(count));
 }
 
+/** "Fri, 14 Aug 2026 · 09:00" - the date half of a booking summary. */
+export function bookingDateTimeLine(
+    booking: { localDate: string; startTime: string | null },
+    locale: Locale
+): string {
+    return [formatDay(booking.localDate, locale), booking.startTime]
+        .filter(Boolean)
+        .join(' · ');
+}
+
+/**
+ * The one-line booking summary: date · time · party · destination.
+ *
+ * ONE definition, because the list card and the next-trip hero are the two
+ * places a traveller sees the SAME booking summarised - the hero sits directly
+ * above the card list on the account page. They were composing this
+ * independently, character for character, so adding the duration or dropping
+ * the destination on mobile in one would silently make the two disagree about
+ * the same trip.
+ */
+export function bookingMetaLine(
+    booking: {
+        localDate: string;
+        startTime: string | null;
+        partySize: number;
+        destinationName: string | null;
+    },
+    dict: { guestsOne: string; guests: string },
+    locale: Locale
+): string {
+    return [
+        bookingDateTimeLine(booking, locale),
+        booking.partySize > 0 ? partyLabel(booking.partySize, dict) : null,
+        booking.destinationName,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+}
+
 /** Rough duration label from the tour's lower-bound minutes: "8h" / "2h 30m". */
 export function durationLabel(minutes: number | null | undefined): string {
     if (!minutes || minutes <= 0) return '';
@@ -138,6 +190,80 @@ export function mapsUrl(
         lat != null && lng != null ? `${lat},${lng}` : (address ?? '').trim();
     if (!query) return null;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Which on-arrival sentence applies: cash-only, or cash-or-card.
+ *
+ * The next-trip hero and the panel's payment box both render this, and the
+ * `CASH_ONLY` test is the single fact behind it. NOT an attempt to unify the
+ * two payment trees wholesale - they are genuinely different (the box also
+ * handles terminated, requested and refund states the hero never shows, and it
+ * emits money ROWS interleaved with notes rather than one sentence). Only the
+ * arms that are literally the same fact live here.
+ */
+export function onArrivalLine(
+    onArrivalPayment: string | null | undefined,
+    dict: { payOnArrivalCash: string; payOnArrivalCard: string }
+): string {
+    return onArrivalPayment === 'CASH_ONLY'
+        ? dict.payOnArrivalCash
+        : dict.payOnArrivalCard;
+}
+
+/**
+ * The operator-link balance sentence: before the free-cancellation deadline it
+ * names the deadline, after it names the amount. Duplicated in the hero and the
+ * payment box, and the before/after choice is one rule.
+ */
+export function payBalanceLine(
+    {
+        balance,
+        operatorName,
+        deadline,
+        windowOpen,
+    }: {
+        balance: string;
+        operatorName: string;
+        deadline: string | null | undefined;
+        windowOpen: boolean;
+    },
+    dict: { payLinkBefore: string; payLinkAfter: string },
+    locale: Locale
+): string {
+    return windowOpen && deadline
+        ? dict.payLinkBefore
+              .replace('{operator}', operatorName)
+              .replace('{deadline}', formatDeadline(deadline, locale))
+        : dict.payLinkAfter
+              .replace('{amount}', balance)
+              .replace('{operator}', operatorName);
+}
+
+function capitalize(value: string): string {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * How a payment method is displayed: "Visa ·· 4242", or the bare method type
+ * when there is no card behind it.
+ *
+ * ONE definition on purpose. The receipt and the payments ledger used to build
+ * this separately and had already drifted: with a brand but no last4 the
+ * receipt rendered "Visa ··" (its `.trim()` stripped the trailing space but not
+ * the separator) while the ledger correctly rendered "Visa". The receipt is
+ * linked straight off a ledger row, so a traveller sees both spellings of the
+ * same payment.
+ */
+export function paymentMethodLabel(
+    brand: string | null | undefined,
+    last4: string | null | undefined,
+    type: string | null | undefined
+): string | null {
+    if (brand) {
+        return last4 ? `${capitalize(brand)} ·· ${last4}` : capitalize(brand);
+    }
+    return type ? capitalize(type) : null;
 }
 
 /**

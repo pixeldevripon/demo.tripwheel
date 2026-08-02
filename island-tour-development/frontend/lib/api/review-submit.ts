@@ -1,3 +1,4 @@
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 /**
  * Client-side calls for the tokenized post-tour review flow (browser).
  *
@@ -8,10 +9,9 @@
  * The server resolves the token for the initial render
  * (`lib/api/public/review-invitation.ts`); this module owns the writes.
  */
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 async function post<T>(path: string, body: unknown, method = 'POST'): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${BACKEND_API_BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -63,7 +63,7 @@ export async function uploadReviewPhotos(
 ): Promise<{ reviewId: string; photos: string[] }> {
   const form = new FormData();
   for (const file of files) form.append('files', file);
-  const res = await fetch(`${BASE_URL}/reviews/invitation/${token}/photos`, {
+  const res = await fetch(`${BACKEND_API_BASE}/reviews/invitation/${token}/photos`, {
     method: 'POST',
     body: form,
   });

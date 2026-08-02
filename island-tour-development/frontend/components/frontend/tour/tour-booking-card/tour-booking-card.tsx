@@ -5,7 +5,7 @@ import { useAvailabilitySync } from '@/hooks/tours/use-availability-sync';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { useBookingQuote } from '@/hooks/tours/use-booking-quote';
 import { useBookingSelectionPersistence } from '@/hooks/tours/use-booking-selection-persistence';
-import type { Currency } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { TourBookingData, TourBookingDict } from '@/lib/tours/booking';
 import { AvailabilityDeadEnd } from './availability-dead-end';
 import { BookingAddOns } from './booking-add-ons';
@@ -186,7 +186,7 @@ export function TourBookingCard({
     dict: TourBookingDict;
     /** Live tour data; falls back to `DUMMY_BOOKING_DATA` for design/testing. */
     data?: TourBookingData;
-    locale?: string;
+    locale?: Locale;
     /** Live tour id; enables real availability (calendar + per-date slots). Omit
      *  for the design/demo card (static start times, always-open calendar). */
     tourId?: string;

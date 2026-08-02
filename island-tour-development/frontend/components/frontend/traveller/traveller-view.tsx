@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import type {
     TravellerBooking,
@@ -61,7 +61,17 @@ export function TravellerView({
 
     // Pagination navigates, which re-renders this component with a new
     // activeTab - keep the local tab in step with the URL it came from.
-    useEffect(() => setTab(activeTab), [activeTab]);
+    //
+    // The local copy is genuinely needed (selectTab uses history.replaceState,
+    // so state and prop legitimately diverge between clicks), but this is the
+    // ADJUST-DURING-RENDER form rather than an effect. React's documented
+    // pattern: an effect would commit one render showing the STALE tab, then
+    // re-render - a visible flash of the wrong list on every paginate.
+    const [lastActiveTab, setLastActiveTab] = useState<TravellerTab>(activeTab);
+    if (activeTab !== lastActiveTab) {
+        setLastActiveTab(activeTab);
+        setTab(activeTab);
+    }
 
     /**
      * Switch tab AND write it to the URL: `traveller/page.tsx` reads

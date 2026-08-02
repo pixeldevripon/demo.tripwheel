@@ -43,11 +43,6 @@ export const metadata: Metadata = {
 };
 
 /**
- * Enough room to centre the card without handing it a whole empty screen: a
- * full viewport height left the form marooned in the middle of nothing. This
- * sits the card comfortably above the fold and lets the footer peek in.
- */
-/**
  * Centres the login card in the space BELOW the fixed navbar, at every viewport.
  *
  * The two magic numbers are not arbitrary: they are the navbar's own height,
