@@ -14,6 +14,8 @@
  * (BOOKING-FLOW-DESIGN-GUIDE.md §9); until then this is client-derived.
  */
 import type { ReserveItem } from '@/lib/api/bookings';
+import type { Currency, Locale } from '@/lib/constants/locales';
+import { formatPriceFrom } from '@/lib/currency/current';
 import type { BookingBand, TourBookingData } from '@/lib/tours/booking';
 
 /**
@@ -300,17 +302,42 @@ export function buildPartyLabel(lineItems: CheckoutLineItem[]): string {
 }
 
 /**
- * `${symbol}${amount}` with locale grouping - matches the booking widget.
- * Exact prices: whole amounts stay bare ("$75"), fractional amounts always
- * carry both cents ("$63.75", never "$63.7" or a rounded "$64").
+ * Checkout money, delegating to the canonical `Intl` formatter.
+ *
+ * This used to build `${symbol}${amount}` by hand, which got the symbol on the
+ * WRONG SIDE in five of the seven locales: `Intl` renders EUR as "1.750,00 €"
+ * in de/fr/es and "€ 1.750,00" in nl/pt, while the concatenation always
+ * produced "€1.750". The booking card showed both spellings at once - its price
+ * header used this formatter, the alternatives row beneath it used
+ * `formatPriceFrom`.
+ *
+ * `formatPriceFrom`, not `formatMoney`, so the CENTS behaviour is unchanged:
+ * whole amounts stay bare ("$75"), fractional amounts always carry both cents
+ * ("$63.75", never "$63.7" or a rounded "$64") - founder rule 2026-07-16.
+ *
+ * NOTE: that still differs from the thank-you page, which uses `formatMoney`
+ * and always shows cents, so a whole total reads "$1,750" here and "$1,750.00"
+ * one click later. See CHANGELOG - that divergence is a product decision, not
+ * an accident of formatting, and is deliberately left alone here.
  */
 export function formatCheckoutMoney(
     amount: number,
-    symbol: string,
-    locale: string
+    currency: Currency,
+    locale: Locale
 ): string {
-    return `${symbol}${amount.toLocaleString(locale, {
-        minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
-        maximumFractionDigits: 2,
-    })}`;
+    return formatPriceFrom(amount, currency, locale);
 }
+
+/**
+ * Per-tour sessionStorage key holding the client idempotency key of the
+ * in-flight booking, so a `?payment=failed` return can RETRY the same booking
+ * instead of reserving a second one and claiming the party's seats twice.
+ *
+ * Cleared by the processing page the moment a booking confirms - a reused key
+ * must never outlive the booking it belongs to.
+ */
+export const bookingIdKey = (tourId: string) => `it-checkout-booking:${tourId}`;
+
+/** Client idempotency keys are `crypto.randomUUID()` v4 values. */
+export const UUID_SHAPE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

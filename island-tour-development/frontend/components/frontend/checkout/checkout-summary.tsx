@@ -1,5 +1,5 @@
 import type { CheckoutTotals } from '@/lib/checkout/checkout';
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,7 +33,7 @@ interface CheckoutSummaryProps {
     /** Server-derived per-line breakdown (participants + extras) for the URL
      *  selection; a pickup re-quote swaps in the live lines. */
     breakdownRows?: CheckoutBreakdownRow[];
-    currencySymbol: string;
+    currency: Currency;
 }
 
 const rowText = 'text-[13.5px] leading-[1.6] text-it-ink';
@@ -95,7 +95,7 @@ export function CheckoutSummary({
     cancellationHours,
     totals,
     breakdownRows,
-    currencySymbol,
+    currency,
 }: CheckoutSummaryProps) {
     return (
         <div className='flex flex-col gap-4 rounded-it-lg border border-it-divider bg-it-white p-5 shadow-it-sm'>
@@ -159,7 +159,7 @@ export function CheckoutSummary({
                             <CheckoutLiveAmount
                                 kind='total'
                                 fallback={totals.total}
-                                currencySymbol={currencySymbol}
+                                currency={currency}
                                 locale={locale}
                             />
                         }
@@ -203,7 +203,7 @@ export function CheckoutSummary({
                                 payToday: dict.payToday,
                                 balanceLater: dict.balanceLater,
                             }}
-                            currencySymbol={currencySymbol}
+                            currency={currency}
                             locale={locale}
                         />
                         <span className='text-[12px] leading-[1.6] text-it-text-muted'>

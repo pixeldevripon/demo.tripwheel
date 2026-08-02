@@ -7,6 +7,7 @@
  * (real departures / remaining spots) lands with the booking module, so time slots
  * are derived from the tour's `startTimes` and every slot is selectable for now.
  */
+import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
 import type {
     AddOnUnit,
@@ -251,8 +252,16 @@ function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
 }
 
 export interface TourBookingData {
-    /** Currency glyph for the tour's default currency ("$" / "€"). */
-    currencySymbol: string;
+    /**
+      * Display currency CODE, not a glyph.
+      *
+      * It used to be the glyph, which forced every price through a hand-rolled
+      * `${symbol}${number}` concatenation - and `Intl` puts the euro sign AFTER
+      * the number in de/nl/fr/es/pt. So a German shopper saw "€1.750" in the
+      * booking card's price header and "1.750,00 €" in the alternatives row
+      * directly beneath it. The code lets every surface use `Intl`.
+      */
+    currency: Currency;
     /** Headline "From" price (per person for PER_PERSON, group base for UNIT). */
     priceFrom: number;
     /**
@@ -307,7 +316,7 @@ export interface TourBookingData {
  * Used as the `TourBookingCard` fallback when no live `data` is passed.
  */
 export const DUMMY_BOOKING_DATA: TourBookingData = {
-    currencySymbol: '$',
+    currency: 'USD',
     priceFrom: 120,
     pricingModel: 'PER_PERSON',
     basePrice: 120,
@@ -442,7 +451,9 @@ export function buildTourBookingData(
     // POST /bookings/quote (§21.5 booking-widget rule 4).
     const displayCurrency = detail.money?.currency ?? detail.defaultCurrency;
     const fxRate = detail.money ? Number(detail.money.fxRate) || 1 : 1;
-    const symbol = currencySymbol(displayCurrency);
+    const currency: Currency = isCurrency(displayCurrency)
+        ? displayCurrency
+        : 'USD';
     // Cents precision, never whole units: the widget must show the exact entered
     // price ($63.75 stays $63.75, not "$64") - founder rule 2026-07-16.
     const conv = (v: string | number | null | undefined) =>
@@ -537,7 +548,7 @@ export function buildTourBookingData(
         }));
 
     return {
-        currencySymbol: symbol,
+        currency,
         priceFrom,
         pricingModel,
         basePrice,

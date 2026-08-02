@@ -35,7 +35,6 @@ interface CheckoutClientProps {
     pickupRequired: boolean;
     /** Client-derived totals for the URL selection (initial summary figures). */
     totals: CheckoutTotals;
-    currencySymbol: string;
     /** Composed free-cancellation line shown under the pay CTA (page owns hours). */
     freeCancelLabel: string;
     /** Server-rendered booking summary (right rail). */
@@ -89,7 +88,6 @@ export function CheckoutClient({
     pickupFromLabel,
     pickupRequired,
     totals,
-    currencySymbol,
     freeCancelLabel,
     summary,
     tourId,
@@ -146,7 +144,7 @@ export function CheckoutClient({
                         id: `${l.kind}-${l.ageBandId ?? i}`,
                         label: `${l.label} x ${l.quantity} x ${formatCheckoutMoney(
                             Number(l.unitPrice),
-                            currencySymbol,
+                            currency,
                             locale
                         )}`,
                         amount: Number(l.lineTotal),
@@ -225,7 +223,6 @@ export function CheckoutClient({
                             pickupFromLabel={pickupFromLabel}
                             pickupRequired={pickupRequired}
                             payToday={payToday}
-                            currencySymbol={currencySymbol}
                             freeCancelLabel={freeCancelLabel}
                             tourId={tourId}
                             departureId={departureId}

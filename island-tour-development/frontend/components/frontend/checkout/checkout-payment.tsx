@@ -70,7 +70,6 @@ interface CheckoutPaymentProps {
     /** Amount charged today (booking currency), for the CTA label. */
     payToday: number;
     currency: Currency;
-    currencySymbol: string;
     /** Eligible methods for this booking (account-activated + currency-compatible). */
     eligibleMethods: string[];
     /** Composed free-cancellation reassurance line under the pay CTA. */
@@ -114,7 +113,6 @@ function PaymentInner({
     contact,
     payToday,
     currency,
-    currencySymbol,
     eligibleMethods,
     freeCancelLabel,
     processingHref,
@@ -176,7 +174,7 @@ function PaymentInner({
         []
     );
 
-    const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
+    const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const unavailable = dict.methodUnavailable.replace('{currency}', currency);
 
     async function handleReserve() {

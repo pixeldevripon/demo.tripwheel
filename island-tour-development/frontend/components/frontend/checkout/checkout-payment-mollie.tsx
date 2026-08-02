@@ -3,7 +3,7 @@
 import { createPaymentIntent } from '@/lib/api/bookings';
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
 import { leaveTo } from '@/lib/checkout/leave-to';
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
     loadMollieJs,
@@ -44,7 +44,7 @@ export function CheckoutPaymentMollie({
     profileId,
     testmode,
     payToday,
-    currencySymbol,
+    currency,
     freeCancelLabel,
     processingHref,
 }: {
@@ -55,7 +55,7 @@ export function CheckoutPaymentMollie({
     profileId: string | null;
     testmode: boolean;
     payToday: number;
-    currencySymbol: string;
+    currency: Currency;
     /** Composed free-cancellation reassurance line under the pay CTA. */
     freeCancelLabel: string;
     /** Relative processing path (with ?ref&tour) - Mollie's returnUrl is built from it. */
@@ -148,7 +148,7 @@ export function CheckoutPaymentMollie({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profileId]);
 
-    const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
+    const money = (n: number) => formatCheckoutMoney(n, currency, locale);
 
     /** Phase 2: create the Mollie payment, then follow its redirect/landing. */
     async function createAndGo(cardToken?: string) {

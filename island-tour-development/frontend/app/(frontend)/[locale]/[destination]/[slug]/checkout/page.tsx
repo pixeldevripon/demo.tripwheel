@@ -145,7 +145,7 @@ async function CheckoutBody({
                   '{price}',
                   formatCheckoutMoney(
                       Math.min(...pricedZones),
-                      data.currencySymbol,
+                      data.currency,
                       locale
                   )
               )
@@ -163,7 +163,7 @@ async function CheckoutBody({
     // Per-line breakdown for the summary (same "label x qty x unit" shape the
     // widget shows under "Show details"); a pickup re-quote swaps in live lines.
     const fmt = (n: number) =>
-        formatCheckoutMoney(n, data.currencySymbol, locale);
+        formatCheckoutMoney(n, data.currency, locale);
     const breakdownRows = [
         // UNIT charters (and free bands) have no meaningful per-seat price -
         // drop the "x $0" tail instead of printing it.
@@ -215,7 +215,6 @@ async function CheckoutBody({
             pickupFromLabel={pickupFromLabel}
             pickupRequired={data.pickupRequired}
             totals={totals}
-            currencySymbol={data.currencySymbol}
             tourId={detail.id}
             departureId={selection.departureId}
             currency={currency}
@@ -243,7 +242,7 @@ async function CheckoutBody({
                     cancellationHours={data.cancellationHours}
                     totals={totals}
                     breakdownRows={breakdownRows}
-                    currencySymbol={data.currencySymbol}
+                    currency={data.currency}
                 />
             }
         />

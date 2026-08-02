@@ -14,7 +14,8 @@
  */
 
 import type { BookingQuote } from '@/lib/api/bookings';
-import type { Currency } from '@/lib/constants/locales';
+import { formatCheckoutMoney } from '@/lib/checkout/checkout';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import {
     DUMMY_BOOKING_DATA,
     type BookingBand,
@@ -106,7 +107,7 @@ export type PaymentTrust =
 export interface BookingConfig {
     data: TourBookingData;
     dict: TourBookingDict;
-    locale: string;
+    locale: Locale;
     /** Live tour id - enables real availability (calendar + per-date slots). When
      *  absent (design/demo), the card falls back to the static `data.slots` and an
      *  always-open calendar. */
@@ -218,7 +219,7 @@ export type BookingStore = BookingConfig & BookingState & BookingActions;
 export interface BookingInit {
     dict: TourBookingDict;
     data?: TourBookingData;
-    locale?: string;
+    locale?: Locale;
     tourId?: string;
     destinationSlug?: string;
     tourSlug?: string;
@@ -312,14 +313,11 @@ export function deriveBooking(s: BookingStore) {
     const ready = isLive ? selectionComplete : s.availabilityChecked;
     const editingParty = isLive ? true : !s.availabilityChecked;
 
-    const cur = s.data.currencySymbol;
-    // Exact prices: whole amounts stay bare ("$75"), fractional amounts always
-    // carry both cents ("$63.75", never "$63.7" or a rounded "$64").
+    // ONE formatter for the whole funnel. This was a verbatim copy of
+    // `formatCheckoutMoney` - same expression, same docblock - so the widget and
+    // the checkout summary could drift apart across a single navigation.
     const money = (n: number) =>
-        `${cur}${n.toLocaleString(s.locale, {
-            minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
-            maximumFractionDigits: 2,
-        })}`;
+        formatCheckoutMoney(n, s.data.currency, s.locale);
 
     // Price breakdown rows + grand total, per pricing model.
     const isUnit = s.data.pricingModel === 'UNIT';

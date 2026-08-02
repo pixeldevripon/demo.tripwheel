@@ -1,6 +1,7 @@
 'use client';
 
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import Image from 'next/image';
 import { createContext, useContext, type ReactNode } from 'react';
 
@@ -86,20 +87,20 @@ export function CheckoutSummaryPickupRow({ fallback }: { fallback: string }) {
 export function CheckoutLiveAmount({
     kind,
     fallback,
-    currencySymbol,
+    currency,
     locale,
 }: {
     kind: 'total' | 'payToday' | 'balanceLater';
     fallback: number;
-    currencySymbol: string;
-    locale: string;
+    currency: Currency;
+    locale: Locale;
 }) {
     const { totals } = useContext(CheckoutLiveContext);
     return (
         <>
             {formatCheckoutMoney(
                 totals?.[kind] ?? fallback,
-                currencySymbol,
+                currency,
                 locale
             )}
         </>
@@ -114,20 +115,20 @@ export function CheckoutSummaryTotals({
     fallback,
     fallbackLines,
     labels,
-    currencySymbol,
+    currency,
     locale,
 }: {
     fallback: CheckoutLiveTotals;
     /** Server-derived breakdown for the URL selection (pre-pickup). */
     fallbackLines?: CheckoutBreakdownRow[];
     labels: { total: string; payToday: string; balanceLater: string };
-    currencySymbol: string;
-    locale: string;
+    currency: Currency;
+    locale: Locale;
 }) {
     const { totals } = useContext(CheckoutLiveContext);
     const t = totals ?? fallback;
     const lines = totals?.lines ?? fallbackLines ?? [];
-    const money = (n: number) => formatCheckoutMoney(n, currencySymbol, locale);
+    const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const row =
         'flex items-center justify-between gap-1 text-[14px] leading-[1.6] text-it-ink';
     const amt = 'font-bold tabular-nums';

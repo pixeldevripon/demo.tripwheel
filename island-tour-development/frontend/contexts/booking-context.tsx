@@ -57,7 +57,7 @@ export function BookingStoreProvider({
         const s = store.getState();
         if (
             s.currency === currency &&
-            s.data.currencySymbol === (data?.currencySymbol ?? s.data.currencySymbol)
+            s.data.currency === (data?.currency ?? s.data.currency)
         ) {
             return;
         }

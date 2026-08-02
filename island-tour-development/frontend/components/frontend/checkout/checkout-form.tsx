@@ -13,7 +13,9 @@ import {
     type ReserveRequest,
 } from '@/lib/api/bookings';
 import {
+    bookingIdKey,
     formatCheckoutMoney,
+    UUID_SHAPE,
     type BookingSelectionPayload,
 } from '@/lib/checkout/checkout';
 import {
@@ -111,7 +113,6 @@ interface CheckoutFormProps {
     pickupRequired: boolean;
     /** Amount charged today; 0 means operator_full (no card step). */
     payToday: number;
-    currencySymbol: string;
     /** "Free cancellation up to 48h before the tour starts, full refund." -
      *  composed by the page (it owns cancellationHours), shown under the pay CTA. */
     freeCancelLabel: string;
@@ -162,7 +163,6 @@ export function CheckoutForm({
     pickupFromLabel,
     pickupRequired,
     payToday,
-    currencySymbol,
     freeCancelLabel,
     tourId,
     departureId,
@@ -191,10 +191,49 @@ export function CheckoutForm({
         }
     }, [tourId]);
 
-    // Client idempotency key: a retried reserve (edit contact → Continue again)
-    // returns the same booking instead of double-booking. Lazy init dodges the
-    // react-hooks purity rule (no impure calls during render).
-    const [bookingId] = useState(() => crypto.randomUUID());
+    /**
+      * Client idempotency key: a retried reserve (edit contact → Continue
+      * again) returns the same booking instead of double-booking. Lazy init
+      * dodges the react-hooks purity rule (no impure calls during render).
+      *
+      * ON A FAILED-PAYMENT RETURN IT IS REUSED, which is the whole point of
+      * persisting it. A declined charge deliberately leaves the booking ON_HOLD
+      * with its seats still claimed (the backend never cancels it, so the
+      * traveller can retry), and the processing page bounces back here with
+      * `?payment=failed` - which REMOUNTS this component. Minting a fresh UUID
+      * there reserved a SECOND booking and claimed the party's seats a second
+      * time, for up to the 30-minute hold window. Two declines on an 8-seat
+      * boat left 9 of 8 seats held and the third attempt refused for a
+      * departure that was actually empty. Reserve is idempotent on this id and
+      * both PSPs handle a retried charge, so reusing it is the correct retry.
+      */
+    const [bookingId] = useState(() => {
+        if (paymentFailed) {
+            try {
+                const saved = window.sessionStorage.getItem(
+                    bookingIdKey(tourId)
+                );
+                // Shape-checked: sessionStorage is client-writable, and a
+                // non-uuid would just 400 at the backend.
+                if (saved && UUID_SHAPE.test(saved)) return saved;
+            } catch {
+                // Storage unavailable - a fresh key still books correctly.
+            }
+        }
+        return crypto.randomUUID();
+    });
+
+    // Persist it for exactly that retry. Written on mount rather than after a
+    // successful reserve: the charge can fail at any point after the reserve,
+    // and the key is useless to anyone else (the booking is worthless without
+    // its publicRef, which never lands here).
+    useEffect(() => {
+        try {
+            window.sessionStorage.setItem(bookingIdKey(tourId), bookingId);
+        } catch {
+            // Storage unavailable: retries mint a new booking, as before.
+        }
+    }, [tourId, bookingId]);
 
     // Set once the reserve + intent succeed; drives the Payment card. The shape
     // follows the admin-selected PSP: Stripe renders inline Card Elements,
@@ -207,6 +246,8 @@ export function CheckoutForm({
               publishableKey: string;
               publicRef: string;
               methodTypes: string[];
+              /** Backend's authoritative charge amount - see `chargeToday`. */
+              amount: number | null;
           }
         | {
               provider: 'MOLLIE';
@@ -214,10 +255,25 @@ export function CheckoutForm({
               publicRef: string;
               profileId: string | null;
               testmode: boolean;
+              amount: number | null;
           }
         | null
     >(null);
     const [reserving, setReserving] = useState(false);
+
+    /**
+     * What the Pay button promises - the BACKEND's figure once we have it.
+     *
+     * `payToday` is client-side arithmetic (`computeCheckoutTotals`), refreshed
+     * from `POST /bookings/quote` only when a priced pickup zone is chosen, and
+     * that re-quote swallows its own failures and keeps the previous totals. So
+     * a failed re-quote left the CTA reading "Reserve my spot · Pay $X" while
+     * `reserve` recomputed server-side WITH the pickup surcharge and charged
+     * $X + pickup. The backend hands us the real number on the payment intent
+     * and we were discarding it; a button that names a price must name the one
+     * that will be charged.
+     */
+    const chargeToday = intent?.amount ?? payToday;
 
     const processingBase = localizeHref(
         locale,
@@ -497,6 +553,7 @@ export function CheckoutForm({
                     publicRef: booking.publicRef,
                     profileId: pi.profileId ?? null,
                     testmode: pi.testmode ?? false,
+                    amount: pi.amount != null ? Number(pi.amount) : null,
                 });
                 onPhaseChange('payment');
                 return;
@@ -512,6 +569,7 @@ export function CheckoutForm({
                 publishableKey: pi.publishableKey,
                 publicRef: booking.publicRef,
                 methodTypes: pi.paymentMethodTypes ?? [],
+                amount: pi.amount != null ? Number(pi.amount) : null,
             });
             onPhaseChange('payment');
         } catch (err) {
@@ -533,7 +591,7 @@ export function CheckoutForm({
         o.price != null && o.price > 0
             ? `${o.label} ${dict.pickupPricePP.replace(
                   '{price}',
-                  formatCheckoutMoney(o.price, currencySymbol, locale)
+                  formatCheckoutMoney(o.price, currency, locale)
               )}`
             : o.label;
     // Required pickup drops "No pickup" and starts on a choose-me placeholder;
@@ -915,9 +973,8 @@ export function CheckoutForm({
                                     publishableKey={intent.publishableKey}
                                     clientSecret={intent.clientSecret}
                                     contact={paymentContact}
-                                    payToday={payToday}
+                                    payToday={chargeToday}
                                     currency={currency}
-                                    currencySymbol={currencySymbol}
                                     eligibleMethods={intent.methodTypes}
                                     freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
@@ -934,8 +991,8 @@ export function CheckoutForm({
                                     bookingId={intent.bookingId}
                                     profileId={intent.profileId}
                                     testmode={intent.testmode}
-                                    payToday={payToday}
-                                    currencySymbol={currencySymbol}
+                                    payToday={chargeToday}
+                                    currency={currency}
                                     freeCancelLabel={freeCancelLabel}
                                     processingHref={processingHref(
                                         intent.publicRef

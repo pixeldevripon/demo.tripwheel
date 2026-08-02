@@ -1,6 +1,7 @@
 'use client';
 
 import { getThankYouStatus, settleBooking } from '@/lib/api/bookings';
+import { bookingIdKey } from '@/lib/checkout/checkout';
 import { leaveToReplacing } from '@/lib/checkout/leave-to';
 import { markJustBooked } from '@/lib/traveler-booking';
 import { motion } from 'framer-motion';
@@ -77,6 +78,11 @@ export function CheckoutProcessing({
                     window.sessionStorage.removeItem(
                         `it-booking-selection:${tourId}`
                     );
+                    // And the retry key: it is only ever reused on a
+                    // `?payment=failed` return, and this booking is now paid.
+                    // Leaving it would let a later failed retry replay a
+                    // CONFIRMED booking's id.
+                    window.sessionStorage.removeItem(bookingIdKey(tourId));
                 } catch {
                     // Storage unavailable: nothing to clear.
                 }

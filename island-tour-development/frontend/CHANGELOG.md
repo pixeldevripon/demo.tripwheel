@@ -1,5 +1,78 @@
 # Frontend changelog
 
+## 2026-08-02 — Wave 2: checkout, payment and the booking widget
+
+Same two subagents, same verify-before-fix discipline, over ~7,000 lines: the 9
+checkout components, the 17-file booking widget, the 797-line booking store,
+both PSP integrations and the processing route.
+
+**The headline refutations matter as much as the fixes.** Price integrity is
+clean end-to-end — `ReserveBookingDto` carries no price, deposit, discount or
+coupon field, `forbidNonWhitelisted` turns a smuggled one into a 400, and the
+charge reads from the persisted booking. Both PSP components are PAN-free. The
+booking store has **no persistence middleware at all** (only two sessionStorage
+keys, no PII, no price, no token), and `hydrateSelection` is a genuine
+validating deserializer. No open redirect. No PII in the dataLayer.
+
+### Fixed — money display
+
+**Checkout put the currency symbol on the WRONG SIDE in 5 of 7 locales.**
+`formatCheckoutMoney` built `${symbol}${amount}` by hand. `Intl` renders EUR as
+`1.750,00 €` in de/fr/es and `€ 1.750,00` in nl/pt — and the same is true of
+USD (`120 $` in de/fr/es), so a "dollar always leads" assumption is wrong in
+exactly the locales the euro rule is wrong in. The booking card showed **both
+spellings at once**: its price header used the hand-rolled version, the
+alternatives row directly beneath used `formatPriceFrom`.
+
+Fixed by deleting the hand-rolled formatter and delegating to `formatPriceFrom`
+— `formatPriceFrom`, not `formatMoney`, so the cents behaviour is **unchanged**
+(whole amounts stay bare per the founder rule). `TourBookingData` now carries
+the currency CODE instead of a glyph; the `currencySymbol` prop turned out to be
+pure redundancy, since `currency: Currency` was already threaded beside it in
+half the components. The widget's `money()` was a verbatim copy of the same
+function and now routes here too.
+
+*Still divergent, deliberately:* a whole total reads `$1,750` at checkout and
+`$1,750.00` on the thank-you page, because the TYP uses `formatMoney`. That is a
+product decision about the funnel's cents rule, not a formatting accident.
+`thank-you-summary.tsx`'s claim to use "the canonical formatter, same as
+checkout" is now literally false and should be resolved with it.
+
+### Fixed — security
+
+**A declined charge leaked a 30-minute seat hold on every retry.** The client
+idempotency key was minted fresh on every mount of `CheckoutForm`. A failed
+charge deliberately leaves the booking `ON_HOLD` with its seats claimed so the
+traveller can retry — then bounces back to `?payment=failed`, which **remounts
+the form with a new UUID**. Continue therefore reserved a *second* booking and
+claimed the party's seats again. Two declines on an 8-seat boat left 9 of 8
+seats held, and the third attempt was refused for a departure that was actually
+empty. Reserve is `@Public`, so this needed no account and no card.
+
+The key is now persisted per tour and reused on a `?payment=failed` return
+(shape-checked on the way back out of client-writable storage), and cleared the
+moment a booking confirms so a reused id can never outlive its booking.
+
+**The Pay button could promise less than the charge.** `payToday` is client
+arithmetic, refreshed from `POST /bookings/quote` only when a priced pickup zone
+is chosen — and that re-quote swallowed its failures and kept the previous
+totals. `reserve` then recomputed server-side *with* the pickup and charged
+more. The backend returns the authoritative figure on the payment intent and the
+frontend was discarding it; the CTA now renders that.
+
+### Still open — needs a decision
+
+**`/checkout/processing?ref={publicRef}` puts a booking capability into GA4's
+`page_location`.** This is a **fifth** tokenized route, and Wave 1's remediation
+note enumerated only four — so the planned fix would have shipped and still
+leaked. It is also the landing point for every non-inline PSP redirect.
+
+Worth stating plainly: this cannot be fixed frontend-only. The other four routes
+carry their token in the URL **path**, which cannot be scrubbed without breaking
+the page, so a `page_location` override in the GTM container is the only real
+remedy. The processing route alone could be scrubbed via `replaceState`, but
+that would break refresh-resume on a page the traveller reaches *after paying*.
+
 ## 2026-08-02 — Wave 1 audit: traveller auth and private surface
 
 A full code-quality and security review of the traveller auth/private surface,
