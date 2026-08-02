@@ -49,6 +49,8 @@ import {
 import type { TripListItem } from '@/types/trip';
 import { TripAvailabilityCalendar } from '../../trip-availability-calendar';
 import { TripCalendarImport } from '../../trip-calendar-import';
+import { TripSharedEquipment } from '../../trip-shared-equipment';
+import { useResources } from '@/hooks/resources/use-resources';
 import { TripDateChanges } from '../../trip-date-changes';
 import {
     RecurringSchedulesSection,
@@ -231,7 +233,10 @@ export function StepSchedule({ trip }: StepScheduleProps) {
 
     const declaredTimes = [...new Set(trip.startTimes ?? [])].sort();
     const scheduleCount = schedules?.length ?? 0;
+    const { data: sharedResources } = useResources(trip.id);
     const importCount = calendarImports?.length ?? 0;
+    // Resources this tour shares with the operator's other tours.
+    const sharedCount = (sharedResources?.data ?? []).length;
     const activeDays = new Set((schedules ?? []).map(s => s.weekday)).size;
 
     // E.9: all times are tour-local (the island's clock, no DST on the ABC
@@ -420,6 +425,19 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                     }
                     muted>
                     <TripCalendarImport tripId={trip.id} />
+                </WizardSection>
+
+                <WizardSection
+                    id='shared-equipment'
+                    title='Shared equipment or staff'
+                    description='Tell us if this tour uses the same boat, vehicle or guide as another of your tours.'
+                    summary={
+                        sharedCount
+                            ? `${sharedCount} shared`
+                            : 'None'
+                    }
+                    muted>
+                    <TripSharedEquipment tripId={trip.id} />
                 </WizardSection>
             </WizardStepBody>
         </>
