@@ -255,6 +255,9 @@ prisma/
 ├── calendar-feeds.prisma  CalendarFeed — tokenized read-only iCal export (bookings / departures)
 ├── calendar-sync.prisma   CalendarSubscription + CalendarEvent + IcalSyncLog + CalendarConflict —
 │                          inbound iCal import; writes availability_exceptions, NEVER capacity
+├── resources.prisma       Resource + TourResource — physical assets (boat/guide/vehicle) that
+│                          COUPLE otherwise-independent tours. NOT inventory: never sold, no price.
+│                          Consumption is DERIVED from departures.bookedCount, never stored.
 ├── bookings.prisma        Booking (E.8 expansion: refs, multi-currency, commission, payment_model) ← expand
 ├── reviews.prisma         Review (E.7 expansion) ← expand
 ├── wishlist.prisma        Wishlist

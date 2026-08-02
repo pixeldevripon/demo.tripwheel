@@ -1,0 +1,117 @@
+/// Physical constraints that couple otherwise-independent tours.
+///
+/// ## Why this exists
+/// `departures` is unique on `(tourId, date, startTime)` and every index is
+/// tour-scoped, so two tours running at 09:00 are two rows with two independent
+/// counters and nothing between them. An operator with four jet skis selling
+/// both a shared safari and a private charter at 09:00 can therefore sell BOTH
+/// to capacity - seven machines' worth of bookings against a fleet of four.
+///
+/// That is not a race: the two claims touch different primary keys, so they
+/// never contend and it reproduces a week apart just as reliably. No isolation
+/// level or lock fixes it, because the fact "these tours share a fleet" cannot
+/// be written down anywhere. These two tables are that fact.
+///
+/// ## A resource is NOT inventory
+/// It is never sold, has no price, and no traveller can book one. It exists
+/// only to COUPLE inventory. Putting it on the inventory axis is how platforms
+/// end up with a second availability layer; `departures` remains the single
+/// source of truth and `AvailabilityMaterializer` remains its only writer.
+///
+/// Full rationale, the industry survey (FareHarbor, Bokun, Rezdy, Peek Pro and
+/// Checkfront all model this identically) and the frozen design corrections:
+/// `technical-doc/02-architecture/RESOURCE-ARCHITECTURE-REVIEW-VERDICT.md`.
+
+/// What kind of thing is in limited supply. Presentation only - allocation
+/// behaviour comes from `TourResource.mode`, never from the kind.
+enum ResourceKind {
+  BOAT
+  VEHICLE
+  JETSKI
+  GUIDE
+  EQUIPMENT
+  GENERIC
+
+  @@map("resource_kind")
+}
+
+/// How one tour's departure consumes a resource.
+///
+/// TWO modes, deliberately. `PER_SEAT` (several products genuinely riding one
+/// vehicle at once - a pooled shuttle) and `FIXED` (n units regardless of party
+/// size - a guide) are real shapes that other platforms support, but no
+/// TripWheel operator has been observed needing either. They are additive enum
+/// values: adding one later costs a migration and one function. Shipping four
+/// modes now costs four code paths to test, document, support and misconfigure
+/// on speculation.
+enum ResourceConsumption {
+  /// First booking claims the asset for that window; THAT product keeps filling
+  /// to its own capacity, every other product sharing the resource closes.
+  ///
+  /// The common case, and the one that is easy to model wrongly: a dive boat
+  /// running a snorkel tour at 09:00 cannot also run a sunset cruise at 09:00,
+  /// but it can happily fill up with snorkel guests.
+  EXCLUSIVE_ON_FIRST
+
+  /// One booking takes the whole asset. Nothing more sells - not on other
+  /// products, and not on this one either. A private charter of the fleet.
+  EXCLUSIVE
+
+  @@map("resource_consumption")
+}
+
+/// A thing that can only be in one place at a time.
+model Resource {
+  id         String       @id @default(uuid())
+  operatorId String
+  /// Operator-facing label: "Jet ski fleet", "Boat A", "Miguel".
+  name       String
+  kind       ResourceKind @default(GENERIC)
+
+  /// Total simultaneous units: 4 jet skis, 60 seats, 1 guide. Compared against
+  /// the same unit the consuming tour's departures count in, so an operator has
+  /// to think in the asset's units - deliberately surfaced in the UI.
+  capacity Int
+
+  /// Soft disable. Kept rather than deleted so historical allocation stays
+  /// explicable; an inactive resource constrains nothing.
+  isActive Boolean @default(true)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  operator Operator       @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  tours    TourResource[]
+
+  @@unique([operatorId, name])
+  @@index([operatorId, isActive])
+  @@map("resources")
+}
+
+/// Which tours consume which resources, and how.
+///
+/// The join carries `mode` rather than the Tour, because the SAME asset can be
+/// consumed differently by different products: the fleet is EXCLUSIVE to the
+/// private charter and EXCLUSIVE_ON_FIRST for the shared safari.
+model TourResource {
+  tourId     String
+  resourceId String
+
+  /// Inferred at write time from the tour, never chosen by the operator:
+  /// `pricingModel = UNIT` + `bookingType = PRIVATE` -> EXCLUSIVE, else
+  /// EXCLUSIVE_ON_FIRST. Stored rather than derived so a later pricing change
+  /// cannot silently re-interpret existing allocation.
+  mode ResourceConsumption @default(EXCLUSIVE_ON_FIRST)
+
+  createdAt DateTime @default(now())
+
+  tour     Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([tourId, resourceId])
+  /// The hot lookup: "which tours share this asset" runs on every claim.
+  @@index([resourceId])
+  @@map("tour_resources")
+}
