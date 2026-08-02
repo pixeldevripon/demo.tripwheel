@@ -1,6 +1,6 @@
 'use client';
 
-import { crossFade, springPop } from '@/lib/motion';
+import { crossFade, iconSwap, springPop } from '@/lib/motion';
 import useEmblaCarousel from 'embla-carousel-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
@@ -122,10 +122,15 @@ const SCALE_STEP = 0.15;
 const SCALE_MIN = 0.7;
 const arcScale = (d: number) => Math.max(1 - SCALE_STEP * d, SCALE_MIN);
 /**
- * How far a slide at distance `d` must shift toward the centre so the packed
- * look holds: the integral of the accumulated scale insets, W * ∫(1-scale).
+ * How far the ANCHOR card (the one nearest the centre) shifts toward the
+ * centre: the integral of the accumulated scale insets, W * ∫(1-scale).
  * For scale(t)=1-0.15t (floored at 0.7 from t=2): 0.075d² up to d=2, then
- * linear at the 0.3 floor.
+ * linear at the 0.3 floor. Only the anchor uses this closed form (it decays
+ * to 0 as the card centres); every other card is CHAINED edge-to-edge from
+ * it in applyArc, which keeps the visual gap exact on every frame - the
+ * closed form preserved gaps only at whole-slide distances, and at
+ * fractional mid-scroll positions the kink at d=2 squeezed neighbouring
+ * cards into each other.
  */
 const arcShift = (d: number, slideW: number) =>
     slideW * (d <= 2 ? 0.075 * d * d : 0.3 * (d - 2) + 0.3);
@@ -213,26 +218,74 @@ export function TopExperiences({
         if (!emblaApi) return;
         const rect = emblaApi.rootNode().getBoundingClientRect();
         const center = rect.left + rect.width / 2;
-        emblaApi.slideNodes().forEach(slide => {
+        const pitch = slideW + gap;
+        // Measure every slide's layout box first (our transform lives on the
+        // inner card, so the slide rect is never polluted by our own writes).
+        const measured = emblaApi.slideNodes().flatMap(slide => {
             const card = slide.firstElementChild as HTMLElement | null;
-            if (!card) return;
+            if (!card) return [];
             const r = slide.getBoundingClientRect();
-            // Undo any transform we applied last frame: measure from the
-            // slide's layout box, not its shifted visual box.
             const slideCenter = r.left + r.width / 2;
-            const signed = (slideCenter - center) / (slideW + gap);
-            const d = Math.abs(signed);
-            const shift = -Math.sign(signed) * arcShift(d, slideW);
-            card.style.transform = `translateX(${shift.toFixed(2)}px) scale(${arcScale(d).toFixed(4)})`;
+            const signed = (slideCenter - center) / pitch;
+            return [{ slide, card, slideCenter, signed, d: Math.abs(signed) }];
+        });
+        // Embla's loop teleports change the VISUAL order - chain by position,
+        // not DOM order.
+        measured.sort((a, b) => a.slideCenter - b.slideCenter);
+        if (measured.length === 0) return;
+
+        // Relative chain: exact edge-to-edge spacing, zero at the first card,
+        // so the visual gap is EXACTLY `gap` on every animation frame -
+        // fractional positions included.
+        const half = (m: { d: number }) => (slideW * arcScale(m.d)) / 2;
+        const rel: number[] = new Array(measured.length);
+        rel[0] = 0;
+        for (let i = 1; i < measured.length; i++)
+            rel[i] =
+                rel[i - 1] + half(measured[i - 1]) + gap + half(measured[i]);
+
+        // The chain fixes every RELATIVE position; one scalar offset places
+        // the whole assembly. Deriving that offset from a single
+        // nearest-to-centre anchor pops the assembly slideW*0.0375 px
+        // sideways at every handoff (the closed form and the chain disagree
+        // at the d=0.5 tie), so blend the two candidate anchors - the cards
+        // straddling the centre - by their distance to it. At rest the blend
+        // collapses to the centred card's closed form (shift 0), and at a
+        // handoff the outgoing card's weight is exactly 0, so the offset is
+        // continuous through every frame of a transition.
+        const closedOffset = (i: number) => {
+            const m = measured[i];
+            return (
+                m.slideCenter -
+                Math.sign(m.signed) * arcShift(m.d, slideW) -
+                rel[i]
+            );
+        };
+        let left = -1;
+        for (let i = 0; i < measured.length; i++)
+            if (measured[i].signed <= 0) left = i;
+        const right = left + 1;
+        let offset: number;
+        if (left < 0) offset = closedOffset(0);
+        else if (right >= measured.length) offset = closedOffset(left);
+        else {
+            const dL = measured[left].d;
+            const dR = measured[right].d;
+            const wL = dR / (dL + dR || 1);
+            offset = wL * closedOffset(left) + (1 - wL) * closedOffset(right);
+        }
+
+        measured.forEach((m, i) => {
+            const shift = rel[i] + offset - m.slideCenter;
+            m.card.style.transform = `translateX(${shift.toFixed(2)}px) scale(${arcScale(m.d).toFixed(4)})`;
             // Stacked-deck feel: the centre card floats highest (big soft
-            // shadow, top of the stack); shadows fade and cards slide UNDER
-            // their neighbours toward the edges.
-            const t = Math.min(d / 2, 1);
+            // shadow, top of the stack); shadows fade toward the edges.
+            const t = Math.min(m.d / 2, 1);
             const y = 24 - 16 * t;
             const blur = 48 - 30 * t;
             const alpha = 0.25 - 0.18 * t;
-            card.style.boxShadow = `0 ${y.toFixed(1)}px ${blur.toFixed(1)}px -12px rgba(0,0,0,${alpha.toFixed(3)})`;
-            slide.style.zIndex = String(Math.round(100 - d * 10));
+            m.card.style.boxShadow = `0 ${y.toFixed(1)}px ${blur.toFixed(1)}px -12px rgba(0,0,0,${alpha.toFixed(3)})`;
+            m.slide.style.zIndex = String(Math.round(100 - m.d * 10));
         });
     }, [emblaApi, slideW, gap]);
 
@@ -313,7 +366,7 @@ export function TopExperiences({
         <section className='it-section bg-it-white'>
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-8'>
-                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink text-center'>
+                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink font-medium text-center'>
                         {dict.title}
                     </h2>
 
@@ -451,8 +504,11 @@ export function TopExperiences({
                                                 centre card only. */}
                                             {isPlaying && (
                                                 <div className='pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[3px] bg-it-white/25'>
+                                                    {/* timeupdate ticks ~4x/s; the linear width
+                                                        transition interpolates between ticks so
+                                                        the bar glides instead of stepping. */}
                                                     <div
-                                                        className='h-full bg-it-primary'
+                                                        className='h-full bg-it-primary transition-[width] duration-300 ease-linear'
                                                         style={{
                                                             width: `${progress * 100}%`,
                                                         }}
@@ -520,14 +576,16 @@ export function TopExperiences({
                                                                     : 'play'
                                                             }
                                                             initial={{
-                                                                scale: 0,
+                                                                opacity: 0,
                                                             }}
                                                             animate={{
-                                                                scale: 1,
+                                                                opacity: 1,
                                                             }}
-                                                            exit={{ scale: 0 }}
+                                                            exit={{
+                                                                opacity: 0,
+                                                            }}
                                                             transition={
-                                                                springPop
+                                                                iconSwap
                                                             }
                                                             className='inline-flex'>
                                                             {isPlaying &&
