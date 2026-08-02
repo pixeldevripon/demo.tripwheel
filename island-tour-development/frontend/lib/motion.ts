@@ -22,6 +22,15 @@ export const springPop = { type: 'spring', stiffness: 500, damping: 30 } as cons
 /** Quick directional fade for swapping labels/lines (pair with y or x +-6). */
 export const swapFade = { duration: 0.15 } as const;
 
+/**
+ * Glyph swap inside a control (play/pause toggle). `mode='wait'` serializes
+ * exit + enter, so each half is a bare 0.1s fade. Deliberately NOT a spring
+ * (founder, 2026-08-02): two `springPop`s back to back read as lag, and the
+ * button's own `whileTap` squash already gives the press its tactile
+ * response - the glyph itself should just switch.
+ */
+export const iconSwap = { duration: 0.1, ease: [0.4, 0, 0.2, 1] } as const;
+
 /** Card/phase cross-fade (pair with y +-8 inside AnimatePresence mode='wait'). */
 export const crossFade = { duration: 0.2, ease: [0.4, 0, 0.2, 1] } as const;
 
