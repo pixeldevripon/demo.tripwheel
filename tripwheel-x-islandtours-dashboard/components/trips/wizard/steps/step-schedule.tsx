@@ -34,6 +34,7 @@ import { format } from 'date-fns';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCalendarSubscriptions } from '@/hooks/calendar-sync/use-calendar-subscriptions';
 import {
     useAvailabilitySummary,
     useConfirmAvailability,
@@ -47,6 +48,7 @@ import {
 } from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
 import { TripAvailabilityCalendar } from '../../trip-availability-calendar';
+import { TripCalendarImport } from '../../trip-calendar-import';
 import { TripDateChanges } from '../../trip-date-changes';
 import {
     RecurringSchedulesSection,
@@ -156,6 +158,9 @@ export function StepSchedule({ trip }: StepScheduleProps) {
     // Same query the register itself renders from - deduped by react-query,
     // read here only for the collapsed-section summary.
     const { data: exceptions } = useExceptions(trip.id);
+    // Read here purely for the collapsed summary - a closed section that cannot
+    // say whether anything is connected is a drawer you have to open to find out.
+    const { data: calendarImports } = useCalendarSubscriptions(trip.id);
 
     // F14 / dev spec §6.4: opening this surface IS a review of the calendar,
     // so the visit stamps availability_confirmed_at. Fire-and-forget - a
@@ -226,6 +231,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
 
     const declaredTimes = [...new Set(trip.startTimes ?? [])].sort();
     const scheduleCount = schedules?.length ?? 0;
+    const importCount = calendarImports?.length ?? 0;
     const activeDays = new Set((schedules ?? []).map(s => s.weekday)).size;
 
     // E.9: all times are tour-local (the island's clock, no DST on the ABC
@@ -401,6 +407,19 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                         tripId={trip.id}
                         timeZone={trip.timeZone}
                     />
+                </WizardSection>
+
+                <WizardSection
+                    id='calendar-import'
+                    title='Import from another channel'
+                    description='Read booked dates from Airbnb, Booking.com or any calendar link, so a booking there closes dates here.'
+                    summary={
+                        importCount
+                            ? `${importCount} calendar${importCount === 1 ? '' : 's'}`
+                            : 'None'
+                    }
+                    muted>
+                    <TripCalendarImport tripId={trip.id} />
                 </WizardSection>
             </WizardStepBody>
         </>

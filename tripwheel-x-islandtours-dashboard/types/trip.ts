@@ -414,6 +414,14 @@ export interface TourException {
   // Audit surface (dev spec §6.5): who made the change, and when.
   createdAt: string; // ISO
   createdByName: string | null;
+  /**
+   * Who owns this closure.
+   *
+   * `ICAL` rows belong to a calendar subscription, and undoing one by hand is
+   * pointless - the next poll writes it straight back. The register shows them
+   * read-only and points at the connection instead.
+   */
+  source: 'MANUAL' | 'ICAL';
 }
 
 // ── Management calendar (operator month grid) ───────────────────────────────────
