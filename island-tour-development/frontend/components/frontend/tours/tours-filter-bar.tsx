@@ -175,7 +175,15 @@ export function ToursFilterBar({
     // The bar is controlled by the URL-derived props; a change rebuilds the query
     // and navigates (always resetting to page 1), and the server refetches.
     const currentState: ToursFilterState = {
-        categories: selectedCategories,
+        // `optimisticCategories`, NOT the server prop. Every other consumer in
+        // this file already reads the optimistic set (the chips, `toggleCategory`,
+        // `removeChip`); this one did not. So while a category toggle's
+        // round-trip was in flight, a second interaction that does not touch
+        // categories - a sort change, a date pick, applying the modal - rebuilt
+        // the href from the PRE-TOGGLE list and silently dropped the pending
+        // selection, chip and all. Reachable in two interactions on a slow
+        // connection, and exactly what the optimistic set exists to prevent.
+        categories: optimisticCategories,
         sort,
         price: activeFilters.price,
         rating: activeFilters.rating,

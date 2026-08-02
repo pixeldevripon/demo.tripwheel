@@ -92,12 +92,17 @@ export async function CollectionPage({
     // `fastStats.fromPrice` is a source-currency aggregate the backend does not
     // convert (guide §20.9); derive the shopper rate from the converted cards
     // (shared helper) and format the hero "from" price with it.
-    const { currency: heroCurrency, rate: heroRate } = deriveDisplayRate(
-        collection.tours,
-        currency,
-    );
+    const {
+        currency: heroCurrency,
+        rate: heroRate,
+        converted: heroConverted,
+    } = deriveDisplayRate(collection.tours, currency);
+    // `heroConverted` guards the same way the hub hero does. This set is the one
+    // the price came from, so in practice it always carries `money` - but an
+    // empty `tours` with a non-null `fromPrice` would print the source number
+    // under the shopper's symbol, and that is a wrong price, not a stale one.
     const startingPriceDisplay =
-        collection.fastStats.fromPrice != null
+        collection.fastStats.fromPrice != null && heroConverted
             ? formatPriceFrom(
                   collection.fastStats.fromPrice * heroRate,
                   heroCurrency,

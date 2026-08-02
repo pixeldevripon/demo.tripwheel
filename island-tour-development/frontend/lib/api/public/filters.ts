@@ -6,6 +6,7 @@
  * Returns `null` when the destination/category is unknown or the backend is
  * unreachable - callers fall back to static bounds and no attribute sections.
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -21,7 +22,7 @@ export async function getDestinationFacets(
   cacheLife('days');
   cacheTag('tours', 'categories');
 
-  return publicGet<TourFacets>(`/filters/${destinationSlug}`);
+  return publicGet<TourFacets>(`/filters/${seg(destinationSlug)}`);
 }
 
 /** Category-scoped facets. Cached daily (tag-busted on writes). */
@@ -33,5 +34,5 @@ export async function getCategoryFacets(
   cacheLife('days');
   cacheTag('tours', 'categories');
 
-  return publicGet<TourFacets>(`/filters/${destinationSlug}/${categorySlug}`);
+  return publicGet<TourFacets>(`/filters/${seg(destinationSlug)}/${seg(categorySlug)}`);
 }

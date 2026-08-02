@@ -9,6 +9,7 @@
  * be issued for every tour page on the off chance it is needed, and would then
  * serve a stale "sold out" recovery block to a tour that is bookable again.
  */
+import { seg } from '@/lib/api/api-path';
 import type { Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
 import { apiFetch } from './fetch';
@@ -36,7 +37,7 @@ export async function getDeadEndAlternatives(
     const params = new URLSearchParams({ locale });
     if (currency) params.set('currency', currency);
     return apiFetch<TourAlternative[]>(
-        `/tours/${tourId}/alternatives?${params.toString()}`,
+        `/tours/${seg(tourId)}/alternatives?${params.toString()}`,
         { signal }
     );
 }

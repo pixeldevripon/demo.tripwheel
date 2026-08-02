@@ -97,3 +97,25 @@ export function localizeHref(locale: Locale, path: string): string {
   if (isLocale(firstSegment)) return path; // already localized
   return path === '/' ? `/${locale}` : `/${locale}${path}`;
 }
+
+/**
+ * Launch destination slugs - the build-time fallback for `generateStaticParams`
+ * when the backend is unreachable.
+ *
+ * ONE definition. This was declared identically in three route files
+ * (`[destination]/page`, `[destination]/tours/page`, `[destination]/[slug]/page`),
+ * and the failure mode of letting them drift is invisible: add a destination to
+ * two of the three and, on a build where the backend happens to be down, its
+ * destination page prerenders while its All Tours page does not - which surfaces
+ * as a Blocking Route error in production rather than a build failure.
+ *
+ * Mirrors the master's launch set: Curacao, Aruba and Sint Maarten are live;
+ * Saint Lucia and Bahamas are seeded pipeline rows.
+ */
+export const LAUNCH_DESTINATION_SLUGS = [
+    'curacao',
+    'aruba',
+    'sint-maarten',
+    'saint-lucia',
+    'bahamas',
+] as const;

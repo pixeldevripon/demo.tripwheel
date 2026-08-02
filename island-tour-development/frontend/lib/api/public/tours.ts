@@ -5,6 +5,7 @@
  * backend-derived `badge` (sponsored = paid tiers P1-P3 / spotlight), and the
  * `isLocalsFavourite` flag - the same shape as a search hit (`SearchHit`).
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -162,7 +163,7 @@ export async function getTourBySlug(params: {
 
   const { slug, destinationSlug, locale = DEFAULT_LOCALE, currency } = params;
   const data = await publicGetStrict<PublicTourDetail>(
-    `/tours/slug/${slug}${buildQuery({ destinationSlug, locale, currency })}`,
+    `/tours/slug/${seg(slug)}${buildQuery({ destinationSlug, locale, currency })}`,
   );
   // `tour:<id>` for the tour's own edits; `operator:<id>` because the operator's
   // company name/logo is rendered here (and only here, not on cards), so an

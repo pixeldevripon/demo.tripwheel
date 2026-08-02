@@ -1,5 +1,112 @@
 # Frontend changelog
 
+## 2026-08-02 — Wave 3: tour detail, listings, SEO output
+
+~56 components, 6 routes and the SEO libs. Two subagents; every finding verified
+against source (and against the backend, for the sanitization claims) before any
+change.
+
+### Fixed — security
+
+**Path traversal from a URL segment into a backend request made as the trusted
+SSR origin.** Next decodes dynamic route params and does not strip dot segments,
+so `GET /en/%2E%2E%2F%2E%2E%2Ftours` gives a page `params.destination ===
+'../../tours'`. Interpolated raw into a backend path, the WHATWG URL parser
+inside `fetch` **resolves** it — relocating a request that carries
+`x-internal-api-key` to an endpoint the visitor chose. With enough segments it
+leaves `/api/v1` entirely and reaches `/api/auth/*`.
+
+Sized honestly: the internal key grants only a *throttle exemption*, and only on
+routes without their own `@Throttle`, so no data is disclosed today. What it did
+give an anonymous visitor was full control of path **and query** on those calls
+— the segment is appended before `buildQuery` — issued outside the global rate
+limiter. And it falsified the premise the whole trusted-origin design rests on:
+that this caller is our own infrastructure. The next backend route that trusts
+the internal key for anything beyond throttling would have been remotely
+exploitable with no frontend change.
+
+Fixed in two layers, because "remember to encode" had already failed across ~15
+call sites while `pages.ts` and the booking readers got it right: `seg()` at
+every interpolated segment, and `assertBackendUrl()` in the fetch layer as the
+backstop for the next one that forgets.
+
+> The guard's first draft was wrong, and its own test caught it. Checking only
+> "does the resolved URL still start with the base" passes
+> `/destinations/slug/../../tours`, which lands on `<base>/tours` — inside the
+> base, having fetched a completely different endpoint. It now rejects dot
+> segments outright: what matters is not where the path lands but that the
+> caller did not choose it.
+
+**Every non-existent URL answered 200 with a self-referencing canonical and a
+seven-locale hreflang cluster.** `generateMetadata` runs before the page's
+`notFound()`, and under `cacheComponents` the shell has already flushed, so the
+status is 200 regardless — the comment claiming otherwise was wrong. Anyone
+could link to `/{locale}/{spam-phrase}/tours` and hand a crawler the strongest
+possible "this is a real, indexable page" signal, on our domain, for free. Ten
+call sites now return `NOT_FOUND_METADATA` (`index: false`, no canonical, no
+alternates); `follow: true`, because it is indexing we refuse, not crawling.
+
+### Fixed — correctness
+
+**A hub could print a price in the wrong currency.** `deriveDisplayRate` derives
+the FX rate from Our Picks and the comparison groups — both *editorial* and
+optional. A hub with tours but neither yields no rate at all, and the helper
+answered with the identity rate under the *shopper's* currency: a $120 tour
+rendering **"From €120"** as the first price on the page, while the trips grid
+below showed the correctly converted figure. It now reports `converted`, and the
+pill is dropped rather than printed — a missing pill is strictly better than a
+wrong price. The same guard was applied to the collection hero, which has the
+identical shape.
+
+**"Clear all" in the filter modal did not clear.** It reset price to the static
+`[0, 560]` rather than the destination's real ceiling. Above 560,
+`filtersToTourQuery` still sent `maxPrice=560` — so clearing the filters left
+every tour over $560 hidden and the badge still read 1. Below 560 the slider
+handle rendered off its track. `ToursFilterBar.clearAll` had always been correct,
+which is what gave it away.
+
+**A pending category could be silently dropped.** `currentState.categories` read
+the server prop while every other consumer read the optimistic set. Toggle a
+category, then change sort before the round-trip lands, and the href rebuilt
+from the pre-toggle list — losing the selection and its chip.
+
+### Also
+
+`LAUNCH_DESTINATION_SLUGS` was declared identically in three route files; it is
+the build-time prerender fallback, so drift there fails *only* on a build where
+the backend is down — invisible until production. `CategoryTrustStrip` was 54
+lines with zero importers (its dictionary keys are now unused and can be pruned
+separately).
+
+### Verified sound — do not "simplify" these
+
+- **Review text is never HTML.** The `dangerouslySetInnerHTML` in
+  `tour-reviews-blocks.tsx` is the JSON-LD block, not review content; every
+  render of review text is a bare JSX expression. Full census: 4 real sinks, all
+  safe.
+- **JSON-LD cannot be broken out of.** Both emitters do
+  `JSON.stringify(...).replace(/</g, '\\u003c')`, so neither `</script` nor
+  `<!--` can be formed.
+- **The Pages sanitizer is a real allowlist**, applied on create *and* update,
+  with per-CSS-property `allowedStyles` and `allowProtocolRelative: false`.
+- **The catch-all route is the safest of the routes** — it already encodes its
+  slug, and its redirect target cannot start with `/` or contain `.`.
+- **The image allowlist is five exact hostnames**, no wildcards; `dangerouslyAllowSVG`
+  is paired with its full CSP + sandbox + attachment mitigation.
+- **Search reflection is clean** — `q` reaches only an escaped `<title>` on a
+  `noindex` page and escaped JSX text.
+
+### Still open
+
+Admin custom scripts run on the tokenized routes (`/review/<token>`,
+`/cancel/*`, `*/thank-you/*`, receipts, `/checkout/processing`) because they
+mount in the root layout. The write-path allowlist is genuinely strict and
+React drops `on*` props, so this is a *reach* problem, not an injection one: a
+compromised vendor CDN could read a review write-token from `location.pathname`.
+Fixing it means moving the mount off those subtrees, which changes the
+once-per-document guarantee — a product decision, and it lands alongside the
+existing GA4 `page_location` item.
+
 ## 2026-08-02 — Wave 2 follow-up: URL input hardening
 
 **`quote` and `departure` are now shape-checked before they leave the page.**

@@ -1,3 +1,4 @@
+import { seg } from '@/lib/api/api-path';
 import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 /**
  * Client-side calls for the tokenized post-tour review flow (browser).
@@ -28,7 +29,7 @@ export function startReview(
   token: string,
   rating: number,
 ): Promise<{ reviewId: string; rating: number }> {
-  return post(`/reviews/invitation/${token}`, { rating });
+  return post(`/reviews/invitation/${seg(token)}`, { rating });
 }
 
 /** Steps 2/3/3b. Every field optional, so each step can save on its own. */
@@ -43,7 +44,7 @@ export function enrichReview(
     reviewerType?: 'COUPLE' | 'FAMILY' | 'FRIENDS' | 'SOLO';
   },
 ): Promise<{ reviewId: string; saved: boolean }> {
-  return post(`/reviews/invitation/${token}`, patch, 'PATCH');
+  return post(`/reviews/invitation/${seg(token)}`, patch, 'PATCH');
 }
 
 /**
@@ -85,5 +86,5 @@ export function sendPrivateFeedback(
   token: string,
   message: string,
 ): Promise<{ received: boolean }> {
-  return post(`/reviews/invitation/${token}/feedback`, { message });
+  return post(`/reviews/invitation/${seg(token)}/feedback`, { message });
 }

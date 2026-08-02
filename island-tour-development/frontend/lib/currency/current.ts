@@ -170,10 +170,17 @@ export function deriveDisplayRate(
         money?: { currency: Currency; fxRate?: string } | null;
     }>,
     fallbackCurrency: Currency,
-): { currency: Currency; rate: number } {
+): { currency: Currency; rate: number; converted: boolean } {
     const m = tours.find((t) => t.money)?.money;
     return {
         currency: isCurrency(m?.currency) ? m.currency : fallbackCurrency,
         rate: Number(m?.fxRate ?? 1) || 1,
+        // `converted: false` means NO tour in the set carried a `money` object,
+        // so the returned rate is the identity and the currency is only the
+        // shopper's default. A caller converting a SOURCE-currency aggregate
+        // must drop the figure rather than print it: rate 1 under the shopper's
+        // symbol turns "$120" into "€120", which is not a rounding error, it is
+        // a different price. A missing pill is strictly better than a wrong one.
+        converted: m != null,
     };
 }

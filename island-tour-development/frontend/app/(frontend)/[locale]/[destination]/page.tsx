@@ -1,4 +1,5 @@
 import { twitterCard } from '@/lib/seo/twitter-card';
+import { LAUNCH_DESTINATION_SLUGS } from '@/lib/constants/locales';
 import {
     DestinationAbout,
     fallbackAboutSections,
@@ -25,7 +26,7 @@ import { JsonLd } from '@/components/frontend/seo/json-ld';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
 import Link from 'next/link';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { buildAlternates } from '@/lib/seo/alternates';
+import { buildAlternates , NOT_FOUND_METADATA } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
 import {
     buildBreadcrumbJsonLd,
@@ -35,14 +36,6 @@ import { getSiteUrl } from '@/lib/seo/site-url';
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
-
-const LAUNCH_DESTINATION_SLUGS = [
-    'curacao',
-    'aruba',
-    'sint-maarten',
-    'saint-lucia',
-    'bahamas',
-];
 
 /**
  * Prerender the active destinations PLUS every published Page (public cached
@@ -131,7 +124,7 @@ export async function generateMetadata({
                 alternates,
             };
         }
-        return { alternates };
+        return NOT_FOUND_METADATA;
     }
 
     const pageContent = await getDestinationPageContent(island.id, locale);

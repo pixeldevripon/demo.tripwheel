@@ -2,6 +2,7 @@
  * Public destination data (server-side, cached). Powers the navbar island
  * selector, the footer, and the "Explore islands" homepage section.
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -56,7 +57,7 @@ export async function getDestinationBySlug(
   cacheLife('days');
 
   const data = await publicGetStrict<DestinationDetail>(
-    `/destinations/slug/${slug}${buildQuery({ locale })}`,
+    `/destinations/slug/${seg(slug)}${buildQuery({ locale })}`,
   );
   cacheTag(data ? `destination:${data.id}` : 'destinations');
   return data;
@@ -82,7 +83,7 @@ export async function getDestinationPageContent(
 
   return publicGet<DestinationPageContent>(
     // `fallback` fills blanks from English (see the category loader).
-    `/destinations/${destinationId}/page-content${buildQuery({ locale, fallback: true })}`,
+    `/destinations/${seg(destinationId)}/page-content${buildQuery({ locale, fallback: true })}`,
   );
 }
 
@@ -106,7 +107,7 @@ export async function getDestinationFaqs(
   cacheTag(`destination:${destinationId}`);
 
   const data = await publicGet<DestinationFaq[]>(
-    `/destinations/${destinationId}/faqs${buildQuery({ locale })}`,
+    `/destinations/${seg(destinationId)}/faqs${buildQuery({ locale })}`,
   );
   return data ?? [];
 }

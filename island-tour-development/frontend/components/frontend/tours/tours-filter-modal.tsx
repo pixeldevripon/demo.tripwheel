@@ -504,7 +504,22 @@ export function ToursFilterModal({
                         <div className='flex shrink-0 items-center justify-between gap-3.5 border-t border-it-divider px-6 py-3.5'>
                             <motion.button
                                 type='button'
-                                onClick={() => setDraft(EMPTY_FILTERS)}
+                                onClick={() =>
+                                    // NOT bare `EMPTY_FILTERS`: its `price` is
+                                    // the static [0, 560], while this modal
+                                    // works against the DESTINATION's effective
+                                    // ceiling. Below 560 the max handle
+                                    // rendered off the track (pct(560) = 280%);
+                                    // above it, `filtersToTourQuery` still sent
+                                    // `maxPrice=560`, so "Clear all" left a
+                                    // price filter applied and hid every tour
+                                    // over 560. `ToursFilterBar.clearAll` has
+                                    // always done this correctly.
+                                    setDraft({
+                                        ...EMPTY_FILTERS,
+                                        price: [PRICE_MIN, priceMax],
+                                    })
+                                }
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
                                 className='cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>

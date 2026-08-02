@@ -4,6 +4,7 @@
  * tour-gated `GET /categories/destination/:slug`, so every returned category
  * has at least one published tour (its link never 404s).
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -37,7 +38,7 @@ export async function getDestinationCategories(
   cacheTag('categories', 'tours');
 
   const data = await publicGet<CategoryByDestination[]>(
-    `/categories/destination/${destinationSlug}${buildQuery({ locale })}`,
+    `/categories/destination/${seg(destinationSlug)}${buildQuery({ locale })}`,
   );
   return data ?? [];
 }
@@ -60,7 +61,7 @@ export async function getCategoryBySlugForDestination(
   cacheLife('days');
 
   const data = await publicGetStrict<CategoryDetailByDestination>(
-    `/categories/destination/${destinationSlug}/${categorySlug}${buildQuery({ locale })}`,
+    `/categories/destination/${seg(destinationSlug)}/${seg(categorySlug)}${buildQuery({ locale })}`,
   );
   cacheTag('tours', data ? `category:${data.id}` : 'categories');
   return data;
@@ -83,7 +84,7 @@ export async function getCategoryPageContent(
   return publicGet<CategoryPageContent>(
     // `fallback` fills blanks from English: a field cleared in the Translation
     // Console must show English here, not an empty About band.
-    `/categories/${categoryId}/page-content${buildQuery({ locale, fallback: true })}`,
+    `/categories/${seg(categoryId)}/page-content${buildQuery({ locale, fallback: true })}`,
   );
 }
 
@@ -101,7 +102,7 @@ export async function getCategoryFaqs(
   cacheTag(`category:${categoryId}`);
 
   const data = await publicGet<CategoryFaq[]>(
-    `/categories/${categoryId}/faqs${buildQuery({ locale })}`,
+    `/categories/${seg(categoryId)}/faqs${buildQuery({ locale })}`,
   );
   return data ?? [];
 }

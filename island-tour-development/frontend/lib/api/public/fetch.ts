@@ -7,7 +7,7 @@
  * so no fetch-level cache options are set here.
  */
 import 'server-only';
-import { BACKEND_API_BASE } from '@/lib/api/backend-url';
+import { assertBackendUrl } from '@/lib/api/api-path';
 
 // Re-exported so public data modules can `import { publicGet, buildQuery } from './fetch'`.
 export { buildQuery } from '../query';
@@ -50,7 +50,12 @@ export async function publicFetch(
   extraHeaders?: Record<string, string>,
 ): Promise<Response> {
   const headers = { ...serverHeaders(), ...extraHeaders };
-  let res = await fetch(`${BACKEND_API_BASE}${path}`, { headers });
+  // Backstop against a path segment that escapes the API base - see
+  // `lib/api/api-path.ts`. This request carries the internal key, so a path
+  // that resolves elsewhere would aim a trusted-origin call at an endpoint the
+  // caller never intended.
+  const url = assertBackendUrl(path);
+  let res = await fetch(url, { headers });
   for (
     let attempt = 0;
     (res.status === 429 || res.status === 503) &&
@@ -58,7 +63,7 @@ export async function publicFetch(
     attempt++
   ) {
     await sleep(RETRY_BACKOFF_MS[attempt]);
-    res = await fetch(`${BACKEND_API_BASE}${path}`, { headers });
+    res = await fetch(url, { headers });
   }
   return res;
 }
@@ -99,7 +104,8 @@ export async function publicPost<T>(
     const headers = { ...serverHeaders(), ...extraHeaders };
     const init: RequestInit = { method: 'POST', headers };
     if (body !== undefined) init.body = JSON.stringify(body);
-    let res = await fetch(`${BACKEND_API_BASE}${path}`, init);
+    const url = assertBackendUrl(path);
+    let res = await fetch(url, init);
     for (
       let attempt = 0;
       (res.status === 429 || res.status === 503) &&
@@ -107,7 +113,7 @@ export async function publicPost<T>(
       attempt++
     ) {
       await sleep(RETRY_BACKOFF_MS[attempt]);
-      res = await fetch(`${BACKEND_API_BASE}${path}`, init);
+      res = await fetch(url, init);
     }
     if (!res.ok) return null;
     return (await res.json()) as T;
