@@ -2,7 +2,7 @@
 
 import { useTableState } from '@/components/data-table/use-table-state';
 import { useMyTrips, useAdminTrips } from '@/hooks/trips/use-trips';
-import type { TripStatus } from '@/types/trip';
+import type { TripApprovalStatus, TripStatus } from '@/types/trip';
 import { useRole } from '@/contexts/role-context';
 import { isPlatformWideRole } from '@/lib/rbac-utils';
 import { TripsTable } from './trips-table';
@@ -39,6 +39,13 @@ export function TripsListView() {
         page,
         limit,
         ...(filters.status ? { status: filters.status as TripStatus } : {}),
+        // A separate backend filter, not a fifth status. The toolbar presents
+        // both in one "Status" dropdown because that is how an operator thinks
+        // about it, so exactly one of the two is ever set (reported 2026-08-02
+        // §03 - a resubmitted paused tour was unfindable).
+        ...(filters.approvalStatus
+            ? { approvalStatus: filters.approvalStatus as TripApprovalStatus }
+            : {}),
         ...(filters.destinationId
             ? { destinationId: filters.destinationId }
             : {}),

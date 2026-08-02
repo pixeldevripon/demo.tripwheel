@@ -547,6 +547,13 @@ export interface ManageCalendarDay {
 export interface MyTripsQueryParams {
   search?: string;
   status?: TripStatus;
+  /**
+   * Review state - a SEPARATE axis from `status`, not a fifth status value.
+   * Submitting for review stamps PENDING and leaves `status` alone, so a tour
+   * awaiting approval may be DRAFT, PAUSED or ARCHIVED. Sent independently;
+   * the backend ANDs the two.
+   */
+  approvalStatus?: TripApprovalStatus;
   destinationId?: string;
   page?: number;
   limit?: number;
@@ -555,6 +562,8 @@ export interface MyTripsQueryParams {
 export interface AdminTripsQueryParams {
   search?: string;
   status?: TripStatus;
+  /** See MyTripsQueryParams.approvalStatus - same separate axis. */
+  approvalStatus?: TripApprovalStatus;
   operatorId?: string;
   destinationId?: string;
   isLocalsFavourite?: boolean;
