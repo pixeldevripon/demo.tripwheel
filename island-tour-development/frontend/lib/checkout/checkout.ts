@@ -42,16 +42,26 @@ export function buildBookingSelection(
     data: TourBookingData,
     counts: Record<string, number>
 ): BookingSelectionPayload | null {
+    // Driven by THIS TOUR'S bands, not by whatever keys `counts` happens to
+    // carry. At checkout `counts` is parsed from the URL, which accepts any id,
+    // so iterating the counts object let an unknown band ride along - inflating
+    // the UNIT headcount, or adding a PER_PERSON line the backend then rejects.
+    // The live quote already filtered this way (`travelerCountOf` sums over
+    // `data.bands`); building the two differently is exactly how a quoted price
+    // and a reserved price drift apart.
+    const lines = data.bands
+        .map((b) => ({ ageBandId: b.id, quantity: counts[b.id] ?? 0 }))
+        .filter((i) => i.quantity > 0);
+
     if (data.pricingModel === 'UNIT') {
-        const guests = Object.values(counts).reduce((sum, n) => sum + n, 0);
+        // UNIT sends a headcount, so the synthetic `unit-guests` id never
+        // travels and does not need excluding here.
+        const guests = lines.reduce((sum, i) => sum + i.quantity, 0);
         return guests > 0 ? { guests } : null;
     }
-    const items = Object.entries(counts)
-        .filter(([, quantity]) => quantity > 0)
-        .map(([ageBandId, quantity]) => ({ ageBandId, quantity }));
-    if (items.length === 0) return null;
-    if (items.some((i) => SYNTHETIC_BAND_IDS.has(i.ageBandId))) return null;
-    return { items };
+    if (lines.length === 0) return null;
+    if (lines.some((i) => SYNTHETIC_BAND_IDS.has(i.ageBandId))) return null;
+    return { items: lines };
 }
 
 /** The widget selection carried in the checkout URL. */
