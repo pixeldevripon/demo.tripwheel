@@ -124,12 +124,17 @@ export function makeTripColumns({
       cell: ({ row }) => {
         const meta = TRIP_STATUS[row.original.status];
         // Review overlay (conflict #1): only the in-flight states get a
-        // second badge - a plain DRAFT or an approved/live tour reads fine
-        // from the status alone.
+        // second badge - an approved/live tour reads fine from the status
+        // alone.
+        //
+        // Deliberately NOT restricted to DRAFT any more (reported 2026-08-02
+        // §03). Submitting for review leaves `status` untouched, and the
+        // operator report of 2026-08-01 widened submission to PAUSED and
+        // ARCHIVED - so a resubmitted paused tour sat in review wearing only
+        // its "Paused" badge, indistinguishable from one nobody had touched.
         const approval =
-          row.original.status === 'DRAFT' &&
-          (row.original.approvalStatus === 'PENDING' ||
-            row.original.approvalStatus === 'REJECTED')
+          row.original.approvalStatus === 'PENDING' ||
+          row.original.approvalStatus === 'REJECTED'
             ? TRIP_APPROVAL_STATUS[row.original.approvalStatus]
             : null;
         return (

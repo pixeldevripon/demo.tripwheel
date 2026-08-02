@@ -24,7 +24,11 @@ import { useRemoveTrip } from '@/hooks/trips/use-trips';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import { useSession } from '@/lib/auth-client';
-import type { TripListItem, TripStatus } from '@/types/trip';
+import type {
+  TripApprovalStatus,
+  TripListItem,
+  TripStatus,
+} from '@/types/trip';
 
 interface TripsTableProps {
   data: TripListItem[];
@@ -97,13 +101,31 @@ export function TripsTable({
             onChange={onSearchChange}
             placeholder='Search trips...'
           />
+          {/* ONE control, TWO backend filters. `status` (Draft/Live/Paused/
+              Archived) and `approvalStatus` (review workflow) are independent
+              axes on the server - submitting for review stamps PENDING and
+              leaves `status` where it was - but an operator asking "where is
+              the tour I sent in?" is not thinking in axes. So the review
+              states are offered in the same list and the handler routes the
+              choice to whichever filter owns it, clearing the other so the two
+              can never contradict each other.
+              Reported 2026-08-02 §03: without this a resubmitted PAUSED or
+              ARCHIVED tour could not be found at all. */}
           <Select
-            value={filters.status ?? 'all'}
-            onValueChange={(v) =>
-              onFilterChange('status', v === 'all' ? undefined : (v as TripStatus))
-            }
+            value={filters.approvalStatus ?? filters.status ?? 'all'}
+            onValueChange={(v) => {
+              const isReview = v === 'PENDING' || v === 'REJECTED';
+              onFilterChange(
+                'status',
+                v === 'all' || isReview ? undefined : (v as TripStatus)
+              );
+              onFilterChange(
+                'approvalStatus',
+                isReview ? (v as TripApprovalStatus) : undefined
+              );
+            }}
           >
-            <SelectTrigger className='w-32 shrink-0'>
+            <SelectTrigger className='w-40 shrink-0'>
               <SelectValue placeholder='Status' />
             </SelectTrigger>
             <SelectContent>
@@ -112,6 +134,11 @@ export function TripsTable({
               <SelectItem value='LIVE'>Live</SelectItem>
               <SelectItem value='PAUSED'>Paused</SelectItem>
               <SelectItem value='ARCHIVED'>Archived</SelectItem>
+              {/* Labels match the badges on the rows (TRIP_APPROVAL_STATUS) -
+                  a filter that names a state differently from the column it
+                  filters is its own bug report. */}
+              <SelectItem value='PENDING'>In review</SelectItem>
+              <SelectItem value='REJECTED'>Changes requested</SelectItem>
             </SelectContent>
           </Select>
           <Select

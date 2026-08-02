@@ -255,8 +255,10 @@ export const TRIP_STATUS: Record<TripStatus, StatusMeta> = {
 
 /**
  * Approval-workflow overlay (conflict #1). Rendered as a SECONDARY badge next
- * to the trip status while a DRAFT moves through review; APPROVED and
- * NOT_SUBMITTED stay silent (the status badge already tells the story).
+ * to the trip status while a tour moves through review, whatever status it was
+ * submitted from (DRAFT, PAUSED or ARCHIVED - submitting never moves `status`).
+ * APPROVED and NOT_SUBMITTED stay silent: the status badge already tells the
+ * story.
  */
 export const TRIP_APPROVAL_STATUS: Record<TripApprovalStatus, StatusMeta> = {
     NOT_SUBMITTED: {
