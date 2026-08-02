@@ -170,18 +170,34 @@ export function parseCheckoutSelection(
         for (const pair of raw.split(',')) {
             const [id, rawCount] = pair.split(':');
             const count = Number(rawCount);
-            if (id && Number.isFinite(count) && count > 0) out[id] = count;
+            // Whole counts only. `Number.isFinite` alone accepted "2.5", which
+            // then reached the backend's `@IsInt()` and came back as a
+            // validator string rendered straight at the traveller.
+            if (id && Number.isInteger(count) && count > 0) out[id] = count;
         }
         return out;
     };
+
+    /**
+     * Drop an id that is not shaped like one the backend will accept.
+     *
+     * `quote` and `departure` used to be read raw. A hand-edited or stale
+     * `?quote=junk` therefore failed at `@IsUUID()` on the backend, and the
+     * checkout relayed that message verbatim - a traveller reading
+     * "quoteId must be a UUID" on the page where they are about to pay. Both
+     * are optional to the flow (reserve recomputes regardless of `quoteId`), so
+     * discarding a malformed one is strictly better than forwarding it.
+     */
+    const uuidOrNull = (raw: string | null): string | null =>
+        raw && ANY_UUID_SHAPE.test(raw) ? raw : null;
 
     return {
         date: first('date'),
         time: first('time'),
         counts: parsePairs(first('party')),
         addOns: parsePairs(first('addons')),
-        departureId: first('departure'),
-        quoteId: first('quote'),
+        departureId: uuidOrNull(first('departure')),
+        quoteId: uuidOrNull(first('quote')),
         currency: first('currency'),
     };
 }
@@ -347,6 +363,18 @@ export function formatCheckoutMoney(
  * must never outlive the booking it belongs to.
  */
 export const bookingIdKey = (tourId: string) => `it-checkout-booking:${tourId}`;
+
+/**
+ * A UUID of ANY version - for ids that came from somewhere else.
+ *
+ * Deliberately looser than `UUID_SHAPE`, which pins v4 because it guards a
+ * value WE mint with `crypto.randomUUID`. `departureId` and `quoteId` are
+ * backend-generated (Prisma `@default(uuid())`), so version-pinning them here
+ * would mean a future Prisma default silently rejecting every real id - a much
+ * worse failure than the malformed input this is filtering out.
+ */
+export const ANY_UUID_SHAPE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Client idempotency keys are `crypto.randomUUID()` v4 values. */
 export const UUID_SHAPE =

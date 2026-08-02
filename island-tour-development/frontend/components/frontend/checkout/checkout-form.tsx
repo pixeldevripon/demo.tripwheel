@@ -29,7 +29,6 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { springPop } from '@/lib/motion';
 import { signOutTraveller } from '@/lib/traveler-booking';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
@@ -47,8 +46,11 @@ import {
     CtaButton,
     EMAIL_RE,
     Field,
+    Collapse,
+    COLLAPSE_MS,
     FieldError,
     FormError,
+    SectionBadge,
     FreeCancelNote,
     helperClass,
     labelClass,
@@ -126,13 +128,6 @@ interface CheckoutFormProps {
      *  (?payment=failed from the processing page) - opens with a message. */
     paymentFailed?: boolean;
 }
-
-/**
- * Accordion collapse duration (ms). Shared by the `Collapse` transition and the
- * scroll-into-view below, so the scroll can wait for the layout to settle
- * instead of guessing - keep the two in step.
- */
-const COLLAPSE_MS = 350;
 
 /**
  * Two-phase checkout ACCORDION (master §5.8; Figma 47659:2424 Contact +
@@ -939,106 +934,3 @@ export function CheckoutForm({
         </div>
     );
 }
-
-/* ── Accordion primitives ──────────────────────────────────────────── */
-
-type SectionBadgeState = 'active' | 'done' | 'upcoming';
-
-/**
- * 26px numbered circle for a section header (design v2 .h-num): orange-filled
- * while active, green with a white check once done, subtle-ringed upcoming.
- */
-function SectionBadge({
-    number,
-    state,
-}: {
-    number: number;
-    state: SectionBadgeState;
-}) {
-    return (
-        <span
-            className={`grid size-[26px] shrink-0 place-items-center rounded-full transition-colors duration-300 ${
-                state === 'done'
-                    ? 'bg-it-green'
-                    : state === 'active'
-                      ? 'bg-it-primary'
-                      : 'border-[1.5px] border-it-border bg-it-white'
-            }`}>
-            <AnimatePresence mode='wait' initial={false}>
-                {state === 'done' ? (
-                    <motion.span
-                        key='check'
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        transition={springPop}
-                        className='grid place-items-center'>
-                        <Image
-                            src='/icons/checkout/check-tick-white.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-[13px] shrink-0'
-                        />
-                    </motion.span>
-                ) : (
-                    <motion.span
-                        key='number'
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                        transition={springPop}
-                        className={`text-[12.5px] font-bold leading-none tabular-nums ${
-                            state === 'active'
-                                ? 'text-it-white'
-                                : 'text-it-text-muted'
-                        }`}>
-                        {number}
-                    </motion.span>
-                )}
-            </AnimatePresence>
-        </span>
-    );
-}
-
-/**
- * Height-collapse section body. Spacing lives INSIDE (pt on the child) so the
- * collapsed state closes fully tight; collapsed content stays mounted (form /
- * Stripe entries survive an edit round) but is inert - no tab stops, no
- * screen-reader exposure.
- *
- * `instant` snaps the height instead of animating it. Pass it for the OPENING
- * of any section holding a PSP iframe: while `height` animates from 0 the box
- * is also `overflow-hidden`, so the Stripe Card Elements and the four Mollie
- * components - which mount on the very render the animation starts - would come
- * up inside a zero-height, clipped container and settle their layout against a
- * box that is still moving. Snapping costs one frame of animation and gives the
- * iframes a settled box to mount into; the reveal keeps its motion via the
- * opacity fade at that call site, which neither clips nor resizes.
- */
-function Collapse({
-    open,
-    instant = false,
-    children,
-}: {
-    open: boolean;
-    instant?: boolean;
-    children: ReactNode;
-}) {
-    return (
-        <motion.div
-            initial={false}
-            animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-            transition={
-                instant
-                    ? { duration: 0 }
-                    : { duration: COLLAPSE_MS / 1000, ease: [0.4, 0, 0.2, 1] }
-            }
-            inert={open ? undefined : true}
-            aria-hidden={!open}
-            className='overflow-hidden'>
-            {children}
-        </motion.div>
-    );
-}
-
