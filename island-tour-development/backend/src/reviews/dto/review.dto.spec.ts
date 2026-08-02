@@ -1,7 +1,11 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { ReviewModerationStatus } from '@prisma/client';
-import { ListReviewsQueryDto, ModerateReviewDto } from './review.dto';
+import {
+  AdminReviewsQueryDto,
+  ListReviewsQueryDto,
+  ModerateReviewDto,
+} from './review.dto';
 
 const TOUR_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -121,5 +125,24 @@ describe('ListReviewsQueryDto - public filters', () => {
     });
     expect(errors).toHaveLength(1);
     expect(errors[0].property).toBe('tourId');
+  });
+});
+
+/**
+ * The dashboard list's sort is a SERVER concern: the route paginates, so a
+ * client-side reorder would only touch the fetched page. That makes the accepted
+ * values part of the request contract, and this the place to pin them.
+ */
+describe('AdminReviewsQueryDto - sort', () => {
+  it.each(['oldest', 'newest', 'pending_first'])('accepts %s', async (sort) => {
+    expect(await errorsFor(AdminReviewsQueryDto, { sort })).toHaveLength(0);
+  });
+
+  it('rejects an unsupported sort rather than silently falling back', async () => {
+    const errors = await errorsFor(AdminReviewsQueryDto, {
+      sort: 'status_desc',
+    });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe('sort');
   });
 });

@@ -113,9 +113,15 @@ export class CustomerProvisioningService {
       // Steady state touches only the operator of THIS booking; the full
       // fan-out (every operator the customer ever booked with) runs only when
       // the backfill actually linked additional bookings - and in parallel.
+      // Scoped to ACTIVE statuses: the backfill links bookings by contact
+      // email regardless of status, so an abandoned ON_HOLD/EXPIRED booking
+      // with another operator must not drag that operator into the fan-out.
       if (linked.count > 1) {
         const operators = await this.prisma.booking.findMany({
-          where: { userId: user.id },
+          where: {
+            userId: user.id,
+            status: { in: [...ACTIVE_BOOKING_STATUSES] },
+          },
           select: { operatorId: true },
           distinct: ['operatorId'],
         });
@@ -145,6 +151,15 @@ export class CustomerProvisioningService {
    * CONFIRMED + REDEEMED bookings only, EUR value snapshot. Idempotent and
    * self-healing (no increment drift); also invoked after cancellations so
    * counts/spend never go stale. Never throws.
+   *
+   * NEVER MINTS a row from an empty ledger. Without a confirmed booking there
+   * was no successful payment, and without that there is no customer - so an
+   * operator must not see one. This matters because the callers are not all
+   * confirmation paths: `cancel` fires for any booking carrying a `userId`,
+   * including an ON_HOLD hold that was never paid for, and a create-on-zero
+   * would mint a 0-booking row for the operator whose tour was abandoned.
+   * An EXISTING row is still updated to zero - a real customer who cancelled
+   * their only booking keeps their history rather than silently vanishing.
    */
   async recomputeAggregates(userId: string, operatorId: string): Promise<void> {
     try {
@@ -170,6 +185,13 @@ export class CustomerProvisioningService {
         bookingsCount: agg._count._all,
         totalSpendEur: agg._sum.totalEur ?? 0,
       };
+      if (agg._count._all === 0) {
+        await this.prisma.customer.updateMany({
+          where: { userId, operatorId },
+          data,
+        });
+        return;
+      }
       await this.prisma.customer.upsert({
         where: { userId_operatorId: { userId, operatorId } },
         create: { userId, operatorId, ...data },
