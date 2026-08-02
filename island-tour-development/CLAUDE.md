@@ -76,6 +76,41 @@ one canonical flat URL `/{locale}/{destination}/{tour-slug}/`.
 
 ---
 
+## Repo layout — this is a three-repo product
+
+This repo is **not** the whole system. Three sibling checkouts live under
+`tripwheel-x-islandtours/`, each with its own git remote and its own branch:
+
+| Repo | What it is | Port |
+|---|---|---|
+| `island-tour-development` (this one) | `backend/` NestJS API + `frontend/` public site | 5050 · 3000 |
+| `tripwheel-x-islandtours-dashboard` | Operator + admin CRM. Standalone Next.js, shares no code with the public site | 3001 |
+| `tripwheel-app` | Tripwheel system-admin door. Currently only `app/(auth)` — login/forgot/reset | 3002 |
+
+**Only `backend/` owns a database.** The dashboard and the public site have no Prisma client and
+no `DATABASE_URL` — every read and write is an HTTP call to `:5050`. This is rule #14 ("only one
+Prisma instance per process") expressed across repos.
+
+Cross-repo coupling to respect when changing anything:
+
+- **`lib/config/rbac.ts` in the dashboard mirrors `backend/src/config/roles.config.ts`.** Adding or
+  renaming a `Permission` means editing both repos or the dashboard silently mis-gates the UI.
+- **Backend `CORS_ORIGINS` must list `http://localhost:3001`.** Every dashboard API call runs in the
+  browser with credentials; omit the origin and all of them CORS-fail.
+- **The dashboard POSTs cache revalidations to the public site** (`REVALIDATE_TARGET_URL` →
+  `http://localhost:3000/api/revalidate`), authenticated with `INTERNAL_API_SECRET` — which must
+  match the backend's and must never be `NEXT_PUBLIC_`-prefixed.
+- **The Better Auth session cookie is issued by the backend** and scoped to the shared parent domain
+  (`COOKIE_DOMAIN`). No frontend ever runs `betterAuth()` itself (rule #12).
+- Ports are pinned, not incidental. 3000/3001 cannot be swapped — the revalidation target depends on
+  the split.
+
+> The **Frontend dashboard RBAC pattern** and **translation form** sections below describe the
+> dashboard repo, not `frontend/` in this one. `frontend/` is the public site only: its routes are
+> `app/(frontend)/[locale]/...` plus `app/(login)/`.
+
+---
+
 ## Backend structure
 
 ```
