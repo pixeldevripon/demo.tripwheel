@@ -9,20 +9,20 @@ import type { Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade } from '@/lib/motion';
 
-import { paymentChipFor } from './traveller-booking-card';
 import { TravellerBookingPanel } from './traveller-booking-panel';
-import { bookingTone, TravellerChip } from './traveller-chip';
+import { bookingTone, paymentChipFor, TravellerChip } from './traveller-chip';
 import {
-    formatDay,
+    bookingMetaLine,
     formatDeadline,
     isPositive,
+    lookupLabel,
     mapsUrl,
     money,
-    partyLabel,
+    onArrivalLine,
+    payBalanceLine,
 } from './traveller-format';
-import { daysUntil } from './traveller-groups';
-
-const BACKEND_BASE = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { daysUntil, freeWindowOpen } from './traveller-groups';
+import { bookingIcsUrl } from '@/lib/booking-ics';
 
 /**
  * The next-trip hero (review 5.2, final.html layout) - replaces the stat
@@ -62,15 +62,7 @@ export function TravellerNextTrip({
               ? dict.nextTripTomorrow
               : dict.nextTripInDays.replace('{count}', String(days));
 
-    const metaLine = [
-        [formatDay(booking.localDate, locale), booking.startTime]
-            .filter(Boolean)
-            .join(' · '),
-        booking.partySize > 0 ? partyLabel(booking.partySize, dict) : null,
-        booking.destinationName,
-    ]
-        .filter(Boolean)
-        .join(' · ');
+    const metaLine = bookingMetaLine(booking, dict, locale);
 
     const hasPickup = Boolean(booking.pickupAddress);
     // Pickup rows carry a Maps link too (founder 2026-07-30).
@@ -83,10 +75,7 @@ export function TravellerNextTrip({
           );
     const buffer = booking.arrivalBufferMinutes;
 
-    const statusLabel =
-        dict.bookingStatus[
-            booking.displayStatus as keyof typeof dict.bookingStatus
-        ] ?? booking.displayStatus;
+    const statusLabel = lookupLabel(dict.bookingStatus, booking.displayStatus);
     const paidChipAmount = isPositive(booking.depositAmount)
         ? money(booking.depositAmount, booking.currency, locale)
         : undefined;
@@ -94,7 +83,7 @@ export function TravellerNextTrip({
     // ONE payment line, model- and window-aware (same 5.5 vocabulary the
     // panel's payment box uses in full).
     const deadline = booking.freeCancelDeadline;
-    const windowOpen = deadline ? new Date(deadline).getTime() > nowMs : false;
+    const windowOpen = freeWindowOpen(deadline, nowMs);
     const operatorName = booking.operator.name ?? dict.operatorFallback;
     const balance = money(booking.balanceAmount, booking.currency, locale);
     const payLine =
@@ -108,20 +97,13 @@ export function TravellerNextTrip({
             : booking.paymentModel === 'PAID_IN_FULL'
               ? `${dict.payPaidInFull} ${money(booking.totalRetail, booking.currency, locale)}`
               : booking.paymentModel === 'ON_ARRIVAL'
-                ? booking.onArrivalPayment === 'CASH_ONLY'
-                    ? dict.payOnArrivalCash
-                    : dict.payOnArrivalCard
+                ? onArrivalLine(booking.onArrivalPayment, dict)
                 : isPositive(booking.balanceAmount)
-                  ? windowOpen && deadline
-                      ? dict.payLinkBefore
-                            .replace('{operator}', operatorName)
-                            .replace(
-                                '{deadline}',
-                                formatDeadline(deadline, locale)
-                            )
-                      : dict.payLinkAfter
-                            .replace('{amount}', balance)
-                            .replace('{operator}', operatorName)
+                  ? payBalanceLine(
+                        { balance, operatorName, deadline, windowOpen },
+                        dict,
+                        locale
+                    )
                   : null;
 
     const cancelLine = deadline
@@ -226,7 +208,7 @@ export function TravellerNextTrip({
                             {open ? dict.hideDetails : dict.viewDetails}
                         </motion.button>
                         <a
-                            href={`${BACKEND_BASE}/bookings/typ/${booking.publicRef}/calendar.ics`}
+                            href={bookingIcsUrl(booking.publicRef)}
                             className='rounded-full border-[1.5px] border-it-heading/20 px-5 py-2.5 text-[14px] font-semibold text-it-heading no-underline transition-colors hover:border-it-heading/40'>
                             {dict.addToCalendar}
                         </a>

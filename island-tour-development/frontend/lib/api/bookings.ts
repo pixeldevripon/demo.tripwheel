@@ -11,6 +11,7 @@
 import type { Currency } from '@/lib/constants/locales';
 import type { Attribution } from '@/lib/tracking/attribution';
 import { apiFetch } from './fetch';
+import { requestCancellationClient } from './traveller-login';
 import { TRAVELER_SESSION_HEADER } from '@/lib/traveler-session.shared';
 
 /** One priced row of a quote breakdown (participant, add-on, or priced pickup). */
@@ -342,19 +343,16 @@ export async function requestBookingCancellation(
     publicRef: string,
     reason?: string
 ): Promise<{ requested: boolean }> {
-    // Goes through our OWN route handler, which reads the HttpOnly session
-    // server-side. The token is never handed to the browser: since the
-    // account door (/{locale}/traveller) began issuing HISTORY-scoped
-    // sessions, the cookie on this page can be the strongest traveller
-    // credential there is - 24h against every booking on the email - so
-    // serializing it into a client prop would put it one XSS away from being
-    // exfiltrated. The backend still owns ownership and eligibility.
-    const res = await fetch('/api/traveller/cancellation-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicRef, reason }),
-    });
-    if (!res.ok) {
+    // Delegates rather than re-posting. The account panel's
+    // `requestCancellationClient` hits the SAME route with the SAME body - two
+    // copies of one contract, so the next field added to it would be added to
+    // one caller and 400 at runtime from the other. They are reached from
+    // different surfaces (this tokenized /cancel page vs the account panel), so
+    // the broken one need not be the one under test.
+    //
+    // Only the failure convention differs, and that is what this wrapper is
+    // for: the card here branches on a thrown error, the panel on a boolean.
+    if (!(await requestCancellationClient(publicRef, reason))) {
         throw new Error('Could not send the cancellation request');
     }
     return { requested: true };

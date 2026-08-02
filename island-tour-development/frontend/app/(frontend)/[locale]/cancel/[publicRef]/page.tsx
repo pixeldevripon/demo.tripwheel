@@ -1,3 +1,10 @@
+import {
+    CANCEL_CARD_BODY,
+    CANCEL_CARD_CTA_OUTLINE,
+    CANCEL_CARD_CTA_PRIMARY,
+    CANCEL_CARD_SHELL,
+    CANCEL_CARD_TITLE,
+} from '@/components/frontend/cancel/cancel-card-shell';
 import { CancelRequestCard } from '@/components/frontend/cancel/cancel-request-card';
 import { MountReveal } from '@/components/frontend/mount-reveal';
 import { CancelCardSkeleton } from '@/components/frontend/skeletons/cancel-card-skeleton';
@@ -67,16 +74,16 @@ async function CancelBody({
             `/cancel/${booking.publicRef}`
         )}`;
         return (
-            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <div className={CANCEL_CARD_SHELL}>
+                <span className={CANCEL_CARD_TITLE}>
                     {cd.verifyTitle}
                 </span>
-                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className={CANCEL_CARD_BODY}>
                     {cd.verifyBody}
                 </p>
                 <Link
                     href={verifyHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] bg-it-primary px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-white no-underline transition-colors duration-300 hover:bg-it-primary-hover'>
+                    className={CANCEL_CARD_CTA_PRIMARY}>
                     {cd.verifyCta}
                 </Link>
             </div>
@@ -94,18 +101,18 @@ async function CancelBody({
     // used to be used as a resend button.
     if (booking.cancellationRequestedAt && booking.status === 'CONFIRMED') {
         return (
-            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <div className={CANCEL_CARD_SHELL}>
+                <span className={CANCEL_CARD_TITLE}>
                     {dict.thankYou.statusCancellationPending}
                 </span>
-                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className={CANCEL_CARD_BODY}>
                     {dict.thankYou.cancellationPendingNote}
                 </p>
                 {/* A request is already in - there is no booking to "keep";
                     the way forward is the status on the thank-you page. */}
                 <Link
                     href={thankYouHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                    className={CANCEL_CARD_CTA_OUTLINE}>
                     {cd.seeStatus}
                 </Link>
             </div>
@@ -116,11 +123,11 @@ async function CancelBody({
     // rendering a form whose submit can only 409.
     if (booking.status !== 'CONFIRMED') {
         return (
-            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <div className={CANCEL_CARD_SHELL}>
+                <span className={CANCEL_CARD_TITLE}>
                     {booking.tourTitle}
                 </span>
-                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className={CANCEL_CARD_BODY}>
                     {cd.notActive}
                 </p>
             </div>
@@ -140,11 +147,11 @@ async function CancelBody({
     // request form either (master trust-modal copy, verbatim).
     if (!inWindow) {
         return (
-            <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
-                <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+            <div className={CANCEL_CARD_SHELL}>
+                <span className={CANCEL_CARD_TITLE}>
                     {title}
                 </span>
-                <p className='mt-2.5 mb-0 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-text-muted'>
+                <p className={CANCEL_CARD_BODY}>
                     {cd.afterWindow.replace(
                         '{hours}',
                         String(booking.cancellationHours)
@@ -152,7 +159,7 @@ async function CancelBody({
                 </p>
                 <Link
                     href={thankYouHref}
-                    className='mt-4 inline-block w-fit rounded-[10px] border-[1.5px] border-it-heading/20 px-4.5 py-2.75 text-[14px] font-normal leading-[1.2] text-it-heading no-underline transition-colors duration-300 hover:border-it-heading/40'>
+                    className={CANCEL_CARD_CTA_OUTLINE}>
                     {cd.keep}
                 </Link>
             </div>

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { formatMoney } from '@/lib/currency/current';
 import {
+    bookingDateTimeLine,
+    bookingMetaLine,
     durationLabel,
     formatDay,
     formatDayShort,
@@ -10,7 +12,9 @@ import {
     mapsUrl,
     maskEmail,
     money,
+    onArrivalLine,
     partyLabel,
+    payBalanceLine,
     paymentMethodLabel,
     toCurrency,
 } from './traveller-format';
@@ -250,5 +254,110 @@ describe('lookupLabel', () => {
     it('falls back to the raw key for a status this build has no copy for', () => {
         // Honest and debuggable beats an empty chip that just looks broken.
         expect(lookupLabel(dict, 'REDEEMED')).toBe('REDEEMED');
+    });
+});
+
+describe('bookingDateTimeLine', () => {
+    it('joins date and start time', () => {
+        expect(
+            bookingDateTimeLine(
+                { localDate: '2026-08-14', startTime: '09:00' },
+                'en',
+            ),
+        ).toBe('Fri, 14 Aug 2026 · 09:00');
+    });
+
+    it('omits the separator when there is no start time', () => {
+        expect(
+            bookingDateTimeLine({ localDate: '2026-08-14', startTime: null }, 'en'),
+        ).toBe('Fri, 14 Aug 2026');
+    });
+});
+
+describe('bookingMetaLine', () => {
+    const dict = { guestsOne: '1 traveler', guests: '{count} travelers' };
+    const booking = {
+        localDate: '2026-08-14',
+        startTime: '09:00',
+        partySize: 2,
+        destinationName: 'Curacao',
+    };
+
+    it('composes date · time · party · destination', () => {
+        // ONE definition shared by the list card and the next-trip hero, which
+        // render the SAME booking one above the other on the account page.
+        expect(bookingMetaLine(booking, dict, 'en')).toBe(
+            'Fri, 14 Aug 2026 · 09:00 · 2 travelers · Curacao',
+        );
+    });
+
+    it('drops the party segment when the size is zero', () => {
+        expect(bookingMetaLine({ ...booking, partySize: 0 }, dict, 'en')).toBe(
+            'Fri, 14 Aug 2026 · 09:00 · Curacao',
+        );
+    });
+
+    it('drops a missing destination without leaving a dangling separator', () => {
+        const line = bookingMetaLine(
+            { ...booking, destinationName: null },
+            dict,
+            'en',
+        );
+        expect(line).toBe('Fri, 14 Aug 2026 · 09:00 · 2 travelers');
+        expect(line.endsWith('·')).toBe(false);
+    });
+
+    it('uses the real singular for one traveller', () => {
+        expect(bookingMetaLine({ ...booking, partySize: 1 }, dict, 'en')).toContain(
+            '1 traveler ·',
+        );
+    });
+});
+
+describe('onArrivalLine', () => {
+    const dict = { payOnArrivalCash: 'Cash only', payOnArrivalCard: 'Cash or card' };
+
+    it('says cash-only for CASH_ONLY', () => {
+        expect(onArrivalLine('CASH_ONLY', dict)).toBe('Cash only');
+    });
+
+    it('falls back to cash-or-card for anything else, including null', () => {
+        // Defaulting the OTHER way would promise a card terminal that may not
+        // exist on the beach.
+        expect(onArrivalLine('CASH_OR_CARD', dict)).toBe('Cash or card');
+        expect(onArrivalLine(null, dict)).toBe('Cash or card');
+        expect(onArrivalLine(undefined, dict)).toBe('Cash or card');
+    });
+});
+
+describe('payBalanceLine', () => {
+    const dict = {
+        payLinkBefore: 'Pay {operator} by {deadline}',
+        payLinkAfter: 'Pay {amount} to {operator}',
+    };
+    const base = {
+        balance: '$120.00',
+        operatorName: 'Blue Bay Tours',
+        deadline: '2026-08-12T14:00:00Z',
+        windowOpen: true,
+    };
+
+    it('names the deadline while the window is open', () => {
+        expect(payBalanceLine(base, dict, 'en')).toBe(
+            'Pay Blue Bay Tours by Wed 12 Aug, 14:00',
+        );
+    });
+
+    it('names the amount once the window has closed', () => {
+        expect(payBalanceLine({ ...base, windowOpen: false }, dict, 'en')).toBe(
+            'Pay $120.00 to Blue Bay Tours',
+        );
+    });
+
+    it('uses the after-copy when there is no deadline at all', () => {
+        // Never render a sentence with an empty "{deadline}" hole in it.
+        const line = payBalanceLine({ ...base, deadline: null }, dict, 'en');
+        expect(line).toBe('Pay $120.00 to Blue Bay Tours');
+        expect(line).not.toContain('{');
     });
 });

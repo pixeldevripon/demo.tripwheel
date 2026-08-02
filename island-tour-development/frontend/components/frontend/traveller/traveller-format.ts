@@ -120,6 +120,45 @@ export function partyLabel(
         : dict.guests.replace('{count}', String(count));
 }
 
+/** "Fri, 14 Aug 2026 · 09:00" - the date half of a booking summary. */
+export function bookingDateTimeLine(
+    booking: { localDate: string; startTime: string | null },
+    locale: Locale
+): string {
+    return [formatDay(booking.localDate, locale), booking.startTime]
+        .filter(Boolean)
+        .join(' · ');
+}
+
+/**
+ * The one-line booking summary: date · time · party · destination.
+ *
+ * ONE definition, because the list card and the next-trip hero are the two
+ * places a traveller sees the SAME booking summarised - the hero sits directly
+ * above the card list on the account page. They were composing this
+ * independently, character for character, so adding the duration or dropping
+ * the destination on mobile in one would silently make the two disagree about
+ * the same trip.
+ */
+export function bookingMetaLine(
+    booking: {
+        localDate: string;
+        startTime: string | null;
+        partySize: number;
+        destinationName: string | null;
+    },
+    dict: { guestsOne: string; guests: string },
+    locale: Locale
+): string {
+    return [
+        bookingDateTimeLine(booking, locale),
+        booking.partySize > 0 ? partyLabel(booking.partySize, dict) : null,
+        booking.destinationName,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+}
+
 /** Rough duration label from the tour's lower-bound minutes: "8h" / "2h 30m". */
 export function durationLabel(minutes: number | null | undefined): string {
     if (!minutes || minutes <= 0) return '';
@@ -151,6 +190,54 @@ export function mapsUrl(
         lat != null && lng != null ? `${lat},${lng}` : (address ?? '').trim();
     if (!query) return null;
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Which on-arrival sentence applies: cash-only, or cash-or-card.
+ *
+ * The next-trip hero and the panel's payment box both render this, and the
+ * `CASH_ONLY` test is the single fact behind it. NOT an attempt to unify the
+ * two payment trees wholesale - they are genuinely different (the box also
+ * handles terminated, requested and refund states the hero never shows, and it
+ * emits money ROWS interleaved with notes rather than one sentence). Only the
+ * arms that are literally the same fact live here.
+ */
+export function onArrivalLine(
+    onArrivalPayment: string | null | undefined,
+    dict: { payOnArrivalCash: string; payOnArrivalCard: string }
+): string {
+    return onArrivalPayment === 'CASH_ONLY'
+        ? dict.payOnArrivalCash
+        : dict.payOnArrivalCard;
+}
+
+/**
+ * The operator-link balance sentence: before the free-cancellation deadline it
+ * names the deadline, after it names the amount. Duplicated in the hero and the
+ * payment box, and the before/after choice is one rule.
+ */
+export function payBalanceLine(
+    {
+        balance,
+        operatorName,
+        deadline,
+        windowOpen,
+    }: {
+        balance: string;
+        operatorName: string;
+        deadline: string | null | undefined;
+        windowOpen: boolean;
+    },
+    dict: { payLinkBefore: string; payLinkAfter: string },
+    locale: Locale
+): string {
+    return windowOpen && deadline
+        ? dict.payLinkBefore
+              .replace('{operator}', operatorName)
+              .replace('{deadline}', formatDeadline(deadline, locale))
+        : dict.payLinkAfter
+              .replace('{amount}', balance)
+              .replace('{operator}', operatorName);
 }
 
 function capitalize(value: string): string {

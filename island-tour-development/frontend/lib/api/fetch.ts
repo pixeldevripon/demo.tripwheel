@@ -1,3 +1,4 @@
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 /**
  * Shared client-side fetch helpers for dashboard API modules.
  *
@@ -17,8 +18,6 @@
  * need to bust a tag, do it at that call site against `lib/cache-tags.ts` - do
  * not reinstate a parallel map.
  */
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
 
 // Base backoff (ms) between retries, one entry per retry attempt. A dashboard
 // page mounts many parallel queries at once; if a burst briefly trips the
@@ -53,7 +52,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { retryOnThrottle, ...fetchInit } = init ?? {};
   const request = () =>
-    fetch(`${BASE_URL}${path}`, {
+    fetch(`${BACKEND_API_BASE}${path}`, {
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...fetchInit.headers },
       ...fetchInit,

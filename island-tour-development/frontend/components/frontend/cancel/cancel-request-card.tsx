@@ -1,5 +1,6 @@
 'use client';
 
+import { CANCEL_CARD_SHELL } from '@/components/frontend/cancel/cancel-card-shell';
 import { ConfirmDialog } from '@/components/frontend/confirm-dialog';
 import { requestBookingCancellation } from '@/lib/api/bookings';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
@@ -63,7 +64,7 @@ export function CancelRequestCard({
     }
 
     return (
-        <div className='w-full max-w-107.5 rounded-[16px] bg-it-white p-6 shadow-[0_26px_70px_-20px_rgba(0,0,0,0.25)]'>
+        <div className={CANCEL_CARD_SHELL}>
             <AnimatePresence mode='wait' initial={false}>
                 {state === 'sent' ? (
                     <motion.div

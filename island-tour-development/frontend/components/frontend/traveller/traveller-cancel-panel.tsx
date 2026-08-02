@@ -21,6 +21,7 @@ import {
     isPositive,
     money,
 } from './traveller-format';
+import { freeWindowOpen } from './traveller-groups';
 
 /**
  * Cancellation state and (when allowed) the inline confirm strip (review 5.4):
@@ -143,14 +144,10 @@ export function TravellerCancelPanel({
 
     if (booking.cancellationBlockedReason === 'DEPARTED') return null;
 
-    // A missing deadline means the free window cannot be evidenced, so it is
-    // treated as closed - never promise a refund we cannot back.
-    //
-    // Compared against the SERVER's request instant, not a live `Date.now()`:
-    // reading the clock during render is impure, and this copy must not flip
-    // mid-session. The authoritative judgement is the backend's anyway.
+    // `freeWindowOpen` carries the rule (missing deadline = closed) and the
+    // reason it is judged against the server's instant - see traveller-groups.
     const deadline = booking.freeCancelDeadline;
-    const windowOpen = deadline ? new Date(deadline).getTime() > nowMs : false;
+    const windowOpen = freeWindowOpen(deadline, nowMs);
     const refundable = isPositive(booking.paidAmount);
 
     // Locked 6.3 family (F10): every money deadline carries the weekday, the

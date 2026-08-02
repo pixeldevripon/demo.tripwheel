@@ -30,16 +30,6 @@ import { TravellerOtpField } from './traveller-otp-field';
 const RESEND_COOLDOWN_S = 60;
 
 /**
- * Deliberately shape-only: one `@`, something either side, and a dotted domain
- * with a 2+ character last label. Nothing stricter is worth doing here.
- *
- * The real check is whether a code arrives in that inbox, and the backend
- * intentionally does not say whether an address is known (that would turn this
- * form into an account-enumeration oracle). So this catches the honest typo -
- * a missing `@`, a trailing `.`, `gmail.con` is NOT catchable and must not be
- * guessed at - and nothing else pretends to.
- */
-/**
  * Deliberately a TYPO-CATCHER, not an RFC validator: "something@something.tld,
  * no spaces, exactly one @". The AUTHORITY on validity is the backend's
  * `@IsEmail()` (validator.js) - anything this shape wrongly lets through gets
@@ -56,6 +46,50 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const UNKNOWN_EMAILS_KEY = 'it.travellerUnknownEmails';
 
 const EMAIL_ERROR_ID = 'traveller-email-error';
+
+/**
+ * Addresses this TAB has seen the backend call unknown, kept in
+ * sessionStorage so the verdict survives a reload (founder: resubmitting an
+ * address with no bookings must ALWAYS say "no account", never mutate into a
+ * throttle banner). Only consulted when a request cannot reach the handler
+ * (generic per-IP 429); a live `sent`/`otp-pending` verdict clears it.
+ *
+ * MODULE SCOPE: it captures nothing - every method goes straight to
+ * sessionStorage - so rebuilding this object literal on every render was pure
+ * garbage with no upside.
+ */
+const unknownEmails = {
+    has(v: string) {
+        try {
+            return (
+                sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? ''
+            ).includes(`|${v}|`);
+        } catch {
+            return false;
+        }
+    },
+    add(v: string) {
+        try {
+            const cur = sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? '';
+            if (!cur.includes(`|${v}|`)) {
+                sessionStorage.setItem(UNKNOWN_EMAILS_KEY, `${cur}|${v}|`);
+            }
+        } catch {
+            // Storage unavailable (private mode) - degrade to per-render.
+        }
+    },
+    drop(v: string) {
+        try {
+            const cur = sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? '';
+            sessionStorage.setItem(
+                UNKNOWN_EMAILS_KEY,
+                cur.replace(`|${v}|`, '')
+            );
+        } catch {
+            // Nothing stored, nothing to drop.
+        }
+    },
+};
 
 /**
  * The account-area door: email in, one-time code back, history session out.
@@ -84,44 +118,6 @@ export function TravellerLoginCard({
     const [cooldown, setCooldown] = useState(0);
     const codeRef = useRef<HTMLDivElement>(null);
     const emailRef = useRef<HTMLInputElement>(null);
-    // Addresses this TAB has seen the backend call unknown, kept in
-    // sessionStorage so the verdict survives a reload (founder: resubmitting
-    // an address with no bookings must ALWAYS say "no account", never mutate
-    // into a throttle banner). Only consulted when a request cannot reach the
-    // handler (generic per-IP 429); a live `sent`/`otp-pending` verdict for
-    // the address always clears it.
-    const unknownEmails = {
-        has(v: string) {
-            try {
-                return (
-                    sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? ''
-                ).includes(`|${v}|`);
-            } catch {
-                return false;
-            }
-        },
-        add(v: string) {
-            try {
-                const cur = sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? '';
-                if (!cur.includes(`|${v}|`)) {
-                    sessionStorage.setItem(UNKNOWN_EMAILS_KEY, `${cur}|${v}|`);
-                }
-            } catch {
-                // Storage unavailable (private mode) - degrade to per-render.
-            }
-        },
-        drop(v: string) {
-            try {
-                const cur = sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? '';
-                sessionStorage.setItem(
-                    UNKNOWN_EMAILS_KEY,
-                    cur.replace(`|${v}|`, '')
-                );
-            } catch {
-                // Nothing stored, nothing to drop.
-            }
-        },
-    };
 
     // Tick the resend cooldown down to zero.
     useEffect(() => {

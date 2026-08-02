@@ -7,8 +7,7 @@
  */
 import type { Locale } from '@/lib/constants/locales';
 import type { CategoryByDestination } from '@/types/category';
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Active, tour-gated categories for a destination, fetched from the browser.
@@ -25,7 +24,7 @@ export async function fetchDestinationCategoriesClient(
 
   try {
     const res = await fetch(
-      `${BASE_URL}/categories/destination/${destinationSlug}${query}`,
+      `${BACKEND_API_BASE}/categories/destination/${destinationSlug}${query}`,
       { headers: { 'Content-Type': 'application/json' } },
     );
     if (!res.ok) return [];

@@ -174,6 +174,61 @@ on plain http, which would break local dev.
 
 ---
 
+### Changed — design-quality findings (no behaviour change)
+
+Every item below is a DRY/SOLID/composition finding. None alters what renders;
+242 tests, build, lint and typecheck all pass unchanged.
+
+**One definition per fact.** New shared helpers, each replacing 2–14 copies:
+
+| Helper | Replaced | Why it mattered |
+|---|---|---|
+| `lib/api/backend-url.ts` `BACKEND_API_BASE` | 14 copies of the same env read | one rename applied thirteen times is a silent prod bug |
+| `lib/booking-ics.ts` `bookingIcsUrl()` | 2 | the component copy **had no `encodeURIComponent`** |
+| `traveller-format.bookingMetaLine()` | 3 | hero and card show the same booking, stacked |
+| `traveller-groups.freeWindowOpen()` | 3 | all three render in ONE expanded card; disagreeing = contradicting itself |
+| `traveller-format.onArrivalLine()` / `payBalanceLine()` | 2 each | money copy |
+| `traveller-format.paymentMethodLabel()` | 2 (already drifted) | |
+| `traveler-session.shared.PUBLIC_REF_SHAPE` | 3, under 2 names | a tightening had to be remembered three times |
+| `cancel-card-shell.ts` | 5 copies of an unnamed shadow literal | the four cancel states must look identical |
+| `thank-you/booking-ref-pill.tsx` | 2 byte-identical blocks | |
+| `thank-you-recommendation` `RecLink` | 2 blocks differing by `0.98` vs `0.99` | the external-vs-internal routing rule was the duplicated fact |
+
+`DEPARTURE_ID_SHAPE` is deliberately its own constant despite being identical to
+`PUBLIC_REF_SHAPE` today — a departure id is a different kind of value that
+merely happens to match, and collapsing them would couple the two formats.
+
+**Dependency direction.** `paymentChipFor` moved from `traveller-booking-card`
+to `traveller-chip`, where everything it uses already lived — the hero was
+importing a *card* module to get a *chip*. `traveller-next-trip` no longer reads
+`process.env`; it was the only component in the repo that knew the backend's
+origin.
+
+**Purity.** `traveller-view`'s tab state was mirrored from a prop through an
+effect, which commits one render showing the stale tab — a visible flash of the
+wrong list on every paginate. Now the adjust-during-render form. The local copy
+is still needed: `selectTab` uses `history.replaceState`, so state and prop
+legitimately diverge.
+
+**Composition.** The booking panel's pickup and meeting-point rows were a
+26-line verbatim copy differing in three values; the branch was already resolved
+above the JSX. Now one row.
+
+**Contract.** `requestBookingCancellation` now delegates to
+`requestCancellationClient` instead of re-posting the same body to the same
+route. Two copies of one contract, reached from different surfaces, so the next
+field added would have 400'd at runtime from whichever caller was not under
+test. Only the failure convention (throw vs boolean) differs, which is what the
+wrapper is now for.
+
+**Docs that actively misled.** Two orphaned docblocks that contradicted the
+block immediately below them (`SIGNED_OUT_BAND`, `EMAIL_SHAPE`); a pointer to a
+`beforeFiles` rewrite in `next.config.ts`, which has no `rewrites` at all — the
+rewrite is in `proxy.ts`. In a codebase this comment-driven, a stale comment is
+a defect. Also: the receipt skeleton promised "the live page's EXACT frame
+classes" while spelling the same width two ways (`max-w-[780px]` vs
+`max-w-195`) — that is how a skeleton drifts into a CLS bug.
+
 ### Explicitly considered and NOT changed
 
 **The four traveller proxies were not merged into a generic helper.** They share
@@ -193,6 +248,15 @@ core business logic. The right fix is a `page_location` override that rewrites
 `/review/*`, `/cancel/*`, `*/thank-you/*` and `/traveller/receipt/*` to a
 token-free path, and it needs a product decision plus GTM container config.
 **Left open deliberately.**
+
+**The two payment decision trees were NOT merged.** The review called the
+next-trip hero's `payLine` a duplicate of the payment box's tree. Read side by
+side they are not: the box additionally handles terminated, requested and refund
+states the hero never renders, and it emits money ROWS interleaved with notes
+rather than one sentence. A shared `paymentLine()` would need parameters for all
+of that — the same over-parameterised helper rejected for the route handlers.
+Only the two arms that ARE the same fact (`onArrivalLine`, `payBalanceLine`)
+were extracted.
 
 **A pair-login still overwrites a live HISTORY-scoped session.** Verified
 present, and the direction is a downgrade, never an escalation. It is documented

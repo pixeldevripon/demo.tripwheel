@@ -8,6 +8,13 @@
  *   label, and the dot merely echoes it.
  */
 
+import type { ReactNode } from 'react';
+
+import type { TravellerBooking } from '@/lib/api/public/traveller';
+import type { Dictionary } from '@/lib/i18n/dictionaries';
+
+import { lookupLabel } from './traveller-format';
+
 type Tone = 'positive' | 'pending' | 'negative' | 'neutral';
 
 /** State-dot colour per tone. Chip chrome itself stays white + hairline. */
@@ -95,3 +102,38 @@ export function TravellerPayChip({
     );
 }
 
+/**
+ * DIT-7 payment chip for the header row, model- and state-aware.
+ *
+ * Lives HERE, not in `traveller-booking-card.tsx` where it was defined. The
+ * next-trip hero needed it too, so the hero was importing a card module to get
+ * a chip - inverting the folder's dependency direction for no reason. Every
+ * piece it uses (`paymentTone`, `TravellerPayChip`) was already in this file.
+ */
+export function paymentChipFor(
+    booking: TravellerBooking,
+    dict: Dictionary['traveller'],
+    /** Append the paid amount to the label (next-trip hero: "Deposit paid $600"). */
+    amountSuffix?: string
+): ReactNode {
+    if (booking.paymentModel === 'OPERATOR_FULL') {
+        return (
+            <TravellerPayChip label={dict.payNoPaymentTaken} settled={false} />
+        );
+    }
+    if (booking.refundStatus === 'REFUNDED') {
+        return (
+            <TravellerPayChip
+                label={dict.paymentState.REFUNDED}
+                settled={false}
+            />
+        );
+    }
+    const label = lookupLabel(dict.paymentState, booking.paymentStatus);
+    return (
+        <TravellerPayChip
+            label={amountSuffix ? `${label} ${amountSuffix}` : label}
+            settled={paymentTone(booking.paymentStatus) === 'positive'}
+        />
+    );
+}

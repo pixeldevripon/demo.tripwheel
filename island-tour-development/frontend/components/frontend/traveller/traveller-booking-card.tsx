@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import Image from 'next/image';
-import type { ReactNode } from 'react';
 import { useState } from 'react';
 
 import type { TravellerBooking } from '@/lib/api/public/traveller';
@@ -12,13 +11,13 @@ import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { crossFade } from '@/lib/motion';
 
 import { TravellerBookingPanel } from './traveller-booking-panel';
+import { bookingTone, paymentChipFor, TravellerChip } from './traveller-chip';
 import {
-    bookingTone,
-    paymentTone,
-    TravellerChip,
-    TravellerPayChip,
-} from './traveller-chip';
-import { formatDay, lookupLabel, money, partyLabel } from './traveller-format';
+    bookingDateTimeLine,
+    bookingMetaLine,
+    lookupLabel,
+    money,
+} from './traveller-format';
 import { isCancelledFamily } from './traveller-groups';
 
 /**
@@ -63,16 +62,8 @@ export function TravellerBookingCard({
             : booking.displayStatus;
     const statusLabel = lookupLabel(dict.bookingStatus, chipStatus);
 
-    const dateLine = [formatDay(booking.localDate, locale), booking.startTime]
-        .filter(Boolean)
-        .join(' · ');
-    const metaLine = [
-        dateLine,
-        booking.partySize > 0 ? partyLabel(booking.partySize, dict) : null,
-        booking.destinationName,
-    ]
-        .filter(Boolean)
-        .join(' · ');
+    const dateLine = bookingDateTimeLine(booking, locale);
+    const metaLine = bookingMetaLine(booking, dict, locale);
 
     return (
         <article
@@ -160,33 +151,3 @@ export function TravellerBookingCard({
         </article>
     );
 }
-
-/** DIT-7 payment chip for the header row, model- and state-aware. */
-export function paymentChipFor(
-    booking: TravellerBooking,
-    dict: Dictionary['traveller'],
-    /** Append the paid amount to the label (next-trip hero: "Deposit paid $600"). */
-    amountSuffix?: string
-): ReactNode {
-    if (booking.paymentModel === 'OPERATOR_FULL') {
-        return (
-            <TravellerPayChip label={dict.payNoPaymentTaken} settled={false} />
-        );
-    }
-    if (booking.refundStatus === 'REFUNDED') {
-        return (
-            <TravellerPayChip
-                label={dict.paymentState.REFUNDED}
-                settled={false}
-            />
-        );
-    }
-    const label = lookupLabel(dict.paymentState, booking.paymentStatus);
-    return (
-        <TravellerPayChip
-            label={amountSuffix ? `${label} ${amountSuffix}` : label}
-            settled={paymentTone(booking.paymentStatus) === 'positive'}
-        />
-    );
-}
-

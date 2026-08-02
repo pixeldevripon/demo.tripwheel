@@ -88,6 +88,28 @@ export function groupTravellerBookings(
 }
 
 /**
+ * Is the free-cancellation window still open?
+ *
+ * A MISSING DEADLINE MEANS CLOSED. The free window cannot be evidenced without
+ * one, and we never promise a refund we cannot back. That rule was written down
+ * once but enforced in three components - the payment box, the cancel panel and
+ * the next-trip hero - which all render simultaneously inside a single expanded
+ * booking card. Softening it in one place gave a card whose payment box and
+ * cancel box contradicted each other about the same booking.
+ *
+ * Judged against the SERVER's request instant (`nowMs`), never a live
+ * `Date.now()`: reading the clock during render is impure, and this copy must
+ * not flip mid-session. The authoritative judgement is the backend's anyway -
+ * this only decides which sentence to show.
+ */
+export function freeWindowOpen(
+    deadline: string | null | undefined,
+    nowMs: number
+): boolean {
+    return deadline ? new Date(deadline).getTime() > nowMs : false;
+}
+
+/**
  * Whole days until the trip's island date, judged from the server-stamped
  * request instant. Plain arithmetic on UTC-pinned dates - a plain kicker
  * ("in 2 days"), not countdown theater, so an edge-of-midnight skew is fine.

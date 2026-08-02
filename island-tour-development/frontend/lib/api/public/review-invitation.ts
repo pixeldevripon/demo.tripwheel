@@ -10,8 +10,7 @@
 import 'server-only';
 
 import type { PublicReviewInvitation } from '@/types/review';
-
-const BASE_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5050'}/api/v1`;
+import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
 /**
  * Resolve a token, or `null` when it is unknown, already spent, revoked, or the
@@ -23,7 +22,7 @@ export async function getReviewInvitation(
 ): Promise<PublicReviewInvitation | null> {
   try {
     const res = await fetch(
-      `${BASE_URL}/reviews/invitation/${encodeURIComponent(token)}`,
+      `${BACKEND_API_BASE}/reviews/invitation/${encodeURIComponent(token)}`,
       { cache: 'no-store', headers: { 'Content-Type': 'application/json' } },
     );
     if (!res.ok) return null;
