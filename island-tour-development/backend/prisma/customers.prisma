@@ -1,5 +1,10 @@
 // Customer relationships - one row per (user, operator) pair, created the
-// first time a booking links that user to that operator.
+// first time a CONFIRMED booking links that user to that operator. Confirmed
+// is the bar because confirmation is payment-gated, and without a successful
+// payment there is no customer: a row is never minted from an empty ledger
+// (see CustomerProvisioningService.recomputeAggregates). An existing row CAN
+// fall to zero when its bookings are cancelled - that is history, not a
+// phantom.
 //
 // Purpose: marks a USER-role account as a CUSTOMER of a tour operator and
 // carries denormalized aggregates for the future operator-facing "Customers"

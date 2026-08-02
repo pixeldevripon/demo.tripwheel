@@ -59,7 +59,10 @@ describe('CustomerProvisioningService', () => {
           _max: { utcConfirmedAt: new Date('2026-06-01T00:00:00Z') },
         }),
       },
-      customer: { upsert: jest.fn().mockResolvedValue({}) },
+      customer: {
+        upsert: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
     };
     staffPermissions = { invalidate: jest.fn() };
     svc = new CustomerProvisioningService(prisma, staffPermissions);
@@ -141,8 +144,17 @@ describe('CustomerProvisioningService', () => {
 
     await svc.provisionForBooking(BOOKING);
 
+    // Scoped to ACTIVE statuses: the backfill above links by contact email
+    // regardless of status, so an abandoned ON_HOLD/EXPIRED booking with a
+    // third operator must not pull that operator into the fan-out and mint a
+    // customer row for a tour that was never paid for.
     expect(prisma.booking.findMany).toHaveBeenCalledWith({
-      where: { userId: 'u1' },
+      where: {
+        userId: 'u1',
+        status: {
+          in: [BookingStatus.CONFIRMED, BookingStatus.REDEEMED],
+        },
+      },
       select: { operatorId: true },
       distinct: ['operatorId'],
     });
@@ -283,6 +295,45 @@ describe('CustomerProvisioningService', () => {
         }),
         update: expect.objectContaining({ bookingsCount: 2 }),
       });
+    });
+
+    // No successful payment, no customer. `cancel` calls this for ANY booking
+    // carrying a userId - including an ON_HOLD hold that was never paid for -
+    // so a create-on-zero would mint a phantom customer for the operator whose
+    // tour the traveller merely abandoned.
+    it('never MINTS a row when the ledger has no confirmed booking', async () => {
+      prisma.booking.aggregate.mockResolvedValue({
+        _count: { _all: 0 },
+        _sum: { totalEur: null },
+        _min: { utcConfirmedAt: null, createdAt: null },
+        _max: { utcConfirmedAt: null, createdAt: null },
+      });
+
+      await svc.recomputeAggregates('u1', 'op1');
+
+      expect(prisma.customer.upsert).not.toHaveBeenCalled();
+      expect(prisma.customer.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u1', operatorId: 'op1' },
+        data: expect.objectContaining({ bookingsCount: 0, totalSpendEur: 0 }),
+      });
+    });
+
+    // The flip side: a REAL customer who cancelled their only booking keeps
+    // their row and falls to zero, rather than silently disappearing from the
+    // operator's list.
+    it('still zeroes an EXISTING row when its bookings are all cancelled', async () => {
+      prisma.booking.aggregate.mockResolvedValue({
+        _count: { _all: 0 },
+        _sum: { totalEur: null },
+        _min: { utcConfirmedAt: null, createdAt: null },
+        _max: { utcConfirmedAt: null, createdAt: null },
+      });
+      prisma.customer.updateMany.mockResolvedValue({ count: 1 });
+
+      await svc.recomputeAggregates('u1', 'op1');
+
+      expect(prisma.customer.updateMany).toHaveBeenCalledTimes(1);
+      expect(prisma.customer.upsert).not.toHaveBeenCalled();
     });
 
     it('never throws on aggregate failure', async () => {
