@@ -68,9 +68,16 @@ export function TripAttributesTab({
 
     // Local form state: key -> value (string; ENUM_MULTI stored as comma-joined). Editable keys only.
     const [values, setValues] = useState<Record<string, string>>({});
+    // Has the operator edited since the last load/save? Guards the re-seed below.
+    const [dirty, setDirty] = useState(false);
 
+    // Seed the editable values from the server, but only while pristine: a
+    // window-focus refetch (30s stale) returns a NEW `current` array ref and the
+    // unconditional re-seed used to overwrite typed-but-unsaved values (code-review
+    // H3). `dirty` is read at run time, not a dependency — a successful save clears
+    // it, then the refetched `current` re-seeds to the saved values.
     useEffect(() => {
-        if (!current) return;
+        if (!current || dirty) return;
         const next: Record<string, string> = {};
         for (const a of current) {
             // Derived attributes are computed by the backend from the tour's Details -
@@ -82,6 +89,7 @@ export function TripAttributesTab({
                     : a.value;
         }
         setValues(next);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [current]);
 
     // Only genuine (operator-set) attributes are editable here; derived ones are
@@ -134,6 +142,7 @@ export function TripAttributesTab({
 
     function setVal(key: string, v: string) {
         setValues(prev => ({ ...prev, [key]: v }));
+        setDirty(true);
     }
 
     function onSave() {
@@ -143,6 +152,9 @@ export function TripAttributesTab({
         save(
             { attributes },
             {
+                // Clear dirty so the post-save refetch of `current` re-seeds the
+                // inputs from the saved server truth.
+                onSuccess: () => setDirty(false),
                 onError: err =>
                     toast.error(
                         err instanceof Error

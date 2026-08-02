@@ -60,6 +60,7 @@ import {
     useRemoveImage,
     useUpdateImage,
 } from '@/hooks/trips/use-trips';
+import { settleAll } from '@/lib/async/settle-all';
 import { springPop } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { MediaItem } from '@/types/media';
@@ -89,7 +90,11 @@ function focalPosition(x: number | null, y: number | null): string {
 export function TripImagesTab({ trip }: TripImagesTabProps) {
     const { data: images, isLoading } = useImages(trip.id);
     const { mutate: addImage, isPending: isAdding } = useAddImage();
-    const { mutate: updateImage, isPending: isUpdating } = useUpdateImage();
+    const {
+        mutate: updateImage,
+        mutateAsync: updateImageAsync,
+        isPending: isUpdating,
+    } = useUpdateImage();
     const { mutate: removeImage } = useRemoveImage();
 
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -126,6 +131,12 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
     }, [draftOrder, serverOrdered]);
 
     const count = ordered.length;
+    // New images go AFTER the highest existing displayOrder, not at `count`:
+    // after a deletion the max order can exceed count, so `count + index` would
+    // collide with an existing row and the public `orderBy displayOrder asc`
+    // would tie-break arbitrarily (code-review L8).
+    const nextOrder =
+        ordered.reduce((m, i) => Math.max(m, i.displayOrder), -1) + 1;
     const cover = ordered.find(img => img.isHero) ?? null;
 
     function handleMediaSelect(items: MediaItem[]) {
@@ -154,7 +165,7 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
                         // old test was `count === 0`: delete the cover, add a
                         // replacement, and nothing became the cover.
                         isHero: !cover && index === 0,
-                        displayOrder: count + index,
+                        displayOrder: nextOrder + index,
                     },
                 },
                 {
@@ -220,27 +231,32 @@ export function TripImagesTab({ trip }: TripImagesTabProps) {
      * every row already sitting on its number. Dragging one tile one place
      * costs the same two writes the old arrow buttons cost.
      */
-    function commitOrder(list: TourImage[]) {
-        list.forEach((img, index) => {
-            if (img.displayOrder === index) return;
-            updateImage(
-                {
-                    tripId: trip.id,
-                    imageId: img.id,
-                    payload: { displayOrder: index },
-                },
-                {
-                    onError: err => {
-                        setDraftOrder(null);
-                        toast.error(
-                            err instanceof Error
-                                ? err.message
-                                : 'Failed to reorder images.',
-                        );
-                    },
-                },
+    async function commitOrder(list: TourImage[]) {
+        const moves = list
+            .map((img, index) => ({ img, index }))
+            .filter(({ img, index }) => img.displayOrder !== index);
+        if (moves.length === 0) return;
+        // One PATCH per moved row, but await them together. The old code fired
+        // them and, on ANY error, reverted only the local preview — while the
+        // rows that already succeeded had persisted their new displayOrder,
+        // scrambling the server order silently (code-review H2). Each success
+        // invalidates the images query, so the `serverKey` effect above
+        // reconciles the UI to the true persisted order.
+        const { failed } = await settleAll(moves, ({ img, index }) =>
+            updateImageAsync({
+                tripId: trip.id,
+                imageId: img.id,
+                payload: { displayOrder: index },
+            }),
+        );
+        if (failed.length) {
+            // Drop the optimistic preview so the reconciled (possibly partial)
+            // server order shows instead of a revert that hides the change.
+            setDraftOrder(null);
+            toast.error(
+                'Some images could not be reordered — showing the saved order.',
             );
-        });
+        }
     }
 
     /** Keyboard/button equivalent of a one-place drag. */
@@ -706,6 +722,12 @@ function ImageEditDialog({
             x: clampFocal(image.focalX ?? 0.5),
             y: clampFocal(image.focalY ?? 0.5),
         });
+    }
+    // Reset the seed when the dialog closes, so reopening the SAME image re-seeds
+    // from the server instead of showing the edits the operator just discarded
+    // (code-review M9). Guarded → self-terminating, like the seed above.
+    if (image === null && seededId !== null) {
+        setSeededId(null);
     }
 
     function handleSubmit() {

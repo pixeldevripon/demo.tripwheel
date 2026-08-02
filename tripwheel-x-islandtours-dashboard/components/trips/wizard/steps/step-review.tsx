@@ -84,7 +84,7 @@ import {
     type WizardStepId,
 } from '@/lib/trips/wizard-steps';
 import { cn } from '@/lib/utils';
-import { TIER_META } from '@/types/tier';
+import { tierMeta } from '@/types/tier';
 import type { TripListItem } from '@/types/trip';
 import { TripArchiveDialog } from '../../trip-archive-dialog';
 import { useWizard } from '../wizard-context';
@@ -463,7 +463,7 @@ export function StepReview({ trip }: StepReviewProps) {
                         onEdit={goTo}
                         complete={stepDone('reach')}
                         lines={[
-                            `${TIER_META[trip.tierKey].label} tier · ${trip.commissionTier}%`,
+                            `${tierMeta(trip.tierKey).label} tier · ${trip.commissionTier}%`,
                             // "0 hubs" reads as a gap; hubs are optional.
                             trip.hubIds.length
                                 ? `${trip.hubIds.length} hub${trip.hubIds.length === 1 ? '' : 's'}`

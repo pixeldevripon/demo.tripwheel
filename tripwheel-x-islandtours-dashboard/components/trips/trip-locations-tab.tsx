@@ -4,6 +4,7 @@ import { Location01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
+import { findEnglish, numOrNull, numOrUndef } from '@/lib/trips/forms';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -139,10 +140,7 @@ export function parseDraftPoint(
 /** Key the add form reports under - it has no id until it is saved. */
 export const NEW_STOP_KEY = '__new__';
 
-const numOrNull = (v: string | undefined): number | null =>
-    v && v.trim() !== '' ? Number(v) : null;
-const numOrUndef = (v: string | undefined): number | undefined =>
-    v && v.trim() !== '' ? Number(v) : undefined;
+// numOrNull/numOrUndef now live in lib/trips/forms (shared with the pickup tab).
 
 /** Inline details editor for one stop - payload identical to the old tab. */
 function LocationDetailsEditor({
@@ -162,7 +160,7 @@ function LocationDetailsEditor({
     // Title and description live on the ENGLISH translation row, not the base
     // record - the create form writes them there, so the editor must read and
     // save them from the same place.
-    const enTranslation = location.translations?.find(t => t.locale === 'en');
+    const enTranslation = findEnglish(location.translations);
 
     const {
         register,
@@ -438,7 +436,7 @@ export function TripLocationsTab({
             isLoading={isLoading}
             getId={loc => loc.id}
             renderSummary={loc => {
-                const en = loc.translations.find(t => t.locale === 'en');
+                const en = findEnglish(loc.translations);
                 return (
                     <span className='flex min-w-0 items-center gap-2'>
                         <HugeiconsIcon
