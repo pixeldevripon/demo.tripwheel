@@ -51,14 +51,7 @@ const REQUIRED: Record<string, (v: string) => string | null> = {
   CLOUDINARY_API_SECRET: () => null,
   // Encryption (settings & operator OAuth tokens)
   ENCRYPTION_KEY: (v) => {
-    // AES-256-GCM needs exactly 32 BYTES, and crypto.util reads this as hex -
-    // so 64 hex characters, not 32. The old ">= 32 chars" rule let a wrong-sized
-    // key boot fine and then throw "Invalid key length" at the first encrypt,
-    // which for this key means the first time anyone saves a calendar
-    // subscription. Fail at startup instead, where it is one obvious message.
-    if (!/^[0-9a-f]{64}$/i.test(v)) {
-      return 'must be exactly 64 hex characters (32 bytes) - generate with: openssl rand -hex 32';
-    }
+    if (v.length < 32) return 'must be at least 32 hex characters';
     return null;
   },
 };

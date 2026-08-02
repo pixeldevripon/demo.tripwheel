@@ -71,9 +71,6 @@ importers:
       htmlparser2:
         specifier: ^8.0.2
         version: 8.0.2
-      ical.js:
-        specifier: ^2.2.1
-        version: 2.2.1
       libphonenumber-js:
         specifier: ^1.13.9
         version: 1.13.9
@@ -2585,9 +2582,6 @@ packages:
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
-
-  ical.js@2.2.1:
-    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   iconv-lite@0.7.2:
     resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
@@ -6672,8 +6666,6 @@ snapshots:
   http-status-codes@2.3.0: {}
 
   human-signals@2.1.0: {}
-
-  ical.js@2.2.1: {}
 
   iconv-lite@0.7.2:
     dependencies:

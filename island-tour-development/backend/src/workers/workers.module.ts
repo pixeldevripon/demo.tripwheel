@@ -3,7 +3,6 @@ import { Module } from '@nestjs/common';
 
 import { AvailabilityModule } from '@/availability/availability.module';
 import { BookingsModule } from '@/bookings/bookings.module';
-import { CalendarSyncModule } from '@/calendar-sync/calendar-sync.module';
 import { SettlementsModule } from '@/settlements/settlements.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { ReviewsModule } from '@/reviews/reviews.module';
@@ -35,9 +34,6 @@ import { PublicCacheService } from './public-cache.service';
     ReviewsModule,
     BookingsModule,
     SettlementsModule,
-    // Provides CalendarPollService to the processor. The calendar module owns
-    // the poll logic; this module only consumes its jobs.
-    CalendarSyncModule,
     BullModule.registerQueue({
       name: PLATFORM_QUEUE,
       connection: buildRedisConnection(),

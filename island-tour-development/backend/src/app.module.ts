@@ -33,7 +33,6 @@ import { SitemapModule } from '@/sitemap/sitemap.module';
 import { OctoModule } from '@/octo/octo.module';
 import { AvailabilityModule } from '@/availability/availability.module';
 import { CalendarFeedsModule } from '@/calendar-feeds/calendar-feeds.module';
-import { CalendarSyncModule } from '@/calendar-sync/calendar-sync.module';
 import { FxModule } from '@/fx/fx.module';
 import { TiersModule } from '@/tiers/tiers.module';
 import { BookingsModule } from '@/bookings/bookings.module';
@@ -87,7 +86,6 @@ import { AnalyticsModule } from '@/analytics/analytics.module';
     OctoModule,
     AvailabilityModule,
     CalendarFeedsModule,
-    CalendarSyncModule,
     FxModule,
     TiersModule,
     BookingsModule,

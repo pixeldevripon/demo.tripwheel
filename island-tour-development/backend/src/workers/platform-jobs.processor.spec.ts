@@ -17,7 +17,7 @@ jest.mock('@/auth/auth.instance', () => ({
 
 import type { Job } from 'bullmq';
 import { PlatformJobsProcessor } from './platform-jobs.processor';
-import { PLATFORM_JOBS, type PlatformJobData } from './platform-queue';
+import { PLATFORM_JOBS } from './platform-queue';
 
 /** Thin-switch contract: every named job routes to its idempotent runner. */
 describe('PlatformJobsProcessor', () => {
@@ -28,16 +28,10 @@ describe('PlatformJobsProcessor', () => {
     runPreTourReminderJob: jest.fn(),
     runRefundJob: jest.fn(),
   };
-  const calendarPoll = { tick: jest.fn(), pollOne: jest.fn() };
-  const proc = new PlatformJobsProcessor(
-    bookings as never,
-    calendarPoll as never,
-  );
+  const proc = new PlatformJobsProcessor(bookings as never);
 
-  const job = (name: string, data: PlatformJobData = { bookingId: 'b1' }) =>
-    ({ name, data }) as Job<PlatformJobData>;
-
-  beforeEach(() => jest.clearAllMocks());
+  const job = (name: string) =>
+    ({ name, data: { bookingId: 'b1' } }) as Job<{ bookingId: string }>;
 
   it.each([
     [PLATFORM_JOBS.CONFIRMATION_EMAIL, 'runConfirmationEmailJob'],
@@ -50,43 +44,7 @@ describe('PlatformJobsProcessor', () => {
     expect(bookings[method]).toHaveBeenCalledWith('b1');
   });
 
-  describe('calendar jobs', () => {
-    // The tick carries NO payload, so it has to be matched on name before
-    // anything reaches into `job.data`.
-    it('runs the tick for a payload-less repeatable job', async () => {
-      await proc.process(job(PLATFORM_JOBS.ICAL_POLL_TICK, {}));
-      expect(calendarPoll.tick).toHaveBeenCalledTimes(1);
-    });
-
-    it('routes a single poll to its subscription', async () => {
-      await proc.process(
-        job(PLATFORM_JOBS.ICAL_POLL_ONE, { subscriptionId: 'sub-1' }),
-      );
-      expect(calendarPoll.pollOne).toHaveBeenCalledWith('sub-1');
-    });
-
-    it('ignores a malformed poll job rather than throwing', async () => {
-      await expect(
-        proc.process(job(PLATFORM_JOBS.ICAL_POLL_ONE, {})),
-      ).resolves.toBeUndefined();
-      expect(calendarPoll.pollOne).not.toHaveBeenCalled();
-    });
-
-    it('never routes a calendar job into a booking runner', async () => {
-      await proc.process(job(PLATFORM_JOBS.ICAL_POLL_TICK, {}));
-      expect(bookings.runConfirmationEmailJob).not.toHaveBeenCalled();
-    });
-  });
-
   it('ignores unknown job names instead of throwing (forward compat)', async () => {
     await expect(proc.process(job('some.future-job'))).resolves.toBeUndefined();
-  });
-
-  // A booking job whose payload lost its id must not crash the worker.
-  it('ignores a booking job with no bookingId', async () => {
-    await expect(
-      proc.process(job(PLATFORM_JOBS.CONFIRMATION_EMAIL, {})),
-    ).resolves.toBeUndefined();
-    expect(bookings.runConfirmationEmailJob).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
-  AvailabilityExceptionSource,
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
   DepartureStatus,
@@ -78,16 +77,6 @@ export class ExceptionResponseDto {
       'the account no longer exists or the row predates audit capture.',
   })
   createdByName!: string | null;
-  @ApiProperty({
-    enum: AvailabilityExceptionSource,
-    example: AvailabilityExceptionSource.MANUAL,
-    description:
-      'MANUAL is operator-authored and editable. ICAL is owned by a calendar ' +
-      'subscription: undoing it by hand is pointless, because the next poll ' +
-      'writes it straight back. The UI marks these read-only and points at the ' +
-      'connection instead.',
-  })
-  source!: AvailabilityExceptionSource;
 }
 
 export class DepartureResponseDto {

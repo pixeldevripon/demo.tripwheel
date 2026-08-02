@@ -66,40 +66,6 @@ Two more rules that hold everywhere:
 The last one is the reason this system earns its keep: before it, a published tour could go dark and
 nobody found out until someone opened it.
 
-### Calendar sync (iCal import)
-
-| Action | 🔔 Who | ✉ Who | Permission | Lands on |
-|---|---|---|---|---|
-| **An imported busy block lands on a booked departure** | Operator | Operator | `MANAGE_AVAILABILITY` | the tour's schedule step |
-| **A connected calendar stops syncing** | Operator | Operator | `MANAGE_AVAILABILITY` | the tour's schedule step |
-| A connected calendar starts working again | Operator | Operator | `MANAGE_AVAILABILITY` | the tour's schedule step |
-| A sync ran and changed dates | — | — | — | (sync history only) |
-
-**Platform is not an audience for any of these.** A broken feed is the operator's channel, their
-credential and their fix; routing it to Island Tours would bury the handful of things that genuinely
-need us under other people's expired Airbnb links.
-
-Three rules govern the cadence, and all three exist to keep the emails worth opening:
-
-- **Failure is sent on the TRANSITION into a broken state, once.** A feed down overnight is polled
-  ~96 times; every one of those after the first is silent. An operator told six times about one dead
-  link stops reading the seventh.
-- **Recovery is the other half of that pair.** It is what makes the silence in between safe to
-  interpret - without it, an operator who pasted a fresh link has no way to know it took, so they go
-  back to checking the dashboard and the email stops being trusted.
-- **A routine successful sync emails nobody.** It is the normal case, it happens up to 96 times a day
-  per connection, and the bell plus `ical_sync_logs` already record it.
-
-Conflict is the one that justifies the feature: iCal is **polled, not pushed**, so a channel can sell
-a seat we only learn about hours later. The atomic seat claim cannot see it and nothing else in the
-system will say so. In `WARN_ONLY` - the default, because iCal carries no seat count and one external
-booking must not close a 60-seat boat - nothing is written to availability at all, and **this
-notification IS the product**.
-
-Both channels are addressed to the operator's `contactEmail`, falling back to the owner's login
-address. Sending is fire-and-forget and failures are logged, never thrown: the sync is already
-committed by then, and losing it because Resend is down is strictly worse than a missed email.
-
 ### Commercial
 
 | Action | 🔔 Who | ✉ Who | Permission | Lands on |

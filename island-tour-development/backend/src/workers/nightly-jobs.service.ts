@@ -3,7 +3,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AvailabilityService } from '@/availability/availability.service';
 import { BookingsService } from '@/bookings/bookings.service';
-import { CalendarSyncService } from '@/calendar-sync/calendar-sync.service';
 import { ContentTranslationService } from '@/content-translation/content-translation.service';
 import { ReviewRequestsService } from '@/reviews/review-requests.service';
 import { SettlementsService } from '@/settlements/settlements.service';
@@ -40,7 +39,6 @@ export class NightlyJobsService {
     private readonly bookings: BookingsService,
     private readonly settlements: SettlementsService,
     private readonly contentTranslation: ContentTranslationService,
-    private readonly calendarSync: CalendarSyncService,
   ) {}
 
   /**
@@ -169,18 +167,6 @@ export class NightlyJobsService {
         `Translation sweep failed: ${err instanceof Error ? err.message : 'unknown'}`,
       );
     }
-    // Calendar sync history. A 15-minute poll writes ~96 rows per connection per
-    // day and almost all say "nothing changed", so the table needs trimming to
-    // stay a surface an operator can read rather than a log to grep. Never fails
-    // the nightly run: a full history is a nuisance, a failed job is worse.
-    let syncLogs = { removed: 0 };
-    try {
-      syncLogs = await this.calendarSync.pruneSyncLogs();
-    } catch (err) {
-      this.logger.error(
-        `Calendar sync log prune failed: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-    }
     this.logger.log(
       `Nightly jobs: spotlight(activated=${spotlight.activated}, expired=${spotlight.expired}) ` +
         `demand(evaluated=${demand.evaluated}, flagged=${demand.flagged}) ` +
@@ -189,8 +175,7 @@ export class NightlyJobsService {
         `quality(evaluated=${quality.evaluated}) ` +
         `eligibility(evaluated=${eligibility.evaluated}, provisional=${eligibility.provisional}, ` +
         `graced=${eligibility.graced}, demoted=${eligibility.demoted}) ` +
-        `translation(enqueued=${translation.enqueued}) ` +
-        `syncLogs(pruned=${syncLogs.removed})`,
+        `translation(enqueued=${translation.enqueued})`,
     );
     return { spotlight, demand, materialized, bookable, quality, eligibility };
   }

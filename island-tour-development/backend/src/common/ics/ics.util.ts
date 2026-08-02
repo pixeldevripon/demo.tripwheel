@@ -16,40 +16,15 @@ export function icsStamp(date: Date): string {
 }
 
 /**
- * `20260522` - a bare calendar date for `VALUE=DATE`.
- *
- * Reads the UTC components deliberately: an all-day value carries no timezone,
- * so the caller is expected to hand over a date already anchored at UTC
- * midnight. Using local components here would shift the day by the server's
- * offset, which is the same trap that bites on the reading side.
- */
-export function icsDate(date: Date): string {
-  return date.toISOString().slice(0, 10).replace(/-/g, '');
-}
-
-/**
  * Escape per RFC 5545 §3.3.11. Order matters: backslash first, or the escapes we
  * add below would themselves be escaped.
- *
- * Line breaks are the security-relevant part. A value reaching here can contain
- * traveller-supplied text (the BOOKINGS feed puts a lead traveller's name in
- * DESCRIPTION), and an unescaped break would end the property and let the rest
- * of the value be read as new iCal lines - an injected property in someone's
- * calendar. `\r?\n` missed a LONE carriage return, which plenty of parsers
- * still treat as a line terminator, so all three forms are matched. Remaining
- * C0 control characters are stripped: RFC 5545 forbids them in TEXT and there
- * is no legitimate value that needs one.
  */
 export function escapeText(value: string): string {
-  return (
-    value
-      .replace(/\\/g, '\\\\')
-      .replace(/;/g, '\\;')
-      .replace(/,/g, '\\,')
-      .replace(/\r\n|\r|\n/g, '\\n')
-      // eslint-disable-next-line no-control-regex -- stripping control chars is the point
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
-  );
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
 }
 
 /**
@@ -91,15 +66,6 @@ export interface IcsEvent {
   /** REAL UTC instants (see `localWallClockToUtc`), never local wall-clock. */
   startUtc: Date;
   endUtc: Date;
-  /**
-   * Emit `VALUE=DATE` rather than a timestamp.
-   *
-   * What every OTA means by "blocked": a calendar DAY, with no instant and no
-   * timezone attached. `DTEND` stays EXCLUSIVE, so a single blocked day is
-   * `DTSTART:20260814` / `DTEND:20260815`. Sending a channel a timestamped
-   * event instead invites it to shift the date by its own timezone.
-   */
-  allDay?: boolean;
   summary: string;
   description?: string | null;
   location?: string | null;
@@ -170,12 +136,8 @@ export function buildCalendar(
       'BEGIN:VEVENT',
       `UID:${event.uid}`,
       `DTSTAMP:${stamp}`,
-      event.allDay
-        ? `DTSTART;VALUE=DATE:${icsDate(event.startUtc)}`
-        : `DTSTART:${icsStamp(event.startUtc)}`,
-      event.allDay
-        ? `DTEND;VALUE=DATE:${icsDate(event.endUtc)}`
-        : `DTEND:${icsStamp(event.endUtc)}`,
+      `DTSTART:${icsStamp(event.startUtc)}`,
+      `DTEND:${icsStamp(event.endUtc)}`,
       `SUMMARY:${escapeText(event.summary)}`,
       event.location ? `LOCATION:${escapeText(event.location)}` : null,
       event.description ? `DESCRIPTION:${escapeText(event.description)}` : null,

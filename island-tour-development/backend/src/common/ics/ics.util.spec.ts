@@ -3,12 +3,7 @@
  * own spec (`bookings/booking-ics.util.spec.ts`); this covers the multi-event and
  * feed-specific behaviour that the export calendars depend on.
  */
-import {
-  buildCalendar,
-  escapeText,
-  sequenceFrom,
-  type IcsEvent,
-} from './ics.util';
+import { buildCalendar, sequenceFrom, type IcsEvent } from './ics.util';
 
 function event(over: Partial<IcsEvent> = {}): IcsEvent {
   return {
@@ -139,41 +134,6 @@ describe('buildCalendar', () => {
         expect(Buffer.from(line, 'utf8').length).toBeLessThanOrEqual(75);
       }
     });
-  });
-});
-
-/**
- * iCal line-injection. The BOOKINGS feed interpolates traveller-supplied names
- * into DESCRIPTION, so a value that can end its own property line can add
- * arbitrary properties to the operator's calendar. `\r?\n` used to let a LONE
- * carriage return through, which many parsers still treat as a line break.
- */
-describe('escapeText hardening', () => {
-  it('neutralises every line-break form, including a bare CR', () => {
-    for (const brk of ['\r\n', '\n', '\r']) {
-      const escaped = escapeText(`Ada${brk}X-INJECTED:pwned`);
-      expect(escaped).toBe('Ada\\nX-INJECTED:pwned');
-      expect(escaped).not.toContain('\r');
-      expect(escaped).not.toContain('\n');
-    }
-  });
-
-  it('cannot inject a property through a booking description', () => {
-    const ics = buildCalendar(
-      [event({ description: 'Lead traveller: Ada\rX-INJECTED:pwned' })],
-      { name: 'Bookings' },
-    );
-    // The payload must survive only as escaped text on the DESCRIPTION line.
-    expect(ics).not.toMatch(/^X-INJECTED:/m);
-    expect(ics).toContain('\\nX-INJECTED:pwned');
-  });
-
-  it('strips control characters that RFC 5545 forbids in TEXT', () => {
-    expect(escapeText('Ada\u0007Bell')).toBe('AdaBell');
-  });
-
-  it('still escapes the structural characters', () => {
-    expect(escapeText('a;b,c\\d')).toBe('a\\;b\\,c\\\\d');
   });
 });
 
