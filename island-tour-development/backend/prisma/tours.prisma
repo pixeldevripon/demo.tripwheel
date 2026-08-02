@@ -145,6 +145,7 @@ model Tour {
   departures            Departure[]
   calendarSubscriptions CalendarSubscription[]
   calendarFeeds         CalendarFeed[]
+  resources             TourResource[]
   bookings              Booking[]
   reviews               Review[]
   wishlists             Wishlist[]
