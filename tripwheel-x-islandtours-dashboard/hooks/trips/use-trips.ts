@@ -1,5 +1,6 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { tripsApi } from '@/lib/api/trips';
+import { useTripMutation } from '@/hooks/trips/use-trip-mutation';
 import { tripKeys } from '@/lib/trips/query-keys';
 
 export { tripKeys } from '@/lib/trips/query-keys';
@@ -205,763 +206,435 @@ export function useManageCalendar(tripId: string, month: string) {
 }
 
 // Mutations - Core
-export function useCreateTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: CreateTripPayload) => tripsApi.create(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.myTrips({}) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.adminTrips({}) });
-    },
-  });
-}
+export const useCreateTrip = () =>
+  useTripMutation(
+    (payload: CreateTripPayload) => tripsApi.create(payload),
+    () => [tripKeys.myTrips({}), tripKeys.adminTrips({})],
+  );
 
-export function useUpdateTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateTripPayload }) =>
+export const useUpdateTrip = () =>
+  useTripMutation(
+    ({ id, payload }: { id: string; payload: UpdateTripPayload }) =>
       tripsApi.update(id, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.id) });
-    },
-  });
-}
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useSubmitTripForReview() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.submitForReview(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useSubmitTripForReview = () =>
+  useTripMutation(
+    (id: string) => tripsApi.submitForReview(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useApproveTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, note }: { id: string; note?: string }) =>
-      tripsApi.approve(id, note),
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useApproveTrip = () =>
+  useTripMutation(
+    ({ id, note }: { id: string; note?: string }) => tripsApi.approve(id, note),
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useRejectTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) =>
-      tripsApi.reject(id, note),
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useRejectTrip = () =>
+  useTripMutation(
+    ({ id, note }: { id: string; note: string }) => tripsApi.reject(id, note),
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function usePublishTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.publish(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const usePublishTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.publish(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function usePauseTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.pause(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const usePauseTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.pause(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useUnpauseTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.unpause(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useUnpauseTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.unpause(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useArchiveTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.archive(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useArchiveTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.archive(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useRestoreTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.restore(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
-    },
-  });
-}
+export const useRestoreTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.restore(id),
+    (id) => [tripKeys.all, tripKeys.detail(id)],
+  );
 
-export function useRemoveTrip() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => tripsApi.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-    },
-  });
-}
+export const useRemoveTrip = () =>
+  useTripMutation(
+    (id: string) => tripsApi.remove(id),
+    () => [tripKeys.all],
+  );
 
 // Mutations - Images
-export function useAddImage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: AddTourImagePayload }) =>
+export const useAddImage = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: AddTourImagePayload }) =>
       tripsApi.addImage(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.images(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpdateImage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, imageId, payload }: { tripId: string; imageId: string; payload: UpdateTourImagePayload }) =>
+export const useUpdateImage = () =>
+  useTripMutation(
+    ({ tripId, imageId, payload }: { tripId: string; imageId: string; payload: UpdateTourImagePayload }) =>
       tripsApi.updateImage(tripId, imageId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.images(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useRemoveImage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, imageId }: { tripId: string; imageId: string }) =>
+export const useRemoveImage = () =>
+  useTripMutation(
+    ({ tripId, imageId }: { tripId: string; imageId: string }) =>
       tripsApi.removeImage(tripId, imageId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.images(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.images(tripId), tripKeys.detail(tripId)],
+  );
 
 // Mutations - Add-Ons
-export function useCreateAddOn() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourAddOnPayload }) =>
+export const useCreateAddOn = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourAddOnPayload }) =>
       tripsApi.createAddOn(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.addOns(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.addOns(tripId)],
+  );
 
-export function useUpdateAddOn() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, addOnId, payload }: { tripId: string; addOnId: string; payload: UpdateTourAddOnPayload }) =>
+export const useUpdateAddOn = () =>
+  useTripMutation(
+    ({ tripId, addOnId, payload }: { tripId: string; addOnId: string; payload: UpdateTourAddOnPayload }) =>
       tripsApi.updateAddOn(tripId, addOnId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.addOns(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.addOns(tripId)],
+  );
 
-export function useRemoveAddOn() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, addOnId }: { tripId: string; addOnId: string }) =>
+export const useRemoveAddOn = () =>
+  useTripMutation(
+    ({ tripId, addOnId }: { tripId: string; addOnId: string }) =>
       tripsApi.removeAddOn(tripId, addOnId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.addOns(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.addOns(tripId)],
+  );
 
 // Age band mutations also refresh the tour detail because priceFrom recomputes
 // from the cheapest band on every change.
-export function useCreateAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourAgeBandPayload }) =>
+export const useCreateAgeBand = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourAgeBandPayload }) =>
       tripsApi.createAgeBand(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.ageBands(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpdateAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, ageBandId, payload }: { tripId: string; ageBandId: string; payload: UpdateTourAgeBandPayload }) =>
+export const useUpdateAgeBand = () =>
+  useTripMutation(
+    ({ tripId, ageBandId, payload }: { tripId: string; ageBandId: string; payload: UpdateTourAgeBandPayload }) =>
       tripsApi.updateAgeBand(tripId, ageBandId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.ageBands(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useRemoveAgeBand() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, ageBandId }: { tripId: string; ageBandId: string }) =>
+export const useRemoveAgeBand = () =>
+  useTripMutation(
+    ({ tripId, ageBandId }: { tripId: string; ageBandId: string }) =>
       tripsApi.removeAgeBand(tripId, ageBandId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.ageBands(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.ageBands(tripId), tripKeys.detail(tripId)],
+  );
 
 // Mutations - Languages
-export function useAddLanguage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: AddTourLanguagePayload }) =>
+export const useAddLanguage = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: AddTourLanguagePayload }) =>
       tripsApi.addLanguage(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.languages(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.languages(tripId)],
+  );
 
-export function useRemoveLanguage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, languageId }: { tripId: string; languageId: string }) =>
+export const useRemoveLanguage = () =>
+  useTripMutation(
+    ({ tripId, languageId }: { tripId: string; languageId: string }) =>
       tripsApi.removeLanguage(tripId, languageId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.languages(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.languages(tripId)],
+  );
 
 // Mutations - Highlights
-export function useAddHighlight() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourHighlightPayload }) =>
+export const useAddHighlight = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourHighlightPayload }) =>
       tripsApi.addHighlight(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpdateHighlight() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, highlightId, payload }: { tripId: string; highlightId: string; payload: UpdateTourHighlightPayload }) =>
+export const useUpdateHighlight = () =>
+  useTripMutation(
+    ({ tripId, highlightId, payload }: { tripId: string; highlightId: string; payload: UpdateTourHighlightPayload }) =>
       tripsApi.updateHighlight(tripId, highlightId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.highlights(tripId)],
+  );
 
-export function useRemoveHighlight() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, highlightId }: { tripId: string; highlightId: string }) =>
+export const useRemoveHighlight = () =>
+  useTripMutation(
+    ({ tripId, highlightId }: { tripId: string; highlightId: string }) =>
       tripsApi.removeHighlight(tripId, highlightId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.highlights(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpsertHighlightTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      highlightId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      highlightId: string;
-      locale: string;
-      payload: UpsertHighlightTranslationPayload;
-    }) => tripsApi.upsertHighlightTranslation(tripId, highlightId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
-    },
-  });
-}
+export const useUpsertHighlightTranslation = () =>
+  useTripMutation(
+    ({ tripId, highlightId, locale, payload }: { tripId: string; highlightId: string; locale: string; payload: UpsertHighlightTranslationPayload }) =>
+      tripsApi.upsertHighlightTranslation(tripId, highlightId, locale, payload),
+    ({ tripId }) => [tripKeys.highlights(tripId)],
+  );
 
-export function useDeleteHighlightTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, highlightId, locale }: { tripId: string; highlightId: string; locale: string }) =>
+export const useDeleteHighlightTranslation = () =>
+  useTripMutation(
+    ({ tripId, highlightId, locale }: { tripId: string; highlightId: string; locale: string }) =>
       tripsApi.deleteHighlightTranslation(tripId, highlightId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.highlights(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.highlights(tripId)],
+  );
 
 // Mutations - Inclusions
-export function useAddInclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourInclusionPayload }) =>
+export const useAddInclusion = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourInclusionPayload }) =>
       tripsApi.addInclusion(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpdateInclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, inclusionId, payload }: { tripId: string; inclusionId: string; payload: UpdateTourInclusionPayload }) =>
+export const useUpdateInclusion = () =>
+  useTripMutation(
+    ({ tripId, inclusionId, payload }: { tripId: string; inclusionId: string; payload: UpdateTourInclusionPayload }) =>
       tripsApi.updateInclusion(tripId, inclusionId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.inclusions(tripId)],
+  );
 
-export function useRemoveInclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, inclusionId }: { tripId: string; inclusionId: string }) =>
+export const useRemoveInclusion = () =>
+  useTripMutation(
+    ({ tripId, inclusionId }: { tripId: string; inclusionId: string }) =>
       tripsApi.removeInclusion(tripId, inclusionId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.inclusions(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpsertInclusionTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      inclusionId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      inclusionId: string;
-      locale: string;
-      payload: UpsertInclusionTranslationPayload;
-    }) => tripsApi.upsertInclusionTranslation(tripId, inclusionId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
-    },
-  });
-}
+export const useUpsertInclusionTranslation = () =>
+  useTripMutation(
+    ({ tripId, inclusionId, locale, payload }: { tripId: string; inclusionId: string; locale: string; payload: UpsertInclusionTranslationPayload }) =>
+      tripsApi.upsertInclusionTranslation(tripId, inclusionId, locale, payload),
+    ({ tripId }) => [tripKeys.inclusions(tripId)],
+  );
 
-export function useDeleteInclusionTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, inclusionId, locale }: { tripId: string; inclusionId: string; locale: string }) =>
+export const useDeleteInclusionTranslation = () =>
+  useTripMutation(
+    ({ tripId, inclusionId, locale }: { tripId: string; inclusionId: string; locale: string }) =>
       tripsApi.deleteInclusionTranslation(tripId, inclusionId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.inclusions(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.inclusions(tripId)],
+  );
 
 // Mutations - Exclusions
-export function useAddExclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourExclusionPayload }) =>
+export const useAddExclusion = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourExclusionPayload }) =>
       tripsApi.addExclusion(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpdateExclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, exclusionId, payload }: { tripId: string; exclusionId: string; payload: UpdateTourExclusionPayload }) =>
+export const useUpdateExclusion = () =>
+  useTripMutation(
+    ({ tripId, exclusionId, payload }: { tripId: string; exclusionId: string; payload: UpdateTourExclusionPayload }) =>
       tripsApi.updateExclusion(tripId, exclusionId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.exclusions(tripId)],
+  );
 
-export function useRemoveExclusion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, exclusionId }: { tripId: string; exclusionId: string }) =>
+export const useRemoveExclusion = () =>
+  useTripMutation(
+    ({ tripId, exclusionId }: { tripId: string; exclusionId: string }) =>
       tripsApi.removeExclusion(tripId, exclusionId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.exclusions(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useUpsertExclusionTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      exclusionId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      exclusionId: string;
-      locale: string;
-      payload: UpsertExclusionTranslationPayload;
-    }) => tripsApi.upsertExclusionTranslation(tripId, exclusionId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
-    },
-  });
-}
+export const useUpsertExclusionTranslation = () =>
+  useTripMutation(
+    ({ tripId, exclusionId, locale, payload }: { tripId: string; exclusionId: string; locale: string; payload: UpsertExclusionTranslationPayload }) =>
+      tripsApi.upsertExclusionTranslation(tripId, exclusionId, locale, payload),
+    ({ tripId }) => [tripKeys.exclusions(tripId)],
+  );
 
-export function useDeleteExclusionTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, exclusionId, locale }: { tripId: string; exclusionId: string; locale: string }) =>
+export const useDeleteExclusionTranslation = () =>
+  useTripMutation(
+    ({ tripId, exclusionId, locale }: { tripId: string; exclusionId: string; locale: string }) =>
       tripsApi.deleteExclusionTranslation(tripId, exclusionId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exclusions(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.exclusions(tripId)],
+  );
 
 // Mutations - Features
-export function useAddFeature() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourFeaturePayload }) =>
+export const useAddFeature = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourFeaturePayload }) =>
       tripsApi.addFeature(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.features(tripId)],
+  );
 
-export function useUpdateFeature() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, featureId, payload }: { tripId: string; featureId: string; payload: UpdateTourFeaturePayload }) =>
+export const useUpdateFeature = () =>
+  useTripMutation(
+    ({ tripId, featureId, payload }: { tripId: string; featureId: string; payload: UpdateTourFeaturePayload }) =>
       tripsApi.updateFeature(tripId, featureId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.features(tripId)],
+  );
 
-export function useRemoveFeature() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, featureId }: { tripId: string; featureId: string }) =>
+export const useRemoveFeature = () =>
+  useTripMutation(
+    ({ tripId, featureId }: { tripId: string; featureId: string }) =>
       tripsApi.removeFeature(tripId, featureId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.features(tripId)],
+  );
 
-export function useUpsertFeatureTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      featureId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      featureId: string;
-      locale: string;
-      payload: UpsertFeatureTranslationPayload;
-    }) => tripsApi.upsertFeatureTranslation(tripId, featureId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
-    },
-  });
-}
+export const useUpsertFeatureTranslation = () =>
+  useTripMutation(
+    ({ tripId, featureId, locale, payload }: { tripId: string; featureId: string; locale: string; payload: UpsertFeatureTranslationPayload }) =>
+      tripsApi.upsertFeatureTranslation(tripId, featureId, locale, payload),
+    ({ tripId }) => [tripKeys.features(tripId)],
+  );
 
-export function useDeleteFeatureTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, featureId, locale }: { tripId: string; featureId: string; locale: string }) =>
+export const useDeleteFeatureTranslation = () =>
+  useTripMutation(
+    ({ tripId, featureId, locale }: { tripId: string; featureId: string; locale: string }) =>
       tripsApi.deleteFeatureTranslation(tripId, featureId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.features(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.features(tripId)],
+  );
 
 // Mutations - Locations
-export function useAddLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourLocationPayload }) =>
+export const useAddLocation = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourLocationPayload }) =>
       tripsApi.addLocation(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.locations(tripId)],
+  );
 
-export function useUpdateLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, locationId, payload }: { tripId: string; locationId: string; payload: UpdateTourLocationPayload }) =>
+export const useUpdateLocation = () =>
+  useTripMutation(
+    ({ tripId, locationId, payload }: { tripId: string; locationId: string; payload: UpdateTourLocationPayload }) =>
       tripsApi.updateLocation(tripId, locationId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.locations(tripId)],
+  );
 
-export function useRemoveLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, locationId }: { tripId: string; locationId: string }) =>
+export const useRemoveLocation = () =>
+  useTripMutation(
+    ({ tripId, locationId }: { tripId: string; locationId: string }) =>
       tripsApi.removeLocation(tripId, locationId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.locations(tripId)],
+  );
 
-export function useUpsertLocationTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      locationId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      locationId: string;
-      locale: string;
-      payload: UpsertLocationTranslationPayload;
-    }) => tripsApi.upsertLocationTranslation(tripId, locationId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
-    },
-  });
-}
+export const useUpsertLocationTranslation = () =>
+  useTripMutation(
+    ({ tripId, locationId, locale, payload }: { tripId: string; locationId: string; locale: string; payload: UpsertLocationTranslationPayload }) =>
+      tripsApi.upsertLocationTranslation(tripId, locationId, locale, payload),
+    ({ tripId }) => [tripKeys.locations(tripId)],
+  );
 
-export function useDeleteLocationTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, locationId, locale }: { tripId: string; locationId: string; locale: string }) =>
+export const useDeleteLocationTranslation = () =>
+  useTripMutation(
+    ({ tripId, locationId, locale }: { tripId: string; locationId: string; locale: string }) =>
       tripsApi.deleteLocationTranslation(tripId, locationId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.locations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.locations(tripId)],
+  );
 
 // Mutations - Pickup Locations
-export function useAddPickupLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreatePickupLocationPayload }) =>
+export const useAddPickupLocation = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreatePickupLocationPayload }) =>
       tripsApi.addPickupLocation(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.pickupLocations(tripId)],
+  );
 
-export function useUpdatePickupLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, pickupLocationId, payload }: { tripId: string; pickupLocationId: string; payload: UpdatePickupLocationPayload }) =>
+export const useUpdatePickupLocation = () =>
+  useTripMutation(
+    ({ tripId, pickupLocationId, payload }: { tripId: string; pickupLocationId: string; payload: UpdatePickupLocationPayload }) =>
       tripsApi.updatePickupLocation(tripId, pickupLocationId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.pickupLocations(tripId)],
+  );
 
-export function useRemovePickupLocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, pickupLocationId }: { tripId: string; pickupLocationId: string }) =>
+export const useRemovePickupLocation = () =>
+  useTripMutation(
+    ({ tripId, pickupLocationId }: { tripId: string; pickupLocationId: string }) =>
       tripsApi.removePickupLocation(tripId, pickupLocationId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.pickupLocations(tripId)],
+  );
 
-export function useUpsertPickupLocationTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      pickupLocationId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      pickupLocationId: string;
-      locale: string;
-      payload: UpsertPickupLocationTranslationPayload;
-    }) => tripsApi.upsertPickupLocationTranslation(tripId, pickupLocationId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
-    },
-  });
-}
+export const useUpsertPickupLocationTranslation = () =>
+  useTripMutation(
+    ({ tripId, pickupLocationId, locale, payload }: { tripId: string; pickupLocationId: string; locale: string; payload: UpsertPickupLocationTranslationPayload }) =>
+      tripsApi.upsertPickupLocationTranslation(tripId, pickupLocationId, locale, payload),
+    ({ tripId }) => [tripKeys.pickupLocations(tripId)],
+  );
 
-export function useDeletePickupLocationTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, pickupLocationId, locale }: { tripId: string; pickupLocationId: string; locale: string }) =>
+export const useDeletePickupLocationTranslation = () =>
+  useTripMutation(
+    ({ tripId, pickupLocationId, locale }: { tripId: string; pickupLocationId: string; locale: string }) =>
       tripsApi.deletePickupLocationTranslation(tripId, pickupLocationId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.pickupLocations(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.pickupLocations(tripId)],
+  );
 
 // Mutations - Translations
-export function useUpsertTripTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      tripId,
-      locale,
-      payload,
-    }: {
-      tripId: string;
-      locale: string;
-      payload: UpsertTripTranslationPayload;
-    }) => tripsApi.upsertTranslation(tripId, locale, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.translations(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+export const useUpsertTripTranslation = () =>
+  useTripMutation(
+    ({ tripId, locale, payload }: { tripId: string; locale: string; payload: UpsertTripTranslationPayload }) =>
+      tripsApi.upsertTranslation(tripId, locale, payload),
+    ({ tripId }) => [tripKeys.translations(tripId), tripKeys.detail(tripId)],
+  );
 
-export function useDeleteTripTranslation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, locale }: { tripId: string; locale: string }) =>
+export const useDeleteTripTranslation = () =>
+  useTripMutation(
+    ({ tripId, locale }: { tripId: string; locale: string }) =>
       tripsApi.deleteTranslation(tripId, locale),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.translations(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => [tripKeys.translations(tripId), tripKeys.detail(tripId)],
+  );
 
-// Mutations - Schedules
-export function useCreateSchedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourSchedulePayload }) =>
+// Mutations - Schedules. Schedule changes re-materialise departures and can flip
+// isBookable (the "not yet listed" banner), so they also refresh the trip detail.
+const scheduleKeys = (tripId: string) => [
+  tripKeys.schedules(tripId),
+  tripKeys.manageCalendarAll(tripId),
+  tripKeys.availabilitySummary(tripId),
+  tripKeys.agendaAll(),
+  tripKeys.overviewAll(),
+  tripKeys.detail(tripId),
+];
+
+export const useCreateSchedule = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourSchedulePayload }) =>
       tripsApi.createSchedule(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-      // Schedule changes re-materialise departures and can flip isBookable, which
-      // drives the "not yet listed" banner - refresh the trip detail too.
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => scheduleKeys(tripId),
+  );
 
-export function useUpdateSchedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      scheduleId,
-      payload,
-    }: {
-      tripId: string;
-      scheduleId: string;
-      payload: UpdateTourSchedulePayload;
-    }) => tripsApi.updateSchedule(scheduleId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+export const useUpdateSchedule = () =>
+  useTripMutation(
+    ({ scheduleId, payload }: { tripId: string; scheduleId: string; payload: UpdateTourSchedulePayload }) =>
+      tripsApi.updateSchedule(scheduleId, payload),
+    ({ tripId }) => scheduleKeys(tripId),
+  );
 
-export function useRemoveSchedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ scheduleId }: { tripId: string; scheduleId: string }) =>
+export const useRemoveSchedule = () =>
+  useTripMutation(
+    ({ scheduleId }: { tripId: string; scheduleId: string }) =>
       tripsApi.removeSchedule(scheduleId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.schedules(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-    },
-  });
-}
+    ({ tripId }) => scheduleKeys(tripId),
+  );
 
 // Mutations - Exceptions (date-specific overrides). Like schedules, these
 // re-materialise departures and can flip isBookable, so refresh the detail too.
-export function useCreateException() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: CreateTourExceptionPayload }) =>
+const exceptionKeys = (tripId: string) => [
+  tripKeys.exceptions(tripId),
+  tripKeys.detail(tripId),
+  tripKeys.manageCalendarAll(tripId),
+  tripKeys.availabilitySummary(tripId),
+  tripKeys.agendaAll(),
+  tripKeys.overviewAll(),
+];
+
+export const useCreateException = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: CreateTourExceptionPayload }) =>
       tripsApi.createException(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-    },
-  });
-}
+    ({ tripId }) => exceptionKeys(tripId),
+  );
 
 // Global calendar overview: one grid across every scoped tour (admin
 // platform-wide). Window + filters live in the key; the previous window stays
@@ -980,26 +653,18 @@ export function useAvailabilityOverview(params: AvailabilityOverviewParams) {
 
 // Per-departure edit (capacity / manual status) from the calendar. The backend
 // clamps capacity at bookedCount and 409s on a concurrent booking race.
-export function useUpdateDeparture() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      departureId,
-      payload,
-    }: {
-      tripId: string;
-      departureId: string;
-      payload: { capacity?: number; status?: DepartureStatus };
-    }) => tripsApi.updateDeparture(departureId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-    },
-  });
-}
+export const useUpdateDeparture = () =>
+  useTripMutation(
+    ({ departureId, payload }: { tripId: string; departureId: string; payload: { capacity?: number; status?: DepartureStatus } }) =>
+      tripsApi.updateDeparture(departureId, payload),
+    ({ tripId }) => [
+      tripKeys.detail(tripId),
+      tripKeys.manageCalendarAll(tripId),
+      tripKeys.availabilitySummary(tripId),
+      tripKeys.agendaAll(),
+      tripKeys.overviewAll(),
+    ],
+  );
 
 // Surface B: the cross-tour daily agenda.
 export function useAgenda(from: string | undefined, days: number) {
@@ -1013,72 +678,38 @@ export function useAgenda(from: string | undefined, days: number) {
 
 // "Close all of today" (the weather-day action) - the returned tourIds are the
 // exact Undo set (reopenRange over the same date, per tour).
-export function useCloseAgendaDay() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: { date: string; tourId?: string; note?: string }) =>
+export const useCloseAgendaDay = () =>
+  useTripMutation(
+    (payload: { date: string; tourId?: string; note?: string }) =>
       tripsApi.closeAgendaDay(payload),
-    onSuccess: () => {
-      // Cross-tour blast radius: agenda + every per-tour surface.
-      queryClient.invalidateQueries({ queryKey: tripKeys.all });
-    },
-  });
-}
+    // Cross-tour blast radius: agenda + every per-tour surface.
+    () => [tripKeys.all],
+  );
 
 // Freshness confirm (F14): stamps availability_confirmed_at. Fire-and-forget
-// callers (stamp-on-visit) simply ignore the result.
-export function useConfirmAvailability() {
-  return useMutation({
-    mutationFn: (tripId?: string) => tripsApi.confirmAvailability(tripId),
-  });
-}
+// callers (stamp-on-visit) simply ignore the result. No invalidation, as before.
+export const useConfirmAvailability = () =>
+  useTripMutation((tripId?: string) => tripsApi.confirmAvailability(tripId));
 
 // Bulk blackout + its one-unit Undo (F8). Same cache blast radius as any
 // exception write: register, detail (isBookable), month grid, status line.
-export function useCloseRange() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: { from: string; to: string; note?: string } }) =>
+export const useCloseRange = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: { from: string; to: string; note?: string } }) =>
       tripsApi.closeRange(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-    },
-  });
-}
+    ({ tripId }) => exceptionKeys(tripId),
+  );
 
-export function useReopenRange() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tripId, payload }: { tripId: string; payload: { from: string; to: string } }) =>
+export const useReopenRange = () =>
+  useTripMutation(
+    ({ tripId, payload }: { tripId: string; payload: { from: string; to: string } }) =>
       tripsApi.reopenRange(tripId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-    },
-  });
-}
+    ({ tripId }) => exceptionKeys(tripId),
+  );
 
-export function useRemoveException() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ exceptionId }: { tripId: string; exceptionId: string }) =>
+export const useRemoveException = () =>
+  useTripMutation(
+    ({ exceptionId }: { tripId: string; exceptionId: string }) =>
       tripsApi.removeException(exceptionId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: tripKeys.exceptions(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.manageCalendarAll(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.availabilitySummary(variables.tripId) });
-      queryClient.invalidateQueries({ queryKey: tripKeys.agendaAll() });
-      queryClient.invalidateQueries({ queryKey: tripKeys.overviewAll() });
-    },
-  });
-}
+    ({ tripId }) => exceptionKeys(tripId),
+  );

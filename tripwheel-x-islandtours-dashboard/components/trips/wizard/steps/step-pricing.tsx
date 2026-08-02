@@ -15,7 +15,8 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -167,9 +168,7 @@ export function StepPricing({ trip }: StepPricingProps) {
         defaultValues: toDefaults(trip),
     });
 
-    useEffect(() => {
-        reset(toDefaults(trip));
-    }, [trip, reset]);
+    useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
 
     const v = watch();
     const isUnit = v.pricingModel === 'UNIT';

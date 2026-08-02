@@ -31,7 +31,8 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -44,7 +45,7 @@ import { useRole } from '@/contexts/role-context';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import { useUpdateTrip } from '@/hooks/trips/use-trips';
 import { tripToUpdatePayload } from '@/lib/trips/update-payload';
-import { TIER_META } from '@/types/tier';
+import { tierMeta } from '@/types/tier';
 import type { TripListItem } from '@/types/trip';
 import { TripAttributesTab } from '../../trip-attributes-tab';
 import {
@@ -95,9 +96,12 @@ export function StepReach({ trip }: StepReachProps) {
         defaultValues: { hubIds: trip.hubIds, ogImage: trip.ogImage ?? '' },
     });
 
-    useEffect(() => {
-        reset({ hubIds: trip.hubIds, ogImage: trip.ogImage ?? '' });
-    }, [trip, reset]);
+    useSyncFormWhenPristine(
+        reset,
+        isDirty,
+        () => ({ hubIds: trip.hubIds, ogImage: trip.ogImage ?? '' }),
+        trip,
+    );
 
     const hubIds = watch('hubIds');
 
@@ -142,7 +146,7 @@ export function StepReach({ trip }: StepReachProps) {
 
     useStepCommit('reach', { submit, isPending, isDirty });
 
-    const tier = TIER_META[trip.tierKey];
+    const tier = tierMeta(trip.tierKey);
 
     return (
         <>

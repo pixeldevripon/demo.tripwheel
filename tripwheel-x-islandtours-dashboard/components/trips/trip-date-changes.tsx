@@ -124,7 +124,20 @@ export function TripDateChanges({ tripId, timeZone }: TripDateChangesProps) {
                             {x.createdByName
                                 ? `By ${x.createdByName}`
                                 : 'By your team'}{' '}
-                            · {format(new Date(x.createdAt), 'MMM d, HH:mm')}
+                            ·{' '}
+                            {/* Render the audit time in the ISLAND zone, same as
+                                the todayKey/Reopen gate above — the old date-fns
+                                format used the viewer's zone, so on a dispute
+                                surface the two clocks could disagree near midnight
+                                (code-review M12). */}
+                            {new Intl.DateTimeFormat('en-US', {
+                                timeZone,
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false,
+                            }).format(new Date(x.createdAt))}
                         </p>
                     </div>
                     {x.date >= todayKey && (
@@ -132,7 +145,9 @@ export function TripDateChanges({ tripId, timeZone }: TripDateChangesProps) {
                             size='sm'
                             variant='outline'
                             className='h-7 shrink-0 px-2 text-xs'
-                            disabled={isPending}
+                            // Scope the disabled state to THIS row's in-flight
+                            // undo, not the shared mutation flag (code-review L4).
+                            disabled={isPending && removingId === x.id}
                             onClick={() => undo(x)}>
                             {isPending && removingId === x.id && (
                                 <HugeiconsIcon

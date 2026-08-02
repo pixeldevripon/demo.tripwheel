@@ -34,21 +34,13 @@ import {
   useApproveTrip,
   useRejectTrip,
 } from '@/hooks/trips/use-trips';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { tourUrl } from '@/lib/public-site';
 import type { TripListItem, TripStatus } from '@/types/trip';
 import { TripDeleteDialog } from './trip-delete-dialog';
 import { TripArchiveDialog } from './trip-archive-dialog';
+import { RejectChangesDialog } from './lifecycle/reject-changes-dialog';
 
 interface TripRowActionsProps {
   trip: TripListItem;
@@ -63,7 +55,6 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
   const { can, role } = useRole();
 
   const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectNote, setRejectNote] = useState('');
 
   const { mutate: publishTrip, isPending: isPublishing } = usePublishTrip();
   const { mutate: pauseTrip, isPending: isPausing } = usePauseTrip();
@@ -364,55 +355,27 @@ export function TripRowActions({ trip }: TripRowActionsProps) {
       </DropdownMenu>
 
       {/* Reject with a REQUIRED actionable note (the operator sees it). */}
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Request changes on "{trip.name}"?</DialogTitle>
-            <DialogDescription>
-              The note below is shown to the operator - tell them exactly what
-              to fix so they can resubmit.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={rejectNote}
-            onChange={(e) => setRejectNote(e.target.value)}
-            maxLength={1000}
-            rows={4}
-            placeholder="e.g. The hero photo is blurry and the overview needs at least two paragraphs."
-          />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={isRejecting}
-              onClick={() => setRejectOpen(false)}
-            >
-              Back
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={isRejecting || rejectNote.trim().length < 5}
-              onClick={() =>
-                rejectTrip(
-                  { id: trip.id, note: rejectNote.trim() },
-                  {
-                    onSuccess: () => {
-                      setRejectOpen(false);
-                      setRejectNote('');
-                      toast.success('Changes requested - the operator was notified in their dashboard.');
-                    },
-                    onError: (err) =>
-                      toast.error(
-                        err instanceof Error ? err.message : 'Failed to reject.',
-                      ),
-                  },
-                )
-              }
-            >
-              Request changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RejectChangesDialog
+        tripName={trip.name}
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        isPending={isRejecting}
+        onConfirm={(note) =>
+          rejectTrip(
+            { id: trip.id, note },
+            {
+              onSuccess: () => {
+                setRejectOpen(false);
+                toast.success('Changes requested - the operator was notified in their dashboard.');
+              },
+              onError: (err) =>
+                toast.error(
+                  err instanceof Error ? err.message : 'Failed to reject.',
+                ),
+            },
+          )
+        }
+      />
 
       <TripDeleteDialog
         trip={trip}

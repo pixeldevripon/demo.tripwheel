@@ -6,13 +6,30 @@ export type { TierKey, EligibilityState } from '@/types/trip';
 // ── Tier metadata (mirrors backend TIER_MAP in tiers.service.ts) ─────────────────
 export const TIER_KEY_VALUES: TierKey[] = ['premium', 'featured', 'boosted', 'organic', 'standard'];
 
-export const TIER_META: Record<TierKey, { label: string; commission: number; rank: number }> = {
+export interface TierMeta {
+  label: string;
+  commission: number;
+  rank: number;
+}
+
+export const TIER_META: Record<TierKey, TierMeta> = {
   premium: { label: 'Premium', commission: 30.0, rank: 1 },
   featured: { label: 'Featured', commission: 27.5, rank: 2 },
   boosted: { label: 'Boosted', commission: 25.0, rank: 3 },
   organic: { label: 'Organic', commission: 22.5, rank: 4 },
   standard: { label: 'Standard', commission: 20.0, rank: 5 },
 };
+
+/**
+ * Safe TIER_META lookup. `trip.tierKey` is typed `TierKey`, but the value is
+ * backend-supplied: a tier the backend adds (or a stale enum here) would make a
+ * raw `TIER_META[key]` return `undefined` and crash the whole step on `.label`.
+ * Falls back to `standard` (the default tier) so the UI degrades instead of
+ * blowing up. See code-review M7.
+ */
+export function tierMeta(key: TierKey): TierMeta {
+  return TIER_META[key] ?? TIER_META.standard;
+}
 
 export const SPOTLIGHT_COMMISSION_PCT = 35.0;
 export const SPOTLIGHT_MIN_REVIEWS = 10;

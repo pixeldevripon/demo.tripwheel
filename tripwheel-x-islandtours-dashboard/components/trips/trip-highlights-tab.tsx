@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { findEnglish } from '@/lib/trips/forms';
 import { z } from 'zod';
 
 import { StatusBadge } from '@/components/common/status-badge';
@@ -86,7 +87,7 @@ export function TripHighlightsTab({ tripId, bare }: TripHighlightsTabProps) {
                 </span>
             }
             renderSummary={h => {
-                const en = h.translations.find(t => t.locale === 'en');
+                const en = findEnglish(h.translations);
                 // No "#0" prefix. It printed the raw `displayOrder`, so the
                 // first highlight read "#0" - which looks like a bug - and
                 // beside a bullet an index says nothing the position does not.

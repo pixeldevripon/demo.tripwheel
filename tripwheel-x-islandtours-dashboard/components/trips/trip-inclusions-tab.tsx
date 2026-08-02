@@ -23,6 +23,7 @@
  */
 
 import { toast } from 'sonner';
+import { findEnglish } from '@/lib/trips/forms';
 import { z } from 'zod';
 
 import {
@@ -83,7 +84,7 @@ export function TripInclusionsTab({ tripId, bare }: TripInclusionsTabProps) {
             isLoading={isLoading}
             getId={inc => inc.id}
             renderSummary={inc => {
-                const en = inc.translations.find(t => t.locale === 'en');
+                const en = findEnglish(inc.translations);
                 return (
                     <span className='truncate'>
                         {en?.label ?? '(no EN translation)'}

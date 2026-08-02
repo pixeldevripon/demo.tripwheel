@@ -24,6 +24,7 @@ import { useRemoveTrip } from '@/hooks/trips/use-trips';
 import { useActiveDestinations } from '@/hooks/destinations/use-destinations';
 import { useRole } from '@/contexts/role-context';
 import { useSession } from '@/lib/auth-client';
+import { settleAll } from '@/lib/async/settle-all';
 import type {
   TripApprovalStatus,
   TripListItem,
@@ -60,7 +61,7 @@ export function TripsTable({
   onFilterChange,
   filters = {},
 }: TripsTableProps) {
-  const { mutate: removeTrip } = useRemoveTrip();
+  const { mutateAsync: removeTripAsync } = useRemoveTrip();
   const { can } = useRole();
   const { data: session } = useSession();
   const { data: destinations } = useActiveDestinations();
@@ -175,7 +176,7 @@ export function TripsTable({
           <Button
             size='sm'
             variant='destructive'
-            onClick={() => {
+            onClick={async () => {
               const draftRows = rows.filter(
                 (r) => r.original.status === 'DRAFT',
               );
@@ -185,15 +186,20 @@ export function TripsTable({
                 );
                 return;
               }
-              draftRows.forEach((r) =>
-                removeTrip(r.original.id, {
-                  onError: (err) =>
-                    toast.error(
-                      err instanceof Error ? err.message : 'Failed to delete.',
-                    ),
-                }),
+              // Report what ACTUALLY happened: the old code toasted success and
+              // cleared selection synchronously, before any delete settled, so a
+              // total failure still read "N deleted" (code-review M3).
+              const { succeeded, failed } = await settleAll(draftRows, (r) =>
+                removeTripAsync(r.original.id),
               );
-              toast.success(`${draftRows.length} trip(s) deleted.`);
+              if (succeeded.length) {
+                toast.success(`${succeeded.length} trip(s) deleted.`);
+              }
+              if (failed.length) {
+                toast.error(
+                  `${failed.length} trip(s) could not be deleted.`,
+                );
+              }
               clearSelection();
             }}
           >
