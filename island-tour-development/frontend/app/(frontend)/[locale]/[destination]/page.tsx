@@ -280,7 +280,7 @@ async function DestinationContent({
                 LD8 divergence: hidden on mobile). */}
             <nav
                 aria-label='Breadcrumb'
-                className='it-container hidden pt-3.5 pb-1 text-[12.5px] leading-[1.6] text-it-text-muted md:block'>
+                className='it-container hidden py-4 text-[12.5px] leading-[1.6] text-it-text-muted md:block'>
                 <Link
                     href={localizeHref(locale, '/')}
                     className='no-underline hover:underline'>

@@ -143,7 +143,7 @@ function LinkColumn({
     className?: string;
 }) {
     const linkCls =
-        'inline-block text-[13.5px] leading-[1.6] text-it-soft-on-dark no-underline transition-colors duration-300 hover:text-it-ink-on-dark hover:underline';
+        'inline-block text-[13.5px] leading-[1.6] text-it-soft-on-dark no-underline transition-colors duration-300 hover:text-it-ink-on-dark';
     return (
         <div className={`flex flex-col gap-3.5 ${className ?? ''}`}>
             <h3 className='m-0 font-it-body text-sm font-semibold leading-[1.6] text-it-ink-on-dark'>
@@ -448,7 +448,7 @@ export async function Footer({
                                 button reopens the Cookiebot dialog once it ships). */}
                             <Link
                                 href={localizeHref(locale, '/manage-cookies')}
-                                className='w-fit text-xs leading-[1.6] text-it-soft-on-dark underline underline-offset-2 transition-colors hover:text-it-ink-on-dark'>
+                                className='w-fit text-xs leading-[1.6] text-it-soft-on-dark no-underline transition-colors hover:text-it-ink-on-dark'>
                                 {dict.manageCookies}
                             </Link>
                         </div>
