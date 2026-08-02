@@ -13,11 +13,16 @@ The Tripwheel marketing site and its login door. Next.js 16 on **:3002**. Today 
 |---|---|---|
 | `tripwheel-app` (this one) | **`pixelvega`** | `main` |
 | `island-tour-development` | **`pixelvega`** | `prod` |
-| `tripwheel-x-islandtours-dashboard` | **`origin`** | `main` |
+| `tripwheel-x-islandtours-dashboard` | **`pixelvega`** | `main` |
 
 This repo also has an `origin` (devripon-tr/tripwheel.app) that is **not** the push target. Name the
 remote explicitly on every push — a bare `git push`, or assuming `origin`, sends work to the wrong
-GitHub org. The dashboard inverts this rule, so the convention cannot be carried between repos.
+GitHub org.
+
+All three repos push to `pixelvega`; only the BASE BRANCH differs (`prod` for
+`island-tour-development`, `main` for the other two). This table previously said the dashboard
+pushes to `origin` — that was wrong. The dashboard's `origin` (devripon-tr) was 103 commits behind
+as of 2026-08-02, so a PR against it spans the whole backlog rather than the change.
 
 ---
 
