@@ -3,6 +3,7 @@
 import { createPaymentIntent } from '@/lib/api/bookings';
 import { formatCheckoutMoney } from '@/lib/checkout/checkout';
 import { leaveTo } from '@/lib/checkout/leave-to';
+import { userFacingError } from '@/lib/checkout/reserve-and-pay';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
@@ -199,9 +200,9 @@ export function CheckoutPaymentMollie({
             // Success = navigation; the latch stays on while the page leaves.
         } catch (err) {
             console.error('[checkout] mollie pay failed:', err);
-            const raw = err instanceof Error ? err.message : '';
-            const isServer500 = /internal server error/i.test(raw);
-            setFormError(raw && !isServer500 ? raw : dict.paymentError);
+            // Same rule as the reserve path: relay a message that explains the
+            // refusal, suppress a bare 500 that tells a traveller nothing.
+            setFormError(userFacingError(err) ?? dict.paymentError);
             setProcessing(false);
         }
     }

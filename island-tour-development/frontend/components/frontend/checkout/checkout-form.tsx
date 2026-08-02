@@ -312,14 +312,7 @@ export function CheckoutForm({
             (saved === 'none' && !pickupRequired);
         if (!valid) return;
         setContact(prev => ({ ...prev, pickup: saved }));
-        onPickupChange({
-            id: zone?.id ?? null,
-            label: zone
-                ? zone.label
-                : saved === 'other'
-                  ? dict.pickupOther
-                  : null,
-        });
+        publishPickup(saved);
         // Mount-only restore; the props involved are stable for the page life.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -454,6 +447,27 @@ export function CheckoutForm({
         }
         setErrors(next);
         return Object.keys(next).length === 0;
+    }
+
+    /**
+     * Publish the chosen pickup as {id, label} to the summary.
+     *
+     * ONE derivation. The restore path and the interactive path both have to
+     * produce the same shape - the label mirrors into the summary card, the id
+     * re-quotes a priced zone - and they were deriving it separately, so a
+     * change to the none/other labelling in one made the summary read
+     * differently after a checkout round-trip than after a fresh pick.
+     */
+    function publishPickup(value: string) {
+        const zone = pickupOptions.find((o) => o.id === value);
+        onPickupChange({
+            id: zone?.id ?? null,
+            label: zone
+                ? zone.label
+                : value === 'other'
+                  ? dict.pickupOther
+                  : null,
+        });
     }
 
     /** Map the pickup select to the reserve pickup fields. */
@@ -733,33 +747,17 @@ export function CheckoutForm({
                                     }
                                     value={contact.pickup}
                                     onChange={v => {
+                                        // `set` already clears errors.pickup -
+                                        // pickup used to hand-roll its own
+                                        // clear, which is the exact thing
+                                        // centralising `set` was meant to stop.
                                         set('pickup', v);
                                         // Survive a round-trip back to the
                                         // widget and returning here again.
                                         writeBookingSelection(tourId, {
                                             pickup: v,
                                         });
-                                        if (errors.pickup) {
-                                            setErrors(prev => {
-                                                const rest = { ...prev };
-                                                delete rest.pickup;
-                                                return rest;
-                                            });
-                                        }
-                                        // Publish zone id + label: the label
-                                        // mirrors into the summary card, the id
-                                        // re-quotes a priced zone's total.
-                                        const zone = pickupOptions.find(
-                                            o => o.id === v
-                                        );
-                                        onPickupChange({
-                                            id: zone?.id ?? null,
-                                            label: zone
-                                                ? zone.label
-                                                : v === 'other'
-                                                  ? dict.pickupOther
-                                                  : null,
-                                        });
+                                        publishPickup(v);
                                     }}
                                     options={pickupSelectOptions}
                                     placeholderValue={

@@ -1,5 +1,6 @@
 'use client';
 
+import { shortBandLabel } from '@/lib/checkout/checkout';
 import { useBooking } from '@/hooks/tours/use-booking';
 import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
@@ -54,7 +55,7 @@ export function SpectatorsPanel() {
                                     {i > 0 && (
                                         <span className='size-1 shrink-0 rounded-full bg-[#d9d9d9]' />
                                     )}
-                                    {`${band.label.split(' (')[0]} ${money(
+                                    {`${shortBandLabel(band)} ${money(
                                         band.price
                                     )}`}
                                 </span>
