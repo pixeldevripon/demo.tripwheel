@@ -6,8 +6,10 @@ import { createElement } from 'react'
 import { useTripMutation } from '@/hooks/trips/use-trip-mutation'
 
 function wrapper(client: QueryClient) {
-  return ({ children }: { children: ReactNode }) =>
+  const Wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client }, children)
+  Wrapper.displayName = 'TestQueryClientWrapper'
+  return Wrapper
 }
 
 describe('useTripMutation (code-review M1)', () => {
