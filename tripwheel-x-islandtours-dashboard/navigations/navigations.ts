@@ -25,8 +25,8 @@ import {
 } from '@hugeicons/core-free-icons';
 
 import { Permission } from '@/lib/config/rbac';
-import { ANY_TRANSLATE_PERMISSIONS } from '@/lib/translatable-schema';
 import type { NavGroup } from '@/lib/rbac-utils';
+import { ANY_TRANSLATE_PERMISSIONS } from '@/lib/translatable-schema';
 
 /**
  * Dashboard navigation - four groups by TASK FREQUENCY, not entity type
@@ -289,6 +289,7 @@ const dashboardNav: NavGroup[] = [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
                     Permission.MANAGE_EDITORIAL,
+                    Permission.MANAGE_AVAILABILITY,
                 ],
             },
             /*             {

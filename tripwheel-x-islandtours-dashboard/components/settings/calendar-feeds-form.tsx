@@ -74,8 +74,11 @@ const FEED_KINDS: FeedKindMeta[] = [
         description:
             'Every confirmed booking on your tours, with party size and reference. Cancellations stay on the calendar marked cancelled.',
         permission: 'VIEW_BOOKINGS',
+        // The dangerous mistake this feature invites: pasting this URL into
+        // Airbnb would publish customer names to a third party. Say it where
+        // the link is, not in documentation nobody opens.
         sensitive:
-            'Shows traveller names to anyone who has the link. Share it with your team only.',
+            'Shows traveller names to anyone who has the link. For your own calendar app only - never paste it into Airbnb, Booking.com or any sales channel. To block dates on a channel, use the channel link on the tour itself.',
     },
     {
         kind: CalendarFeedKind.DEPARTURES,
