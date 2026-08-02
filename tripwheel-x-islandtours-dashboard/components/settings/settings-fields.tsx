@@ -103,6 +103,8 @@ export function TextField({
     placeholder,
     type = 'text',
     disabled,
+    autoFocus,
+    autoComplete,
 }: {
     label: string;
     registration: UseFormRegisterReturn;
@@ -111,6 +113,10 @@ export function TextField({
     placeholder?: string;
     type?: string;
     disabled?: boolean;
+    /** Only for a field inside a dialog opened to be filled in. */
+    autoFocus?: boolean;
+    /** Pass "off" for anything the browser must not helpfully fill in. */
+    autoComplete?: string;
 }) {
     return (
         <Field>
@@ -120,6 +126,8 @@ export function TextField({
                 placeholder={placeholder}
                 disabled={disabled}
                 aria-invalid={!!error}
+                autoFocus={autoFocus}
+                autoComplete={autoComplete}
                 {...registration}
             />
             {description && <FieldDescription>{description}</FieldDescription>}
@@ -167,6 +175,7 @@ export function SecretField({
     placeholder,
     disabled,
     autoComplete,
+    autoFocus,
 }: {
     label: string;
     registration: UseFormRegisterReturn;
@@ -179,6 +188,8 @@ export function SecretField({
      * "current-password" / "new-password" so password managers behave.
      */
     autoComplete?: string;
+    /** Only for a field inside a dialog opened to be filled in. */
+    autoFocus?: boolean;
 }) {
     const [visible, setVisible] = useState(false);
     return (
@@ -191,6 +202,7 @@ export function SecretField({
                     disabled={disabled}
                     aria-invalid={!!error}
                     autoComplete={autoComplete ?? 'off'}
+                    autoFocus={autoFocus}
                     className='pr-8'
                     {...registration}
                 />

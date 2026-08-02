@@ -2,7 +2,6 @@
 
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -10,17 +9,25 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import {
+    useActivateProvider,
     useMollieConfig,
     usePaymentProvider,
     useStripeConfig,
     useUpdateMollieConfig,
-    useUpdatePaymentProvider,
     useUpdateStripeConfig,
 } from '@/hooks/settings/use-settings';
+import {
+    PROVIDER_LABELS,
+    cleanCredential,
+    isProviderReady,
+    missingProviderFields,
+    type ProviderCredentialField,
+} from '@/lib/settings/payment-requirements';
 import type { PaymentProvider } from '@/types/settings';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
@@ -43,11 +50,12 @@ import {
 // provider without usable credentials, so a switch can never brick checkout.
 // Never retroactive: existing payments keep their provider for webhooks and
 // refunds.
-
-const PROVIDER_LABELS: Record<PaymentProvider, string> = {
-    STRIPE: 'Stripe',
-    MOLLIE: 'Mollie',
-};
+//
+// When the target is MISSING a credential the dialog does not just warn - it
+// COLLECTS (QA 2026-08-02). Bouncing the admin out to the card below, telling
+// them to fill a field and come back to re-toggle made the toggle a liar: it
+// offered an action it then refused. The confirm step is where consent already
+// lives, so it is where the missing keys are asked for, saved and applied.
 
 /** Minimal accessible switch - the repo has no ui/switch primitive yet. */
 function ProviderSwitch({
@@ -151,22 +159,35 @@ function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
             isSaving={isPending}
             status={
                 <>
-                    <ConnectionStatus connected={!!data?.secretKey} />
+                    {/* "Configured" has to mean what the switch enforces. Keyed
+                        off the secret key alone it promised a Stripe that could
+                        still be refused for a missing publishable key or
+                        webhook secret. */}
+                    <ConnectionStatus
+                        connected={isProviderReady('STRIPE', { stripe: data })}
+                    />
                     {activeControl}
                 </>
             }>
+            {/* Every field here is autoComplete-guarded. Chrome reads a card of
+                text + password inputs as a login form and offered the admin's
+                own email for the publishable key and their password for the
+                secrets - and because a blank secret means "keep the current
+                one", a silently filled one means "replace it". */}
             <div className='grid gap-6 sm:grid-cols-2'>
                 <TextField
                     label='Payment Label'
                     registration={register('paymentLabel')}
                     error={errors.paymentLabel?.message}
                     placeholder='Stripe'
+                    autoComplete='off'
                 />
                 <TextField
                     label='Publishable Key'
                     registration={register('publishableKey')}
                     error={errors.publishableKey?.message}
                     placeholder='pk_live_...'
+                    autoComplete='off'
                 />
             </div>
             <SecretField
@@ -174,6 +195,7 @@ function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
                 registration={register('secretKey')}
                 error={errors.secretKey?.message}
                 placeholder='sk_live_...'
+                autoComplete='new-password'
                 description={
                     data?.secretKey
                         ? `Current: ${data.secretKey}. Leave blank to keep it.`
@@ -185,6 +207,7 @@ function StripeCard({ activeControl }: { activeControl: React.ReactNode }) {
                 registration={register('webhookSecret')}
                 error={errors.webhookSecret?.message}
                 placeholder='whsec_...'
+                autoComplete='new-password'
                 description={
                     data?.webhookSecret
                         ? `Current: ${data.webhookSecret}. Leave blank to keep it.`
@@ -233,14 +256,12 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
     }, [data, reset]);
 
     function onSubmit(values: MollieFormValues) {
-        // Ids/keys pasted from Mollie's dashboard can carry stray whitespace or
-        // zero-width characters - never part of a real value, always stripped.
-        const clean = (v?: string) =>
-            v?.replace(/[\s\u200B-\u200D\uFEFF]/g, '') ?? '';
-        const apiKey = clean(values.apiKey);
+        // Ids/keys pasted from Mollie's dashboard can carry stray whitespace
+        // or zero-width characters - never part of a real value.
+        const apiKey = cleanCredential(values.apiKey ?? '');
         mutate({
             paymentLabel: values.paymentLabel,
-            profileId: clean(values.profileId),
+            profileId: cleanCredential(values.profileId ?? ''),
             // Only send the key when a new value is entered; blank keeps the current one.
             ...(apiKey ? { apiKey } : {}),
         });
@@ -256,7 +277,9 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
             isSaving={isPending}
             status={
                 <>
-                    <ConnectionStatus connected={!!data?.apiKey} />
+                    <ConnectionStatus
+                        connected={isProviderReady('MOLLIE', { mollie: data })}
+                    />
                     {activeControl}
                 </>
             }>
@@ -266,12 +289,14 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
                     registration={register('paymentLabel')}
                     error={errors.paymentLabel?.message}
                     placeholder='Mollie'
+                    autoComplete='off'
                 />
                 <TextField
                     label='Profile ID'
                     registration={register('profileId')}
                     error={errors.profileId?.message}
                     placeholder='pfl_...'
+                    autoComplete='off'
                 />
             </div>
             <p className='-mt-4 text-xs text-muted-foreground normal-case tracking-normal font-light'>
@@ -284,6 +309,7 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
                 registration={register('apiKey')}
                 error={errors.apiKey?.message}
                 placeholder='live_...'
+                autoComplete='new-password'
                 description={
                     data?.apiKey
                         ? `Current: ${data.apiKey}. Leave blank to keep it.`
@@ -294,9 +320,172 @@ function MollieCard({ activeControl }: { activeControl: React.ReactNode }) {
     );
 }
 
+/**
+ * The confirm step for a provider switch, in one of two modes.
+ *
+ * READY - the target holds every credential it needs: a plain confirmation.
+ * INCOMPLETE - it does not: the same dialog also asks for exactly the fields
+ * that are missing, and activating saves them first.
+ *
+ * Remounted per target (keyed by the caller) so the form starts empty each
+ * time and a key typed for one provider can never be submitted to the other.
+ */
+function SwitchProviderDialog({
+    target,
+    missing,
+    onClose,
+}: {
+    target: PaymentProvider;
+    missing: readonly ProviderCredentialField[];
+    onClose: () => void;
+}) {
+    const { mutateAsync, isPending } = useActivateProvider();
+    const label = PROVIDER_LABELS[target];
+    const needsCredentials = missing.length > 0;
+
+    // Built from the missing fields, so the schema is exactly as strict as the
+    // gap. Trimmed because a pasted key that is only whitespace passes a bare
+    // `.min(1)` and then fails the switch for looking configured.
+    const schema = useMemo(
+        () =>
+            z.object(
+                Object.fromEntries(
+                    missing.map(field => [
+                        field.name,
+                        z
+                            .string()
+                            .trim()
+                            .min(1, `${field.label} is required`),
+                    ])
+                )
+            ),
+        [missing]
+    );
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<Record<string, string>>({
+        resolver: zodResolver(schema),
+        defaultValues: Object.fromEntries(missing.map(f => [f.name, ''])),
+    });
+
+    async function activate(values: Record<string, string>) {
+        try {
+            // Same cleanup the Mollie card applies: keys pasted from a provider
+            // dashboard carry stray whitespace and zero-width characters that
+            // are never part of the real value.
+            const credentials = Object.fromEntries(
+                Object.entries(values).map(([key, value]) => [
+                    key,
+                    cleanCredential(value),
+                ])
+            );
+            await mutateAsync({
+                provider: target,
+                ...(needsCredentials ? { credentials } : {}),
+            });
+            onClose();
+        } catch {
+            // The hook already reported it. Hold the dialog open with the
+            // typed values intact so a retry is one click, not a re-entry.
+        }
+    }
+
+    return (
+        <AlertDialogContent
+            // Land on the first input rather than Cancel when there is
+            // something to type; Radix focuses Cancel by default.
+            onOpenAutoFocus={
+                needsCredentials ? event => event.preventDefault() : undefined
+            }>
+            {/* autoComplete="off" on the form, and per-field below. A dialog
+                holding one text input and one password input reads to Chrome
+                as a login form, and it offered the admin's OWN email and
+                password for the Stripe keys - which would have been encrypted
+                and stored as real credentials. */}
+            <form
+                onSubmit={handleSubmit(activate)}
+                autoComplete='off'
+                className='contents'>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        {needsCredentials
+                            ? `Add ${label} credentials to switch checkout payments?`
+                            : `Switch checkout payments to ${label}?`}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {needsCredentials
+                            ? `${label} cannot take a payment yet. Enter the details below and they are saved before the switch, so checkout is never pointed at a provider that cannot charge. Every new booking will then be charged through ${label} immediately.`
+                            : `Every new booking will be charged through ${label} immediately.`}{' '}
+                        Existing payments keep their original provider for
+                        refunds and webhooks.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                {needsCredentials && (
+                    <div className='space-y-4 text-left'>
+                        {missing.map((field, index) =>
+                            field.secret ? (
+                                <SecretField
+                                    key={field.name}
+                                    label={field.label}
+                                    registration={register(field.name)}
+                                    error={errors[field.name]?.message}
+                                    placeholder={field.placeholder}
+                                    description={field.help}
+                                    disabled={isPending}
+                                    autoFocus={index === 0}
+                                    // Chrome ignores "off" on a password input
+                                    // when it holds a saved login for the site;
+                                    // "new-password" is the one signal it
+                                    // honours as "do not fill this".
+                                    autoComplete='new-password'
+                                />
+                            ) : (
+                                <TextField
+                                    key={field.name}
+                                    label={field.label}
+                                    registration={register(field.name)}
+                                    error={errors[field.name]?.message}
+                                    placeholder={field.placeholder}
+                                    description={field.help}
+                                    disabled={isPending}
+                                    autoFocus={index === 0}
+                                    autoComplete='off'
+                                />
+                            )
+                        )}
+                    </div>
+                )}
+
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isPending} type='button'>
+                        Cancel
+                    </AlertDialogCancel>
+                    {/* A plain submit, NOT AlertDialogAction: that one closes
+                        the dialog on click, which would throw away typed keys
+                        the moment validation or the request failed. */}
+                    <Button type='submit' disabled={isPending}>
+                        {isPending
+                            ? 'Switching...'
+                            : needsCredentials
+                              ? `Save and switch to ${label}`
+                              : `Switch to ${label}`}
+                    </Button>
+                </AlertDialogFooter>
+            </form>
+        </AlertDialogContent>
+    );
+}
+
 export function PaymentsForm() {
     const { data, isLoading } = usePaymentProvider();
-    const { mutate, isPending } = useUpdatePaymentProvider();
+    // Same query keys the cards below use, so React Query serves both from one
+    // cache entry - reading them here costs no extra request.
+    const { data: stripe } = useStripeConfig();
+    const { data: mollie } = useMollieConfig();
     // The provider awaiting confirmation; the dialog is open while set.
     const [pending, setPending] = useState<PaymentProvider | null>(null);
 
@@ -311,13 +500,11 @@ export function PaymentsForm() {
     const switchFor = (card: PaymentProvider) => (
         <ProviderSwitch
             checked={current === card}
-            disabled={isLoading || isPending}
+            disabled={isLoading}
             label={PROVIDER_LABELS[card]}
             onRequestSwitch={() => requestSwitch(card)}
         />
     );
-
-    const pendingLabel = pending ? PROVIDER_LABELS[pending] : '';
 
     return (
         <div className='space-y-6'>
@@ -331,31 +518,17 @@ export function PaymentsForm() {
             <AlertDialog
                 open={pending !== null}
                 onOpenChange={open => !open && setPending(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            Switch checkout payments to {pendingLabel}?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Every new booking will be charged through{' '}
-                            {pendingLabel} immediately. Its API keys must be
-                            configured or the switch is rejected. Existing
-                            payments keep their original provider for refunds
-                            and webhooks.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (pending)
-                                    mutate({ activeProvider: pending });
-                                setPending(null);
-                            }}>
-                            Switch to {pendingLabel}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
+                {pending && (
+                    <SwitchProviderDialog
+                        key={pending}
+                        target={pending}
+                        missing={missingProviderFields(pending, {
+                            stripe,
+                            mollie,
+                        })}
+                        onClose={() => setPending(null)}
+                    />
+                )}
             </AlertDialog>
         </div>
     );

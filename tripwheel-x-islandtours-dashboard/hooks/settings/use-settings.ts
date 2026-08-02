@@ -4,12 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { settingsApi } from '@/lib/api/settings';
 import type {
+  PaymentProvider,
   UpdateCompanyInformationsPayload,
   UpdatePlatformReviewsPayload,
   UpdateIntegrationsConfigurationPayload,
   UpdateMailchimpConfigurationPayload,
   UpdateMollieConfigurationPayload,
-  UpdatePaymentProviderPayload,
   UpdateReviewRequestsPayload,
   UpdateSiteInfoPayload,
   UpdateSiteSEOPayload,
@@ -106,13 +106,47 @@ export function usePaymentProvider() {
     queryFn: settingsApi.getPaymentProvider,
   });
 }
-export function useUpdatePaymentProvider() {
+/**
+ * Activate a checkout provider, optionally saving the credentials it was
+ * missing in the same gesture.
+ *
+ * The backend refuses to activate a provider that cannot charge, so a provider
+ * with gaps used to be a dead toast: "configure X first", with no way to do it
+ * without leaving the dialog. The switch dialog now collects exactly the
+ * missing fields, and this hook lands them before flipping the provider.
+ *
+ * Order matters. Credentials are saved FIRST, because they are worth keeping on
+ * their own - if the switch then fails (a rate limit, a lost connection) the
+ * admin retries the toggle rather than retyping their keys, and checkout was
+ * never pointed at a provider that could not take a card. The reverse order
+ * has no such safe midpoint.
+ */
+export function useActivateProvider() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: UpdatePaymentProviderPayload) =>
-      settingsApi.updatePaymentProvider(payload),
+    mutationFn: async ({
+      provider,
+      credentials,
+    }: {
+      provider: PaymentProvider;
+      /** Only the fields the dialog collected; omitted when nothing was missing. */
+      credentials?: UpdateStripeConfigurationPayload | UpdateMollieConfigurationPayload;
+    }) => {
+      if (credentials && Object.keys(credentials).length > 0) {
+        if (provider === 'STRIPE') {
+          await settingsApi.updateStripe(credentials as UpdateStripeConfigurationPayload);
+        } else {
+          await settingsApi.updateMollie(credentials as UpdateMollieConfigurationPayload);
+        }
+      }
+      return settingsApi.updatePaymentProvider({ activeProvider: provider });
+    },
     onSuccess: (data) => {
+      // The provider config caches are stale too whenever credentials were
+      // saved - the masked "Current: ...1rOO" hints read from them.
       qc.invalidateQueries({ queryKey: settingsKeys.paymentProvider() });
+      qc.invalidateQueries({ queryKey: settingsKeys.stripe() });
+      qc.invalidateQueries({ queryKey: settingsKeys.mollie() });
       toast.success(
         `${data.activeProvider === 'MOLLIE' ? 'Mollie' : 'Stripe'} is now taking checkout payments`,
       );
