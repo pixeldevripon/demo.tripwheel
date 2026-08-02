@@ -1,4 +1,5 @@
 import {
+    BoatIcon,
     Calendar01Icon,
     Calendar03Icon,
     CalendarCheckIn01Icon,
@@ -135,6 +136,20 @@ const dashboardNav: NavGroup[] = [
                 url: 'trips',
                 icon: MapsIcon,
                 permissions: [Permission.VIEW_TRIPS],
+            },
+            {
+                // The operator's physical assets - boats, vehicles, guides -
+                // as opposed to Tours, which is what they SELL. Sits in Catalog
+                // because it is set-up, edited monthly at most, and never part
+                // of the morning routine. Same gate as the backend module.
+                //
+                // Before this existed, assets could only be created from inside
+                // a tour's Schedule step, so nothing anywhere listed what an
+                // operator owned.
+                title: 'Equipment',
+                url: 'resources',
+                icon: BoatIcon,
+                permissions: [Permission.MANAGE_AVAILABILITY],
             },
             {
                 title: 'Media',

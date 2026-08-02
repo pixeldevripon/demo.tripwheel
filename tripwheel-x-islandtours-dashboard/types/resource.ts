@@ -52,6 +52,13 @@ export interface Resource {
     capacity: number;
     isActive: boolean;
     notes: string | null;
+    /**
+     * Owning operator. Only an ADMIN ever sees more than one, and names are
+     * unique per operator - so two operators may each own a "Sea Breeze" and
+     * these are the only fields telling those rows apart.
+     */
+    operatorId: string;
+    operatorName: string | null;
     tours: ResourceTourSummary[];
     createdAt: string;
 }
