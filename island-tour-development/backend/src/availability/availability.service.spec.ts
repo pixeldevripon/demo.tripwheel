@@ -548,6 +548,56 @@ describe('AvailabilityService', () => {
       expect(prisma.tour.update).toHaveBeenCalled();
     });
 
+    // These two endpoints are the OTHER way onto availability_exceptions, and
+    // predate the iCal import. Without a provenance guard they let a holder of
+    // STOP_SELL release an imported block outside the reconciler: no sync-log
+    // entry, and the next poll silently recreates the row because the feed
+    // still lists the event. That is the import's core rule defeated through a
+    // side door, so both paths are pinned here.
+    describe('channel-owned exceptions', () => {
+      it('refuses to delete an ICAL exception', async () => {
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-10'),
+          type: 'CLOSE_DATE',
+          source: 'ICAL',
+        });
+        await expect(
+          svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1'),
+        ).rejects.toThrow(/connected calendar/i);
+        expect(prisma.availabilityException.delete).not.toHaveBeenCalled();
+      });
+
+      it('refuses to edit an ICAL exception', async () => {
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-10'),
+          type: 'CLOSE_DATE',
+          source: 'ICAL',
+        });
+        await expect(
+          svc.updateException('u1', Role.TOUR_OPERATOR, 'x1', {
+            note: 'let me reopen this',
+          }),
+        ).rejects.toThrow(/connected calendar/i);
+        expect(prisma.availabilityException.update).not.toHaveBeenCalled();
+      });
+
+      // Disconnecting a subscription converts its blocks to MANUAL precisely so
+      // the operator gets them back; the guard must not outlive that.
+      it('still allows deleting a MANUAL exception', async () => {
+        prisma.availabilityException.findUnique.mockResolvedValue({
+          tourId: 't1',
+          date: day('2030-06-10'),
+          type: 'CLOSE_DATE',
+          source: 'MANUAL',
+        });
+        prisma.availabilityException.delete.mockResolvedValue(exceptionRow());
+        await svc.deleteException('u1', Role.TOUR_OPERATOR, 'x1');
+        expect(prisma.availabilityException.delete).toHaveBeenCalled();
+      });
+    });
+
     // gap #12: reject exception shapes the materializer would otherwise skip.
     it('rejects close_slot without a startTime', async () => {
       await expect(

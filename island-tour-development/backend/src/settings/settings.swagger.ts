@@ -342,8 +342,12 @@ export function ApiUpdatePaymentProviderDocs() {
     ApiOperation({
       summary: 'Switch the active checkout payment provider (Admin only)',
       description:
-        'Rejected (400) when the target provider has no usable credentials. ' +
-        'Never retroactive: existing payments keep their own provider.',
+        'Rejected (400) when the target provider is missing any credential it ' +
+        'needs to charge: Stripe requires the publishable key, secret key and ' +
+        'webhook secret; Mollie requires the API key. The message names every ' +
+        'gap at once. Save the missing credentials first (PATCH the provider ' +
+        'config), then switch. Never retroactive: existing payments keep their ' +
+        'own provider for webhooks and refunds.',
     }),
     ApiResponse({
       status: 200,

@@ -183,6 +183,25 @@ export const INBOX_EVENTS: Record<InboxEvent, InboxEventDefinition> = {
     audience: 'operator',
     permission: Permission.MANAGE_TEAM,
   },
+
+  // ── Calendar sync (inbound iCal) ───────────────────────────────────────────
+  // Both link to the tour's Calendar sync panel, so both are gated on the
+  // permission that opens it - the rule at the top of this file.
+  //
+  // Platform is NOT an audience for either. A feed breaking is the operator's
+  // channel, their credential and their fix; routing it to Island Tours would
+  // bury the handful of things that genuinely need us in a stream of other
+  // people's expired Airbnb links.
+  [InboxEvent.CALENDAR_SYNC_CONFLICT]: {
+    category: InboxCategory.TOURS,
+    audience: 'operator',
+    permission: Permission.MANAGE_AVAILABILITY,
+  },
+  [InboxEvent.CALENDAR_SYNC_FAILED]: {
+    category: InboxCategory.TOURS,
+    audience: 'operator',
+    permission: Permission.MANAGE_AVAILABILITY,
+  },
 };
 
 /** Every category, in the order the dashboard lists them. */

@@ -343,30 +343,133 @@ schedule, and Microsoft's own docs say Outlook can take **more than 24 hours**. 
 dashboard copy therefore promises no interval — an unkeepable promise here converts
 directly into "the calendar is broken" support load.
 
-### Not built: inbound iCal (the other half of Phase 8)
+## 9b. Calendar import (inbound iCal) — BUILT 2026-08-02
 
-Importing an external calendar (Airbnb / Booking.com / a personal Google calendar) to
-**block** dates is still open, along with the `ical_sync_logs` table the Phase 1 data
-model lists for it. When it is built:
+Completes Phase 8. An operator connects an external calendar (Airbnb, Booking.com,
+GetYourGuide, a personal Google calendar) **per tour**, and we poll it and stop-sell
+the dates it marks busy.
 
-- It belongs in `availability_exceptions` (`close_date` / `close_slot` carrying an
-  `ical` provenance + the external UID), **not** in `departures`. `source = api` rows
-  are `isFullyManaged` and permanently frozen against the materializer (§9 rule 3),
-  which is the wrong semantics for a poll-based blocker. Routing through exceptions
-  also satisfies "never mutating capacity directly" and reuses §7's stop-sell path,
-  including its handling of already-booked departures.
-- **All-day `DTEND` is exclusive** (`0601 → 0605` means the 1st through the **4th**).
-  This is the single most common iCal integration bug.
-- `RRULE` will appear in Google feeds. Use a parser (`ical.js` / `node-ical` + `rrule`)
-  — writing iCal is easy, reading it is not; `src/common/ics/ics.util.ts` is a writer
-  and must not grow into a parser.
-- An operator-supplied URL fetched by our server is textbook **SSRF**: https-only,
-  reject loopback/private/link-local/metadata ranges, re-validate on every redirect,
-  timeout and size-cap.
-- State the caveat to operators up front, as Phase 0 requires ("document iCal's
-  limitations — not real-time, no atomic capacity"): iCal is **polled, not pushed**, so
-  a sale on another channel can be resold here during the lag. The atomic claim (§5)
-  cannot see a channel it learns about hours late. Real-time belongs to OCTO push.
+> **The guardrail, restated because it is the whole design.** An imported event
+> becomes an `AvailabilityException` and **nothing else** — never a booking, never a
+> capacity change, never a `departures` row. `departures` stays the single source of
+> truth (non-negotiable 1) and the existing materializer projects the exception
+> exactly as it does an operator's own closure. **There is no `blocked_dates` table**
+> even though the PRD proposes one: it would be a second availability layer. See
+> [`ICAL-PRD-GAP-ANALYSIS.md`](./ICAL-PRD-GAP-ANALYSIS.md) §1.
+
+### Shape
+
+| Piece | Where |
+|---|---|
+| `calendar_subscriptions`, `calendar_events`, `ical_sync_logs`, `calendar_conflicts` | `backend/prisma/calendar-sync.prisma` |
+| Provenance on exceptions (`source`, `subscriptionId`, `externalUid`, `slotKey`) | `backend/prisma/availability.prisma` |
+| SSRF-hardened fetcher + IP blocklist | `backend/src/common/net/` |
+| Parser (`ical.js`) → busy blocks | `src/calendar-sync/ical-parser.util.ts` |
+| Blocks → exceptions, per import mode | `src/calendar-sync/block-mapper.util.ts` |
+| Diff / apply / release | `src/calendar-sync/calendar-reconciler.service.ts` |
+| CRUD, validate, Sync now, the pipeline | `src/calendar-sync/calendar-sync.service.ts` |
+| 15-min repeatable poll + stuck-sync reaper | `src/calendar-sync/calendar-poll.service.ts` |
+| Operator UI | dashboard `components/trips/trip-calendar-import.tsx` (Schedule step) |
+
+Routes: `GET/POST /calendar-subscriptions`, `POST /calendar-subscriptions/validate`,
+`GET/PATCH/DELETE /calendar-subscriptions/:id`, `POST /calendar-subscriptions/:id/sync`,
+`GET /calendar-subscriptions/:id/sync-logs`. All `MANAGE_AVAILABILITY`, all scoped to a
+tour the caller's operator owns. **No public route** — unlike the export side, we are the
+one fetching.
+
+### Sync history and retention
+
+`ical_sync_logs` is a **user-facing surface**, not a debug table: it answers "why did my
+dates change" and "why has nothing synced since Tuesday", it is the audit trail when an
+import closed a booked date, and in `WARN_ONLY` it is most of what the connection
+produces. Exposed per connection in the dashboard, collapsed by default.
+
+Retention is **two windows, on purpose**, pruned by the nightly job:
+
+| Rows | Kept | Why |
+|---|---|---|
+| `UNCHANGED` | **7 days** | ~95% of rows at a 15-minute cadence. Worth a week to answer "is it running?", worthless after |
+| Everything else | **180 days** | The audit trail. A double-booking dispute can surface months after the sync that caused it |
+
+One window would have to choose between burying the informative rows or discarding them.
+
+### The four import modes
+
+iCal carries **no seat count**. An external "Busy" event says the listing is
+unavailable; it cannot say "one of sixty seats sold". The right response therefore
+depends on the tour, so the operator chooses per connection.
+
+| Mode | Writes | Right for |
+|---|---|---|
+| `CLOSE_DATES` | `CLOSE_DATE` per covered day | Whole-boat charters, anything you run once a day |
+| `CLOSE_SLOTS` | `CLOSE_SLOT` per **overlapping** departure | Time-slotted tours, where the channel publishes times |
+| **`WARN_ONLY`** *(default)* | nothing — records a conflict and notifies | **Multi-capacity tours.** One external booking must not close a 60-seat catamaran |
+| `IGNORE` | nothing at all | Previewing a channel before trusting it; still logs what it *would* have closed |
+
+`WARN_ONLY` is the default deliberately: every Island Tours tour is multi-capacity, so
+the blunt alternative would be wrong far more often than right (founder decision,
+2026-07-31).
+
+### The failure policy
+
+**Only a successful parse may remove a block.** Every error path keeps the existing
+imported blocks and moves only the subscription's status. The failure being guarded
+against is a transient 500 at a channel quietly reopening dates the operator has
+already sold there — the moment they have least visibility and most to lose.
+
+- **Transient** (timeout, 5xx, DNS, 408/425/429, truncated body) → retry ladder
+  1m/5m/15m/1h/4h, then `ERROR`, then slow retries.
+- **Permanent** (401/403/404/410, wrong content type, unparseable) → `INVALID_URL`
+  immediately with no further polling. Retrying a 404 helps nobody.
+- A **truncated download is transient**, not malformed: a body that stops early parses
+  into a valid but *shorter* calendar, indistinguishable from "all the later bookings
+  were cancelled". Applying that would release sold dates, so the whole payload is
+  rejected and retried.
+- Disconnecting offers **keep or release**, defaulting to **keep** (converted to
+  `MANUAL` closures). A channel that stopped syncing is not a channel whose dates
+  became free.
+
+### Traps, and how each is handled
+
+- **All-day `DTEND` is exclusive** (`0601 → 0605` = the 1st–4th). Feeds that get this
+  wrong publish `DTSTART == DTEND`, which is read as **one** day rather than zero.
+- **Never `toJSDate()` an all-day value.** ical.js resolves it against the *server's*
+  timezone, so on a UTC+6 box `20260814` returns `2026-08-13T18:00Z` — the wrong
+  calendar day. The parser reads `.year/.month/.day` verbatim.
+- **Floating times anchor to the tour's timezone**, not the server's, or imports would
+  depend on where the container runs.
+- **`RRULE`/`EXDATE`/`RECURRENCE-ID`** are handled by `ical.js` (`RecurExpansion` +
+  `relateException`), capped at 200 instances per rule. `src/common/ics/ics.util.ts` is
+  a WRITER and must never grow into a parser.
+- **VTIMEZONE registration is global in ical.js** and is undone in a `finally`, so two
+  feeds disagreeing about one TZID cannot contaminate each other.
+- **SSRF**: https-only (`webcal://` rewritten), every resolved address screened, **and
+  the socket pinned to the validated IP** via a custom `lookup` — resolving twice is a
+  TOCTOU bug an attacker closes with a 1-second TTL. Re-validated on every redirect;
+  10s connect / 30s total / 5 MB cap.
+- **The stored URL is encrypted** (AES-256-GCM, existing `ENCRYPTION_KEY`). An OTA
+  calendar URL is a bearer credential for the operator's account on that platform.
+  Duplicate detection runs off a SHA-256 of the *normalized* URL, because GCM
+  ciphertext is non-deterministic and cannot be compared.
+
+### The limitation to state, not hide
+
+Phase 0 requires documenting it: **iCal is polled, not pushed.** A channel publishes on
+its schedule and we poll on ours, so a sale elsewhere can be resold here during the
+gap. The atomic claim (§5) cannot see a channel it learns about hours later. Two
+consequences we accept:
+
+1. The conflict notification is the **only** thing that surfaces a real double-sale.
+   It is `CALENDAR_SYNC_CONFLICT` in the dashboard inbox, and in `WARN_ONLY` it is the
+   feature's entire output.
+2. Real-time belongs to OCTO push (`DepartureSource.API`), not here.
+
+### Still open
+
+- `manual_review` as a fifth mode (stage the block, require a decision).
+- Account-level sync-health dashboard and bulk connect — right at 40 tours, invisible
+  at 4.
+- Per-host circuit breaker and token bucket — meaningless at one tenant.
 
 ---
 

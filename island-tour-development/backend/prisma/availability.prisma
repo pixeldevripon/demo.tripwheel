@@ -37,13 +37,35 @@ model AvailabilityException {
   note      String?
   createdBy String?
 
+  // ── Provenance (inbound iCal) ───────────────────────────────────────────────
+  // An imported busy block becomes a CLOSE_DATE / CLOSE_SLOT row here and
+  // nowhere else - never a departure, never a capacity change (see
+  // calendar-sync.prisma). These columns are what let the reconciler diff ONLY
+  // its own rows and leave every operator-authored exception untouched.
+  source         AvailabilityExceptionSource @default(MANUAL)
+  subscriptionId String?
+  /// The originating VEVENT's UID, so an event removed upstream can release
+  /// exactly the blocks it created and nothing else.
+  externalUid    String?
+  /// `'HH:MM'` for a CLOSE_SLOT, `'*'` for a whole-date close. Exists only to
+  /// make the unique below work: `startTime` is nullable, and Postgres treats
+  /// NULLs as distinct, so a whole-date block could otherwise be written twice
+  /// by two racing syncs.
+  slotKey        String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  tour         Tour                  @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  subscription CalendarSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
+  /// Inert for operator-authored rows (`subscriptionId` is NULL, and a unique
+  /// containing NULL never collides in Postgres), so manual exceptions stay
+  /// unconstrained. For imported rows it is a safety net against double-writes.
+  @@unique([subscriptionId, externalUid, date, slotKey])
   @@index([tourId, date])
   @@index([tourId, date, startTime])
+  @@index([subscriptionId])
   @@map("availability_exceptions")
 }
 
@@ -68,9 +90,10 @@ model Departure {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  bookings Booking[]
-  reviews  Review[]
+  tour      Tour               @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+  reviews   Review[]
+  conflicts CalendarConflict[]
 
   @@unique([tourId, date, startTime])
   @@index([tourId, date])

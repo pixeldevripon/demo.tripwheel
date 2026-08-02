@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AvailabilityExceptionSource,
   AvailabilityExceptionType,
   AvailabilityScheduleStatus,
   DepartureStatus,
@@ -390,6 +391,30 @@ export class AvailabilityService {
     return mapException(row, await this.exceptionActorNames([row]));
   }
 
+  /**
+   * Refuse to hand-edit a row a connected calendar owns.
+   *
+   * These two endpoints predate the iCal import and are the OTHER way onto
+   * `availability_exceptions`, so without this they quietly defeat the import's
+   * central rule - *only a successful parse may remove a block*. Deleting an
+   * `ICAL` row here writes no `IcalSyncLog` entry, so the audit trail the
+   * feature exists to provide shows nothing happened; worse, the reconciler
+   * diffs against `source = ICAL` rows, so the next poll finds the row missing,
+   * the feed still listing the event, and **recreates it**. The operator sees a
+   * date reopen and then silently re-close minutes later.
+   *
+   * Releasing an imported block is a sync operation: change the import mode, or
+   * disconnect the subscription (which converts its blocks to `MANUAL`, at which
+   * point these endpoints own them again and this guard stops applying).
+   */
+  private assertNotChannelOwned(source: AvailabilityExceptionSource): void {
+    if (source === AvailabilityExceptionSource.ICAL) {
+      throw new ConflictException(
+        'This date was closed by a connected calendar. Change it from the calendar sync panel, or disconnect the calendar first.',
+      );
+    }
+  }
+
   async updateException(
     userId: string,
     role: Role,
@@ -404,9 +429,11 @@ export class AvailabilityService {
         type: true,
         startTime: true,
         capacity: true,
+        source: true,
       },
     });
     if (!existing) throw new NotFoundException('Exception not found');
+    this.assertNotChannelOwned(existing.source);
     const operatorId = await this.assertTourAccess(
       existing.tourId,
       userId,
@@ -465,9 +492,10 @@ export class AvailabilityService {
   async deleteException(userId: string, role: Role, id: string): Promise<void> {
     const existing = await this.prisma.availabilityException.findUnique({
       where: { id },
-      select: { tourId: true, date: true, type: true },
+      select: { tourId: true, date: true, type: true, source: true },
     });
     if (!existing) throw new NotFoundException('Exception not found');
+    this.assertNotChannelOwned(existing.source);
     const operatorId = await this.assertTourAccess(
       existing.tourId,
       userId,
@@ -1959,6 +1987,7 @@ function mapException(
     createdByName: row.createdBy
       ? (actorNames?.get(row.createdBy) ?? null)
       : null,
+    source: row.source,
   };
 }
 

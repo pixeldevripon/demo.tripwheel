@@ -10,6 +10,10 @@
 > Booking & payments: `technical-doc/02-architecture/BOOKING-AND-PAYMENTS.md` · Availability:
 > `technical-doc/02-architecture/AVAILABILITY-AND-DEPARTURES.md` · Tracking:
 > `technical-doc/02-architecture/TRACKING-AND-ANALYTICS.md`
+> iCal calendar sync (export feeds incl. the zero-PII CHANNEL feed, import + the four modes, routes,
+> permissions, operator walkthrough, poll/retry, SSRF notes, troubleshooting):
+> `technical-doc/02-architecture/ICAL-SETUP-AND-USAGE.md` (design detail:
+> `AVAILABILITY-AND-DEPARTURES.md` §9a/§9b; PRD reconciliation: `ICAL-PRD-GAP-ANALYSIS.md`)
 > FX & multi-currency (how conversion works, providers, env, snapshots, spotlight commission):
 > `technical-doc/02-architecture/FX-AND-MULTI-CURRENCY.md`
 > Instagram feed (auto-sync flow, dashboard access token, sync cadence, token refresh, mirroring, code map):
@@ -214,6 +218,8 @@ prisma/
 ├── slug-registry.prisma   SlugRegistry (+ redirects table — to add)
 ├── availability.prisma    availability_schedules, availability_exceptions, departures  ← to add
 ├── calendar-feeds.prisma  CalendarFeed — tokenized read-only iCal export (bookings / departures)
+├── calendar-sync.prisma   CalendarSubscription + CalendarEvent + IcalSyncLog + CalendarConflict —
+│                          inbound iCal import; writes availability_exceptions, NEVER capacity
 ├── bookings.prisma        Booking (E.8 expansion: refs, multi-currency, commission, payment_model) ← expand
 ├── reviews.prisma         Review (E.7 expansion) ← expand
 ├── wishlist.prisma        Wishlist

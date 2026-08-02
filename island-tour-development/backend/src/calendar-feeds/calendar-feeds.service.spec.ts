@@ -12,7 +12,7 @@ import {
   Permission,
   Role,
 } from '@prisma/client';
-import { CalendarFeedsService } from './calendar-feeds.service';
+import { CalendarFeedsService, mergeRanges } from './calendar-feeds.service';
 
 /** A @db.Date storage value. */
 const day = (d: string) => new Date(`${d}T00:00:00.000Z`);
@@ -456,6 +456,156 @@ describe('CalendarFeedsService', () => {
 function spanDays(range: { gte: Date; lte: Date }): number {
   return (range.lte.getTime() - range.gte.getTime()) / 86_400_000;
 }
+
+describe('CHANNEL feed - what an OTA receives', () => {
+  const channelFeed = (prisma: ReturnType<typeof mockPrisma>) => {
+    prisma.calendarFeed.findUnique.mockResolvedValue({
+      id: 'feed-c',
+      kind: CalendarFeedKind.CHANNEL,
+      operatorId: OPERATOR_ID,
+      tourId: 'tour-1',
+      revokedAt: null,
+      createdAt: new Date(Date.UTC(2026, 6, 1)),
+      operator: { companyInfo: { companyName: 'Miss Ann' } },
+      tour: { name: 'Klein Curacao', timeZone: 'America/Curacao' },
+    });
+  };
+
+  const dep = (date: string, over: Record<string, unknown> = {}) => ({
+    date: day(date),
+    status: DepartureStatus.OPEN,
+    capacity: 60,
+    bookedCount: 0,
+    updatedAt: new Date(Date.UTC(2026, 6, 2)),
+    ...over,
+  });
+
+  // The whole reason this feed exists as a separate kind.
+  it('contains no traveller data of any kind', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { status: DepartureStatus.SOLD_OUT, bookedCount: 60 }),
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body).toContain('SUMMARY:Unavailable');
+    expect(body).not.toMatch(/Ada|Lovelace|guest|Ref:|IT-\d/);
+  });
+
+  // One seat sold on a 60-seat catamaran must NOT close the date on Airbnb -
+  // that would cost the other 59.
+  it('leaves a partly booked date open', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { bookedCount: 1 }),
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body).not.toContain('BEGIN:VEVENT');
+  });
+
+  it('blocks a date once nothing on it can still be sold', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { bookedCount: 60 }),
+      dep('2026-08-14', { status: DepartureStatus.CLOSED }),
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body).toContain('DTSTART;VALUE=DATE:20260814');
+  });
+
+  // Any remaining seat anywhere that day means the date is still sellable.
+  it('keeps a date open when one of its departures still has room', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { bookedCount: 60 }), // full
+      dep('2026-08-14', { bookedCount: 3 }), // still sellable
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body).not.toContain('BEGIN:VEVENT');
+  });
+
+  // A day we simply do not run is not a day the operator is busy. Publishing it
+  // would block dates on the channel for no reason.
+  it('says nothing about days with no departures at all', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body).toContain('BEGIN:VCALENDAR');
+    expect(body).not.toContain('BEGIN:VEVENT');
+  });
+
+  it('emits all-day values, not timestamps', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { status: DepartureStatus.CLOSED }),
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    // DTEND is EXCLUSIVE, so one blocked day ends on the 15th.
+    expect(body).toContain('DTSTART;VALUE=DATE:20260814');
+    expect(body).toContain('DTEND;VALUE=DATE:20260815');
+    expect(body).not.toMatch(/DTSTART:\d{8}T/);
+  });
+
+  it('collapses consecutive blocked days into one range', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    prisma.departure.findMany.mockResolvedValue([
+      dep('2026-08-14', { status: DepartureStatus.CLOSED }),
+      dep('2026-08-15', { status: DepartureStatus.CLOSED }),
+      dep('2026-08-16', { status: DepartureStatus.CLOSED }),
+      dep('2026-08-18', { status: DepartureStatus.CLOSED }), // gap on the 17th
+    ]);
+
+    const { body } = await service.render('tok-abc');
+    expect(body.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(body).toContain('DTSTART;VALUE=DATE:20260814');
+    expect(body).toContain('DTEND;VALUE=DATE:20260817'); // covers 14-16
+    expect(body).toContain('DTSTART;VALUE=DATE:20260818');
+  });
+
+  it('names the calendar after the tour, not the operator', async () => {
+    const [service, prisma] = make();
+    channelFeed(prisma);
+    const { body } = await service.render('tok-abc');
+    expect(body).toContain('X-WR-CALNAME:Klein Curacao - booked');
+  });
+});
+
+describe('mergeRanges', () => {
+  it('merges consecutive days and splits on a gap', () => {
+    expect(mergeRanges(['2026-08-14', '2026-08-15', '2026-08-17'])).toEqual([
+      { start: '2026-08-14', end: '2026-08-15' },
+      { start: '2026-08-17', end: '2026-08-17' },
+    ]);
+  });
+
+  it('handles a month boundary', () => {
+    expect(mergeRanges(['2026-08-31', '2026-09-01'])).toEqual([
+      { start: '2026-08-31', end: '2026-09-01' },
+    ]);
+  });
+
+  it('handles a leap day', () => {
+    expect(mergeRanges(['2028-02-28', '2028-02-29', '2028-03-01'])).toEqual([
+      { start: '2028-02-28', end: '2028-03-01' },
+    ]);
+  });
+
+  it('returns nothing for nothing', () => {
+    expect(mergeRanges([])).toEqual([]);
+  });
+});
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
 
