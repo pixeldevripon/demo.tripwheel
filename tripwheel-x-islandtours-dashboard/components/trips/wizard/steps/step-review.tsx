@@ -48,15 +48,6 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 import { useRole } from '@/contexts/role-context';
 import {
     useApproveTrip,
@@ -87,6 +78,7 @@ import { cn } from '@/lib/utils';
 import { tierMeta } from '@/types/tier';
 import type { TripListItem } from '@/types/trip';
 import { TripArchiveDialog } from '../../trip-archive-dialog';
+import { RejectChangesDialog } from '../../lifecycle/reject-changes-dialog';
 import { useWizard } from '../wizard-context';
 import { WizardStepBody, WizardStepHeader } from '../wizard-step';
 
@@ -117,7 +109,6 @@ export function StepReview({ trip }: StepReviewProps) {
     const { mutate: rejectTrip, isPending: isRejecting } = useRejectTrip();
 
     const [rejectOpen, setRejectOpen] = useState(false);
-    const [rejectNote, setRejectNote] = useState('');
     const [archiveOpen, setArchiveOpen] = useState(false);
     // F7: pause states its consequences before acting.
     const [pauseOpen, setPauseOpen] = useState(false);
@@ -703,61 +694,31 @@ export function StepReview({ trip }: StepReviewProps) {
                 </div>
             </WizardStepBody>
 
-            <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-                <DialogContent className='sm:max-w-md'>
-                    <DialogHeader>
-                        <DialogTitle>
-                            Request changes on &ldquo;{trip.name}&rdquo;?
-                        </DialogTitle>
-                        <DialogDescription>
-                            The note below is shown to the operator - tell them
-                            exactly what to fix so they can resubmit.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Textarea
-                        value={rejectNote}
-                        onChange={e => setRejectNote(e.target.value)}
-                        maxLength={1000}
-                        rows={4}
-                        placeholder='e.g. The hero photo is blurry and the overview needs at least two paragraphs.'
-                    />
-                    <DialogFooter>
-                        <Button
-                            variant='outline'
-                            disabled={isRejecting}
-                            onClick={() => setRejectOpen(false)}>
-                            Back
-                        </Button>
-                        <Button
-                            variant='destructive'
-                            disabled={
-                                isRejecting || rejectNote.trim().length < 5
-                            }
-                            onClick={() =>
-                                rejectTrip(
-                                    { id: trip.id, note: rejectNote.trim() },
-                                    {
-                                        onSuccess: () => {
-                                            setRejectOpen(false);
-                                            setRejectNote('');
-                                            toast.success(
-                                                'Changes requested - the operator sees your note.'
-                                            );
-                                        },
-                                        onError: err =>
-                                            toast.error(
-                                                err instanceof Error
-                                                    ? err.message
-                                                    : 'Failed to reject.'
-                                            ),
-                                    }
-                                )
-                            }>
-                            Request changes
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <RejectChangesDialog
+                tripName={trip.name}
+                open={rejectOpen}
+                onOpenChange={setRejectOpen}
+                isPending={isRejecting}
+                onConfirm={note =>
+                    rejectTrip(
+                        { id: trip.id, note },
+                        {
+                            onSuccess: () => {
+                                setRejectOpen(false);
+                                toast.success(
+                                    'Changes requested - the operator sees your note.'
+                                );
+                            },
+                            onError: err =>
+                                toast.error(
+                                    err instanceof Error
+                                        ? err.message
+                                        : 'Failed to reject.'
+                                ),
+                        }
+                    )
+                }
+            />
 
             <TripArchiveDialog
                 tripId={trip.id}

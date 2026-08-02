@@ -294,6 +294,33 @@ User chose "safe helpers now, defer the big structural refactors (M1/M2 factory,
   variables, no invalidation on error, no-callback → no invalidation.
 - **Verified:** `tsc` 0 errors, ESLint 0 errors, **72/72** tests.
 
+### ◑ M4 — god-component split / dialog dedup (safe part done; rest scoped out)
+
+Investigation finding: `trip-row-actions` and `step-review` were **near-verbatim but not identical** —
+their pause title/description and every lifecycle toast string have quietly diverged. So "unifying"
+them the way the review suggested would silently rewrite user-facing copy in one surface, which the
+guardrail forbids. M4 was therefore scoped to the piece that dedupes **without** changing copy.
+
+**✅ Shared `RejectChangesDialog`** `components/trips/lifecycle/reject-changes-dialog.tsx`
+- **What:** Extracted the reject-with-required-note dialog (duplicated in both files). It owns the note
+  text + the `>= 5`-char gate (`MIN_REJECT_NOTE`); the **success toast is passed via `onConfirm`** so
+  each surface keeps its own wording (row-actions: "…notified in their dashboard."; review: "…sees your
+  note."). Migrated both consumers; removed their `rejectNote` state + `Dialog`/`Textarea` imports.
+  step-review 940→901 lines, trip-row-actions 459→422.
+- **One cosmetic change (disclosed):** the shared title uses typographic quotes
+  (`Request changes on "…"?`); row-actions previously used straight quotes there. 2-char visual only.
+- 🧪 `reject-changes-dialog.test.tsx` (5 tests, first Radix-render tests): title shows the name, the
+  `>= 5` gate incl. whitespace-only, trimmed-note callback, pending disables both buttons, reset on close.
+
+**Scoped OUT of M4 (documented, not done):**
+- **Pause `AlertDialog`** — its title ("Pause \"{name}\"?" vs "Pause this tour?") and description
+  differ between the two surfaces; a shared component would change user-facing copy. Left as-is.
+- **`useTripLifecycle` hook** — would only bundle the 7 mutation declarations; the handlers/toasts
+  differ per surface, so the net dedup is small and the migration touches every call site. Low value.
+- **Summary-grid split** — step-review's readiness/summary block is tightly coupled to the wizard
+  context (`goTo`/`revealSection`), `CheckRow`, and motion; a safe extraction needs its own
+  component tests first. Best done as a dedicated pass.
+
 ### ⏸ L2 — kept deferred after analysis (LineListField stable keys)
 `LineListField` (`step-content.tsx`) is intentionally **stateless** — rows are derived from the
 newline-joined string each render, which is exactly why values survive. Adding stable per-row ids means
