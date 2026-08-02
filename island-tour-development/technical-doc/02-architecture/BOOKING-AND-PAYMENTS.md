@@ -215,3 +215,64 @@ Canonical: master §6.5 (`island-tours-booking-confirmation-email-spec.md` + wir
 - Operator collects the full amount directly; balance is entirely the operator's transaction.
 
 See the conversion-firing details for `operator_full` (fires at commit rather than on a webhook) in [TRACKING-AND-ANALYTICS.md](./TRACKING-AND-ANALYTICS.md).
+
+---
+
+## 8. The active PSP and its activation contract
+
+Exactly **one** provider charges travelers at checkout, held on the `payment_settings`
+singleton as `activeProvider` (`STRIPE` | `MOLLIE`). Switching is **never retroactive**: every
+`Payment` row keeps the provider it was created with, and webhooks and refunds route by the
+row, not by this setting.
+
+### What each provider must have before it may be activated
+
+| Provider | Required credentials | Why |
+|---|---|---|
+| **Stripe** | `publishableKey`, `secretKey`, `webhookSecret` | The checkout mounts Stripe.js with the publishable key and **refuses the payment step without one**; the pair behind it authorizes and verifies. |
+| **Mollie** | `apiKey` | Mollie has no webhook secret - the backend verifies a webhook by re-fetching the payment with this key. |
+
+`profileId` is **not** a Mollie requirement. Empty simply means the hosted payment page
+instead of the inline card form, which is a working checkout.
+
+`PATCH /settings/payment-provider` rejects (400) a target missing any of these, and the
+message **names every gap at once** rather than one per attempt. The authority is
+`missingProviderCredentials()` in `settings.service.ts`.
+
+### Collect-on-switch (the dashboard half)
+
+The dashboard mirrors that table in `lib/settings/payment-requirements.ts`, so the switch
+dialog knows the gaps **before** it sends anything. **Keep the two in sync** - the mirror
+exists to pre-empt the 400, not to replace it.
+
+The confirm dialog therefore has two modes:
+
+- **Ready** - a plain confirmation.
+- **Incomplete** - the same dialog also asks for exactly the missing fields, and activating
+  **saves them first, then switches**.
+
+That order is deliberate. Credentials are worth keeping on their own, so if the switch then
+fails (a rate limit, a dropped connection) the admin retries the toggle instead of retyping
+their keys, and checkout was never pointed at a provider that could not charge. The reverse
+order has no safe midpoint.
+
+Only the missing fields are sent. A secret that is already stored is never touched, and its
+masked "Current: ...1rOO" hint is what proves it is there - the GET never returns a real
+secret.
+
+### Two traps worth remembering
+
+**"Configured" must mean what the switch enforces.** The badge once keyed off the Stripe
+secret key alone, so it promised a provider the switch would then refuse. It now reads the
+same requirement list.
+
+**Browser autofill will write the admin's own login into these fields.** A card of one text
+input plus one password input reads to Chrome as a login form: it filled the admin's email as
+the publishable key and their password as the webhook secret, both silently. Because a blank
+secret means "keep the current one", a filled one means "replace it" - one Save would have
+overwritten a live credential with a password.
+
+`autocomplete="off"` does **not** stop this on a password input when the browser holds a saved
+login for the site; only `autocomplete="new-password"` does. Every credential input on the
+payments screen is guarded: `off` on the text fields, `new-password` on the secrets. Any new
+credential field needs the same.

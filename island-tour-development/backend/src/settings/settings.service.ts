@@ -19,6 +19,12 @@ import {
   UpdateStripeConfigurationDto,
 } from './dto/settings.dto';
 
+/** "a", "a and b", "a, b and c" - for naming missing fields in one message. */
+function formatList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 @Injectable()
 export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
@@ -285,32 +291,59 @@ export class SettingsService {
   }
 
   /**
+   * Which stored credentials the given PSP is still missing before it may
+   * charge at checkout, as human labels in the order the settings card shows
+   * them. Empty array = ready to activate.
+   *
+   * This list IS the activation contract, and the dashboard mirrors it in
+   * `lib/settings/payment-requirements.ts` so the switch dialog can collect
+   * exactly these fields up front instead of letting the switch fail. Change
+   * one, change the other.
+   *
+   * Stripe needs the publishable key too, not just the server-side pair: the
+   * checkout mounts Stripe.js with it, and refuses the payment step outright
+   * when the intent comes back without one (`checkout-form.tsx`). Leaving it
+   * out of this gate let an admin activate a Stripe that could not take a
+   * card - the exact outcome the gate exists to prevent.
+   */
+  private async missingProviderCredentials(
+    provider: PaymentProvider,
+  ): Promise<string[]> {
+    if (provider === PaymentProvider.MOLLIE) {
+      const mollie = await this.prisma.mollieConfiguration.findUnique({
+        where: { id: 'default' },
+        select: { apiKey: true },
+      });
+      return mollie?.apiKey ? [] : ['API key'];
+    }
+
+    const stripe = await this.prisma.stripeConfiguration.findUnique({
+      where: { id: 'default' },
+      select: { publishableKey: true, secretKey: true, webhookSecret: true },
+    });
+    const missing: string[] = [];
+    if (!stripe?.publishableKey) missing.push('publishable key');
+    if (!stripe?.secretKey) missing.push('secret key');
+    if (!stripe?.webhookSecret) missing.push('webhook secret');
+    return missing;
+  }
+
+  /**
    * Switch the checkout PSP. Guarded: the TARGET provider must already hold
    * usable credentials, otherwise the switch would brick every checkout with a
    * 503 the moment it lands. Never retroactive - existing Payment rows keep
    * their own provider and webhooks/refunds route by the row.
    */
   async updatePaymentProviderSettings(dto: UpdatePaymentProviderDto) {
-    if (dto.activeProvider === PaymentProvider.MOLLIE) {
-      const mollie = await this.prisma.mollieConfiguration.findUnique({
-        where: { id: 'default' },
-        select: { apiKey: true },
-      });
-      if (!mollie?.apiKey) {
-        throw new BadRequestException(
-          'Configure the Mollie API key before making Mollie the active provider',
-        );
-      }
-    } else {
-      const stripe = await this.prisma.stripeConfiguration.findUnique({
-        where: { id: 'default' },
-        select: { secretKey: true, webhookSecret: true },
-      });
-      if (!stripe?.secretKey || !stripe.webhookSecret) {
-        throw new BadRequestException(
-          'Configure the Stripe secret key and webhook secret before making Stripe the active provider',
-        );
-      }
+    const missing = await this.missingProviderCredentials(dto.activeProvider);
+    if (missing.length > 0) {
+      const label =
+        dto.activeProvider === PaymentProvider.MOLLIE ? 'Mollie' : 'Stripe';
+      // Name every gap, not just the first - an admin fixing them one 400 at a
+      // time is the slow way to find out there were three.
+      throw new BadRequestException(
+        `Configure the ${label} ${formatList(missing)} before making ${label} the active provider`,
+      );
     }
 
     const row = await this.prisma.paymentSettings.upsert({

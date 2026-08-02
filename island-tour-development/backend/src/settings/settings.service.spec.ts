@@ -388,8 +388,28 @@ describe('SettingsService', () => {
       expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
     });
 
-    it('rejects switching to STRIPE without secret + webhook secret', async () => {
+    it('switches to STRIPE when all three credentials are configured', async () => {
       prisma.stripeConfiguration.findUnique.mockResolvedValue({
+        publishableKey: 'pk_live_x',
+        secretKey: 'enc',
+        webhookSecret: 'enc',
+      });
+      prisma.paymentSettings.upsert.mockResolvedValue({
+        id: 'default',
+        activeProvider: 'STRIPE',
+        updatedAt: new Date(),
+      });
+
+      const result = await service.updatePaymentProviderSettings({
+        activeProvider: 'STRIPE',
+      } as never);
+
+      expect(result.activeProvider).toBe('STRIPE');
+    });
+
+    it('rejects switching to STRIPE without the webhook secret', async () => {
+      prisma.stripeConfiguration.findUnique.mockResolvedValue({
+        publishableKey: 'pk_live_x',
         secretKey: 'enc',
         webhookSecret: '',
       });
@@ -398,7 +418,54 @@ describe('SettingsService', () => {
         service.updatePaymentProviderSettings({
           activeProvider: 'STRIPE',
         } as never),
-      ).rejects.toThrow('Configure the Stripe secret key');
+      ).rejects.toThrow('Configure the Stripe webhook secret');
+      expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
+    });
+
+    // The publishable key is not optional decoration: the checkout mounts
+    // Stripe.js with it and refuses the payment step without one, so a Stripe
+    // holding only the server-side pair cannot actually take a card.
+    it('rejects switching to STRIPE without the publishable key', async () => {
+      prisma.stripeConfiguration.findUnique.mockResolvedValue({
+        publishableKey: '',
+        secretKey: 'enc',
+        webhookSecret: 'enc',
+      });
+
+      await expect(
+        service.updatePaymentProviderSettings({
+          activeProvider: 'STRIPE',
+        } as never),
+      ).rejects.toThrow('Configure the Stripe publishable key');
+      expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
+    });
+
+    // One 400 per missing field would make an admin discover the third gap on
+    // their third attempt; the dashboard dialog also reads every gap at once.
+    it('names every missing Stripe credential in a single message', async () => {
+      prisma.stripeConfiguration.findUnique.mockResolvedValue({
+        publishableKey: '',
+        secretKey: '',
+        webhookSecret: '',
+      });
+
+      await expect(
+        service.updatePaymentProviderSettings({
+          activeProvider: 'STRIPE',
+        } as never),
+      ).rejects.toThrow(
+        'Configure the Stripe publishable key, secret key and webhook secret before making Stripe the active provider',
+      );
+    });
+
+    it('rejects switching to a provider with no configuration row at all', async () => {
+      prisma.stripeConfiguration.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updatePaymentProviderSettings({
+          activeProvider: 'STRIPE',
+        } as never),
+      ).rejects.toThrow('Configure the Stripe publishable key');
       expect(prisma.paymentSettings.upsert).not.toHaveBeenCalled();
     });
   });
