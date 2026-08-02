@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRole } from '@/contexts/role-context';
 import {
@@ -28,13 +27,18 @@ import { CalendarFeedInstructions } from './calendar-feed-instructions';
 /**
  * Prose only. The dashboard shell runs to ~1800px on a wide monitor, and an
  * unconstrained paragraph there is a single 200-character line nobody reads.
- *
- * Deliberately NOT applied to the URL row: the token makes these links long, and
- * capping the input truncated the URL mid-string. The row runs full width so as
- * much of the link as possible is readable at a glance, with the buttons parked
- * at the right edge.
  */
 const MEASURE = 'max-w-3xl';
+
+/**
+ * The token IS the credential, so the full URL never renders (founder,
+ * 2026-08-02) - just enough of the token survives to tell two links apart.
+ * Copy is the only way to get the real thing.
+ */
+const maskFeedUrl = (url: string) => {
+    const token = /calendar-feeds\/([^/]+)/.exec(url)?.[1] ?? '';
+    return `…/${token.slice(0, 4)}····${token.slice(-4)}/calendar.ics`;
+};
 
 /**
  * Hosts that only exist on the machine reading them.
@@ -71,17 +75,14 @@ const FEED_KINDS: FeedKindMeta[] = [
     {
         kind: CalendarFeedKind.BOOKINGS,
         title: 'Bookings',
-        description:
-            'Every confirmed booking on your tours, with party size and reference. Cancellations stay on the calendar marked cancelled.',
+        description: 'Confirmed bookings with party size and reference.',
         permission: 'VIEW_BOOKINGS',
-        sensitive:
-            'Shows traveller names to anyone who has the link. Share it with your team only.',
+        sensitive: 'Shows traveller names - share with your team only.',
     },
     {
         kind: CalendarFeedKind.DEPARTURES,
         title: 'Departures',
-        description:
-            'Every departure in the next 90 days with how full it is. No traveller details, so this one is safe to hand to a guide.',
+        description: 'Departures for the next 90 days - no traveller details.',
         permission: 'MANAGE_AVAILABILITY',
     },
 ];
@@ -128,9 +129,7 @@ export function CalendarFeedsForm() {
               take over a day - and a promise we cannot keep becomes a support ticket. */}
                     <p
                         className={`mt-1 ${MEASURE} text-sm font-light normal-case tracking-normal text-muted-foreground`}>
-                        Subscribe in Google, Apple or Outlook Calendar to see
-                        your schedule alongside everything else. Read-only: it
-                        never changes availability here.
+                        Read-only links for Google, Apple or Outlook Calendar.
                     </p>
                 </CardHeader>
                 <CardContent className='divide-y pt-0'>
@@ -225,13 +224,9 @@ function FeedRow({
             {feed ? (
                 <div className='space-y-1.5'>
                     <div className='flex flex-wrap items-center gap-2'>
-                        {/* Read-only rather than disabled: the operator must still be able to
-                select the text by hand if the clipboard API is unavailable. */}
-                        <Input
-                            readOnly
-                            value={feed.url}
-                            className='h-9 min-w-0 flex-1 font-mono text-xs'
-                        />
+                        <code className='inline-flex h-8 min-w-0 items-center truncate rounded-md border bg-muted/50 px-3 font-mono text-xs text-muted-foreground md:min-w-90'>
+                            {maskFeedUrl(feed.url)}
+                        </code>
                         <CopyButton value={feed.url} />
                         <Button
                             variant='outline'
@@ -251,18 +246,17 @@ function FeedRow({
                             Turn off
                         </Button>
                     </div>
+                    {/* Google/Outlook fetch from their own servers, so a private
+                        address subscribes fine and then stays empty forever -
+                        warn before that happens, not after. */}
                     {isPubliclyUnreachable(feed.url) ? (
                         <p className='text-xs text-warning-fg'>
-                            This link points at a private address, so Google and
-                            Outlook cannot reach it - they fetch from their own
-                            servers, not from your browser. The calendar will
-                            subscribe and then stay empty. Set
+                            Private address - Google and Outlook cannot reach
+                            it. Set
                             <code className='mx-1 font-mono'>
                                 PUBLIC_API_URL
                             </code>
-                            to a public https address to use it outside this
-                            machine. Apple Calendar on this Mac can still read
-                            it.
+                            to a public https address first.
                         </p>
                     ) : (
                         meta.sensitive && (
@@ -296,7 +290,10 @@ function LastSync({ feed }: { feed: CalendarFeed }) {
     return (
         <span className='text-xs text-muted-foreground'>
             {feed.lastFetchedAt
-                ? `Last synced ${new Date(feed.lastFetchedAt).toLocaleString()}`
+                ? `Last synced ${new Date(feed.lastFetchedAt).toLocaleString(
+                      undefined,
+                      { dateStyle: 'short', timeStyle: 'short' }
+                  )}`
                 : 'Waiting for the first sync'}
         </span>
     );
@@ -308,23 +305,36 @@ function CopyButton({ value }: { value: string }) {
     const copy = async () => {
         try {
             await navigator.clipboard.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
         } catch {
-            // Clipboard access is refused outside a secure context and in some embedded
-            // browsers; the input beside this button is selectable for exactly that case,
-            // so say so rather than failing silently.
-            toast.error(
-                'Could not copy - select the link and copy it manually'
-            );
+            // Clipboard access is refused outside a secure context and in some
+            // embedded browsers. The URL renders MASKED, so there is nothing on
+            // screen to hand-select any more - fall back to the legacy
+            // execCommand path with an off-screen textarea instead.
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            ta.remove();
+            if (!ok) {
+                toast.error('Could not copy the link');
+                return;
+            }
         }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
+        // Fixed width: "Copy" -> "Copied" must not resize the button and
+        // shove the New link / Turn off buttons sideways mid-click.
         <Button
             type='button'
             variant='outline'
             size='sm'
+            className='w-22'
             onClick={() => void copy()}>
             <HugeiconsIcon
                 icon={copied ? Tick02Icon : Copy01Icon}
