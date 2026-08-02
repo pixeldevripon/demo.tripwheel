@@ -121,23 +121,13 @@ export function TripDateChanges({ tripId, timeZone }: TripDateChangesProps) {
                             )}
                         </p>
                         <p className='text-xs text-muted-foreground'>
-                            {x.source === 'ICAL'
-                                ? 'Imported from a connected calendar'
-                                : x.createdByName
-                                  ? `By ${x.createdByName}`
-                                  : 'By your team'}{' '}
+                            {x.createdByName
+                                ? `By ${x.createdByName}`
+                                : 'By your team'}{' '}
                             · {format(new Date(x.createdAt), 'MMM d, HH:mm')}
                         </p>
                     </div>
-                    {/* No undo on an imported row. Removing it by hand would look
-                        like it worked and then reappear on the next poll, so the
-                        only real fix is on the connection itself. */}
-                    {x.date >= todayKey && x.source === 'ICAL' && (
-                        <span className='shrink-0 text-xs text-muted-foreground'>
-                            Managed by the channel
-                        </span>
-                    )}
-                    {x.date >= todayKey && x.source !== 'ICAL' && (
+                    {x.date >= todayKey && (
                         <Button
                             size='sm'
                             variant='outline'
