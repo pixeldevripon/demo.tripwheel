@@ -1,5 +1,43 @@
 # Frontend changelog
 
+## 2026-08-02 — Wave 2 follow-up: URL input hardening
+
+**`quote` and `departure` are now shape-checked before they leave the page.**
+Both were read raw from the query string, so a stale or hand-edited
+`?quote=junk` failed at the backend's `@IsUUID()` and the checkout relayed that
+message verbatim — a traveller reading "quoteId must be a UUID" on the page
+where they are about to pay. Both are optional to the flow (reserve recomputes
+regardless of `quoteId`), so discarding a malformed one is strictly better than
+forwarding it.
+
+The matcher is deliberately **version-agnostic**, unlike the v4-strict
+`UUID_SHAPE` that guards the client idempotency key we mint ourselves. Departure
+ids are backend-generated (Prisma `@default(uuid())`); version-pinning them here
+would mean a future Prisma default silently rejecting every real id — a far
+worse failure than the malformed input being filtered out.
+
+**Party counts must now be whole numbers.** `Number.isFinite` accepted `2.5`,
+which reached the backend's `@IsInt()` and came back as another validator string
+rendered at the traveller.
+
+**`SectionBadge` and `Collapse` moved to `checkout-fields.tsx`**, which is that
+file's stated job. They were stateless presentation sitting below a 950-line
+component. `checkout-form` is now 937 lines, down from 1054 before the wave.
+
+### Still open — needs product input, not code
+
+**Back from the thank-you page lands on a live checkout that will book again.**
+After a successful booking the history is `[…, checkout, TYP]`, so Back returns
+to a checkout whose query selection is still valid and which renders a complete,
+empty contact form. Filling it in reserves a second booking and charges a second
+time. The app already knows this happened — `it.justBooked` is set for 15
+minutes — but the checkout never reads it.
+
+Not fixed here because the fix is an interstitial ("you just booked this — view
+your booking"), which needs new copy in all seven locales **and** a deliberate
+"book another" escape so a genuine repeat booking is not blocked. That is a
+product decision about the flow, not a refactor.
+
 ## 2026-08-02 — Wave 2: checkout, payment and the booking widget
 
 Same two subagents, same verify-before-fix discipline, over ~7,000 lines: the 9
