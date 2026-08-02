@@ -1,4 +1,5 @@
 import { twitterCard } from '@/lib/seo/twitter-card';
+import { LAUNCH_DESTINATION_SLUGS } from '@/lib/constants/locales';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 
@@ -11,7 +12,7 @@ import { getActiveDestinations, getDestinationBySlug } from '@/lib/api/public';
 import { isLocale, type Locale } from '@/lib/constants/locales';
 import { getCurrentYear } from '@/lib/current-year';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { buildAlternates } from '@/lib/seo/alternates';
+import { buildAlternates , NOT_FOUND_METADATA } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
 import { buildBreadcrumbJsonLd } from '@/lib/seo/jsonld';
 import { getSiteUrl } from '@/lib/seo/site-url';
@@ -20,14 +21,6 @@ import type { Metadata } from 'next';
 
 // Fallback slugs for static generation if the backend is unreachable at build
 // (Cache Components requires generateStaticParams to return at least one entry).
-const LAUNCH_DESTINATION_SLUGS = [
-    'curacao',
-    'aruba',
-    'sint-maarten',
-    'saint-lucia',
-    'bahamas',
-];
-
 /** Prerender the active destinations from the backend; fall back to launch slugs. */
 export async function generateStaticParams() {
     try {
@@ -70,9 +63,12 @@ export async function generateMetadata({
         getDictionary(locale),
         getDestinationBySlug(destination, locale),
     ]);
-    // Unknown or not-yet-launched island: emit only the alternates so the page's
-    // own notFound() still governs the response.
-    if (!dest || !dest.isActive) return { alternates };
+    // Unknown or not-yet-launched island. NOT `{ alternates }`: this runs
+    // before the page's `notFound()`, and the prerendered shell has already
+    // flushed by then, so the response is a 200 either way - emitting a
+    // self-referencing canonical for a 404 is what let anyone mint indexable
+    // doorway URLs on our domain.
+    if (!dest || !dest.isActive) return NOT_FOUND_METADATA;
 
     const heading = dict.destination.allTours.heading;
 

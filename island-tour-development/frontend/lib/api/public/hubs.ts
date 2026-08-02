@@ -4,6 +4,7 @@
  * `GET /hubs/destination/:slug`, so every returned hub is PUBLISHED, active, and
  * has at least one published tour (its link never 404s).
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -30,7 +31,7 @@ export async function getDestinationHubs(
   cacheTag('hubs', 'tours');
 
   const data = await publicGet<HubByDestination[]>(
-    `/hubs/destination/${destinationSlug}${buildQuery({ locale })}`,
+    `/hubs/destination/${seg(destinationSlug)}${buildQuery({ locale })}`,
   );
   return data ?? [];
 }
@@ -57,7 +58,7 @@ export async function getHubRender(
   cacheLife('days');
 
   const data = await publicGetStrict<HubRender>(
-    `/hubs/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
+    `/hubs/render/${seg(slug)}${buildQuery({ destinationId, locale, currency })}`,
   );
   cacheTag('tours', data ? `hub:${data.id}` : 'hubs');
   return data;

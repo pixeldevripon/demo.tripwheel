@@ -6,6 +6,7 @@
  * one round-trip. Returns `null` for a draft/inactive/unknown collection (backend
  * 404) or when the backend is unreachable — callers `notFound()` on null.
  */
+import { seg } from '@/lib/api/api-path';
 import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
@@ -62,7 +63,7 @@ export async function getCollectionRender(
   cacheLife('days');
 
   const data = await publicGetStrict<CollectionRender>(
-    `/collections/render/${slug}${buildQuery({ destinationId, locale, currency })}`,
+    `/collections/render/${seg(slug)}${buildQuery({ destinationId, locale, currency })}`,
   );
   cacheTag('tours', data ? `collection:${data.id}` : 'collections');
   return data;

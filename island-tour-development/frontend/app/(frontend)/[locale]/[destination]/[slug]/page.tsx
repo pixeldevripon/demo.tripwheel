@@ -1,4 +1,5 @@
 import { twitterCard } from '@/lib/seo/twitter-card';
+import { LAUNCH_DESTINATION_SLUGS } from '@/lib/constants/locales';
 import { CategoryPage } from '@/components/frontend/category/category-page';
 import { CollectionPage } from '@/components/frontend/collection/collection-page';
 import { HubPage } from '@/components/frontend/hub/hub-page';
@@ -30,7 +31,7 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { getDictionary } from '@/lib/i18n/dictionaries';
-import { buildAlternates } from '@/lib/seo/alternates';
+import { buildAlternates , NOT_FOUND_METADATA } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
 import { EntityPageSkeleton } from '@/components/frontend/skeletons/entity-page-skeleton';
 import type { Metadata } from 'next';
@@ -55,14 +56,6 @@ async function resolveDestinationName(
 }
 
 type PageParams = { locale: string; destination: string; slug: string };
-
-const LAUNCH_DESTINATION_SLUGS = [
-    'curacao',
-    'aruba',
-    'sint-maarten',
-    'saint-lucia',
-    'bahamas',
-];
 
 /**
  * All LIVE tour slugs for a destination, paginated - the public listing DTO caps
@@ -225,7 +218,7 @@ export async function generateMetadata({
             getCategoryPageContent(resolution.entityId, locale as Locale),
             resolveDestinationName(destination, locale as Locale),
         ]);
-        if (!category) return { alternates };
+        if (!category) return NOT_FOUND_METADATA;
         const categoryTitle =
             pageContent?.metaTitle ??
             `${category.name} in ${destinationName} | Island Tours`;
@@ -249,7 +242,7 @@ export async function generateMetadata({
 
     if (resolution.entityType === 'COLLECTION' && resolution.entityId) {
         const dest = await getDestinationBySlug(destination, locale as Locale);
-        if (!dest) return { alternates };
+        if (!dest) return NOT_FOUND_METADATA;
 
         const render = await getCollectionRender(
             slug,
@@ -258,7 +251,7 @@ export async function generateMetadata({
         );
         // Only PUBLISHED collections render; a null render (draft/404) emits just
         // the alternates so the page's own notFound() still governs the response.
-        if (!render) return { alternates };
+        if (!render) return NOT_FOUND_METADATA;
 
         const collectionTitle =
             render.pageContent?.metaTitle ??
@@ -281,12 +274,12 @@ export async function generateMetadata({
 
     if (resolution.entityType === 'HUB' && resolution.entityId) {
         const dest = await getDestinationBySlug(destination, locale as Locale);
-        if (!dest) return { alternates };
+        if (!dest) return NOT_FOUND_METADATA;
 
         const render = await getHubRender(slug, dest.id, locale as Locale);
         // Only PUBLISHED hubs render; a null render (draft/404) emits just the
         // alternates so the page's own notFound() still governs the response.
-        if (!render) return { alternates };
+        if (!render) return NOT_FOUND_METADATA;
 
         const entityTitle =
             render.pageContent?.metaTitle ??
@@ -315,7 +308,7 @@ export async function generateMetadata({
             destinationSlug: destination,
             locale: locale as Locale,
         }).catch(() => null);
-        if (!tour) return { alternates };
+        if (!tour) return NOT_FOUND_METADATA;
 
         // og:image respects the media library's "exclude from indexing" flag:
         // hero first, then gallery order, excluded URLs filtered out.
@@ -368,7 +361,7 @@ export async function generateMetadata({
         };
     }
 
-    return { alternates };
+    return NOT_FOUND_METADATA;
 }
 
 /**

@@ -520,7 +520,20 @@ export async function HubPage({
     // `hero.stats.priceFrom` is a source-currency aggregate the backend does not
     // convert (guide §20.9 defers hub aggregates). Derive the shopper-currency
     // rate from the render's converted cards (shared helper) and convert it.
-    const { currency: heroCurrency, rate: heroRate } = deriveDisplayRate(
+    //
+    // `converted` is load-bearing. Both sets it derives from are EDITORIAL and
+    // optional - a hub with tours but no Our Picks and no comparison groups
+    // yields no `money` at all, and `deriveDisplayRate` then answers with the
+    // identity rate under the SHOPPER's currency. Printing that renders the
+    // source number wearing the wrong symbol: a $120 tour reading "From €120"
+    // to a EUR shopper, as the first price on the page, while the trips grid
+    // further down shows the correctly converted figure. The page would
+    // contradict itself.
+    const {
+        currency: heroCurrency,
+        rate: heroRate,
+        converted: heroConverted,
+    } = deriveDisplayRate(
         [
             ...render.ourPicks.map(p => p.tour),
             ...render.comparisonGroups.flatMap(g => g.tours.map(t => t.tour)),
@@ -547,8 +560,9 @@ export async function HubPage({
         });
     }
 
-    // 2. Price - capitalized "From <price>" in the shopper's currency.
-    if (stats.priceFrom != null)
+    // 2. Price - capitalized "From <price>" in the shopper's currency. Dropped
+    //    entirely when no rate could be derived (see `heroConverted` above).
+    if (stats.priceFrom != null && heroConverted)
         heroMeta.push({
             icon: HERO_ICON.price,
             label: `${capitalizeFirst(listingsDict.from)} ${formatPriceFrom(

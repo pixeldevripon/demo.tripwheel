@@ -4,7 +4,7 @@ import { PageBody } from '@/components/frontend/legal/page-body';
 import { getPublishedPage } from '@/lib/api/public';
 import { getSitemapEntries } from '@/lib/api/public/sitemap';
 import { isLocale, type Locale } from '@/lib/constants/locales';
-import { buildAlternates } from '@/lib/seo/alternates';
+import { buildAlternates , NOT_FOUND_METADATA } from '@/lib/seo/alternates';
 import { ogImageMeta } from '@/lib/seo/og-image';
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
@@ -89,7 +89,7 @@ export async function generateMetadata({
             alternates,
         };
     }
-    return { alternates };
+    return NOT_FOUND_METADATA;
 }
 
 export default async function DeepPage({

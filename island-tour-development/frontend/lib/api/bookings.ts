@@ -8,6 +8,7 @@
  * the /payment/processing status poll) and server-side in `lib/api/public/bookings.ts`
  * (for the prerendered TYP page).
  */
+import { seg } from '@/lib/api/api-path';
 import type { Currency } from '@/lib/constants/locales';
 import type { Attribution } from '@/lib/tracking/attribution';
 import { apiFetch } from './fetch';
@@ -242,7 +243,7 @@ export async function updateBookingContact(
     contact: BookingContact,
     notes?: string
 ): Promise<ReservedBooking> {
-    return apiFetch<ReservedBooking>(`/bookings/${bookingId}`, {
+    return apiFetch<ReservedBooking>(`/bookings/${seg(bookingId)}`, {
         method: 'PATCH',
         body: JSON.stringify({ contact, ...(notes ? { notes } : {}) }),
     });
@@ -264,7 +265,7 @@ export async function createPaymentIntent(
     redirects?: { returnUrl: string; cancelUrl?: string; cardToken?: string }
 ): Promise<PaymentIntentResult> {
     return apiFetch<PaymentIntentResult>(
-        `/payments/bookings/${bookingId}/intent`,
+        `/payments/bookings/${seg(bookingId)}/intent`,
         {
             method: 'POST',
             ...(redirects ? { body: JSON.stringify(redirects) } : {}),
