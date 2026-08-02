@@ -22,7 +22,9 @@ import {
     useRevokeCalendarFeed,
     useRotateCalendarFeed,
 } from '@/hooks/calendar-feeds/use-calendar-feeds';
+import { useResources } from '@/hooks/resources/use-resources';
 import { CalendarFeedKind, type CalendarFeed } from '@/types/calendar-feed';
+import { RESOURCE_KIND_LABEL } from '@/types/resource';
 import { CalendarFeedInstructions } from './calendar-feed-instructions';
 
 /**
@@ -108,9 +110,13 @@ export function CalendarFeedsForm() {
         action: 'rotate' | 'revoke';
     } | null>(null);
 
+    const canManageAvailability = can('MANAGE_AVAILABILITY');
     const visibleKinds = FEED_KINDS.filter(k => can(k.permission));
-    if (visibleKinds.length === 0) return null;
+    if (visibleKinds.length === 0 && !canManageAvailability) return null;
 
+    // Keyed by kind ONLY for the operator-wide kinds. A RESOURCE feed is per
+    // asset, so an operator holds several at once and this map would collapse
+    // them - they are matched on resourceId in ResourceFeeds instead.
     const byKind = new Map(feeds?.map(f => [f.kind, f]));
     const pending = rotate.isPending || revoke.isPending;
 
@@ -147,7 +153,9 @@ export function CalendarFeedsForm() {
                         : visibleKinds.map(meta => (
                               <FeedRow
                                   key={meta.kind}
-                                  meta={meta}
+                                  title={meta.title}
+                                  description={meta.description}
+                                  sensitive={meta.sensitive}
                                   feed={byKind.get(meta.kind)}
                                   creating={
                                       create.isPending &&
@@ -164,6 +172,29 @@ export function CalendarFeedsForm() {
                                   }
                               />
                           ))}
+
+                    {canManageAvailability && (
+                        <ResourceFeeds
+                            feeds={feeds}
+                            creatingId={
+                                create.isPending
+                                    ? (create.variables?.resourceId ?? null)
+                                    : null
+                            }
+                            onCreate={resourceId =>
+                                create.mutate({
+                                    kind: CalendarFeedKind.RESOURCE,
+                                    resourceId,
+                                })
+                            }
+                            onRotate={feed =>
+                                setConfirming({ feed, action: 'rotate' })
+                            }
+                            onRevoke={feed =>
+                                setConfirming({ feed, action: 'revoke' })
+                            }
+                        />
+                    )}
 
                     <CalendarFeedInstructions />
                 </CardContent>
@@ -195,15 +226,108 @@ export function CalendarFeedsForm() {
     );
 }
 
+/**
+ * One subscribe link per physical asset.
+ *
+ * Unlike every other kind, this one is NOT a singleton: an operator with three
+ * boats wants three separate calendars, because the person subscribing to each
+ * is usually a different person - often not an employee at all. That is also why
+ * the feed carries only busy intervals and the asset's name: the skipper of a
+ * chartered boat can see when it is committed without seeing who booked it or
+ * what they paid.
+ *
+ * Inactive assets are excluded. A deactivated resource constrains nothing, and
+ * the backend renders its feed empty for the same reason - offering a link that
+ * is guaranteed to be blank would just generate support tickets.
+ */
+function ResourceFeeds({
+    feeds,
+    creatingId,
+    onCreate,
+    onRotate,
+    onRevoke,
+}: {
+    feeds: CalendarFeed[] | undefined;
+    creatingId: string | null;
+    onCreate: (resourceId: string) => void;
+    onRotate: (feed: CalendarFeed) => void;
+    onRevoke: (feed: CalendarFeed) => void;
+}) {
+    const { data: resources, isLoading } = useResources();
+
+    if (isLoading) {
+        return (
+            <div className='space-y-2 py-4'>
+                <Skeleton className='h-4 w-32' />
+                <Skeleton className='h-9 w-full' />
+            </div>
+        );
+    }
+
+    const active = resources?.data.filter(r => r.isActive) ?? [];
+
+    const byResource = new Map(
+        feeds
+            ?.filter(f => f.kind === CalendarFeedKind.RESOURCE && f.resourceId)
+            .map(f => [f.resourceId as string, f])
+    );
+
+    return (
+        <div className='py-4'>
+            <h3 className='text-sm font-medium'>Equipment and staff</h3>
+            <p
+                className={`mt-1 ${MEASURE} text-sm font-light text-muted-foreground`}>
+                A separate calendar for each boat, vehicle or guide, showing only
+                the hours it is committed. No traveller names, no tour names and
+                no prices - safe to give to a skipper or a freelance guide.
+            </p>
+
+            {/* Without this the section vanishes entirely when an operator has no
+          assets yet - and since equipment is only added from inside a tour, there
+          would be nothing anywhere telling them the feature exists. */}
+            {active.length === 0 && (
+                <p className='mt-2 text-sm font-light text-muted-foreground'>
+                    You have not added any shared equipment yet. Add a boat,
+                    vehicle or guide under Shared equipment on any tour&apos;s
+                    Schedule step, and its calendar will appear here.
+                </p>
+            )}
+
+            <div className='mt-2 divide-y'>
+                {active.map(resource => (
+                    <FeedRow
+                        key={resource.id}
+                        title={`${resource.name} (${RESOURCE_KIND_LABEL[resource.kind]})`}
+                        description={
+                            resource.tours.length === 0
+                                ? 'Not used by any tour yet, so this calendar stays empty until you add it to one.'
+                                : `Busy hours from ${resource.tours.length} ${resource.tours.length === 1 ? 'tour' : 'tours'}. Back-to-back trips show as one block.`
+                        }
+                        feed={byResource.get(resource.id)}
+                        creating={creatingId === resource.id}
+                        onCreate={() => onCreate(resource.id)}
+                        onRotate={onRotate}
+                        onRevoke={onRevoke}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function FeedRow({
-    meta,
+    title,
+    description,
+    sensitive,
     feed,
     creating,
     onCreate,
     onRotate,
     onRevoke,
 }: {
-    meta: FeedKindMeta;
+    title: string;
+    description: string;
+    sensitive?: string;
     feed: CalendarFeed | undefined;
     creating: boolean;
     onCreate: () => void;
@@ -216,13 +340,13 @@ function FeedRow({
           edges - at this width, right-aligning the status put it 1,500px from the
           heading it describes. */}
             <div className='flex flex-wrap items-baseline gap-2'>
-                <h3 className='text-sm font-medium'>{meta.title}</h3>
+                <h3 className='text-sm font-medium'>{title}</h3>
                 {feed && <LastSync feed={feed} />}
             </div>
 
             <p
                 className={`${MEASURE} text-sm font-light text-muted-foreground`}>
-                {meta.description}
+                {description}
             </p>
 
             {feed ? (
@@ -268,9 +392,9 @@ function FeedRow({
                             it.
                         </p>
                     ) : (
-                        meta.sensitive && (
+                        sensitive && (
                             <p className='text-xs text-muted-foreground'>
-                                {meta.sensitive}
+                                {sensitive}
                             </p>
                         )
                     )}

@@ -175,6 +175,7 @@ function MetaCapiCard() {
                         ? `Current: ${data.metaCapiToken}. Leave blank to keep it.`
                         : 'Stored encrypted.'
                 }
+                autoComplete='new-password'
             />
             <TextField
                 label='Test Event Code'
@@ -469,6 +470,7 @@ function AiTranslationCard() {
                         ? `Current: ${data.translationApiKey}. Leave blank to keep it.`
                         : `Stored encrypted. ${selected.keyHint}`
                 }
+                autoComplete='new-password'
             />
             {hasModelList && (
                 <Field>

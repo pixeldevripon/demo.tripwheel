@@ -15,6 +15,12 @@ export const CalendarFeedKind = {
    * ranges. The only kind that may be given to a sales channel.
    */
   CHANNEL: 'CHANNEL',
+  /**
+   * One physical asset's diary - busy intervals only, no traveller data and no
+   * business detail. Scoped to ONE resource, so an operator holds one per boat,
+   * guide or vehicle rather than one overall.
+   */
+  RESOURCE: 'RESOURCE',
 } as const;
 
 export type CalendarFeedKind =
@@ -25,6 +31,8 @@ export interface CalendarFeed {
   kind: CalendarFeedKind;
   /** Set only for CHANNEL, which is scoped to one tour. */
   tourId: string | null;
+  /** Set only for RESOURCE. The only thing telling two RESOURCE feeds apart. */
+  resourceId: string | null;
   label: string | null;
   /** The full subscribe URL, token included. */
   url: string;
@@ -38,4 +46,6 @@ export interface CreateCalendarFeedPayload {
   label?: string;
   /** Required for CHANNEL, which is per tour. Ignored otherwise. */
   tourId?: string;
+  /** Required for RESOURCE, which is per asset. Ignored otherwise. */
+  resourceId?: string;
 }

@@ -451,6 +451,7 @@ function InstagramSettingsCard() {
                         registration={register('accessToken')}
                         placeholder='IGAA...'
                         error={errors.accessToken?.message}
+                        autoComplete='new-password'
                         description={
                             cred.maskedAccessToken
                                 ? `Current: ${cred.maskedAccessToken}. Leave blank to keep it.`
