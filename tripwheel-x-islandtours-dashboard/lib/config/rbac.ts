@@ -122,6 +122,13 @@ export const Permission = {
   MANAGE_TIERS: 'MANAGE_TIERS',
   APPROVE_SPOTLIGHT: 'APPROVE_SPOTLIGHT',
 
+  // Distribution partners (OCTO): channel accounts, API keys, and an operator's
+  // distribution rate. ADMIN ONLY - a key is a credential over an operator's
+  // inventory and a rate is a commercial term, both the platform's to issue. An
+  // operator's own opt-out sits under EDIT_OPERATOR_PROFILE instead, so they can
+  // always withdraw without holding the power to mint.
+  MANAGE_PARTNERS: 'MANAGE_PARTNERS',
+
 
   // Files & Media
   UPLOAD_MEDIA: 'UPLOAD_MEDIA',
@@ -233,6 +240,7 @@ export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
     'APPROVE_REVIEW',
     'MANAGE_TIERS',
     'APPROVE_SPOTLIGHT',
+    'MANAGE_PARTNERS',
     'DELETE_OPERATOR',
     'UPLOAD_MEDIA',
     'MANAGE_MEDIA',
