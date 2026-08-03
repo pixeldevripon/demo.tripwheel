@@ -140,15 +140,20 @@ export function CalendarFeedsForm() {
                     </p>
                 </CardHeader>
                 <CardContent className='divide-y pt-0'>
+                    {/* Fragments, NOT a wrapper div. CardContent's `divide-y`
+                        draws its rules with `& > * ~ *`, so anything that groups
+                        these rows swallows the selector and the hairlines between
+                        them vanish - `display: contents` does not help, it hides
+                        the box but the element still matches. */}
                     {isLoading && (
-                        <div className='contents'>
+                        <>
                             {visibleKinds.map(k => (
                                 <div key={k.kind} className='space-y-2 py-4'>
                                     <Skeleton className='h-4 w-24' />
                                     <Skeleton className='h-9 w-full' />
                                 </div>
                             ))}
-                        </div>
+                        </>
                     )}
 
                     {/* Never fall through to the rows on a failed read with nothing
@@ -164,7 +169,7 @@ export function CalendarFeedsForm() {
                     )}
 
                     {!isLoading && (!isError || feeds) && (
-                        <div className='contents'>
+                        <>
                             {isError && (
                                 <p className='py-3 text-xs text-warning-fg'>
                                     Showing the last links we loaded - checking
@@ -198,7 +203,7 @@ export function CalendarFeedsForm() {
                                     }
                                 />
                             ))}
-                        </div>
+                        </>
                     )}
 
                     <CalendarFeedInstructions />
