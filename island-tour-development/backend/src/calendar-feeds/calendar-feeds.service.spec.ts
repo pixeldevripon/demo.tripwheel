@@ -224,12 +224,71 @@ describe('CalendarFeedsService', () => {
     });
   });
 
+  // ── Enum drift (production incident, 2026-08-03) ────────────────────────────
+
+  /**
+   * `calendar_feed_kind` in the database is a SUPERSET of the enum in this schema:
+   * production carries `resource` and `channel` values from the iCal phase-2 work whose
+   * models were reverted, and Postgres cannot drop an enum value while rows reference it.
+   *
+   * Prisma deserializes enums strictly, so a query that returns one of those rows throws
+   * `Value 'channel' not found in enum 'CalendarFeedKind'` before any of our code runs.
+   * One orphaned row took down the whole operator settings tab, including the two feeds
+   * that were working.
+   *
+   * The only place this can be fixed is the WHERE clause - filtering afterwards is too
+   * late. These tests pin that, because the failure is invisible against seeded data and
+   * only appears where the retired rows exist.
+   */
+  describe('unknown feed kinds in the database', () => {
+    const supported = [CalendarFeedKind.BOOKINGS, CalendarFeedKind.DEPARTURES];
+
+    it('list() asks the database for supported kinds only', async () => {
+      const [service, prisma] = make();
+      prisma.operator.findUnique.mockResolvedValue({
+        id: OPERATOR_ID,
+        isActive: true,
+      });
+
+      await service.list(OWNER);
+
+      const where = prisma.calendarFeed.findMany.mock.calls[0][0].where;
+      expect(where.kind).toEqual({ in: supported });
+    });
+
+    it('render() excludes them by kind so a retired feed URL 404s rather than 500s', async () => {
+      const [service, prisma] = make();
+      prisma.calendarFeed.findFirst.mockResolvedValue(null);
+
+      await expect(service.render('some-token')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      const where = prisma.calendarFeed.findFirst.mock.calls[0][0].where;
+      expect(where.kind).toEqual({ in: supported });
+    });
+
+    it('rotate() excludes them by kind', async () => {
+      const [service, prisma] = make();
+      prisma.operator.findUnique.mockResolvedValue({
+        id: OPERATOR_ID,
+        isActive: true,
+      });
+      prisma.calendarFeed.findFirst.mockResolvedValue(null);
+
+      await expect(service.rotate(OWNER, 'feed-1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      const where = prisma.calendarFeed.findFirst.mock.calls[0][0].where;
+      expect(where.kind).toEqual({ in: supported });
+    });
+  });
+
   // ── Rendering ───────────────────────────────────────────────────────────────
 
   describe('render', () => {
     it('404s on an unknown token', async () => {
       const [service, prisma] = make();
-      prisma.calendarFeed.findUnique.mockResolvedValue(null);
+      prisma.calendarFeed.findFirst.mockResolvedValue(null);
       await expect(service.render('nope')).rejects.toBeInstanceOf(
         NotFoundException,
       );
@@ -239,7 +298,7 @@ describe('CalendarFeedsService', () => {
     // oracle for which tokens once existed.
     it('404s on a revoked token', async () => {
       const [service, prisma] = make();
-      prisma.calendarFeed.findUnique.mockResolvedValue({
+      prisma.calendarFeed.findFirst.mockResolvedValue({
         id: 'feed-1',
         kind: CalendarFeedKind.DEPARTURES,
         operatorId: OPERATOR_ID,
@@ -463,7 +522,7 @@ function liveFeed(
   prisma: ReturnType<typeof mockPrisma>,
   kind: CalendarFeedKind,
 ) {
-  prisma.calendarFeed.findUnique.mockResolvedValue({
+  prisma.calendarFeed.findFirst.mockResolvedValue({
     id: 'feed-1',
     kind,
     operatorId: OPERATOR_ID,
