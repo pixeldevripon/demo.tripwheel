@@ -255,6 +255,16 @@ export const useUnpauseTrip = () =>
     (id) => [tripKeys.all, tripKeys.detail(id)],
   );
 
+// Its own verb, not a key on PATCH /tours/:id - "Likely to sell out" is EARNED,
+// so the 2026-08-02 audit took `likelyToSellOutOverride` out of UpdateTourDto to
+// stop an operator manufacturing urgency on their own listing.
+export const useSetLikelyToSellOut = () =>
+  useTripMutation(
+    ({ id, value }: { id: string; value: boolean | null }) =>
+      tripsApi.setLikelyToSellOut(id, value),
+    ({ id }) => [tripKeys.all, tripKeys.detail(id)],
+  );
+
 export const useArchiveTrip = () =>
   useTripMutation(
     (id: string) => tripsApi.archive(id),

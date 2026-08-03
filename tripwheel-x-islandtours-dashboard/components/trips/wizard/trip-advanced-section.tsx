@@ -4,10 +4,16 @@
  * The third slice of the old Details form (07 §3, step 7 advanced).
  *
  * Everything a working tour never needs an operator to touch: the heading and
- * breadcrumb overrides, their own product code, and the public on/off switch.
- * In the old editor all of this sat in the first screen a new operator ever
- * saw, above the fold, competing with the fields that actually decide whether
- * a tour can go live.
+ * breadcrumb overrides, and their own product code. In the old editor all of
+ * this sat in the first screen a new operator ever saw, above the fold,
+ * competing with the fields that actually decide whether a tour can go live.
+ *
+ * **The bare "Active" switch is gone** (2026-08-03). It PATCHed `isActive`
+ * straight onto the tour - the exact bypass the backend closed in the
+ * 2026-08-02 audit, because it left the tour out of the listings while
+ * `slug_registry` still advertised its slug. Visibility now has verbs that
+ * move both together, and the wizard already offers the one an operator
+ * wants: Pause, on the Review step (and in the trips-table row actions).
  *
  * **The OCTO and delivery block is gone** (2026-07-29). It asked seven
  * questions - availability type, redemption method, instant delivery,
@@ -49,7 +55,7 @@ import type { WizardStepId } from '@/lib/trips/wizard-steps';
 import type { TripListItem } from '@/types/trip';
 import { useStepCommit } from './use-step-commit';
 import { useWizard } from './wizard-context';
-import { FieldGrid, ToggleRow } from './wizard-fields';
+import { FieldGrid } from './wizard-fields';
 import { WizardSection } from './wizard-section';
 import { focusFirstInvalid } from './wizard-step';
 
@@ -57,14 +63,12 @@ const advancedSchema = z.object({
     h1Override: z.string().max(200).optional().or(z.literal('')),
     breadcrumbLabel: z.string().max(60).optional().or(z.literal('')),
     reference: z.string().max(120).optional().or(z.literal('')),
-    isActive: z.boolean(),
 });
 
 type AdvancedValues = {
     h1Override: string;
     breadcrumbLabel: string;
     reference: string;
-    isActive: boolean;
 };
 
 function toDefaults(trip: TripListItem): AdvancedValues {
@@ -72,7 +76,6 @@ function toDefaults(trip: TripListItem): AdvancedValues {
         h1Override: trip.h1Override ?? '',
         breadcrumbLabel: trip.breadcrumbLabel ?? '',
         reference: trip.reference ?? '',
-        isActive: trip.isActive,
     };
 }
 
@@ -90,9 +93,6 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
     const {
         register,
         handleSubmit,
-        watch,
-        setValue,
-        control,
         reset,
         formState: { errors, isDirty },
     } = useForm<AdvancedValues>({
@@ -103,8 +103,6 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
     });
 
     useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
-
-    const v = watch();
 
     const submit = useCallback(async () => {
         let ok = false;
@@ -120,7 +118,6 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
                             h1Override: values.h1Override || null,
                             breadcrumbLabel: values.breadcrumbLabel || null,
                             reference: values.reference || null,
-                            isActive: values.isActive,
                         },
                     });
                     ok = true;
@@ -149,11 +146,11 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
         <WizardSection
             id='advanced'
             title='Advanced and integrations'
-            description='Heading overrides, your own product code, and visibility. Safe to ignore.'
+            description='Heading overrides and your own product code. Safe to ignore.'
             // "Optional" rather than nothing: a blank chip on one row in a
             // column of counts reads as missing data, not as "there is nothing
-            // to do here". Being hidden from the site outranks it.
-            summary={v.isActive ? 'Optional' : 'Hidden from the public site'}
+            // to do here".
+            summary='Optional'
             // Its own description says "safe to ignore" - so it should not
             // carry the same weight as the sections that are not.
             muted
@@ -210,17 +207,7 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
                         </Field>
                     </FieldGrid>
 
-                    <ToggleRow
-                        id='isActive'
-                        label='Active'
-                        description='Turning this off hides the tour from the public site without archiving it.'
-                        checked={v.isActive}
-                        onChange={c =>
-                            setValue('isActive', c, { shouldDirty: true })
-                        }
-                    />
                 </div>
-
             </div>
         </WizardSection>
     );

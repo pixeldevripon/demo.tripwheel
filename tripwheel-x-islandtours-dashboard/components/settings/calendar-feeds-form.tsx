@@ -96,7 +96,14 @@ const FEED_KINDS: FeedKindMeta[] = [
  */
 export function CalendarFeedsForm() {
     const { can } = useRole();
-    const { data: feeds, isLoading } = useCalendarFeeds();
+    const {
+        data: feeds,
+        isLoading,
+        isError,
+        error,
+        isFetching,
+        refetch,
+    } = useCalendarFeeds();
     const create = useCreateCalendarFeed();
     const rotate = useRotateCalendarFeed();
     const revoke = useRevokeCalendarFeed();
@@ -133,33 +140,71 @@ export function CalendarFeedsForm() {
                     </p>
                 </CardHeader>
                 <CardContent className='divide-y pt-0'>
-                    {isLoading
-                        ? visibleKinds.map(k => (
-                              <div key={k.kind} className='space-y-2 py-4'>
-                                  <Skeleton className='h-4 w-24' />
-                                  <Skeleton className='h-9 w-full' />
-                              </div>
-                          ))
-                        : visibleKinds.map(meta => (
-                              <FeedRow
-                                  key={meta.kind}
-                                  meta={meta}
-                                  feed={byKind.get(meta.kind)}
-                                  creating={
-                                      create.isPending &&
-                                      create.variables?.kind === meta.kind
-                                  }
-                                  onCreate={() =>
-                                      create.mutate({ kind: meta.kind })
-                                  }
-                                  onRotate={feed =>
-                                      setConfirming({ feed, action: 'rotate' })
-                                  }
-                                  onRevoke={feed =>
-                                      setConfirming({ feed, action: 'revoke' })
-                                  }
-                              />
-                          ))}
+                    {/* Fragments, NOT a wrapper div. CardContent's `divide-y`
+                        draws its rules with `& > * ~ *`, so anything that groups
+                        these rows swallows the selector and the hairlines between
+                        them vanish - `display: contents` does not help, it hides
+                        the box but the element still matches. */}
+                    {isLoading && (
+                        <>
+                            {visibleKinds.map(k => (
+                                <div key={k.kind} className='space-y-2 py-4'>
+                                    <Skeleton className='h-4 w-24' />
+                                    <Skeleton className='h-9 w-full' />
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    {/* Never fall through to the rows on a failed read with nothing
+                        cached: an empty list and a broken list render identically
+                        there, so the operator gets a Create button that already
+                        did its job. */}
+                    {!isLoading && isError && !feeds && (
+                        <FeedsUnavailable
+                            message={error?.message}
+                            onRetry={() => void refetch()}
+                            retrying={isFetching}
+                        />
+                    )}
+
+                    {!isLoading && (!isError || feeds) && (
+                        <>
+                            {isError && (
+                                <p className='py-3 text-xs text-warning-fg'>
+                                    Showing the last links we loaded - checking
+                                    for changes just failed. They keep working
+                                    either way.
+                                </p>
+                            )}
+                            {visibleKinds.map(meta => (
+                                <FeedRow
+                                    key={meta.kind}
+                                    meta={meta}
+                                    feed={byKind.get(meta.kind)}
+                                    creating={
+                                        create.isPending &&
+                                        create.variables?.kind === meta.kind
+                                    }
+                                    onCreate={() =>
+                                        create.mutate({ kind: meta.kind })
+                                    }
+                                    onRotate={feed =>
+                                        setConfirming({
+                                            feed,
+                                            action: 'rotate',
+                                        })
+                                    }
+                                    onRevoke={feed =>
+                                        setConfirming({
+                                            feed,
+                                            action: 'revoke',
+                                        })
+                                    }
+                                />
+                            ))}
+                        </>
+                    )}
 
                     <CalendarFeedInstructions />
                 </CardContent>
@@ -188,6 +233,57 @@ export function CalendarFeedsForm() {
                 onConfirm={runConfirmed}
             />
         </>
+    );
+}
+
+/**
+ * A failed READ, said out loud.
+ *
+ * The rows are driven entirely by the list query, where "no feeds" and "could not
+ * load feeds" used to be the same render: both fell through to the Create button.
+ * So a broken GET looked like a working screen, and pressing Create minted the
+ * feed, toasted success, and returned to the identical button - the write had
+ * worked, the read had not, and nothing anywhere said so. Whatever is wrong, the
+ * one thing this must not do is imply the operator has no link.
+ */
+function FeedsUnavailable({
+    message,
+    onRetry,
+    retrying,
+}: {
+    message?: string;
+    onRetry: () => void;
+    retrying: boolean;
+}) {
+    return (
+        <div className='space-y-3 py-4'>
+            <div className='space-y-1'>
+                <h3 className='text-sm font-medium'>
+                    Could not load your calendar links
+                </h3>
+                <p
+                    className={`${MEASURE} text-sm font-light text-muted-foreground`}>
+                    {message || 'The request did not get through.'}
+                </p>
+                <p className={`${MEASURE} text-xs text-muted-foreground`}>
+                    Any link you have already added to a calendar keeps working -
+                    this only failed to read them back.
+                </p>
+            </div>
+            <Button
+                variant='outline'
+                size='sm'
+                onClick={onRetry}
+                disabled={retrying}>
+                {retrying && (
+                    <HugeiconsIcon
+                        icon={Loading03Icon}
+                        className='size-4 animate-spin'
+                    />
+                )}
+                {retrying ? 'Retrying' : 'Try again'}
+            </Button>
+        </div>
     );
 }
 
