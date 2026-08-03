@@ -25,6 +25,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect } from 'react';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -178,9 +179,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
         defaultValues: toDefaults(trip),
     });
 
-    useEffect(() => {
-        reset(toDefaults(trip));
-    }, [trip, reset]);
+    useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
 
     const v = watch();
 

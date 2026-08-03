@@ -25,6 +25,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { findEnglish } from '@/lib/trips/forms';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -225,7 +226,7 @@ export function StepLocation({ trip }: StepLocationProps) {
                 id: l.id,
                 lat,
                 lng,
-                label: l.translations?.find(t => t.locale === 'en')?.title ?? null,
+                label: findEnglish(l.translations)?.title ?? null,
             };
         });
         const list: RoutePoint[] = saved.filter(

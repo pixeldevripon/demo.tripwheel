@@ -3,6 +3,7 @@
 import { Bus01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { findEnglish, numOrNull, numOrUndef, strOrNull } from '@/lib/trips/forms';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -81,12 +82,7 @@ const editPickupSchema = z.object({
 });
 type EditPickupFormValues = z.infer<typeof editPickupSchema>;
 
-const numOrNull = (v: string | undefined): number | null =>
-    v && v.trim() !== '' ? Number(v) : null;
-const numOrUndef = (v: string | undefined): number | undefined =>
-    v && v.trim() !== '' ? Number(v) : undefined;
-const strOrNull = (v: string | undefined): string | null =>
-    v && v.trim() !== '' ? v : null;
+// numOrNull/numOrUndef/strOrNull now live in lib/trips/forms (shared).
 
 /** Inline details editor for one pickup - payload identical to the old tab. */
 function PickupDetailsEditor({
@@ -108,7 +104,7 @@ function PickupDetailsEditor({
     // Directions live on the pickup's ENGLISH translation row, not the base
     // row - the create form writes them there, so the editor must read (and
     // save) them from the same place or a just-created pickup looks empty.
-    const enTranslation = pickup.translations?.find(t => t.locale === 'en');
+    const enTranslation = findEnglish(pickup.translations);
 
     const {
         register,

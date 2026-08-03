@@ -39,6 +39,7 @@ import {
     useUpdateSchedule,
     useUpdateTrip,
 } from '@/hooks/trips/use-trips';
+import { settleAll } from '@/lib/async/settle-all';
 import { cn } from '@/lib/utils';
 import type { PricingModel, TourSchedule } from '@/types/trip';
 import { format } from 'date-fns';
@@ -702,31 +703,37 @@ export function RecurringSchedulesSection({
         }
         setErrors({});
 
-        try {
-            for (const weekday of weekdays) {
-                for (const startTime of startTimes) {
-                    await createSchedule({
-                        tripId,
-                        payload: {
-                            weekday,
-                            startTime,
-                            capacityOverride: cap,
-                            validFrom: validFrom || undefined,
-                            validUntil: validUntil || undefined,
-                        },
-                    });
-                }
-            }
+        // Attempt every weekday×startTime row together. The old sequential
+        // `await` loop aborted on the first failure, leaving the earlier rows
+        // created; resubmitting then hit duplicate-key on those already-created
+        // rows (code-review M10). settleAll runs them all and reports the split.
+        const combos = weekdays.flatMap(weekday =>
+            startTimes.map(startTime => ({ weekday, startTime })),
+        );
+        const { succeeded, failed } = await settleAll(combos, ({ weekday, startTime }) =>
+            createSchedule({
+                tripId,
+                payload: {
+                    weekday,
+                    startTime,
+                    capacityOverride: cap,
+                    validFrom: validFrom || undefined,
+                    validUntil: validUntil || undefined,
+                },
+            }),
+        );
+
+        if (failed.length === 0) {
             resetForm();
             setAdding(false);
-        } catch (err) {
-            setErrors({
-                form:
-                    err instanceof Error
-                        ? err.message
-                        : 'Failed to add schedule.',
-            });
+            return;
         }
+        // Partial: the succeeded rows are persisted (and now in the list). Tell
+        // the operator so they can narrow the selection to just the rest rather
+        // than resubmitting the whole grid into duplicate-key errors.
+        setErrors({
+            form: `${succeeded.length} added, ${failed.length} could not be added. The added schedules are saved — adjust the selection and add the rest.`,
+        });
     }
 
     const body = (

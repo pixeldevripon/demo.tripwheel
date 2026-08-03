@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { useStepCommit } from '@/components/trips/wizard/use-step-commit';
+import { truncateMeta } from '@/lib/trips/seo';
 import { Badge } from '@/components/ui/badge';
 import { Field, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,8 @@ import { type Locale } from '@/lib/constants/locales';
 import type { WizardStepId } from '@/lib/trips/wizard-steps';
 import type { TripListItem } from '@/types/trip';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -32,14 +34,8 @@ function collapse(text: string): string {
     return text.replace(/\s+/g, ' ').trim();
 }
 
-/** Truncate at a word boundary near `max`, appending an ellipsis when cut. */
-function truncate(text: string, max: number): string {
-    if (text.length <= max) return text;
-    const slice = text.slice(0, max - 1);
-    const lastSpace = slice.lastIndexOf(' ');
-    const cut = lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice;
-    return `${cut.replace(/[\s.,;:-]+$/, '')}...`;
-}
+// Word-boundary meta truncation lives in lib/trips/seo (pure + unit-tested); the
+// previous inline version could return max+2 chars and silently fail validation.
 
 // ── Social sharing (tour-wide OG image) ─────────────────────────────────────
 // Lives on the Tour row; saves via useUpdateTrip (partial, field-by-field).
@@ -143,11 +139,11 @@ function MetaLocalePanel({
     });
 
     // Suggested values calculated from the locale's display title + description.
-    const suggestedTitle = truncate(
+    const suggestedTitle = truncateMeta(
         collapse(translation?.title || tripName),
         META_TITLE_MAX
     );
-    const suggestedDescription = truncate(
+    const suggestedDescription = truncateMeta(
         collapse(
             translation?.shortDescription ||
                 translation?.overview ||
@@ -157,16 +153,22 @@ function MetaLocalePanel({
         META_DESC_MAX
     );
 
-    useEffect(() => {
-        reset({
+    // Sync from the loaded translation, but never over the operator's unsaved
+    // edits: on the reach step a sibling tier/spotlight save (or a plain window
+    // refocus after 30s) refetches this translation, and an unconditional reset
+    // wiped the in-progress meta title/description AND cleared isDirty so the step
+    // reported "clean" and Continue advanced without saving. (code-review C1.)
+    useSyncFormWhenPristine(
+        reset,
+        isDirty,
+        () => ({
             // Pre-fill with the calculated value when nothing has been saved yet.
             metaTitle: translation?.metaTitle ?? suggestedTitle,
             metaDescription:
                 translation?.metaDescription ?? suggestedDescription,
-        });
-        // suggested* are derived from `translation`, so `translation` is the only trigger needed.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [translation, reset]);
+        }),
+        translation,
+    );
 
     const metaTitle = watch('metaTitle') ?? '';
     const metaDescription = watch('metaDescription') ?? '';

@@ -41,7 +41,8 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -101,9 +102,7 @@ export function TripAdvancedSection({ trip, step }: TripAdvancedSectionProps) {
         defaultValues: toDefaults(trip),
     });
 
-    useEffect(() => {
-        reset(toDefaults(trip));
-    }, [trip, reset]);
+    useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
 
     const submit = useCallback(async () => {
         let ok = false;

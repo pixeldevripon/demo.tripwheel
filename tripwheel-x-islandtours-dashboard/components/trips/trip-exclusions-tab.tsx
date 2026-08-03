@@ -21,7 +21,8 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { findEnglish } from '@/lib/trips/forms';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -82,6 +83,17 @@ function ExclusionHandlingEditor({
 }) {
     const [typeVal, setTypeVal] = useState<string>(exclusion.type ?? '');
     const [priceVal, setPriceVal] = useState<string>(exclusion.priceText ?? '');
+    // Re-sync from the server record while the row is pristine — the state was
+    // seeded from props once and never re-synced, so a refetch (other tab/session)
+    // left this inline editor showing stale values (code-review L3). Guarded on
+    // `dirty` so it never clobbers the operator's in-progress edit.
+    const [dirty, setDirty] = useState(false);
+    useEffect(() => {
+        if (dirty) return;
+        setTypeVal(exclusion.type ?? '');
+        setPriceVal(exclusion.priceText ?? '');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [exclusion.id, exclusion.type, exclusion.priceText]);
     const { mutate: saveHandling, isPending } = useUpdateExclusion();
 
     const isPaidType = typeVal === 'PAID_ADVANCE' || typeVal === 'PAID_ONSITE';
@@ -98,6 +110,8 @@ function ExclusionHandlingEditor({
                 },
             },
             {
+                // Pristine again after a save, so the post-save refetch re-seeds.
+                onSuccess: () => setDirty(false),
                 onError: err =>
                     toast.error(
                         err instanceof Error ? err.message : 'Failed to save.'
@@ -119,7 +133,12 @@ function ExclusionHandlingEditor({
                             (optional)
                         </span>
                     </Label>
-                    <Select value={typeVal || ''} onValueChange={setTypeVal}>
+                    <Select
+                        value={typeVal || ''}
+                        onValueChange={v => {
+                            setTypeVal(v);
+                            setDirty(true);
+                        }}>
                         <SelectTrigger className='w-full'>
                             <SelectValue placeholder='How is it handled?' />
                         </SelectTrigger>
@@ -137,7 +156,10 @@ function ExclusionHandlingEditor({
                         <Label>Price Text</Label>
                         <Input
                             value={priceVal}
-                            onChange={e => setPriceVal(e.target.value)}
+                            onChange={e => {
+                                setPriceVal(e.target.value);
+                                setDirty(true);
+                            }}
                             placeholder='$15 per person'
                         />
                     </Field>
@@ -224,7 +246,7 @@ export function TripExclusionsTab({ tripId, bare }: TripExclusionsTabProps) {
             isLoading={isLoading}
             getId={exc => exc.id}
             renderSummary={exc => {
-                const en = exc.translations.find(t => t.locale === 'en');
+                const en = findEnglish(exc.translations);
                 const typeLabel = EXCLUSION_TYPE_OPTIONS.find(
                     o => o.value === exc.type
                 )?.label;

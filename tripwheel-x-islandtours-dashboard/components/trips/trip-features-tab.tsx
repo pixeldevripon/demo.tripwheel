@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { findEnglish } from '@/lib/trips/forms';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -114,7 +115,7 @@ export function TripFeaturesTab({ tripId, bare }: TripFeaturesTabProps) {
             isLoading={isLoading}
             getId={f => f.id}
             renderSummary={f => {
-                const en = f.translations.find(t => t.locale === 'en');
+                const en = findEnglish(f.translations);
                 // Text first, category second - the same reading order as
                 // What's included and What's not included. Leading with the
                 // badge meant three lists on one step scanned three different

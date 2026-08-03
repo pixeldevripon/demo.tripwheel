@@ -959,6 +959,10 @@ function DayPopover({
             { tripId, payload },
             {
                 onSuccess: () => {
+                    // The threaded successMsg was never surfaced, so closing a
+                    // day / adding-closing-reopening a slot completed silently
+                    // (code-review M8).
+                    toast.success(successMsg);
                     onClose();
                 },
                 onError: err =>
@@ -976,6 +980,7 @@ function DayPopover({
             { tripId, exceptionId },
             {
                 onSuccess: () => {
+                    toast.success(successMsg);
                     onClose();
                 },
                 onError: err =>
@@ -1402,7 +1407,7 @@ function SlotRow({
                             ` ${format(new Date(d.soldOutAt), 'HH:mm')}`}
                     </span>
                 )}
-                {capacityException && (
+                {capacityException && capacityException.capacity != null && (
                     <button
                         type='button'
                         disabled={busy}
