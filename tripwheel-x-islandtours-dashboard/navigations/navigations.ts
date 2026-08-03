@@ -4,7 +4,6 @@ import {
     CalendarCheckIn01Icon,
     CalendarRemove01Icon,
     Coins01Icon,
-    ConnectIcon,
     CreditCardIcon,
     DashboardSquare01Icon,
     File02Icon,
@@ -232,26 +231,6 @@ const dashboardNav: NavGroup[] = [
                 url: 'tour-operators',
                 icon: Store01Icon,
                 permissions: [Permission.MANAGE_OPERATORS],
-            },
-            {
-                // Distribution partners: the OTAs and channel managers that sell
-                // our tours through their own marketplace via the OCTO API. Sits
-                // in Configure rather than Curate because it is plumbing between
-                // us and another platform, not a marketplace surface travellers
-                // ever see.
-                //
-                // ONE ROUTE, TWO AUDIENCES (same shape as Users above): admins
-                // manage channel accounts and mint keys; operators get their own
-                // distribution switch and rate. ANY-of, because operators cannot
-                // reach /settings at all - burying their consent screen there
-                // would hide it from exactly the people it belongs to.
-                title: 'Distribution',
-                url: 'partners',
-                icon: ConnectIcon,
-                permissions: [
-                    Permission.MANAGE_PARTNERS,
-                    Permission.EDIT_OPERATOR_PROFILE,
-                ],
             },
         ],
     },
