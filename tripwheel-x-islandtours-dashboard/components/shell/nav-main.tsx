@@ -120,14 +120,30 @@ export function NavMain({ groups }: NavMainProps) {
     // fetch-on-mount.
     const prefetchNav = useNavPrefetch();
 
+    const normPath = pathname.replace(/\/+$/, '') || '/';
+    const norm = (target: string) => target.replace(/\/+$/, '') || '/';
+
+    // Overview ('/') matches only exactly; sections own their subtree so
+    // /trips/abc/edit still lights Tours.
+    const matches = (url?: string) => {
+        const t = norm(toHref(url));
+        if (t === '/') return normPath === '/';
+        return normPath === t || normPath.startsWith(`${t}/`);
+    };
+
     const isPathActive = (url?: string) => {
-        const target = toHref(url);
-        const normPath = pathname.replace(/\/+$/, '') || '/';
-        const normTarget = target.replace(/\/+$/, '') || '/';
-        // Overview ('/') matches only exactly; sections own their subtree so
-        // /trips/abc/edit still lights Tours.
-        if (normTarget === '/') return normPath === '/';
-        return normPath === normTarget || normPath.startsWith(`${normTarget}/`);
+        if (!matches(url)) return false;
+        // Deepest match wins. Owning your subtree is right until one nav target
+        // sits INSIDE another - '/pages/new' is under '/pages' - and then both
+        // rows light at once, which reads as a bug on a flat list of siblings.
+        // No-op for every non-nested target, which is all of them bar that pair.
+        const t = norm(toHref(url));
+        return !groups.some((g) =>
+            g.items.some((other) => {
+                const o = norm(toHref(other.url));
+                return o.length > t.length && matches(other.url);
+            }),
+        );
     };
 
     return (

@@ -8,6 +8,7 @@ import {
     CreditCardIcon,
     DashboardSquare01Icon,
     File02Icon,
+    FileAddIcon,
     FilterHorizontalIcon,
     Globe02Icon,
     Image02Icon,
@@ -274,6 +275,19 @@ const dashboardNav: NavGroup[] = [
                 icon: File02Icon,
                 permissions: [Permission.MANAGE_EDITORIAL],
             },
+            {
+                // The only nav entry that points at a CREATE route rather than a
+                // section. Writing a page is the thing an editor comes here to
+                // do, and burying it behind the table cost a click every time.
+                //
+                // It is also the first nested pair in the nav ('/pages/new'
+                // lives under '/pages'), which is why NavMain resolves the
+                // deepest match instead of lighting both rows.
+                title: 'Add new page',
+                url: 'pages/new',
+                icon: FileAddIcon,
+                permissions: [Permission.MANAGE_EDITORIAL],
+            },
         ],
     },
     {
@@ -308,6 +322,7 @@ const dashboardNav: NavGroup[] = [
                     Permission.VIEW_SETTINGS,
                     Permission.MANAGE_SETTINGS,
                     Permission.MANAGE_EDITORIAL,
+                    Permission.MANAGE_AVAILABILITY,
                 ],
             },
             /*             {
