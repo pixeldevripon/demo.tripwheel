@@ -14,6 +14,33 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { StaffPermissionsService } from '@/staff/staff-permissions.service';
+
+/**
+ * The feed kinds THIS BUILD can deserialize.
+ *
+ * ## Why every read filters on it
+ * The `calendar_feed_kind` enum in the database is a superset of the one in this schema:
+ * production carries `resource` and `channel` values written by the iCal phase-2 work,
+ * whose models were later reverted. A migration cannot remove a Postgres enum value while
+ * rows still reference it, so those values are permanent until the rows are.
+ *
+ * Prisma deserializes enums strictly. A `findMany` that returns one of those rows throws
+ * `Value 'channel' not found in enum 'CalendarFeedKind'` and the whole request 500s - which
+ * is exactly what took the operator's iCal settings tab down: one orphaned row poisoned the
+ * entire list, including the two feeds that were perfectly fine.
+ *
+ * Naming the supported kinds in the WHERE clause pushes the exclusion into SQL, so unknown
+ * rows are never fetched and never deserialized. Filtering after the query cannot work here:
+ * the throw happens while building the result, before any code of ours runs.
+ *
+ * This is not a workaround to remove once the data is cleaned. Any future kind added and
+ * later withdrawn recreates the same trap, and a read that only returns what it understands
+ * is correct on its own terms.
+ */
+const SUPPORTED_KINDS = [
+  CalendarFeedKind.BOOKINGS,
+  CalendarFeedKind.DEPARTURES,
+] as const;
 import { publicApiBase } from '@/common/utils/app-urls.util';
 import { resolveOperatorId } from '@/common/utils/operator.util';
 import {
@@ -115,7 +142,13 @@ export class CalendarFeedsService {
   }): Promise<CalendarFeedResponseDto[]> {
     const operatorId = await resolveOperatorId(this.prisma, user.id, user.role);
     const feeds = await this.prisma.calendarFeed.findMany({
-      where: { operatorId, revokedAt: null },
+      // `kind` filter: see SUPPORTED_KINDS. Without it one orphaned phase-2 row 500s the
+      // whole list and the operator loses feeds that work.
+      where: {
+        operatorId,
+        revokedAt: null,
+        kind: { in: [...SUPPORTED_KINDS] },
+      },
       select: {
         id: true,
         kind: true,
@@ -223,8 +256,11 @@ export class CalendarFeedsService {
    * oracle telling a probe which tokens once existed.
    */
   async render(token: string): Promise<RenderedFeed> {
-    const feed = await this.prisma.calendarFeed.findUnique({
-      where: { token },
+    // `findFirst` + the kind filter rather than `findUnique` on the token: a still-subscribed
+    // phase-2 feed URL must 404 like any other retired feed, not 500. That also keeps the
+    // "every failure mode is a flat 404" contract above true for this case.
+    const feed = await this.prisma.calendarFeed.findFirst({
+      where: { token, kind: { in: [...SUPPORTED_KINDS] } },
       select: {
         id: true,
         kind: true,
@@ -461,7 +497,9 @@ export class CalendarFeedsService {
   ): Promise<{ id: string; kind: CalendarFeedKind }> {
     const operatorId = await resolveOperatorId(this.prisma, user.id, user.role);
     const feed = await this.prisma.calendarFeed.findFirst({
-      where: { id, operatorId },
+      // Same guard: rotating or revoking an orphaned phase-2 feed by id must 404 rather
+      // than 500. There is nothing this build could do with it anyway.
+      where: { id, operatorId, kind: { in: [...SUPPORTED_KINDS] } },
       select: { id: true, kind: true },
     });
     if (!feed) throw new NotFoundException('Calendar feed not found');
