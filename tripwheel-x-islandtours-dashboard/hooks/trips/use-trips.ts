@@ -296,6 +296,18 @@ export function useUnpauseTrip() {
   });
 }
 
+export function useSetLikelyToSellOut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, value }: { id: string; value: boolean | null }) =>
+      tripsApi.setLikelyToSellOut(id, value),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: tripKeys.all });
+      queryClient.invalidateQueries({ queryKey: tripKeys.detail(id) });
+    },
+  });
+}
+
 export function useArchiveTrip() {
   const queryClient = useQueryClient();
   return useMutation({

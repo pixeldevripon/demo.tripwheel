@@ -29,7 +29,7 @@ import {
     useRequestSpotlight,
     useTourSpotlight,
 } from '@/hooks/tiers/use-tiers';
-import { useUpdateTrip } from '@/hooks/trips/use-trips';
+import { useSetLikelyToSellOut } from '@/hooks/trips/use-trips';
 import { cn, formatDate } from '@/lib/utils';
 import type { SpotlightStatus, TierKey } from '@/types/tier';
 import {
@@ -72,7 +72,8 @@ export const SHOW_DEMAND_BADGE_OVERRIDE = false;
 // `likelyToSellOut` is recomputed nightly (§3.7). This override forces the badge on
 // or off for launch, or defers to the computed value (null).
 export function DemandBadgeCard({ trip }: { trip: TripListItem }) {
-    const { mutate: updateTrip, isPending } = useUpdateTrip();
+    // Its own verb, not a PATCH key - see tripsApi.setLikelyToSellOut.
+    const { mutate: setLikelyToSellOut, isPending } = useSetLikelyToSellOut();
 
     const value: 'auto' | 'on' | 'off' =
         trip.likelyToSellOutOverride == null
@@ -83,9 +84,9 @@ export function DemandBadgeCard({ trip }: { trip: TripListItem }) {
 
     function handleChange(next: 'auto' | 'on' | 'off') {
         if (next === value) return;
-        const likelyToSellOutOverride = next === 'auto' ? null : next === 'on';
-        updateTrip(
-            { id: trip.id, payload: { likelyToSellOutOverride } },
+        const override = next === 'auto' ? null : next === 'on';
+        setLikelyToSellOut(
+            { id: trip.id, value: override },
             {
                 onSuccess: () =>
                     toast.success('Demand badge override updated.'),

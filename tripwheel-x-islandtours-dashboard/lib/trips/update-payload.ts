@@ -118,6 +118,13 @@ export function tripToUpdatePayload(trip: TripListItem): UpdateTripPayload {
         deliveryFormats: trip.deliveryFormats,
         deliveryMethods: trip.deliveryMethods,
 
-        isActive: trip.isActive,
+        // NOT `isActive`. The backend dropped it from UpdateTourDto (audit
+        // 2026-08-02 P0) because visibility has two purpose-built verbs -
+        // POST /tours/:id/pause and /archive - that flip the slug_registry row
+        // in the SAME transaction. A bare PATCH skipped that, so the tour left
+        // the listings while the registry still advertised its slug. Sending
+        // the key now trips `forbidNonWhitelisted` and 400s the whole save
+        // with "property isActive should not exist" - which is how this was
+        // found: every step that spreads this payload broke at once.
     };
 }

@@ -145,6 +145,20 @@ export const tripsApi = {
     return apiFetch<TripListItem>(`/tours/${id}/restore`, { method: 'POST' });
   },
 
+  /**
+   * Demand-badge override. Its own MANAGE_EDITORIAL verb rather than a key on
+   * PATCH /tours/:id - "Likely to sell out" is an EARNED scarcity signal, so
+   * the 2026-08-02 audit took `likelyToSellOutOverride` out of UpdateTourDto
+   * to stop an operator manufacturing urgency on their own listing.
+   * `null` defers to the nightly computed signal.
+   */
+  setLikelyToSellOut(id: string, value: boolean | null): Promise<TripListItem> {
+    return apiFetch<TripListItem>(`/tours/${id}/likely-to-sell-out`, {
+      method: 'PATCH',
+      body: JSON.stringify({ value }),
+    });
+  },
+
   remove(id: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/tours/${id}`, { method: 'DELETE' });
   },

@@ -683,15 +683,21 @@ export interface UpdateTripPayload {
   wheelchairAccessible?: boolean;
   familyFriendly?: boolean;
   suitableForBeginners?: boolean;
-  isLocalsFavourite?: boolean;
-  // Manual demand-badge override (null = use the computed daily signal)
-  likelyToSellOutOverride?: boolean | null;
+  // No `isLocalsFavourite` / `likelyToSellOutOverride`: both are EARNED or
+  // editorial signals an operator must not be able to self-award, so the
+  // 2026-08-02 audit pulled them out of UpdateTourDto. Each has its own
+  // MANAGE_EDITORIAL-gated verb - PATCH /tours/:id/locals-favourite and
+  // PATCH /tours/:id/likely-to-sell-out. Nothing sends them today; they are
+  // listed here only so the next person does not re-add them and rediscover
+  // the `isActive` 400 the hard way.
   checkInMinutesBefore?: number | null;
   reference?: string | null;
   ogImage?: string | null;
   h1Override?: string | null;
   breadcrumbLabel?: string | null;
-  isActive?: boolean;
+  // No `isActive`: PATCH /tours/:id rejects it. Visibility moves through
+  // POST /tours/:id/pause | /unpause | /archive | /restore, which keep the
+  // slug_registry row in step with the tour.
 }
 
 export interface AddTourImagePayload {
