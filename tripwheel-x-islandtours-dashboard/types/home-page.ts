@@ -48,15 +48,18 @@ export interface EditorialCard {
   id: string;
   imageUrl: string;
   categoryId: string | null;
+  /** The hub this card advertises. At most one of categoryId/hubId is set. */
+  hubId: string | null;
   /** Whether the card is clickable. Off = named but not linked. */
   isLink: boolean;
   /** 0, 1, 2 - left, middle, front in fan order. */
   displayOrder: number;
   /**
-   * Whether this category has a LIVE tour on the island the banner points at.
-   * False means the public site serves the card WITHOUT its link, because the
-   * category page would 404 - shown in the editor rather than left to be
-   * discovered on the live site.
+   * Whether the target page would open on the island the banner points at (a
+   * category needs a LIVE tour there; a hub must be published, active and
+   * belong to that island). False means the public site serves the card
+   * WITHOUT its link - shown in the editor rather than left to be discovered
+   * on the live site.
    */
   hasLiveTours: boolean;
 }
@@ -78,6 +81,8 @@ export interface HomePageContent {
 export interface EditorialCardInput {
   imageUrl: string;
   categoryId?: string | null;
+  /** At most one of categoryId/hubId - the backend keeps the category if both. */
+  hubId?: string | null;
   isLink?: boolean;
 }
 
@@ -102,47 +107,29 @@ export interface UpsertHomePageTranslationPayload {
 
 // ── Top Island Experiences ───────────────────────────────────────────────────
 
-/** Categories and hubs only - a tour is never featured here (master). */
-export type FeaturedEntityType = 'CATEGORY' | 'HUB';
-
+/**
+ * A standalone presentation card (founder, 2026-08-04): an admin-typed label
+ * + poster + optional video. No category/hub reference, no link - the reel is
+ * a mood board, not navigation. The label is a single admin-entered string,
+ * not translated across locales.
+ */
 export interface FeaturedExperience {
   id: string;
-  entityType: FeaturedEntityType;
-  entityId: string;
-  /** Null = show everywhere. */
-  destinationId: string | null;
+  title: string;
   videoUrl: string | null;
   /**
-   * Card poster override. Null = the card shows `entityImage`. The carousel
-   * slot is a portrait crop that neither an entity hero nor an og image fits,
-   * which is why a per-card poster exists at all.
+   * Card poster; doubles as the video poster. The public site drops a card
+   * with no poster (a grey rectangle is not a card).
    */
   posterUrl: string | null;
-  /**
-   * Whether the card opens the page it names. False = the card still shows,
-   * with its title, but is not clickable. Distinct from `isActive`, which
-   * removes it from the carousel entirely.
-   */
-  isLink: boolean;
   displayOrder: number;
   isActive: boolean;
-  /**
-   * Name of the referenced category/hub. NULL means the target no longer
-   * exists - the public site drops such a row silently, so the admin list has
-   * to show it or the card just vanishes with no explanation.
-   */
-  entityName: string | null;
-  /** The target's own photo - what the card falls back to with no poster. */
-  entityImage: string | null;
 }
 
 export interface CreateFeaturedExperiencePayload {
-  entityType: FeaturedEntityType;
-  entityId: string;
-  destinationId?: string | null;
+  title: string;
   videoUrl?: string | null;
   posterUrl?: string | null;
-  isLink?: boolean;
   displayOrder?: number;
   isActive?: boolean;
 }
