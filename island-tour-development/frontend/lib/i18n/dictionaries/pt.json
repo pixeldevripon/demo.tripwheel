@@ -28,15 +28,15 @@
         "links": {
             "boatTours": "Passeios de barco",
             "trackBooking": "Acompanhe a sua reserva",
-            "help": "Central de Ajuda",
+            "help": "Central de ajuda",
             "contact": "Fale conosco",
             "listTour": "Anuncie seu tour",
             "affiliate": "Torne-se afiliado",
-            "privacy": "Política de Privacidade",
-            "cookies": "Política de Cookies",
-            "terms": "Termos de Serviço",
-            "cancellation": "Política de Cancelamento",
-            "legalNotice": "Aviso Legal"
+            "privacy": "Política de privacidade",
+            "cookies": "Política de cookies",
+            "terms": "Termos de serviço",
+            "cancellation": "Política de cancelamento",
+            "legalNotice": "Aviso legal"
         },
         "copyright": "© 2026 ITG B.V. (Island Tours Group)",
         "registration": "KvK Curaçao 169950",
@@ -598,8 +598,8 @@
             "perPackage": "/por pacote"
         },
         "collections": {
-            "title": "Coleções Selecionadas",
-            "explore": "Explorar Agora",
+            "title": "Coleções selecionadas",
+            "explore": "Explorar agora",
             "breadcrumb": "Coleções",
             "tours": "tours",
             "share": "Partilhar",

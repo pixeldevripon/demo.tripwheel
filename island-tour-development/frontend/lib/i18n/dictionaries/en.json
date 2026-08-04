@@ -1,6 +1,6 @@
 {
     "nav": {
-        "selectIsland": "Select your Island",
+        "selectIsland": "Select your island",
         "island": "Island",
         "wishlist": "Wishlist",
         "saved": "Saved",
@@ -18,7 +18,7 @@
     },
     "footer": {
         "tagline": "Built by Islanders.",
-        "ourStory": "Our Story",
+        "ourStory": "Our story",
         "explore": "Explore",
         "support": "Support",
         "workWithUs": "Work with us",
@@ -26,17 +26,17 @@
         "language": "Language",
         "currency": "Currency",
         "links": {
-            "boatTours": "Boat Tours",
+            "boatTours": "Boat tours",
             "trackBooking": "Track your booking",
-            "help": "Help Center",
+            "help": "Help center",
             "contact": "Contact us",
             "listTour": "List your tour",
             "affiliate": "Become an affiliate",
-            "privacy": "Privacy Policy",
-            "cookies": "Cookie Policy",
-            "terms": "Terms of Service",
-            "cancellation": "Cancellation Policy",
-            "legalNotice": "Legal Notice"
+            "privacy": "Privacy policy",
+            "cookies": "Cookie policy",
+            "terms": "Terms of service",
+            "cancellation": "Cancellation policy",
+            "legalNotice": "Legal notice"
         },
         "copyright": "© 2026 ITG B.V. (Island Tours Group)",
         "registration": "KvK Curaçao 169950",
@@ -81,7 +81,7 @@
         "hero": {
             "title": "We didn't discover the Caribbean. We grew up in it.",
             "subtitle": "Chosen by locals. Made for travelers.",
-            "searchPlaceholder": "Which Island?",
+            "searchPlaceholder": "Which island?",
             "popular": "Popular"
         },
         "trust": [
@@ -101,11 +101,11 @@
         "experiences": {
             "title": "Top island experiences",
             "cards": {
-                "sunsetCruise": "Sunset Cruise",
-                "catamaranTrip": "Catamaran Trip",
-                "buggyTour": "Buggy Tour",
+                "sunsetCruise": "Sunset cruise",
+                "catamaranTrip": "Catamaran trip",
+                "buggyTour": "Buggy tour",
                 "snorkeling": "Snorkeling",
-                "dolphin": "Dolphin Encounters"
+                "dolphin": "Dolphin encounters"
             }
         },
         "explore": {
@@ -120,9 +120,9 @@
             "body": "We grew up on this island. These are the tours we'd book for our own friends.",
             "cta": "Explore Curaçao",
             "categories": {
-                "buggy": "Buggy Tours",
-                "snorkel": "Snorkel Trips",
-                "catamaran": "Catamaran Trips"
+                "buggy": "Buggy tours",
+                "snorkel": "Snorkel trips",
+                "catamaran": "Catamaran trips"
             }
         },
         "faq": {
@@ -248,7 +248,7 @@
                 "ratings": "Ratings",
                 "ratingsNote": "(hidden until reviews exist)",
                 "clearAll": "Reset all",
-                "applyFilters": "Apply Filters"
+                "applyFilters": "Apply filters"
             }
         },
         "hero": {
@@ -281,9 +281,9 @@
             "picks": {
                 "heading": "We've been on every boat",
                 "subtitle": "Our top picks - one for every type of traveler",
-                "bookTrip": "Book this Trip",
+                "bookTrip": "Book this trip",
                 "footerNote": "Our honest picks not paid placements.",
-                "seeAllTours": "See All Tours",
+                "seeAllTours": "See all tours",
                 "best": "BEST OVERALL",
                 "popular": "MOST POPULAR",
                 "families": "BEST FOR FAMILIES"
@@ -298,7 +298,7 @@
             "tagline": "Where islanders send their visitors",
             "selectDate": "Select date",
             "clearDate": "Clear date",
-            "checkAvailability": "Check Availability",
+            "checkAvailability": "Check availability",
             "comparison": {
                 "title": "Which trip is right for you?",
                 "subtitle": "Here's what actually differs between these trips, side by side.",
@@ -373,8 +373,8 @@
                 "deadEndNext": "Next: {date}",
                 "deadEndNoAlternatives": "Nothing else on this island has room this week. Try another date range or another island.",
                 "onlyLeft": "Only {count} left",
-                "travelers": "{count} Travelers",
-                "guests": "{count} Guests",
+                "travelers": "{count} travelers",
+                "guests": "{count} guests",
                 "perGroup": "per group",
                 "perBoat": "per boat",
                 "perVehicle": "per vehicle",
@@ -390,7 +390,7 @@
                 "balanceLater": "Balance later",
                 "balanceOnArrival": "Balance on arrival",
                 "taxesIncluded": "All taxes and fees included",
-                "showDetails": "Show Details",
+                "showDetails": "Show details",
                 "freeCancellation": "{link} up to {hours}h",
                 "freeCancellationLink": "Free cancellation",
                 "payLater": "{link}, the rest via the operator's secure link",
@@ -406,7 +406,7 @@
                 "instantConfirmationTitle": "Instant confirmation",
                 "instantConfirmationSubtitle": "Your spot is confirmed the moment your payment completes.",
                 "selectDate": "Select date",
-                "checkAvailability": "Check Availability",
+                "checkAvailability": "Check availability",
                 "errorSelectDate": "Select a date to continue",
                 "errorSelectSlot": "Select a departure time to continue",
                 "bookingUnavailable": "This tour isn't bookable online right now.",
@@ -416,7 +416,7 @@
                 "showExtras": "Show extras",
                 "addOnsTitle": "Optional extras",
                 "free": "Free",
-                "bringingSpectators": "Bringing Spectators?",
+                "bringingSpectators": "Bringing spectators?",
                 "spectatorNote": "Spectators join but don't participate in the activity",
                 "yes": "Yes",
                 "no": "No",
@@ -456,7 +456,7 @@
                 "subtitle": "Verified guest reviews from real travelers",
                 "seeAll": "See all reviews",
                 "verified": "Verified",
-                "readMore": "Read More",
+                "readMore": "Read more",
                 "readLess": "Read less"
             },
             "reviewsSection": {
@@ -500,11 +500,11 @@
             },
             "sections": {
                 "overview": "Overview",
-                "included": "What's Included",
-                "expect": "What to Expect",
-                "meeting": "Meeting & Pickup",
-                "info": "Important Info",
-                "cancellation": "Cancellation Policy",
+                "included": "What's included",
+                "expect": "What to expect",
+                "meeting": "Meeting & pickup",
+                "info": "Important info",
+                "cancellation": "Cancellation policy",
                 "reviews": "Reviews"
             },
             "exclusion": {
@@ -548,9 +548,9 @@
             "date": "Date",
             "duration": "Duration",
             "price": "Price",
-            "groupSize": "Group Size",
+            "groupSize": "Group size",
             "language": "Language",
-            "activeFilters": "Active Filters:",
+            "activeFilters": "Active filters:",
             "clearAll": "Clear all",
             "groupSizeLabel": "Travelers",
             "groupSizeHint": "Total people in your group",
@@ -568,8 +568,8 @@
         "about": {
             "title": "About tours in {destination}",
             "description": "Every {destination} tour on Island Tours is picked by people who live here. We ride the tours ourselves, write each description from experience, and show the full price up front, with no surprise fees at checkout. Most tours hold your spot with a small deposit rather than the whole amount, and every one of them can be cancelled free within the window shown on its page. Booking is instant, so your confirmation arrives straight away, and if anything is unclear before you travel we answer on WhatsApp from 08:00 to 20:00.",
-            "learnMore": "Learn More",
-            "readLess": "Read Less",
+            "learnMore": "Learn more",
+            "readLess": "Read less",
             "topThings": "Top things to do",
             "planning": "Planning your trip",
             "whyBook": "Why book with Island Tours"
@@ -598,8 +598,8 @@
             "perPackage": "/per package"
         },
         "collections": {
-            "title": "Curated Collections",
-            "explore": "Explore Now",
+            "title": "Curated collections",
+            "explore": "Explore now",
             "breadcrumb": "Collections",
             "tours": "tours",
             "share": "Share",
@@ -664,7 +664,7 @@
         "nameOnCardPlaceholder": "Name on card",
         "consent": "By reserving your spot, you agree to our {terms} and {privacy}.",
         "consentTerms": "Terms",
-        "consentPrivacy": "Privacy Policy",
+        "consentPrivacy": "Privacy policy",
         "securePayment": "Payments are secure and encrypted",
         "reserve": "Reserve my spot",
         "reservePay": "Pay {amount}",
@@ -817,7 +817,7 @@
         "whatsapp": "WhatsApp us",
         "operatorCta": "Tour operator? Log in to the operator portal",
         "terms": "Terms",
-        "privacy": "Privacy Policy",
+        "privacy": "Privacy policy",
         "help": "Help",
         "tagline": "Built by Islanders.",
         "lostUnknown": "No account found with this email address."

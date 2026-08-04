@@ -598,8 +598,8 @@
             "perPackage": "/par forfait"
         },
         "collections": {
-            "title": "Collections Sélectionnées",
-            "explore": "Explorer Maintenant",
+            "title": "Collections sélectionnées",
+            "explore": "Explorer maintenant",
             "breadcrumb": "Collections",
             "tours": "tours",
             "share": "Partager",

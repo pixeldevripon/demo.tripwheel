@@ -81,7 +81,7 @@ export function Navbar({
     }, [pathIsland]);
 
     // The home page always offers a fresh choice: the selector shows
-    // "Select your Island" there, never the remembered island. The remembered
+    // "Select your island" there, never the remembered island. The remembered
     // slug still backs the selector on inner pages without an island in the
     // URL (search, wishlist, ...).
     const currentIsland = isHome
