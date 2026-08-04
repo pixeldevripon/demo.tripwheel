@@ -55,7 +55,11 @@ function createMockPrismaService() {
       findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
       count: jest.fn(),
+    },
+    tourHub: {
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     slugRegistry: {
       create: jest.fn(),
@@ -93,6 +97,7 @@ function createMockPrismaService() {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     category: {
       findUnique: jest.fn(),
@@ -939,6 +944,59 @@ describe('HubService', () => {
   });
 
   // ── remove ────────────────────────────────────────────────────────────────────
+
+  describe('forceDelete', () => {
+    it('throws ForbiddenException when the hub is seeded', async () => {
+      prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: true }));
+
+      await expect(service.forceDelete('hub-1', 'admin-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('blocks while active non-draft trips are still assigned', async () => {
+      const { _tx } = prisma;
+      prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
+      _tx.tour.count.mockResolvedValue(2);
+
+      await expect(service.forceDelete('hub-1', 'admin-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(_tx.hub.delete).not.toHaveBeenCalled();
+    });
+
+    it('hard-deletes: slug cooldown, tour tags detached, FAQs cleaned, row gone', async () => {
+      const { _tx } = prisma;
+      prisma.hub.findUnique.mockResolvedValue(makeHub({ isSeeded: false }));
+      _tx.tour.count.mockResolvedValue(0);
+      _tx.hub.delete.mockResolvedValue({});
+      _tx.slugRegistry.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.forceDelete('hub-1', 'admin-1');
+
+      // Master rule: hard delete starts the 90-day reuse cooldown.
+      expect(_tx.slugRegistry.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { entityType: SlugEntityType.HUB, entityId: 'hub-1' },
+          data: expect.objectContaining({
+            isActive: false,
+            deletedAt: expect.any(Date),
+          }),
+        }),
+      );
+      expect(_tx.tourHub.deleteMany).toHaveBeenCalledWith({
+        where: { hubId: 'hub-1' },
+      });
+      expect(_tx.faq.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ entityId: 'hub-1' }),
+        }),
+      );
+      expect(_tx.hub.delete).toHaveBeenCalledWith({ where: { id: 'hub-1' } });
+      expect(result).toEqual({ message: 'Hub permanently deleted' });
+    });
+  });
 
   describe('remove', () => {
     it('throws ForbiddenException when the hub is seeded', async () => {

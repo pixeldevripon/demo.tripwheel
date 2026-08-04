@@ -23,6 +23,7 @@ import { generateSlug } from '@/common/utils/slug.util';
 import {
   clearCooledDownSlugs,
   isSlugTaken,
+  markSlugsDeleted,
   renameEntitySlug,
 } from '@/common/utils/slug-registry.util';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -875,6 +876,57 @@ export class HubService {
     this.logger.log(`Admin ${adminId} deactivated hub ${id}`);
 
     return { message: 'Hub deactivated successfully' };
+  }
+
+  /**
+   * Permanent delete, for non-seeded hubs (founder, 2026-08-04: an admin-made
+   * hub must be removable outright, not just deactivated). Mirrors the
+   * category/destination forceDelete pattern:
+   *
+   * - Seeded hubs stay protected (403), same as the soft remove.
+   * - Blocked while any ACTIVE non-draft tour is tagged with it - the same
+   *   guard remove() applies, because silently untagging live tours changes
+   *   what travellers see. Draft/inactive tour links are detached in the
+   *   transaction (hubs are discovery tags; TourHub carries no cascade).
+   * - Master slug-registry rule: the hub's slug rows flip to
+   *   isActive=false + deletedAt=now, starting the 90-day reuse cooldown.
+   * - Polymorphic Faq rows are cleaned up by hand (no FK, they would leak);
+   *   every other child cascades, and the homepage editorial card degrades
+   *   to a plain photo via its SetNull FK.
+   */
+  async forceDelete(id: string, adminId: string) {
+    const hub = await this.findHubOrThrow(id);
+
+    if (hub.isSeeded) {
+      throw new ForbiddenException('Seeded hubs cannot be permanently deleted');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const tripCount = await tx.tour.count({
+        where: {
+          hubs: { some: { hubId: id } },
+          isActive: true,
+          status: { not: TourStatus.DRAFT },
+        },
+      });
+      if (tripCount > 0) {
+        throw new ConflictException(
+          `Cannot delete hub: ${tripCount} active trip(s) are still assigned to it`,
+        );
+      }
+
+      await markSlugsDeleted(tx, SlugEntityType.HUB, id);
+
+      await tx.tourHub.deleteMany({ where: { hubId: id } });
+      await tx.faq.deleteMany({
+        where: { pageType: FAQ_PAGE_TYPE.HUB, entityId: id },
+      });
+
+      await tx.hub.delete({ where: { id } });
+    });
+
+    this.logger.log(`Admin ${adminId} permanently deleted hub ${id}`);
+    return { message: 'Hub permanently deleted' };
   }
 
   // ── Allowed categories ────────────────────────────────────────────────────────
