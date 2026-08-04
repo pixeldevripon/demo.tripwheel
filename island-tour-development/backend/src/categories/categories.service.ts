@@ -32,7 +32,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { FeaturedEntityType, SlugEntityType, TourStatus } from '@prisma/client';
+import { SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CategoryQueryDto,
   CreateCategoryDto,
@@ -666,14 +666,12 @@ export class CategoryService {
       await markSlugsDeleted(tx, SlugEntityType.CATEGORY, id);
 
       // Prisma cascade covers the rows that actually have a FK to Category:
-      // translations and page content. It does NOT cover the polymorphic tables
-      // (Faq, FeaturedExperience) - they key off (discriminator, entityId) with
-      // no relation, so nothing deletes them for us and they leak silently.
+      // translations and page content. It does NOT cover the polymorphic Faq
+      // table - it keys off (discriminator, entityId) with no relation, so
+      // nothing deletes it for us and it leaks silently. (FeaturedExperience
+      // no longer references categories - cards are standalone presentation.)
       await tx.faq.deleteMany({
         where: { pageType: FAQ_PAGE_TYPE.CATEGORY, entityId: id },
-      });
-      await tx.featuredExperience.deleteMany({
-        where: { entityType: FeaturedEntityType.CATEGORY, entityId: id },
       });
 
       await tx.category.delete({ where: { id } });

@@ -44,8 +44,6 @@ model Destination {
   forceMajeurePardons ForceMajeurePardon[]
   // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
   homePages           HomePage[]
-  // Featured experiences pinned to this destination (onDelete: Cascade).
-  featuredExperiences FeaturedExperience[]
   // Instagram tiles pinned to this destination (onDelete: Cascade). Brand-wide
   // tiles carry a null destinationId and are not in this relation.
   instagramPosts      InstagramPost[]
@@ -129,6 +127,9 @@ model Hub {
   translations      HubTranslation[]
   pageContents      HubPageContent[]
   tourHubs          TourHub[]
+  // Homepage editorial CTA cards advertising this hub (onDelete: SetNull -
+  // deleting the hub degrades the card to a plain photo, never deletes it).
+  homePageEditorialCards HomePageEditorialCard[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])
@@ -327,34 +328,22 @@ model HubContentSection {
 //     same transaction;
 //   - soft-deactivation needs no cleanup - the resolver's isActive gate covers it.
 // The same polymorphic-without-FK shape is used by `Faq` (pageType + entityId).
+// "Top island experiences" homepage reel cards. PURELY PRESENTATIONAL
+// (founder, 2026-08-04): a card is an admin-typed label + poster + optional
+// video. No category/hub reference, no destination scoping, no link - the
+// reel is a mood board of the platform's activities, not navigation. The
+// label is a single admin-entered string, not translated across locales.
 model FeaturedExperience {
-  id            String             @id @default(uuid())
-  entityType    FeaturedEntityType // CATEGORY | HUB only
-  entityId      String // id of the Category or Hub — polymorphic, see above
-  // null = show everywhere. NOTE for CATEGORY rows: a category page only exists
-  // per-destination (`/{destination}/{category-slug}`), so a null here means the
-  // resolver picks the destination where that category is strongest rather than
-  // that the card is destination-free. Hubs always resolve their own destination.
-  destinationId String?
-  destination   Destination?       @relation(fields: [destinationId], references: [id], onDelete: Cascade)
-  videoUrl      String?
-  // Card poster. Null → the card falls back to the target entity's hero (then
-  // og) image, which is the original behaviour and still the default. It exists
-  // because the carousel slot is a 250x440 PORTRAIT crop while a category hero
-  // is landscape and an ogImage is 1200x630 — the fallback fits badly often
-  // enough that curation needs a per-card override. It doubles as the <video>
-  // poster, so a card with a video no longer flashes black before it plays.
-  posterUrl     String?
-  // Whether the card opens its target page. Off = the card still shows, with its
-  // title, but is not clickable - the same editorial choice the homepage CTA
-  // cards already offer via `EditorialCard.isLink` (naming a page you are not
-  // ready to send traffic to). Distinct from `isActive`, which removes the card
-  // from the carousel altogether.
-  isLink        Boolean            @default(true)
-  displayOrder  Int                @default(0)
-  isActive      Boolean            @default(true)
+  id       String  @id @default(uuid())
+  title    String
+  videoUrl String?
+  // Card poster; doubles as the <video> poster so a card with a video never
+  // flashes black before it plays. The carousel slot is a 250x440 PORTRAIT
+  // crop. A card with no poster is dropped by the public resolver (a grey
+  // rectangle is not a card).
+  posterUrl    String?
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
 
-  @@index([entityType, entityId])
-  @@index([destinationId])
   @@map("featured_experiences")
 }

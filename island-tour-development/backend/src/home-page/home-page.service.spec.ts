@@ -28,6 +28,9 @@ function createMockPrismaService() {
     category: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    hub: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     // The card gate: which categories have a LIVE tour on the banner's island.
     tourCategory: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -456,6 +459,7 @@ describe('HomePageService', () => {
           homeId: 'default',
           imageUrl: 'https://cdn/1.jpg',
           categoryId: 'cat-1',
+          hubId: null,
           isLink: true,
           displayOrder: 0,
         },
@@ -463,12 +467,42 @@ describe('HomePageService', () => {
           homeId: 'default',
           imageUrl: 'https://cdn/2.jpg',
           categoryId: null,
-          // No category to click through to, so the flag is normalised off
+          hubId: null,
+          // No target to click through to, so the flag is normalised off
           // here rather than left for the public resolver to second-guess.
           isLink: false,
           displayOrder: 1,
         },
       ]);
+    });
+
+    it('stores a hub target, and the category wins when both are sent', async () => {
+      prisma.homePage.upsert.mockResolvedValue({});
+      prisma.category.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      prisma.hub.findMany.mockResolvedValue([{ id: 'hub-1' }]);
+
+      await service.update(
+        {
+          editorialCards: [
+            { imageUrl: 'https://cdn/1.jpg', hubId: 'hub-1' },
+            {
+              imageUrl: 'https://cdn/2.jpg',
+              categoryId: 'cat-1',
+              hubId: 'hub-1',
+            },
+          ],
+        },
+        'admin-1',
+      );
+
+      const { data } = prisma.homePageEditorialCard.createMany.mock.calls[0][0];
+      expect(data[0]).toMatchObject({
+        categoryId: null,
+        hubId: 'hub-1',
+        isLink: true,
+      });
+      // At most one target: the category wins so the resolver never ties.
+      expect(data[1]).toMatchObject({ categoryId: 'cat-1', hubId: null });
     });
 
     it('clears the deck when an empty array is sent', async () => {

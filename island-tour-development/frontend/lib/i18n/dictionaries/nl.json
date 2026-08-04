@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "Topervaringen op het eiland",
-            "cards": {
-                "sunsetCruise": "Zonsondergangcruise",
-                "catamaranTrip": "Catamarantocht",
-                "buggyTour": "Buggytour",
-                "snorkeling": "Snorkelen",
-                "dolphin": "Dolfijnenontmoetingen"
-            }
+            "title": "Topervaringen op het eiland"
         },
         "explore": {
             "title": "Kies je eiland",

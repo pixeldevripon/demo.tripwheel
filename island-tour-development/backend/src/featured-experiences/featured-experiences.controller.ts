@@ -29,9 +29,10 @@ import {
 } from './featured-experiences.swagger';
 
 /**
- * "Top Island Experiences" - admin-curated categories and hubs, never individual
- * tours (master). Public reads are open; curation requires MANAGE_EDITORIAL,
- * matching the homepage content module.
+ * "Top Island Experiences" - presentation-only homepage reel cards (founder,
+ * 2026-08-04): an admin-typed label + poster + optional video, no category/hub
+ * reference and no links. Public reads are open; curation requires
+ * MANAGE_EDITORIAL, matching the homepage content module.
  */
 @ApiTags('Featured Experiences')
 @Controller('featured-experiences')
@@ -42,8 +43,10 @@ export class FeaturedExperiencesController {
   @Get('public')
   @Public()
   @ApiGetPublicExperiencesDocs()
-  getPublic(@Query() query: PublicExperiencesQueryDto) {
-    return this.featured.resolvePublic(query.locale!, query.destination);
+  // The query DTO is validated but unused: `locale`/`destination` are accepted
+  // for compatibility with deployed frontends and ignored (see the DTO note).
+  getPublic(@Query() _query: PublicExperiencesQueryDto) {
+    return this.featured.resolvePublic();
   }
 
   @Get()

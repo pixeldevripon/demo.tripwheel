@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "Top island experiences",
-            "cards": {
-                "sunsetCruise": "Sunset cruise",
-                "catamaranTrip": "Catamaran trip",
-                "buggyTour": "Buggy tour",
-                "snorkeling": "Snorkeling",
-                "dolphin": "Dolphin encounters"
-            }
+            "title": "Top island experiences"
         },
         "explore": {
             "title": "Choose your island",

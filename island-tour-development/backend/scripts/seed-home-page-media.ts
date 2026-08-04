@@ -789,28 +789,14 @@ async function main(): Promise<void> {
     }
 
     // ── 4. Featured experiences: real footage, and no fake footage ───────────
+    // Cards are standalone (title + poster + video) - the media map keys on
+    // the card's own label now, no entity lookup needed.
     const featured = await prisma.featuredExperience.findMany({
-      select: { id: true, entityId: true, videoUrl: true },
+      select: { id: true, title: true, videoUrl: true },
     });
-    // Hubs as well as categories - `entityId` is polymorphic, and a row logged
-    // as a bare uuid tells the operator nothing about what it changed.
-    const entityIds = featured.map((f) => f.entityId);
-    const [categories, hubs] = await Promise.all([
-      prisma.category.findMany({
-        where: { id: { in: entityIds } },
-        select: { id: true, name: true },
-      }),
-      prisma.hub.findMany({
-        where: { id: { in: entityIds } },
-        select: { id: true, name: true },
-      }),
-    ]);
-    const nameById = new Map(
-      [...categories, ...hubs].map((e) => [e.id, e.name]),
-    );
 
     for (const row of featured) {
-      const media = EXPERIENCE_MEDIA[nameById.get(row.entityId) ?? ''];
+      const media = EXPERIENCE_MEDIA[row.title];
 
       if (media) {
         const poster = published.get(media.poster);
@@ -821,22 +807,18 @@ async function main(): Promise<void> {
           where: { id: row.id },
           data: { posterUrl: poster.url, videoUrl: video.url },
         });
-        console.log(
-          `  Experience "${nameById.get(row.entityId)}": poster + video`,
-        );
+        console.log(`  Experience "${row.title}": poster + video`);
         continue;
       }
 
       // Demo rows point at a Google Chromecast sample clip. Leaving it is worse
-      // than clearing it: the card falls back to its photo, which is real.
+      // than clearing it: the card shows its poster, which is real.
       if (row.videoUrl?.includes('commondatastorage.googleapis.com')) {
         await prisma.featuredExperience.update({
           where: { id: row.id },
           data: { videoUrl: null },
         });
-        console.log(
-          `  Experience "${nameById.get(row.entityId) ?? row.entityId}": cleared placeholder video`,
-        );
+        console.log(`  Experience "${row.title}": cleared placeholder video`);
       }
     }
 

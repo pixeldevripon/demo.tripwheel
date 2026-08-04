@@ -38,7 +38,7 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
 
 export function TrustStrip({ items }: { items: TrustItem[] }) {
     return (
-        <section className='bg-it-white pt-7 pb-1 md:pt-10'>
+        <section className='bg-it-white it-section'>
             <div className='it-container'>
                 {/* 3 in a row on desktop; stacked cells on mobile (design v2
                     microbar - no carousel). */}

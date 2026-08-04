@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "Top-Erlebnisse auf der Insel",
-            "cards": {
-                "sunsetCruise": "Sonnenuntergangs-Cruise",
-                "catamaranTrip": "Katamaran-Tour",
-                "buggyTour": "Buggy-Tour",
-                "snorkeling": "Schnorcheln",
-                "dolphin": "Delfin-Begegnungen"
-            }
+            "title": "Top-Erlebnisse auf der Insel"
         },
         "explore": {
             "title": "Wähle deine Insel",

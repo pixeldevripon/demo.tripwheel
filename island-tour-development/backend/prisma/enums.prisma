@@ -603,11 +603,6 @@ enum CollectionDisplayStyle {
   PERSONA
 }
 
-enum FeaturedEntityType {
-  CATEGORY
-  HUB
-}
-
 enum HubPickType {
   BEST_OVERALL
   MOST_POPULAR
