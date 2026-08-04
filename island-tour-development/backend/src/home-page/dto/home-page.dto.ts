@@ -239,11 +239,18 @@ export class EditorialCardResponseDto {
   @ApiPropertyOptional({ nullable: true })
   categoryId!: string | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The hub this card advertises. At most one of categoryId/hubId is set.',
+  })
+  hubId!: string | null;
+
   @ApiProperty({
     example: true,
     description:
-      'Whether the card is clickable. Independent of categoryId so a ' +
-      'category can be named on a card without sending traffic to it.',
+      'Whether the card is clickable. Independent of the target so a ' +
+      'page can be named on a card without sending traffic to it.',
   })
   isLink!: boolean;
 
@@ -253,9 +260,10 @@ export class EditorialCardResponseDto {
   @ApiProperty({
     example: true,
     description:
-      'Whether this category has a LIVE tour on the island the banner points ' +
-      'at. False means the public site serves the card without its link, ' +
-      'because the category page would 404 - the editor shows that rather ' +
+      'Whether the target page would open on the island the banner points ' +
+      'at (a category needs a LIVE tour there; a hub must be published, ' +
+      'active and belong to that island). False means the public site ' +
+      'serves the card without its link - the editor shows that rather ' +
       'than leaving an admin to discover it.',
   })
   hasLiveTours!: boolean;
@@ -320,9 +328,20 @@ export class EditorialCardInputDto {
   categoryId?: string | null;
 
   @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The hub this card advertises. At most one of categoryId/hubId - the ' +
+      'category wins if both are sent. A hub card only links when the hub ' +
+      'belongs to the island the banner points at.',
+  })
+  @IsOptional()
+  @IsUUID()
+  hubId?: string | null;
+
+  @ApiPropertyOptional({
     default: true,
     description:
-      'Whether the card is clickable. Ignored without a category - there ' +
+      'Whether the card is clickable. Ignored without a target - there ' +
       'would be nowhere to click to.',
   })
   @IsOptional()

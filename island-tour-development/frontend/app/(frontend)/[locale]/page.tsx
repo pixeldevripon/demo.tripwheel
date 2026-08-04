@@ -82,7 +82,7 @@ async function HomeContent({
         getDictionary(locale as Locale),
         getActiveDestinations(locale as Locale),
         getHomePageContent(locale as Locale),
-        getFeaturedExperiences(locale as Locale),
+        getFeaturedExperiences(),
     ]);
     const { home } = dict;
     // Hero alt text from the media library, per locale. A second await rather
@@ -145,14 +145,13 @@ async function HomeContent({
     // and a frontend must not depend on the age of the API it is talking to.
     const experienceCards = experiences.flatMap(e => {
         const image = safeRemoteImage(e.image);
-        if (!image || !e.href) return [];
+        if (!image) return [];
         return [
             {
                 id: e.id,
                 title: e.title,
                 image,
                 videoUrl: e.videoUrl ?? null,
-                href: localizeHref(locale as Locale, e.href),
             },
         ];
     });

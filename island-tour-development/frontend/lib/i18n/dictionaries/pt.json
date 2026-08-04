@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "Melhores experiências da ilha",
-            "cards": {
-                "sunsetCruise": "Cruzeiro ao pôr do sol",
-                "catamaranTrip": "Passeio de catamarã",
-                "buggyTour": "Tour de buggy",
-                "snorkeling": "Mergulho com snorkel",
-                "dolphin": "Encontros com golfinhos"
-            }
+            "title": "Melhores experiências da ilha"
         },
         "explore": {
             "title": "Escolha a sua ilha",

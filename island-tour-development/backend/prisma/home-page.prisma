@@ -64,11 +64,16 @@ model HomePageEditorialCard {
 
   imageUrl String
 
-  // The category this card advertises. Null → the slot is a plain photo with
-  // its bundled label. SetNull (not Cascade): deleting a category must degrade
-  // the card to a static photo, never delete the slot.
+  // The page this card advertises: a category OR a hub, at most one (the
+  // service normalizes the pair). Null on both → the slot is a plain photo
+  // with its bundled label. SetNull (not Cascade): deleting the target must
+  // degrade the card to a static photo, never delete the slot. Hub cards are
+  // gated at render to the banner's own island (a hub on another island
+  // degrades to a photo), preserving the one-island invariant above.
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  hubId      String?
+  hub        Hub?      @relation(fields: [hubId], references: [id], onDelete: SetNull)
 
   // Whether the card is CLICKABLE. Separate from categoryId on purpose: an
   // admin can name a category on a card without shipping traffic to it, and can

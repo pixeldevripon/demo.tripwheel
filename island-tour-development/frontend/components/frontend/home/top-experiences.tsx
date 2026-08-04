@@ -5,47 +5,40 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Reveal } from '../reveal';
 
-type CardKey =
-    | 'sunsetCruise'
-    | 'catamaranTrip'
-    | 'buggyTour'
-    | 'snorkeling'
-    | 'dolphin';
-
-/**
- * A slide. `href` is null for the bundled fallback cards (they are decorative
- * placeholders with nowhere real to point); curated cards always carry one.
- */
+/** A slide. Presentation only - cards carry no link. */
 type Card = {
     key: string;
     title: string;
     image: string | null;
     video: string | null;
-    href: string | null;
 };
 
-/** An admin-curated card, already resolved and localized by the page. */
+/** An admin-curated card, resolved by the page. */
 export type ExperienceCard = {
     id: string;
     title: string;
     image: string | null;
     videoUrl: string | null;
-    href: string;
 };
 
-type ExperiencesDict = { title: string; cards: Record<CardKey, string> };
+type ExperiencesDict = { title: string };
 
 /**
- * Below this, the curated set is not worth showing: the reel loops three copies
- * of the card list, and one or two real cards would read as an obvious repeat.
- * Fewer than this falls back to the bundled cards - the same "never blank"
- * contract the rest of the homepage content follows.
+ * Below this the whole section renders nothing. The desktop rail has FIVE
+ * cards on screen at once (centre + 2 per side), and the loop track is copies
+ * of the card cycle - a cycle shorter than the visible five puts the same
+ * card on screen twice at the same time, which reads as broken (the client
+ * feedback that started this). Five distinct cards fill the rail exactly, so
+ * five is the floor; six-plus just deepens the rotation.
+ * There is deliberately NO bundled fallback deck (founder, 2026-08-04: only
+ * DB-curated cards - the old fallback's hardcoded shoots had been deleted
+ * from Cloudinary and rendered an all-grey rail). Mirrors the dashboard's
+ * MIN_CURATED_EXPERIENCES (lib/home-page/defaults.ts) - change both together.
  */
-const MIN_CURATED_CARDS = 3;
+const MIN_CURATED_CARDS = 5;
 
 /** How far a pointer may travel between press and release and still count as a
  *  click rather than a carousel drag. */
@@ -63,46 +56,6 @@ const CLD_VIDEO_TX = 'q_auto,vc_auto,w_640,c_limit';
 
 const cld = (url: string, transform: string) =>
     url.replace('/upload/', `/upload/${transform}/`);
-
-/**
- * Bundled fallback deck, used until an admin curates at least
- * MIN_CURATED_CARDS experiences (and if the backend is unreachable). Labels come
- * from the i18n dictionary; these cards have no href because they name generic
- * activities rather than a real category or hub page.
- */
-const RAW_CARDS: {
-    key: CardKey;
-    image: string | null;
-    video: string | null;
-}[] = [
-    {
-        key: 'sunsetCruise',
-        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
-        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4',
-    },
-    {
-        key: 'catamaranTrip',
-        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/catamaran-trip_s5njba.png',
-        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296701/catamaran-trip_zohlkt.mp4',
-    },
-    {
-        key: 'buggyTour',
-        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296714/buggy-tour_iwaavw.png',
-        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296700/buggy-tour_xy8ctp.mp4',
-    },
-    // Placeholder media (only 3 shoots exist today): reuse the closest pair so
-    // no card ever renders as an empty grey box. Swap for real assets when shot.
-    {
-        key: 'snorkeling',
-        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/catamaran-trip_s5njba.png',
-        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296701/catamaran-trip_zohlkt.mp4',
-    },
-    {
-        key: 'dolphin',
-        image: 'https://res.cloudinary.com/dsfms7jb4/image/upload/v1784296713/sunset-cruise_sciih4.png',
-        video: 'https://res.cloudinary.com/dsfms7jb4/video/upload/v1784296702/sunset-cruise_qojtp4.mp4',
-    },
-];
 
 // Size arc (design v2 reels rail) - the centre card renders at full size,
 // neighbours at ~0.85x, outer cards at ~0.7x. Cards scale PROPORTIONALLY
@@ -143,34 +96,32 @@ export function TopExperiences({
     /** Curated cards, resolved + localized by the page. */
     experiences?: ExperienceCard[];
 }) {
-    // Curated content wins; too few (or none) falls back to the bundled deck so
-    // the section is never empty and never a one-card "carousel".
-    const cards = useMemo<Card[]>(() => {
-        if (experiences && experiences.length >= MIN_CURATED_CARDS) {
-            return experiences.map(e => ({
+    // DB-curated cards only - no bundled fallback. Below the minimum the
+    // component renders nothing (after the hooks: rules-of-hooks forbids an
+    // early return above them).
+    const cards = useMemo<Card[]>(
+        () =>
+            (experiences ?? []).map(e => ({
                 key: e.id,
                 title: e.title,
                 // cld() only rewrites Cloudinary URLs (it keys off `/upload/`),
                 // so non-Cloudinary admin images pass through untouched.
                 image: e.image && cld(e.image, CLD_IMAGE_TX),
                 video: e.videoUrl && cld(e.videoUrl, CLD_VIDEO_TX),
-                href: e.href,
-            }));
-        }
-        return RAW_CARDS.map(card => ({
-            key: card.key,
-            title: dict.cards[card.key],
-            image: card.image && cld(card.image, CLD_IMAGE_TX),
-            video: card.video && cld(card.video, CLD_VIDEO_TX),
-            href: null,
-        }));
-    }, [experiences, dict]);
+            })),
+        [experiences]
+    );
 
     const REAL = cards.length;
     // Repeat the set so the track overflows the viewport - required for a seamless infinite loop
     const SLIDES = useMemo(() => [...cards, ...cards, ...cards], [cards]);
-    // Centre the middle card of the middle set.
-    const START = REAL + Math.floor(REAL / 2);
+    // The strip OPENS reading in dashboard order from the left edge: cards
+    // 1..5 left to right, so the centre slot lands on card 3 - which is the
+    // one that plays (founder, 2026-08-04: start at position 1, the centred
+    // item is simply whichever sits mid-rail). The desktop rail shows two
+    // cards each side of centre, hence the +2; MIN_CURATED_CARDS >= 5
+    // guarantees the offset stays inside one copy.
+    const START = REAL + 2;
 
     // No timer-driven autoplay: the reel is video-driven. The CENTRE card's
     // video always plays; when it ends, `onEnded` advances the carousel and
@@ -332,13 +283,14 @@ export function TopExperiences({
     };
 
     /**
-     * A card link behaves like the rest of the reel: a card that is not centred
-     * pulls into the centre instead of navigating (the same affordance the play
-     * button gives), and only the centred card follows its href. A press that
-     * travelled more than the drag slop was a swipe, so it never navigates.
+     * Cards are presentation only - clicking one never navigates. A card that
+     * is not centred pulls into the centre (the same affordance the play
+     * button gives); the centred card does nothing on click. A press that
+     * travelled more than the drag slop was a swipe, so it never centres
+     * either.
      */
     const handleCardClick = (
-        e: React.MouseEvent<HTMLAnchorElement>,
+        e: React.MouseEvent<HTMLButtonElement>,
         index: number
     ) => {
         const origin = pressOrigin.current;
@@ -348,10 +300,7 @@ export function TopExperiences({
             Math.hypot(e.clientX - origin.x, e.clientY - origin.y) >
                 DRAG_SLOP_PX;
 
-        if (dragged || selected !== index) {
-            e.preventDefault();
-            if (!dragged) emblaApi?.scrollTo(index);
-        }
+        if (!dragged && selected !== index) emblaApi?.scrollTo(index);
     };
 
     // One dot per real card; clicking a dot centres (and thereby plays) it.
@@ -362,10 +311,15 @@ export function TopExperiences({
         emblaApi.scrollTo(base + dot);
     };
 
+    // No fallback deck: fewer curated cards than the loop needs (or none) and
+    // the section stays off the page entirely. Placed after the hooks - an
+    // early return above them would break the rules of hooks.
+    if (cards.length < MIN_CURATED_CARDS) return null;
+
     return (
-        <section className='it-section bg-it-white'>
+        <section className='bg-it-white'>
             <div className='it-container'>
-                <Reveal className='flex flex-col items-center gap-8'>
+                <Reveal className='flex flex-col items-center gap-4! md:gap-1! '>
                     <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink font-medium text-center'>
                         {dict.title}
                     </h2>
@@ -374,12 +328,12 @@ export function TopExperiences({
                     {/* Viewport cap = 5 packed cards (1x + 2×0.85x + 2×0.7x +
                         4 gaps) so loop slides never crop at the edges. */}
                     <div
-                        className='w-full mx-auto overflow-hidden cursor-grab select-none active:cursor-grabbing max-w-[1097px] max-md:max-w-[753px]'
+                        className='w-full mx-auto overflow-hidden cursor-grab select-none active:cursor-grabbing max-w-274.25 max-md:max-w-188.25'
                         ref={emblaRef}>
                         {/* Extra vertical room: the embla viewport is
                             overflow-hidden, and without it the centre card's
                             drop shadow would clip at the bottom. */}
-                        <div className='flex items-center h-[528px] gap-[18px] max-md:h-[330px] max-md:gap-3'>
+                        <div className='flex items-center h-132 gap-4.5 max-md:h-82.5 max-md:gap-3'>
                             {SLIDES.map((card, i) => {
                                 const hasMedia = Boolean(card.image);
                                 // The centre (selected) card is always the one
@@ -390,8 +344,8 @@ export function TopExperiences({
                                 return (
                                     <div
                                         key={`${card.key}-${i}`}
-                                        className='relative shrink-0 w-[250px] max-md:w-[172px]'>
-                                        <div className='relative w-full h-[440px] max-md:h-[306px] overflow-hidden rounded-it-xl bg-it-bg will-change-transform'>
+                                        className='relative shrink-0 w-62.5 max-md:w-43'>
+                                        <div className='relative w-full h-110 max-md:h-76.5 overflow-hidden rounded-it-xl bg-it-bg will-change-transform'>
                                             {/* Base layer - the image stays mounted for the video's
                                                 whole life (and doubles as its poster), so pressing
                                                 play never flashes: the video simply cross-fades in
@@ -516,29 +470,28 @@ export function TopExperiences({
                                                 </div>
                                             )}
 
-                                            {/* Stretched link covering the card. A sibling
-                                                overlay rather than a wrapper: the play control
-                                                is a <button>, and a button nested inside an
-                                                anchor is invalid HTML. Sits above the artwork
-                                                and caption (z-10) but below that button (z-20),
-                                                so each press hits exactly one control. */}
-                                            {card.href && (
-                                                <Link
-                                                    href={card.href}
-                                                    aria-label={title}
-                                                    draggable={false}
-                                                    onPointerDown={e => {
-                                                        pressOrigin.current = {
-                                                            x: e.clientX,
-                                                            y: e.clientY,
-                                                        };
-                                                    }}
-                                                    onClick={e =>
-                                                        handleCardClick(e, i)
-                                                    }
-                                                    className='absolute inset-0 z-10'
-                                                />
-                                            )}
+                                            {/* Stretched button covering the card: a side card
+                                                pulls into the centre on click (cards navigate
+                                                nowhere - presentation only). A sibling overlay
+                                                rather than a wrapper: the play control is a
+                                                <button>, and nested buttons are invalid HTML.
+                                                Sits above the artwork and caption (z-10) but
+                                                below that control (z-20), so each press hits
+                                                exactly one target. */}
+                                            <button
+                                                type='button'
+                                                aria-label={`Show ${title}`}
+                                                onPointerDown={e => {
+                                                    pressOrigin.current = {
+                                                        x: e.clientX,
+                                                        y: e.clientY,
+                                                    };
+                                                }}
+                                                onClick={e =>
+                                                    handleCardClick(e, i)
+                                                }
+                                                className='absolute inset-0 z-10 cursor-pointer border-none bg-transparent p-0'
+                                            />
 
                                             {/* One control - play, then pause/resume in place; the
                                                 icon springs between states like the TYP copy chip. */}

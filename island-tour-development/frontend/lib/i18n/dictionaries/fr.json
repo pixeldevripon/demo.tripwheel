@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "Meilleures expériences de l'île",
-            "cards": {
-                "sunsetCruise": "Croisière au coucher du soleil",
-                "catamaranTrip": "Sortie en catamaran",
-                "buggyTour": "Tour en buggy",
-                "snorkeling": "Plongée avec tuba",
-                "dolphin": "Rencontres avec les dauphins"
-            }
+            "title": "Meilleures expériences de l'île"
         },
         "explore": {
             "title": "Choisissez votre île",

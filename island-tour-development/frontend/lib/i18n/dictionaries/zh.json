@@ -99,14 +99,7 @@
             }
         ],
         "experiences": {
-            "title": "岛上热门体验",
-            "cards": {
-                "sunsetCruise": "日落巡航",
-                "catamaranTrip": "双体船之旅",
-                "buggyTour": "沙滩车之旅",
-                "snorkeling": "浮潜",
-                "dolphin": "海豚邂逅"
-            }
+            "title": "岛上热门体验"
         },
         "explore": {
             "title": "选择你的海岛",

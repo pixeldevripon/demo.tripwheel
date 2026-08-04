@@ -9,7 +9,7 @@ import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { mergeTranslation } from '@/common/utils/translation.util';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { PrismaService } from '@/prisma/prisma.service';
-import { TourStatus } from '@prisma/client';
+import { HubStatus, TourStatus } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
@@ -63,6 +63,7 @@ const EDITORIAL_CARDS = {
     id: true,
     imageUrl: true,
     categoryId: true,
+    hubId: true,
     isLink: true,
     displayOrder: true,
   },
@@ -116,13 +117,24 @@ export class HomePageService {
           editorialCards: {
             select: {
               ...EDITORIAL_CARDS.select,
-              // Caption and slug both come from the CATEGORY itself, in the
-              // requested locale - never from an admin-typed string.
+              // Caption and slug both come from the TARGET itself (category
+              // or hub), in the requested locale - never from an admin-typed
+              // string.
               category: {
                 select: {
                   slug: true,
                   name: true,
                   isActive: true,
+                  translations: { where: { locale }, select: { name: true } },
+                },
+              },
+              hub: {
+                select: {
+                  slug: true,
+                  name: true,
+                  isActive: true,
+                  status: true,
+                  destinationId: true,
                   translations: { where: { locale }, select: { name: true } },
                 },
               },
@@ -175,6 +187,25 @@ export class HomePageService {
       locale,
       heroImage: base.heroImage,
       editorialCards: editorialCards.map((card) => {
+        // HUB card: gated to the banner's own island (the one-island
+        // invariant) plus the hub page's own visibility bar - active AND
+        // published. A hub on another island, archived, or unpublished
+        // degrades to a plain photo, exactly like the category path below.
+        if (card.hubId && card.hub) {
+          const hub = card.hub;
+          const live =
+            hub.isActive && hub.status === HubStatus.PUBLISHED ? hub : null;
+          const linkable =
+            !!live && card.isLink && hub.destinationId === (island?.id ?? null);
+          return {
+            image: card.imageUrl,
+            name: live ? live.translations[0]?.name || live.name : null,
+            // Slug only - joined to the island below, same as categories
+            // (hub URLs share the `/{island}/{slug}` shape).
+            categorySlug: linkable ? live.slug : null,
+          };
+        }
+
         // An archived category must not be advertised, exactly as with the CTA
         // button below: the card degrades to a plain photo rather than naming
         // and linking a page that 404s.
@@ -272,6 +303,33 @@ export class HomePageService {
       island?.id ?? null,
     );
 
+    // Hub cards get the same "would this page open" answer, computed against
+    // the same island: active + published + on the banner's island.
+    const hubIds = row.editorialCards
+      .map((c) => c.hubId)
+      .filter((id): id is string => !!id);
+    const hubs = hubIds.length
+      ? await this.prisma.hub.findMany({
+          where: { id: { in: hubIds } },
+          select: {
+            id: true,
+            isActive: true,
+            status: true,
+            destinationId: true,
+          },
+        })
+      : [];
+    const openableHubs = new Set(
+      hubs
+        .filter(
+          (h) =>
+            h.isActive &&
+            h.status === HubStatus.PUBLISHED &&
+            h.destinationId === (island?.id ?? null),
+        )
+        .map((h) => h.id),
+    );
+
     const { editorialDestination, ...base } = row;
     return {
       ...base,
@@ -279,7 +337,11 @@ export class HomePageService {
       resolvedDestinationSlug: island?.slug ?? null,
       editorialCards: row.editorialCards.map((card) => ({
         ...card,
-        hasLiveTours: card.categoryId ? bookable.has(card.categoryId) : false,
+        hasLiveTours: card.categoryId
+          ? bookable.has(card.categoryId)
+          : card.hubId
+            ? openableHubs.has(card.hubId)
+            : false,
       })),
     };
   }
@@ -299,11 +361,11 @@ export class HomePageService {
       }
     }
 
-    // Every category a card points at must exist, for the same reason the CTA
-    // target is checked: the FK would raise a 500-shaped Prisma error where the
-    // admin needs a sentence.
+    // Every category or hub a card points at must exist, for the same reason
+    // the CTA target is checked: the FK would raise a 500-shaped Prisma error
+    // where the admin needs a sentence.
     if (dto.editorialCards?.length) {
-      await this.assertCardCategoriesExist(dto.editorialCards);
+      await this.assertCardTargetsExist(dto.editorialCards);
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -338,10 +400,14 @@ export class HomePageService {
             data: dto.editorialCards.map((card, index) => ({
               homeId: HOME_ID,
               imageUrl: card.imageUrl,
+              // At most ONE target: the category wins if a client ever sends
+              // both, so the resolver never has to break a tie.
               categoryId: card.categoryId ?? null,
+              hubId: card.categoryId ? null : (card.hubId ?? null),
               // A link with nowhere to go is not a link. Normalising here means
               // the public resolver never has to special-case the pair.
-              isLink: card.categoryId ? (card.isLink ?? true) : false,
+              isLink:
+                card.categoryId || card.hubId ? (card.isLink ?? true) : false,
               displayOrder: index,
             })),
           });
@@ -423,23 +489,43 @@ export class HomePageService {
     return new Set(rows.map((r) => r.categoryId));
   }
 
-  /** One query for the whole deck rather than one per card. */
-  private async assertCardCategoriesExist(
-    cards: { categoryId?: string | null }[],
+  /** One query per target type for the whole deck rather than one per card. */
+  private async assertCardTargetsExist(
+    cards: { categoryId?: string | null; hubId?: string | null }[],
   ) {
-    const ids = [
+    const categoryIds = [
       ...new Set(cards.map((c) => c.categoryId).filter((id) => !!id)),
     ] as string[];
-    if (!ids.length) return;
+    const hubIds = [
+      ...new Set(cards.map((c) => c.hubId).filter((id) => !!id)),
+    ] as string[];
 
-    const found = await this.prisma.category.findMany({
-      where: { id: { in: ids } },
-      select: { id: true },
-    });
+    const [categories, hubs] = await Promise.all([
+      categoryIds.length
+        ? this.prisma.category.findMany({
+            where: { id: { in: categoryIds } },
+            select: { id: true },
+          })
+        : [],
+      hubIds.length
+        ? this.prisma.hub.findMany({
+            where: { id: { in: hubIds } },
+            select: { id: true },
+          })
+        : [],
+    ]);
 
-    const missing = ids.find((id) => !found.some((c) => c.id === id));
-    if (missing) {
-      throw new BadRequestException(`No category found with id "${missing}"`);
+    const missingCategory = categoryIds.find(
+      (id) => !categories.some((c) => c.id === id),
+    );
+    if (missingCategory) {
+      throw new BadRequestException(
+        `No category found with id "${missingCategory}"`,
+      );
+    }
+    const missingHub = hubIds.find((id) => !hubs.some((h) => h.id === id));
+    if (missingHub) {
+      throw new BadRequestException(`No hub found with id "${missingHub}"`);
     }
   }
 
