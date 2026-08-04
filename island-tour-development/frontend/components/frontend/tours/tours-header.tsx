@@ -47,7 +47,7 @@ export async function ToursHeader({
         // No own entrance animation: this header renders in the STATIC shell, so
         // the sitewide PageTransition already animates it in on navigation.
         <div className='flex flex-col'>
-            <h1 className='m-0 font-it-display font-bold text-[clamp(24px,3vw,32px)] leading-[1.12] tracking-[-0.015em] text-it-ink'>
+            <h1 className='m-0 font-it-display font-medium text-[clamp(24px,3vw,32px)] leading-[1.12] tracking-[-0.015em] text-it-ink'>
                 {title}
             </h1>
             <p className='m-0 mt-2 max-w-[640px] text-[14.5px] leading-[1.6] text-it-text-muted'>

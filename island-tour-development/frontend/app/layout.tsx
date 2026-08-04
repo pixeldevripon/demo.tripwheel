@@ -15,20 +15,18 @@ import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
- * The ONLY webfont this app loads.
+ * Webfonts: JetBrains Mono (here) + self-hosted SF Pro Display (plain
+ * @font-face in globals.css, preloaded in <head> below).
  *
- * Every route group wraps its tree in `.frontend-root` - `(frontend)`,
- * `(login)`, and the three root error/not-found screens - and that scope sets
- * the family to the SF Pro SYSTEM stack (`frontend-tokens.css`
- * `--it-font-display` / `--it-font-body`). So the sans/display webfonts that
- * used to load here (DM Sans, Playfair Display, Noto Sans, GeneralSans) were
- * never painted anywhere: 6 preloaded woff2 files, ~225 KB, competing with the
- * LCP image for early bandwidth on every single request.
+ * SF Pro Display is deliberately NOT loaded through next/font: next/font
+ * hashes the family name, and the client audits the site with font
+ * inspectors that must literally read "SF Pro Display" (2026-08-04). The
+ * old sans/display webfonts (DM Sans, Playfair Display, Noto Sans,
+ * GeneralSans) stay deleted - they were never painted.
  *
  * JetBrains Mono stays because it IS painted - `font-mono` renders the booking
  * references in the traveller account area (`traveller-booking-card.tsx`,
- * `traveller-payments-list.tsx`). Everything else falls back to the system
- * stacks mapped in `globals.css`.
+ * `traveller-payments-list.tsx`).
  */
 const jetbrainsMono = JetBrains_Mono({
     variable: '--font-jetbrains-mono',
@@ -162,6 +160,32 @@ export default function RootLayout({
                 'font-sans'
             )}>
             <head>
+                {/* Self-hosted SF Pro Display (@font-face in globals.css) -
+                    preloaded so the first paint doesn't flash a fallback while
+                    the body font races the LCP image. crossOrigin is required:
+                    font fetches are CORS-mode even same-origin, and a preload
+                    without it is re-fetched instead of reused. */}
+                <link
+                    rel='preload'
+                    href='/fonts/sf-pro-display/SFProDisplay-Regular.woff2'
+                    as='font'
+                    type='font/woff2'
+                    crossOrigin='anonymous'
+                />
+                <link
+                    rel='preload'
+                    href='/fonts/sf-pro-display/SFProDisplay-Medium.woff2'
+                    as='font'
+                    type='font/woff2'
+                    crossOrigin='anonymous'
+                />
+                <link
+                    rel='preload'
+                    href='/fonts/sf-pro-display/SFProDisplay-Bold.woff2'
+                    as='font'
+                    type='font/woff2'
+                    crossOrigin='anonymous'
+                />
                 <CustomScripts position='head' />
             </head>
             <body suppressHydrationWarning className='min-h-full flex flex-col'>

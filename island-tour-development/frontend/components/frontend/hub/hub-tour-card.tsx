@@ -108,7 +108,7 @@ export function HubTourCard({
                 <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between p-2.5 md:p-4'>
                     {badgeLabel ? (
                         <span
-                            className={`inline-flex min-w-0 items-center truncate rounded-[6px] px-[7px] py-[3px] text-[10px] font-bold leading-[1.5] @[220px]:px-[9px] @[220px]:py-[4px] @[220px]:text-[11.5px] ${BADGE_STYLE[tour.badge!]}`}>
+                            className={`inline-flex min-w-0 items-center truncate rounded-[6px] px-[7px] py-[3px] text-[10px] font-medium leading-[1.5] @[220px]:px-[9px] @[220px]:py-[4px] @[220px]:text-[11.5px] ${BADGE_STYLE[tour.badge!]}`}>
                             {badgeLabel}
                         </span>
                     ) : (
@@ -150,7 +150,7 @@ export function HubTourCard({
                     which reads as a terrible tour rather than a new one. */}
                 {tour.rating !== undefined && (
                     <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-bold text-it-star'>
+                        <span className='font-medium text-it-star'>
                             ★ {tour.rating}
                         </span>
                         {tour.reviewCount !== undefined && (
@@ -163,7 +163,7 @@ export function HubTourCard({
 
                 {/* Title + attribute tags */}
                 <div className='flex flex-col gap-1 md:gap-1.5'>
-                    <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                    <h3 className='m-0 font-it-body font-medium text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
                         {tour.title}
                     </h3>
                     <ul className='m-0 flex flex-wrap items-center gap-x-2 gap-y-1 p-0'>

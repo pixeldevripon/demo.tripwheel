@@ -563,7 +563,7 @@ export function TopExperiences({
                                                 the running video. */}
                                             <p
                                                 className={[
-                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-bold text-[13.5px] leading-[1.2] tracking-[-0.005em]',
+                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[13.5px] leading-[1.2] tracking-[-0.005em]',
                                                     hasMedia
                                                         ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
                                                         : 'text-it-heading',

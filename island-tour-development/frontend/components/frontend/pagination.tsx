@@ -82,7 +82,7 @@ export function Pagination({
     // Design v2 .pager cell: 38px bordered square, 13.5px bold tabular digits;
     // the active page inverts to the dark surface.
     const cellBase =
-        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[13.5px] font-bold leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums';
+        'inline-flex h-[38px] min-w-[38px] cursor-pointer items-center justify-center rounded-it-sm border px-2.5 text-[13.5px] font-medium leading-none no-underline transition-colors duration-(--it-duration-xs) ease-(--it-ease) tabular-nums';
 
     return (
         <nav

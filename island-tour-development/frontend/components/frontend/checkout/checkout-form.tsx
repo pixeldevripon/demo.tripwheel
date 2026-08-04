@@ -5,10 +5,7 @@ import {
     readBookingSelection,
     writeBookingSelection,
 } from '@/hooks/tours/use-booking-selection-persistence';
-import type {
-    BookingAddOnSelection,
-    ReserveRequest,
-} from '@/lib/api/bookings';
+import type { BookingAddOnSelection, ReserveRequest } from '@/lib/api/bookings';
 import {
     bookingIdKey,
     formatCheckoutMoney,
@@ -39,21 +36,20 @@ import {
     useMemo,
     useRef,
     useState,
-    type ReactNode,
 } from 'react';
 import {
+    Collapse,
+    COLLAPSE_MS,
     ConsentLine,
     CtaButton,
     EMAIL_RE,
     Field,
-    Collapse,
-    COLLAPSE_MS,
     FieldError,
     FormError,
-    SectionBadge,
     FreeCancelNote,
     helperClass,
     labelClass,
+    SectionBadge,
     SelectField,
     titleClass,
 } from './checkout-fields';
@@ -180,21 +176,21 @@ export function CheckoutForm({
     }, [tourId]);
 
     /**
-      * Client idempotency key: a retried reserve (edit contact → Continue
-      * again) returns the same booking instead of double-booking. Lazy init
-      * dodges the react-hooks purity rule (no impure calls during render).
-      *
-      * ON A FAILED-PAYMENT RETURN IT IS REUSED, which is the whole point of
-      * persisting it. A declined charge deliberately leaves the booking ON_HOLD
-      * with its seats still claimed (the backend never cancels it, so the
-      * traveller can retry), and the processing page bounces back here with
-      * `?payment=failed` - which REMOUNTS this component. Minting a fresh UUID
-      * there reserved a SECOND booking and claimed the party's seats a second
-      * time, for up to the 30-minute hold window. Two declines on an 8-seat
-      * boat left 9 of 8 seats held and the third attempt refused for a
-      * departure that was actually empty. Reserve is idempotent on this id and
-      * both PSPs handle a retried charge, so reusing it is the correct retry.
-      */
+     * Client idempotency key: a retried reserve (edit contact → Continue
+     * again) returns the same booking instead of double-booking. Lazy init
+     * dodges the react-hooks purity rule (no impure calls during render).
+     *
+     * ON A FAILED-PAYMENT RETURN IT IS REUSED, which is the whole point of
+     * persisting it. A declined charge deliberately leaves the booking ON_HOLD
+     * with its seats still claimed (the backend never cancels it, so the
+     * traveller can retry), and the processing page bounces back here with
+     * `?payment=failed` - which REMOUNTS this component. Minting a fresh UUID
+     * there reserved a SECOND booking and claimed the party's seats a second
+     * time, for up to the 30-minute hold window. Two declines on an 8-seat
+     * boat left 9 of 8 seats held and the third attempt refused for a
+     * departure that was actually empty. Reserve is idempotent on this id and
+     * both PSPs handle a retried charge, so reusing it is the correct retry.
+     */
     const [bookingId] = useState(() => {
         if (paymentFailed) {
             try {
@@ -454,7 +450,7 @@ export function CheckoutForm({
      * differently after a checkout round-trip than after a fresh pick.
      */
     function publishPickup(value: string) {
-        const zone = pickupOptions.find((o) => o.id === value);
+        const zone = pickupOptions.find(o => o.id === value);
         onPickupChange({
             id: zone?.id ?? null,
             label: zone
@@ -640,7 +636,7 @@ export function CheckoutForm({
                             exit={{ opacity: 0 }}
                             whileTap={{ scale: 0.97 }}
                             transition={{ duration: 0.2 }}
-                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-2'>
+                            className='ml-auto shrink-0 cursor-pointer border-none bg-transparent p-0 text-[13px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-2'>
                             {dict.edit}
                         </motion.button>
                     )}
@@ -934,3 +930,4 @@ export function CheckoutForm({
         </div>
     );
 }
+

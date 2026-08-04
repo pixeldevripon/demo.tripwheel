@@ -1,9 +1,9 @@
 'use client';
 
+import { springPop } from '@/lib/motion';
 import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
 
 type CategoryKey = 'buggy' | 'snorkel' | 'catamaran';
@@ -18,7 +18,10 @@ const MOVE_EASE = [0.21, 0.47, 0.32, 0.98] as const;
 const CARDS: { key: CategoryKey; image: string }[] = [
     { key: 'buggy', image: '/images/home-page/categories/buggy-tours.jpg' },
     { key: 'snorkel', image: '/images/home-page/categories/snorkel-trips.jpg' },
-    { key: 'catamaran', image: '/images/home-page/categories/catamaran-trips.jpg' },
+    {
+        key: 'catamaran',
+        image: '/images/home-page/categories/catamaran-trips.jpg',
+    },
 ];
 
 /**
@@ -29,7 +32,11 @@ const CARDS: { key: CategoryKey; image: string }[] = [
 const SLOTS = [
     { position: 'left-[calc(50%-140px)] top-3 lg:left-0', rotate: -8, z: 10 },
     { position: 'left-[calc(50%-78px)] top-0 lg:left-26', rotate: 0, z: 20 },
-    { position: 'left-[calc(50%-16px)] top-3 lg:left-[166px]', rotate: 8, z: 30 },
+    {
+        position: 'left-[calc(50%-16px)] top-3 lg:left-[166px]',
+        rotate: 8,
+        z: 30,
+    },
 ];
 
 /** The front slot (highest z) - the right card, matching the Figma default. */
@@ -98,6 +105,7 @@ export function EditorialCardFan({
                             fill
                             sizes='(max-width: 1024px) 158px, 210px'
                             className='object-cover'
+                            quality={100}
                         />
                         <span className='absolute inset-x-0 bottom-0 flex items-center justify-center bg-it-heading/30 py-2.5 font-semibold text-[13px] leading-[1.4] text-it-white lg:py-3 lg:text-[15px]'>
                             {title}
@@ -165,3 +173,4 @@ export function EditorialCardFan({
         </div>
     );
 }
+

@@ -109,8 +109,13 @@
     /* ── Typography ─────────────────────────────────────────────────────── */
 
     /* SF Pro system stacks - no webfont; the system UI family everywhere. */
-    --it-font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
-    --it-font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+    /* The self-hosted 'SF Pro Display' webfont FIRST (@font-face in
+       globals.css), system tokens as fallback (client, 2026-08-04: every
+       platform must render and report SF Pro, not "system-ui"). Body uses
+       Display too - only Display cuts were provided; the SF Pro Text token
+       stays as an Apple-device fallback should the webfont ever fail. */
+    --it-font-display: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body:    'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
 
     /* Scale */
     --it-text-xs:      0.75rem;

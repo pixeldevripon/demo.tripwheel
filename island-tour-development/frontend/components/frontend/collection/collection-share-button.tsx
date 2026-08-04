@@ -34,7 +34,7 @@ export function CollectionShareButton({ label }: { label: string }) {
                 height={24}
                 className='size-[15px] shrink-0'
             />
-            <span className='text-[13px] font-bold leading-[1.4] text-it-ink'>
+            <span className='text-[13px] font-medium leading-[1.4] text-it-ink'>
                 {label}
             </span>
         </button>

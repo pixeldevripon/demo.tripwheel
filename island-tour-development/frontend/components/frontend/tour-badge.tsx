@@ -65,7 +65,7 @@ export function TourBadgeChip({
         <span
             className={[
                 // Design v2 .badge: small radius (6px), bold, tight tracking
-                'inline-flex items-center justify-center rounded-[6px] font-bold leading-[1.4] tracking-[0.01em]',
+                'inline-flex items-center justify-center rounded-[6px] font-medium leading-[1.4] tracking-[0.01em]',
                 sizeClass,
                 style.className,
                 className,

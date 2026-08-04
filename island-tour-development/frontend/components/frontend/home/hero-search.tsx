@@ -160,7 +160,7 @@ export function HeroSearch({
                         onFocus={() => setFocused(true)}
                         placeholder={placeholder}
                         aria-label={placeholder}
-                        className='flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] md:text-[16.5px] font-semibold text-it-ink placeholder:font-semibold placeholder:text-it-ink-muted'
+                        className='flex-1 min-w-0 border-none outline-none bg-transparent text-[15px] md:text-[16.5px] font-semibold text-it-ink placeholder:font-medium placeholder:text-it-ink-muted'
                     />
                 </div>
                 <motion.button
@@ -184,7 +184,7 @@ export function HeroSearch({
                             className='size-4'
                         />
                     </motion.span>
-                    <span className='text-[15px] md:text-[16px] font-bold text-it-white'>
+                    <span className='text-[15px] md:text-[16px] font-medium text-it-white'>
                         {search.title}
                     </span>
                 </motion.button>

@@ -68,7 +68,7 @@ export function CollectionCard({
 
                     {/* Explore indicator - pinned to the card foot. */}
                     <div className='mt-auto flex items-center gap-1 pt-2'>
-                        <span className='text-[12px] @[220px]:text-[12.5px] font-bold leading-[1.6] text-it-primary-hover'>
+                        <span className='text-[12px] @[220px]:text-[12.5px] font-medium leading-[1.6] text-it-primary-hover'>
                             {dict.explore}
                         </span>
                         <Image

@@ -110,7 +110,6 @@ const SORT_OPTIONS: {
     { value: 'rating_asc', labelKey: 'sortRatingLow' },
 ];
 
-
 /** LD31: the star distribution chart renders at 3 or more reviews. */
 const MIN_REVIEWS_FOR_CHART = 3;
 /** LD30: the sort control is hidden under 10 reviews. */
@@ -415,7 +414,7 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[21px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink'>
                         {dict.title}
                     </h2>
                     <p className='m-0 flex flex-wrap items-center gap-[7px] text-[13px] leading-[1.6] text-it-text-muted'>
@@ -724,9 +723,7 @@ export function TourReviewsSection({
                         mouse AND touch, with real momentum on release.
                         touch-action pan-y keeps vertical page scroll native
                         on mobile while the track owns the horizontal axis. */}
-                    <div
-                        ref={stripViewportRef}
-                        className='overflow-hidden'>
+                    <div ref={stripViewportRef} className='overflow-hidden'>
                         <MotionDiv
                             drag='x'
                             dragConstraints={stripViewportRef}
@@ -744,28 +741,28 @@ export function TourReviewsSection({
                             }}
                             className='flex w-max gap-2'
                             style={{ touchAction: 'pan-y' }}>
-                        {photoStrip.map((src, i) => (
-                            <button
-                                key={`${src}-${i}`}
-                                type='button'
-                                onClick={() => {
-                                    if (stripDragging.current) return;
-                                    setStripLightbox(i);
-                                }}
-                                aria-label={dict.photoOpen}
-                                className='relative size-20 shrink-0 cursor-pointer overflow-hidden rounded-it-full border-0 bg-it-border p-0'>
-                                <Image
-                                    src={src}
-                                    alt=''
-                                    fill
-                                    sizes='80px'
-                                    // Framer needs the pointer stream - a native
-                                    // image drag would cancel it mid-gesture.
-                                    draggable={false}
-                                    className='pointer-events-none object-cover transition-opacity duration-300 hover:opacity-90'
-                                />
-                            </button>
-                        ))}
+                            {photoStrip.map((src, i) => (
+                                <button
+                                    key={`${src}-${i}`}
+                                    type='button'
+                                    onClick={() => {
+                                        if (stripDragging.current) return;
+                                        setStripLightbox(i);
+                                    }}
+                                    aria-label={dict.photoOpen}
+                                    className='relative size-20 shrink-0 cursor-pointer overflow-hidden rounded-it-full border-0 bg-it-border p-0'>
+                                    <Image
+                                        src={src}
+                                        alt=''
+                                        fill
+                                        sizes='80px'
+                                        // Framer needs the pointer stream - a native
+                                        // image drag would cancel it mid-gesture.
+                                        draggable={false}
+                                        className='pointer-events-none object-cover transition-opacity duration-300 hover:opacity-90'
+                                    />
+                                </button>
+                            ))}
                         </MotionDiv>
                     </div>
                     {stripLightbox !== null && photoStrip[stripLightbox] && (
@@ -879,7 +876,7 @@ function ReviewCard({
                     </span>
                     <div className='flex flex-col text-[13px] leading-[1.5] text-it-text-muted'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[13.5px] font-bold text-it-ink'>
+                            <b className='text-[13.5px] font-medium text-it-ink'>
                                 {review.name}
                             </b>
                             {review.date}

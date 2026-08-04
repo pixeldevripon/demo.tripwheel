@@ -76,7 +76,7 @@ export async function FaqSection({
                 <section className='bg-it-white pb-20'>
                     <div className='it-container'>
                         <Reveal className='flex max-w-[760px] flex-col gap-3'>
-                            <h2 className='m-0 mt-7 text-[16px] font-bold leading-[1.6] text-it-ink'>
+                            <h2 className='m-0 mt-7 text-[16px] font-medium leading-[1.6] text-it-ink'>
                                 {dict.title}
                             </h2>
                             <FaqAccordion items={dict.items} />

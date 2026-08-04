@@ -76,7 +76,7 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
                 loading='eager'
             />
             <div className='flex flex-col gap-0.5'>
-                <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
+                <span className='text-[14px] font-medium leading-[1.5] text-it-ink'>
                     {copy.title}
                 </span>
                 <span className='text-[12.5px] leading-[1.5] text-it-text-muted'>

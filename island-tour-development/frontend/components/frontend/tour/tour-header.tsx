@@ -31,7 +31,7 @@ export function TourHeader({
     if (rating != null) {
         metaItems.push(
             <span key='rating' className='flex items-center gap-1.5'>
-                <span className='font-bold text-it-star'>
+                <span className='font-medium text-it-star'>
                     ★ {rating.toFixed(1)}
                 </span>
                 <span className='tabular-nums'>
@@ -42,7 +42,7 @@ export function TourHeader({
     }
     if (isLocalsFavourite) {
         metaItems.push(
-            <span key='locals' className='font-bold text-it-primary-hover'>
+            <span key='locals' className='font-medium text-it-primary-hover'>
                 ✦ {dict.localsFavorite}
             </span>
         );
@@ -66,7 +66,7 @@ export function TourHeader({
         <section className='bg-it-white'>
             <div className='it-container'>
                 <div className='flex flex-col pt-2.5 pb-4'>
-                    <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] font-bold leading-[1.12] tracking-[-0.015em] text-balance text-it-ink'>
+                    <h1 className='m-0 max-w-[22em] font-it-display text-[clamp(24px,3vw,32px)] font-medium leading-[1.12] tracking-[-0.015em] text-balance text-it-ink'>
                         {title}
                     </h1>
                     {metaItems.length > 0 && (
