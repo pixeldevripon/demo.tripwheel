@@ -43,11 +43,16 @@ export type HomepageDefaultKey = keyof typeof HOMEPAGE_DEFAULTS;
 export const DEFAULT_HERO_IMAGE_LABEL = 'kc-powerboat.jpg (shipped with the site)';
 
 /** The carousel's slide geometry assumes a small curated set. */
-export const RECOMMENDED_MAX_EXPERIENCES = 5;
+export const RECOMMENDED_MAX_EXPERIENCES = 8;
 
 /**
- * Below this the public site ignores curation entirely and renders its bundled
- * deck - three copies of the card list drive the loop, so one or two real cards
- * read as an obvious repeat. Mirrors MIN_CURATED_CARDS on the public site.
+ * Below this the public site keeps the whole section off the homepage - there
+ * is no bundled fallback deck (founder, 2026-08-04: only DB-curated cards).
+ * The site's desktop rail shows FIVE cards at once and the loop track is
+ * copies of the card cycle, so a cycle shorter than the visible five puts the
+ * same card on screen twice at the same time. Five distinct cards fill the
+ * rail exactly; six-plus just deepens the rotation. Mirrors MIN_CURATED_CARDS
+ * on the public site (components/frontend/home/top-experiences.tsx) - change
+ * both together.
  */
-export const MIN_CURATED_EXPERIENCES = 3;
+export const MIN_CURATED_EXPERIENCES = 5;

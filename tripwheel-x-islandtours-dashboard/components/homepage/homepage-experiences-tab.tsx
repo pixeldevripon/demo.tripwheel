@@ -1,7 +1,6 @@
 'use client';
 
 import {
-    Alert02Icon,
     ArrowDown02Icon,
     ArrowUp02Icon,
     Cancel01Icon,
@@ -16,7 +15,6 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ImageSelectorField } from '@/components/common/image-selector-field';
-import { StatusBadge } from '@/components/common/status-badge';
 import { VideoSelectorField } from '@/components/common/video-selector-field';
 import {
     AlertDialog,
@@ -46,16 +44,9 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Field, FieldDescription } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useActiveCategories } from '@/hooks/categories/use-categories';
 import {
     useCreateFeaturedExperience,
     useDeleteFeaturedExperience,
@@ -63,16 +54,20 @@ import {
     useReorderFeaturedExperiences,
     useUpdateFeaturedExperience,
 } from '@/hooks/home-page/use-home-page';
-import { useHubs } from '@/hooks/hubs/use-hubs';
 import {
     MIN_CURATED_EXPERIENCES,
     RECOMMENDED_MAX_EXPERIENCES,
 } from '@/lib/home-page/defaults';
-import type { FeaturedEntityType, FeaturedExperience } from '@/types/home-page';
+import type { FeaturedExperience } from '@/types/home-page';
 
 /**
  * Top Island Experiences - the only homepage tab that is curation rather than
  * content, which is why it is its own tab and not part of Details.
+ *
+ * Cards are STANDALONE PRESENTATION (founder, 2026-08-04): an admin-typed
+ * label + poster + optional video. They reference no category or hub and link
+ * nowhere - the reel is a mood board of the platform's activities. The label
+ * is a single admin-entered string, not translated across locales.
  *
  * The heading ABOVE the carousel is per-locale copy and lives in Page Content
  * with the rest of the page's words; this tab is only the deck.
@@ -90,15 +85,10 @@ export function HomepageExperiencesTab() {
  * before. Ordering is the grid order, moved with the same arrow controls the
  * tour-images tab uses.
  *
- * Two things this UI exists to prevent, both otherwise silent:
- *
- * 1. A curated row can be dropped by the public site with no error - nothing
- *    is featured unless its target has a live tour. For hubs that bar is
- *    HIGHER than the hub page's own (a hub with no tours still renders a valid
- *    page), which is exactly the case an admin cannot deduce.
- * 2. Below MIN_CURATED_EXPERIENCES live cards the site ignores curation
- *    entirely and keeps its bundled deck, so adding one or two changes nothing
- *    on the homepage.
+ * One thing this UI exists to prevent, otherwise silent: below
+ * MIN_CURATED_EXPERIENCES showable cards the section stays off the homepage
+ * entirely (there is no bundled fallback deck), so adding one or two changes
+ * nothing visible. The notice says so with the live count.
  */
 function ExperiencesCurationCard() {
     const { data: experiences = [], isLoading } = useFeaturedExperiences();
@@ -116,20 +106,10 @@ function ExperiencesCurationCard() {
     const ordered = [...experiences].sort(
         (a, b) => a.displayOrder - b.displayOrder || a.id.localeCompare(b.id)
     );
-    /*
-     * Cards that can actually REACH the homepage, not just rows switched on.
-     * The site drops a card whose target was deleted or that has no photo at
-     * all, and the "needs 3 to count" rule is applied to what survives - so
-     * counting raw active rows would report 3 live while the site quietly showed
-     * its bundled deck. The one gate this cannot see is "has a live tour", which
-     * only the backend knows; the picker copy says so.
-     */
-    const showingCount = ordered.filter(
-        e =>
-            e.isActive &&
-            e.entityName !== null &&
-            (e.posterUrl || e.entityImage)
-    ).length;
+    // Cards that can actually REACH the homepage: switched on AND carrying a
+    // poster - the public site drops a posterless card (a grey rectangle is
+    // not a card), and the minimum-to-show rule is applied to what survives.
+    const showingCount = ordered.filter(e => e.isActive && e.posterUrl).length;
     const isBusy = update.isPending || reorder.isPending;
 
     function handleMove(index: number, direction: 'up' | 'down') {
@@ -149,24 +129,44 @@ function ExperiencesCurationCard() {
         });
     }
 
-    function handleSaveMedia(payload: {
+    // ONE dialog for both paths (founder, 2026-08-04: adding is one step, not
+    // "create, then reopen for media") - creating and editing are the same
+    // form: label + poster + video.
+    function handleSaveCard(payload: {
+        title: string;
         posterUrl: string | null;
         videoUrl: string | null;
-        isLink: boolean;
     }) {
-        if (!editing) return;
-        update.mutate(
-            { id: editing.id, payload },
+        if (editing) {
+            update.mutate(
+                { id: editing.id, payload },
+                {
+                    onSuccess: () => {
+                        toast.success('Card updated.');
+                        setEditing(null);
+                    },
+                    onError: err =>
+                        toast.error(
+                            err instanceof Error
+                                ? err.message
+                                : 'Failed to save the card.'
+                        ),
+                }
+            );
+            return;
+        }
+        create.mutate(
+            { ...payload, displayOrder: ordered.length },
             {
                 onSuccess: () => {
-                    toast.success('Card updated.');
-                    setEditing(null);
+                    toast.success('Added to the homepage.');
+                    setAddOpen(false);
                 },
                 onError: err =>
                     toast.error(
                         err instanceof Error
                             ? err.message
-                            : 'Failed to save the media.'
+                            : 'Could not add that card.'
                     ),
             }
         );
@@ -188,10 +188,10 @@ function ExperiencesCurationCard() {
                             )}
                         </div>
                         <CardDescription>
-                            Categories and hubs only - individual tours are
-                            never featured here. Each card links to that page
-                            and takes its title from it, so the two can never
-                            disagree.
+                            Standalone presentation cards - a label, a poster
+                            and an optional video. They link nowhere and
+                            reference nothing; the reel is a mood board of what
+                            the islands offer.
                         </CardDescription>
                     </div>
                     <Button
@@ -202,7 +202,7 @@ function ExperiencesCurationCard() {
                             icon={PlusSignIcon}
                             className='size-3.5'
                         />
-                        Feature a page
+                        Add a card
                     </Button>
                 </div>
             </CardHeader>
@@ -228,14 +228,15 @@ function ExperiencesCurationCard() {
                                     className='size-10 opacity-30'
                                 />
                                 <p className='text-sm'>
-                                    Nothing featured yet - the homepage is
-                                    showing its built-in cards.
+                                    No cards yet - the homepage section is
+                                    hidden until there are{' '}
+                                    {MIN_CURATED_EXPERIENCES} to show.
                                 </p>
                                 <Button
                                     size='sm'
                                     variant='outline'
                                     onClick={() => setAddOpen(true)}>
-                                    Feature a page
+                                    Add a card
                                 </Button>
                             </div>
                         ) : (
@@ -258,36 +259,17 @@ function ExperiencesCurationCard() {
                 )}
             </CardContent>
 
-            <AddExperienceDialog
-                open={addOpen}
-                onOpenChange={setAddOpen}
-                isPending={create.isPending}
-                onAdd={(entityType, entityId) =>
-                    create.mutate(
-                        { entityType, entityId, displayOrder: ordered.length },
-                        {
-                            onSuccess: () => {
-                                toast.success('Added to the homepage.');
-                                setAddOpen(false);
-                            },
-                            // 409 when this entity is already featured at the same scope -
-                            // surfaced rather than silently duplicating.
-                            onError: err =>
-                                toast.error(
-                                    err instanceof Error
-                                        ? err.message
-                                        : 'Could not feature that.'
-                                ),
-                        }
-                    )
-                }
-            />
-
-            <CardMediaDialog
+            <CardDialog
+                open={addOpen || Boolean(editing)}
                 experience={editing}
-                isSaving={update.isPending}
-                onOpenChange={open => !open && setEditing(null)}
-                onSave={handleSaveMedia}
+                isSaving={create.isPending || update.isPending}
+                onOpenChange={open => {
+                    if (!open) {
+                        setAddOpen(false);
+                        setEditing(null);
+                    }
+                }}
+                onSave={handleSaveCard}
             />
 
             <AlertDialog
@@ -297,9 +279,8 @@ function ExperiencesCurationCard() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Remove this card?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {pendingDelete?.entityName ?? 'This card'} stops
-                            appearing on the homepage. The category or hub
-                            itself is not affected.
+                            {pendingDelete?.title ?? 'This card'} stops
+                            appearing on the homepage.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -327,8 +308,8 @@ function CurationNotice({ count }: { count: number }) {
         return (
             <p className='rounded-md bg-surface-inset p-3 text-xs text-content-muted'>
                 The homepage needs at least {MIN_CURATED_EXPERIENCES} live cards
-                before it uses your selection - below that it keeps its built-in
-                deck, so these {count} are not showing yet.
+                before the section shows - below that it stays off the page
+                entirely, so these {count} are not showing yet.
             </p>
         );
     }
@@ -368,15 +349,13 @@ function ExperienceCard({
     onEdit: () => void;
     onDelete: () => void;
 }) {
-    const missing = experience.entityName === null;
-    // Only the card's OWN poster is previewed here - see the placeholder below.
     const poster = experience.posterUrl;
 
     return (
         <div className='group relative overflow-hidden rounded-md border border-line bg-surface-raised focus-within:ring-2 focus-within:ring-ring/30'>
             <div className='relative aspect-[3/4] bg-surface-inset'>
                 {/*
-                 * The whole surface opens the media dialog - the poster IS the thing
+                 * The whole surface opens the edit dialog - the poster IS the thing
                  * you click a card to change. It is a sibling of the control buttons,
                  * never their parent: a button inside a button is invalid and the
                  * inner one stops working.
@@ -385,7 +364,7 @@ function ExperienceCard({
                     type='button'
                     onClick={onEdit}
                     disabled={disabled}
-                    aria-label={`Poster and video for ${experience.entityName ?? 'this card'}`}
+                    aria-label={`Edit ${experience.title}`}
                     className='absolute inset-0 cursor-pointer disabled:cursor-not-allowed'>
                     {poster ? (
                         // Cloudinary URLs on an admin-only screen: next/image would buy
@@ -402,10 +381,9 @@ function ExperienceCard({
                         />
                     ) : (
                         /*
-                         * No poster of its own. The card DOES render (it inherits the
-                         * linked page's photo), but showing that photo here would say
-                         * "this card is done" - so the slot asks for the media it is
-                         * missing instead, and says what the site is doing meanwhile.
+                         * No poster. The public site DROPS a posterless card, so the
+                         * slot asks for the media it is missing and says what that
+                         * means, rather than pretending the card is done.
                          */
                         <span className='flex size-full flex-col items-center justify-center gap-2 border border-dashed border-line p-3 text-center transition-colors hover:border-primary/60 hover:bg-primary/2'>
                             <span className='flex size-10 items-center justify-center rounded-full bg-muted'>
@@ -417,15 +395,8 @@ function ExperienceCard({
                             <span className='text-xs font-medium'>
                                 Add poster and video
                             </span>
-                            <span
-                                className={
-                                    experience.entityImage
-                                        ? 'text-xs text-content-muted'
-                                        : 'text-xs font-medium text-danger-fg'
-                                }>
-                                {experience.entityImage
-                                    ? 'Using the linked page’s photo for now'
-                                    : 'Not showing - this page has no photo either'}
+                            <span className='text-xs font-medium text-danger-fg'>
+                                Not showing - a card needs a poster
                             </span>
                         </span>
                     )}
@@ -507,94 +478,87 @@ function ExperienceCard({
                 )}
             </div>
 
-            <div className='space-y-1.5 p-3'>
+            <div className='p-3'>
                 <p className='truncate text-sm font-medium'>
-                    {experience.entityName ?? 'Deleted item'}
+                    {experience.title}
                 </p>
-                <div className='flex flex-wrap items-center gap-1.5'>
-                    <StatusBadge variant='neutral'>
-                        {experience.entityType === 'HUB' ? 'Hub' : 'Category'}
-                    </StatusBadge>
-                    {missing && (
-                        <StatusBadge variant='danger'>
-                            Target deleted
-                        </StatusBadge>
-                    )}
-                </div>
-                {missing && (
-                    <p className='flex items-start gap-1.5 text-xs text-danger-fg'>
-                        <HugeiconsIcon
-                            icon={Alert02Icon}
-                            className='mt-px size-3 shrink-0'
-                        />
-                        The category or hub this pointed at no longer exists, so
-                        the homepage skips it. Remove this card.
-                    </p>
-                )}
             </div>
         </div>
     );
 }
-
 /**
- * Poster and video, together in one dialog.
- *
- * They belong together because they are one decision: the poster is what the
- * card shows when it is not the centred slide, AND the frame the video holds
- * before it plays. Editing them apart is what made the old inline row both tall
- * and confusing.
+ * Label, poster and video, together in ONE dialog for both creating and
+ * editing (founder, 2026-08-04: adding a card is one step, not "create, then
+ * reopen for media"). A card is one decision: the poster is what the card
+ * shows when it is not the centred slide, AND the frame the video holds
+ * before it plays.
  */
-function CardMediaDialog({
+function CardDialog({
+    open,
     experience,
     isSaving,
     onOpenChange,
     onSave,
 }: {
+    open: boolean;
+    /** Null = creating a new card. */
     experience: FeaturedExperience | null;
     isSaving: boolean;
     onOpenChange: (open: boolean) => void;
     onSave: (payload: {
+        title: string;
         posterUrl: string | null;
         videoUrl: string | null;
-        isLink: boolean;
     }) => void;
 }) {
+    const [title, setTitle] = useState('');
     const [posterUrl, setPosterUrl] = useState<string | null>(null);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
-    const [isLink, setIsLink] = useState(true);
 
+    // Re-seed on every open: from the row when editing, blank when creating.
     useEffect(() => {
+        if (!open) return;
+        setTitle(experience?.title ?? '');
         setPosterUrl(experience?.posterUrl ?? null);
         setVideoUrl(experience?.videoUrl ?? null);
-        setIsLink(experience?.isLink ?? true);
-    }, [experience]);
-
-    const fallback = experience?.entityImage ?? null;
+    }, [open, experience]);
 
     return (
-        <Dialog open={Boolean(experience)} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className='max-h-[85vh] overflow-y-auto sm:max-w-lg'>
                 <DialogHeader>
                     <DialogTitle>
-                        {experience?.entityName ?? 'Card'}
+                        {experience ? experience.title : 'Add a card'}
                     </DialogTitle>
                     <DialogDescription>
-                        The photo, video and link for this card only. None of it
-                        changes the category or hub page itself.
+                        The label, photo and video for this card. Cards are
+                        presentation only - they do not link anywhere.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className='space-y-6 py-2'>
                     <Field>
+                        <Label>Label</Label>
+                        <FieldDescription>
+                            Shown on the card exactly as typed, in every
+                            language.
+                        </FieldDescription>
+                        <Input
+                            value={title}
+                            maxLength={80}
+                            autoFocus={!experience}
+                            onChange={e => setTitle(e.target.value)}
+                            placeholder='e.g. Sunset Cruises'
+                        />
+                    </Field>
+
+                    <Field>
                         <Label>Poster</Label>
                         <FieldDescription>
                             The still shown on the card, and the frame the video
                             holds before it plays. Portrait crops work best -
-                            the slot is taller than it is wide.
-                            {!posterUrl &&
-                                (fallback
-                                    ? ' Empty, so this card is using the photo from the page it links to.'
-                                    : ' Empty, and that page has no photo either, so the site is using its bundled card art.')}
+                            the slot is taller than it is wide. Without one the
+                            homepage skips this card.
                         </FieldDescription>
                         <ImageSelectorField
                             value={posterUrl}
@@ -613,159 +577,34 @@ function CardMediaDialog({
                             onChange={setVideoUrl}
                         />
                     </Field>
-
-                    <Field>
-                        <Label>Link</Label>
-                        <FieldDescription>
-                            Whether the card opens the page it names. Not the
-                            same as removing it: a non-clickable card still
-                            shows, with its title.
-                        </FieldDescription>
-                        <Select
-                            value={isLink ? 'link' : 'static'}
-                            onValueChange={v => setIsLink(v === 'link')}>
-                            <SelectTrigger className='w-full'>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='link'>
-                                    Clickable - opens{' '}
-                                    {experience?.entityName ?? 'the page'}
-                                </SelectItem>
-                                <SelectItem value='static'>
-                                    Name only - not clickable
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </Field>
                 </div>
 
                 <DialogFooter>
                     <Button
                         type='button'
                         variant='outline'
-                        onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        type='button'
                         disabled={isSaving}
-                        onClick={() => onSave({ posterUrl, videoUrl, isLink })}>
-                        {isSaving ? 'Saving...' : 'Save card'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-/**
- * Pick a category or hub to feature. Tours are deliberately not offered.
- *
- * A dialog rather than a permanently open form at the bottom of the grid:
- * adding is occasional, and the form was competing with the deck for attention.
- */
-function AddExperienceDialog({
-    open,
-    onOpenChange,
-    isPending,
-    onAdd,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    isPending: boolean;
-    onAdd: (entityType: FeaturedEntityType, entityId: string) => void;
-}) {
-    const [entityType, setEntityType] =
-        useState<FeaturedEntityType>('CATEGORY');
-    const [entityId, setEntityId] = useState('');
-
-    const { data: categories = [] } = useActiveCategories();
-    const { data: hubsPage } = useHubs({ limit: 100 });
-    const hubs = hubsPage?.data ?? [];
-
-    const options =
-        entityType === 'CATEGORY'
-            ? categories.map(c => ({ id: c.id, name: c.name }))
-            : hubs.map(h => ({ id: h.id, name: h.name }));
-
-    useEffect(() => {
-        if (!open) setEntityId('');
-    }, [open]);
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className='sm:max-w-lg'>
-                <DialogHeader>
-                    <DialogTitle>Feature a page</DialogTitle>
-                    <DialogDescription>
-                        The card takes its title and link from the page you
-                        choose. Add its poster and video afterwards.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className='space-y-6 py-2'>
-                    <Field>
-                        <Label>Type</Label>
-                        <Select
-                            value={entityType}
-                            onValueChange={v => {
-                                setEntityType(v as FeaturedEntityType);
-                                setEntityId('');
-                            }}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value='CATEGORY'>
-                                    Category
-                                </SelectItem>
-                                <SelectItem value='HUB'>Hub</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </Field>
-
-                    <Field>
-                        <Label>
-                            {entityType === 'CATEGORY' ? 'Category' : 'Hub'}
-                        </Label>
-                        <Select value={entityId} onValueChange={setEntityId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder='Choose one' />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.map(o => (
-                                    <SelectItem key={o.id} value={o.id}>
-                                        {o.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FieldDescription>
-                            A card only appears once its target has at least one
-                            live tour. Hubs are held to that too, even though a
-                            hub page itself opens without one - a featured
-                            experience with nothing bookable is a dead end.
-                        </FieldDescription>
-                    </Field>
-                </div>
-
-                <DialogFooter>
-                    <Button
-                        type='button'
-                        variant='outline'
                         onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
                     <Button
                         type='button'
-                        disabled={!entityId || isPending}
-                        onClick={() => onAdd(entityType, entityId)}>
-                        {isPending ? 'Adding...' : 'Add card'}
+                        disabled={isSaving || title.trim().length === 0}
+                        onClick={() =>
+                            onSave({
+                                title: title.trim(),
+                                posterUrl,
+                                videoUrl,
+                            })
+                        }>
+                        {isSaving
+                            ? 'Saving...'
+                            : experience
+                              ? 'Save card'
+                              : 'Add card'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
-

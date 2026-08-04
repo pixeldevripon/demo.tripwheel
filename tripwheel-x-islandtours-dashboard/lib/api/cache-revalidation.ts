@@ -240,8 +240,9 @@ function tagsForMutation(path: string, method: string): CacheTag[] {
       break;
 
     // "Top Island Experiences" curation. Same coarse tag as the rest of the
-    // homepage - the public loader carries both `homepage` and `tours`, and this
-    // is the curation half.
+    // homepage - the cards are standalone presentation (label + media), so the
+    // public loader is tagged `homepage` only and admin card writes are the
+    // only thing that can change the deck.
     case 'featured-experiences':
       tags.push('homepage');
       break;
