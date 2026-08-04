@@ -54,6 +54,7 @@ import {
   ApiDeleteFaqDocs,
   ApiDeleteFaqGroupDocs,
   ApiDeleteHubDocs,
+  ApiForceDeleteHubDocs,
   ApiDeleteTranslationsDocs,
   ApiGetActiveHubsDocs,
   ApiGetAllHubsDocs,
@@ -181,6 +182,16 @@ export class HubController {
   @ApiDeleteHubDocs()
   remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.hubService.remove(id, user.id);
+  }
+
+  @Delete(':id/force')
+  @RequirePermissions(Permission.MANAGE_HUBS)
+  @ApiForceDeleteHubDocs()
+  forceDelete(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.hubService.forceDelete(id, user.id);
   }
 
   // ── Translation management (Admin) ────────────────────────────────────────────

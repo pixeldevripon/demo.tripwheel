@@ -216,6 +216,34 @@ export function ApiDeleteHubDocs() {
   );
 }
 
+export function ApiForceDeleteHubDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'Permanently delete a hub (Admin only)',
+      description:
+        'Hard delete. Removes the hub and its child data (translations, page ' +
+        'content, FAQs, picks, comparison, allowed categories), detaches any ' +
+        'draft-tour tags, and starts the 90-day slug reuse cooldown. Seeded ' +
+        'hubs are protected; blocked while an active non-draft tour is still ' +
+        'tagged with the hub. This action is irreversible.',
+    }),
+    ApiParam({ name: 'id', description: 'Hub UUID' }),
+    ApiResponse({ status: 200, description: 'Hub permanently deleted' }),
+    ApiResponse({
+      status: 403,
+      description: 'Seeded hub',
+      type: ForbiddenErrorDto,
+    }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ApiResponse({
+      status: 409,
+      description: 'Active trips still assigned',
+      type: ConflictErrorDto,
+    }),
+    ...adminErrors,
+  );
+}
+
 // ── Allowed categories ────────────────────────────────────────────────────────
 
 export function ApiGetAllowedCategoriesDocs() {
