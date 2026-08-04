@@ -242,6 +242,22 @@ describe('DestinationService', () => {
       expect(prisma.destination.count).toHaveBeenCalledWith({ where: {} });
     });
 
+    it('orders by curated displayOrder (nulls last) with name as tiebreak', async () => {
+      prisma.destination.count.mockResolvedValue(0);
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await service.getAll({ page: 1, limit: 20 });
+
+      expect(prisma.destination.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [
+            { displayOrder: { sort: 'asc', nulls: 'last' } },
+            { name: 'asc' },
+          ],
+        }),
+      );
+    });
+
     it('uses skip=10, take=5 for page=3, limit=5', async () => {
       prisma.destination.count.mockResolvedValue(20);
       prisma.destination.findMany.mockResolvedValue([]);
@@ -299,6 +315,25 @@ describe('DestinationService', () => {
 
       expect(prisma.destination.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { isActive: true } }),
+      );
+    });
+
+    // The homepage Popular row renders this order verbatim; the locked copy
+    // leads with the launch island ("Popular: Curaçao · Aruba · Sint Maarten"),
+    // so the curated rank must come before the alphabetical tiebreak and
+    // unranked rows must sort last, never first.
+    it('orders by curated displayOrder (nulls last) with name as tiebreak', async () => {
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await service.getActive(Locale.en);
+
+      expect(prisma.destination.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [
+            { displayOrder: { sort: 'asc', nulls: 'last' } },
+            { name: 'asc' },
+          ],
+        }),
       );
     });
 

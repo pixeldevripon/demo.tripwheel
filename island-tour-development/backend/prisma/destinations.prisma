@@ -9,6 +9,11 @@ model Destination {
   heroImage String?
   isSeeded  Boolean @default(false) // true = seeded at launch; guard delete in service
   isActive  Boolean @default(true)
+  // Curated platform order for every island list (hero Popular row, Explore
+  // islands, selectors): 1 = launch island leads. null = unranked → sorts
+  // after ranked rows, alphabetical. Never alphabetical-first: the locked copy
+  // is "Popular: Curaçao · Aruba · Sint Maarten".
+  displayOrder Int?
   createdBy String? // null = seeded; userId = admin who created
 
   // ── V2 fields ────────────────────────────────────────────────────────────────

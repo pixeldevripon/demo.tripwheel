@@ -345,6 +345,7 @@ const SEED_DESTINATIONS = [
   {
     name: 'Curaçao',
     slug: 'curacao',
+    displayOrder: 1,
     region: Region.CARIBBEAN,
     isActive: true,
     country: 'Curaçao',
@@ -357,6 +358,7 @@ const SEED_DESTINATIONS = [
   {
     name: 'Aruba',
     slug: 'aruba',
+    displayOrder: 2,
     region: Region.CARIBBEAN,
     isActive: true,
     country: 'Aruba',
@@ -369,6 +371,7 @@ const SEED_DESTINATIONS = [
   {
     name: 'Sint Maarten',
     slug: 'sint-maarten',
+    displayOrder: 3,
     region: Region.CARIBBEAN,
     isActive: true,
     country: 'Sint Maarten',
@@ -381,6 +384,7 @@ const SEED_DESTINATIONS = [
   {
     name: 'Saint Lucia',
     slug: 'saint-lucia',
+    displayOrder: 4,
     region: Region.CARIBBEAN,
     isActive: false,
     country: 'Saint Lucia',
@@ -393,6 +397,7 @@ const SEED_DESTINATIONS = [
   {
     name: 'Bahamas',
     slug: 'bahamas',
+    displayOrder: 5,
     region: Region.CARIBBEAN,
     isActive: false,
     country: 'The Bahamas',
@@ -414,6 +419,10 @@ async function seedDestinations() {
     if (existing) {
       // Backfill a missing timezone on rows seeded before the field existed
       // (the column is now required for all tour/departure/booking local time).
+      // displayOrder is deliberately NOT backfilled here: the seed runs on
+      // every deploy (build:prod), and null can be an admin's explicit
+      // "unrank" - re-stamping it would revert that. Its one-time backfill
+      // lives in the 20260804000000_destination_display_order migration.
       if (!existing.timezone) {
         await prisma.destination.update({
           where: { id: existing.id },
@@ -442,6 +451,7 @@ async function seedDestinations() {
           language: dest.language,
           isSeeded: true,
           isActive: dest.isActive,
+          displayOrder: dest.displayOrder,
         },
       });
 
