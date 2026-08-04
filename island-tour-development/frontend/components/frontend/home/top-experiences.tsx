@@ -603,23 +603,20 @@ export function TopExperiences({
                                                 </span>
                                             )}
 
-                                            <AnimatePresence initial={false}>
-                                                {!isPlaying && (
-                                                    <motion.p
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        exit={{ opacity: 0 }}
-                                                        transition={crossFade}
-                                                        className={[
-                                                            'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-bold text-[13.5px] leading-[1.2] tracking-[-0.005em]',
-                                                            hasMedia
-                                                                ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
-                                                                : 'text-it-heading',
-                                                        ].join(' ')}>
-                                                        {title}
-                                                    </motion.p>
-                                                )}
-                                            </AnimatePresence>
+                                            {/* Category caption on EVERY card, the playing centre
+                                                one included (founder, 2026-08-04): the reel a
+                                                visitor is watching must be the one that is named.
+                                                The card scrim + text-shadow keep it legible over
+                                                the running video. */}
+                                            <p
+                                                className={[
+                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-bold text-[13.5px] leading-[1.2] tracking-[-0.005em]',
+                                                    hasMedia
+                                                        ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
+                                                        : 'text-it-heading',
+                                                ].join(' ')}>
+                                                {title}
+                                            </p>
                                         </div>
                                     </div>
                                 );
