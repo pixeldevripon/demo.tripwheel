@@ -60,8 +60,8 @@ export default async function ManageCookiesPage({
             </ul>
             <p>
                 To understand exactly what each category contains, see our
-                Cookie Policy. To understand how we use the data behind these
-                choices, see our Privacy Policy. For any question, email{' '}
+                Cookie policy. To understand how we use the data behind these
+                choices, see our Privacy policy. For any question, email{' '}
                 <a href='mailto:info@island.tours'>info@island.tours</a>.
             </p>
             <p>Island Tours. Built by Islanders.</p>
