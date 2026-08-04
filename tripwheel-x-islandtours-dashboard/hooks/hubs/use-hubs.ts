@@ -149,6 +149,16 @@ export function useUpdateHub() {
   });
 }
 
+export function useForceDeleteHub() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => hubsApi.forceDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: hubKeys.all });
+    },
+  });
+}
+
 export function useDeleteHub() {
   const queryClient = useQueryClient();
   return useMutation({

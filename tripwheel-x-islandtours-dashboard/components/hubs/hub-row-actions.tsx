@@ -15,11 +15,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useUpdateHub } from '@/hooks/hubs/use-hubs';
+import { useForceDeleteHub, useUpdateHub } from '@/hooks/hubs/use-hubs';
 import { useRole } from '@/contexts/role-context';
 import type { HubLocalized } from '@/types/hub';
 import { HubQuickEditSheet } from './hub-quick-edit-sheet';
 import { HubDeleteDialog } from './hub-delete-dialog';
+import { ForceDeleteDialog } from '@/components/common/force-delete-dialog';
 
 interface HubRowActionsProps {
   hub: HubLocalized;
@@ -29,8 +30,20 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
   const router = useRouter();
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [forceDeleteOpen, setForceDeleteOpen] = useState(false);
   const { mutate: updateHub, isPending } = useUpdateHub();
-  const { can } = useRole();
+  const { mutate: forceDeleteHub, isPending: isForceDeleting } = useForceDeleteHub();
+  const { can, role } = useRole();
+
+  function handleForceDelete() {
+    forceDeleteHub(hub.id, {
+      onSuccess: () => {
+        toast.success(`"${hub.name}" permanently deleted.`);
+        setForceDeleteOpen(false);
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete hub.'),
+    });
+  }
 
   function handleToggleActive() {
     updateHub(
@@ -116,7 +129,19 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
                 onClick={() => setDeleteOpen(true)}
               >
                 <HugeiconsIcon icon={Delete02Icon} />
-                Delete
+                Deactivate
+              </DropdownMenuItem>
+            </>
+          )}
+          {role === 'ADMIN' && !hub.isSeeded && !hub.isActive && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => setForceDeleteOpen(true)}
+              >
+                <HugeiconsIcon icon={Delete02Icon} />
+                Force Delete
               </DropdownMenuItem>
             </>
           )}
@@ -125,6 +150,17 @@ export function HubRowActions({ hub }: HubRowActionsProps) {
 
       <HubQuickEditSheet hub={hub} open={quickEditOpen} onOpenChange={setQuickEditOpen} />
       <HubDeleteDialog hub={hub} open={deleteOpen} onOpenChange={setDeleteOpen} />
+
+      <ForceDeleteDialog
+        open={forceDeleteOpen}
+        onOpenChange={setForceDeleteOpen}
+        title="Force Delete Hub"
+        entityName={hub.name}
+        consequenceNote="The hub's translations, page content, FAQs, picks and comparison data are permanently removed, tours lose this hub tag, and its URL slug enters the 90-day reuse cooldown."
+        onConfirm={handleForceDelete}
+        isPending={isForceDeleting}
+        confirmLabel="Force Delete Hub"
+      />
     </>
   );
 }

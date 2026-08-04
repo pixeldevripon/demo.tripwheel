@@ -37,7 +37,7 @@ const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
  * resolves (publish/archive => page appears/404s). Covers tour lifecycle (POST
  * verbs) and collection status (`PATCH /collections/:id/status`) alike.
  */
-const LIFECYCLE_VERBS = new Set(['status', 'publish', 'pause', 'unpause', 'archive', 'restore']);
+const LIFECYCLE_VERBS = new Set(['status', 'publish', 'pause', 'unpause', 'archive', 'restore', 'force']);
 
 /**
  * Whether this mutation can create / delete / rename / (de)activate an entity -

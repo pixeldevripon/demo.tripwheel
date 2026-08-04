@@ -80,6 +80,12 @@ export const hubsApi = {
     });
   },
 
+  forceDelete(id: string): Promise<{ message: string }> {
+    return apiFetch<{ message: string }>(`/hubs/${id}/force`, {
+      method: 'DELETE',
+    });
+  },
+
   delete(id: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/hubs/${id}`, {
       method: 'DELETE',
