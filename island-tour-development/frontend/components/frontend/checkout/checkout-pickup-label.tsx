@@ -97,13 +97,7 @@ export function CheckoutLiveAmount({
 }) {
     const { totals } = useContext(CheckoutLiveContext);
     return (
-        <>
-            {formatCheckoutMoney(
-                totals?.[kind] ?? fallback,
-                currency,
-                locale
-            )}
-        </>
+        <>{formatCheckoutMoney(totals?.[kind] ?? fallback, currency, locale)}</>
     );
 }
 
@@ -131,7 +125,7 @@ export function CheckoutSummaryTotals({
     const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const row =
         'flex items-center justify-between gap-1 text-[14px] leading-[1.6] text-it-ink';
-    const amt = 'font-bold tabular-nums';
+    const amt = 'font-medium tabular-nums';
     return (
         <>
             {/* Per-line breakdown (participants, extras, pickup) - the same
@@ -147,7 +141,7 @@ export function CheckoutSummaryTotals({
                     <div className='h-px w-full bg-it-divider' />
                 </>
             )}
-            <div className={`${row} text-[15px] font-bold`}>
+            <div className={`${row} text-[15px] font-medium`}>
                 <span>{labels.total}</span>
                 <span className='tabular-nums'>{money(t.total)}</span>
             </div>

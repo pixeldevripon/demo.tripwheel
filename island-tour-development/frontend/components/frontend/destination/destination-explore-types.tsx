@@ -88,7 +88,7 @@ export function DestinationExploreTypes({
                     {/* Section head: kicker + title left, all-tours link right */}
                     <div className='flex items-end justify-between gap-6'>
                         <div>
-                            <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
+                            <div className='mb-2 text-[11.5px] font-medium uppercase tracking-[0.13em] text-it-primary-hover'>
                                 {destinationName}
                             </div>
                             <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-medium text-it-ink'>
@@ -97,7 +97,7 @@ export function DestinationExploreTypes({
                         </div>
                         <Link
                             href={allToursHref}
-                            className='whitespace-nowrap text-sm font-bold text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                            className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
                             {dict.allTours.replace(
                                 '{destination}',
                                 destinationName

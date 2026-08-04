@@ -2,7 +2,6 @@ import Script from 'next/script';
 
 import { AttributionCapture } from '@/components/frontend/attribution-capture';
 import { JsonLd } from '@/components/frontend/seo/json-ld';
-import { SmoothScroll } from '@/components/frontend/smooth-scroll';
 import { GoogleTagManager } from '@/components/frontend/tracking/google-tag-manager';
 import {
     getPublicCompanyInfo,
@@ -10,10 +9,7 @@ import {
     getPublicSiteSeo,
     getPublicSocialMedia,
 } from '@/lib/api/public/settings';
-import {
-    buildOrganizationJsonLd,
-    buildWebSiteJsonLd,
-} from '@/lib/seo/jsonld';
+import { buildOrganizationJsonLd, buildWebSiteJsonLd } from '@/lib/seo/jsonld';
 import { getSiteUrl } from '@/lib/seo/site-url';
 
 export default async function FrontendLayout({

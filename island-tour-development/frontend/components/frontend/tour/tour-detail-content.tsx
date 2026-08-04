@@ -510,7 +510,7 @@ export async function TourDetailContent({
                                                 />
                                             </span>
                                             <span className='flex flex-col'>
-                                                <b className='text-[13.5px] font-bold leading-[1.5] tracking-[-0.005em] text-it-ink'>
+                                                <b className='text-[13.5px] font-medium leading-[1.5] tracking-[-0.005em] text-it-ink'>
                                                     {qi.title}
                                                 </b>
                                                 <span className='text-[12px] leading-[1.5] text-it-text-muted'>
@@ -637,7 +637,7 @@ export async function TourDetailContent({
                                             />
                                             <div>
                                                 {localTipTitle && (
-                                                    <b className='mb-[3px] block text-[12px] font-bold uppercase tracking-[0.08em] text-it-primary-hover'>
+                                                    <b className='mb-[3px] block text-[12px] font-medium uppercase tracking-[0.08em] text-it-primary-hover'>
                                                         {localTipTitle}
                                                     </b>
                                                 )}
@@ -736,7 +736,7 @@ export async function TourDetailContent({
                                                                         {i + 1}
                                                                     </span>
                                                                     <div className='flex flex-col gap-0.5'>
-                                                                        <span className='text-[14.5px] font-bold leading-[1.6] text-it-ink'>
+                                                                        <span className='text-[14.5px] font-medium leading-[1.6] text-it-ink'>
                                                                             {
                                                                                 step.title
                                                                             }
@@ -785,7 +785,7 @@ export async function TourDetailContent({
                                                         key={group.title}
                                                         listItem
                                                         className='flex flex-col gap-1.5'>
-                                                        <h3 className='m-0 text-[15px] font-bold leading-[1.6] text-it-ink'>
+                                                        <h3 className='m-0 text-[15px] font-medium leading-[1.6] text-it-ink'>
                                                             {group.title}
                                                         </h3>
                                                         <ul className='m-0 mt-1 list-none p-0'>

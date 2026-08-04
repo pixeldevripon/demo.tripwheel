@@ -5,6 +5,38 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Self-hosted SF Pro Display (founder-provided files, 2026-08-04) so EVERY
+ * visitor - Windows and Android included - renders and reports the same
+ * family, not just Apple devices. Hand-rolled @font-face rather than
+ * next/font/local ON PURPOSE: next/font hashes the family name, and the
+ * client audits the site with font inspectors that must literally read
+ * "SF Pro Display". Only Display cuts exist (no SF Pro Text), so body text
+ * uses Display too - the stacks below all lead with it. Bold spans 600-700
+ * so semibold text resolves to the real Bold cut instead of a synthetic.
+ */
+@font-face {
+    font-family: 'SF Pro Display';
+    src: url('/fonts/sf-pro-display/SFProDisplay-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'SF Pro Display';
+    src: url('/fonts/sf-pro-display/SFProDisplay-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'SF Pro Display';
+    src: url('/fonts/sf-pro-display/SFProDisplay-Bold.woff2') format('woff2');
+    font-weight: 600 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 @layer base {
     *,
     ::after,
@@ -211,12 +243,17 @@
      * property next/font injected on <html>. Removing the unused webfonts
      * removed that definition with them.
      */
+    /* The self-hosted 'SF Pro Display' webfont FIRST (declared at the top of
+       this file), system tokens as fallback - mirrors `--it-font-*` in
+       frontend-tokens.css (client, 2026-08-04: every platform must render
+       and report SF Pro). Body uses Display too: only Display cuts were
+       provided. Keep the two files' stacks identical. */
     --it-base-sans:
-        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
-        Arial, sans-serif;
+        'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont,
+        'Helvetica Neue', Arial, sans-serif;
     --it-base-display:
-        -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
-        Arial, sans-serif;
+        'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont,
+        'Helvetica Neue', Arial, sans-serif;
 }
 
 /* ─── Dark mode ───────────────────────────────── */

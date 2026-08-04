@@ -15,7 +15,7 @@ const rowClass =
     'flex items-start justify-between gap-[18px] border-b border-it-divider py-[11px] text-[14px] leading-[1.6] last:border-b-0';
 const labelClass =
     'flex flex-none items-center gap-[9px] font-semibold text-it-text-muted';
-const valueClass = 'min-w-0 text-right font-bold text-it-ink';
+const valueClass = 'min-w-0 text-right font-medium text-it-ink';
 /** Faint sub-line under a value (time range, card used). */
 const subClass =
     'mt-[3px] block text-[12px] font-normal leading-[1.5] text-it-ink-muted';
@@ -93,13 +93,13 @@ export function ThankYouSummary({
     const cardClass =
         'rounded-it-lg border border-it-divider bg-it-white px-5 py-[22px] shadow-it-sm md:px-[26px]';
     const cardHead =
-        'm-0 mb-3 text-[11.5px] font-bold uppercase tracking-[0.12em] text-it-text-muted';
+        'm-0 mb-3 text-[11.5px] font-medium uppercase tracking-[0.12em] text-it-text-muted';
 
     return (
         <section className='bg-it-bg py-[52px]'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
+                    <h2 className='m-0 mb-[22px] font-it-display text-[clamp(21px,2.5vw,28px)] font-medium leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {dict.summaryTitle}
                     </h2>
                 </Reveal>
@@ -250,10 +250,10 @@ export function ThankYouSummary({
                                     )}
                                     {/* Total: heavier top rule, larger value (.brow2.tot). */}
                                     <div className='mt-1 flex items-start justify-between gap-[18px] border-t border-it-border py-[11px] pt-[13px] text-[14px] leading-[1.6]'>
-                                        <span className='font-bold text-it-ink'>
+                                        <span className='font-medium text-it-ink'>
                                             {dict.total}
                                         </span>
-                                        <span className='text-right text-[16px] font-bold text-it-ink tabular-nums'>
+                                        <span className='text-right text-[16px] font-medium text-it-ink tabular-nums'>
                                             {money(payment.total)}
                                         </span>
                                     </div>
@@ -261,7 +261,7 @@ export function ThankYouSummary({
                                         <span className={labelClass}>
                                             {dict.ref}
                                         </span>
-                                        <code className='text-right font-mono text-[13.5px] font-bold tracking-[0.02em] text-it-ink'>
+                                        <code className='text-right font-mono text-[13.5px] font-medium tracking-[0.02em] text-it-ink'>
                                             {booking.displayRef}
                                         </code>
                                     </div>
@@ -274,7 +274,7 @@ export function ThankYouSummary({
                                                 dict.operatorLinkNote,
                                                 {
                                                     operator: (
-                                                        <b className='font-bold text-it-ink'>
+                                                        <b className='font-medium text-it-ink'>
                                                             {
                                                                 booking.operatorShortName
                                                             }

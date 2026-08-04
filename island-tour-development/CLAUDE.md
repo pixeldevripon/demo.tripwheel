@@ -479,7 +479,9 @@ chevrons, back arrow).
 `style={{ background: 'var(--it-primary)' }}`.
 
 ### Fonts & Tailwind v4
-SF Pro system stack (`font-it-display`, `font-it-body`) — no `next/font`. Use canonical v4 classes:
+Self-hosted SF Pro Display webfont (plain `@font-face` in `globals.css` — NOT `next/font`, which
+hashes the family name and breaks the client's font-inspector audits) with the SF system stack as
+fallback (`font-it-display`, `font-it-body`). Use canonical v4 classes:
 `bg-linear-to-br`, `text-(--it-star-filled)`, `z-100`, scale tokens (`min-w-45`).
 
 ### Container & layout — reuse the section utilities (do NOT hardcode padding)

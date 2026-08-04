@@ -163,7 +163,7 @@ export function DestinationHeroSearch({
                         onFocus={() => setFocused(true)}
                         placeholder={dict.searchPlaceholder}
                         aria-label={dict.searchPlaceholder}
-                        className='min-w-0 w-full bg-transparent border-none outline-none text-[15px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                        className='min-w-0 w-full bg-transparent border-none outline-none text-[15px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:font-medium placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                     />
                 </label>
 
@@ -186,7 +186,7 @@ export function DestinationHeroSearch({
                                 type='button'
                                 aria-label={dict.selectDate}
                                 transition={springPop}
-                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[15px] md:text-[15.5px] font-semibold leading-[1.6] transition-colors duration-300 ${date ? 'text-it-ink' : 'text-it-ink-muted'}`}>
+                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[15px] md:text-[15.5px] leading-[1.6] transition-colors duration-300 ${date ? 'font-semibold text-it-ink' : 'font-medium text-it-ink-muted'}`}>
                                 <Image
                                     src='/icons/calendar-soft.svg'
                                     alt=''
@@ -241,7 +241,7 @@ export function DestinationHeroSearch({
                     aria-label={search.title}
                     whileTap={{ scale: 0.97 }}
                     transition={springPop}
-                    className='flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-it-md border-none bg-it-primary px-6 py-3 text-[16px] md:text-[19px] font-bold text-it-white transition-colors hover:bg-it-primary-hover'>
+                    className='flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-it-md border-none bg-it-primary px-6 py-3 text-[16px] md:text-[19px] font-medium text-it-white transition-colors hover:bg-it-primary-hover'>
                     {search.title}
                 </motion.button>
             </form>

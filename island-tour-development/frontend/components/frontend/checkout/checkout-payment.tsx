@@ -260,7 +260,7 @@ function PaymentInner({
             {/* .pm-label + the two trust cues of the payment moment (5.8):
                 the secure-checkout row with the slate Stripe badge here, and
                 the free-cancellation line at the commit button below. */}
-            <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
+            <span className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-ink'>
                 {dict.selectPaymentMethod}
             </span>
             <SecureCheckoutRow psp='Stripe' dict={dict} />
@@ -466,7 +466,7 @@ function MethodRow({
                           : 'cursor-pointer bg-it-white'
                 }`}>
                 <Radio selected={open} />
-                <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
+                <span className='text-[14px] font-medium leading-[1.5] text-it-ink'>
                     {label}
                 </span>
                 {logos && (

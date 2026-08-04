@@ -282,7 +282,7 @@ function DefaultTourCard({
                 {/* Rating row - amber star glyph + soft count (above title). */}
                 {isRated && (
                     <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-bold text-it-star'>
+                        <span className='font-medium text-it-star'>
                             ★ {tour.rating}
                         </span>
                         <span className='text-it-text-muted tabular-nums'>
@@ -474,7 +474,7 @@ function RankedTourCard({
 
             {/* ── Card info ───────────────────────────────────────────────── */}
             <div className='flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'>
-                <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
+                <h3 className='m-0 font-it-body font-medium text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2'>
                     {tour.title}
                 </h3>
 
@@ -489,7 +489,7 @@ function RankedTourCard({
                 <div className='mt-0.5 flex flex-wrap items-center gap-[5px] text-[11px] @[220px]:text-[12.5px] leading-[1.6] text-it-text-muted'>
                     {isRated && (
                         <>
-                            <span className='font-bold text-it-star'>
+                            <span className='font-medium text-it-star'>
                                 ★ {tour.rating}
                             </span>
                             <span className='tabular-nums'>

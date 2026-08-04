@@ -123,7 +123,7 @@ const CHIP_INACTIVE = 'border-it-border bg-it-white text-it-ink';
 const CHIP_ACTIVE =
     'border-it-primary bg-it-primary-subtle text-it-primary-hover';
 const CHIP_BASE =
-    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13.5px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease)';
+    'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13.5px] font-medium leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease)';
 
 /**
  * Tours filter & sort toolbar - design v2 `.frow` + `.gridhead`.
@@ -432,7 +432,7 @@ export function ToursFilterBar({
                                             key={type}
                                             className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
                                             <div>
-                                                <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
+                                                <b className='block text-[14px] font-medium leading-[1.6] text-it-ink'>
                                                     {t.label}
                                                 </b>
                                                 <span className='text-[12px] leading-[1.6] text-it-text-muted'>
@@ -455,7 +455,7 @@ export function ToursFilterBar({
                                                             : undefined
                                                     }
                                                     transition={springPop}
-                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-medium text-it-ink disabled:cursor-default disabled:opacity-30'>
                                                     −
                                                 </motion.button>
                                                 <i className='min-w-[18px] text-center text-[15px] not-italic font-medium text-it-ink tabular-nums'>
@@ -476,7 +476,7 @@ export function ToursFilterBar({
                                                             : undefined
                                                     }
                                                     transition={springPop}
-                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-medium text-it-ink disabled:cursor-default disabled:opacity-30'>
                                                     +
                                                 </motion.button>
                                             </div>
@@ -488,7 +488,7 @@ export function ToursFilterBar({
                                     onClick={() => onGuestsOpenChange(false)}
                                     whileTap={{ scale: 0.98 }}
                                     transition={springPop}
-                                    className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-bold text-it-white'>
+                                    className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-medium text-it-white'>
                                     {dict.applyGuests}
                                 </motion.button>
                             </div>
@@ -578,7 +578,7 @@ export function ToursFilterBar({
                             <PopoverTrigger asChild>
                                 <motion.button
                                     type='button'
-                                    className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-bold leading-[1.6] text-it-ink'>
+                                    className='flex cursor-pointer items-center gap-[7px] whitespace-nowrap border-none bg-transparent px-1.5 py-[9px] text-[13.5px] font-medium leading-[1.6] text-it-ink'>
                                     <span className='font-semibold text-it-text-muted'>
                                         {dict.sortBy}
                                     </span>
@@ -613,7 +613,7 @@ export function ToursFilterBar({
                                         }}
                                         className={`flex w-full cursor-pointer items-center justify-between rounded-it-sm border-none bg-transparent px-3 py-2.5 text-left text-[13.5px] leading-[1.6] transition-colors duration-(--it-duration-xs) hover:bg-it-bg ${
                                             opt.value === sort
-                                                ? 'font-bold text-it-primary-hover'
+                                                ? 'font-medium text-it-primary-hover'
                                                 : 'font-semibold text-it-ink'
                                         }`}>
                                         {opt.label}
@@ -639,7 +639,7 @@ export function ToursFilterBar({
             <div
                 ref={metaRowRef}
                 className='it-container flex items-center gap-3 overflow-x-auto pt-[18px] pb-3.5 [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden'>
-                <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
+                <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-medium leading-[1.6] text-it-ink tabular-nums'>
                     {counterLabel} {dict.toursWord}
                 </p>
 
@@ -658,7 +658,7 @@ export function ToursFilterBar({
                                 transition: { duration: 0.1 },
                             }}
                             whileTap={{ scale: 0.95 }}
-                            className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
+                            className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-medium leading-[1.2] text-it-primary-hover'>
                             {chip.label}
                             <Image
                                 src='/icons/filters/close-deep.svg'
@@ -682,7 +682,7 @@ export function ToursFilterBar({
                             exit={{ opacity: 0 }}
                             whileTap={{ scale: 0.97 }}
                             transition={springPop}
-                            className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
+                            className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2'>
                             {dict.clearAll}
                         </motion.button>
                     )}

@@ -139,7 +139,7 @@ export function BookingCta() {
                     aria-busy={navigating || undefined}
                     whileTap={navigating ? undefined : { scale: 0.98 }}
                     transition={springPop}
-                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+                    className={`flex w-full items-center justify-center rounded-it-sm border-none bg-it-primary px-8 py-3.5 text-[16.5px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                         navigating
                             ? 'cursor-default opacity-80'
                             : 'cursor-pointer'

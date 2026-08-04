@@ -113,7 +113,7 @@ export function StatusScreen({
                     uppercase + wide-tracking label is a DASHBOARD convention and
                     appears nowhere on the traveler-facing pages. */}
                 <span
-                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[12px] font-bold uppercase leading-none tracking-[0.1em] ${EYEBROW[eyebrowTone]}`}>
+                    className={`mb-5 inline-flex items-center rounded-it-full px-4 py-2 text-[12px] font-medium uppercase leading-none tracking-[0.1em] ${EYEBROW[eyebrowTone]}`}>
                     {eyebrow}
                 </span>
 
@@ -145,8 +145,8 @@ export function StatusScreen({
  * `whileTap` on the caller's MotionLink/MotionButton.
  */
 export const statusPrimaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-white no-underline shadow-it-sm transition-all duration-(--it-duration-sm) ease-(--it-ease) hover:-translate-y-px hover:bg-it-primary-hover';
 
 export const statusSecondaryClass =
-    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-bold leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
+    'inline-flex cursor-pointer items-center justify-center gap-[9px] rounded-it-sm border border-it-border bg-it-white px-[22px] py-3.5 text-[15.5px] font-medium leading-none text-it-ink no-underline transition-colors duration-(--it-duration-sm) ease-(--it-ease) hover:bg-it-bg';
 

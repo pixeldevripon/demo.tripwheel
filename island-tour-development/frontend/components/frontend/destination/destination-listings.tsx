@@ -99,7 +99,7 @@ export function DestinationListings({
                 <Reveal className='flex flex-col gap-5'>
                     {/* ── Section head: kicker + title (design v2 sechead) ─── */}
                     <div>
-                        <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
+                        <div className='mb-2 text-[11.5px] font-medium uppercase tracking-[0.13em] text-it-primary-hover'>
                             {kicker}
                         </div>
                         <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-medium text-it-ink'>

@@ -59,7 +59,7 @@ export function DestinationAbout({
                     {/* Kicker + body copy (design v2 .about: the section header
                         carries the destination as a kicker line). */}
                     <div className='flex flex-col gap-3'>
-                        <h2 className='m-0 font-it-body text-[11.5px] font-bold uppercase leading-[1.6] tracking-[0.13em] text-it-primary-hover'>
+                        <h2 className='m-0 font-it-body text-[11.5px] font-medium uppercase leading-[1.6] tracking-[0.13em] text-it-primary-hover'>
                             {dict.title.replace(
                                 '{destination}',
                                 destinationName
