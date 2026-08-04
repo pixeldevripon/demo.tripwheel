@@ -62,6 +62,13 @@ export class DestinationResponseDto {
     | null;
   @ApiProperty({ example: true }) isSeeded!: boolean;
   @ApiProperty({ example: true }) isActive!: boolean;
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description:
+      'Curated platform order (1 = launch island leads every list). null = unranked, sorts after ranked rows alphabetically.',
+  })
+  displayOrder!: number | null;
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) createdAt!: Date;
   @ApiProperty({ example: '2024-06-01T08:00:00.000Z' }) updatedAt!: Date;
 }
@@ -499,6 +506,17 @@ export class CreateDestinationDto {
   @IsOptional()
   @IsString()
   parentDestinationId?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description:
+      'Curated platform order (1 = leads every island list). Omit to leave unranked (sorts after ranked rows).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  displayOrder?: number;
 }
 
 export class UpdateDestinationDto {
@@ -562,6 +580,18 @@ export class UpdateDestinationDto {
   @IsOptional()
   @IsString()
   ogImage?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description:
+      'Curated platform order (1 = leads every island list). Send null to unrank (sorts after ranked rows).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  displayOrder?: number | null;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()

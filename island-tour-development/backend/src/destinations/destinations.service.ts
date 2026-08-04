@@ -41,7 +41,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SlugEntityType, TourStatus } from '@prisma/client';
+import { Prisma, SlugEntityType, TourStatus } from '@prisma/client';
 import {
   CreateDestinationDto,
   CreateDestinationFaqDto,
@@ -82,9 +82,19 @@ export class DestinationService {
     parentDestinationId: true,
     isSeeded: true,
     isActive: true,
+    displayOrder: true,
     createdAt: true,
     updatedAt: true,
   } as const;
+
+  // Curated platform order everywhere islands are listed: ranked rows first
+  // (1 = launch island), unranked after them alphabetically. The homepage
+  // Popular row renders this order verbatim - it must lead with the launch
+  // island, never alphabetical (client-locked copy).
+  private readonly destinationOrderBy = [
+    { displayOrder: { sort: 'asc', nulls: 'last' } },
+    { name: 'asc' },
+  ] as const satisfies Prisma.DestinationOrderByWithRelationInput[];
 
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -117,7 +127,7 @@ export class DestinationService {
             select: { name: true, isMachineTranslated: true },
           },
         },
-        orderBy: { name: 'asc' },
+        orderBy: this.destinationOrderBy,
         skip,
         take: limit,
       }),
@@ -142,7 +152,7 @@ export class DestinationService {
           select: { name: true, isMachineTranslated: true },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: this.destinationOrderBy,
     });
 
     return data.map(({ translations, _count, ...dest }) => ({
@@ -257,6 +267,7 @@ export class DestinationService {
             galleryImages: dto.galleryImages ?? [],
             ogImage: dto.ogImage ?? null,
             parentDestinationId: dto.parentDestinationId ?? null,
+            displayOrder: dto.displayOrder ?? null,
             createdBy: adminId,
           },
           select: this.destinationSelect,
@@ -326,6 +337,9 @@ export class DestinationService {
               galleryImages: dto.galleryImages,
             }),
             ...(dto.ogImage !== undefined && { ogImage: dto.ogImage }),
+            ...(dto.displayOrder !== undefined && {
+              displayOrder: dto.displayOrder,
+            }),
             ...(dto.isActive !== undefined && { isActive: dto.isActive }),
           },
           select: this.destinationSelect,
