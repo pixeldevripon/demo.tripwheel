@@ -216,7 +216,14 @@ export class ToursService {
     updatedAt: true,
     // V2 §4 many-to-many - flattened by flattenTour() into categoryIds/primaryCategoryId/hubIds.
     categories: { select: { categoryId: true, isPrimary: true } },
-    hubs: { select: { hubId: true } },
+    // The hub's name/slug ride along so a card can show its hub eyebrow
+    // (master 3.5 "Title and hub context"). Base name rather than the locale
+    // translation: hub names are proper nouns (Klein Curacao, Willemstad) and
+    // `tourSelect` is a static shape shared by every listing query, so a
+    // locale-scoped join here would mean threading a locale through all of them.
+    hubs: {
+      select: { hubId: true, hub: { select: { name: true, slug: true } } },
+    },
   } as const;
 
   /**
@@ -226,7 +233,7 @@ export class ToursService {
   private flattenTour<
     T extends {
       categories?: { categoryId: string; isPrimary: boolean }[];
-      hubs?: { hubId: string }[];
+      hubs?: { hubId: string; hub?: { name: string; slug: string } | null }[];
     },
   >(tour: T) {
     const { categories, hubs, ...rest } = tour;
@@ -236,6 +243,15 @@ export class ToursService {
       primaryCategoryId:
         categories?.find((c) => c.isPrimary)?.categoryId ?? null,
       hubIds: hubs?.map((h) => h.hubId) ?? [],
+      /*
+       * The hubs a card can name. `hubIds` alone cannot be rendered - the card
+       * needs the label - and resolving ids to names on the frontend would mean
+       * a second request per listing.
+       */
+      hubs:
+        hubs?.flatMap((h) =>
+          h.hub ? [{ id: h.hubId, name: h.hub.name, slug: h.hub.slug }] : [],
+        ) ?? [],
     };
   }
 
@@ -898,7 +914,7 @@ export class ToursService {
       destination?: { slug: string } | null;
       translations?: { title: string | null }[];
       categories?: { categoryId: string; isPrimary: boolean }[];
-      hubs?: { hubId: string }[];
+      hubs?: { hubId: string; hub?: { name: string; slug: string } | null }[];
     },
   >(hit: T) {
     const { destination, translations, ...rest } = hit;

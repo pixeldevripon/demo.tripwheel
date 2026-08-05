@@ -15,7 +15,7 @@ import { springPop } from '@/lib/motion';
 import type { PriceUnitKey } from '@/lib/tours/pricing-label';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { TourBadgeChip, type TourBadge } from './tour-badge';
@@ -62,6 +62,15 @@ export type TourListing = {
     rating?: number;
     reviewCount?: number;
     title: string;
+    /**
+     * The tour's activity hub, when it has one - rendered as the card's
+     * "eyebrow" above the title (master 3.5, "Title and hub context").
+     *
+     * OMITTED, not falsy-checked, to suppress it: the hub page builds its own
+     * listings and simply leaves this unset, because the context is already
+     * implicit there. No hub means no eyebrow.
+     */
+    hub?: { name: string; slug: string } | null;
     /** e.g. "3 hours", "Full day" */
     duration: string;
     pickupAvailable: boolean;
@@ -84,6 +93,49 @@ export type TourListing = {
     /** Short 1-2 line blurb - shown only in the ranked variant. */
     description?: string;
 };
+
+/**
+ * The hub "eyebrow" - a small pill naming the tour's activity hub, sitting
+ * above the title (master 3.5, "Title and hub context"; LD15).
+ *
+ * Spec straight from mck-10 `.tc .eyebrow`: white pill, peach hairline, pill
+ * radius, 11.5px/700 in the deep CTA orange, with a 12px pin stroked in the CTA
+ * orange.
+ */
+function HubEyebrow({ name }: { name: string }) {
+    return (
+        <span className='inline-flex w-max items-center gap-[5px] rounded-it-full border border-it-peach-border bg-it-white py-[3px] pl-2 pr-2.5 text-[11.5px] font-bold leading-none text-it-primary-hover shadow-it-sm'>
+            <MapPin
+                className='size-3 shrink-0 text-it-primary'
+                strokeWidth={2}
+                aria-hidden='true'
+            />
+            {name}
+        </span>
+    );
+}
+
+/**
+ * The card title with its hub prefix removed, so the eyebrow is not saying the
+ * same thing twice ("Klein Curacao" + "Klein Curacao Full-Day Catamaran").
+ *
+ * LD15 composes the tour H1 as `{Destination or Hub}: {Tour name}`, i.e. the
+ * stored name is meant to be the BARE tour name with the hub supplied around
+ * it. Real catalogue data does not always honour that - operators name their
+ * own tours - so this strips a leading hub name at RENDER time rather than
+ * touching anybody's data. Once a title is already hub-free it is a no-op.
+ *
+ * Only an exact leading match is removed, with an optional separator, and only
+ * when something is left over: "Klein Curacao" as a whole title keeps its name
+ * rather than rendering an empty heading.
+ */
+function stripHubPrefix(title: string, hubName?: string | null): string {
+    if (!hubName) return title;
+    const t = title.trim();
+    if (!t.toLowerCase().startsWith(hubName.trim().toLowerCase())) return t;
+    const rest = t.slice(hubName.trim().length).replace(/^[\s:\u2013\u2014-]+/, '');
+    return rest.length > 0 ? rest : t;
+}
 
 // ── BadgeChip ───────────────────────────────────────────────────────────────
 interface BadgeChipProps {
@@ -296,21 +348,34 @@ function DefaultTourCard({
                 className={cn(
                     'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
                 )}>
-                {/* Rating row - amber star glyph + soft count (above title). */}
-                {isRated && (
-                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-bold text-it-star'>
-                            ★ {tour.rating}
-                        </span>
-                        <span className='text-it-text-muted tabular-nums'>
-                            ({tour.reviewCount?.toLocaleString()})
-                        </span>
+                {/* Rating row - amber star glyph + soft count on the left, the
+                    hub eyebrow pushed to the right. mck-10 `.tc .rate` is
+                    `justify-content: space-between` with the rating (`.rr`) as
+                    its first child and the eyebrow as its second, so the pill
+                    shares this line rather than taking one of its own. The row
+                    still renders when the rating is absent - an unrated tour
+                    with a hub keeps its eyebrow. */}
+                {(isRated || tour.hub) && (
+                    <div className='flex items-center justify-between gap-2 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        {isRated ? (
+                            <span className='inline-flex items-center gap-1.5'>
+                                <span className='font-bold text-it-star'>
+                                    ★ {tour.rating}
+                                </span>
+                                <span className='text-it-text-muted tabular-nums'>
+                                    ({tour.reviewCount?.toLocaleString()})
+                                </span>
+                            </span>
+                        ) : (
+                            <span />
+                        )}
+                        {tour.hub && <HubEyebrow name={tour.hub.name} />}
                     </div>
                 )}
 
                 {/* Tour title */}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
-                    {tour.title}
+                    {stripHubPrefix(tour.title, tour.hub?.name)}
                 </h3>
 
                 {/* Meta column: duration, pickup (design v2 .tc .meta) */}

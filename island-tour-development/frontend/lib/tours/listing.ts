@@ -69,6 +69,7 @@ export function collectionTourToListing(
     // filter set changes.
     description: tour.rationale ?? tour.overview ?? undefined,
     duration: formatDuration(tour.durationMinutesFrom, tour.durationMinutesTo, duration),
+    hub: tour.hubs?.[0] ?? null,
     pickupAvailable: tour.pickupModel !== 'NONE',
     price,
     currency,
@@ -99,6 +100,7 @@ export function searchHitToListing(
     reviewCount: hasReviews ? hit.aggregateReviewCount : undefined,
     title: hit.title,
     duration: formatDuration(hit.durationMinutesFrom, hit.durationMinutesTo, duration),
+    hub: hit.hubs?.[0] ?? null,
     pickupAvailable: hit.pickupModel !== 'NONE',
     price,
     currency,
