@@ -32,8 +32,16 @@ import {
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
 import type { PopularLinkInput } from '@/types/destination';
 
-/** The hero row holds four (mck-02); the backend rejects a fifth. */
-const MAX_LINKS = 4;
+/**
+ * Ceiling, not a target. mck-02 draws FOUR and four is still the shape to aim
+ * for - the row is a single line under the hero search, and every extra link
+ * buys less attention for the ones already there. The cap exists so the hero
+ * cannot be filled by accident; the backend enforces the same number.
+ */
+const MAX_LINKS = 8;
+
+/** The shape the mockup draws, and what a fresh island starts with. */
+const SUGGESTED_LINKS = 4;
 
 /**
  * A slot's chosen target, encoded as one string so a single Select can offer all
@@ -89,17 +97,25 @@ export function DestinationPopularLinksForm({
     const { data: categories } = useActiveCategories();
     const { mutate: save, isPending } = useReplaceDestinationPopularLinks();
 
+    /*
+     * The rows are the links themselves, not a fixed grid of slots. A blank row
+     * is one an admin asked for and has not filled yet - it is dropped on save,
+     * so an abandoned row costs nothing.
+     */
     const [slots, setSlots] = useState<SlotValue[]>(
-        Array<SlotValue>(MAX_LINKS).fill('')
+        Array<SlotValue>(SUGGESTED_LINKS).fill('')
     );
 
     useEffect(() => {
         if (!links) return;
-        const next = Array<SlotValue>(MAX_LINKS).fill('');
-        links.slice(0, MAX_LINKS).forEach((link, i) => {
-            next[i] = toSlotValue(link);
-        });
-        setSlots(next);
+        const saved = links.slice(0, MAX_LINKS).map(toSlotValue);
+        // A curated island shows exactly what it has; an empty one opens with
+        // the mockup's four, so the common case needs no "Add" clicking.
+        setSlots(
+            saved.length > 0
+                ? saved
+                : Array<SlotValue>(SUGGESTED_LINKS).fill('')
+        );
     }, [links]);
 
     function onSave() {
@@ -130,15 +146,17 @@ export function DestinationPopularLinksForm({
                     Hero &ldquo;Popular&rdquo; links
                 </CardTitle>
                 <FieldDescription>
-                    Up to four quick links under this island&rsquo;s hero
-                    search. Empty falls back to the automatic row; a link whose
-                    page is not live is skipped on the site.
+                    Quick links under this island&rsquo;s hero search, in order.
+                    Four is the shape the design uses; up to {MAX_LINKS} are
+                    allowed, though each extra one takes attention from the
+                    rest. Empty falls back to the automatic row, and a link
+                    whose page is not live is skipped on the site.
                 </FieldDescription>
             </CardHeader>
             <CardContent className='pt-6'>
                 {isLoading ? (
                     <div className='space-y-2'>
-                        {Array.from({ length: MAX_LINKS }).map((_, i) => (
+                        {Array.from({ length: SUGGESTED_LINKS }).map((_, i) => (
                             <Skeleton key={i} className='h-9 w-full' />
                         ))}
                     </div>
@@ -209,21 +227,24 @@ export function DestinationPopularLinksForm({
                                     something to clear - four permanent buttons
                                     were four times the visual weight of the
                                     thing they act on. */}
+                                {/* Removes the ROW, not just its value - with a
+                                    variable-length list, blanking in place
+                                    would leave a gap the admin then has to
+                                    tidy. One row always remains. */}
                                 <Button
                                     type='button'
                                     variant='ghost'
                                     size='icon'
-                                    aria-label={`Clear slot ${index + 1}`}
-                                    className={
-                                        value
-                                            ? 'size-7 text-muted-foreground'
-                                            : 'invisible size-7'
-                                    }
+                                    aria-label={`Remove link ${index + 1}`}
+                                    disabled={slots.length === 1 && !value}
+                                    className='size-7 text-muted-foreground'
                                     onClick={() =>
                                         setSlots(current =>
-                                            current.map((slot, i) =>
-                                                i === index ? '' : slot
-                                            )
+                                            current.length === 1
+                                                ? ['']
+                                                : current.filter(
+                                                      (_, i) => i !== index
+                                                  )
                                         )
                                     }>
                                     <HugeiconsIcon
@@ -237,7 +258,15 @@ export function DestinationPopularLinksForm({
                     </div>
                 )}
 
-                <div className='mt-4 flex justify-end'>
+                <div className='mt-4 flex items-center justify-between gap-3'>
+                    <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        disabled={slots.length >= MAX_LINKS || isLoading}
+                        onClick={() => setSlots(current => [...current, ''])}>
+                        Add link
+                    </Button>
                     <Button
                         type='button'
                         size='sm'
