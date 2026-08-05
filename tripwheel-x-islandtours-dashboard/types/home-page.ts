@@ -56,10 +56,13 @@ export interface EditorialCard {
   displayOrder: number;
   /**
    * Whether the target page would open on the island the banner points at (a
-   * category needs a LIVE tour there; a hub must be published, active and
-   * belong to that island). False means the public site serves the card
-   * WITHOUT its link - shown in the editor rather than left to be discovered
-   * on the live site.
+   * category page needs at least 3 LIVE tours there - master §2.4; a hub must
+   * be published, active and belong to that island). False means the public
+   * site serves the card WITHOUT its link - shown in the editor rather than
+   * left to be discovered on the live site.
+   *
+   * Named for the older "has any live tour" rule it once was; the wire name is
+   * kept so the two repos stay in step. It answers "would this page open".
    */
   hasLiveTours: boolean;
 }
