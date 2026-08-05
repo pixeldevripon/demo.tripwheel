@@ -50,6 +50,10 @@ function createMockPrismaService() {
     hubAllowedCategory: { findUnique: jest.fn(), count: jest.fn() },
     attributeDefinition: { findMany: jest.fn() },
     tourAttribute: { findMany: jest.fn() },
+    // Accent-insensitive term matching runs in raw SQL (Postgres has no
+    // accent-folding operator). Default: every tour matches, so tests that are
+    // not about matching keep asserting the rest of the where-clause.
+    $queryRaw: jest.fn().mockResolvedValue([{ id: 't-1' }]),
     tour: {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -1104,12 +1108,44 @@ describe('ToursService', () => {
       const where = prisma.tour.findMany.mock.calls[0][0].where;
       expect(where.destination).toEqual({ slug: 'curacao' });
       expect(where.status).toBe(TourStatus.LIVE);
-      expect(Array.isArray(where.OR)).toBe(true);
-      expect(where.OR[0]).toEqual({
-        name: { contains: 'catamaran', mode: 'insensitive' },
-      });
+      // The text match is an id set from the accent-folding SQL, not a Prisma
+      // `OR` of `contains` - `ILIKE` folds case but not accents, so "curacao"
+      // would never have matched "Curaçao".
+      expect(where.AND).toEqual([{ id: { in: ['t-1'] } }]);
+      expect(prisma.$queryRaw).toHaveBeenCalled();
       expect(res.query).toBe('catamaran');
       expect(res.data[0].categoryIds).toEqual(['cat-1']);
+    });
+
+    it('returns nothing when no tour text matches, without a second guess', async () => {
+      prisma.$queryRaw.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      const res = await service.search({ q: 'zzzz' });
+
+      // An empty id set means "no match" - it must narrow to nothing rather
+      // than being dropped as a falsy filter and returning the whole catalogue.
+      expect(prisma.tour.findMany.mock.calls[0][0].where.AND).toEqual([
+        { id: { in: [] } },
+      ]);
+      expect(res.total).toBe(0);
+    });
+
+    it('ANDs the text match with the date filter instead of overwriting it', async () => {
+      // Both narrow by id. Written as one object they would collide on the same
+      // key and the last one would silently win, dropping the other filter.
+      prisma.$queryRaw.mockResolvedValue([{ id: 't-1' }, { id: 't-2' }]);
+      prisma.departure.findMany.mockResolvedValue([]);
+      prisma.tour.count.mockResolvedValue(0);
+      prisma.tour.findMany.mockResolvedValue([]);
+
+      await service.search({ q: 'catamaran', date: '2026-08-27' });
+
+      const and = prisma.tour.findMany.mock.calls[0][0].where.AND;
+      expect(and).toHaveLength(2);
+      expect(and[0]).toEqual({ id: { in: ['t-1', 't-2'] } });
+      expect(and[1]).toHaveProperty('id.in');
     });
   });
 

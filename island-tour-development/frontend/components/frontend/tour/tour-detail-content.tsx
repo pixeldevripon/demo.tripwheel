@@ -89,6 +89,8 @@ interface TourDetailContentProps {
     destinationName: string;
     locale: Locale;
     dict: Dictionary;
+    /** `?date=` from the URL - a day chosen before this page (see TourPage). */
+    initialDate?: string;
 }
 
 /**
@@ -103,6 +105,7 @@ export async function TourDetailContent({
     destinationName,
     locale,
     dict,
+    initialDate,
 }: TourDetailContentProps) {
     await connection();
     // Shopper display currency (cookie) drives the converted `money` on the detail;
@@ -562,6 +565,7 @@ export async function TourDetailContent({
                                     destinationSlug={destinationSlug}
                                     tourSlug={slug}
                                     currency={currency}
+                                    initialDate={initialDate}
                                 />
                             </MountReveal>
                         </div>

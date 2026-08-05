@@ -207,10 +207,41 @@ function TourRow({
 }
 
 /**
+ * One row of the zero-state panel. `href` is prebuilt by the caller, because
+ * hubs, collections and categories share the flat `/{destination}/{slug}`
+ * namespace and only the caller knows the island.
+ */
+export interface SearchZeroStateEntry {
+    name: string;
+    href: string;
+    /** Picks the icon; collections are always `collection`. */
+    kind: 'category' | 'hub' | 'collection';
+    /** Live tour count, printed as the subtitle. Omitted = no subtitle. */
+    tours?: number;
+}
+
+/** Grouped starting points shown BEFORE the visitor types anything (master 5.10). */
+export interface SearchZeroState {
+    categoriesAndHubs: SearchZeroStateEntry[];
+    collections: SearchZeroStateEntry[];
+}
+
+const ZERO_STATE_ICON: Record<SearchZeroStateEntry['kind'], React.ReactNode> = {
+    category: <LayoutGrid size={18} strokeWidth={1.5} />,
+    hub: <MapPin size={18} strokeWidth={1.5} />,
+    collection: <Folder size={18} strokeWidth={1.5} />,
+};
+
+/**
  * Fever-style typeahead panel: entity shortcuts up top (see-all row, matched
  * categories with tour counts, matched hubs), then "Tours in {island}" hits,
  * then a "Beyond {island}" strip from other destinations. All data + href
  * building is passed in; this only renders.
+ *
+ * With a query under 2 characters and a `zeroState` supplied, it renders that
+ * instead - the panel the visitor who does not yet know what they want gets on
+ * focus (master 5.10). Same rows, same panel, different contents: it is an
+ * ADDITION to the typed panel, not a second component.
  *
  * The panel root carries `dropdownMotion` ITSELF (callers wrap in
  * AnimatePresence, no extra motion wrapper): animating a positioned element
@@ -231,6 +262,7 @@ export function SearchTypeahead({
     hubHref,
     destinations,
     destinationHref,
+    zeroState,
     onSelect,
 }: {
     suggest: SearchSuggest | null;
@@ -253,6 +285,11 @@ export function SearchTypeahead({
      */
     destinations?: { name: string; slug: string; tours?: number }[];
     destinationHref?: (slug: string) => string;
+    /**
+     * Starting points for an empty query. Omit it and a short query simply
+     * shows nothing, which is what the unscoped navbar search still does.
+     */
+    zeroState?: SearchZeroState;
     onSelect: () => void;
 }) {
     const destinationMatches = destinationHref ? (destinations ?? []) : [];
@@ -262,7 +299,67 @@ export function SearchTypeahead({
             (suggest.tours.length > 0 ||
                 suggest.beyondTours.length > 0 ||
                 suggest.categories.length > 0 ||
-                suggest.hubs.length > 0));
+                suggest.hubs.length > 0 ||
+                (suggest.collections?.length ?? 0) > 0));
+
+    // Below the 2-character minimum there is nothing to search for yet, so the
+    // panel offers somewhere to go instead of an empty box. Checked BEFORE the
+    // loading/no-results branches, which are about a query that exists.
+    const zeroEntries = zeroState
+        ? [...zeroState.categoriesAndHubs, ...zeroState.collections]
+        : [];
+    if (query.trim().length < 2 && zeroEntries.length > 0) {
+        return (
+            <motion.div
+                {...dropdownMotion}
+                className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
+                <div className='max-h-[70vh] overflow-y-auto overscroll-contain'>
+                    {(
+                        [
+                            [dict.categoriesAndHubs, zeroState!.categoriesAndHubs],
+                            [dict.collections, zeroState!.collections],
+                        ] as const
+                    ).map(([heading, entries], groupIndex) =>
+                        entries.length === 0 ? null : (
+                            <div key={heading}>
+                                {/* The first header owns the panel's top edge,
+                                    so it drops the divider SectionHeader draws
+                                    between groups. */}
+                                {groupIndex === 0 ? (
+                                    <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-semibold text-it-heading'>
+                                        {heading}
+                                    </p>
+                                ) : (
+                                    <SectionHeader>{heading}</SectionHeader>
+                                )}
+                                <ul className='m-0 list-none p-0 pb-1.5'>
+                                    {entries.map(entry => (
+                                        <EntityRow
+                                            key={`${entry.kind}-${entry.href}`}
+                                            href={entry.href}
+                                            onSelect={onSelect}
+                                            icon={ZERO_STATE_ICON[entry.kind]}
+                                            label={entry.name}
+                                            subtitle={
+                                                entry.tours == null
+                                                    ? undefined
+                                                    : entry.tours === 1
+                                                      ? dict.tourCountOne
+                                                      : dict.tourCount.replace(
+                                                            '{count}',
+                                                            String(entry.tours)
+                                                        )
+                                            }
+                                        />
+                                    ))}
+                                </ul>
+                            </div>
+                        )
+                    )}
+                </div>
+            </motion.div>
+        );
+    }
 
     return (
         <motion.div
@@ -343,6 +440,21 @@ export function SearchTypeahead({
                                 icon={<MapPin size={18} strokeWidth={1.5} />}
                                 label={hub.name}
                                 subtitle={hub.destinationName}
+                            />
+                        ))}
+                        {/* Collections share the hub href shape - one flat
+                            `/{destination}/{slug}` namespace covers both. */}
+                        {(suggest?.collections ?? []).map(collection => (
+                            <EntityRow
+                                key={collection.id}
+                                href={hubHref(
+                                    collection.destinationSlug,
+                                    collection.slug
+                                )}
+                                onSelect={onSelect}
+                                icon={<Folder size={18} strokeWidth={1.5} />}
+                                label={collection.name}
+                                subtitle={collection.destinationName}
                             />
                         ))}
                     </ul>

@@ -74,12 +74,26 @@ export interface SuggestHub {
   destinationName: string;
 }
 
+/**
+ * A matched collection. Shares the hub shape because both resolve through the
+ * flat `/{destination}/{slug}` namespace and both need their island named when
+ * the search is unscoped.
+ */
+export interface SuggestCollection {
+  id: string;
+  slug: string;
+  name: string;
+  destinationSlug: string;
+  destinationName: string;
+}
+
 export interface SearchSuggest {
   query: string;
   /** Scoped total for the "see all N results" footer. */
   total: number;
   categories: SuggestCategory[];
   hubs: SuggestHub[];
+  collections: SuggestCollection[];
   tours: SearchHit[];
   beyondTours: SearchHit[];
 }

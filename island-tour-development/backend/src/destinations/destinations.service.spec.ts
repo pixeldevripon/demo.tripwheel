@@ -23,8 +23,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Locale, Region, SlugEntityType } from '@prisma/client';
-import { DestinationService } from './destinations.service';
+import {
+  CollectionStatus,
+  HubStatus,
+  Locale,
+  Region,
+  SlugEntityType,
+} from '@prisma/client';
+import { DestinationService, POPULAR_LINK_MAX } from './destinations.service';
 import {
   CreateDestinationDto,
   CreateDestinationFaqDto,
@@ -82,8 +88,35 @@ function createMockPrismaService() {
     category: {
       findMany: jest.fn(),
     },
+    hub: {
+      findMany: jest.fn(),
+    },
+    collection: {
+      findMany: jest.fn(),
+    },
     tour: {
       count: jest.fn(),
+    },
+    // Hero "Popular" curation: the rows, plus the two tour-count gates.
+    destinationPopularLink: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    tourCategory: {
+      groupBy: jest.fn().mockResolvedValue([]),
+    },
+    tourHub: {
+      groupBy: jest.fn().mockResolvedValue([]),
+    },
+    categoryTranslation: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    hubTranslation: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    collectionTranslation: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     $transaction: jest.fn(),
   };
@@ -1409,6 +1442,292 @@ describe('DestinationService', () => {
           entityId: 'dest-1',
         },
       });
+    });
+  });
+
+  // ── Hero "Popular" curation ────────────────────────────────────────────────
+
+  describe('getPopularLinks', () => {
+    const DEST = { id: 'dest-1', isActive: true };
+
+    /** A curated slot pointing at a category, active + top-level by default. */
+    function categorySlot(
+      id: string,
+      slug: string,
+      name: string,
+      overrides: Partial<{
+        isActive: boolean;
+        parentCategoryId: string | null;
+      }> = {},
+    ) {
+      return {
+        id: `link-${id}`,
+        displayOrder: 0,
+        categoryId: id,
+        hubId: null,
+        collectionId: null,
+        category: {
+          id,
+          slug,
+          name,
+          isActive: true,
+          parentCategoryId: null,
+          ...overrides,
+        },
+        hub: null,
+        collection: null,
+      };
+    }
+
+    beforeEach(() => {
+      prisma.destination.findUnique.mockResolvedValue(DEST);
+    });
+
+    it('returns [] when the island is not curated, so the caller composes the automatic row', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.getPopularLinks('curacao', Locale.en),
+      ).resolves.toEqual([]);
+      // Nothing to gate, so it must not go looking for tour counts either.
+      expect(prisma.tourCategory.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('drops a curated category below the 3-tour bar and keeps the rest', async () => {
+      // Exactly the production shape: an admin curated a category that cannot
+      // render, and it must not be linked from the hero.
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        categorySlot('cat-thin', 'buggy-tours', 'Buggy Tours'),
+        categorySlot('cat-ok', 'boat-tours', 'Boat Tours & Cruises'),
+      ]);
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'cat-thin', _count: { _all: 2 } },
+        { categoryId: 'cat-ok', _count: { _all: 13 } },
+      ]);
+
+      await expect(
+        service.getPopularLinks('curacao', Locale.en),
+      ).resolves.toEqual([
+        { name: 'Boat Tours & Cruises', slug: 'boat-tours' },
+      ]);
+    });
+
+    it('keeps the CURATED order rather than any data order', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        categorySlot('cat-small', 'off-road-tours', 'Off-Road Tours'),
+        categorySlot('cat-big', 'boat-tours', 'Boat Tours & Cruises'),
+      ]);
+      // The second has four times the tours; curation still wins.
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'cat-small', _count: { _all: 4 } },
+        { categoryId: 'cat-big', _count: { _all: 16 } },
+      ]);
+
+      const result = await service.getPopularLinks('curacao', Locale.en);
+
+      expect(result.map((r) => r.slug)).toEqual([
+        'off-road-tours',
+        'boat-tours',
+      ]);
+    });
+
+    it('drops an unpublished hub and a hub from another island', async () => {
+      const hubSlot = (
+        id: string,
+        slug: string,
+        overrides: Partial<{ status: HubStatus; destinationId: string }> = {},
+      ) => ({
+        id: `link-${id}`,
+        displayOrder: 0,
+        categoryId: null,
+        hubId: id,
+        collectionId: null,
+        category: null,
+        hub: {
+          id,
+          slug,
+          name: slug,
+          isActive: true,
+          status: HubStatus.PUBLISHED,
+          destinationId: DEST.id,
+          ...overrides,
+        },
+        collection: null,
+      });
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        hubSlot('h-draft', 'draft-hub', { status: HubStatus.DRAFT }),
+        hubSlot('h-elsewhere', 'aruba-hub', { destinationId: 'dest-2' }),
+        hubSlot('h-ok', 'klein-curacao'),
+      ]);
+      prisma.tourHub.groupBy.mockResolvedValue([
+        { hubId: 'h-draft', _count: { _all: 9 } },
+        { hubId: 'h-elsewhere', _count: { _all: 9 } },
+        { hubId: 'h-ok', _count: { _all: 9 } },
+      ]);
+
+      const result = await service.getPopularLinks('curacao', Locale.en);
+
+      expect(result.map((r) => r.slug)).toEqual(['klein-curacao']);
+    });
+
+    it('drops a draft collection', async () => {
+      const collectionSlot = (id: string, status: CollectionStatus) => ({
+        id: `link-${id}`,
+        displayOrder: 0,
+        categoryId: null,
+        hubId: null,
+        collectionId: id,
+        category: null,
+        hub: null,
+        collection: {
+          id,
+          slug: id,
+          name: id,
+          isActive: true,
+          status,
+          destinationId: DEST.id,
+        },
+      });
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        collectionSlot('draft-one', CollectionStatus.DRAFT),
+        collectionSlot('live-one', CollectionStatus.PUBLISHED),
+      ]);
+
+      const result = await service.getPopularLinks('curacao', Locale.en);
+
+      expect(result.map((r) => r.slug)).toEqual(['live-one']);
+    });
+
+    it('prints a page only once even when two slots name it', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        categorySlot('cat-1', 'boat-tours', 'Boat Tours & Cruises'),
+        categorySlot('cat-1', 'boat-tours', 'Boat Tours & Cruises'),
+      ]);
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'cat-1', _count: { _all: 13 } },
+      ]);
+
+      await expect(
+        service.getPopularLinks('curacao', Locale.en),
+      ).resolves.toHaveLength(1);
+    });
+
+    it('caps the row at POPULAR_LINK_MAX even if more rows survived', async () => {
+      // A row saved under an older, higher cap must not overflow the current
+      // one - the read side enforces it too, not just the write side.
+      const slots = Array.from({ length: POPULAR_LINK_MAX + 3 }, (_, i) =>
+        categorySlot(`cat-${i}`, `slug-${i}`, `Cat ${i}`),
+      );
+      prisma.destinationPopularLink.findMany.mockResolvedValue(slots);
+      prisma.tourCategory.groupBy.mockResolvedValue(
+        slots.map((_, i) => ({ categoryId: `cat-${i}`, _count: { _all: 5 } })),
+      );
+
+      await expect(
+        service.getPopularLinks('curacao', Locale.en),
+      ).resolves.toHaveLength(POPULAR_LINK_MAX);
+    });
+
+    it('prefers the locale name so the label matches the page it opens', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        categorySlot('cat-1', 'boat-tours', 'Boat Tours & Cruises'),
+      ]);
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'cat-1', _count: { _all: 13 } },
+      ]);
+      prisma.categoryTranslation.findMany.mockResolvedValue([
+        { categoryId: 'cat-1', name: 'Boottochten & cruises' },
+      ]);
+
+      const result = await service.getPopularLinks('curacao', Locale.nl);
+
+      expect(result[0].name).toBe('Boottochten & cruises');
+    });
+
+    it('404s an unknown or inactive island', async () => {
+      prisma.destination.findUnique.mockResolvedValue(null);
+      await expect(
+        service.getPopularLinks('atlantis', Locale.en),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('replacePopularLinks', () => {
+    beforeEach(() => {
+      prisma.destination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        slug: 'curacao',
+        isActive: true,
+      });
+      prisma.destinationPopularLink.findMany.mockResolvedValue([]);
+    });
+
+    it('rejects a slot that names no target', async () => {
+      await expect(
+        service.replacePopularLinks('dest-1', [{}], 'admin-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a slot that names two targets', async () => {
+      await expect(
+        service.replacePopularLinks(
+          'dest-1',
+          [{ categoryId: 'c1', hubId: 'h1' }],
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects more slots than the cap allows', async () => {
+      await expect(
+        service.replacePopularLinks(
+          'dest-1',
+          Array.from({ length: POPULAR_LINK_MAX + 1 }, (_, i) => ({
+            categoryId: `c${i}`,
+          })),
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a hub that belongs to another island', async () => {
+      // The island filter in the lookup means an off-island hub simply is not
+      // found - saving it would look fine and then silently never render.
+      prisma.hub.findMany.mockResolvedValue([]);
+      await expect(
+        service.replacePopularLinks(
+          'dest-1',
+          [{ hubId: 'hub-on-aruba' }],
+          'admin-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('numbers slots from array position, not from the client', async () => {
+      prisma.category.findMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }]);
+
+      await service.replacePopularLinks(
+        'dest-1',
+        [{ categoryId: 'c1' }, { categoryId: 'c2' }],
+        'admin-1',
+      );
+
+      expect(prisma.destinationPopularLink.deleteMany).toHaveBeenCalledWith({
+        where: { destinationId: 'dest-1' },
+      });
+      expect(prisma.destinationPopularLink.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({ categoryId: 'c1', displayOrder: 0 }),
+          expect.objectContaining({ categoryId: 'c2', displayOrder: 1 }),
+        ],
+      });
+    });
+
+    it('clears the curation on an empty array without writing rows', async () => {
+      await service.replacePopularLinks('dest-1', [], 'admin-1');
+
+      expect(prisma.destinationPopularLink.deleteMany).toHaveBeenCalled();
+      expect(prisma.destinationPopularLink.createMany).not.toHaveBeenCalled();
     });
   });
 });

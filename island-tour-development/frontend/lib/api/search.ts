@@ -67,6 +67,7 @@ export async function searchSuggestClient(
     total: 0,
     categories: [],
     hubs: [],
+    collections: [],
     tours: [],
     beyondTours: [],
   };

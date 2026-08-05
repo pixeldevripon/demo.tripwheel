@@ -20,6 +20,8 @@ import {
   DestinationTranslationEntryDto,
   DestinationFaqResponseDto,
   PaginatedLocalizedDestinationsResponseDto,
+  PopularLinkAdminResponseDto,
+  PopularLinkResponseDto,
 } from './dto/destination.dto';
 import { FaqGroupResponseDto } from '@/common/faq/dto/faq-group.dto';
 import { PageContentSectionResponseDto } from '@/common/page-content-sections/dto/page-content-section.dto';
@@ -482,6 +484,66 @@ export function ApiUpsertContentSectionTranslationDocs() {
     ApiParam({ name: 'groupId', description: 'Section group UUID' }),
     ApiParam({ name: 'locale', enum: Locale }),
     ApiResponse({ status: 200, type: PageContentSectionResponseDto }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiGetPopularLinksDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'The island hero\'s curated "Popular" quick links (public)',
+      description:
+        'Returns the admin-curated links, localized and RE-GATED against each ' +
+        "target's own visibility rule - a category needs 3 live tours here, a hub " +
+        'must be published with a live tour, a collection must be published. A ' +
+        'target whose page would not open is dropped, never linked. Max 8. An ' +
+        'empty array means "not curated": the caller composes the automatic row ' +
+        '(hub, lead collection, then categories) instead.',
+    }),
+    ApiParam({ name: 'slug', example: 'curacao' }),
+    ApiQuery({ name: 'locale', enum: Locale, required: false }),
+    ApiResponse({ status: 200, type: [PopularLinkResponseDto] }),
+    ApiResponse({
+      status: 404,
+      description: 'Destination not found or inactive',
+      type: NotFoundErrorDto,
+    }),
+    ...publicErrors,
+  );
+}
+
+export function ApiGetPopularLinksAdminDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: 'The raw curated Popular slots, unresolved and ungated (Admin)',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
+    ApiResponse({ status: 404, type: NotFoundErrorDto }),
+    ...adminErrors,
+  );
+}
+
+export function ApiReplacePopularLinksDocs() {
+  return applyDecorators(
+    ApiOperation({
+      summary: "Replace the island's whole curated Popular row (Admin)",
+      description:
+        'Replace-all: the body is the entire row, and array position is the ' +
+        'render order. Each slot must name exactly ONE of categoryId / hubId / ' +
+        'collectionId, and hubs/collections must belong to this island. An empty ' +
+        'array clears the curation and restores the automatic row.',
+    }),
+    ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
+    ApiResponse({
+      status: 400,
+      description:
+        'More than 8 slots, a slot naming none or several targets, or an ' +
+        'unknown / off-island target',
+      type: BadRequestErrorDto,
+    }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
   );

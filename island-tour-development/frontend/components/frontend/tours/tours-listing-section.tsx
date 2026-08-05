@@ -155,9 +155,11 @@ export async function ToursListingSection({
     }
 
     // Cards keep the backend order; searchHitToListing carries the badge + flat URL.
-
+    // The active date rides along on each href: this section backs All Tours AND
+    // the category page, so filtering to a day and opening a result keeps that
+    // day in the booking widget instead of asking for it again.
     const tours = tourList.data.map(hit =>
-        searchHitToListing(hit, locale, dict.search)
+        searchHitToListing(hit, locale, dict.search, filters.date ?? undefined)
     );
 
     return (

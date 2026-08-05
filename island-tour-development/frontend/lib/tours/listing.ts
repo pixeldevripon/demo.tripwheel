@@ -80,18 +80,29 @@ export function collectionTourToListing(
   };
 }
 
-/** Map a search hit to a `TourListing` for `TourCard`. */
+/**
+ * Map a search hit to a `TourListing` for `TourCard`.
+ *
+ * `date` is the day the results were filtered by, if any. It rides along on the
+ * card's href so opening a result keeps the answer the traveller already gave -
+ * the widget preselects it rather than asking again. Omit it and the links are
+ * exactly as before.
+ */
 export function searchHitToListing(
   hit: SearchHit,
   locale: Locale,
   duration: DurationDict,
+  date?: string,
 ): TourListing {
   const { price, currency, priceDisplay } = resolveDisplayPrice(hit, locale);
   const hasReviews = hit.aggregateReviewCount > 0;
   return {
     id: hit.id,
     href: hit.destinationSlug
-      ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
+      ? localizeHref(
+          locale,
+          `/${hit.destinationSlug}/${hit.slug}${date ? `?date=${date}` : ''}`,
+        )
       : undefined,
     images: hit.images.map((img) => img.url).filter(Boolean),
     // Badge is derived server-side (master §3.6/§3.7); pass it through verbatim.

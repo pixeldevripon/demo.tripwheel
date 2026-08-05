@@ -479,9 +479,20 @@ async function EntityDispatch({
                 />
             );
 
-        case 'TOUR':
+        case 'TOUR': {
             // Flat resolution: the tour fetches by its slug, not entityId
             // (ROUTING-AND-RESOLUTION.md §5.2).
+            //
+            // `?date=` is the day the traveller already picked upstream (a
+            // date-filtered search or listing). Read here and handed to the
+            // booking widget so it opens on that day instead of asking again.
+            // Only a well-formed YYYY-MM-DD is honoured; the widget re-checks
+            // that it is not in the past.
+            const sp = await searchParams;
+            const raw = Array.isArray(sp.date) ? sp.date[0] : sp.date;
+            const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(raw ?? '')
+                ? raw
+                : undefined;
             return (
                 <TourPage
                     destinationSlug={destination}
@@ -489,8 +500,10 @@ async function EntityDispatch({
                     destinationName={destinationName}
                     locale={locale}
                     dict={dict}
+                    initialDate={initialDate}
                 />
             );
+        }
 
         case 'RESERVED':
             redirect(localizeHref(locale, `/${destination}/tours`));

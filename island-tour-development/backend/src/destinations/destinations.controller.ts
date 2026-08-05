@@ -40,7 +40,10 @@ import {
   ApiUpsertContentSectionTranslationDocs,
   ApiGetFaqGroupsDocs,
   ApiGetPageContentDocs,
+  ApiGetPopularLinksAdminDocs,
+  ApiGetPopularLinksDocs,
   ApiGetTranslationsByLocaleDocs,
+  ApiReplacePopularLinksDocs,
   ApiUpdateDestinationDocs,
   ApiUpdateFaqDocs,
   ApiUpdateFaqGroupDocs,
@@ -64,6 +67,7 @@ import {
   DestinationQueryDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
+  ReplacePopularLinksDto,
   UpdateDestinationDto,
   UpdateDestinationFaqDto,
   UpsertDestinationPageContentDto,
@@ -114,6 +118,14 @@ export class DestinationController {
     return this.destinationService.getBySlug(slug, query.locale);
   }
 
+  // Static `slug/...` segment, so it MUST stay above the dynamic `:id` below.
+  @Get('slug/:slug/popular-links')
+  @Public()
+  @ApiGetPopularLinksDocs()
+  getPopularLinks(@Param('slug') slug: string, @Query() query: LocaleQueryDto) {
+    return this.destinationService.getPopularLinks(slug, query.locale);
+  }
+
   @Get(':id')
   @Public()
   @ApiGetDestinationByIdDocs()
@@ -159,6 +171,26 @@ export class DestinationController {
   @ApiDeleteDestinationDocs()
   remove(@Param('id') id: string, @AuthenticatedUser() user: TypedAuthUser) {
     return this.destinationService.remove(id, user.id);
+  }
+
+  // ── Hero "Popular" links (Admin) ──────────────────────────────────────────────
+
+  @Get(':id/popular-links')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiGetPopularLinksAdminDocs()
+  getPopularLinksAdmin(@Param('id') id: string) {
+    return this.destinationService.getPopularLinksAdmin(id);
+  }
+
+  @Put(':id/popular-links')
+  @RequirePermissions(Permission.EDIT_DESTINATION)
+  @ApiReplacePopularLinksDocs()
+  replacePopularLinks(
+    @Param('id') id: string,
+    @Body() dto: ReplacePopularLinksDto,
+    @AuthenticatedUser() user: TypedAuthUser,
+  ) {
+    return this.destinationService.replacePopularLinks(id, dto.links, user.id);
   }
 
   // ── Translation management (Admin) ────────────────────────────────────────────

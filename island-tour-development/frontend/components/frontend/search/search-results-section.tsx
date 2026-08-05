@@ -1,3 +1,4 @@
+import { format, parse } from 'date-fns';
 import Link from 'next/link';
 
 import { Reveal } from '@/components/frontend/reveal';
@@ -11,6 +12,26 @@ import type { Dictionary } from '@/lib/i18n/dictionaries';
 import { searchHitToListing } from '@/lib/tours/listing';
 
 const PAGE_SIZE = 12;
+
+/**
+ * A removable scope chip above the results (destination, date).
+ *
+ * Every active filter needs one: results were already being narrowed by the
+ * date carried from the hero, but only the DESTINATION said so, which read as
+ * "search is missing tours" rather than "you asked for one day".
+ */
+function ScopeChip({ href, label }: { href: string; label: string }) {
+    return (
+        <Link
+            href={href}
+            className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-border px-3 py-1.5 text-[13px] text-it-heading no-underline transition-colors hover:bg-it-surface'>
+            {label}
+            <span aria-hidden='true' className='text-it-heading/50'>
+                ✕
+            </span>
+        </Link>
+    );
+}
 
 interface SearchResultsSectionProps {
     locale: Locale;
@@ -74,18 +95,32 @@ export async function SearchResultsSection({
             : null;
 
     const listings =
-        results?.data.map(hit => searchHitToListing(hit, locale, t)) ?? [];
+        results?.data.map(hit => searchHitToListing(hit, locale, t, date)) ??
+        [];
     const totalPages = results
         ? Math.max(1, Math.ceil(results.total / PAGE_SIZE))
         : 0;
 
-    // "Remove filter" link -> same query (and date) without the destination scope.
-    const searchAllHref = `${localizeHref(locale, '/search')}?q=${encodeURIComponent(query)}${date ? `&date=${date}` : ''}`;
+    /*
+     * Each chip drops ONLY its own filter and keeps the others - removing the
+     * island must not silently also throw away the day you picked.
+     */
+    const base = `${localizeHref(locale, '/search')}?q=${encodeURIComponent(query)}`;
+    const withoutDestination = `${base}${date ? `&date=${date}` : ''}`;
+    const withoutDate = `${base}${destination ? `&destination=${destination}` : ''}`;
+
+    // Same "13 Aug" shape the All Tours filter bar uses, so one date reads the
+    // same wherever it is shown. Parsed at midnight LOCAL, not UTC: `new
+    // Date('2026-08-13')` is UTC midnight and prints as the 12th west of
+    // Greenwich, which would show a different day than the one searched.
+    const dateLabel = date
+        ? format(parse(date, 'yyyy-MM-dd', new Date()), 'd MMM')
+        : null;
 
     return (
         <SearchBrowser
             header={
-                (results && results.total > 0) || destinationName ? (
+                (results && results.total > 0) || destinationName || dateLabel ? (
                     <div className='flex flex-col gap-2'>
                         {results && results.total > 0 && (
                             <p className='m-0 text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>
@@ -97,17 +132,21 @@ export async function SearchResultsSection({
                                     .replace('{query}', query)}
                             </p>
                         )}
-                        {destinationName && (
-                            <Link
-                                href={searchAllHref}
-                                className='inline-flex w-fit items-center gap-2 rounded-it-full border border-it-border px-3 py-1.5 text-[13px] text-it-heading no-underline transition-colors hover:bg-it-surface'>
-                                {destinationName}
-                                <span
-                                    aria-hidden='true'
-                                    className='text-it-heading/50'>
-                                    ✕
-                                </span>
-                            </Link>
+                        {(destinationName || dateLabel) && (
+                            <div className='flex flex-wrap items-center gap-2'>
+                                {destinationName && (
+                                    <ScopeChip
+                                        href={withoutDestination}
+                                        label={destinationName}
+                                    />
+                                )}
+                                {dateLabel && (
+                                    <ScopeChip
+                                        href={withoutDate}
+                                        label={dateLabel}
+                                    />
+                                )}
+                            </div>
                         )}
                     </div>
                 ) : null

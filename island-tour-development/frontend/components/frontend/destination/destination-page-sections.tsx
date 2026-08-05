@@ -9,6 +9,7 @@ import {
     getActiveCollectionsForDestination,
     getDestinationCategories,
     getDestinationHubs,
+    getDestinationPopularLinks,
     getDestinationTours,
 } from '@/lib/api/public';
 import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
@@ -45,16 +46,20 @@ export async function DestinationHeroSection({
     destinationName,
     heroImage,
 }: HeroSectionProps) {
-    const [categories, hubs, collections, heroSeo] = await Promise.all([
-        getDestinationCategories(destination, locale),
-        getDestinationHubs(destination, locale),
-        // Collections feed the hero's "Popular" links only - the cards below
-        // stay hubs + categories, and collections keep their own section.
-        getActiveCollectionsForDestination(destination, locale),
-        // Independent of the others - joins the same Promise.all rather than
-        // adding another round-trip to the hero's critical path.
-        getMediaSeo([heroImage], locale),
-    ]);
+    const [categories, hubs, collections, curatedPopular, heroSeo] =
+        await Promise.all([
+            getDestinationCategories(destination, locale),
+            getDestinationHubs(destination, locale),
+            // Collections feed the hero's "Popular" links only - the cards below
+            // stay hubs + categories, and collections keep their own section.
+            getActiveCollectionsForDestination(destination, locale),
+            // The admin's curation, already resolved + gated. Empty when this
+            // island has none, which falls through to the automatic row below.
+            getDestinationPopularLinks(destination, locale),
+            // Independent of the others - joins the same Promise.all rather than
+            // adding another round-trip to the hero's critical path.
+            getMediaSeo([heroImage], locale),
+        ]);
 
     const exploreTypes: ExploreType[] = [
         ...hubs.map(hub => ({
@@ -72,32 +77,35 @@ export async function DestinationHeroSection({
     ];
 
     /*
-     * Hero "Popular" quick links: the island's hub, its lead collection, then
-     * its categories - capped at 4.
+     * Hero "Popular" quick links - CURATED first, automatic as the fallback.
      *
-     * It used to be the first four of `exploreTypes` (hubs + categories), which
-     * could never surface a COLLECTION at all, so an island's flagship "Best
-     * Things to Do in X" page was unreachable from the hero.
+     * "Popular" is an editorial claim, and no ordering rule over live data
+     * reproduced the founder's four for Curacao (Klein Curacao, Best Things to
+     * Do, Off-Road Tours, Boat Tours & Cruises): Off-Road is fifth by sortOrder
+     * and joint-fourth by tour count, so it fell outside a row of four however
+     * the row was sorted. Hence an admin-curated list, confirmed by the founder
+     * ("no dynamic order matters here").
      *
-     * Every entry is GATED ON ITS PAGE RENDERING, which is the founder's
-     * condition ("these must show when these collections and categories have
-     * data to render page") - and it is enforced upstream rather than here: the
-     * API returns only active collections and only categories that clear the
-     * >= 3-published-tours bar a category page needs. A page that cannot render
-     * is simply not in these lists, so it cannot be linked.
+     * The automatic row below is NOT dead code - it is what every uncurated
+     * island still gets, so adding a destination never yields an empty hero.
      *
-     * Every label is the TARGET PAGE'S OWN NAME, and every entry comes from a
-     * list the API has already filtered to pages that render - a category page
-     * needs >= 3 published tours on the island, so a category below that bar is
-     * absent here rather than linked. That is the founder's rule: "these links
-     * resolve to real pages, so each label has to match the page it opens".
-     * Nothing here is hand-typed.
+     * Either way every entry is GATED ON ITS PAGE RENDERING, the founder's
+     * standing condition ("these must show when these collections and
+     * categories have data to render page"), and gated UPSTREAM rather than
+     * here: the curated endpoint re-checks each target, and these three lists
+     * already contain only pages that open (a category needs >= 3 published
+     * tours on the island, a collection must be published). A page that cannot
+     * render is simply not in any of them, so it cannot be linked.
+     *
+     * Every label is the TARGET PAGE'S OWN NAME - "these links resolve to real
+     * pages, so each label has to match the page it opens". Nothing is
+     * hand-typed on either path.
      *
      * Hubs, collections and categories all live in the same flat
      * `/{destination}/{slug}` namespace (the slug registry), so one href shape
      * covers all three.
      */
-    const activities = [
+    const automaticPopular = [
         ...hubs.map(h => ({ name: h.name, slug: h.slug })),
         // The island's LEAD collection sits second - the founder's shape is
         // hub, collection, then activities. Only one: Curacao has three, and
@@ -105,12 +113,47 @@ export async function DestinationHeroSection({
         // activity pages it exists to surface.
         ...collections.slice(0, 1).map(c => ({ name: c.name, slug: c.slug })),
         ...categories.map(c => ({ name: c.name, slug: c.slug })),
-    ]
-        .slice(0, 4)
-        .map(item => ({
-            label: item.name,
-            href: localizeHref(locale, `/${destination}/${item.slug}`),
-        }));
+    ].slice(0, 4);
+
+    const activities = (
+        curatedPopular.length > 0 ? curatedPopular : automaticPopular
+    ).map(item => ({
+        label: item.name,
+        href: localizeHref(locale, `/${destination}/${item.slug}`),
+    }));
+
+    /*
+     * Zero-state panel for the hero search (master 5.10): what the field offers
+     * the moment it is focused, for "the visitor who does not yet know what they
+     * want to do". Two groups, Categories & Hubs then Collections.
+     *
+     * Built from the SAME three gated lists the rest of this section renders -
+     * no extra fetch, and every row therefore opens a page that exists (a
+     * category has cleared the 3-tour bar, a collection is published). Hubs lead
+     * their group: an island's landmark is a better starting point than an
+     * activity type, and it is what the "Explore by type" row leads with too.
+     */
+    const searchZeroState = {
+        categoriesAndHubs: [
+            ...hubs.map(hub => ({
+                name: hub.name,
+                href: localizeHref(locale, `/${destination}/${hub.slug}`),
+                kind: 'hub' as const,
+                tours: hub.publishedTourCount,
+            })),
+            ...categories.map(category => ({
+                name: category.name,
+                href: localizeHref(locale, `/${destination}/${category.slug}`),
+                kind: 'category' as const,
+                tours: category.publishedTourCount,
+            })),
+        ],
+        collections: collections.map(collection => ({
+            name: collection.name,
+            href: localizeHref(locale, `/${destination}/${collection.slug}`),
+            kind: 'collection' as const,
+        })),
+    };
 
     // Card labels for the hero typeahead live in the shared listings dictionary.
     const search = {
@@ -129,6 +172,7 @@ export async function DestinationHeroSection({
                 locale={locale}
                 destinationSlug={destination}
                 activities={activities}
+                searchZeroState={searchZeroState}
                 image={heroImage}
                 imageAlt={
                     heroImage

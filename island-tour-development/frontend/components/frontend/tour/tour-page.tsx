@@ -36,6 +36,15 @@ interface TourPageProps {
     destinationName: string;
     locale: Locale;
     dict: Dictionary;
+    /**
+     * A day the traveller already chose upstream, from `?date=` in the URL.
+     * Preselected in the booking widget so the question is not asked twice.
+     *
+     * Deliberately NOT part of the canonical URL (see the route's metadata):
+     * one tour must not become a separate indexable page per date anyone ever
+     * searched.
+     */
+    initialDate?: string;
 }
 
 export function TourPage({
@@ -44,6 +53,7 @@ export function TourPage({
     destinationName,
     locale,
     dict,
+    initialDate,
 }: TourPageProps) {
     return (
         <>
@@ -54,6 +64,7 @@ export function TourPage({
                     destinationName={destinationName}
                     locale={locale}
                     dict={dict}
+                    initialDate={initialDate}
                 />
             </Suspense>
         </>
