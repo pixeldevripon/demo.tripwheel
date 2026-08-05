@@ -237,58 +237,90 @@
     transition: margin-left 0.2s ease;
 }
 
-/* ─── Light mode ──────────────────────────────── */
+/*
+ * ─── shadcn tokens, mapped onto the Island Tours palette ─────────────────
+ *
+ * `frontend-tokens.css` is THE design system for this app. These names exist
+ * only because the shadcn primitives in `components/ui/` are written against
+ * them (`bg-primary`, `text-muted-foreground`, `focus-visible:ring-ring` …),
+ * and those primitives are still used on public pages - the date picker, the
+ * OTP field, the dialogs.
+ *
+ * They used to carry the DASHBOARD's purple palette, left behind when the
+ * dashboard moved to its own repo. Nothing set them back to Island Tours
+ * colours, so any shadcn primitive on a public page painted purple - most
+ * visibly the hero date picker, whose "today" cell drew a purple
+ * `--ring` (founder, 2026-08-05).
+ *
+ * Every value is now a `var(--it-*)` alias, so there is ONE palette and this
+ * block can never drift from it again. Add a colour to frontend-tokens.css,
+ * not here.
+ */
 :root {
-    --background: oklch(0.99 0.004 80);
-    --foreground: oklch(19.382% 0.11977 267.676);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.3015 0.0572 282.4176);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.3015 0.0572 282.4176);
+    /* Surfaces */
+    --background: var(--it-white);
+    --foreground: var(--it-ink);
+    --card: var(--it-white);
+    --card-foreground: var(--it-ink);
+    --popover: var(--it-white);
+    --popover-foreground: var(--it-ink);
 
-    /* Primary — purple */
-    --primary: oklch(0.5417 0.179 288.0332);
-    --primary-foreground: oklch(1 0 0);
+    /* Brand - the locked CTA orange, not the dashboard's purple */
+    --primary: var(--it-primary);
+    --primary-foreground: var(--it-primary-fg);
 
-    --secondary: oklch(0.94 0.008 80);
-    --secondary-foreground: oklch(0.3015 0.0572 282.4176);
-    --muted: oklch(0.965 0.004 80);
-    --muted-foreground: oklch(0.5426 0.0465 284.7435);
-    --accent: oklch(0.94 0.008 80);
-    --accent-foreground: oklch(0.3015 0.0572 282.4176);
-    --destructive: oklch(0.6861 0.2061 14.9941);
-    --border: oklch(0.91 0.006 80);
-    --input: oklch(0.91 0.006 80);
-    --ring: oklch(0.5417 0.179 288.0332);
+    --secondary: var(--it-surface);
+    --secondary-foreground: var(--it-ink);
+    --muted: var(--it-surface);
+    --muted-foreground: var(--it-text-muted);
+    --accent: var(--it-peach);
+    --accent-foreground: var(--it-ink);
+
+    --destructive: var(--it-error);
+    /* Referenced by `@theme inline` below but never previously declared, so
+       `text-destructive-foreground` resolved to nothing. */
+    --destructive-foreground: var(--it-primary-fg);
+
+    --border: var(--it-border);
+    --input: var(--it-border);
+    --ring: var(--it-primary);
+
+    /* SHAPE, not palette - deliberately left alone. Re-pointing this at the
+       `--it-radius-*` scale would reshape every shadcn primitive at once
+       (inputs, dialogs, calendar cells), which is a design decision rather
+       than a colour fix. */
     --radius: 0.3rem;
 
-    /* Sidebar */
-    --sidebar: oklch(0.965 0.004 80);
-    --sidebar-foreground: oklch(0.3015 0.0572 282.4176);
-    --sidebar-primary: oklch(0.5417 0.179 288.0332);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.94 0.008 80);
-    --sidebar-accent-foreground: oklch(0.3015 0.0572 282.4176);
-    --sidebar-border: oklch(0.91 0.006 80);
-    --sidebar-ring: oklch(0.5417 0.179 288.0332);
+    /* Sidebar - `components/ui/sidebar.tsx` is imported nowhere on the public
+       site. Mapped rather than deleted so the file still resolves if it is
+       ever used, and so it cannot reintroduce purple when it is. */
+    --sidebar: var(--it-surface);
+    --sidebar-foreground: var(--it-ink);
+    --sidebar-primary: var(--it-primary);
+    --sidebar-primary-foreground: var(--it-primary-fg);
+    --sidebar-accent: var(--it-peach);
+    --sidebar-accent-foreground: var(--it-ink);
+    --sidebar-border: var(--it-border);
+    --sidebar-ring: var(--it-primary);
 
-    /* Charts — purple family */
-    --chart-1: oklch(0.5417 0.179 288.0332);
-    --chart-2: oklch(0.7042 0.1602 288.988);
-    --chart-3: oklch(0.5679 0.2113 276.7065);
-    --chart-4: oklch(0.6356 0.1922 281.8054);
-    --chart-5: oklch(0.4509 0.1758 279.3838);
+    /* Charts - `components/ui/chart.tsx` is likewise unused here. Same
+       reasoning: aliased, not deleted. */
+    --chart-1: var(--it-primary);
+    --chart-2: var(--it-green);
+    --chart-3: var(--it-warning);
+    --chart-4: var(--it-ink-secondary);
+    --chart-5: var(--it-ink-muted);
 
-    /* Semantic */
-    --success: oklch(0.627 0.194 149.214);
-    --success-foreground: oklch(0.99 0.01 149);
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-foreground: oklch(0.99 0.01 70);
-    --info: oklch(0.659 0.162 248.812);
-    --info-foreground: oklch(0.99 0.01 248);
+    /* Semantic - the booking status family already lives in the design system */
+    --success: var(--it-green);
+    --success-foreground: var(--it-green-fg);
+    --warning: var(--it-warning);
+    --warning-foreground: var(--it-primary-fg);
+    --info: var(--it-ink-secondary);
+    --info-foreground: var(--it-primary-fg);
 
     /*
-     * Base font stacks (SF Pro system), under their OWN names.
+     * Base font stacks, under their OWN names.
      *
      * They cannot be declared as `--font-sans` directly: `@theme inline` below
      * emits `--font-sans: var(--font-sans)` into `:root`, which is
@@ -296,15 +328,11 @@
      * later in the cascade. `html`/`body` then compute to the browser's default
      * SERIF.
      *
-     * They must live HERE, in `:root`, and not in the `.dark` block: content
-     * inside `.frontend-root` sets its own `--it-font-*` and is unaffected
-     * either way, so a light-mode page looked fine until something rendered
-     * OUTSIDE that scope - the booking calendar and the policy modals, which
-     * portal to document.body and inherit straight from <body>.
-     *
-     * This used to resolve by accident: `var(--font-sans)` picked up the
-     * property next/font injected on <html>. Removing the unused webfonts
-     * removed that definition with them.
+     * They must live HERE, in `:root`: content inside `.frontend-root` sets its
+     * own `--it-font-*` and is unaffected either way, so a page looked fine
+     * until something rendered OUTSIDE that scope - the booking calendar and
+     * the policy modals, which portal to document.body and inherit straight
+     * from <body>.
      */
     /* Mirrors `--it-font-*` in frontend-tokens.css - keep the two files'
        stacks identical. See THE FONT SWITCH at the top of this file. */
@@ -324,56 +352,22 @@
     */
 }
 
-/* ─── Dark mode ───────────────────────────────── */
-.dark {
-    --background: oklch(14% 0.02 260);
-    --foreground: oklch(0.98 0 0);
-    --card: oklch(21% 0.018 260);
-    --card-foreground: oklch(0.98 0 0);
-    --popover: oklch(24% 0.018 260);
-    --popover-foreground: oklch(0.98 0 0);
-
-    /* Primary — same purple as light mode */
-    --primary: oklch(0.5417 0.179 288.0332);
-    --primary-foreground: oklch(0.98 0 0);
-
-    --secondary: oklch(0.25 0.015 260);
-    --secondary-foreground: oklch(0.98 0 0);
-    --muted: oklch(0.22 0.015 260);
-    --muted-foreground: oklch(0.65 0 0);
-    --accent: oklch(0.25 0.018 260);
-    --accent-foreground: oklch(0.98 0 0);
-    --destructive: oklch(0.55 0.2 25);
-    --border: oklch(0.28 0.015 260);
-    --input: oklch(0.28 0.015 260);
-    --ring: oklch(0.5417 0.179 288.0332);
-    --radius: 0.2rem;
-
-    /* Sidebar */
-    --sidebar: oklch(18% 0.02 260);
-    --sidebar-foreground: oklch(0.98 0 0);
-    --sidebar-primary: oklch(0.5417 0.179 288.0332);
-    --sidebar-primary-foreground: oklch(0.98 0 0);
-    --sidebar-accent: oklch(0.26 0.02 260);
-    --sidebar-accent-foreground: oklch(0.98 0 0);
-    --sidebar-border: oklch(0.24 0.015 260);
-    --sidebar-ring: oklch(0.5417 0.179 288.0332);
-
-    /* Charts — same purple family as light mode */
-    --chart-1: oklch(0.5417 0.179 288.0332);
-    --chart-2: oklch(0.7042 0.1602 288.988);
-    --chart-3: oklch(0.5679 0.2113 276.7065);
-    --chart-4: oklch(0.6356 0.1922 281.8054);
-    --chart-5: oklch(0.4509 0.1758 279.3838);
-
-    /* Semantic */
-    --success: oklch(0.627 0.194 149.214);
-    --success-foreground: oklch(0.2 0.05 149);
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-foreground: oklch(0.2 0.05 70);
-    --info: oklch(0.659 0.162 248.812);
-    --info-foreground: oklch(0.2 0.05 248);
-}
+/*
+ * ─── No dark mode ────────────────────────────────────────────────────────
+ *
+ * The `.dark` block that stood here carried a SECOND full palette - the
+ * dashboard's purple again - and nothing in this app ever adds the class:
+ * there is no theme toggle, no `dark` on <html>, and `frontend-tokens.css`
+ * has no dark variants at all. It could only ever have been a source of
+ * drift from the palette above.
+ *
+ * The `dark:` utilities inside `components/ui/*` are shadcn's own stock
+ * classes. They stay inert, exactly as they were - a rule that never matches
+ * costs nothing.
+ *
+ * If dark mode is ever wanted it belongs in frontend-tokens.css as `--it-*`
+ * dark values, with this file aliasing them like the block above.
+ */
 
 @theme inline {
     /*
