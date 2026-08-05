@@ -821,7 +821,10 @@ export class ToursService {
           timeOfDay: [],
         })
       : null;
-    const ci = { contains: term, mode: 'insensitive' as const };
+    // Accent-insensitive text match, as ids (see findTermMatchedTourIds). Both
+    // filters narrow by id, so they are ANDed as separate clauses rather than
+    // fighting over one `id` key - a single object cannot hold two.
+    const termMatchedTourIds = await this.findTermMatchedTourIds(term);
     const where: Prisma.TourWhereInput = {
       // Bookability gate (master §7.2): excluded from EVERY ranked result set -
       // search results included.
@@ -829,19 +832,9 @@ export class ToursService {
       isActive: true,
       isBookable: true,
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
-      ...(dateAvailableTourIds && { id: { in: dateAvailableTourIds } }),
-      OR: [
-        { name: ci },
-        {
-          translations: {
-            some: {
-              OR: [{ title: ci }, { overview: ci }],
-            },
-          },
-        },
-        { categories: { some: { category: { name: ci } } } },
-        { hubs: { some: { hub: { name: ci } } } },
-        { highlights: { some: { translations: { some: { text: ci } } } } },
+      AND: [
+        { id: { in: termMatchedTourIds } },
+        ...(dateAvailableTourIds ? [{ id: { in: dateAvailableTourIds } }] : []),
       ],
     };
     const skip = (page - 1) * limit;
@@ -956,8 +949,6 @@ export class ToursService {
       };
     }
 
-    const ci = { contains: term, mode: 'insensitive' as const };
-
     // LIVE-and-active filter, scoped to the destination when one is set.
     const liveTourWhere: Prisma.TourWhereInput = {
       status: TourStatus.LIVE,
@@ -965,25 +956,27 @@ export class ToursService {
       ...(destinationSlug && { destination: { slug: destinationSlug } }),
     };
 
-    // Same term surface as search(): name/translations/categories/hubs/highlights.
-    const termOr: Prisma.TourWhereInput[] = [
-      { name: ci },
-      {
-        translations: {
-          some: { OR: [{ title: ci }, { overview: ci }] },
-        },
-      },
-      { categories: { some: { category: { name: ci } } } },
-      { hubs: { some: { hub: { name: ci } } } },
-      { highlights: { some: { translations: { some: { text: ci } } } } },
-    ];
+    /*
+     * Same term surface as search() - name/translations/categories/hubs/
+     * highlights - and the same accent-insensitive matcher, so the panel and
+     * the results page can never disagree about what a word matches. Typing
+     * "curacao" has to find "Curaçao" in BOTH or the dropdown says "no results"
+     * for a query the results page would answer.
+     */
+    const [termMatchedTourIds, termMatchedEntities] = await Promise.all([
+      this.findTermMatchedTourIds(term),
+      this.findTermMatchedEntityIds(term, locale),
+    ]);
+    const termMatch: Prisma.TourWhereInput = {
+      id: { in: termMatchedTourIds },
+    };
 
     // Tour HITS additionally carry the §7.2 bookability gate (ranked result
     // set); category/hub suggestion gating stays on published-tour existence.
     const scopedWhere: Prisma.TourWhereInput = {
       ...liveTourWhere,
+      ...termMatch,
       isBookable: true,
-      OR: termOr,
     };
     const beyondWhere: Prisma.TourWhereInput | null = destinationSlug
       ? {
@@ -991,7 +984,7 @@ export class ToursService {
           isActive: true,
           isBookable: true,
           destination: { slug: { not: destinationSlug } },
-          OR: termOr,
+          ...termMatch,
         }
       : null;
 
@@ -1020,10 +1013,7 @@ export class ToursService {
         this.prisma.category.findMany({
           where: {
             isActive: true,
-            OR: [
-              { name: ci },
-              { translations: { some: { locale, name: ci } } },
-            ],
+            id: { in: termMatchedEntities.categories },
             tourCategories: { some: { tour: liveTourWhere } },
           },
           select: {
@@ -1046,10 +1036,7 @@ export class ToursService {
             isActive: true,
             status: HubStatus.PUBLISHED,
             ...(destinationSlug && { destination: { slug: destinationSlug } }),
-            OR: [
-              { name: ci },
-              { translations: { some: { locale, name: ci } } },
-            ],
+            id: { in: termMatchedEntities.hubs },
             tourHubs: {
               some: { tour: { status: TourStatus.LIVE, isActive: true } },
             },
@@ -1071,10 +1058,7 @@ export class ToursService {
             isActive: true,
             status: CollectionStatus.PUBLISHED,
             ...(destinationSlug && { destination: { slug: destinationSlug } }),
-            OR: [
-              { name: ci },
-              { translations: { some: { locale, name: ci } } },
-            ],
+            id: { in: termMatchedEntities.collections },
           },
           select: {
             id: true,
@@ -1196,6 +1180,101 @@ export class ToursService {
     afternoon: [12, 17], // 12:00-16:59
     evening: [17, 24], // >= 17:00
   };
+
+  /**
+   * Ids of the CATEGORIES, HUBS and COLLECTIONS whose name matches `term`
+   * accent-insensitively, in the requested locale or its base name.
+   *
+   * The tour matcher's counterpart for the panel's entity rows. Without it,
+   * "curacao" found the Curaçao tours (via `findTermMatchedTourIds`) but not
+   * the "Klein Curaçao" hub sitting above them - one panel answering the same
+   * word two different ways.
+   *
+   * One query rather than three: the buckets are read together, always.
+   */
+  private async findTermMatchedEntityIds(
+    term: string,
+    locale: Locale,
+  ): Promise<{ categories: string[]; hubs: string[]; collections: string[] }> {
+    const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const like = (col: Prisma.Sql) =>
+      Prisma.sql`immutable_unaccent(${col}) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'`;
+
+    const rows = await this.prisma.$queryRaw<{ kind: string; id: string }[]>(
+      Prisma.sql`
+        SELECT 'category' AS kind, c.id
+        FROM categories c
+        LEFT JOIN category_translations ct
+          ON ct."categoryId" = c.id AND ct.locale = ${locale}::"Locale"
+        WHERE ${like(Prisma.sql`c.name`)} OR ${like(Prisma.sql`ct.name`)}
+        UNION ALL
+        SELECT 'hub', h.id
+        FROM hubs h
+        LEFT JOIN hub_translations ht
+          ON ht."hubId" = h.id AND ht.locale = ${locale}::"Locale"
+        WHERE ${like(Prisma.sql`h.name`)} OR ${like(Prisma.sql`ht.name`)}
+        UNION ALL
+        SELECT 'collection', cl.id
+        FROM collections cl
+        LEFT JOIN collection_translations clt
+          ON clt."collectionId" = cl.id AND clt.locale = ${locale}::"Locale"
+        WHERE ${like(Prisma.sql`cl.name`)} OR ${like(Prisma.sql`clt.name`)}
+      `,
+    );
+
+    const pick = (kind: string) => [
+      ...new Set(rows.filter((r) => r.kind === kind).map((r) => r.id)),
+    ];
+    return {
+      categories: pick('category'),
+      hubs: pick('hub'),
+      collections: pick('collection'),
+    };
+  }
+
+  /**
+   * The ids of tours whose searchable text matches `term`, ACCENT-INSENSITIVELY.
+   *
+   * `ILIKE` (Prisma's `mode: 'insensitive'`) folds case but not accents, so a
+   * catalogue full of "Curaçao" returned nothing for "curacao" - the launch
+   * island's own name, typed the way almost everyone types it. Only `cura`
+   * worked, because it stops before the cedilla.
+   *
+   * Postgres has no accent-insensitive operator, so this is raw SQL over the
+   * same five fields the Prisma filter covered - name, translations
+   * (title/overview), category names, hub names, highlight text - with both
+   * sides folded through `immutable_unaccent`. The result feeds back as
+   * `id: { in: [...] }`, exactly the shape the date filter beside it already
+   * uses, so the rest of the where-clause and the ranking are untouched.
+   *
+   * NOT scoped by destination or status here: the caller's own where-clause
+   * still applies every gate, and keeping this to "does the text match" leaves
+   * one job in one place.
+   *
+   * `%` and `_` in the term are escaped - "100%" must look for a literal
+   * percent, not "anything".
+   */
+  private async findTermMatchedTourIds(term: string): Promise<string[]> {
+    const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT DISTINCT t.id
+      FROM tours t
+      LEFT JOIN tour_translations tt ON tt."tourId" = t.id
+      LEFT JOIN tour_categories tc ON tc."tourId" = t.id
+      LEFT JOIN categories c ON c.id = tc."categoryId"
+      LEFT JOIN tour_hubs th ON th."tourId" = t.id
+      LEFT JOIN hubs h ON h.id = th."hubId"
+      LEFT JOIN tour_highlights hl ON hl."tourId" = t.id
+      LEFT JOIN tour_highlight_translations hlt ON hlt."highlightId" = hl.id
+      WHERE immutable_unaccent(t.name)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+         OR immutable_unaccent(tt.title) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+         OR immutable_unaccent(tt.overview) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+         OR immutable_unaccent(c.name)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+         OR immutable_unaccent(h.name)   ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+         OR immutable_unaccent(hlt.text) ILIKE immutable_unaccent(${pattern}) ESCAPE '\\'
+    `);
+    return rows.map((r) => r.id);
+  }
 
   /**
    * Date-anchored availability filter: the distinct ids of tours (optionally
