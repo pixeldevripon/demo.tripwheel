@@ -348,20 +348,32 @@ function DefaultTourCard({
                 className={cn(
                     'flex flex-1 min-w-0 flex-col gap-1 px-3 pt-2.5 pb-3 @[220px]:px-3.5 @[220px]:pt-3 @[220px]:pb-3.5'
                 )}>
-                {/* Rating row - amber star glyph + soft count (above title). */}
-                {isRated && (
-                    <div className='flex items-center gap-1.5 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
-                        <span className='font-bold text-it-star'>
-                            ★ {tour.rating}
-                        </span>
-                        <span className='text-it-text-muted tabular-nums'>
-                            ({tour.reviewCount?.toLocaleString()})
-                        </span>
+                {/* Rating row - amber star glyph + soft count on the left, the
+                    hub eyebrow pushed to the right. mck-10 `.tc .rate` is
+                    `justify-content: space-between` with the rating (`.rr`) as
+                    its first child and the eyebrow as its second, so the pill
+                    shares this line rather than taking one of its own. The row
+                    still renders when the rating is absent - an unrated tour
+                    with a hub keeps its eyebrow. */}
+                {(isRated || tour.hub) && (
+                    <div className='flex items-center justify-between gap-2 text-[10.5px] @[220px]:text-[12.5px] leading-[1.6]'>
+                        {isRated ? (
+                            <span className='inline-flex items-center gap-1.5'>
+                                <span className='font-bold text-it-star'>
+                                    ★ {tour.rating}
+                                </span>
+                                <span className='text-it-text-muted tabular-nums'>
+                                    ({tour.reviewCount?.toLocaleString()})
+                                </span>
+                            </span>
+                        ) : (
+                            <span />
+                        )}
+                        {tour.hub && <HubEyebrow name={tour.hub.name} />}
                     </div>
                 )}
 
                 {/* Tour title */}
-                {tour.hub && <HubEyebrow name={tour.hub.name} />}
                 <h3 className='m-0 font-it-body font-bold text-[13px] @[220px]:text-[15.5px] leading-[1.3] tracking-[-0.005em] text-it-ink line-clamp-2 @[220px]:min-h-[2.6em]'>
                     {stripHubPrefix(tour.title, tour.hub?.name)}
                 </h3>
