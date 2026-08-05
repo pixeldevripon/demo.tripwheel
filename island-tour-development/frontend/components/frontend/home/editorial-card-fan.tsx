@@ -28,13 +28,23 @@ const CARDS: { key: CategoryKey; image: string }[] = [
  * The three fan positions (left / middle / right-front). Position classes carry
  * the responsive offsets; rotation is animated via framer (a class rotation
  * would snap instead of turning smoothly during a shuffle).
+ *
+ * DESKTOP mirrors the mockup's `.edfig .stack` exactly: cards at 1% / 29% / 57%
+ * of a stack 58% as wide as the band, rotated -9 / -1 / +9. Because the offsets
+ * are percentages of that stack they scale with the band, which is the whole
+ * point - on the 1152px container that lands the cards ~187px apart, so with a
+ * 210px card they only overlap ~23px and read as almost side by side. They used
+ * to be fixed 0 / 104 / 166px offsets, overlapping by 106px and 148px - far
+ * more than the design, and unevenly (client, 2026-08-05).
+ *
+ * MOBILE is deliberately untouched (client: "mobile is fine as it is").
  */
 const SLOTS = [
-    { position: 'left-[calc(50%-140px)] top-3 lg:left-0', rotate: -8, z: 10 },
-    { position: 'left-[calc(50%-78px)] top-0 lg:left-26', rotate: 0, z: 20 },
+    { position: 'left-[calc(50%-140px)] top-3 lg:left-[1%]', rotate: -9, z: 10 },
+    { position: 'left-[calc(50%-78px)] top-0 lg:left-[29%]', rotate: -1, z: 20 },
     {
-        position: 'left-[calc(50%-16px)] top-3 lg:left-[166px]',
-        rotate: 8,
+        position: 'left-[calc(50%-16px)] top-3 lg:left-[57%]',
+        rotate: 9,
         z: 30,
     },
 ];
@@ -86,7 +96,12 @@ export function EditorialCardFan({
         <div
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
-            className='relative -mx-6 h-60 sm:-mx-10 lg:absolute lg:right-12 lg:top-1/2 lg:mx-0 lg:h-70 lg:w-[376px] lg:-translate-y-1/2'>
+            /* Mockup `.edfig .stack`: right:14px, width:58% of the band, and
+               BEHIND the copy (z-1 there, the text z-3). The z matters now that
+               the deck is this wide - at the narrow end of desktop the leftmost
+               card reaches under the headline, and it has to pass behind it
+               rather than over it. */
+            className='relative -mx-6 h-60 sm:-mx-10 lg:absolute lg:right-3.5 lg:top-1/2 lg:z-[1] lg:mx-0 lg:h-70 lg:w-[58%] lg:-translate-y-1/2'>
             {CARDS.map((card, i) => {
                 const slotIndex = (i + shift) % SLOTS.length;
                 const slot = SLOTS[slotIndex];
