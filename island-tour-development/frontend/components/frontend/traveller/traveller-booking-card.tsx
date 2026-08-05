@@ -93,7 +93,7 @@ export function TravellerBookingCard({
                 )}
                 <span className='min-w-0 flex-1'>
                     <strong
-                        className={`block font-medium leading-[1.4] tracking-[-0.012em] text-it-heading ${
+                        className={`block font-bold leading-[1.4] tracking-[-0.012em] text-it-heading ${
                             variant === 'full' ? 'text-[19px]' : 'text-[17px]'
                         }`}>
                         {booking.tourName}
@@ -110,7 +110,7 @@ export function TravellerBookingCard({
                     </span>
                 </span>
                 <span className='hidden shrink-0 text-right sm:block'>
-                    <span className='block font-medium text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
+                    <span className='block font-bold text-[19px] leading-[1.3] tracking-[-0.012em] text-it-heading'>
                         {money(booking.totalRetail, booking.currency, locale)}
                     </span>
                     <span className='mt-0.5 block font-mono text-[12.5px] text-it-text-muted'>
