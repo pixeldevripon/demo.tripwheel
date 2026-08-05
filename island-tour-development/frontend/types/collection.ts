@@ -72,6 +72,8 @@ export interface CollectionRenderTour {
   bookingCount?: number;
   durationMinutesFrom: number | null;
   durationMinutesTo: number | null;
+  /** Activity hubs this tour belongs to (0 or more). The first drives the card's hub eyebrow. */
+  hubs?: { id: string; name: string; slug: string }[];
   pickupModel: string;
   pricingModel: string;
   cancellationHours: number | null;
