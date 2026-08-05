@@ -11,6 +11,7 @@ import { useDestination } from '@/hooks/destinations/use-destinations';
 import { DestinationDetailShell } from './destination-detail-shell';
 import { DestinationForm } from './destination-form';
 import { DestinationPageContentForm } from './destination-page-content-form';
+import { DestinationPopularLinksForm } from './destination-popular-links-form';
 
 interface DestinationEditViewProps {
     id: string;
@@ -55,7 +56,22 @@ export function DestinationEditView({
                     {
                         value: 'details',
                         label: 'Details',
-                        content: <DestinationForm destination={destination} />,
+                        content: (
+                            <DestinationForm
+                                destination={destination}
+                                /* Its own card + save: the hero row is a
+                                   separate replace-all resource, not a field on
+                                   the destination, so one button must not write
+                                   two endpoints. Passed as a slot so it lands
+                                   ABOVE the Danger Zone, which stays last. */
+                                afterForm={
+                                    <DestinationPopularLinksForm
+                                        destinationId={id}
+                                        destinationSlug={destination.slug}
+                                    />
+                                }
+                            />
+                        ),
                     },
                     {
                         value: 'page-content',

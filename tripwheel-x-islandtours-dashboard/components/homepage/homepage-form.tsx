@@ -108,9 +108,10 @@ function toSlots(cards: HomePageContent['editorialCards']): CardValues[] {
 }
 
 /**
- * Which stored slots the site is serving WITHOUT their link, because the
- * category has nothing bookable on the banner's island. Keyed by slot index,
- * which is the deck's own order.
+ * Which stored slots the site is serving WITHOUT their link, because the target
+ * page would not open on the banner's island - for a category, that is master
+ * §2.4's 3-live-tour bar, not merely "has a tour". Keyed by slot index, which is
+ * the deck's own order.
  */
 function unlinkableSlots(
     cards: HomePageContent['editorialCards']
@@ -459,8 +460,8 @@ function EditorialCardSlot({
                     <p className='text-xs font-medium text-danger-fg'>
                         Not linked - this page would not open
                         {islandSlug ? ` on ${islandSlug}` : ' on that island'}
-                        (a category needs a live tour there; a hub must belong
-                        to that island). The card still shows.
+                        (a category page needs at least 3 live tours there; a
+                        hub must belong to that island). The card still shows.
                     </p>
                 )}
 
