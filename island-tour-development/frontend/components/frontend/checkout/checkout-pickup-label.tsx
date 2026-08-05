@@ -125,7 +125,7 @@ export function CheckoutSummaryTotals({
     const money = (n: number) => formatCheckoutMoney(n, currency, locale);
     const row =
         'flex items-center justify-between gap-1 text-[14px] leading-[1.6] text-it-ink';
-    const amt = 'font-medium tabular-nums';
+    const amt = 'font-bold tabular-nums';
     return (
         <>
             {/* Per-line breakdown (participants, extras, pickup) - the same
@@ -141,7 +141,7 @@ export function CheckoutSummaryTotals({
                     <div className='h-px w-full bg-it-divider' />
                 </>
             )}
-            <div className={`${row} text-[15px] font-medium`}>
+            <div className={`${row} text-[15px] font-bold`}>
                 <span>{labels.total}</span>
                 <span className='tabular-nums'>{money(t.total)}</span>
             </div>

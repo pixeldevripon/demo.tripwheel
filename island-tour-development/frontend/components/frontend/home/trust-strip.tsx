@@ -25,7 +25,7 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
                 />
             </div>
             <div className='flex flex-col'>
-                <h3 className='m-0 font-it-body font-medium text-[15px] leading-[1.6] tracking-[-0.005em] text-it-ink'>
+                <h3 className='m-0 font-it-body font-bold text-[15px] leading-[1.6] tracking-[-0.005em] text-it-ink'>
                     {item.title}
                 </h3>
                 <p className='m-0 text-[13px] leading-[1.45] text-it-text-muted'>
@@ -38,7 +38,7 @@ function TrustCard({ icon, item }: { icon: string; item: TrustItem }) {
 
 export function TrustStrip({ items }: { items: TrustItem[] }) {
     return (
-        <section className='bg-it-white it-section'>
+        <section className='bg-it-white pt-7  md:pt-10'>
             <div className='it-container'>
                 {/* 3 in a row on desktop; stacked cells on mobile (design v2
                     microbar - no carousel). */}

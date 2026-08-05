@@ -59,7 +59,7 @@ export function ThankYouNextSteps({
             className={`bg-it-white pt-14 ${flushBottom ? 'pb-2' : 'pb-14'}`}>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 mb-7 text-center font-it-display text-[clamp(20px,2.4vw,26px)] font-medium leading-[1.2] tracking-[-0.013em] text-it-ink'>
+                    <h2 className='m-0 mb-7 text-center font-it-display text-[clamp(20px,2.4vw,26px)] font-bold leading-[1.2] tracking-[-0.013em] text-it-ink'>
                         {dict.nextTitle}
                     </h2>
                 </Reveal>
@@ -76,7 +76,7 @@ export function ThankYouNextSteps({
                                         className={`h-0.5 bg-it-divider ${steps.length === 3 ? 'w-[120px]' : 'w-[150px]'}`}
                                     />
                                 )}
-                                <span className='grid size-[34px] place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[14px] font-medium text-it-text-muted tabular-nums'>
+                                <span className='grid size-[34px] place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[14px] font-bold text-it-text-muted tabular-nums'>
                                     {i + 1}
                                 </span>
                             </Fragment>
@@ -92,10 +92,10 @@ export function ThankYouNextSteps({
                             {/* .stepcard: white bordered card; on mobile the
                                 number rides top-left as the outline circle. */}
                             <div className='relative h-full rounded-it-md border border-it-divider bg-it-white py-[18px] pl-[58px] pr-5 shadow-it-sm md:px-5'>
-                                <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-medium text-it-text-muted tabular-nums md:hidden'>
+                                <span className='absolute top-4 left-4 grid size-7 place-items-center rounded-it-full border-2 border-it-border bg-it-white text-[12.5px] font-bold text-it-text-muted tabular-nums md:hidden'>
                                     {i + 1}
                                 </span>
-                                <b className='block text-[14.5px] font-medium leading-[1.5] text-it-ink'>
+                                <b className='block text-[14.5px] font-bold leading-[1.5] text-it-ink'>
                                     {step.title}
                                 </b>
                                 {step.sub && (

@@ -36,7 +36,7 @@ export function RotatingSearchPlaceholder({
     return (
         <span
             aria-hidden='true'
-            className='pointer-events-none absolute inset-0 flex items-center gap-1.5 overflow-hidden text-[13.5px] font-medium text-it-ink-muted'>
+            className='pointer-events-none absolute inset-0 flex items-center gap-1.5 overflow-hidden text-[13.5px] font-bold text-it-ink-muted'>
             <span className='shrink-0'>{prefix}</span>
             <span className='relative min-w-0 flex-1 self-stretch overflow-hidden'>
                 <AnimatePresence initial={false} mode='popLayout'>
@@ -67,3 +67,4 @@ export function RotatingSearchPlaceholder({
         </span>
     );
 }
+

@@ -39,7 +39,7 @@ export function TourReviews({
 }) {
     return (
         <section className='rounded-it-lg bg-it-bg px-[22px] py-5'>
-            <h2 className='m-0 mb-3 font-it-display text-[18px] font-medium leading-[1.2] tracking-[-0.01em] text-it-ink'>
+            <h2 className='m-0 mb-3 font-it-display text-[18px] font-bold leading-[1.2] tracking-[-0.01em] text-it-ink'>
                 {dict.title}
             </h2>
             <div className='grid gap-3 md:grid-cols-2'>
@@ -63,7 +63,7 @@ function ReviewCard({
     return (
         <article className='h-full rounded-it-md border border-it-divider bg-it-white px-4 py-3.5'>
             <div className='flex flex-wrap items-center gap-2 text-[12.5px] leading-[1.6] text-it-text-muted'>
-                <span className='font-medium text-it-star'>
+                <span className='font-bold text-it-star'>
                     ★ {review.rating.toFixed(1)}
                 </span>
                 <span>

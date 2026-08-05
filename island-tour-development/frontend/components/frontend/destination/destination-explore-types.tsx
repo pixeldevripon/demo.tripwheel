@@ -88,16 +88,16 @@ export function DestinationExploreTypes({
                     {/* Section head: kicker + title left, all-tours link right */}
                     <div className='flex items-end justify-between gap-6'>
                         <div>
-                            <div className='mb-2 text-[11.5px] font-medium uppercase tracking-[0.13em] text-it-primary-hover'>
+                            <div className='mb-2 text-[11.5px] font-bold uppercase tracking-[0.13em] text-it-primary-hover'>
                                 {destinationName}
                             </div>
-                            <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-medium text-it-ink'>
+                            <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-bold text-it-ink'>
                                 {dict.title}
                             </h2>
                         </div>
                         <Link
                             href={allToursHref}
-                            className='whitespace-nowrap text-sm font-medium text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
+                            className='whitespace-nowrap text-sm font-bold text-it-primary-hover underline underline-offset-[3px] max-sm:hidden'>
                             {dict.allTours.replace(
                                 '{destination}',
                                 destinationName
@@ -136,7 +136,7 @@ export function DestinationExploreTypes({
                                                     />
                                                 )}
                                             </div>
-                                            <b className='mt-2.5 block text-[14.5px] font-medium tracking-[-0.005em] text-it-ink'>
+                                            <b className='mt-2.5 block text-[14.5px] font-bold tracking-[-0.005em] text-it-ink'>
                                                 {cat.name}
                                             </b>
                                             <span className='text-[12.5px] leading-[1.6] text-it-text-muted tabular-nums'>

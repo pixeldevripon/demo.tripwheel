@@ -391,7 +391,7 @@ export function TravelerLogin({
 
             {/* ── Minimal footer ───────────────────────────────────────────── */}
             <footer className='flex flex-col items-center gap-2 px-5 pb-8.5 pt-6.5 text-[12.5px] text-it-text-muted'>
-                <div className='font-it-display text-[15px] font-medium text-it-ink'>
+                <div className='font-it-display text-[15px] font-bold text-it-ink'>
                     {dict.tagline}
                 </div>
                 <div className='flex gap-3.5'>

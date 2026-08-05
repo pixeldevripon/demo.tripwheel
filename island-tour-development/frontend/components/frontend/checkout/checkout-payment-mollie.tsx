@@ -226,13 +226,13 @@ export function CheckoutPaymentMollie({
                         e.preventDefault();
                         void handlePay();
                     }}>
-                    <span className='mt-0.5 mb-2.5 text-[13.5px] font-medium leading-[1.5] text-it-ink'>
+                    <span className='mt-0.5 mb-2.5 text-[13.5px] font-bold leading-[1.5] text-it-ink'>
                         {dict.selectPaymentMethod}
                     </span>
                     <SecureCheckoutRow psp='Mollie' dict={dict} />
                     <div className='flex w-full items-center gap-3 rounded-t-it-md border-[1.5px] border-b-0 border-it-border bg-it-primary-subtle px-4 py-3.5'>
                         <Radio selected />
-                        <span className='text-[14px] font-medium leading-[1.5] text-it-ink'>
+                        <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
                             {dict.card}
                         </span>
                         <Image
@@ -283,7 +283,7 @@ export function CheckoutPaymentMollie({
                 <div className='flex items-start gap-3 rounded-it-md border-[1.5px] border-it-border bg-it-primary-subtle px-4 py-3.5'>
                     <Radio selected />
                     <div className='flex min-w-0 flex-col gap-1'>
-                        <span className='text-[14px] font-medium leading-[1.5] text-it-ink'>
+                        <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
                             {dict.hostedCheckoutTitle}
                         </span>
                         <span className='text-[12.5px] leading-[1.6] text-it-text-muted'>

@@ -77,12 +77,12 @@ export function CollectionHero({
                         <div className='flex flex-col'>
                             {eyebrow && (
                                 <p
-                                    className={`m-0 text-[11.5px] font-medium uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85' : 'text-it-primary-hover'}`}>
+                                    className={`m-0 text-[11.5px] font-bold uppercase tracking-[0.14em] ${heroImage ? 'text-it-white/85' : 'text-it-primary-hover'}`}>
                                     {eyebrow}
                                 </p>
                             )}
                             <h1
-                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-medium leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white' : 'text-it-ink'}`}>
+                                className={`m-0 mt-2 font-it-display text-[clamp(26px,3.6vw,38px)] font-bold leading-[1.1] tracking-[-0.015em] ${heroImage ? 'text-it-white' : 'text-it-ink'}`}>
                                 {title}
                             </h1>
                             {subtitle && (

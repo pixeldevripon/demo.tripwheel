@@ -16,12 +16,12 @@ import { useId, type ReactNode } from 'react';
  * borders on inputs in any state (focus swaps to the orange primary).
  */
 
-export const labelClass = 'text-[13px] font-medium leading-[1.5] text-it-ink';
+export const labelClass = 'text-[13px] font-bold leading-[1.5] text-it-ink';
 export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
 export const inputBase =
     'w-full rounded-it-sm border bg-it-white px-[13px] text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
 export const titleClass =
-    'font-it-display text-[17px] font-medium leading-[1.3] tracking-[-0.01em] text-it-ink';
+    'font-it-display text-[17px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink';
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -381,7 +381,7 @@ export function CtaButton({
             aria-busy={disabled || undefined}
             whileTap={disabled ? undefined : { scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[16px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
+            className={`flex w-full items-center justify-center gap-[9px] rounded-it-sm border-none bg-it-primary p-[15px] text-[16px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover ${
                 disabled ? 'cursor-default opacity-90' : 'cursor-pointer'
             }`}>
             {children}
@@ -404,7 +404,7 @@ export function SecureCheckoutRow({
     dict: { secureCheckout: string; poweredBy: string };
 }) {
     return (
-        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-medium leading-[1.5] text-it-ink'>
+        <div className='mb-3.5 flex items-center gap-2.5 rounded-it-md border border-it-border bg-it-bg px-3.5 py-[11px] text-[13px] font-bold leading-[1.5] text-it-ink'>
             <Image
                 src='/icons/checkout/lock-ink.svg'
                 alt=''
@@ -413,7 +413,7 @@ export function SecureCheckoutRow({
                 className='size-4 shrink-0'
             />
             {dict.secureCheckout}
-            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-medium tracking-[0.02em] text-it-white'>
+            <span className='ml-auto inline-flex items-center gap-1 rounded-[4px] bg-[#425466] px-[9px] py-1 text-[10.5px] font-bold tracking-[0.02em] text-it-white'>
                 {dict.poweredBy} <b>{psp}</b>
             </span>
         </div>
@@ -560,7 +560,7 @@ export function SectionBadge({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={springPop}
-                        className={`text-[12.5px] font-medium leading-none tabular-nums ${
+                        className={`text-[12.5px] font-bold leading-none tabular-nums ${
                             state === 'active'
                                 ? 'text-it-white'
                                 : 'text-it-text-muted'

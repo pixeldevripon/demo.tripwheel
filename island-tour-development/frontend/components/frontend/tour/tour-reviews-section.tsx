@@ -414,7 +414,7 @@ export function TourReviewsSection({
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
-                    <h2 className='m-0 font-it-display text-[21px] font-medium leading-[1.2] tracking-[-0.012em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[21px] font-bold leading-[1.2] tracking-[-0.012em] text-it-ink'>
                         {dict.title}
                     </h2>
                     <p className='m-0 flex flex-wrap items-center gap-[7px] text-[13px] leading-[1.6] text-it-text-muted'>
@@ -464,7 +464,7 @@ export function TourReviewsSection({
                         // Only reachable with `source === 'tour'`, which LD11
                         // guarantees means >= 3 reviews and a real rating.
                         <div className='flex flex-col'>
-                            <div className='m-0 font-it-display text-[44px] font-medium leading-none tracking-[-0.02em] text-it-ink'>
+                            <div className='m-0 font-it-display text-[44px] font-bold leading-none tracking-[-0.02em] text-it-ink'>
                                 <span className='align-[6px] text-[26px] text-it-star'>
                                     ★
                                 </span>{' '}
@@ -866,7 +866,7 @@ function ReviewCard({
                 <div className='flex items-center gap-2.5'>
                     <span
                         aria-hidden='true'
-                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-medium text-it-primary-hover'>
+                        className='grid size-[34px] shrink-0 place-items-center rounded-it-full bg-it-bg text-[12px] font-bold text-it-primary-hover'>
                         {review.name
                             .split(/\s+/)
                             .map(part => part[0])
@@ -876,7 +876,7 @@ function ReviewCard({
                     </span>
                     <div className='flex flex-col text-[13px] leading-[1.5] text-it-text-muted'>
                         <span className='flex flex-wrap items-center gap-x-2'>
-                            <b className='text-[13.5px] font-medium text-it-ink'>
+                            <b className='text-[13.5px] font-bold text-it-ink'>
                                 {review.name}
                             </b>
                             {review.date}

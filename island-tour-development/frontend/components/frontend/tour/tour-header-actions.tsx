@@ -60,7 +60,7 @@ export function TourHeaderActions({
     // Design v2 .wtool pills: bordered white pills above the booking widget
     // (GAP-18), 13px bold, paper hover.
     const actionClass =
-        'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-medium leading-[1.2] text-it-ink transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg';
+        'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-bold leading-[1.2] text-it-ink transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg';
     const actionLabel = '';
 
     return (

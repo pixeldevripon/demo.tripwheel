@@ -143,7 +143,7 @@ export function DepartureTimes() {
                                         : 'cursor-pointer'
                                 }`}>
                                 <span
-                                    className={`whitespace-nowrap text-[14px] font-medium leading-[1.6] tabular-nums ${
+                                    className={`whitespace-nowrap text-[14px] font-bold leading-[1.6] tabular-nums ${
                                         isSelected
                                             ? 'text-it-primary-hover'
                                             : 'text-it-ink'
