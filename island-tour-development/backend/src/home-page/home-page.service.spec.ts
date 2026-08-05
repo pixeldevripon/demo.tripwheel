@@ -4,7 +4,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { FaqPageType, Locale } from '@prisma/client';
+import { Currency, FaqPageType, Locale, Prisma } from '@prisma/client';
 import { HomePageService } from './home-page.service';
 
 function createMockPrismaService() {
@@ -85,24 +85,28 @@ describe('HomePageService', () => {
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
         },
         {
-          // Identity conversion: the starting-price maths under test is the
-          // per-currency minimum, not the FX rate itself (that has its own
-          // suite), so the fake echoes the amount back unconverted.
+          /*
+           * A REAL rate (1 USD = 0.90 EUR), not an identity echo.
+           *
+           * This used to echo the amount back unconverted, which meant the
+           * suite structurally could not tell a converted comparison from an
+           * unconverted one - the exact bug the starting-price code exists to
+           * prevent. With a real rate, picking the cheapest before converting
+           * gives a different answer than picking it after, so the test can
+           * actually see the difference.
+           */
           provide: FxRatesService,
           useValue: {
-            buildMoney: jest.fn(
-              (
-                sourceCurrency: unknown,
-                targetCurrency: unknown,
-                amounts: { priceFrom?: { toString(): string } | null },
-              ) =>
-                Promise.resolve({
-                  currency: targetCurrency,
-                  sourceCurrency,
-                  fxRate: '1',
-                  priceFrom: amounts.priceFrom?.toString() ?? null,
-                  basePrice: null,
-                }),
+            getDisplayRate: jest.fn((from: Currency, to: Currency) =>
+              Promise.resolve(
+                from === to
+                  ? null
+                  : {
+                      rate: new Prisma.Decimal(
+                        from === Currency.USD ? '0.9' : '1.111111',
+                      ),
+                    },
+              ),
             ),
           },
         },
@@ -267,6 +271,107 @@ describe('HomePageService', () => {
           categorySlug: 'buggy-tours',
           priceFrom: null,
           priceCurrency: null,
+        });
+      });
+
+      /**
+       * The starting price. The interesting case is not "does it find a
+       * minimum" but "does it compare the RIGHT way": operators price in their
+       * own currency, so the cheapest number and the cheapest tour are not the
+       * same thing.
+       */
+      describe('starting price', () => {
+        /** 100 USD (= 90 EUR) and 95 EUR behind the same card. */
+        function mixedCurrencyTours() {
+          prisma.destination.findMany.mockResolvedValue([CURACAO]);
+          prisma.tourCategory.findMany.mockResolvedValue([
+            {
+              categoryId: 'cat-1',
+              tour: {
+                priceFrom: new Prisma.Decimal('100'),
+                defaultCurrency: Currency.USD,
+              },
+            },
+            {
+              categoryId: 'cat-1',
+              tour: {
+                priceFrom: new Prisma.Decimal('95'),
+                defaultCurrency: Currency.EUR,
+              },
+            },
+          ]);
+          prisma.homePage.findUnique.mockResolvedValue(
+            homeWithCards([
+              {
+                id: 'c1',
+                imageUrl: 'https://cdn/buggy.jpg',
+                categoryId: 'cat-1',
+                isLink: true,
+                displayOrder: 0,
+                category: buggy,
+              },
+            ]),
+          );
+        }
+
+        it('converts before comparing, so the cheapest TOUR wins - not the smallest number', async () => {
+          mixedCurrencyTours();
+
+          const [card] = (await service.getPublic(Locale.en, Currency.EUR))
+            .editorialCards;
+
+          // 100 USD converts to 90 EUR, which beats the 95 EUR tour. Comparing
+          // the raw amounts first would have picked 95 - smaller as a number,
+          // more expensive as a price.
+          expect(card.priceFrom).toBe('90');
+          expect(card.priceCurrency).toBe(Currency.EUR);
+        });
+
+        it('still compares in ONE currency when the shopper currency is omitted', async () => {
+          mixedCurrencyTours();
+
+          const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+          // The param is optional, and the tempting fallback - convert each
+          // source to itself - converts nothing, putting us back to comparing
+          // raw mixed amounts. It falls back to the platform base instead.
+          expect(card.priceFrom).toBe('90');
+          expect(card.priceCurrency).toBe(Currency.EUR);
+        });
+
+        it('gives an archived category no price, just as it gives it no name or link', async () => {
+          prisma.destination.findMany.mockResolvedValue([CURACAO]);
+          prisma.tourCategory.findMany.mockResolvedValue([
+            {
+              categoryId: 'cat-1',
+              tour: {
+                priceFrom: new Prisma.Decimal('100'),
+                defaultCurrency: Currency.EUR,
+              },
+            },
+          ]);
+          prisma.homePage.findUnique.mockResolvedValue(
+            homeWithCards([
+              {
+                id: 'c1',
+                imageUrl: 'https://cdn/buggy.jpg',
+                categoryId: 'cat-1',
+                isLink: true,
+                displayOrder: 0,
+                category: { ...buggy, isActive: false },
+              },
+            ]),
+          );
+
+          const [card] = (await service.getPublic(Locale.en, Currency.EUR))
+            .editorialCards;
+
+          // A page we have decided must not be advertised must not be
+          // advertised by its price either.
+          expect(card.name).toBeNull();
+          expect(card.categorySlug).toBeNull();
+          expect(card.priceFrom).toBeNull();
+          expect(card.priceCurrency).toBeNull();
         });
       });
 

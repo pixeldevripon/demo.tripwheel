@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { useClickOutside } from '../navbar/lib/use-click-outside';
@@ -92,6 +92,12 @@ export function EditorialCardFan({
      */
     const [front, setFront] = useState<number | null>(null);
     const [lifted, setLifted] = useState<number | null>(null);
+    /*
+     * A visitor who asked for less motion still gets the restack - that is the
+     * information the click carries - but not the travel. Same treatment the
+     * rest of the site's click-driven animations get.
+     */
+    const reduceMotion = useReducedMotion();
     const ref = useRef<HTMLDivElement>(null);
     /*
      * A pointerdown listener rather than the button's own `onBlur`: Safari does
@@ -161,8 +167,12 @@ export function EditorialCardFan({
                         zIndex: isFront ? FRONT_Z : DEFAULT_Z[i],
                         rotate: slot.rotate,
                     },
-                    animate: { scale: isLifted ? 1.05 : 1, y: isLifted ? -8 : 0 },
-                    whileTap: { scale: isLifted ? 1.03 : 0.98 },
+                    animate: reduceMotion
+                        ? { scale: 1, y: 0 }
+                        : { scale: isLifted ? 1.05 : 1, y: isLifted ? -8 : 0 },
+                    whileTap: reduceMotion
+                        ? undefined
+                        : { scale: isLifted ? 1.03 : 0.98 },
                     transition: {
                         scale: { duration: 0.45, ease: LIFT_EASE },
                         y: { duration: 0.45, ease: LIFT_EASE },
@@ -202,7 +212,7 @@ export function EditorialCardFan({
                         key={card.key}
                         type='button'
                         aria-label={`Bring ${title} to the front`}
-                        aria-pressed={front === i}
+                        aria-pressed={isFront}
                         onClick={() => {
                             setFront(i);
                             setLifted(i);
