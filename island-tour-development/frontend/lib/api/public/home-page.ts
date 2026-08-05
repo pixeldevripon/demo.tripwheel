@@ -18,7 +18,7 @@ import 'server-only';
 
 import { cacheLife, cacheTag } from 'next/cache';
 
-import type { Locale } from '@/lib/constants/locales';
+import type { Currency, Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
 
 import { buildQuery, publicGet } from './fetch';
@@ -44,6 +44,14 @@ export interface PublicEditorialCard {
     image: string;
     name: string | null;
     categorySlug: string | null;
+    /**
+     * The cheapest live tour behind this card on the banner's island, ALREADY
+     * converted to the requested currency by the backend (the frontend never
+     * computes FX). Null when nothing bookable sits behind the card - the card
+     * then renders without a price line rather than showing a zero.
+     */
+    priceFrom: string | null;
+    priceCurrency: Currency | null;
 }
 
 export interface PublicHomePage {
@@ -110,13 +118,14 @@ function emptyHomePage(locale: Locale): PublicHomePage {
  */
 export async function getHomePageContent(
     locale: Locale = DEFAULT_LOCALE,
+    currency?: Currency,
 ): Promise<PublicHomePage> {
     'use cache';
     cacheLife('days');
     cacheTag('homepage');
 
     const res = await publicGet<Partial<PublicHomePage>>(
-        `/home-page/public${buildQuery({ locale })}`,
+        `/home-page/public${buildQuery({ locale, currency })}`,
     );
 
     return normalize(res, locale);

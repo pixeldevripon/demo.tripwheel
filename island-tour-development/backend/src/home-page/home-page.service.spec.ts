@@ -1,4 +1,5 @@
 import { FaqGroupService } from '@/common/faq/faq-group.service';
+import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -29,6 +30,9 @@ function createMockPrismaService() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     hub: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    tourHub: {
       findMany: jest.fn().mockResolvedValue([]),
     },
     // The card gate: which categories have a LIVE tour on the banner's island.
@@ -79,6 +83,28 @@ describe('HomePageService', () => {
         {
           provide: ContentTranslationEnqueuer,
           useValue: { enqueue: jest.fn(), enqueueForPageType: jest.fn() },
+        },
+        {
+          // Identity conversion: the starting-price maths under test is the
+          // per-currency minimum, not the FX rate itself (that has its own
+          // suite), so the fake echoes the amount back unconverted.
+          provide: FxRatesService,
+          useValue: {
+            buildMoney: jest.fn(
+              (
+                sourceCurrency: unknown,
+                targetCurrency: unknown,
+                amounts: { priceFrom?: { toString(): string } | null },
+              ) =>
+                Promise.resolve({
+                  currency: targetCurrency,
+                  sourceCurrency,
+                  fxRate: '1',
+                  priceFrom: amounts.priceFrom?.toString() ?? null,
+                  basePrice: null,
+                }),
+            ),
+          },
         },
       ],
     }).compile();
@@ -239,6 +265,8 @@ describe('HomePageService', () => {
           image: 'https://cdn/buggy.jpg',
           name: 'Buggy Tours',
           categorySlug: 'buggy-tours',
+          priceFrom: null,
+          priceCurrency: null,
         });
       });
 
@@ -384,6 +412,8 @@ describe('HomePageService', () => {
           image: 'https://cdn/buggy.jpg',
           name: null,
           categorySlug: null,
+          priceFrom: null,
+          priceCurrency: null,
         });
       });
     });

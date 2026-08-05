@@ -67,7 +67,7 @@ export class HomePageController {
   @Public()
   @ApiGetPublicHomePageDocs()
   getPublic(@Query() query: HomePageLocaleQueryDto) {
-    return this.homePage.getPublic(query.locale!);
+    return this.homePage.getPublic(query.locale!, query.currency);
   }
 
   @Get('translations')

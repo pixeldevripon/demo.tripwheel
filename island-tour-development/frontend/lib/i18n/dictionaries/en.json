@@ -116,7 +116,8 @@
                 "buggy": "Buggy tours",
                 "snorkel": "Snorkel trips",
                 "catamaran": "Catamaran trips"
-            }
+            },
+            "from": "from"
         },
         "faq": {
             "title": "Need help before booking?",

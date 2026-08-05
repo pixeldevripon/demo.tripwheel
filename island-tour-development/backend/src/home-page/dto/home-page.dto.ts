@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Locale } from '@prisma/client';
+import { Currency, Locale } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -80,6 +80,18 @@ export class PublicEditorialCardDto {
       'different islands.',
   })
   categorySlug!: string | null;
+
+  @ApiPropertyOptional({
+    example: 'from 135.00',
+    nullable: true,
+    description:
+      "The card target's cheapest live tour on the banner's island, converted " +
+      'to the requested currency. Null when nothing bookable sits behind it.',
+  })
+  priceFrom!: string | null;
+
+  @ApiPropertyOptional({ enum: Currency, nullable: true })
+  priceCurrency!: Currency | null;
 }
 
 /**
@@ -303,6 +315,17 @@ export class HomePageLocaleQueryDto {
   @IsOptional()
   @IsEnum(Locale)
   locale?: Locale = Locale.en;
+
+  @ApiPropertyOptional({
+    enum: Currency,
+    description:
+      "Shopper display currency. The editorial cards' starting prices are " +
+      'converted into it (guide §20.9); omitted, they stay in the tour source ' +
+      'currency.',
+  })
+  @IsOptional()
+  @IsEnum(Currency)
+  currency?: Currency;
 }
 
 // ── Request DTOs ──────────────────────────────────────────────────────────────
