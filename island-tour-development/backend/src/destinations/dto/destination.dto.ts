@@ -626,7 +626,10 @@ export class PopularLinkAdminResponseDto {
   @ApiProperty({ example: '5f1c…' })
   id!: string;
 
-  @ApiProperty({ example: 0, description: '0-3, left to right as rendered.' })
+  @ApiProperty({
+    example: 0,
+    description: 'Zero-based, left to right as rendered.',
+  })
   displayOrder!: number;
 
   @ApiPropertyOptional({ example: '2bdc…', nullable: true })
@@ -674,7 +677,7 @@ export class ReplacePopularLinksDto {
   @ApiProperty({
     type: [PopularLinkInputDto],
     description:
-      'Up to 4 slots, in render order. Empty clears the curation and the island ' +
+      'Up to 8 slots, in render order. Empty clears the curation and the island ' +
       'falls back to the automatic hub -> lead collection -> categories row.',
   })
   @IsArray()

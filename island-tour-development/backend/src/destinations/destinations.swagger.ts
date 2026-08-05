@@ -497,7 +497,7 @@ export function ApiGetPopularLinksDocs() {
         'Returns the admin-curated links, localized and RE-GATED against each ' +
         "target's own visibility rule - a category needs 3 live tours here, a hub " +
         'must be published with a live tour, a collection must be published. A ' +
-        'target whose page would not open is dropped, never linked. Max 4. An ' +
+        'target whose page would not open is dropped, never linked. Max 8. An ' +
         'empty array means "not curated": the caller composes the automatic row ' +
         '(hub, lead collection, then categories) instead.',
     }),
@@ -540,7 +540,7 @@ export function ApiReplacePopularLinksDocs() {
     ApiResponse({
       status: 400,
       description:
-        'More than 4 slots, a slot naming none or several targets, or an ' +
+        'More than 8 slots, a slot naming none or several targets, or an ' +
         'unknown / off-island target',
       type: BadRequestErrorDto,
     }),

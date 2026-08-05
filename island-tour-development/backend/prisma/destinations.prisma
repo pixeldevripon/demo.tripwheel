@@ -352,7 +352,7 @@ model FeaturedExperience {
 
 // Admin-curated "Popular" quick links under the destination hero search (mck-02:
 // "Popular: Klein Curaçao · Best Things to Do in Curaçao · Off-Road Tours ·
-// Boat Tours & Cruises"). At most four.
+// Boat Tours & Cruises"). Capped in the service (POPULAR_LINK_MAX).
 //
 // Each link is a page in THIS island's flat `/{destination}/{slug}` namespace -
 // a hub, a collection or a category - so one row shape covers all three, the
@@ -390,7 +390,7 @@ model DestinationPopularLink {
   collectionId String?
   collection   Collection? @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
-  // 0-3, left to right as rendered.
+  // Zero-based, left to right as rendered.
   displayOrder Int @default(0)
 
   createdAt DateTime @default(now())

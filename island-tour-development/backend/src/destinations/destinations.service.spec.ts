@@ -30,7 +30,7 @@ import {
   Region,
   SlugEntityType,
 } from '@prisma/client';
-import { DestinationService } from './destinations.service';
+import { DestinationService, POPULAR_LINK_MAX } from './destinations.service';
 import {
   CreateDestinationDto,
   CreateDestinationFaqDto,
@@ -1612,8 +1612,10 @@ describe('DestinationService', () => {
       ).resolves.toHaveLength(1);
     });
 
-    it('caps the row at four even if more rows survived', async () => {
-      const slots = Array.from({ length: 6 }, (_, i) =>
+    it('caps the row at POPULAR_LINK_MAX even if more rows survived', async () => {
+      // A row saved under an older, higher cap must not overflow the current
+      // one - the read side enforces it too, not just the write side.
+      const slots = Array.from({ length: POPULAR_LINK_MAX + 3 }, (_, i) =>
         categorySlot(`cat-${i}`, `slug-${i}`, `Cat ${i}`),
       );
       prisma.destinationPopularLink.findMany.mockResolvedValue(slots);
@@ -1623,7 +1625,7 @@ describe('DestinationService', () => {
 
       await expect(
         service.getPopularLinks('curacao', Locale.en),
-      ).resolves.toHaveLength(4);
+      ).resolves.toHaveLength(POPULAR_LINK_MAX);
     });
 
     it('prefers the locale name so the label matches the page it opens', async () => {
@@ -1676,11 +1678,13 @@ describe('DestinationService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('rejects more than four slots', async () => {
+    it('rejects more slots than the cap allows', async () => {
       await expect(
         service.replacePopularLinks(
           'dest-1',
-          Array.from({ length: 5 }, (_, i) => ({ categoryId: `c${i}` })),
+          Array.from({ length: POPULAR_LINK_MAX + 1 }, (_, i) => ({
+            categoryId: `c${i}`,
+          })),
           'admin-1',
         ),
       ).rejects.toThrow(BadRequestException);

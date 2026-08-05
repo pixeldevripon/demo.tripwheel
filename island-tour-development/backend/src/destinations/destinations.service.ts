@@ -62,11 +62,21 @@ import {
 import type { PopularLinkInputDto } from './dto/destination.dto';
 
 /**
- * The hero row holds four links (mck-02). Enforced on write so an admin cannot
- * curate a fifth that silently never renders, and again on read so a row saved
- * before this cap could not overflow it.
+ * Ceiling on the curated hero row.
+ *
+ * mck-02 draws four, and four is still the shape to aim for - the row is one
+ * line of text under the search box, and every extra link buys less attention
+ * for the ones already there. This is a guard rail, not a target: it exists so
+ * a runaway save cannot put forty links in the hero, and it sits high enough
+ * that an island with several strong hubs is not forced to drop one.
+ *
+ * The row is inline text and wraps, so going past four costs layout nothing -
+ * it costs focus.
+ *
+ * Enforced on write, and again on read so a row saved under an older, higher
+ * cap cannot overflow this one.
  */
-export const POPULAR_LINK_MAX = 4;
+export const POPULAR_LINK_MAX = 8;
 
 @Injectable()
 export class DestinationService {
