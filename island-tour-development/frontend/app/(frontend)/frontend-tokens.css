@@ -109,13 +109,17 @@
     /* ── Typography ─────────────────────────────────────────────────────── */
 
     /* SF Pro system stacks - no webfont; the system UI family everywhere. */
-    /* The self-hosted 'SF Pro Display' webfont FIRST (@font-face in
-       globals.css), system tokens as fallback (client, 2026-08-04: every
-       platform must render and report SF Pro, not "system-ui"). Body uses
-       Display too - only Display cuts were provided; the SF Pro Text token
-       stays as an Apple-device fallback should the webfont ever fail. */
+    /* Self-hosted webfonts declared in globals.css (@font-face), system
+       stack as fallback. The mockup's pairing: Bricolage Grotesque for
+       display, Source Sans 3 for body (founder 2026-08-04). See THE FONT
+       SWITCH at the top of globals.css - roll back by swapping the two
+       lines below for the commented pair. */
+    --it-font-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --it-font-body:    'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    /* ROLLBACK to SF Pro Display:
     --it-font-display: 'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
     --it-font-body:    'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    */
 
     /* Scale */
     --it-text-xs:      0.75rem;
