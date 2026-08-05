@@ -64,6 +64,8 @@
         "minutes": "{value} 分钟",
         "range": "{from} 至 {to} 小时",
         "toursIn": "{name}的行程",
+        "categoriesAndHubs": "分类和地点",
+        "collections": "精选合集",
         "beyond": "{name}以外",
         "tourCount": "{count} 个行程",
         "tourCountOne": "1 个行程",

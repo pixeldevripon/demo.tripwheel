@@ -64,6 +64,8 @@
         "minutes": "{value} min",
         "range": "{from} a {to} horas",
         "toursIn": "Tours em {name}",
+        "categoriesAndHubs": "Categorias e hubs",
+        "collections": "Coleções",
         "beyond": "Além de {name}",
         "tourCount": "{count} tours",
         "tourCountOne": "1 tour",

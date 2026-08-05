@@ -64,6 +64,8 @@
         "minutes": "{value} min",
         "range": "{from} tot {to} uur",
         "toursIn": "Tours in {name}",
+        "categoriesAndHubs": "Categorieën & hubs",
+        "collections": "Collecties",
         "beyond": "Verder dan {name}",
         "tourCount": "{count} tours",
         "tourCountOne": "1 tour",

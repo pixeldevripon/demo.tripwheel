@@ -110,6 +110,15 @@ export class CollectionsService {
 
   // ── Public read ─────────────────────────────────────────────────────────────
 
+  /**
+   * The island's PUBLICLY VISIBLE collections, localized.
+   *
+   * `status: PUBLISHED` as well as `isActive`, because this list is what the
+   * destination page links to and `getBySlug` 404s on both. Filtering on
+   * `isActive` alone listed a DRAFT collection - and linked it - from the
+   * collections section and the hero's "Popular" row, straight to a page that
+   * refuses to render. Same rule on both sides, or the list advertises a 404.
+   */
   async getActiveByDestinationSlug(
     destinationSlug: string,
     locale: Locale = Locale.en,
@@ -122,7 +131,11 @@ export class CollectionsService {
       throw new NotFoundException(`Destination "${destinationSlug}" not found`);
 
     const data = await this.prisma.collection.findMany({
-      where: { destinationId: destination.id, isActive: true },
+      where: {
+        destinationId: destination.id,
+        isActive: true,
+        status: CollectionStatus.PUBLISHED,
+      },
       select: {
         ...this.collectionSelect,
         translations: {

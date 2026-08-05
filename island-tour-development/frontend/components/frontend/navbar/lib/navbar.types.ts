@@ -48,6 +48,9 @@ export type SearchDict = {
     noResults: string;
     // Suggest panel sections (Fever-style).
     toursIn: string;
+    /** Zero-state group headings (master 5.10). */
+    categoriesAndHubs: string;
+    collections: string;
     beyond: string;
     tourCount: string;
     tourCountOne: string;

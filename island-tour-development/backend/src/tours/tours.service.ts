@@ -14,6 +14,7 @@ import {
   resolveOperatorId,
 } from '@/common/utils/operator.util';
 import { isValidIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
+import { CATEGORY_PAGE_MIN_TOURS } from '@/common/constants/category-visibility';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AvailabilityService } from '@/availability/availability.service';
 import { isDepartureLiveBookable } from '@/availability/availability-status.util';
@@ -36,6 +37,7 @@ import {
 } from '@nestjs/common';
 import {
   BandParticipation,
+  CollectionStatus,
   Currency,
   DepartureStatus,
   HubStatus,
@@ -948,6 +950,7 @@ export class ToursService {
         total: 0,
         categories: [],
         hubs: [],
+        collections: [],
         tours: [],
         beyondTours: [],
       };
@@ -1012,7 +1015,7 @@ export class ToursService {
       },
     } as const;
 
-    const [categories, hubs, total, scopedTours, beyondTours] =
+    const [categories, hubs, collections, total, scopedTours, beyondTours] =
       await Promise.all([
         this.prisma.category.findMany({
           where: {
@@ -1033,7 +1036,10 @@ export class ToursService {
             },
           },
           orderBy: { sortOrder: 'asc' },
-          take: 3,
+          // Over-fetch: the visibility bar is a COUNT, and Prisma cannot filter
+          // on a relation count in `where`, so it is applied below. Taking 3
+          // here would let three thin categories crowd out the ones that render.
+          take: 12,
         }),
         this.prisma.hub.findMany({
           where: {
@@ -1055,6 +1061,29 @@ export class ToursService {
             translations: { where: { locale }, select: { name: true } },
             destination: { select: { slug: true, name: true } },
           },
+          take: 3,
+        }),
+        // Collections were missing from the panel entirely, so an island's
+        // flagship "Best Things to Do in X" page was unreachable by typing its
+        // name. PUBLISHED + active is the collection page's own 404 condition.
+        this.prisma.collection.findMany({
+          where: {
+            isActive: true,
+            status: CollectionStatus.PUBLISHED,
+            ...(destinationSlug && { destination: { slug: destinationSlug } }),
+            OR: [
+              { name: ci },
+              { translations: { some: { locale, name: ci } } },
+            ],
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+            translations: { where: { locale }, select: { name: true } },
+            destination: { select: { slug: true, name: true } },
+          },
+          orderBy: { sortOrder: 'asc' },
           take: 3,
         }),
         this.prisma.tour.count({ where: scopedWhere }),
@@ -1103,18 +1132,30 @@ export class ToursService {
     return {
       query: term,
       total,
-      categories: categories.map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        name: c.translations[0]?.name?.trim() || c.name,
-        tourCount: c._count.tourCategories,
-      })),
+      // Master §2.4: a category page only exists at >= CATEGORY_PAGE_MIN_TOURS,
+      // so suggesting a thinner one offers a 404 as an autocomplete result.
+      categories: categories
+        .filter((c) => c._count.tourCategories >= CATEGORY_PAGE_MIN_TOURS)
+        .slice(0, 3)
+        .map((c) => ({
+          id: c.id,
+          slug: c.slug,
+          name: c.translations[0]?.name?.trim() || c.name,
+          tourCount: c._count.tourCategories,
+        })),
       hubs: hubs.map((h) => ({
         id: h.id,
         slug: h.slug,
         name: h.translations[0]?.name?.trim() || h.name,
         destinationSlug: h.destination.slug,
         destinationName: h.destination.name,
+      })),
+      collections: collections.map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.translations[0]?.name?.trim() || c.name,
+        destinationSlug: c.destination.slug,
+        destinationName: c.destination.name,
       })),
       tours,
       beyondTours: beyond,

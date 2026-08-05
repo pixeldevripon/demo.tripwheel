@@ -15,8 +15,11 @@ import {
 // Reused presentational typeahead panel (shared with the navbar search). Candidate
 // to promote to a shared `search/` folder once a third consumer appears.
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
-import { SearchTypeahead } from '@/components/frontend/navbar/search-typeahead';
-import { searchToursClient } from '@/lib/api/search';
+import {
+    SearchTypeahead,
+    type SearchZeroState,
+} from '@/components/frontend/navbar/search-typeahead';
+import { searchSuggestClient, searchToursClient } from '@/lib/api/search';
 import {
     LOCALE_CURRENCY,
     localizeHref,
@@ -25,7 +28,12 @@ import {
 } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
 import { springPop } from '@/lib/motion';
-import type { SearchHit, SearchSuggest } from '@/types/search';
+import type {
+    SearchHit,
+    SuggestCategory,
+    SuggestCollection,
+    SuggestHub,
+} from '@/types/search';
 
 /**
  * Destination hero search - the page's whole search responsibility, split out of
@@ -39,16 +47,35 @@ export function DestinationHeroSearch({
     destinationSlug,
     dict,
     search,
+    zeroState,
 }: {
     locale: Locale;
     destinationSlug: string;
     dict: { searchPlaceholder: string; selectDate: string; clearDate: string };
     search: SearchDict;
+    /**
+     * What the panel offers BEFORE anything is typed (master 5.10). Built on the
+     * server from this island's own gated lists, so every row opens a page that
+     * renders.
+     */
+    zeroState?: SearchZeroState;
 }) {
     const router = useRouter();
     const [query, setQuery] = useState('');
     const [hits, setHits] = useState<SearchHit[]>([]);
     const [total, setTotal] = useState(0);
+    /*
+     * Matched pages, not tours. They come from /search/suggest while the tour
+     * rows keep coming from the date-aware tour search, because only the latter
+     * honours the date field beside the input. Two requests for one panel is
+     * the price of a hero search that filters by availability AND offers the
+     * category, hub and collection pages behind the words you typed.
+     */
+    const [entities, setEntities] = useState<{
+        categories: SuggestCategory[];
+        hubs: SuggestHub[];
+        collections: SuggestCollection[];
+    }>({ categories: [], hubs: [], collections: [] });
     const [loading, setLoading] = useState(false);
     const [focused, setFocused] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
@@ -59,7 +86,12 @@ export function DestinationHeroSearch({
 
     const ref = useRef<HTMLDivElement>(null);
     const trimmed = query.trim();
-    const showPanel = focused && trimmed.length >= 2;
+    // Focus alone is enough to open the panel once there is a zero state to
+    // show: the point of 5.10 is the visitor who does not yet know what to type.
+    const hasZeroState =
+        !!zeroState &&
+        zeroState.categoriesAndHubs.length + zeroState.collections.length > 0;
+    const showPanel = focused && (trimmed.length >= 2 || hasZeroState);
     const isoDate = date ? format(date, 'yyyy-MM-dd') : undefined;
 
     // Sync display currency from the cookie on mount (client-only, no SSR mismatch).
@@ -87,26 +119,40 @@ export function DestinationHeroSearch({
         if (q.length < 2) {
             setHits([]);
             setTotal(0);
+            setEntities({ categories: [], hubs: [], collections: [] });
             setLoading(false);
             return;
         }
         setLoading(true);
         const controller = new AbortController();
         const timer = setTimeout(() => {
-            searchToursClient(
-                {
-                    q,
-                    locale,
-                    currency,
-                    destinationSlug,
-                    date: isoDate,
-                    limit: 6,
-                },
-                controller.signal
-            )
-                .then(res => {
-                    setHits(res.data);
-                    setTotal(res.total);
+            // Together, not one after the other - the panel needs both before
+            // it is complete, and neither depends on the other.
+            Promise.all([
+                searchToursClient(
+                    {
+                        q,
+                        locale,
+                        currency,
+                        destinationSlug,
+                        date: isoDate,
+                        limit: 6,
+                    },
+                    controller.signal
+                ),
+                searchSuggestClient(
+                    { q, locale, currency, destinationSlug },
+                    controller.signal
+                ),
+            ])
+                .then(([tours, suggest]) => {
+                    setHits(tours.data);
+                    setTotal(tours.total);
+                    setEntities({
+                        categories: suggest.categories,
+                        hubs: suggest.hubs,
+                        collections: suggest.collections ?? [],
+                    });
                     setLoading(false);
                 })
                 .catch(() => setLoading(false));
@@ -132,12 +178,33 @@ export function DestinationHeroSearch({
                   `/search?q=${encodeURIComponent(hit.title)}`
               );
 
+    /**
+     * The island's All Tours page, carrying the date as a pre-applied filter.
+     * `tours` is reserved at every destination in the slug registry, so this
+     * path can never collide with a category, hub or collection.
+     */
+    const allToursHref = () =>
+        `${localizeHref(locale, `/${destinationSlug}/tours`)}${
+            isoDate ? `?date=${isoDate}` : ''
+        }`;
+
+    /**
+     * EITHER field alone is a valid search - the two are not a compound key.
+     *
+     *  - An activity (with or without a date) goes to /search, which is the
+     *    query engine and the only thing that can rank a keyword.
+     *  - No activity goes to All Tours instead, with any date pre-applied.
+     *    "What can I do on Thursday" has nothing to rank, and that page already
+     *    filters on date availability and renders the date as a removable chip,
+     *    so it answers the question better than a keyword-less /search could.
+     *
+     * Submitting empty used to be a silent no-op - a button that visibly does
+     * nothing. It now lands on All Tours, which is the same rule with no date.
+     */
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const q = trimmed;
-        if (!q) return;
         setFocused(false);
-        router.push(searchHref(q));
+        router.push(trimmed ? searchHref(trimmed) : allToursHref());
     }
 
     return (
@@ -249,19 +316,19 @@ export function DestinationHeroSearch({
             <AnimatePresence>
                 {showPanel && (
                     <SearchTypeahead
-                        // Hero search stays tours-only (it carries the date
-                        // filter, which /search/suggest doesn't) - wrapped in
-                        // the suggest shape with empty entity buckets.
-                        suggest={
-                            {
-                                query: trimmed,
-                                total,
-                                categories: [],
-                                hubs: [],
-                                tours: hits,
-                                beyondTours: [],
-                            } satisfies SearchSuggest
-                        }
+                        // Tour rows come from the date-aware tour search; the
+                        // entity rows from /search/suggest. `beyondTours` stays
+                        // empty on purpose - this search is scoped to the island
+                        // whose page you are on.
+                        suggest={{
+                            query: trimmed,
+                            total,
+                            categories: entities.categories,
+                            hubs: entities.hubs,
+                            collections: entities.collections,
+                            tours: hits,
+                            beyondTours: [],
+                        }}
                         loading={loading}
                         query={trimmed}
                         locale={locale}
@@ -270,10 +337,13 @@ export function DestinationHeroSearch({
                         islandName={null}
                         searchHref={searchHref}
                         tourHref={tourHref}
-                        categoryHref={null}
+                        categoryHref={slug =>
+                            localizeHref(locale, `/${destinationSlug}/${slug}`)
+                        }
                         hubHref={(destSlug, slug) =>
                             localizeHref(locale, `/${destSlug}/${slug}`)
                         }
+                        zeroState={zeroState}
                         onSelect={() => setFocused(false)}
                     />
                 )}
