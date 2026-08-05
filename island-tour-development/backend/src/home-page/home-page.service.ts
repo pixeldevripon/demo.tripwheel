@@ -9,7 +9,7 @@ import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { mergeTranslation } from '@/common/utils/translation.util';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { PrismaService } from '@/prisma/prisma.service';
-import { FxRatesService } from '@/fx/fx-rates.service';
+import { FxRatesService, retailWhole } from '@/fx/fx-rates.service';
 import { Currency, HubStatus, Prisma, TourStatus } from '@prisma/client';
 import {
   BadRequestException,
@@ -639,10 +639,9 @@ export class HomePageService {
         const { currency: resolved, rate } = rateBySource.get(source)!;
         return {
           currency: resolved,
-          // Decimal throughout - money math never goes via JS float.
-          amount: amount
-            .mul(rate)
-            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+          // Decimal throughout - money math never goes via JS float - and a
+          // whole unit, rounded up, like every other retail price.
+          amount: retailWhole(amount.mul(rate)),
         };
       });
 

@@ -15,6 +15,24 @@ import {
 
 const DEFAULT_TTL_MINUTES = 120;
 const DEFAULT_STALE_DISPLAY_HOURS = 24;
+/**
+ * Round a TRAVELLER-FACING retail amount to a whole currency unit, always UP.
+ *
+ * Conversion used to leave cents behind - a $139 tour rendered to a euro shopper
+ * as "from EUR 120.71", which reads like a precision the price does not have
+ * (founder, 2026-08-05). Every retail amount is now a whole number.
+ *
+ * CEIL, never HALF_UP: rounding a converted price DOWN would advertise and
+ * charge less than the operator's own price once FX moved, so the direction is
+ * a commercial rule, not a formatting preference.
+ *
+ * Deliberately NOT applied to operator cost (`priceNet`) or to the EUR
+ * commission snapshot. Neither is shown to a traveller, and inflating them
+ * would distort payout and revenue figures.
+ */
+export const retailWhole = (v: Prisma.Decimal): Prisma.Decimal =>
+  v.toDecimalPlaces(0, Prisma.Decimal.ROUND_CEIL);
+
 /** Identity rate never expires (same-currency, no provider). */
 const IDENTITY_TTL_MS = 3_650 * 24 * 60 * 60 * 1000; // ~10y
 
@@ -123,12 +141,7 @@ export class FxRatesService {
     const currency = display ? targetCurrency : sourceCurrency;
     const rate = display ? display.rate : new Prisma.Decimal(1);
     const conv = (v: Prisma.Decimal | null | undefined): string | null =>
-      v == null
-        ? null
-        : v
-            .mul(rate)
-            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-            .toString();
+      v == null ? null : retailWhole(v.mul(rate)).toString();
     return {
       currency,
       sourceCurrency,
@@ -190,10 +203,9 @@ export class FxRatesService {
       const conv = (v: unknown): string | null =>
         v == null
           ? null
-          : new Prisma.Decimal(v as Prisma.Decimal.Value)
-              .mul(rate)
-              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-              .toString();
+          : retailWhole(
+              new Prisma.Decimal(v as Prisma.Decimal.Value).mul(rate),
+            ).toString();
       it.money = {
         currency,
         sourceCurrency: srcOf(it),

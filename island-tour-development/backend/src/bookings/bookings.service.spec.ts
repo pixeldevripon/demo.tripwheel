@@ -700,11 +700,12 @@ describe('BookingsService', () => {
         pickupLocationId: 'pk1',
       });
       const data = m.booking.create.mock.calls[0][0].data;
-      // 2 adults * 79.99 + pickup 17 * 2 pax = 193.98. Deposit = 20% of the
-      // TOUR price only (159.98 -> 32); the pickup rides the balance in full.
-      expect(data.totalRetail.toString()).toBe('193.98');
+      // 2 adults * 79.99 + pickup 17 * 2 pax = 193.98 -> ceil 194. Deposit =
+      // 20% of the TOUR price only (ceil(159.98 * .2) = 32); the balance is the
+      // remainder of the rounded total (194 - 32 = 162), so the lines add up.
+      expect(data.totalRetail.toString()).toBe('194');
       expect(data.depositAmount.toString()).toBe('32');
-      expect(data.balanceAmount.toString()).toBe('161.98'); // 127.98 + 34
+      expect(data.balanceAmount.toString()).toBe('162'); // 127.98 + 34
       expect(data.pickupUnitPrice.toString()).toBe('17');
       expect(data.pickupTotalPrice.toString()).toBe('34');
     });
@@ -724,7 +725,7 @@ describe('BookingsService', () => {
         pickupLocationId: 'pk1',
       });
       const data = m.booking.create.mock.calls[0][0].data;
-      expect(data.totalRetail.toString()).toBe('159.98');
+      expect(data.totalRetail.toString()).toBe('160');
       expect(data.pickupUnitPrice).toBeNull();
       expect(data.pickupTotalPrice).toBeNull();
     });
@@ -849,8 +850,8 @@ describe('BookingsService', () => {
         departureId: 'dep1',
         items: [{ ageBandId: 'adult', quantity: 2 }],
       });
-      // 2 adults * 79.99 = 159.98.
-      expect(res.totalRetail).toBe('159.98');
+      // 2 adults * 79.99 = 159.98 -> ceil 160.
+      expect(res.totalRetail).toBe('160');
       expect(res.pax).toBe(2);
       expect(res.paymentModel).toBe(PaymentModel.OPERATOR_LINK);
       expect(res.currency).toBe('EUR');
@@ -886,9 +887,9 @@ describe('BookingsService', () => {
         departureId: 'dep1',
         items: [{ ageBandId: 'adult', quantity: 2 }],
       });
-      // 20% of 159.98 = 31.996 -> 32.00; balance = 127.98.
+      // 20% of 159.98 = 31.996 -> ceil 32; balance = 160 - 32 = 128.
       expect(res.depositAmount).toBe('32');
-      expect(res.balanceAmount).toBe('127.98');
+      expect(res.balanceAmount).toBe('128');
     });
 
     it('prices a flat UNIT charter (basePrice, one line, pax = guests)', async () => {
@@ -957,8 +958,8 @@ describe('BookingsService', () => {
         items: [{ ageBandId: 'adult', quantity: 2 }],
         pickupLocationId: 'pk1',
       });
-      // 159.98 participants + 17 * 2 pax pickup = 193.98.
-      expect(res.totalRetail).toBe('193.98');
+      // 159.98 participants + 17 * 2 pax pickup = 193.98 -> ceil 194.
+      expect(res.totalRetail).toBe('194');
       expect(res.lines).toContainEqual({
         kind: 'pickup',
         ageBandId: null,
@@ -977,7 +978,7 @@ describe('BookingsService', () => {
         items: [{ ageBandId: 'adult', quantity: 2 }],
         pickupLocationId: 'pk1',
       });
-      expect(res.totalRetail).toBe('159.98');
+      expect(res.totalRetail).toBe('160');
       expect(res.lines.some((l) => l.kind === 'pickup')).toBe(false);
     });
 
@@ -1027,9 +1028,10 @@ describe('BookingsService', () => {
       expect(res.currency).toBe('EUR');
       expect(res.tourCurrency).toBe('USD');
       expect(res.sourceFxRateToBooking).toBe('0.9');
-      // 79.99*0.9=71.99 (x2) = 143.98 EUR; source stays 159.98 USD.
-      expect(res.totalRetail).toBe('143.98');
-      expect(res.sourceTotalRetail).toBe('159.98');
+      // 79.99*0.9=71.99 (x2) = 143.98 -> ceil 144 EUR; source 159.98 -> 160 USD.
+      // The LINE price keeps its cents - only the totals are whole.
+      expect(res.totalRetail).toBe('144');
+      expect(res.sourceTotalRetail).toBe('160');
       expect(res.lines[0].unitPrice).toBe('71.99');
     });
 
@@ -1044,9 +1046,9 @@ describe('BookingsService', () => {
       });
       const data = m.booking.create.mock.calls[0][0].data;
       expect(data.currency).toBe('EUR');
-      expect(data.totalRetail.toString()).toBe('143.98');
+      expect(data.totalRetail.toString()).toBe('144');
       expect(data.sourceCurrency).toBe('USD');
-      expect(data.sourceTotalRetail.toString()).toBe('159.98');
+      expect(data.sourceTotalRetail.toString()).toBe('160');
       expect(data.sourceFxRateToBooking.toString()).toBe('0.9');
       expect(data.sourceFxProvider).toBe('static-dev');
     });
@@ -1063,7 +1065,7 @@ describe('BookingsService', () => {
       // No dto.currency -> booking currency == source (USD), rate 1.
       expect(data.currency).toBe('USD');
       expect(data.sourceFxRateToBooking.toString()).toBe('1');
-      expect(data.totalRetail.toString()).toBe('159.98');
+      expect(data.totalRetail.toString()).toBe('160');
     });
   });
 
