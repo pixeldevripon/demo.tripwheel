@@ -204,6 +204,7 @@ pnpm prisma:studio · pnpm prisma:format · pnpm prisma:validate
 | Destination Spotlight | Operators → Admin | Request + admin approval; max 3 per destination; separate block |
 | Top Island Experiences | Admin | Categories and Hubs only — never individual tours |
 | Page editorial content | Admin | About/FAQ per destination/category/hub/collection |
+| Hero "Popular" links | Admin | Up to 4 curated per destination (hub/collection/category), re-gated at render; empty = automatic row |
 | Attributes / Filters | Admin (dictionary) + Operator (per-tour values) | `attribute_definitions` + `tour_attributes` |
 
 **Slug registry write rules** (all transactional with the entity):
@@ -257,7 +258,8 @@ prisma/
 │                          PaymentModel, EligibilityState, DepartureStatus, …)
 ├── user.prisma            Better Auth: User, Session, Account, Verification
 ├── operators.prisma       Operator (+ company/social/Stripe/Mollie configs)
-├── destinations.prisma    Destination, Hub (+ allowed categories, our picks, comparison), content
+├── destinations.prisma    Destination, Hub (+ allowed categories, our picks, comparison), content,
+│                         DestinationPopularLink (curated hero "Popular" row)
 ├── categories.prisma      Category (+ translation, page content)
 ├── collections.prisma     Collection (+ translation, page content)
 ├── trips.prisma           Trip + children (images, age bands, add-ons, languages, highlights,

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import type { SearchDict } from '@/components/frontend/navbar/lib/navbar.types';
 import type { Locale } from '@/lib/constants/locales';
 
+import type { SearchZeroState } from '@/components/frontend/navbar/search-typeahead';
+
 import { DestinationHeroSearch } from './destination-hero-search';
 import type {
     ActivityLink,
@@ -23,6 +25,7 @@ export function DestinationHero({
     locale,
     destinationSlug,
     activities,
+    searchZeroState,
     image,
     imageAlt,
 }: {
@@ -33,6 +36,8 @@ export function DestinationHero({
     destinationSlug: string;
     /** The island's categories, rendered as the "Popular" quick links. */
     activities: ActivityLink[];
+    /** Starting points the search panel offers before anything is typed (5.10). */
+    searchZeroState?: SearchZeroState;
     /** Optional background photo - falls back to the shared home-hero gradient. */
     image?: string;
     /**
@@ -85,6 +90,7 @@ export function DestinationHero({
                             destinationSlug={destinationSlug}
                             dict={dict}
                             search={search}
+                            zeroState={searchZeroState}
                         />
 
                         {/* Activities (top categories/hubs) - quick links */}

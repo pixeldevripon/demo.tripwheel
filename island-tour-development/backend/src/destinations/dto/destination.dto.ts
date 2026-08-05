@@ -598,3 +598,87 @@ export class UpdateDestinationDto {
   @IsBoolean()
   isActive?: boolean;
 }
+
+// ── Hero "Popular" links (admin-curated) ─────────────────────────────────────
+
+/** One resolved, renderable link as the public hero prints it. */
+export class PopularLinkResponseDto {
+  @ApiProperty({
+    example: 'Off-Road Tours',
+    description:
+      "The TARGET PAGE'S own name, localized - never an admin-typed label, so " +
+      'the link can never disagree with the page it opens.',
+  })
+  name!: string;
+
+  @ApiProperty({
+    example: 'off-road-tours',
+    description:
+      'Slug only. Hubs, collections and categories share the flat ' +
+      '/{destination}/{slug} namespace, so one href shape covers all three and ' +
+      'the caller joins it to the island it already resolved.',
+  })
+  slug!: string;
+}
+
+/** One curated slot as the admin editor sees it - unresolved and ungated. */
+export class PopularLinkAdminResponseDto {
+  @ApiProperty({ example: '5f1c…' })
+  id!: string;
+
+  @ApiProperty({ example: 0, description: '0-3, left to right as rendered.' })
+  displayOrder!: number;
+
+  @ApiPropertyOptional({ example: '2bdc…', nullable: true })
+  categoryId!: string | null;
+
+  @ApiPropertyOptional({ example: null, nullable: true })
+  hubId!: string | null;
+
+  @ApiPropertyOptional({ example: null, nullable: true })
+  collectionId!: string | null;
+}
+
+/**
+ * One slot on the way in. Exactly one target id must be set; the service rejects
+ * zero (an empty link) and more than one (an ambiguous link).
+ *
+ * `displayOrder` is deliberately absent: the array's own order is the row's
+ * order, so a client cannot number two slots the same and collide on the unique
+ * (destinationId, displayOrder) index.
+ */
+export class PopularLinkInputDto {
+  @ApiPropertyOptional({ example: '2bdc4a64-48a5-450d-a6e2-a5d1a240506a' })
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ example: 'e83c43e3-5bdf-4abc-a8ac-df6e1ee4f6be' })
+  @IsOptional()
+  @IsString()
+  hubId?: string;
+
+  @ApiPropertyOptional({ example: 'd6dda6a0-086c-4677-b5a9-21affa0c8cf4' })
+  @IsOptional()
+  @IsString()
+  collectionId?: string;
+}
+
+/**
+ * Replace-all: the body IS the whole row. One save for the section (the
+ * one-save-button rule) - per-slot writes would let two concurrent edits
+ * interleave into an order neither admin chose. An empty array clears the
+ * curation, which returns the island to the automatic composition.
+ */
+export class ReplacePopularLinksDto {
+  @ApiProperty({
+    type: [PopularLinkInputDto],
+    description:
+      'Up to 4 slots, in render order. Empty clears the curation and the island ' +
+      'falls back to the automatic hub -> lead collection -> categories row.',
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PopularLinkInputDto)
+  links!: PopularLinkInputDto[];
+}

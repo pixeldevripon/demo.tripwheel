@@ -1,3 +1,4 @@
+import { CATEGORY_PAGE_MIN_TOURS } from '@/common/constants/category-visibility';
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import {
@@ -41,7 +42,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, SlugEntityType, TourStatus } from '@prisma/client';
+import {
+  CollectionStatus,
+  HubStatus,
+  Prisma,
+  SlugEntityType,
+  TourStatus,
+} from '@prisma/client';
 import {
   CreateDestinationDto,
   CreateDestinationFaqDto,
@@ -52,6 +59,14 @@ import {
   UpsertDestinationPageContentDto,
   UpsertDestinationTranslationsDto,
 } from './dto/destination.dto';
+import type { PopularLinkInputDto } from './dto/destination.dto';
+
+/**
+ * The hero row holds four links (mck-02). Enforced on write so an admin cannot
+ * curate a fifth that silently never renders, and again on read so a row saved
+ * before this cap could not overflow it.
+ */
+export const POPULAR_LINK_MAX = 4;
 
 @Injectable()
 export class DestinationService {
@@ -427,6 +442,389 @@ export class DestinationService {
 
     this.logger.log(`Admin ${adminId} permanently deleted destination ${id}`);
     return { message: 'Destination permanently deleted' };
+  }
+
+  // ── Hero "Popular" links (admin-curated) ─────────────────────────────────────
+
+  /**
+   * Targets a popular link may point at, with everything the resolver needs to
+   * decide whether that page would actually open.
+   */
+  private readonly popularTargetSelect = {
+    id: true,
+    displayOrder: true,
+    categoryId: true,
+    hubId: true,
+    collectionId: true,
+    category: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        isActive: true,
+        parentCategoryId: true,
+      },
+    },
+    hub: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        isActive: true,
+        status: true,
+        destinationId: true,
+      },
+    },
+    collection: {
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        isActive: true,
+        status: true,
+        destinationId: true,
+      },
+    },
+  } as const;
+
+  /**
+   * The island hero's curated "Popular" quick links, resolved and localized.
+   *
+   * Curation decides WHICH pages are offered; it never asserts one exists. Every
+   * link is re-checked here against its target's own visibility rule and dropped
+   * if that page would not open - the founder's standing condition, "these must
+   * show when these collections and categories have data to render page". The
+   * three rules are deliberately the same objects the pages themselves use:
+   *
+   *  - Category   : active, top-level, and ≥ {@link CATEGORY_PAGE_MIN_TOURS} LIVE
+   *                 tours HERE (`categories.service.getBySlugForDestination`).
+   *  - Hub        : active, PUBLISHED, on THIS island, ≥1 LIVE tour (`hubs.service`).
+   *  - Collection : active, PUBLISHED, on THIS island (`collections.service.getBySlug`).
+   *
+   * Returns `[]` when nothing is curated, which the frontend reads as "compose
+   * the automatic row instead" - an island nobody has curated still gets links.
+   */
+  async getPopularLinks(destinationSlug: string, locale: Locale = Locale.en) {
+    const destination = await this.prisma.destination.findUnique({
+      where: { slug: destinationSlug },
+      select: { id: true, isActive: true },
+    });
+    if (!destination || !destination.isActive) {
+      throw new NotFoundException(`Destination "${destinationSlug}" not found`);
+    }
+
+    const links = await this.prisma.destinationPopularLink.findMany({
+      where: { destinationId: destination.id },
+      select: this.popularTargetSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+    if (links.length === 0) return [];
+
+    const categoryIds = links
+      .map((l) => l.categoryId)
+      .filter((id): id is string => !!id);
+    const hubIds = links.map((l) => l.hubId).filter((id): id is string => !!id);
+
+    // Tour counts for the two tour-gated target types, plus the localized names.
+    // One query each rather than one per link, and only for the ids in play.
+    const [categoryCounts, hubCounts, names] = await Promise.all([
+      categoryIds.length
+        ? this.prisma.tourCategory.groupBy({
+            by: ['categoryId'],
+            where: {
+              categoryId: { in: categoryIds },
+              tour: {
+                destinationId: destination.id,
+                status: TourStatus.LIVE,
+                isActive: true,
+              },
+            },
+            _count: { _all: true },
+          })
+        : [],
+      hubIds.length
+        ? this.prisma.tourHub.groupBy({
+            by: ['hubId'],
+            where: {
+              hubId: { in: hubIds },
+              tour: {
+                destinationId: destination.id,
+                status: TourStatus.LIVE,
+                isActive: true,
+              },
+            },
+            _count: { _all: true },
+          })
+        : [],
+      this.popularLinkNames(links, locale),
+    ]);
+
+    const categoryTours = new Map(
+      categoryCounts.map((g) => [g.categoryId, g._count._all]),
+    );
+    const hubTours = new Map(hubCounts.map((g) => [g.hubId, g._count._all]));
+
+    const resolved: { name: string; slug: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const link of links) {
+      const target = this.renderablePopularTarget(link, destination.id, {
+        categoryTours,
+        hubTours,
+      });
+      // Two slots may name the same page (nothing in the schema forbids it);
+      // the row must not print it twice.
+      if (!target || seen.has(target.slug)) continue;
+      seen.add(target.slug);
+      resolved.push({
+        name: names.get(target.id) ?? target.name,
+        slug: target.slug,
+      });
+      if (resolved.length === POPULAR_LINK_MAX) break;
+    }
+
+    return resolved;
+  }
+
+  /**
+   * The link's target if - and only if - its page would open on this island.
+   * Null means "drop this slot", never "render it dead".
+   */
+  private renderablePopularTarget(
+    link: {
+      category: {
+        id: string;
+        slug: string;
+        name: string;
+        isActive: boolean;
+        parentCategoryId: string | null;
+      } | null;
+      hub: {
+        id: string;
+        slug: string;
+        name: string;
+        isActive: boolean;
+        status: HubStatus;
+        destinationId: string;
+      } | null;
+      collection: {
+        id: string;
+        slug: string;
+        name: string;
+        isActive: boolean;
+        status: CollectionStatus;
+        destinationId: string;
+      } | null;
+    },
+    destinationId: string,
+    counts: {
+      categoryTours: Map<string, number>;
+      hubTours: Map<string, number>;
+    },
+  ): { id: string; slug: string; name: string } | null {
+    const { category, hub, collection } = link;
+
+    if (category) {
+      const live = counts.categoryTours.get(category.id) ?? 0;
+      return category.isActive &&
+        category.parentCategoryId === null &&
+        live >= CATEGORY_PAGE_MIN_TOURS
+        ? category
+        : null;
+    }
+    if (hub) {
+      const live = counts.hubTours.get(hub.id) ?? 0;
+      return hub.isActive &&
+        hub.status === HubStatus.PUBLISHED &&
+        hub.destinationId === destinationId &&
+        live > 0
+        ? hub
+        : null;
+    }
+    if (collection) {
+      return collection.isActive &&
+        collection.status === CollectionStatus.PUBLISHED &&
+        collection.destinationId === destinationId
+        ? collection
+        : null;
+    }
+    return null;
+  }
+
+  /**
+   * Localized names for the curated targets, keyed by entity id. One query per
+   * entity type, and only when that type is actually used. A missing row falls
+   * back to the base name at the call site - the label must always be the target
+   * page's OWN name, never an admin-typed string.
+   */
+  private async popularLinkNames(
+    links: {
+      categoryId: string | null;
+      hubId: string | null;
+      collectionId: string | null;
+    }[],
+    locale: Locale,
+  ): Promise<Map<string, string>> {
+    const byId = new Map<string, string>();
+    if (locale === Locale.en) return byId;
+
+    const categoryIds = links
+      .map((l) => l.categoryId)
+      .filter((id): id is string => !!id);
+    const hubIds = links.map((l) => l.hubId).filter((id): id is string => !!id);
+    const collectionIds = links
+      .map((l) => l.collectionId)
+      .filter((id): id is string => !!id);
+
+    const [categories, hubs, collections] = await Promise.all([
+      categoryIds.length
+        ? this.prisma.categoryTranslation.findMany({
+            where: { categoryId: { in: categoryIds }, locale },
+            select: { categoryId: true, name: true },
+          })
+        : [],
+      hubIds.length
+        ? this.prisma.hubTranslation.findMany({
+            where: { hubId: { in: hubIds }, locale },
+            select: { hubId: true, name: true },
+          })
+        : [],
+      collectionIds.length
+        ? this.prisma.collectionTranslation.findMany({
+            where: { collectionId: { in: collectionIds }, locale },
+            select: { collectionId: true, name: true },
+          })
+        : [],
+    ]);
+
+    for (const t of categories) if (t.name) byId.set(t.categoryId, t.name);
+    for (const t of hubs) if (t.name) byId.set(t.hubId, t.name);
+    for (const t of collections) if (t.name) byId.set(t.collectionId, t.name);
+    return byId;
+  }
+
+  /** Admin read: the raw curation, unresolved and ungated, in slot order. */
+  async getPopularLinksAdmin(id: string) {
+    await this.findDestinationOrThrow(id);
+    return this.prisma.destinationPopularLink.findMany({
+      where: { destinationId: id },
+      select: this.popularTargetSelect,
+      orderBy: { displayOrder: 'asc' },
+    });
+  }
+
+  /**
+   * Admin replace-all. One save for the whole row (the one-save-button rule):
+   * partial slot writes would let two concurrent edits interleave into an order
+   * neither admin chose.
+   *
+   * `displayOrder` is assigned from array position rather than trusted from the
+   * client, so the unique (destinationId, displayOrder) index can never be hit
+   * by a client that numbers its slots badly.
+   */
+  async replacePopularLinks(
+    id: string,
+    links: PopularLinkInputDto[],
+    adminId: string,
+  ) {
+    await this.findDestinationOrThrow(id);
+
+    if (links.length > POPULAR_LINK_MAX) {
+      throw new BadRequestException(
+        `A destination can have at most ${POPULAR_LINK_MAX} popular links`,
+      );
+    }
+
+    // Exactly one target per slot: none is an empty link, several is ambiguous.
+    links.forEach((link, i) => {
+      const targets = [link.categoryId, link.hubId, link.collectionId].filter(
+        Boolean,
+      );
+      if (targets.length !== 1) {
+        throw new BadRequestException(
+          `Popular link ${i + 1} must name exactly one of categoryId, hubId or collectionId`,
+        );
+      }
+    });
+
+    await this.assertPopularTargetsExist(id, links);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.destinationPopularLink.deleteMany({
+        where: { destinationId: id },
+      });
+      if (links.length > 0) {
+        await tx.destinationPopularLink.createMany({
+          data: links.map((link, index) => ({
+            destinationId: id,
+            categoryId: link.categoryId ?? null,
+            hubId: link.hubId ?? null,
+            collectionId: link.collectionId ?? null,
+            displayOrder: index,
+          })),
+        });
+      }
+    });
+
+    this.logger.log(
+      `Admin ${adminId} set ${links.length} popular link(s) on destination ${id}`,
+    );
+    return this.getPopularLinksAdmin(id);
+  }
+
+  /**
+   * Every named target must exist, and hubs/collections must belong to THIS
+   * island - a hub from another island would be saved happily and then silently
+   * dropped at render, which reads as "the save did not work". Categories are
+   * global, so only existence is checked; whether the category clears the tour
+   * bar HERE is a render-time question that changes as tours come and go.
+   */
+  private async assertPopularTargetsExist(
+    destinationId: string,
+    links: PopularLinkInputDto[],
+  ) {
+    const categoryIds = links
+      .map((l) => l.categoryId)
+      .filter((v): v is string => !!v);
+    const hubIds = links.map((l) => l.hubId).filter((v): v is string => !!v);
+    const collectionIds = links
+      .map((l) => l.collectionId)
+      .filter((v): v is string => !!v);
+
+    const [categories, hubs, collections] = await Promise.all([
+      categoryIds.length
+        ? this.prisma.category.findMany({
+            where: { id: { in: categoryIds } },
+            select: { id: true },
+          })
+        : [],
+      hubIds.length
+        ? this.prisma.hub.findMany({
+            where: { id: { in: hubIds }, destinationId },
+            select: { id: true },
+          })
+        : [],
+      collectionIds.length
+        ? this.prisma.collection.findMany({
+            where: { id: { in: collectionIds }, destinationId },
+            select: { id: true },
+          })
+        : [],
+    ]);
+
+    const found = new Set([
+      ...categories.map((c) => c.id),
+      ...hubs.map((h) => h.id),
+      ...collections.map((c) => c.id),
+    ]);
+    const missing = [...categoryIds, ...hubIds, ...collectionIds].filter(
+      (targetId) => !found.has(targetId),
+    );
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Unknown or off-island popular link target(s): ${missing.join(', ')}`,
+      );
+    }
   }
 
   // ── Translations ──────────────────────────────────────────────────────────────

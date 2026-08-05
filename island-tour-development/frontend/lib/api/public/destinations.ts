@@ -12,6 +12,7 @@ import type {
   DestinationDetail,
   DestinationFaq,
   DestinationPageContent,
+  DestinationPopularLink,
 } from '@/types/destination';
 import type { Locale } from '@/lib/constants/locales';
 import { DEFAULT_LOCALE } from '@/lib/constants/locales';
@@ -34,6 +35,36 @@ export async function getActiveDestinations(
 
   const data = await publicGet<DestinationActive[]>(
     `/destinations/active${buildQuery({ locale })}`,
+  );
+  return data ?? [];
+}
+
+/**
+ * The island hero's ADMIN-CURATED "Popular" quick links, already resolved,
+ * localized and re-gated by the backend: a curated target whose page would not
+ * open (a category under the 3-tour bar, an unpublished hub or collection) is
+ * dropped there rather than linked here.
+ *
+ * `[]` means "this island is not curated" - the caller composes the automatic
+ * row (hub, lead collection, then categories) instead. It is not an error, and
+ * it is also what a backend outage returns, which degrades to the same safe
+ * automatic row rather than an empty hero.
+ *
+ * Cached daily (tag-busted on writes); `slug` + `locale` are the cache key.
+ * Tagged `destinations` (the curation itself) plus `categories`, `collections`
+ * and `tours` - the gate reads all three, so publishing a tour can legitimately
+ * bring a curated link back into the row.
+ */
+export async function getDestinationPopularLinks(
+  slug: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DestinationPopularLink[]> {
+  'use cache';
+  cacheLife('days');
+  cacheTag('destinations', 'categories', 'collections', 'tours');
+
+  const data = await publicGet<DestinationPopularLink[]>(
+    `/destinations/slug/${seg(slug)}/popular-links${buildQuery({ locale })}`,
   );
   return data ?? [];
 }

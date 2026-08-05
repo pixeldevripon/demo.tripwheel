@@ -98,6 +98,8 @@ async function main() {
   // provisions NEW operators; this backfills the ones that predate the
   // feature. Standalone: `pnpm prisma:seed:designations[:clean]`.
   await seedTeamDesignations(prisma);
+  // Last: it resolves hubs, collections and categories seeded above.
+  await seedPopularLinks();
 }
 
 // ── Island Tours' post-booking recommendations (thank-you page / email promo) ──
@@ -511,6 +513,134 @@ const SEED_HUBS = [
     allowedCategorySlugs: ['boat-tours', 'snorkeling', 'day-trips'],
   },
 ];
+
+// ── Hero "Popular" quick links ───────────────────────────────────────────────
+// The four the founder locked for the launch island (mck-02). Curation, not
+// ranking: no ordering rule over live data reproduces this row, because
+// Off-Road Tours is fifth by sortOrder and joint-fourth by tour count and so
+// fell outside a row of four however the row was sorted.
+//
+// Each entry is a slug in the island's flat namespace, tagged with which table
+// to resolve it against. Every one is still RE-GATED at render, so seeding a
+// link is not a promise that it shows - only that it is the one offered when
+// its page exists.
+const SEED_POPULAR_LINKS: {
+  destinationSlug: string;
+  links: { type: 'hub' | 'collection' | 'category'; slug: string }[];
+}[] = [
+  {
+    destinationSlug: 'curacao',
+    links: [
+      { type: 'hub', slug: 'klein-curacao' },
+      { type: 'collection', slug: 'best-things-to-do-in-curacao' },
+      { type: 'category', slug: 'off-road-tours' },
+      { type: 'category', slug: 'boat-tours' },
+    ],
+  },
+];
+
+/**
+ * Seed the curated hero row, ONCE per island.
+ *
+ * Skips any island that already has links, so an admin's curation is never
+ * overwritten by a redeploy - the seed exists to give the launch island a
+ * correct row on first boot, not to own it forever.
+ */
+async function seedPopularLinks() {
+  console.log('Seeding hero popular links...');
+
+  for (const entry of SEED_POPULAR_LINKS) {
+    const destination = await prisma.destination.findUnique({
+      where: { slug: entry.destinationSlug },
+      select: { id: true },
+    });
+    if (!destination) {
+      console.warn(
+        `  Destination "${entry.destinationSlug}" not found - skipping its popular links.`,
+      );
+      continue;
+    }
+
+    const existing = await prisma.destinationPopularLink.count({
+      where: { destinationId: destination.id },
+    });
+    if (existing > 0) {
+      console.log(
+        `  "${entry.destinationSlug}" already has ${existing} popular link(s). Skipping.`,
+      );
+      continue;
+    }
+
+    const rows: {
+      destinationId: string;
+      categoryId?: string;
+      hubId?: string;
+      collectionId?: string;
+      displayOrder: number;
+    }[] = [];
+
+    for (const link of entry.links) {
+      // Slugs are unique per destination for hubs/collections and globally for
+      // categories, which is exactly how the public URL resolves them.
+      const target =
+        link.type === 'hub'
+          ? await prisma.hub.findUnique({
+              where: {
+                destinationId_slug: {
+                  destinationId: destination.id,
+                  slug: link.slug,
+                },
+              },
+              select: { id: true },
+            })
+          : link.type === 'collection'
+            ? await prisma.collection.findUnique({
+                where: {
+                  destinationId_slug: {
+                    destinationId: destination.id,
+                    slug: link.slug,
+                  },
+                },
+                select: { id: true },
+              })
+            : await prisma.category.findUnique({
+                where: { slug: link.slug },
+                select: { id: true },
+              });
+
+      if (!target) {
+        // A missing target is not fatal: the row simply has one fewer link,
+        // exactly as it would if that page later went below its bar.
+        console.warn(
+          `  ${link.type} "${link.slug}" not found - leaving that slot out.`,
+        );
+        continue;
+      }
+
+      rows.push({
+        destinationId: destination.id,
+        ...(link.type === 'hub' && { hubId: target.id }),
+        ...(link.type === 'collection' && { collectionId: target.id }),
+        ...(link.type === 'category' && { categoryId: target.id }),
+        // Position in the SURVIVING list, so a skipped slot cannot leave a hole
+        // that the unique (destinationId, displayOrder) index would reject.
+        displayOrder: rows.length,
+      });
+    }
+
+    if (rows.length === 0) {
+      console.warn(
+        `  No resolvable popular links for "${entry.destinationSlug}".`,
+      );
+      continue;
+    }
+
+    await prisma.destinationPopularLink.createMany({ data: rows });
+    console.log(
+      `  Seeded ${rows.length} popular link(s) for "${entry.destinationSlug}".`,
+    );
+  }
+}
 
 async function seedHubs() {
   console.log('Seeding hubs...');

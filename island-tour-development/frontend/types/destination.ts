@@ -160,3 +160,18 @@ export interface UpdateFaqPayload {
   displayOrder?: number;
   isActive?: boolean;
 }
+
+/**
+ * One resolved hero "Popular" quick link. The backend has already localized the
+ * name and dropped any curated target whose page would not open, so nothing here
+ * needs re-checking - and the label is always the TARGET PAGE'S own name, never
+ * an admin-typed string, so a link can never disagree with the page it opens.
+ *
+ * Slug only: hubs, collections and categories share the flat
+ * `/{destination}/{slug}` namespace, so the caller joins it to the island it has
+ * already resolved and one href shape covers all three.
+ */
+export interface DestinationPopularLink {
+  name: string;
+  slug: string;
+}

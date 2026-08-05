@@ -26,11 +26,12 @@ model Collection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  destination     Destination             @relation(fields: [destinationId], references: [id])
-  creator         User?                   @relation("CollectionCreator", fields: [createdBy], references: [id])
-  translations    CollectionTranslation[]
-  pageContents    CollectionPageContent[]
-  collectionTours CollectionTour[] // MANUAL ordered membership + per-locale rationale
+  destination             Destination              @relation(fields: [destinationId], references: [id])
+  creator                 User?                    @relation("CollectionCreator", fields: [createdBy], references: [id])
+  translations            CollectionTranslation[]
+  pageContents            CollectionPageContent[]
+  collectionTours         CollectionTour[] // MANUAL ordered membership + per-locale rationale
+  destinationPopularLinks DestinationPopularLink[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])

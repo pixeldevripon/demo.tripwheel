@@ -24,13 +24,14 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator            User?                   @relation("CategoryCreator", fields: [createdBy], references: [id])
-  allowedInHubs      HubAllowedCategory[]
-  tourCategories     TourCategory[]
-  translations       CategoryTranslation[]
-  pageContents       CategoryPageContent[]
+  creator                 User?                    @relation("CategoryCreator", fields: [createdBy], references: [id])
+  allowedInHubs           HubAllowedCategory[]
+  tourCategories          TourCategory[]
+  translations            CategoryTranslation[]
+  pageContents            CategoryPageContent[]
   // Fanned CTA cards on the homepage advertising this category (SetNull).
-  homeEditorialCards HomePageEditorialCard[]
+  homeEditorialCards      HomePageEditorialCard[]
+  destinationPopularLinks DestinationPopularLink[]
 
   @@index([slug])
   @@index([parentCategoryId])

@@ -3,18 +3,18 @@
 // Critical Rule #21–#23: slug_registry rows written in same transaction as entity create.
 
 model Destination {
-  id        String  @id @default(uuid())
-  name      String
-  slug      String  @unique // 'curacao', 'aruba' — always English
-  heroImage String?
-  isSeeded  Boolean @default(false) // true = seeded at launch; guard delete in service
-  isActive  Boolean @default(true)
+  id           String  @id @default(uuid())
+  name         String
+  slug         String  @unique // 'curacao', 'aruba' — always English
+  heroImage    String?
+  isSeeded     Boolean @default(false) // true = seeded at launch; guard delete in service
+  isActive     Boolean @default(true)
   // Curated platform order for every island list (hero Popular row, Explore
   // islands, selectors): 1 = launch island leads. null = unranked → sorts
   // after ranked rows, alphabetical. Never alphabetical-first: the locked copy
   // is "Popular: Curaçao · Aruba · Sint Maarten".
   displayOrder Int?
-  createdBy String? // null = seeded; userId = admin who created
+  createdBy    String? // null = seeded; userId = admin who created
 
   // ── V2 fields ────────────────────────────────────────────────────────────────
   region              Region // geographic grouping (no URL layer) — V2 §2 (required)
@@ -34,19 +34,20 @@ model Destination {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  creator             User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
-  hubs                Hub[]
-  tours               Tour[]
-  collections         Collection[]
-  translations        DestinationTranslation[]
-  pageContents        DestinationPageContent[]
-  spotlightRequests   SpotlightRequest[]
-  forceMajeurePardons ForceMajeurePardon[]
+  creator                 User?                    @relation("DestinationCreator", fields: [createdBy], references: [id])
+  hubs                    Hub[]
+  tours                   Tour[]
+  collections             Collection[]
+  translations            DestinationTranslation[]
+  pageContents            DestinationPageContent[]
+  spotlightRequests       SpotlightRequest[]
+  forceMajeurePardons     ForceMajeurePardon[]
   // Back-relation for the homepage editorial CTA target (onDelete: SetNull).
-  homePages           HomePage[]
+  homePages               HomePage[]
   // Instagram tiles pinned to this destination (onDelete: Cascade). Brand-wide
   // tiles carry a null destinationId and are not in this relation.
-  instagramPosts      InstagramPost[]
+  instagramPosts          InstagramPost[]
+  destinationPopularLinks DestinationPopularLink[]
 
   @@index([slug])
   @@index([isActive])
@@ -118,18 +119,19 @@ model Hub {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  destination       Destination          @relation(fields: [destinationId], references: [id])
-  creator           User?                @relation("HubCreator", fields: [createdBy], references: [id])
-  allowedCategories HubAllowedCategory[]
-  ourPicks          HubOurPick[]
-  comparisonGroups  HubComparisonGroup[]
-  contentSections   HubContentSection[] // Discover / Local Tips / Fast Facts / Editorial
-  translations      HubTranslation[]
-  pageContents      HubPageContent[]
-  tourHubs          TourHub[]
+  destination            Destination              @relation(fields: [destinationId], references: [id])
+  creator                User?                    @relation("HubCreator", fields: [createdBy], references: [id])
+  allowedCategories      HubAllowedCategory[]
+  ourPicks               HubOurPick[]
+  comparisonGroups       HubComparisonGroup[]
+  contentSections        HubContentSection[] // Discover / Local Tips / Fast Facts / Editorial
+  translations           HubTranslation[]
+  pageContents           HubPageContent[]
+  tourHubs               TourHub[]
   // Homepage editorial CTA cards advertising this hub (onDelete: SetNull -
   // deleting the hub degrades the card to a plain photo, never deletes it).
   homePageEditorialCards HomePageEditorialCard[]
+  popularLinks           DestinationPopularLink[]
 
   @@unique([destinationId, slug])
   @@index([destinationId])
@@ -334,9 +336,9 @@ model HubContentSection {
 // reel is a mood board of the platform's activities, not navigation. The
 // label is a single admin-entered string, not translated across locales.
 model FeaturedExperience {
-  id       String  @id @default(uuid())
-  title    String
-  videoUrl String?
+  id           String  @id @default(uuid())
+  title        String
+  videoUrl     String?
   // Card poster; doubles as the <video> poster so a card with a video never
   // flashes black before it plays. The carousel slot is a 250x440 PORTRAIT
   // crop. A card with no poster is dropped by the public resolver (a grey
@@ -346,4 +348,58 @@ model FeaturedExperience {
   isActive     Boolean @default(true)
 
   @@map("featured_experiences")
+}
+
+// Admin-curated "Popular" quick links under the destination hero search (mck-02:
+// "Popular: Klein Curaçao · Best Things to Do in Curaçao · Off-Road Tours ·
+// Boat Tours & Cruises"). At most four.
+//
+// Each link is a page in THIS island's flat `/{destination}/{slug}` namespace -
+// a hub, a collection or a category - so one row shape covers all three, the
+// same polymorphic-with-FKs shape HomePageEditorialCard uses.
+//
+// Curation, not ranking, because "Popular" is an editorial claim and no rule
+// over live data reproduces the founder's four: Off-Road Tours is fifth by
+// sortOrder and joint-fourth by tour count, so it fell outside a row of four
+// however the row was sorted. Confirmed by the founder ("no dynamic order
+// matters here").
+//
+// Curation picks WHICH pages; it never asserts that one exists. Every link is
+// re-gated at render against the target's own visibility rule (a category needs
+// CATEGORY_PAGE_MIN_TOURS live tours here, a hub must be published with a live
+// tour, a collection must be published) and is silently dropped otherwise -
+// the founder's standing condition, "these must show when these collections and
+// categories have data to render page".
+//
+// No rows = fall back to the automatic composition (hub, lead collection, then
+// categories), so an island nobody has curated still gets a Popular row.
+//
+// Cascade, not SetNull: a link whose target is gone has nothing to degrade to,
+// unlike an editorial CARD, which keeps its photo.
+model DestinationPopularLink {
+  id            String      @id @default(uuid())
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  // Exactly one of the three is set - the service rejects none and rejects more
+  // than one, so a row always names exactly one page.
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  hubId        String?
+  hub          Hub?        @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  // 0-3, left to right as rendered.
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One target per slot. NOT unique on the target: nothing stops an admin
+  // pointing two slots at one page, and the resolver dedupes rather than the
+  // database rejecting a save mid-edit.
+  @@unique([destinationId, displayOrder])
+  @@index([destinationId])
+  @@map("destination_popular_links")
 }
