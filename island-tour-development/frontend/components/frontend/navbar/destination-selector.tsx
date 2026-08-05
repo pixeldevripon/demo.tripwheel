@@ -89,7 +89,7 @@ export function DestinationSelector({
                     /* Mockup mobile .nss: the short island label, never the
                        bare pin. */
                     <span className='text-[12.5px] font-semibold text-it-ink whitespace-nowrap'>
-                        {currentIsland ? currentIsland.name : dict.island}
+                        {currentIsland ? currentIsland.name : dict.selectIsland}
                     </span>
                 )}
                 <Image
