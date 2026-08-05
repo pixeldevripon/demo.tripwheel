@@ -167,7 +167,7 @@ export function TravellerPaymentsList({
                                 </div>
                                 <div className='flex shrink-0 flex-col items-end gap-1.5'>
                                     <strong
-                                        className={`block font-normal text-[20px] leading-[1.3] tracking-[-0.012em] ${
+                                        className={`block font-medium text-[20px] leading-[1.3] tracking-[-0.012em] ${
                                             isRefund
                                                 ? 'text-it-green'
                                                 : 'text-it-heading'

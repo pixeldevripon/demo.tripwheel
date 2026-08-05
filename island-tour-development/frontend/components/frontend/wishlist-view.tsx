@@ -74,7 +74,7 @@ export function WishlistView({
     return (
         <section className='it-section bg-it-white'>
             <div className='it-container flex flex-col gap-8'>
-                <h1 className='m-0 font-normal text-[28px] md:text-[40px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                <h1 className='m-0 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1] tracking-[-0.018em] text-it-heading'>
                     {dict.title}
                 </h1>
 
@@ -110,7 +110,7 @@ export function WishlistView({
 function Prompt({ title, hint }: { title: string; hint: string }) {
     return (
         <div className='flex flex-col items-center gap-3 py-16 text-center'>
-            <p className='m-0 font-normal text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
+            <p className='m-0 font-medium text-[18px] md:text-[22px] leading-[1.3] text-it-heading'>
                 {title}
             </p>
             <p className='m-0 max-w-md text-[14px] md:text-[16px] leading-[1.6] text-it-heading/60'>

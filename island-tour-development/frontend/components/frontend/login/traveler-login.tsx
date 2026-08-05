@@ -216,7 +216,7 @@ export function TravelerLogin({
                     <MountReveal key={`${locale}:${panel}`}>
                         {panel === 'login' ? (
                             <>
-                                <h1 className='m-0 font-it-display text-[26px] font-semibold tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[26px] font-bold tracking-[-0.012em] text-it-heading'>
                                     {dict.title}
                                 </h1>
                                 <p className='mb-6 mt-2 text-[14.5px] text-it-text-muted'>
@@ -333,7 +333,7 @@ export function TravelerLogin({
                                     />
                                     {dict.back}
                                 </button>
-                                <h1 className='m-0 font-it-display text-[26px] font-semibold tracking-[-0.01em] text-it-heading'>
+                                <h1 className='m-0 font-it-display text-[26px] font-bold tracking-[-0.012em] text-it-heading'>
                                     {dict.lostTitle}
                                 </h1>
                                 <p className='mb-6 mt-2 text-[14.5px] text-it-text-muted'>
