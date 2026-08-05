@@ -145,7 +145,22 @@ function MonthCell({
         <PopoverAnchor asChild>
         <div
             onClick={(e) => {
-                if ((e.target as HTMLElement).closest('button')) return;
+                const target = e.target as HTMLElement;
+                /*
+                 * React re-dispatches events from PORTALLED content up the
+                 * REACT tree, not the DOM tree. A departure chip's popover
+                 * renders at the document root, but it is still a React
+                 * descendant of this cell - so clicking the seats field or the
+                 * title inside that card arrived here and opened the day peek
+                 * on top of it, which read as "the card closes when I click it".
+                 *
+                 * Physical containment is the honest test, and it covers every
+                 * portalled layer - popover, day peek, dialog, dropdown -
+                 * rather than enumerating them. `closest('button')` cannot: the
+                 * card is mostly text and inputs.
+                 */
+                if (!e.currentTarget.contains(target)) return;
+                if (target.closest('button')) return;
                 if (day.departures.length > 0) setPeekOpen(true);
             }}
             className={cn(

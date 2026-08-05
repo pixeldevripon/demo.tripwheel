@@ -183,7 +183,16 @@ export function CalendarTimeGrid({
         dayIndex: number,
     ) {
         if (!canShape || day.date < today) return;
-        // Chips and their popovers handle their own clicks.
+        /*
+         * Chips handle their own clicks - but their POPOVERS could not, because
+         * React re-dispatches portalled events up the React tree: a click on
+         * the seats field inside a departure card is a React descendant of this
+         * column and arrived here, popping the add-departure target at an hour
+         * computed from a `clientY` that happened somewhere else entirely.
+         *
+         * Physical containment first, then the button guard.
+         */
+        if (!e.currentTarget.contains(e.target as Node)) return;
         if ((e.target as HTMLElement).closest('button')) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const y = e.clientY - rect.top;
