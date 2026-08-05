@@ -1039,6 +1039,90 @@ files that appeared mid-session and are not part of this work.
 
 ---
 
+## Phase 6 - The fan card gets the mockup's surface + a starting price `[x]`
+
+**EXECUTED 2026-08-05** (PR #66). The fan had been rendering a bare photo with
+the caption laid over it. It now renders the mockup's `.c`: a white card, the
+photo across the top **70%**, then a label carrying the title and a starting
+price.
+
+`flex flex-col` on the card is load-bearing rather than cosmetic. A `<button>`
+and an `<a>` both centre their content, which left a 16px white band above the
+photo and pushed the whole card off the mockup; the column pins the photo to the
+top edge and lets the label take the remainder.
+
+### The price is computed in the backend, and grouped by currency FIRST
+
+`cardStartingPrices()` (`home-page.service.ts`) resolves the live tours behind
+each card on the editorial island through `tourCategory` / `tourHub`, then takes
+the minimum `priceFrom` **per source currency**, converts each of those through
+`FxRatesService.buildMoney`, and only then picks the cheapest.
+
+The order is the whole point. Operators price in their own currencies, so
+comparing raw amounts before conversion picks the smallest *number* rather than
+the cheapest *tour* - a 5,000 JPY tour would lose to a 90 EUR one. The frontend
+receives the value already converted and only formats it; it never does FX,
+which is the same rule the rest of the site follows.
+
+A card with nothing bookable behind it returns `priceFrom: null` and simply
+renders no price line - the never-blank fallback contract, applied to one line
+rather than the whole card.
+
+**Two traps found in review of the first cut (PR #69), both worth not
+repeating:**
+
+- **`currency ?? source` is the wrong fallback in a comparison.** It is what
+  `FxRatesService.attachMoney` does, and it is correct there - that helper shows
+  each item ITS OWN price and never compares two items. Here we pick a single
+  cheapest, and making every source its own target converts nothing, so the
+  comparison falls straight back onto raw mixed amounts. There must be ONE
+  target; when the shopper's currency is unknown it is the platform base.
+- **`buildMoney` returns the SOURCE currency when no rate is available** (the
+  sitewide never-block-on-FX rule). So even with one target, a partial outage
+  can leave two entries in different currencies. Unconvertible entries are set
+  aside; if nothing converted, the card takes a price only when every tour
+  behind it shared one currency. A missing price line beats a wrong one.
+
+The price is gated by the **same liveness test** as the card's name and link.
+Without that, archiving a category or unpublishing a hub that still had live
+tours left the card correctly anonymous and unlinked but still quoting a real
+price - a page we had just decided must not be advertised, advertised by its
+price.
+
+The spec's FX fake was originally an identity echo, which meant the suite
+structurally could not tell a converted comparison from an unconverted one. It
+applies a real rate now, and the multi-currency cases were confirmed to go red
+against the old pivot rather than merely assumed to.
+
+`getPublic()` therefore takes the shopper's currency, and the homepage reads it
+via `getServerCurrency` inside its existing Suspense boundary.
+
+### Interaction - one click, two lifespans
+
+The founder split the click into two behaviours that expire differently:
+
+- **`front`** - which card is on top. **Sticky.** Bringing a card forward is the
+  point of the click, so it stays forward until another card is picked.
+- **`lifted`** - the zoom. **Momentary.** It is press feedback, so it releases on
+  the next click elsewhere. Without the split the card stayed enlarged for the
+  rest of the visit.
+
+Cards never move. `z-index` is a stacking value and cannot tween, so the eased
+lift carries the motion and the stacking flips under cover of it.
+
+The release listens for **`pointerdown`, not the button's own `blur`**: Safari
+does not focus a `<button>` on click, so `blur` would never fire there - and
+Safari is where this was reported.
+
+### Verified
+
+Backend `home-page` suites 43/43. In real Chrome at `/en`: rest `z 10/30/20` at
+scale 1 -> click `scale 1.048, z 40` -> click away `scale 1.000, z stays 40`.
+Photo flush at the card's top edge (`photoTopInset: 1` = the border alone,
+`photoPctOfCard: 70`). `home.editorial.from` added to all 7 dictionaries.
+
+---
+
 ## Known pre-existing test failure (not caused by this work)
 
 `tours.service.spec.ts` "date filter keeps only tours with a fitting OPEN
