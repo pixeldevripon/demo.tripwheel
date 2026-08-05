@@ -100,7 +100,11 @@ async function HomeContent({
         ? (heroSeo.get(normalizeUrl(content.heroImage))?.altText ?? null)
         : null;
     // Hero search + Popular are driven by the live destinations (name + slug).
-    const islands = destinations.map(d => ({ name: d.name, slug: d.slug }));
+    const islands = destinations.map(d => ({
+        name: d.name,
+        slug: d.slug,
+        tours: d.tourCount,
+    }));
     // "Explore islands" cards need the hero image + live tour count too.
     const exploreIslands = destinations.map(d => ({
         name: d.name,

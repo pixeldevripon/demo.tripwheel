@@ -247,8 +247,11 @@ export function SearchTypeahead({
     /** Null when no island is active (category pages are destination-scoped). */
     categoryHref: ((slug: string) => string) | null;
     hubHref: (destinationSlug: string, slug: string) => string;
-    /** Matched destinations - rendered before every other bucket (homepage hero). */
-    destinations?: { name: string; slug: string }[];
+    /**
+     * Matched destinations - rendered before every other bucket (homepage hero).
+     * `tours` is the island's live tour count, shown as the row's subtitle.
+     */
+    destinations?: { name: string; slug: string; tours?: number }[];
     destinationHref?: (slug: string) => string;
     onSelect: () => void;
 }) {
@@ -288,6 +291,16 @@ export function SearchTypeahead({
                                         <MapPin size={18} strokeWidth={1.5} />
                                     }
                                     label={d.name}
+                                    subtitle={
+                                        d.tours == null
+                                            ? undefined
+                                            : d.tours === 1
+                                              ? dict.tourCountOne
+                                              : dict.tourCount.replace(
+                                                    '{count}',
+                                                    String(d.tours)
+                                                )
+                                    }
                                 />
                             ))}
                         {query.trim().length >= 2 && (
