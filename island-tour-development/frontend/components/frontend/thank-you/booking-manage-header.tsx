@@ -102,7 +102,7 @@ export function BookingManageHeader({
                         </span>
                     </span>
                     <div className='flex flex-col gap-1'>
-                        <h1 className='m-0 font-normal text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
+                        <h1 className='m-0 font-bold text-[32px] md:text-[44px] leading-[1.2] tracking-[-0.012em] text-it-heading'>
                             {dict.manageTitle}
                         </h1>
                         <p className='m-0 text-[16px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
@@ -126,7 +126,7 @@ export function BookingManageHeader({
                         pending is not left guessing whether it registered -
                         the reason the cancel form kept getting re-submitted. */}
                     {stateNote && (
-                        <p className='m-0 max-w-[640px] text-[15px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
+                        <p className='m-0 max-w-160 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-ink/60'>
                             {stateNote}
                         </p>
                     )}
