@@ -72,13 +72,12 @@ export async function DestinationHeroSection({
     ];
 
     /*
-     * Hero "Popular" quick links: the island's hub, then its lead collection,
-     * then categories - capped at 4.
+     * Hero "Popular" quick links: the island's hub, then its categories, with
+     * collections as the fallback - capped at 4.
      *
      * It used to be the first four of `exploreTypes` (hubs + categories), which
-     * could never surface a COLLECTION, so an island's flagship "Best Things to
-     * Do in X" page was unreachable from the hero even though it is one of the
-     * most useful pages on the island (founder, 2026-08-05).
+     * could never surface a COLLECTION at all. On a thin island that left the
+     * row half empty while a perfectly good curated list sat unlinked.
      *
      * Every label is the TARGET PAGE'S OWN NAME, and every entry comes from a
      * list the API has already filtered to pages that render - a category page
@@ -93,11 +92,13 @@ export async function DestinationHeroSection({
      */
     const activities = [
         ...hubs.map(h => ({ name: h.name, slug: h.slug })),
-        // The LEAD collection only. All three of Curacao's collections sorted
-        // ahead of the categories and filled the row on their own, which buries
-        // the activity pages the row exists to surface.
-        ...collections.slice(0, 1).map(c => ({ name: c.name, slug: c.slug })),
         ...categories.map(c => ({ name: c.name, slug: c.slug })),
+        // Collections are the FALLBACK, never the headline (founder,
+        // 2026-08-05). The row exists to surface activity pages, so it fills
+        // with hubs and categories first and only reaches for a collection when
+        // the island has too few live category pages to fill four slots - which
+        // is exactly when a curated list is the most useful thing to offer.
+        ...collections.map(c => ({ name: c.name, slug: c.slug })),
     ]
         .slice(0, 4)
         .map(item => ({
