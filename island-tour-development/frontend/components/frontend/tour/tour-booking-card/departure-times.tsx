@@ -10,7 +10,7 @@ import {
 } from 'framer-motion';
 import { useEffect } from 'react';
 import { Collapse } from './collapse';
-import { formatTime } from './lib/booking.utils';
+import { formatSelectedDate, formatTime } from './lib/booking.utils';
 
 /**
  * Departure-time chips, revealed once a date is picked. Each chip shows the
@@ -62,15 +62,44 @@ export function DepartureTimes() {
         animate(shakeOffset, shakeX, shakeTransition);
     }, [missingSlot, ctaErrorNonce, reduceMotion, shakeOffset]);
 
+    /*
+     * A chosen day with nothing running used to collapse to NOTHING - the date
+     * sat in the field looking accepted while the times simply never appeared.
+     * That is worst for a traveller arriving from a search for a specific day,
+     * who has every reason to believe the date was honoured. Say it instead.
+     */
+    const noDepartures =
+        selectedDate != null && !slotsLoading && slots.length === 0;
+
     return (
         <Collapse
-            open={selectedDate != null && (slotsLoading || slots.length > 0)}>
+            open={
+                selectedDate != null &&
+                (slotsLoading || slots.length > 0 || noDepartures)
+            }>
             {/* pt-2 / pb-2 = the stack gaps, kept INSIDE the collapse so they
                 animate with the height tween (an outer sibling margin would
                 snap in). The bottom one rides on top of the selector stack's
                 own 8px, so the chips get real air between them and the party
                 panel instead of the two blocks reading as one. */}
-            {slotsLoading ? (
+            {noDepartures ? (
+                <motion.div
+                    key='no-departures'
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={swapFade}
+                    className='pb-2 pt-2'>
+                    <p className='m-0 text-[14px] font-semibold leading-[1.5] text-it-ink'>
+                        {dict.noDeparturesOnDateTitle.replace(
+                            '{date}',
+                            formatSelectedDate(selectedDate!, locale)
+                        )}
+                    </p>
+                    <p className='m-0 mt-0.5 text-[13px] leading-[1.5] text-it-ink-muted'>
+                        {dict.noDeparturesOnDateHint}
+                    </p>
+                </motion.div>
+            ) : slotsLoading ? (
                 <motion.div
                     key='loading'
                     initial={{ opacity: 0 }}

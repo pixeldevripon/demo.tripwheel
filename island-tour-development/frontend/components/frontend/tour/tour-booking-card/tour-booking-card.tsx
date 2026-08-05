@@ -182,6 +182,7 @@ export function TourBookingCard({
     destinationSlug,
     tourSlug,
     currency,
+    initialDate,
 }: {
     dict: TourBookingDict;
     /** Live tour data; falls back to `DUMMY_BOOKING_DATA` for design/testing. */
@@ -195,6 +196,12 @@ export function TourBookingCard({
     tourSlug?: string;
     /** Shopper display/booking currency; sent to the quote + carried to checkout. */
     currency?: Currency;
+    /**
+     * A day the traveller already chose upstream (`?date=` in the URL, carried
+     * from a date-filtered search or listing). Preselected here so they are not
+     * asked the same question twice; the calendar stays fully editable.
+     */
+    initialDate?: string;
 }) {
     return (
         <BookingStoreProvider
@@ -204,7 +211,8 @@ export function TourBookingCard({
             tourId={tourId}
             destinationSlug={destinationSlug}
             tourSlug={tourSlug}
-            currency={currency}>
+            currency={currency}
+            initialDate={initialDate}>
             <TourBookingCardLayout />
         </BookingStoreProvider>
     );

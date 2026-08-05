@@ -364,6 +364,8 @@
                 "available": "Available",
                 "calendarNoDepartures": "No departures",
                 "calendarClosed": "Closed",
+                "noDeparturesOnDateTitle": "Nothing runs on {date}",
+                "noDeparturesOnDateHint": "Pick another day - the calendar shows every date with space left.",
                 "deadEndTitle": "These trips still have departures this week",
                 "deadEndSubtitle": "This tour has no departures in the next 30 days.",
                 "deadEndNext": "Next: {date}",

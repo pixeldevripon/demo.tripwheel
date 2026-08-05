@@ -364,6 +364,8 @@
                 "available": "Beschikbaar",
                 "calendarNoDepartures": "Geen vertrekken",
                 "calendarClosed": "Gesloten",
+                "noDeparturesOnDateTitle": "Op {date} vaart er niets",
+                "noDeparturesOnDateHint": "Kies een andere dag - de kalender toont elke datum met plek.",
                 "deadEndTitle": "Deze trips hebben deze week nog vertrekken",
                 "deadEndSubtitle": "Deze tour heeft de komende 30 dagen geen vertrekken.",
                 "deadEndNext": "Volgende: {date}",

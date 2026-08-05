@@ -364,6 +364,8 @@
                 "available": "Disponible",
                 "calendarNoDepartures": "Sin salidas",
                 "calendarClosed": "Cerrado",
+                "noDeparturesOnDateTitle": "No hay salidas el {date}",
+                "noDeparturesOnDateHint": "Elige otro día: el calendario muestra todas las fechas con plazas.",
                 "deadEndTitle": "Estas excursiones aún tienen salidas esta semana",
                 "deadEndSubtitle": "Esta excursión no tiene salidas en los próximos 30 días.",
                 "deadEndNext": "Próxima salida: {date}",

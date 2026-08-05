@@ -119,6 +119,12 @@ export interface BookingConfig {
     /** Shopper (booking) currency - sent to `POST /bookings/quote` and carried to
      *  checkout so the authoritative total is priced in it (guide §21.5). */
     currency?: Currency;
+    /**
+     * The date the traveller arrived with, if the URL carried one. Kept so the
+     * persisted selection cannot overwrite it: a sessionStorage snapshot from a
+     * previous visit to this tour is OLDER intent than the search they just ran.
+     */
+    initialDate?: string;
     participantBands: BookingBand[];
     spectatorBands: BookingBand[];
     hasSpectators: boolean;
@@ -224,6 +230,16 @@ export interface BookingInit {
     destinationSlug?: string;
     tourSlug?: string;
     currency?: Currency;
+    /**
+     * A date the traveller already chose BEFORE reaching this page - carried in
+     * the URL (`?date=`) from a search or listing they filtered by day. Local
+     * `YYYY-MM-DD`.
+     *
+     * Seeded as the widget's selection so the answer to "can I do this on the
+     * 27th" is not asked twice. It is a starting point, not a commitment: the
+     * calendar is untouched and re-picking overrides it.
+     */
+    initialDate?: string;
 }
 
 /* ─── Pure derivations (from a full store snapshot) ───────────────────────── */
@@ -525,6 +541,25 @@ export function deriveBooking(s: BookingStore) {
 
 /* ─── Store factory ──────────────────────────────────────────────────────── */
 
+/**
+ * A local `YYYY-MM-DD` as a Date at LOCAL midnight, or null when it is
+ * malformed or already past.
+ *
+ * Local, never `new Date(iso)`: that parses as UTC midnight and lands on the
+ * previous day everywhere west of Greenwich, so the widget would open on a
+ * different date than the one the traveller searched.
+ */
+export function parseLocalDateParam(value: string | null | undefined): Date | null {
+    if (typeof value !== 'string') return null;
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const date = new Date(y, m - 1, d);
+    if (Number.isNaN(date.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today ? date : null;
+}
+
 export function createBookingStore(init: BookingInit) {
     const data = init.data ?? DUMMY_BOOKING_DATA;
     const locale = init.locale ?? 'en';
@@ -544,6 +579,7 @@ export function createBookingStore(init: BookingInit) {
         destinationSlug: init.destinationSlug,
         tourSlug: init.tourSlug,
         currency: init.currency,
+        initialDate: init.initialDate,
         participantBands,
         spectatorBands,
         hasSpectators,
@@ -564,7 +600,8 @@ export function createBookingStore(init: BookingInit) {
     const initialState: BookingState = {
         counts: initialCounts,
         addOnQty: {},
-        selectedDate: null,
+        // Pre-chosen day from the URL, if any (see BookingInit.initialDate).
+        selectedDate: parseLocalDateParam(init.initialDate),
         selectedTime: null,
         calendarOpen: false,
         partyOpen: false,
@@ -670,18 +707,12 @@ export function createBookingStore(init: BookingInit) {
             // Date: local YYYY-MM-DD, only if it is still today-or-future. The
             // availability sync refetches this date's slots automatically; the
             // persistence hook re-selects the time once the slots confirm it.
-            let selectedDate: Date | null = null;
-            if (typeof sel.date === 'string') {
-                const [y, m, d] = sel.date.split('-').map(Number);
-                if (y && m && d) {
-                    const date = new Date(y, m - 1, d);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    if (!Number.isNaN(date.getTime()) && date >= today) {
-                        selectedDate = date;
-                    }
-                }
-            }
+            // The URL date wins: arriving from a search for the 27th and being
+            // silently put back on a date saved days ago is worse than losing
+            // the saved one. Only fills in when the URL carried nothing.
+            const selectedDate = get().initialDate
+                ? null
+                : parseLocalDateParam(sel.date);
 
             const restoredSpectators =
                 counts != null &&

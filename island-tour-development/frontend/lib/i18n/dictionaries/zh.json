@@ -364,6 +364,8 @@
                 "available": "可预订",
                 "calendarNoDepartures": "无出发班次",
                 "calendarClosed": "已关闭",
+                "noDeparturesOnDateTitle": "{date} 没有出发班次",
+                "noDeparturesOnDateHint": "请另选一天 - 日历会显示所有仍有名额的日期。",
                 "deadEndTitle": "这些行程本周仍有出发班次",
                 "deadEndSubtitle": "此行程未来 30 天内没有出发班次。",
                 "deadEndNext": "下次出发：{date}",

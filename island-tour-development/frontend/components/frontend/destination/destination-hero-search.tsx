@@ -170,9 +170,19 @@ export function DestinationHeroSearch({
         return `${localizeHref(locale, '/search')}?${sp.toString()}`;
     };
 
+    /*
+     * Tour links carry the chosen day. The panel is already filtered to tours
+     * bookable that date, so landing on one and being asked to pick a date
+     * again - or worse, being shown a different day's price - throws away the
+     * answer the traveller just gave. The widget preselects it and stays
+     * editable.
+     */
     const tourHref = (hit: SearchHit) =>
         hit.destinationSlug
-            ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
+            ? localizeHref(
+                  locale,
+                  `/${hit.destinationSlug}/${hit.slug}${isoDate ? `?date=${isoDate}` : ''}`
+              )
             : localizeHref(
                   locale,
                   `/search?q=${encodeURIComponent(hit.title)}`

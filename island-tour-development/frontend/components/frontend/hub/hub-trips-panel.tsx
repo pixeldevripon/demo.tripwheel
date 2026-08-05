@@ -112,8 +112,22 @@ export function HubTripsPanel({
         };
     }, [date, allTourIds]);
 
-    const filterTours = (tours: HubTour[]) =>
-        availableIds ? tours.filter(t => availableIds.has(t.id)) : tours;
+    /*
+     * Narrow to the day's tours AND carry that day onto each card's link. The
+     * hub's date lives in React state rather than the URL, so without this the
+     * traveller filters to the 27th, opens a card, and is asked for a date
+     * again on a page that has no idea one was ever chosen.
+     */
+    const isoDate = date ? format(date, 'yyyy-MM-dd') : null;
+    const filterTours = (tours: HubTour[]) => {
+        const kept = availableIds
+            ? tours.filter(t => availableIds.has(t.id))
+            : tours;
+        if (!isoDate) return kept;
+        return kept.map(t =>
+            t.href ? { ...t, href: `${t.href}?date=${isoDate}` } : t
+        );
+    };
 
     const filteredGroups = panel.groups.map(g => ({
         ...g,

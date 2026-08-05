@@ -364,6 +364,8 @@
                 "available": "Disponível",
                 "calendarNoDepartures": "Sem partidas",
                 "calendarClosed": "Fechado",
+                "noDeparturesOnDateTitle": "Não há partidas em {date}",
+                "noDeparturesOnDateHint": "Escolha outro dia - o calendário mostra todas as datas com vagas.",
                 "deadEndTitle": "Estes passeios ainda têm partidas esta semana",
                 "deadEndSubtitle": "Este passeio não tem partidas nos próximos 30 dias.",
                 "deadEndNext": "Próxima partida: {date}",

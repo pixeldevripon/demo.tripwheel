@@ -95,7 +95,8 @@ export async function SearchResultsSection({
             : null;
 
     const listings =
-        results?.data.map(hit => searchHitToListing(hit, locale, t)) ?? [];
+        results?.data.map(hit => searchHitToListing(hit, locale, t, date)) ??
+        [];
     const totalPages = results
         ? Math.max(1, Math.ceil(results.total / PAGE_SIZE))
         : 0;

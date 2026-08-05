@@ -364,6 +364,8 @@
                 "available": "Verfügbar",
                 "calendarNoDepartures": "Keine Abfahrten",
                 "calendarClosed": "Geschlossen",
+                "noDeparturesOnDateTitle": "Am {date} finden keine Touren statt",
+                "noDeparturesOnDateHint": "Wählen Sie einen anderen Tag - der Kalender zeigt jedes Datum mit freien Plätzen.",
                 "deadEndTitle": "Diese Touren haben diese Woche noch Abfahrten",
                 "deadEndSubtitle": "Diese Tour hat in den nächsten 30 Tagen keine Abfahrten.",
                 "deadEndNext": "Nächster Termin: {date}",
