@@ -26,12 +26,16 @@ export function DestinationSelector({
     islands,
     currentIsland,
     variant,
+    onOpen,
 }: {
     locale: Locale;
     dict: NavDict;
     islands: Island[];
     currentIsland: Island | null;
     variant: 'desktop' | 'mobile';
+    /** Fired when this menu opens, so the navbar can close the mobile drawer -
+     *  two stacked panels hanging off the same bar read as a broken layer. */
+    onOpen?: () => void;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -44,7 +48,12 @@ export function DestinationSelector({
     return (
         <div ref={ref} className='relative'>
             <motion.button
-                onClick={() => setOpen(v => !v)}
+                onClick={() =>
+                    setOpen(v => {
+                        if (!v) onOpen?.();
+                        return !v;
+                    })
+                }
                 aria-label={dict.selectIsland}
                 aria-expanded={open}
                 whileTap={{ scale: 0.98 }}
@@ -105,7 +114,11 @@ export function DestinationSelector({
                 {open && (
                     <motion.div
                         {...dropdownMotion}
-                        className={`absolute top-[calc(100%+18px)] ${menuAlign} min-w-45 bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-50`}>
+                        /* z-60, above the mobile drawer's z-50: a dropdown
+                           hanging off the bar must never be covered by the
+                           panel below it. The navbar also closes the drawer
+                           via `onOpen`, so both guards point the same way. */
+                        className={`absolute top-[calc(100%+18px)] ${menuAlign} min-w-45 bg-it-white border border-it-border-subtle rounded-it-sm shadow-it-lg overflow-hidden z-60`}>
                         {islands.map(island => (
                             <motion.div
                                 key={island.slug}
