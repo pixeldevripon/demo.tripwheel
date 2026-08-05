@@ -210,7 +210,7 @@ export function TravellerBookingPanel({
                     {booking.operator.name && (
                         <span>
                             {dict.supportTourQ}{' '}
-                            <strong className='font-normal text-it-heading'>
+                            <strong className='font-medium text-it-heading'>
                                 {booking.operator.name}
                             </strong>
                             {booking.operator.phone && (
@@ -282,9 +282,9 @@ export function TravellerBookingPanel({
 function Panel({ title, children }: { title: string; children: ReactNode }) {
     return (
         <div className='flex h-full flex-col gap-3 rounded-[16px] border border-it-heading/10 bg-it-white p-5'>
-            <h4 className='m-0 text-[13px] font-semibold tracking-[0.04em] text-it-text-muted uppercase'>
+            <h3 className='m-0 text-[13px] font-semibold tracking-[0.04em] text-it-text-muted uppercase'>
                 {title}
-            </h4>
+            </h3>
             <div className='flex flex-col gap-2.5'>{children}</div>
         </div>
     );

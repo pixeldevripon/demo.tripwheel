@@ -128,10 +128,10 @@ export function TravellerPaymentsList({
                     return (
                         <li
                             key={payment.id}
-                            className='rounded-[16px] border border-it-heading/10 bg-it-white p-5 sm:px-6'>
+                            className='rounded-[16px] border border-it-heading/10 bg-it-white p-5 sm:p-6'>
                             <div className='flex flex-wrap items-start justify-between gap-x-4 gap-y-3'>
                                 <div className='min-w-0 flex-1'>
-                                    <strong className='block text-[16px] leading-[1.5] tracking-[-0.012em] font-semibold text-it-heading'>
+                                    <strong className='block text-[19px] leading-[1.4] tracking-[-0.012em] font-bold text-it-heading'>
                                         {kindLabel}
                                         {payment.tourName && (
                                             <span className='font-normal text-it-text-muted'>
@@ -140,10 +140,10 @@ export function TravellerPaymentsList({
                                             </span>
                                         )}
                                     </strong>
-                                    <span className='mt-1 block text-[14px] leading-[1.6] text-it-text-muted'>
+                                    <span className='mt-1 block text-[14.5px] leading-[1.6] text-it-text-muted'>
                                         {dateLine}
                                     </span>
-                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[13px] text-it-text-muted'>
+                                    <span className='mt-1 flex flex-wrap items-center gap-x-3 font-mono text-[12.5px] text-it-text-muted'>
                                         {manageHref ? (
                                             <Link
                                                 href={manageHref}
@@ -167,7 +167,7 @@ export function TravellerPaymentsList({
                                 </div>
                                 <div className='flex shrink-0 flex-col items-end gap-1.5'>
                                     <strong
-                                        className={`block font-normal text-[20px] leading-[1.3] tracking-[-0.012em] ${
+                                        className={`block font-bold text-[19px] leading-[1.3] tracking-[-0.012em] ${
                                             isRefund
                                                 ? 'text-it-green'
                                                 : 'text-it-heading'

@@ -61,9 +61,9 @@ const EMAIL_ERROR_ID = 'traveller-email-error';
 const unknownEmails = {
     has(v: string) {
         try {
-            return (
-                sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? ''
-            ).includes(`|${v}|`);
+            return (sessionStorage.getItem(UNKNOWN_EMAILS_KEY) ?? '').includes(
+                `|${v}|`
+            );
         } catch {
             return false;
         }
@@ -234,7 +234,7 @@ export function TravellerLoginCard({
                     transition={crossFade}>
                     {step === 'email' ? (
                         <form onSubmit={sendCode} noValidate>
-                            <h1 className='mb-2 font-normal text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-bold text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.loginTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
@@ -283,7 +283,7 @@ export function TravellerLoginCard({
                         </form>
                     ) : (
                         <div>
-                            <h1 className='mb-2 font-normal text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
+                            <h1 className='mb-2 font-bold text-[26px] leading-[1.25] tracking-[-0.012em] text-it-heading'>
                                 {dict.codeTitle}
                             </h1>
                             <p className='mb-7 text-[15px] leading-[1.6] text-it-text-muted'>
