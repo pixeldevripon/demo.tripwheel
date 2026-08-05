@@ -16,10 +16,10 @@ import {
 } from '@/lib/constants/locales';
 
 /**
- * The currency the visitor already has stored, or `undefined` when there is no
- * cookie yet. The distinction matters: "no cookie" is what tells the geo
- * auto-detect it may pick one, so this must NOT fold in a default. Callers that
- * just want a currency to render with should use `currencyFromCookie`.
+ * The currency the visitor CHOSE, or `undefined` when they never picked one.
+ * The distinction matters: "no cookie" is what lets the locale default apply,
+ * so this must NOT fold in a default. Callers that just want a currency to
+ * render with should use `currencyFromCookie`.
  */
 export function storedCurrency(
     cookieHeader?: string | null,
@@ -53,10 +53,9 @@ export function currencyFromCookie(
 }
 
 /**
- * Persist the shopper's display currency for a year. The single writer of this
- * cookie in the browser - the footer selector (an explicit choice) and the geo
- * auto-detect (a first-visit guess) both go through here, so the two can never
- * disagree on cookie attributes and silently write two competing cookies.
+ * Persist the shopper's display currency for a year. The footer selector is the
+ * only caller, so a set cookie always means "this visitor chose this" - which is
+ * what lets it outrank the locale default without ambiguity.
  *
  * Deliberately readable by JS: `getServerCurrency` reads it server-side, but the
  * navbar/hero search widgets and the footer pill read it from `document.cookie`.
