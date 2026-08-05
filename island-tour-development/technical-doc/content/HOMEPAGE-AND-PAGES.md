@@ -1068,6 +1068,32 @@ A card with nothing bookable behind it returns `priceFrom: null` and simply
 renders no price line - the never-blank fallback contract, applied to one line
 rather than the whole card.
 
+**Two traps found in review of the first cut (PR #69), both worth not
+repeating:**
+
+- **`currency ?? source` is the wrong fallback in a comparison.** It is what
+  `FxRatesService.attachMoney` does, and it is correct there - that helper shows
+  each item ITS OWN price and never compares two items. Here we pick a single
+  cheapest, and making every source its own target converts nothing, so the
+  comparison falls straight back onto raw mixed amounts. There must be ONE
+  target; when the shopper's currency is unknown it is the platform base.
+- **`buildMoney` returns the SOURCE currency when no rate is available** (the
+  sitewide never-block-on-FX rule). So even with one target, a partial outage
+  can leave two entries in different currencies. Unconvertible entries are set
+  aside; if nothing converted, the card takes a price only when every tour
+  behind it shared one currency. A missing price line beats a wrong one.
+
+The price is gated by the **same liveness test** as the card's name and link.
+Without that, archiving a category or unpublishing a hub that still had live
+tours left the card correctly anonymous and unlinked but still quoting a real
+price - a page we had just decided must not be advertised, advertised by its
+price.
+
+The spec's FX fake was originally an identity echo, which meant the suite
+structurally could not tell a converted comparison from an unconverted one. It
+applies a real rate now, and the multi-currency cases were confirmed to go red
+against the old pivot rather than merely assumed to.
+
 `getPublic()` therefore takes the shopper's currency, and the homepage reads it
 via `getServerCurrency` inside its existing Suspense boundary.
 
