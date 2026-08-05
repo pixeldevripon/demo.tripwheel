@@ -1,3 +1,4 @@
+import { CATEGORY_PAGE_MIN_TOURS } from '@/common/constants/category-visibility';
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import {
@@ -179,8 +180,8 @@ export class HomePageService {
     // Independent of each other - both derive only from the island and the
     // cards - so they go out together rather than one after the other.
     const [bookable, startingPrices] = await Promise.all([
-      // Which of these categories actually has something bookable on that island.
-      this.categoriesWithLiveTours(
+      // Which of these categories has a page that will actually open on that island.
+      this.categoriesWithLivePages(
         editorialCards
           .filter((c) => c.isLink && c.category?.isActive)
           .map((c) => c.categoryId)
@@ -330,7 +331,7 @@ export class HomePageService {
       row.editorialDestinationId,
       row.editorialDestination,
     );
-    const bookable = await this.categoriesWithLiveTours(
+    const bookable = await this.categoriesWithLivePages(
       row.editorialCards
         .map((c) => c.categoryId)
         .filter((id): id is string => !!id),
@@ -523,7 +524,9 @@ export class HomePageService {
     }[],
     destinationId: string | null,
     currency?: Currency,
-  ): Promise<Map<string, { priceFrom: string | null; priceCurrency: Currency | null }>> {
+  ): Promise<
+    Map<string, { priceFrom: string | null; priceCurrency: Currency | null }>
+  > {
     const result = new Map<
       string,
       { priceFrom: string | null; priceCurrency: Currency | null }
@@ -570,7 +573,8 @@ export class HomePageService {
       cur: Currency | undefined,
     ) => {
       if (price == null || !cur) return;
-      const perCurrency = byTarget.get(key) ?? new Map<Currency, Prisma.Decimal>();
+      const perCurrency =
+        byTarget.get(key) ?? new Map<Currency, Prisma.Decimal>();
       const seen = perCurrency.get(cur);
       if (!seen || price.lessThan(seen)) perCurrency.set(cur, price);
       byTarget.set(key, perCurrency);
@@ -671,20 +675,26 @@ export class HomePageService {
   }
 
   /**
-   * Of these categories, the ones with at least one LIVE tour on that island.
+   * Of these categories, the ones whose PAGE is live on that island - master
+   * §2.4's {@link CATEGORY_PAGE_MIN_TOURS} bar, not merely "has a tour".
    *
    * This is the category page's own 404 condition (`categories.service
-   * .getByDestinationSlug`), so passing it is exactly "this link resolves".
-   * One query for the whole deck, `distinct` because a category with forty
-   * tours is still just one answer.
+   * .getBySlugForDestination`), so passing it is exactly "this link resolves".
+   * It must be read from the same constant: gate on one tour while the page
+   * needs three and the homepage advertises a card that opens a 404.
+   *
+   * One grouped query for the whole deck - a category with forty tours is still
+   * just one answer, but the count is what decides it, so `distinct` no longer
+   * suffices.
    */
-  private async categoriesWithLiveTours(
+  private async categoriesWithLivePages(
     categoryIds: string[],
     destinationId: string | null,
   ): Promise<Set<string>> {
     if (!categoryIds.length || !destinationId) return new Set();
 
-    const rows = await this.prisma.tourCategory.findMany({
+    const rows = await this.prisma.tourCategory.groupBy({
+      by: ['categoryId'],
       where: {
         categoryId: { in: categoryIds },
         tour: {
@@ -693,11 +703,14 @@ export class HomePageService {
           destinationId,
         },
       },
-      select: { categoryId: true },
-      distinct: ['categoryId'],
+      _count: { _all: true },
     });
 
-    return new Set(rows.map((r) => r.categoryId));
+    return new Set(
+      rows
+        .filter((r) => r._count._all >= CATEGORY_PAGE_MIN_TOURS)
+        .map((r) => r.categoryId),
+    );
   }
 
   /** One query per target type for the whole deck rather than one per card. */

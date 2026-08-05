@@ -35,9 +35,12 @@ function createMockPrismaService() {
     tourHub: {
       findMany: jest.fn().mockResolvedValue([]),
     },
-    // The card gate: which categories have a LIVE tour on the banner's island.
     tourCategory: {
+      // The card PRICES (cheapest live tour behind each card).
       findMany: jest.fn().mockResolvedValue([]),
+      // The card GATE: how many LIVE tours each category has on the banner's
+      // island, weighed against the 3 a category page needs to exist.
+      groupBy: jest.fn().mockResolvedValue([]),
     },
     faq: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -220,11 +223,11 @@ describe('HomePageService', () => {
     describe('editorial cards', () => {
       const CURACAO = { id: 'dest-1', slug: 'curacao' };
 
-      /** An island to resolve, and a category that is bookable on it. */
-      function islandWithLiveTour() {
+      /** An island to resolve, and a category whose PAGE is live on it. */
+      function islandWithLivePage() {
         prisma.destination.findMany.mockResolvedValue([CURACAO]);
-        prisma.tourCategory.findMany.mockResolvedValue([
-          { categoryId: 'cat-1' },
+        prisma.tourCategory.groupBy.mockResolvedValue([
+          { categoryId: 'cat-1', _count: { _all: 3 } },
         ]);
       }
 
@@ -247,7 +250,7 @@ describe('HomePageService', () => {
       };
 
       it('names a card from its category and hands back the slug', async () => {
-        islandWithLiveTour();
+        islandWithLivePage();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -376,7 +379,7 @@ describe('HomePageService', () => {
       });
 
       it('prefers the locale translation for the card name', async () => {
-        islandWithLiveTour();
+        islandWithLivePage();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -399,7 +402,7 @@ describe('HomePageService', () => {
       });
 
       it('keeps the name but drops the slug when the link is switched off', async () => {
-        islandWithLiveTour();
+        islandWithLivePage();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -420,7 +423,7 @@ describe('HomePageService', () => {
       });
 
       it('degrades an archived category to a plain photo', async () => {
-        islandWithLiveTour();
+        islandWithLivePage();
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -446,7 +449,7 @@ describe('HomePageService', () => {
         prisma.destination.findMany.mockResolvedValue([CURACAO]);
         // The island resolves, the category is active and the admin asked for a
         // link - but nothing is bookable, so the category page would 404.
-        prisma.tourCategory.findMany.mockResolvedValue([]);
+        prisma.tourCategory.groupBy.mockResolvedValue([]);
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
             {
@@ -468,10 +471,38 @@ describe('HomePageService', () => {
         expect(card.categorySlug).toBeNull();
       });
 
+      it('drops the link when the category is under the 3-tour page bar', async () => {
+        prisma.destination.findMany.mockResolvedValue([CURACAO]);
+        // Two live tours: bookable, but not enough for the category page to
+        // exist (master §2.4). Gating on "has a tour" would advertise a 404 -
+        // which is exactly what put a 1-tour "Buggy Tours" in front of
+        // travellers in production.
+        prisma.tourCategory.groupBy.mockResolvedValue([
+          { categoryId: 'cat-1', _count: { _all: 2 } },
+        ]);
+        prisma.homePage.findUnique.mockResolvedValue(
+          homeWithCards([
+            {
+              id: 'c1',
+              imageUrl: 'https://cdn/buggy.jpg',
+              categoryId: 'cat-1',
+              isLink: true,
+              displayOrder: 0,
+              category: buggy,
+            },
+          ]),
+        );
+
+        const [card] = (await service.getPublic(Locale.en)).editorialCards;
+
+        expect(card.name).toBe('Buggy Tours');
+        expect(card.categorySlug).toBeNull();
+      });
+
       it('gates against the island the banner actually points at', async () => {
         prisma.destination.findMany.mockResolvedValue([CURACAO]);
-        prisma.tourCategory.findMany.mockResolvedValue([
-          { categoryId: 'cat-1' },
+        prisma.tourCategory.groupBy.mockResolvedValue([
+          { categoryId: 'cat-1', _count: { _all: 3 } },
         ]);
         prisma.homePage.findUnique.mockResolvedValue(
           homeWithCards([
@@ -492,8 +523,7 @@ describe('HomePageService', () => {
         // island - if the two ever diverged the gate would be meaningless.
         expect(result.editorialDestinationSlug).toBe('curacao');
         expect(
-          prisma.tourCategory.findMany.mock.calls[0][0].where.tour
-            .destinationId,
+          prisma.tourCategory.groupBy.mock.calls[0][0].where.tour.destinationId,
         ).toBe(CURACAO.id);
       });
 

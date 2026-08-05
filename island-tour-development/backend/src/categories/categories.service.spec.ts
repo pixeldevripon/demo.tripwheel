@@ -49,6 +49,9 @@ function createMockPrismaService() {
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      // `create` reads the highest sortOrder to append; an empty row (null)
+      // is the sane default so unrelated create tests need not care.
+      aggregate: jest.fn().mockResolvedValue({ _max: { sortOrder: null } }),
     },
     categoryTranslation: {
       findMany: jest.fn(),
@@ -508,6 +511,96 @@ describe('CategoryService', () => {
     });
   });
 
+  // ── master §2.4: the 3-published-tour page-visibility bar ────────────────────
+
+  describe('category page visibility bar', () => {
+    beforeEach(() => {
+      prisma.destination.findUnique.mockResolvedValue({
+        id: 'dest-1',
+        isActive: true,
+      });
+    });
+
+    it('omits a category that is below the bar from the discovery lists', async () => {
+      // Production shape: an admin-made "Buggy Tours" holding a single tour was
+      // being linked from the destination hero, where it opened a page that
+      // cannot render.
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'boat', _count: { _all: 13 } },
+        { categoryId: 'buggy', _count: { _all: 1 } },
+        { categoryId: 'sightseeing', _count: { _all: 2 } },
+        { categoryId: 'offroad', _count: { _all: 3 } },
+      ]);
+      prisma.category.findMany.mockResolvedValue([
+        {
+          ...makeCategoryRecord({ id: 'boat', slug: 'boat-tours' }),
+          translations: [],
+        },
+        {
+          ...makeCategoryRecord({ id: 'offroad', slug: 'off-road-tours' }),
+          translations: [],
+        },
+      ]);
+
+      const result = await service.getActiveByDestinationSlug(
+        'curacao',
+        Locale.en,
+      );
+
+      // Only the two at/above the bar are even LOOKED UP.
+      expect(prisma.category.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: { in: ['boat', 'offroad'] } }),
+        }),
+      );
+      expect(result.map((c) => c.slug)).toEqual([
+        'boat-tours',
+        'off-road-tours',
+      ]);
+    });
+
+    it('returns [] when no category at the destination clears the bar', async () => {
+      prisma.tourCategory.groupBy.mockResolvedValue([
+        { categoryId: 'buggy', _count: { _all: 1 } },
+        { categoryId: 'jet-ski', _count: { _all: 2 } },
+      ]);
+
+      await expect(
+        service.getActiveByDestinationSlug('curacao', Locale.en),
+      ).resolves.toEqual([]);
+      expect(prisma.category.findMany).not.toHaveBeenCalled();
+    });
+
+    it('404s the category page below the bar', async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        ...makeCategoryRecord({ id: 'cat-1', slug: 'buggy-tours' }),
+        translations: [makeTranslationRecord({ locale: Locale.en })],
+      });
+      prisma.tour.count.mockResolvedValue(2);
+
+      await expect(
+        service.getBySlugForDestination('curacao', 'buggy-tours', Locale.en),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('renders the category page exactly AT the bar', async () => {
+      prisma.category.findUnique.mockResolvedValue({
+        ...makeCategoryRecord({ id: 'cat-1', slug: 'off-road-tours' }),
+        translations: [makeTranslationRecord({ locale: Locale.en })],
+      });
+      prisma.tour.count.mockResolvedValue(3);
+      prisma.category.findMany.mockResolvedValue([]);
+
+      const result = await service.getBySlugForDestination(
+        'curacao',
+        'off-road-tours',
+        Locale.en,
+      );
+
+      expect(result.publishedTourCount).toBe(3);
+    });
+  });
+
   // ── getBySlugForDestination (sub-category pills) ─────────────────────────────
 
   describe('getBySlugForDestination', () => {
@@ -617,6 +710,59 @@ describe('CategoryService', () => {
       await service.create(dto, adminId);
 
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('appends a new category AFTER the highest sortOrder, not at 0', async () => {
+      // The regression: `sortOrder ?? 0` parked every admin-created category in
+      // front of all 19 seeded ones, so it led the hero "Popular" row and the
+      // "Explore by type" grid on every island the moment it was saved.
+      prisma.category.aggregate.mockResolvedValue({ _max: { sortOrder: 18 } });
+      prisma.category.create.mockResolvedValue(
+        makeCategoryRecord({ id: 'cat-new' }),
+      );
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await service.create({ name: 'Buggy Tours' }, adminId);
+
+      expect(prisma.category.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ sortOrder: 19 }),
+        }),
+      );
+    });
+
+    it('starts the first category of a tier at 0', async () => {
+      prisma.category.aggregate.mockResolvedValue({
+        _max: { sortOrder: null },
+      });
+      prisma.category.create.mockResolvedValue(
+        makeCategoryRecord({ id: 'cat-new' }),
+      );
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await service.create({ name: 'Boat Tours' }, adminId);
+
+      expect(prisma.category.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ sortOrder: 0 }),
+        }),
+      );
+    });
+
+    it('honours an explicit sortOrder instead of appending', async () => {
+      prisma.category.aggregate.mockResolvedValue({ _max: { sortOrder: 18 } });
+      prisma.category.create.mockResolvedValue(
+        makeCategoryRecord({ id: 'cat-new' }),
+      );
+      prisma.destination.findMany.mockResolvedValue([]);
+
+      await service.create({ name: 'Boat Tours', sortOrder: 3 }, adminId);
+
+      expect(prisma.category.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ sortOrder: 3 }),
+        }),
+      );
     });
 
     it('auto-generates a slug from the category name', async () => {

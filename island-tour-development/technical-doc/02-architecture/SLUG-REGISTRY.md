@@ -381,7 +381,7 @@ A `CATEGORY` resolve succeeding is **necessary but not sufficient**. Category pa
 | Category-create FeaturedSlot seeding | **Exists in code — must be REMOVED** (slots gone) |
 | `SlugRedirect` table + 301-on-rename | **Not built** — target (master §2.3) |
 | 90-day reuse cooldown | **Not built** — target (master §2.3) |
-| Category gating threshold | Built at **≥1** — must change to canonical **≥3** (master §2.4) |
+| Category gating threshold | **Canonical ≥3, shipped 2026-08-05** (master §2.4). The slug_registry row is untouched by the gate — it protects the slug whether or not the page renders |
 
 ---
 

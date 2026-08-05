@@ -81,7 +81,7 @@ describe('SitemapService', () => {
     prisma.tour.findMany.mockResolvedValue([]);
     prisma.hub.findMany.mockResolvedValue([]);
     prisma.collection.findMany.mockResolvedValue([]);
-    // Two LIVE tours in the same (destination, category) - one URL, newest date.
+    // Three LIVE tours in the same (destination, category) - one URL, newest date.
     prisma.tourCategory.findMany.mockResolvedValue([
       {
         category: { slug: 'boat-tours', updatedAt: D1 },
@@ -90,6 +90,10 @@ describe('SitemapService', () => {
       {
         category: { slug: 'boat-tours', updatedAt: D1 },
         tour: { updatedAt: D2, destination: { slug: 'curacao' } },
+      },
+      {
+        category: { slug: 'boat-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'curacao' } },
       },
     ]);
 
@@ -103,6 +107,60 @@ describe('SitemapService', () => {
         type: 'category',
       },
     ]);
+  });
+
+  it('omits a (destination, category) pair below the 3-tour page bar', async () => {
+    prisma.destination.findMany.mockResolvedValue([]);
+    prisma.tour.findMany.mockResolvedValue([]);
+    prisma.hub.findMany.mockResolvedValue([]);
+    prisma.collection.findMany.mockResolvedValue([]);
+    // Master §2.4: two tours means the page is draft, so advertising the URL
+    // would be a soft-404 in the sitemap. The 3-tour pair beside it stays.
+    prisma.tourCategory.findMany.mockResolvedValue([
+      {
+        category: { slug: 'buggy-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'curacao' } },
+      },
+      {
+        category: { slug: 'buggy-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'curacao' } },
+      },
+      ...Array.from({ length: 3 }, () => ({
+        category: { slug: 'off-road-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'curacao' } },
+      })),
+    ]);
+
+    const entries = await service.getEntries();
+
+    expect(
+      entries.filter((e) => e.type === 'category').map((e) => e.path),
+    ).toEqual(['/curacao/off-road-tours']);
+  });
+
+  it('counts the bar per (destination, category) pair, not per category', async () => {
+    prisma.destination.findMany.mockResolvedValue([]);
+    prisma.tour.findMany.mockResolvedValue([]);
+    prisma.hub.findMany.mockResolvedValue([]);
+    prisma.collection.findMany.mockResolvedValue([]);
+    // The same category is well stocked on Curacao and thin on Aruba: only
+    // Curacao's page renders, so only Curacao's URL is listed.
+    prisma.tourCategory.findMany.mockResolvedValue([
+      ...Array.from({ length: 3 }, () => ({
+        category: { slug: 'boat-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'curacao' } },
+      })),
+      {
+        category: { slug: 'boat-tours', updatedAt: D1 },
+        tour: { updatedAt: D1, destination: { slug: 'aruba' } },
+      },
+    ]);
+
+    const entries = await service.getEntries();
+
+    expect(
+      entries.filter((e) => e.type === 'category').map((e) => e.path),
+    ).toEqual(['/curacao/boat-tours']);
   });
 
   it('gates every query on published + active status', async () => {

@@ -273,10 +273,11 @@ export class EditorialCardResponseDto {
     example: true,
     description:
       'Whether the target page would open on the island the banner points ' +
-      'at (a category needs a LIVE tour there; a hub must be published, ' +
-      'active and belong to that island). False means the public site ' +
-      'serves the card without its link - the editor shows that rather ' +
-      'than leaving an admin to discover it.',
+      'at (a category page needs at least 3 LIVE tours there - master §2.4; ' +
+      'a hub must be published, active and belong to that island). False ' +
+      'means the public site serves the card without its link - the editor ' +
+      'shows that rather than leaving an admin to discover it. Named for the ' +
+      'older "has any live tour" rule; it answers "would this page open".',
   })
   hasLiveTours!: boolean;
 }

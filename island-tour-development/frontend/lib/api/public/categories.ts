@@ -2,7 +2,8 @@
  * Public category data (server-side, cached). Backs the destination hero's
  * "activities" row and any destination-scoped category listing. Hits the
  * tour-gated `GET /categories/destination/:slug`, so every returned category
- * has at least one published tour (its link never 404s).
+ * clears the master's 3-published-tour bar and therefore HAS a live page - its
+ * link never 404s. Nothing here re-filters; the gate lives in one place.
  */
 import { seg } from '@/lib/api/api-path';
 import 'server-only';
@@ -45,7 +46,7 @@ export async function getDestinationCategories(
 
 /**
  * Destination-scoped, tour-gated category detail (localized). Returns `null` only
- * on a backend 404 (zero published tours at this destination) - callers
+ * on a backend 404 (below 3 published tours at this destination) - callers
  * `notFound()` on null. When the backend is unreachable it throws
  * (`publicGetStrict`) so revalidation fails and the last good page keeps serving.
  * Cached daily (tag-busted on writes); tagged granularly `category:<id>` (from the response) plus

@@ -380,7 +380,7 @@ for (const locale of LOCALES) revalidatePath(`/${locale}/aruba/`);
 | Flat tour URLs (no hub-nested route, no `hubSlug` param) | Built |
 | 301 redirect table on rename | **Not built** — target (master §2.3) |
 | 90-day slug reuse cooldown | **Not built** — target (master §2.3) |
-| Category gating threshold | Built but at **≥1**, not the canonical **≥3** — to fix (master §2.4) |
+| Category gating threshold | **Canonical ≥3, shipped 2026-08-05** — one constant (`CATEGORY_PAGE_MIN_TOURS`) shared by the page 404, the discovery lists, the sitemap and the homepage card gate |
 | Frontend `[locale]/[destination]/page.tsx` (destination) | Built |
 | Frontend `[locale]/[destination]/tours/page.tsx` (RESERVED listing) | Built |
 | Frontend `[locale]/[destination]/[slug]/page.tsx` (polymorphic resolver + switch) | Built — resolve→switch + localized metadata/hreflang |
