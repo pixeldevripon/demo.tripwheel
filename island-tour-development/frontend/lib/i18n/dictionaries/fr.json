@@ -248,7 +248,7 @@
         "hero": {
             "toursActivities": "circuits et activités",
             "subtitle": "Des circuits choisis par des locaux qui connaissent chaque récif, route et coucher de soleil",
-            "searchPlaceholder": "Rechercher des circuits ou activités",
+            "searchPlaceholder": "Que voulez-vous faire ?",
             "selectDate": "Sélectionner une date",
             "clearDate": "Effacer la date",
             "popularLabel": "Populaire"

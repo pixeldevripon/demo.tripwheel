@@ -248,7 +248,7 @@
         "hero": {
             "toursActivities": "tours e atividades",
             "subtitle": "Tours escolhidos por locais que conhecem cada recife, rota e pôr do sol",
-            "searchPlaceholder": "Pesquisar tours ou atividades",
+            "searchPlaceholder": "O que quer fazer?",
             "selectDate": "Selecionar data",
             "clearDate": "Limpar data",
             "popularLabel": "Popular"
