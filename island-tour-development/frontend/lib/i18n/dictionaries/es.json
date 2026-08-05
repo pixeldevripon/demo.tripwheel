@@ -116,7 +116,8 @@
                 "buggy": "Tours en buggy",
                 "snorkel": "Tours de snorkel",
                 "catamaran": "Paseos en catamarán"
-            }
+            },
+            "from": "desde"
         },
         "faq": {
             "title": "¿Necesitas ayuda antes de reservar?",

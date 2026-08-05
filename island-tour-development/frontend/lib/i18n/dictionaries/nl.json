@@ -116,7 +116,8 @@
                 "buggy": "Buggytours",
                 "snorkel": "Snorkeltochten",
                 "catamaran": "Catamarantochten"
-            }
+            },
+            "from": "vanaf"
         },
         "faq": {
             "title": "Hulp nodig voordat je boekt?",

@@ -13,6 +13,8 @@ type EditorialDict = {
     body: string;
     cta: string;
     categories: Record<CategoryKey, string>;
+    /** Prefix for the card's starting price - "from $135". */
+    from: string;
 };
 
 export function EditorialBanner({
@@ -28,7 +30,13 @@ export function EditorialBanner({
      * Admin-configured fan cards (photo, island name, link); short or absent
      * keeps the bundled photos and labels.
      */
-    cards?: { image: string; name: string | null; href: string | null }[];
+    cards?: {
+        image: string;
+        name: string | null;
+        href: string | null;
+        /** Already formatted in the shopper's currency by the page. */
+        priceFrom?: string | null;
+    }[];
 }) {
     return (
         <section className='it-section bg-it-white overflow-x-clip'>
@@ -45,7 +53,7 @@ export function EditorialBanner({
                             The deck spans 58% of the band, so at the narrow end
                             of desktop its leftmost card reaches under this
                             column and must pass behind the words). */}
-                        <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:z-[3] lg:-translate-y-1/2 lg:max-w-[432px]'>
+                        <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:z-3 lg:-translate-y-1/2 lg:max-w-[432px]'>
                             <h2 className='m-0 font-it-display font-bold text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
                                 <span className='block'>{dict.titleLine1}</span>
                                 <span className='block text-it-editorial-accent'>
@@ -67,7 +75,7 @@ export function EditorialBanner({
                                     tap: { scale: 0.99 },
                                 }}
                                 transition={springPop}>
-                                <span className='font-normal text-[14.5px] leading-[1.6] text-it-primary-hover'>
+                                <span className='font-bold text-[14.5px] leading-[1.6] text-it-primary-hover'>
                                     {dict.cta}
                                 </span>
                                 <MotionSpan

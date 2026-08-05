@@ -9,7 +9,8 @@ import { FaqGroupService } from '@/common/faq/faq-group.service';
 import { mergeTranslation } from '@/common/utils/translation.util';
 import { ContentTranslationEnqueuer } from '@/content-translation/content-translation.enqueuer';
 import { PrismaService } from '@/prisma/prisma.service';
-import { HubStatus, TourStatus } from '@prisma/client';
+import { FxRatesService } from '@/fx/fx-rates.service';
+import { Currency, HubStatus, Prisma, TourStatus } from '@prisma/client';
 import {
   BadRequestException,
   Injectable,
@@ -93,6 +94,7 @@ export class HomePageService {
     private readonly prisma: PrismaService,
     private readonly faqGroups: FaqGroupService,
     private readonly contentTranslation: ContentTranslationEnqueuer,
+    private readonly fx: FxRatesService,
   ) {}
 
   // ── Public read ─────────────────────────────────────────────────────────────
@@ -105,7 +107,7 @@ export class HomePageService {
    * returns an all-null object, which the frontend reads as "keep every built-in
    * dictionary default" - so a homepage with no content row still renders.
    */
-  async getPublic(locale: Locale) {
+  async getPublic(locale: Locale, currency?: Currency) {
     // FAQs ride along in this one payload rather than getting their own endpoint:
     // the homepage needs both together, and one cached read beats two.
     const [row, faqs] = await Promise.all([
@@ -183,6 +185,14 @@ export class HomePageService {
       island?.id ?? null,
     );
 
+    // The "from" price each card advertises: its target's cheapest live tour on
+    // the banner's island, converted to the shopper's currency.
+    const startingPrices = await this.cardStartingPrices(
+      editorialCards,
+      island?.id ?? null,
+      currency,
+    );
+
     return {
       locale,
       heroImage: base.heroImage,
@@ -203,6 +213,10 @@ export class HomePageService {
             // Slug only - joined to the island below, same as categories
             // (hub URLs share the `/{island}/{slug}` shape).
             categorySlug: linkable ? live.slug : null,
+            ...(startingPrices.get(card.id) ?? {
+              priceFrom: null,
+              priceCurrency: null,
+            }),
           };
         }
 
@@ -225,6 +239,10 @@ export class HomePageService {
           // Slug only - the frontend joins it to the island below, so a card
           // can never open a different island from the button beside it.
           categorySlug: linkable ? live.slug : null,
+          ...(startingPrices.get(card.id) ?? {
+            priceFrom: null,
+            priceCurrency: null,
+          }),
         };
       }),
       // The RESOLVED island, not the raw admin choice: the cards are gated
@@ -457,6 +475,120 @@ export class HomePageService {
     return (
       active.find((d) => d.slug === LAUNCH_ISLAND_SLUG) ?? active[0] ?? null
     );
+  }
+
+  /**
+   * The starting price each editorial card advertises: the cheapest LIVE tour
+   * behind its target, on the banner's island, converted to the shopper's
+   * currency.
+   *
+   * Keyed by CARD id rather than by target, because two cards may point at the
+   * same category and each still needs its own answer.
+   *
+   * Two queries at most (categories, hubs) rather than one per card. Tours are
+   * priced in their operator's own currency, so the minimum is taken per source
+   * currency and the cheapest CONVERTED result wins - taking a raw numeric
+   * minimum across mixed currencies would happily call 100 USD cheaper than
+   * 95 EUR.
+   *
+   * Null whenever nothing bookable sits behind the card; the frontend then just
+   * omits the price line rather than printing a zero.
+   */
+  private async cardStartingPrices(
+    cards: {
+      id: string;
+      categoryId: string | null;
+      hubId: string | null;
+    }[],
+    destinationId: string | null,
+    currency?: Currency,
+  ): Promise<Map<string, { priceFrom: string | null; priceCurrency: Currency | null }>> {
+    const result = new Map<
+      string,
+      { priceFrom: string | null; priceCurrency: Currency | null }
+    >();
+    if (!destinationId || !cards.length) return result;
+
+    const categoryIds = cards
+      .map((c) => c.categoryId)
+      .filter((id): id is string => !!id);
+    const hubIds = cards.map((c) => c.hubId).filter((id): id is string => !!id);
+
+    const liveOnIsland = {
+      status: TourStatus.LIVE,
+      isActive: true,
+      destinationId,
+    } as const;
+
+    const [categoryRows, hubRows] = await Promise.all([
+      categoryIds.length
+        ? this.prisma.tourCategory.findMany({
+            where: { categoryId: { in: categoryIds }, tour: liveOnIsland },
+            select: {
+              categoryId: true,
+              tour: { select: { priceFrom: true, defaultCurrency: true } },
+            },
+          })
+        : [],
+      hubIds.length
+        ? this.prisma.tourHub.findMany({
+            where: { hubId: { in: hubIds }, tour: liveOnIsland },
+            select: {
+              hubId: true,
+              tour: { select: { priceFrom: true, defaultCurrency: true } },
+            },
+          })
+        : [],
+    ]);
+
+    // target id -> source currency -> cheapest amount in that currency
+    const byTarget = new Map<string, Map<Currency, Prisma.Decimal>>();
+    const note = (
+      key: string,
+      price: Prisma.Decimal | null | undefined,
+      cur: Currency | undefined,
+    ) => {
+      if (price == null || !cur) return;
+      const perCurrency = byTarget.get(key) ?? new Map<Currency, Prisma.Decimal>();
+      const seen = perCurrency.get(cur);
+      if (!seen || price.lessThan(seen)) perCurrency.set(cur, price);
+      byTarget.set(key, perCurrency);
+    };
+    // Optional-chained on purpose: this is the site's front door, and a row
+    // that arrives without its joined tour must cost the card its price line,
+    // never the whole homepage.
+    for (const row of categoryRows)
+      note(row.categoryId, row.tour?.priceFrom, row.tour?.defaultCurrency);
+    for (const row of hubRows)
+      note(row.hubId, row.tour?.priceFrom, row.tour?.defaultCurrency);
+
+    for (const card of cards) {
+      const key = card.categoryId ?? card.hubId;
+      const perCurrency = key ? byTarget.get(key) : undefined;
+      if (!perCurrency?.size) continue;
+
+      // Convert every currency's minimum, then take the cheapest of those -
+      // comparison has to happen AFTER conversion to be meaningful.
+      const converted = await Promise.all(
+        [...perCurrency.entries()].map(async ([source, amount]) => {
+          const money = await this.fx.buildMoney(source, currency ?? source, {
+            priceFrom: amount,
+          });
+          return money;
+        }),
+      );
+      const cheapest = converted
+        .filter((m) => m.priceFrom != null)
+        .sort((a, b) => Number(a.priceFrom) - Number(b.priceFrom))[0];
+      if (!cheapest) continue;
+
+      result.set(card.id, {
+        priceFrom: cheapest.priceFrom,
+        priceCurrency: cheapest.currency,
+      });
+    }
+
+    return result;
   }
 
   /**

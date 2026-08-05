@@ -17,6 +17,8 @@ import {
 } from '@/lib/api/public';
 import { getMediaSeo, normalizeUrl } from '@/lib/api/public/media';
 import { isLocale, localizeHref, type Locale } from '@/lib/constants/locales';
+import { formatPriceFrom } from '@/lib/currency/current';
+import { getServerCurrency } from '@/lib/currency/server';
 import { getDictionary } from '@/lib/i18n/dictionaries';
 import { safeRemoteImage } from '@/lib/images/remote-hosts';
 import { buildAlternates } from '@/lib/seo/alternates';
@@ -76,12 +78,16 @@ async function HomeContent({
     params: Promise<{ locale: string }>;
 }) {
     const { locale } = await params;
+    // The shopper's display currency, so the editorial cards' starting prices
+    // come back converted. Reading the cookie opts this subtree into dynamic
+    // rendering - it already sits inside the page's Suspense boundary.
+    const currency = await getServerCurrency(locale as Locale);
     // All four are cached loaders, so this stays part of the prerendered shell
     // (no Suspense boundary needed - nothing here is request-specific).
     const [dict, destinations, content, experiences] = await Promise.all([
         getDictionary(locale as Locale),
         getActiveDestinations(locale as Locale),
-        getHomePageContent(locale as Locale),
+        getHomePageContent(locale as Locale, currency),
         getFeaturedExperiences(),
     ]);
     const { home } = dict;
@@ -178,6 +184,18 @@ async function HomeContent({
                               locale as Locale,
                               `/${editorialIsland.slug}/${card.categorySlug}`
                           )
+                        : null,
+                // The backend already converted this into the shopper's
+                // currency; formatting it is all that is left (the frontend
+                // never does FX). Null = nothing bookable behind the card, so
+                // the card simply carries no price line.
+                priceFrom:
+                    card.priceFrom && card.priceCurrency
+                        ? `${home.editorial.from} ${formatPriceFrom(
+                              card.priceFrom,
+                              card.priceCurrency,
+                              locale as Locale
+                          )}`
                         : null,
             },
         ];
