@@ -15,14 +15,14 @@ import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
 /**
- * Webfonts: JetBrains Mono (here) + self-hosted SF Pro Display (plain
- * @font-face in globals.css, preloaded in <head> below).
+ * Webfonts: JetBrains Mono (here) + the self-hosted display/body pair
+ * (plain @font-face in globals.css, preloaded in <head> below - currently
+ * Bricolage Grotesque + Source Sans 3, see THE FONT SWITCH there).
  *
- * SF Pro Display is deliberately NOT loaded through next/font: next/font
- * hashes the family name, and the client audits the site with font
- * inspectors that must literally read "SF Pro Display" (2026-08-04). The
- * old sans/display webfonts (DM Sans, Playfair Display, Noto Sans,
- * GeneralSans) stay deleted - they were never painted.
+ * Those are deliberately NOT loaded through next/font: next/font hashes the
+ * family name, and the client audits the site with font inspectors that must
+ * read the real family (2026-08-04). The old sans/display webfonts (DM Sans,
+ * Playfair Display, Noto Sans, GeneralSans) stay deleted - never painted.
  *
  * JetBrains Mono stays because it IS painted - `font-mono` renders the booking
  * references in the traveller account area (`traveller-booking-card.tsx`,
@@ -160,28 +160,26 @@ export default function RootLayout({
                 'font-sans'
             )}>
             <head>
-                {/* Self-hosted SF Pro Display (@font-face in globals.css) -
-                    preloaded so the first paint doesn't flash a fallback while
-                    the body font races the LCP image. crossOrigin is required:
-                    font fetches are CORS-mode even same-origin, and a preload
-                    without it is re-fetched instead of reused. */}
+                {/* Self-hosted webfonts (@font-face in globals.css) - preloaded
+                    so the first paint doesn't flash a fallback while the body
+                    font races the LCP image. Only the LATIN subsets preload;
+                    latin-ext is fetched on demand by the handful of pages that
+                    need it. crossOrigin is required: font fetches are CORS-mode
+                    even same-origin, and a preload without it is re-fetched
+                    instead of reused.
+                    ROLLBACK to SF Pro Display: swap these two for the three
+                    sf-pro-display/*.woff2 preloads (see THE FONT SWITCH in
+                    globals.css). */}
                 <link
                     rel='preload'
-                    href='/fonts/sf-pro-display/SFProDisplay-Regular.woff2'
+                    href='/fonts/source-sans-3/SourceSans3-Variable-latin.woff2'
                     as='font'
                     type='font/woff2'
                     crossOrigin='anonymous'
                 />
                 <link
                     rel='preload'
-                    href='/fonts/sf-pro-display/SFProDisplay-Medium.woff2'
-                    as='font'
-                    type='font/woff2'
-                    crossOrigin='anonymous'
-                />
-                <link
-                    rel='preload'
-                    href='/fonts/sf-pro-display/SFProDisplay-Bold.woff2'
+                    href='/fonts/bricolage-grotesque/BricolageGrotesque-Variable-latin.woff2'
                     as='font'
                     type='font/woff2'
                     crossOrigin='anonymous'

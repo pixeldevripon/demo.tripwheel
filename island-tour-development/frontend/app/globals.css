@@ -5,16 +5,78 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Self-hosted SF Pro Display (founder-provided files, 2026-08-04) so EVERY
- * visitor - Windows and Android included - renders and reports the same
- * family, not just Apple devices. Hand-rolled @font-face rather than
- * next/font/local ON PURPOSE: next/font hashes the family name, and the
- * client audits the site with font inspectors that must literally read
- * "SF Pro Display". Only Display cuts exist (no SF Pro Text), so body text
- * uses Display too - the stacks below all lead with it. Bold spans 600-700
- * so semibold text resolves to the real Bold cut instead of a synthetic.
+/* ═══════════════════════════════════════════════════════════════════════════
+ * THE FONT SWITCH - one place, two blocks. To roll back to SF Pro Display:
+ *   1. comment out the ACTIVE block below,
+ *   2. uncomment the ROLLBACK block under it,
+ *   3. do the same swap in the `--it-base-*` pair further down this file AND
+ *      in the `--it-font-*` pair in `(frontend)/frontend-tokens.css`,
+ *   4. swap the preload <link>s in `app/layout.tsx`.
+ * Both font sets stay on disk under `public/fonts/`, so a rollback needs no
+ * downloads. Hand-rolled @font-face rather than next/font ON PURPOSE:
+ * next/font hashes the family name, and the client audits the site with font
+ * inspectors that must read the real family.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── ACTIVE: Bricolage Grotesque (display) + Source Sans 3 (body) ───────────
+ * The mockup's pairing (mck-01c.html, founder 2026-08-04). Both are VARIABLE
+ * fonts, so one file per subset covers every weight the site uses - no
+ * synthetic bolding at any step of the 400/500/600/700 scale, and 190 KB
+ * total against SF Pro's 314 KB of three static cuts.
+ * latin + latin-ext cover all six Latin locales (EN/NL/DE/FR/ES/PT); ZH has
+ * no coverage in either family and falls through to the system stack, exactly
+ * as it did before.
  */
+@font-face {
+    font-family: 'Bricolage Grotesque';
+    src: url('/fonts/bricolage-grotesque/BricolageGrotesque-Variable-latin.woff2')
+        format('woff2');
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Bricolage Grotesque';
+    src: url('/fonts/bricolage-grotesque/BricolageGrotesque-Variable-latin-ext.woff2')
+        format('woff2');
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+        U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+        U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+        U+A720-A7FF;
+}
+@font-face {
+    font-family: 'Source Sans 3';
+    src: url('/fonts/source-sans-3/SourceSans3-Variable-latin.woff2')
+        format('woff2');
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+        U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+        U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Source Sans 3';
+    src: url('/fonts/source-sans-3/SourceSans3-Variable-latin-ext.woff2')
+        format('woff2');
+    font-weight: 200 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+        U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+        U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+        U+A720-A7FF;
+}
+
+/* ── ROLLBACK: self-hosted SF Pro Display (files kept in public/fonts) ──────
+ * Only Display cuts exist (no SF Pro Text), so body text used Display too.
+ * Bold spans 600-700 so semibold resolves to the real Bold cut.
 @font-face {
     font-family: 'SF Pro Display';
     src: url('/fonts/sf-pro-display/SFProDisplay-Regular.woff2') format('woff2');
@@ -36,6 +98,7 @@
     font-style: normal;
     font-display: swap;
 }
+*/
 
 @layer base {
     *,
@@ -243,17 +306,22 @@
      * property next/font injected on <html>. Removing the unused webfonts
      * removed that definition with them.
      */
-    /* The self-hosted 'SF Pro Display' webfont FIRST (declared at the top of
-       this file), system tokens as fallback - mirrors `--it-font-*` in
-       frontend-tokens.css (client, 2026-08-04: every platform must render
-       and report SF Pro). Body uses Display too: only Display cuts were
-       provided. Keep the two files' stacks identical. */
+    /* Mirrors `--it-font-*` in frontend-tokens.css - keep the two files'
+       stacks identical. See THE FONT SWITCH at the top of this file. */
+    --it-base-sans:
+        'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+        Arial, sans-serif;
+    --it-base-display:
+        'Bricolage Grotesque', -apple-system, BlinkMacSystemFont,
+        'Helvetica Neue', Arial, sans-serif;
+    /* ROLLBACK to SF Pro Display:
     --it-base-sans:
         'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont,
         'Helvetica Neue', Arial, sans-serif;
     --it-base-display:
         'SF Pro Display', 'SF Pro', -apple-system, BlinkMacSystemFont,
         'Helvetica Neue', Arial, sans-serif;
+    */
 }
 
 /* ─── Dark mode ───────────────────────────────── */

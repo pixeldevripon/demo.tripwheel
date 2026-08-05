@@ -479,9 +479,11 @@ chevrons, back arrow).
 `style={{ background: 'var(--it-primary)' }}`.
 
 ### Fonts & Tailwind v4
-Self-hosted SF Pro Display webfont (plain `@font-face` in `globals.css` — NOT `next/font`, which
-hashes the family name and breaks the client's font-inspector audits) with the SF system stack as
-fallback (`font-it-display`, `font-it-body`). Use canonical v4 classes:
+Self-hosted webfonts via plain `@font-face` in `globals.css` — NOT `next/font`, which hashes the
+family name and breaks the client's font-inspector audits. **Bricolage Grotesque** (display) +
+**Source Sans 3** (body), both variable, per the mockup; SF Pro Display stays on disk as a
+commented rollback (see "THE FONT SWITCH" at the top of `globals.css` — 4 places to swap).
+Utilities: `font-it-display`, `font-it-body`. Use canonical v4 classes:
 `bg-linear-to-br`, `text-(--it-star-filled)`, `z-100`, scale tokens (`min-w-45`).
 
 ### Container & layout — reuse the section utilities (do NOT hardcode padding)
