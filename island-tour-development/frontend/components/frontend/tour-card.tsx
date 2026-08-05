@@ -216,7 +216,16 @@ function DefaultTourCard({
             <div
                 className={cn(
                     // Mockup .tc .im: photo eases to 1.03 on card hover (260ms).
-                    'relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
+                    //
+                    // Its own @container, so the badge and the heart size to
+                    // the box they actually sit in. They were sizing off the
+                    // CARD, which is right everywhere except the mobile row
+                    // card - there the image is only 2/5 of the card, so both
+                    // took their wide-cell size in a box far too narrow for it
+                    // and the badge label got cut ("Likely to sell ou").
+                    // Everywhere else the image IS the card's width, so this
+                    // changes nothing.
+                    '@container relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03]',
                     mobileRow &&
                         'max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'
                 )}>
@@ -231,8 +240,12 @@ function DefaultTourCard({
                 {tour.images.length > 0 && (
                     <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
                 )}
-                {/* Badge (top-left) + Wishlist button (top-right) */}
-                <div className='absolute inset-x-2.5 top-2.5 flex items-start justify-between gap-2 z-10'>
+                {/* Badge (top-left) + Wishlist button (top-right).
+                    The inset and gap tighten on a narrow image (the mobile row
+                    card): 10px of inset either side plus an 8px gap is a big
+                    share of a ~144px photo, and it was the last few pixels that
+                    forced "Likely to sell out" onto a second line. */}
+                <div className='absolute inset-x-2 top-2 @[220px]:inset-x-2.5 @[220px]:top-2.5 flex items-start justify-between gap-1.5 @[220px]:gap-2 z-10'>
                     <BadgeChip type={tour.badge} dict={dict} />
 
                     <motion.button
@@ -249,10 +262,14 @@ function DefaultTourCard({
                         }}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='ml-auto flex size-[30px] @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
+                        /* Smaller on a narrow image so the badge gets the room
+                           instead - the founder chose a spread-out badge over a
+                           larger heart here (2026-08-05). It stays 34px in a
+                           normal card, where nothing is competing for width. */
+                        className='ml-auto flex size-[27px] @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
                         {isRemove ? (
                             <X
-                                className='size-4 text-it-ink'
+                                className='size-[15px] @[220px]:size-4 text-it-ink'
                                 strokeWidth={1.5}
                                 aria-hidden='true'
                             />
@@ -266,7 +283,7 @@ function DefaultTourCard({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-4 @[220px]:size-[17px]'
+                                className='size-[15px] @[220px]:size-[17px]'
                                 aria-hidden='true'
                             />
                         )}

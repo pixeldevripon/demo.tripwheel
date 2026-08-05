@@ -22,6 +22,37 @@ import { springPop } from '@/lib/motion';
  * just the image. Arrow/dot clicks stop propagation, so a card that is one
  * big link never navigates on carousel interaction.
  */
+/*
+ * Control sizing.
+ *
+ * The full-size values are the BASE and the narrow ones are `@max-[219px]`
+ * overrides, deliberately that way round. Only some of the cards that use this
+ * carousel put an `@container` on the image area; where there is no container
+ * to measure, a container query simply never matches - so writing it as
+ * "shrink below 220px" leaves those cards exactly as they are, while writing it
+ * as "grow above 220px" would have silently shrunk them everywhere.
+ *
+ * 32px arrows with 16px insets eat 96px of a 144px mobile row-card photo, which
+ * is what the founder flagged (2026-08-05).
+ */
+const INSET = 'inset-x-4 @max-[219px]:inset-x-1.5';
+const ARROW =
+    'pointer-events-auto flex size-8 @max-[219px]:size-[26px] cursor-pointer items-center justify-center rounded-full border-none bg-it-white shadow-it-sm transition-colors duration-300 hover:bg-it-white/90';
+const ARROW_ICON = 'size-6 @max-[219px]:size-[18px]';
+const DOTS_ROW = 'bottom-4 gap-1.5 @max-[219px]:bottom-2 @max-[219px]:gap-1';
+const DOT = 'h-2 @max-[219px]:h-1.5';
+/*
+ * Scale utilities, not arbitrary values - `w-6.5` IS 26px (6.5 x the 4px
+ * spacing unit) and `w-4.5` is 18px. Written as `w-[26px]` the base sorted
+ * AFTER the container variant meant to override it, so the dots kept their full
+ * width in a narrow photo while their heights shrank correctly. Both are on the
+ * scale now, so they order the same way the heights already did. (Reaching for
+ * `!` instead is a dead end: the trailing bang drops the container wrapper
+ * altogether and the narrow width then applies at every size - measured.)
+ */
+const DOT_ACTIVE_W = 'w-6.5 @max-[219px]:w-4.5';
+const DOT_IDLE_W = 'w-2 @max-[219px]:w-1.5';
+
 export function TourCardCarousel({
     images,
     alt,
@@ -75,19 +106,20 @@ export function TourCardCarousel({
 
             {/* Prev/next arrows - revealed on card hover. */}
             {many && (
-                <div className='pointer-events-none absolute inset-x-4 top-1/2 z-10 flex -translate-y-1/2 items-center justify-between opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                <div className={`pointer-events-none absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-between opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${INSET}`}>
                     <motion.button
                         type='button'
                         onClick={step(-1)}
                         aria-label='Previous image'
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='pointer-events-auto flex size-8 cursor-pointer items-center justify-center rounded-full border-none bg-it-white shadow-it-sm transition-colors duration-300 hover:bg-it-white/90'>
+                        className={ARROW}>
                         <Image
                             src='/icons/arrow-right-listings.svg'
                             alt=''
                             width={24}
                             height={24}
+                            className={ARROW_ICON}
                             aria-hidden='true'
                         />
                     </motion.button>
@@ -97,11 +129,11 @@ export function TourCardCarousel({
                         aria-label='Next image'
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='pointer-events-auto flex size-8 cursor-pointer items-center justify-center rounded-full border-none bg-it-white shadow-it-sm transition-colors duration-300 hover:bg-it-white/90'>
+                        className={ARROW}>
                         <Image
                             src='/icons/arrow-right-listings.svg'
                             alt=''
-                            className='rotate-180'
+                            className={`rotate-180 ${ARROW_ICON}`}
                             width={24}
                             height={24}
                             aria-hidden='true'
@@ -114,19 +146,17 @@ export function TourCardCarousel({
             {many && (
                 <div
                     aria-hidden='true'
-                    className='absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                    className={`absolute left-1/2 z-10 flex -translate-x-1/2 items-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${DOTS_ROW}`}>
                     {images.map((_, i) => (
-                        <motion.div
+                        <span
                             key={i}
-                            animate={{
-                                width: i === index ? 26 : 8,
-                                backgroundColor:
-                                    i === index
-                                        ? '#ffffff'
-                                        : 'rgba(255, 255, 255, 0.6)',
-                            }}
-                            transition={{ duration: 0.2, ease: 'easeInOut' }}
-                            className='h-2 rounded-full'
+                            /* The stretch is a CSS transition rather than a
+                               motion value: the active/idle widths differ per
+                               container size, and a container query can only
+                               reach a class, not an inline `animate` object.
+                               Same 200ms ease-in-out as before. */
+                            className={`rounded-full transition-[width,background-color] duration-200 ease-in-out ${DOT}
+                                ${i === index ? `bg-it-white ${DOT_ACTIVE_W}` : `bg-it-white/60 ${DOT_IDLE_W}`}`}
                         />
                     ))}
                 </div>

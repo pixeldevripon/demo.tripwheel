@@ -7,6 +7,7 @@ import { Fragment } from 'react';
 import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { springPop } from '@/lib/motion';
 import { MotionLink } from '../motion-link';
+import { TourBadgeChip } from '../tour-badge';
 import { TourCardCarousel } from '../tour-card-carousel';
 
 export type HubTourBadge =
@@ -46,13 +47,6 @@ export type HubTourCardDict = {
     from: string;
     freeCancellation: string;
     save: string;
-};
-
-// Badge background/text per type (Figma node 48024:11222).
-const BADGE_STYLE: Record<Exclude<HubTourBadge, null>, string> = {
-    sponsored: 'bg-[#f8f8f8] text-[#2c2c2c]',
-    mostPopular: 'bg-it-primary text-it-white',
-    likelyToSellOut: 'bg-[#193c5e] text-it-white',
 };
 
 /**
@@ -96,7 +90,10 @@ export function HubTourCard({
                 bottom corners are ALWAYS squared so the image merges into the
                 inset content area; only the card fill reacts to hover (mirrors
                 the latest <TourCard>). */}
-            <div className='relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
+            {/* Its own @container, like <TourCard>'s image: the badge and heart
+                sit in THIS box, which on the mobile row card is 2/5 of the card
+                they were previously measuring. */}
+            <div className='@container relative aspect-3/2 w-full shrink-0 overflow-hidden rounded-t-[12px] bg-it-bg [&_img]:transition-transform [&_img]:duration-(--it-duration-md) [&_img]:ease-(--it-ease) group-hover:[&_img]:scale-[1.03] max-sm:w-2/5 max-sm:aspect-auto max-sm:rounded-l-[12px] max-sm:rounded-tr-none'>
                 <TourCardCarousel
                     images={tour.images}
                     alt={tour.title}
@@ -105,12 +102,13 @@ export function HubTourCard({
                 {tour.images.length > 0 && (
                     <div className='pointer-events-none absolute inset-0 z-1 bg-[image:var(--it-scrim-tile)]' />
                 )}
-                <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between p-2.5 md:p-4'>
+                <div className='pointer-events-none absolute inset-0 z-10 flex items-start justify-between gap-1.5 p-2 @[220px]:gap-2 @[220px]:p-2.5 md:p-4'>
                     {badgeLabel ? (
-                        <span
-                            className={`inline-flex min-w-0 items-center truncate rounded-[6px] px-[7px] py-[3px] text-[10px] font-bold leading-[1.5] @[220px]:px-[9px] @[220px]:py-[4px] @[220px]:text-[11.5px] ${BADGE_STYLE[tour.badge!]}`}>
-                            {badgeLabel}
-                        </span>
+                        <TourBadgeChip
+                            type={tour.badge}
+                            label={badgeLabel}
+                            size='responsive'
+                        />
                     ) : (
                         <span />
                     )}
@@ -125,7 +123,7 @@ export function HubTourCard({
                         aria-pressed={saved}
                         whileTap={{ scale: 0.9 }}
                         transition={springPop}
-                        className='pointer-events-auto grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white/92 shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] @[220px]:size-[34px]'>
+                        className='pointer-events-auto grid size-[27px] shrink-0 cursor-pointer place-items-center rounded-it-full border-none bg-it-white/92 shadow-it-sm transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] @[220px]:size-[34px]'>
                         <Image
                             src={
                                 saved
@@ -135,7 +133,7 @@ export function HubTourCard({
                             alt=''
                             width={24}
                             height={24}
-                            className='size-4 @[220px]:size-[17px]'
+                            className='size-[15px] @[220px]:size-[17px]'
                         />
                     </motion.button>
                 </div>

@@ -57,15 +57,32 @@ export function TourBadgeChip({
     const style = BADGE_STYLE[type];
     const sizeClass =
         size === 'responsive'
-            ? // min-w-0 + truncate: on narrow image areas (mobile row cards) the
-              // chip shortens with an ellipsis instead of running under the heart.
-              'min-w-0 truncate px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px]'
-            : 'h-5 shrink-0 px-2.5 text-[11px]';
+            ? // The chip WRAPS rather than truncating. It used to carry
+              // `min-w-0 truncate`, which on the narrow image of a mobile row
+              // card cut "Likely to sell out" down to "Likely to sell ou" - a
+              // badge that says something other than what it means. Master §3.6
+              // gives the badge a shape, not a width, so it sizes to its label.
+              //
+              // No padding or font tweak could fix this generally: German is
+              // "Wahrscheinlich ausverkauft", half again as long as the English,
+              // against roughly 79px of image left over once the wishlist heart
+              // takes its corner. Wrapping is the only thing that holds in all 7
+              // locales.
+              //
+              // Dropping `min-w-0` is the load-bearing half: it restores the
+              // flex default (min-width: auto), so the chip can never be
+              // squeezed narrower than its longest word and pushed into
+              // overflow. It shrinks to that floor, then grows downward.
+              'px-[7px] py-[3px] text-[10px] @[220px]:px-[9px] @[220px]:py-1 @[220px]:text-[11.5px]'
+            : // Dense UIs (dashboard) size to content already. `min-h-5` rather
+              // than a fixed `h-5` so a wrapped label grows the chip instead of
+              // spilling out of it.
+              'min-h-5 shrink-0 px-2.5 text-[11px]';
     return (
         <span
             className={[
                 // Design v2 .badge: small radius (6px), bold, tight tracking
-                'inline-flex items-center justify-center rounded-[6px] font-bold leading-[1.4] tracking-[0.01em]',
+                'inline-flex items-center justify-center rounded-[6px] text-center font-bold leading-[1.4] tracking-[0.01em]',
                 sizeClass,
                 style.className,
                 className,
