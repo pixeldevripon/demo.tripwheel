@@ -45,11 +45,14 @@ export async function DestinationHeroSection({
     destinationName,
     heroImage,
 }: HeroSectionProps) {
-    const [categories, hubs, heroSeo] = await Promise.all([
+    const [categories, hubs, collections, heroSeo] = await Promise.all([
         getDestinationCategories(destination, locale),
         getDestinationHubs(destination, locale),
-        // Independent of the other two - joins the same Promise.all rather than
-        // adding a third round-trip to the hero's critical path.
+        // Collections feed the hero's "Popular" links only - the cards below
+        // stay hubs + categories, and collections keep their own section.
+        getActiveCollectionsForDestination(destination, locale),
+        // Independent of the others - joins the same Promise.all rather than
+        // adding another round-trip to the hero's critical path.
         getMediaSeo([heroImage], locale),
     ]);
 
@@ -68,8 +71,34 @@ export async function DestinationHeroSection({
         })),
     ];
 
-    // Hero "Popular" quick links - same hubs-first ordering, capped at 4.
-    const activities = exploreTypes
+    /*
+     * Hero "Popular" quick links: the island's hub, then its lead collection,
+     * then categories - capped at 4.
+     *
+     * It used to be the first four of `exploreTypes` (hubs + categories), which
+     * could never surface a COLLECTION, so an island's flagship "Best Things to
+     * Do in X" page was unreachable from the hero even though it is one of the
+     * most useful pages on the island (founder, 2026-08-05).
+     *
+     * Every label is the TARGET PAGE'S OWN NAME, and every entry comes from a
+     * list the API has already filtered to pages that render - a category page
+     * needs >= 3 published tours on the island, so a category below that bar is
+     * absent here rather than linked. That is the founder's rule: "these links
+     * resolve to real pages, so each label has to match the page it opens".
+     * Nothing here is hand-typed.
+     *
+     * Hubs, collections and categories all live in the same flat
+     * `/{destination}/{slug}` namespace (the slug registry), so one href shape
+     * covers all three.
+     */
+    const activities = [
+        ...hubs.map(h => ({ name: h.name, slug: h.slug })),
+        // The LEAD collection only. All three of Curacao's collections sorted
+        // ahead of the categories and filled the row on their own, which buries
+        // the activity pages the row exists to surface.
+        ...collections.slice(0, 1).map(c => ({ name: c.name, slug: c.slug })),
+        ...categories.map(c => ({ name: c.name, slug: c.slug })),
+    ]
         .slice(0, 4)
         .map(item => ({
             label: item.name,
