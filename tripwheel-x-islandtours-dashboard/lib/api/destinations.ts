@@ -4,11 +4,13 @@ import type {
   DestinationDetail,
   DestinationFaq,
   DestinationPageContent,
+  DestinationPopularLink,
   DestinationTranslation,
   DestinationsQueryParams,
   DestinationLocalized,
   Locale,
   PaginatedDestinations,
+  PopularLinkInput,
   UpdateDestinationPayload,
   UpdateFaqPayload,
   UpsertPageContentPayload,
@@ -124,6 +126,21 @@ export const destinationsApi = {
   deleteFaq(id: string, faqId: string): Promise<{ message: string }> {
     return apiFetch<{ message: string }>(`/destinations/${id}/faqs/${faqId}`, {
       method: 'DELETE',
+    });
+  },
+
+  getPopularLinks(id: string): Promise<DestinationPopularLink[]> {
+    return apiFetch<DestinationPopularLink[]>(`/destinations/${id}/popular-links`);
+  },
+
+  /** Replace-all: the payload is the WHOLE row, in render order. */
+  replacePopularLinks(
+    id: string,
+    links: PopularLinkInput[],
+  ): Promise<DestinationPopularLink[]> {
+    return apiFetch<DestinationPopularLink[]>(`/destinations/${id}/popular-links`, {
+      method: 'PUT',
+      body: JSON.stringify({ links }),
     });
   },
 

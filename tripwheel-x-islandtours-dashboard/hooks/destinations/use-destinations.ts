@@ -7,6 +7,7 @@ import type {
   CreateFaqPayload,
   DestinationsQueryParams,
   Locale,
+  PopularLinkInput,
   UpdateDestinationPayload,
   UpdateFaqPayload,
   UpsertPageContentPayload,
@@ -24,6 +25,7 @@ export const destinationKeys = {
   translationByLocale: (id: string, locale: Locale) => [...destinationKeys.translations(id), locale] as const,
   pageContent: (id: string, locale?: Locale) => [...destinationKeys.all, 'page-content', id, locale] as const,
   faqs: (id: string, locale?: Locale) => [...destinationKeys.all, 'faqs', id, locale] as const,
+  popularLinks: (id: string) => [...destinationKeys.all, 'popular-links', id] as const,
 };
 
 export function useDestinations(params: DestinationsQueryParams = {}, enabled = true) {
@@ -209,6 +211,33 @@ export function useDeleteFaq() {
       destinationsApi.deleteFaq(id, faqId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: destinationKeys.faqs(variables.id) });
+    },
+  });
+}
+
+/** The island's curated hero "Popular" slots, raw and ungated (admin view). */
+export function useDestinationPopularLinks(id: string) {
+  return useQuery({
+    queryKey: destinationKeys.popularLinks(id),
+    queryFn: () => destinationsApi.getPopularLinks(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Replace the whole curated row in one save.
+ *
+ * Seeds the query cache from the response instead of only invalidating, so the
+ * section shows what the server actually stored (slot order is assigned there
+ * from array position) rather than briefly re-rendering the pre-save order.
+ */
+export function useReplaceDestinationPopularLinks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, links }: { id: string; links: PopularLinkInput[] }) =>
+      destinationsApi.replacePopularLinks(id, links),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(destinationKeys.popularLinks(variables.id), data);
     },
   });
 }

@@ -142,3 +142,26 @@ export interface UpdateFaqPayload {
   displayOrder?: number;
   isActive?: boolean;
 }
+
+/**
+ * One curated hero "Popular" slot, as the admin editor sees it - the raw target
+ * ids, NOT the resolved row. Exactly one of the three is set.
+ *
+ * Ungated on purpose: the editor must show what an admin actually chose, even
+ * when that page is currently below its visibility bar. The public resolver
+ * drops it there; hiding it here would look like the save was lost.
+ */
+export interface DestinationPopularLink {
+  id: string;
+  displayOrder: number;
+  categoryId: string | null;
+  hubId: string | null;
+  collectionId: string | null;
+}
+
+/** One slot on the way in. Array position IS the render order. */
+export interface PopularLinkInput {
+  categoryId?: string;
+  hubId?: string;
+  collectionId?: string;
+}
