@@ -317,10 +317,10 @@ export function TopExperiences({
     if (cards.length < MIN_CURATED_CARDS) return null;
 
     return (
-        <section className='bg-it-white'>
+        <section className='bg-it-white it-section'>
             <div className='it-container'>
                 <Reveal className='flex flex-col items-center gap-4! md:gap-1! '>
-                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink font-medium text-center'>
+                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] text-it-ink font-bold text-center'>
                         {dict.title}
                     </h2>
 
@@ -563,7 +563,7 @@ export function TopExperiences({
                                                 the running video. */}
                                             <p
                                                 className={[
-                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-medium text-[13.5px] leading-[1.2] tracking-[-0.005em]',
+                                                    'absolute bottom-[13px] inset-x-[15px] m-0 text-left font-bold text-[13.5px] leading-[1.2] tracking-[-0.005em]',
                                                     hasMedia
                                                         ? 'text-it-white [text-shadow:0_1px_10px_rgba(0,0,0,0.6),0_1px_2px_rgba(0,0,0,0.45)]'
                                                         : 'text-it-heading',

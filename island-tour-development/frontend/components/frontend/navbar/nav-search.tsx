@@ -8,8 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { searchSuggestClient } from '@/lib/api/search';
 import {
-    localizeHref,
     LOCALE_CURRENCY,
+    localizeHref,
     type Currency,
     type Locale,
 } from '@/lib/constants/locales';
@@ -18,9 +18,9 @@ import type { SearchHit, SearchSuggest } from '@/types/search';
 
 import { iconPress, pressSpring } from './lib/navbar.constants';
 import type { Category, Island, NavDict, SearchDict } from './lib/navbar.types';
+import { useClickOutside } from './lib/use-click-outside';
 import { RotatingSearchPlaceholder } from './rotating-search-placeholder';
 import { SearchTypeahead } from './search-typeahead';
-import { useClickOutside } from './lib/use-click-outside';
 
 /**
  * The whole search responsibility: the always-visible desktop pill (inner pages
@@ -88,12 +88,7 @@ export function NavSearch({
         const controller = new AbortController();
         const timer = setTimeout(() => {
             searchSuggestClient(
-                {
-                    q,
-                    locale,
-                    currency,
-                    destinationSlug: currentIsland?.slug,
-                },
+                { q, locale, currency, destinationSlug: currentIsland?.slug },
                 controller.signal
             )
                 .then(res => {
@@ -116,13 +111,18 @@ export function NavSearch({
     // Results-page URL, scoped to the active island when one is set.
     const searchHref = (q: string) => {
         const base = `${localizeHref(locale, '/search')}?q=${encodeURIComponent(q)}`;
-        return currentIsland ? `${base}&destination=${currentIsland.slug}` : base;
+        return currentIsland
+            ? `${base}&destination=${currentIsland.slug}`
+            : base;
     };
 
     const tourHref = (hit: SearchHit) =>
         hit.destinationSlug
             ? localizeHref(locale, `/${hit.destinationSlug}/${hit.slug}`)
-            : localizeHref(locale, `/search?q=${encodeURIComponent(hit.title)}`);
+            : localizeHref(
+                  locale,
+                  `/search?q=${encodeURIComponent(hit.title)}`
+              );
 
     function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -158,10 +158,7 @@ export function NavSearch({
             categoryHref={
                 currentIsland
                     ? (slug: string) =>
-                          localizeHref(
-                              locale,
-                              `/${currentIsland.slug}/${slug}`
-                          )
+                          localizeHref(locale, `/${currentIsland.slug}/${slug}`)
                     : null
             }
             hubHref={(destinationSlug: string, slug: string) =>
@@ -205,7 +202,7 @@ export function NavSearch({
                                 onFocus={() => setFocused(true)}
                                 placeholder={rotating ? '' : nav.search}
                                 aria-label={nav.search}
-                                className='w-full bg-transparent border-none outline-none text-[13.5px] font-semibold text-it-ink placeholder:font-medium placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                className='w-full bg-transparent border-none outline-none text-[13.5px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                             />
                             {rotating && query === '' && (
                                 <RotatingSearchPlaceholder
@@ -251,7 +248,7 @@ export function NavSearch({
                                     onChange={e => setQuery(e.target.value)}
                                     placeholder={rotating ? '' : nav.search}
                                     aria-label={nav.search}
-                                    className='w-full bg-transparent border-none outline-none text-[15px] font-semibold text-it-ink placeholder:font-medium placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                                    className='w-full bg-transparent border-none outline-none text-[15px] font-semibold text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                                 />
                                 {rotating && query === '' && (
                                     <RotatingSearchPlaceholder
@@ -281,3 +278,4 @@ export function NavSearch({
         </>
     );
 }
+

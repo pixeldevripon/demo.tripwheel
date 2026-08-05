@@ -100,7 +100,7 @@ function OptChip({
             transition={springPop}
             className={`cursor-pointer whitespace-nowrap rounded-it-full border px-[15px] py-2 text-[13px] leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
                 on
-                    ? 'border-it-primary bg-it-primary-subtle font-medium text-it-primary-hover'
+                    ? 'border-it-primary bg-it-primary-subtle font-bold text-it-primary-hover'
                     : 'border-it-border bg-it-white font-semibold text-it-ink'
             }`}>
             {children}
@@ -206,7 +206,7 @@ function Section({
     return (
         <div className='flex flex-col border-b border-it-divider py-4 last:border-b-0'>
             {title && (
-                <h4 className='m-0 mb-3 text-[14px] font-medium leading-[1.6] text-it-ink'>
+                <h4 className='m-0 mb-3 text-[14px] font-bold leading-[1.6] text-it-ink'>
                     {title}
                 </h4>
             )}
@@ -342,7 +342,7 @@ export function ToursFilterModal({
                         className='relative flex max-h-[88vh] w-full max-w-[560px] flex-col rounded-it-lg bg-it-white'>
                         {/* Header (.mhead) — never scrolls */}
                         <div className='flex shrink-0 items-center justify-between border-b border-it-divider px-6 py-[18px]'>
-                            <h2 className='m-0 font-it-display text-[19px] font-medium leading-[1.2] text-it-ink'>
+                            <h2 className='m-0 font-it-display text-[19px] font-bold leading-[1.2] text-it-ink'>
                                 {dict.title}
                             </h2>
                             <motion.button
@@ -454,7 +454,7 @@ export function ToursFilterModal({
                             <Section>
                                 <div className='flex items-center justify-between gap-4'>
                                     <div>
-                                        <h4 className='m-0 mb-1 text-[14px] font-medium leading-[1.6] text-it-ink'>
+                                        <h4 className='m-0 mb-1 text-[14px] font-bold leading-[1.6] text-it-ink'>
                                             {dict.pickupAvailable}
                                         </h4>
                                         <p className='m-0 max-w-[380px] text-[13px] leading-[1.6] text-it-text-muted'>
@@ -522,7 +522,7 @@ export function ToursFilterModal({
                                 }
                                 whileTap={{ scale: 0.97 }}
                                 transition={springPop}
-                                className='cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-medium leading-[1.6] text-it-text-muted underline underline-offset-2'>
+                                className='cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
                                 {dict.clearAll}
                             </motion.button>
                             <motion.button
@@ -530,7 +530,7 @@ export function ToursFilterModal({
                                 onClick={() => onApply(draft)}
                                 whileTap={{ scale: 0.98 }}
                                 transition={springPop}
-                                className='cursor-pointer rounded-it-sm border-none bg-it-primary px-[26px] py-3 text-[15px] font-medium leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                                className='cursor-pointer rounded-it-sm border-none bg-it-primary px-[26px] py-3 text-[15px] font-bold leading-[1.6] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
                                 {dict.applyFilters}
                             </motion.button>
                         </div>

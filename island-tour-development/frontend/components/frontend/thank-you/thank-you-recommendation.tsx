@@ -101,7 +101,7 @@ function buildFacts(
         facts.push({
             key: 'rating',
             node: (
-                <span className={`${cls} font-medium text-it-star`}>
+                <span className={`${cls} font-bold text-it-star`}>
                     ★ {r.rating}
                     {r.reviewCount !== null &&
                         ` (${r.reviewCount.toLocaleString('en-US')})`}
@@ -236,7 +236,7 @@ function AptCard({
             <div className='flex flex-col items-start justify-center px-5 py-5 md:px-7 md:py-6'>
                 {/* Eyebrow + area are admin copy; absent on internal picks. */}
                 {(eyebrow || recommendation.areaLabel) && (
-                    <div className='flex items-center gap-2 text-[11px] font-medium uppercase leading-[1.4] tracking-[0.12em] text-it-text-muted'>
+                    <div className='flex items-center gap-2 text-[11px] font-bold uppercase leading-[1.4] tracking-[0.12em] text-it-text-muted'>
                         {EyebrowMark}
                         <span className='flex items-center gap-2'>
                             {eyebrow}
@@ -245,7 +245,7 @@ function AptCard({
                         </span>
                     </div>
                 )}
-                <h3 className='m-0 mt-2 font-it-display text-[20px] font-medium leading-[1.3] tracking-[-0.01em] text-it-ink'>
+                <h3 className='m-0 mt-2 font-it-display text-[20px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink'>
                     {title}
                 </h3>
                 {recommendation.descriptionLines.length > 0 && (
@@ -272,7 +272,7 @@ function AptCard({
                 {ctaLabel && (
                     <Cta
                         r={recommendation}
-                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-medium leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
+                        className='mt-3.5 inline-flex items-center gap-2 self-start rounded-it-sm border border-it-border bg-it-white px-[18px] py-2.5 text-[13.5px] font-bold leading-[1.4] text-it-ink no-underline transition-colors duration-(--it-duration-xs) hover:bg-it-bg'>
                         {ctaLabel}
                         {recommendation.external && (
                             <Image
@@ -331,7 +331,7 @@ function GridCard({
                 {/* Eyebrow is admin copy (OUR VILLA / WHERE TO EAT). Absent on
                     internal picks, which then read like a plain tour card. */}
                 {eyebrow && (
-                    <span className='flex items-center gap-1.5 text-[11px] font-medium uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
+                    <span className='flex items-center gap-1.5 text-[11px] font-bold uppercase leading-[1.4] tracking-[0.08em] text-it-text-muted'>
                         {EyebrowMark} {eyebrow}
                     </span>
                 )}

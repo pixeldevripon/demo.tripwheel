@@ -57,7 +57,7 @@ function Step({
                         />
                     </motion.span>
                 ) : (
-                    <span className='text-[13px] font-medium leading-none tabular-nums'>
+                    <span className='text-[13px] font-bold leading-none tabular-nums'>
                         {number}
                     </span>
                 )}

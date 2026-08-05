@@ -49,7 +49,7 @@ export function BookingRefCopy({
             transition={springPop}
             aria-label={ariaLabel}
             aria-live='polite'
-            className='cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-medium leading-[1.4] text-it-primary-hover underline underline-offset-2'>
+            className='cursor-pointer border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.4] text-it-primary-hover underline underline-offset-2'>
             {copied ? copiedLabel : copyLabel}
         </motion.button>
     );
@@ -150,7 +150,7 @@ export function AddToCalendar({
                 transition={springPop}
                 aria-expanded={open}
                 aria-haspopup='menu'
-                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[16px] font-medium leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
+                className='flex cursor-pointer items-center gap-[9px] rounded-it-sm border-none bg-it-primary px-[26px] py-[13px] text-[16px] font-bold leading-[1.5] text-it-white transition-colors duration-(--it-duration-xs) hover:bg-it-primary-hover'>
                 <Image
                     src='/icons/thank-you/calendar-white.svg'
                     alt=''
@@ -284,7 +284,7 @@ export function ResendEmailLine({
                         onClick={handleResend}
                         disabled={state === 'sending'}
                         aria-live='polite'
-                        className='cursor-pointer font-medium text-it-primary-hover underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60'>
+                        className='cursor-pointer font-bold text-it-primary-hover underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-60'>
                         {state === 'sending' ? sendingLabel : resendLabel}
                     </button>
                 </motion.p>

@@ -64,7 +64,7 @@ function SummaryRow({
                 {label}
             </span>
             {value && (
-                <span className={`${rowText} font-medium tabular-nums`}>
+                <span className={`${rowText} font-bold tabular-nums`}>
                     {value}
                 </span>
             )}
@@ -102,7 +102,7 @@ export function CheckoutSummary({
             {/* Header */}
             <div className='flex flex-col gap-4'>
                 <div className='flex items-start justify-between gap-4'>
-                    <span className='font-it-display text-[16px] font-medium leading-[1.4] tracking-[-0.01em] text-it-ink'>
+                    <span className='font-it-display text-[16px] font-bold leading-[1.4] tracking-[-0.01em] text-it-ink'>
                         {dict.bookingSummary}
                     </span>
                     <Link

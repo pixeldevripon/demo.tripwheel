@@ -54,7 +54,7 @@ export async function ToursTrustStrip({ dict }: { dict: ToursTrustDict }) {
                             href={whatsappUrl}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='whitespace-nowrap text-[13.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                            className='whitespace-nowrap text-[13.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
                             {dict.whatsapp}
                         </a>
                     )}

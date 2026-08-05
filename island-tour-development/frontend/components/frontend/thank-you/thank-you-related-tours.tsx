@@ -34,7 +34,7 @@ export function ThankYouRelatedTours({
         <section className='bg-it-white pt-14 pb-0'>
             <div className='it-wrap flex flex-col'>
                 <Reveal>
-                    <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] font-medium leading-[1.2] tracking-[-0.013em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(20px,2.4vw,26px)] font-bold leading-[1.2] tracking-[-0.013em] text-it-ink'>
                         {dict.relatedTitle}
                     </h2>
                     <p className='m-0 mt-1.5 text-[14px] leading-[1.6] text-it-text-muted'>
@@ -57,7 +57,7 @@ export function ThankYouRelatedTours({
                         href={toursHref}
                         whileTap={{ scale: 0.97 }}
                         transition={springPop}
-                        className='inline-block text-[14.5px] font-medium leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+                        className='inline-block text-[14.5px] font-bold leading-[1.6] text-it-primary-hover underline underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
                         {dict.browsePicks} →
                     </MotionLink>
                 </Reveal>

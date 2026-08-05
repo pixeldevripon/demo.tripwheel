@@ -29,7 +29,7 @@ export function HubWhySection({
         <section className='bg-it-white pt-16 pb-2.5 max-md:pt-8'>
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-3.5'>
-                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-medium leading-[1.2] tracking-[-0.015em] text-it-ink'>
+                    <h2 className='m-0 font-it-display text-[clamp(22px,2.8vw,30px)] font-bold leading-[1.2] tracking-[-0.015em] text-it-ink'>
                         {title}
                     </h2>
 
@@ -37,7 +37,7 @@ export function HubWhySection({
                         {paragraphs.map((paragraph, i) => (
                             <p
                                 key={i}
-                                className={`m-0 text-[15.5px] leading-[1.7] text-it-ink first:font-it-display first:text-[19px] first:font-medium first:tracking-[-0.01em] ${
+                                className={`m-0 text-[15.5px] leading-[1.7] text-it-ink first:font-it-display first:text-[19px] first:font-bold first:tracking-[-0.01em] ${
                                     !expanded && i === 0
                                         ? 'line-clamp-5 md:line-clamp-none'
                                         : ''

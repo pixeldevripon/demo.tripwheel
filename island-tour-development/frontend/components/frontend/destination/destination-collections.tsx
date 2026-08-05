@@ -39,7 +39,7 @@ export function DestinationCollections({
             <div className='it-container'>
                 <Reveal className='flex flex-col gap-5'>
                     {/* ── Section heading (design v2 sechead) ───────────────── */}
-                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-medium text-it-ink'>
+                    <h2 className='m-0 text-[clamp(22px,2.6vw,30px)] leading-[1.1] tracking-[-0.015em] font-bold text-it-ink'>
                         {dict.title}
                     </h2>
 

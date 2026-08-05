@@ -50,7 +50,7 @@ export function WishlistLink({
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
                         transition={pressSpring}
-                        className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-medium leading-none text-it-white tabular-nums'>
+                        className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-bold leading-none text-it-white tabular-nums'>
                         {count}
                     </motion.span>
                 )}
