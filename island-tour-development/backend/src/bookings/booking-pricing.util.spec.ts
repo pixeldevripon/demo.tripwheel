@@ -38,7 +38,7 @@ function compute(
 describe('computeBookingPricing', () => {
   it('sums unit retail/net and expands one item per seat', () => {
     const p = compute();
-    expect(p.totalRetail.toString()).toBe('209.97');
+    expect(p.totalRetail.toString()).toBe('210');
     expect(p.totalNet?.toString()).toBe('167.97'); // 63.99*2 + 39.99
     expect(p.unitItems).toHaveLength(3);
     expect(p.pax).toBe(3);
@@ -49,13 +49,13 @@ describe('computeBookingPricing', () => {
       paymentModel: PaymentModel.OPERATOR_LINK,
       depositPct: D('20'),
     });
-    expect(p.depositAmount.toString()).toBe('41.99'); // 209.97 * 0.20
-    expect(p.balanceAmount.toString()).toBe('167.98');
+    expect(p.depositAmount.toString()).toBe('42'); // ceil(209.97 * 0.20)
+    expect(p.balanceAmount.toString()).toBe('168');
   });
 
   it('PAID_IN_FULL charges the whole total up front', () => {
     const p = compute({ paymentModel: PaymentModel.PAID_IN_FULL });
-    expect(p.depositAmount.toString()).toBe('209.97');
+    expect(p.depositAmount.toString()).toBe('210');
     expect(p.balanceAmount.toString()).toBe('0');
   });
 
@@ -64,21 +64,21 @@ describe('computeBookingPricing', () => {
       paymentModel: PaymentModel.ON_ARRIVAL,
       depositPct: D('20'),
     });
-    expect(p.depositAmount.toString()).toBe('41.99'); // 209.97 * 0.20
-    expect(p.balanceAmount.toString()).toBe('167.98');
+    expect(p.depositAmount.toString()).toBe('42'); // ceil(209.97 * 0.20)
+    expect(p.balanceAmount.toString()).toBe('168');
   });
 
   it('OPERATOR_FULL takes no deposit (whole amount settled with the operator)', () => {
     const p = compute({ paymentModel: PaymentModel.OPERATOR_FULL });
     expect(p.depositAmount.toString()).toBe('0');
-    expect(p.balanceAmount.toString()).toBe('209.97');
+    expect(p.balanceAmount.toString()).toBe('210');
   });
 
   it('snapshots an EUR commission (rate + amount)', () => {
     const p = compute({ commissionTier: D('27.5') });
     expect(p.commissionRate.toString()).toBe('0.275');
     expect(p.fxRateToEur?.toString()).toBe('1');
-    expect(p.totalEur?.toString()).toBe('209.97');
+    expect(p.totalEur?.toString()).toBe('210');
     expect(p.commissionAmount?.toString()).toBe('57.74'); // 209.97 * 0.275 = 57.74175
   });
 
@@ -105,9 +105,9 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('0.9'),
       fxRateToEur: D('1'),
     });
-    // Per-line conversion (guide §20.5): 79.99*0.9=71.99 (x2) + 49.99*0.9=44.99 = 188.97
-    expect(p.totalRetail.toString()).toBe('188.97');
-    expect(p.sourceTotalRetail.toString()).toBe('209.97'); // original USD preserved
+    // Per-line conversion (guide §20.5): 79.99*0.9=71.99 (x2) + 49.99*0.9=44.99 = 188.97 -> ceil 189
+    expect(p.totalRetail.toString()).toBe('189');
+    expect(p.sourceTotalRetail.toString()).toBe('210'); // original USD preserved
     expect(p.sourceFxRateToBooking.toString()).toBe('0.9');
     expect(p.commissionAmount?.toString()).toBe('37.79'); // 188.97 * 0.20
     expect(p.unitItems[0].priceRetail.toString()).toBe('71.99'); // booking currency
@@ -121,11 +121,12 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('1.1'),
       fxRateToEur: D('0.9'),
     });
-    // 79.99*1.1=87.99 (x2) + 49.99*1.1=54.99 = 230.97
-    expect(p.totalRetail.toString()).toBe('230.97');
-    expect(p.sourceTotalRetail.toString()).toBe('209.97');
-    // EUR commission from the USD booking total: 230.97 * 0.9 = 207.873 -> 207.87; *0.2 = 41.57
-    expect(p.totalEur?.toString()).toBe('207.87');
+    // 79.99*1.1=87.99 (x2) + 49.99*1.1=54.99 = 230.97 -> ceil 231
+    expect(p.totalRetail.toString()).toBe('231');
+    expect(p.sourceTotalRetail.toString()).toBe('210');
+    // EUR commission is taken on the UNROUNDED tour base, so it is unchanged
+    // by the rounding: 230.97 * 0.9 = 207.873 -> 207.87; *0.2 = 41.57
+    expect(p.totalEur?.toString()).toBe('207.9');
     expect(p.commissionAmount?.toString()).toBe('41.57');
   });
 
@@ -148,24 +149,25 @@ describe('computeBookingPricing', () => {
         },
       ],
     });
-    // base 209.97 + lunch 10*3 + transfer 25 = 264.97
-    expect(p.totalRetail.toString()).toBe('264.97');
+    // base 209.97 + lunch 10*3 + transfer 25 = 264.97 -> ceil 265
+    expect(p.totalRetail.toString()).toBe('265');
     expect(p.addOns[0].totalPrice.toString()).toBe('30');
     expect(p.addOns[1].totalPrice.toString()).toBe('25');
   });
 
   it('charges a priced pickup per person (unitPrice × pax) into the totals', () => {
     const p = compute({ pickup: { unitPrice: D('17') } });
-    // base 209.97 + pickup 17*3 = 260.97
-    expect(p.totalRetail.toString()).toBe('260.97');
-    expect(p.sourceTotalRetail.toString()).toBe('260.97');
+    // base 209.97 + pickup 17*3 = 260.97 -> ceil 261
+    expect(p.totalRetail.toString()).toBe('261');
+    expect(p.sourceTotalRetail.toString()).toBe('261');
     expect(p.pickup?.unitPrice.toString()).toBe('17');
     expect(p.pickup?.totalPrice.toString()).toBe('51');
     // Deposit % applies to the TOUR only and extras ride the operator balance
-    // in full (founder 2026-07-25): deposit = 209.97 * 0.20 = 41.99; balance =
-    // 209.97 - 41.99 + pickup 51 = 218.98.
-    expect(p.depositAmount.toString()).toBe('41.99');
-    expect(p.balanceAmount.toString()).toBe('218.98');
+    // in full (founder 2026-07-25): deposit = ceil(209.97 * 0.20) = 42. The
+    // balance is the REMAINDER of the rounded total (261 - 42 = 219), never
+    // computed on its own - that is what keeps the two summing to the total.
+    expect(p.depositAmount.toString()).toBe('42');
+    expect(p.balanceAmount.toString()).toBe('219');
   });
 
   it('excludes extras from the commission base (tour-only %)', () => {
@@ -181,9 +183,9 @@ describe('computeBookingPricing', () => {
         },
       ],
     });
-    // Full booking total (master booking_total_eur): 209.97 + 51 + 30 = 290.97.
-    expect(p.totalRetail.toString()).toBe('290.97');
-    expect(p.totalEur?.toString()).toBe('290.97');
+    // Full booking total (master booking_total_eur): 209.97 + 51 + 30 = 290.97 -> ceil 291.
+    expect(p.totalRetail.toString()).toBe('291');
+    expect(p.totalEur?.toString()).toBe('291');
     // Commission = 20% of the TOUR price only (209.97 -> 41.99), never of extras.
     expect(p.commissionAmount?.toString()).toBe('41.99');
   });
@@ -193,7 +195,7 @@ describe('computeBookingPricing', () => {
       paymentModel: PaymentModel.PAID_IN_FULL,
       pickup: { unitPrice: D('17') },
     });
-    expect(p.depositAmount.toString()).toBe('260.97');
+    expect(p.depositAmount.toString()).toBe('261');
     expect(p.balanceAmount.toString()).toBe('0');
   });
 
@@ -204,17 +206,18 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('0.9'),
       pickup: { unitPrice: D('17') },
     });
-    // pickup unit 17*0.9=15.30; total 15.30*3=45.90; base (converted) 188.97
+    // pickup unit 17*0.9=15.30; total 15.30*3=45.90; base (converted) 188.97;
+    // total 234.87 -> ceil 235
     expect(p.pickup?.unitPrice.toString()).toBe('15.3');
     expect(p.pickup?.totalPrice.toString()).toBe('45.9');
-    expect(p.totalRetail.toString()).toBe('234.87');
-    expect(p.sourceTotalRetail.toString()).toBe('260.97'); // 209.97 + 17*3 in USD
+    expect(p.totalRetail.toString()).toBe('235');
+    expect(p.sourceTotalRetail.toString()).toBe('261'); // 209.97 + 17*3 in USD
   });
 
   it('ignores a zero/free pickup (no line, no charge)', () => {
     const p = compute({ pickup: { unitPrice: D('0') } });
     expect(p.pickup).toBeNull();
-    expect(p.totalRetail.toString()).toBe('209.97');
+    expect(p.totalRetail.toString()).toBe('210');
   });
 
   it('drops net when any line is missing a net price', () => {
@@ -333,5 +336,100 @@ describe('computeBookingPricing', () => {
         commissionTier: D('20'),
       }),
     ).toThrow(/lines or unit/);
+  });
+
+  /**
+   * The founder's two rules for converted money (2026-08-05):
+   *   "round every euro amount up to a whole number ... Never down"
+   *   "Round the total first, then derive the deposit and balance from it,
+   *    so the lines add up"
+   *
+   * These are asserted as INVARIANTS rather than as fixed numbers, so a future
+   * change to the rate, the deposit % or the extras rule cannot quietly
+   * reintroduce cents or a total that its own two lines do not sum to.
+   */
+  describe('whole-unit retail (founder 2026-08-05)', () => {
+    const isWhole = (d: { toString(): string }) => !d.toString().includes('.');
+
+    const CASES: Array<[string, Parameters<typeof compute>[0]]> = [
+      ['same currency', {}],
+      [
+        'USD -> EUR',
+        {
+          sourceCurrency: Currency.USD,
+          bookingCurrency: Currency.EUR,
+          sourceFxRateToBooking: D('0.9'),
+          fxRateToEur: D('1'),
+        },
+      ],
+      [
+        'EUR -> USD with extras',
+        {
+          sourceCurrency: Currency.EUR,
+          bookingCurrency: Currency.USD,
+          sourceFxRateToBooking: D('1.1'),
+          fxRateToEur: D('0.9'),
+          pickup: { unitPrice: D('17') },
+        },
+      ],
+      [
+        'awkward rate (0.8637) - the case that produced 120.71',
+        {
+          sourceCurrency: Currency.USD,
+          bookingCurrency: Currency.EUR,
+          sourceFxRateToBooking: D('0.8637'),
+          fxRateToEur: D('1'),
+        },
+      ],
+    ];
+
+    const MODELS = [
+      PaymentModel.OPERATOR_LINK,
+      PaymentModel.ON_ARRIVAL,
+      PaymentModel.PAID_IN_FULL,
+      PaymentModel.OPERATOR_FULL,
+    ];
+
+    for (const [name, over] of CASES) {
+      for (const paymentModel of MODELS) {
+        it(`${name} / ${paymentModel}: whole amounts that sum to the total`, () => {
+          const p = compute({ ...over, paymentModel, depositPct: D('20') });
+
+          expect(isWhole(p.totalRetail)).toBe(true);
+          expect(isWhole(p.depositAmount)).toBe(true);
+          expect(isWhole(p.balanceAmount)).toBe(true);
+          expect(isWhole(p.sourceTotalRetail)).toBe(true);
+
+          // The whole point of rounding the total FIRST.
+          expect(
+            p.depositAmount.plus(p.balanceAmount).toString(),
+          ).toBe(p.totalRetail.toString());
+
+          // Never down: the rounded total is at least the raw total, and less
+          // than a whole unit above it.
+          const raw = p.unitItems
+            .reduce((acc, u) => acc.plus(u.priceRetail), D('0'))
+            .plus(p.addOns.reduce((acc, a) => acc.plus(a.totalPrice), D('0')))
+            .plus(p.pickup?.totalPrice ?? D('0'));
+          expect(p.totalRetail.greaterThanOrEqualTo(raw)).toBe(true);
+          expect(p.totalRetail.minus(raw).lessThan(1)).toBe(true);
+        });
+      }
+    }
+
+    it('leaves an already-whole total alone (no free unit)', () => {
+      const p = compute({
+        lines: [
+          {
+            ageBandId: 'ad',
+            quantity: 2,
+            priceRetail: D('50'),
+            priceNet: null,
+          },
+        ],
+        paymentModel: PaymentModel.PAID_IN_FULL,
+      });
+      expect(p.totalRetail.toString()).toBe('100');
+    });
   });
 });

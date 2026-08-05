@@ -1,4 +1,5 @@
 import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
+import { retailWhole } from '@/fx/fx-rates.service';
 
 /**
  * Pure booking-money computation (no I/O) - totals, deposit/balance split, and the
@@ -25,6 +26,12 @@ import { AddOnUnit, Currency, PaymentModel, Prisma } from '@prisma/client';
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
 const money = (v: Prisma.Decimal) =>
   v.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+/**
+ * Traveller-facing retail: a whole currency unit, always UP (`retailWhole`).
+ * `money()` (2dp) stays for the intermediate line maths, operator cost and the
+ * EUR commission - see the note on `retailWhole`.
+ */
+const retail = retailWhole;
 
 export interface PriceLineInput {
   ageBandId: string;
@@ -208,23 +215,28 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   const extrasRetail = money(addOnsRetail.plus(pickupRetail));
   const sourceExtrasRetail = money(sourceAddOnsRetail.plus(sourcePickupRetail));
   const tourRetail = money(unitsRetail);
-  const totalRetail = money(tourRetail.plus(extrasRetail));
+  // The TOTAL is rounded first and the split is derived from it (founder,
+  // 2026-08-05: "round the total first, then derive the deposit and balance
+  // from it, so the lines add up"). Rounding each line instead would stack a
+  // cent-to-a-unit gain per seat and per add-on, and the parts would no longer
+  // sum to the whole.
+  const totalRetail = retail(tourRetail.plus(extrasRetail));
   const totalNet = src.anyNetMissing ? null : money(unitsNet);
   const sourceTourRetail = money(src.unitsRetail);
-  const sourceTotalRetail = money(sourceTourRetail.plus(sourceExtrasRetail));
+  const sourceTotalRetail = retail(sourceTourRetail.plus(sourceExtrasRetail));
 
   // ── Deposit / balance split (master rule #21), computed in each currency.
   // The deposit % applies to the tour price only; on the deposit models the
   // extras ride on the operator-collected balance in full. ──
   const { depositAmount, balanceAmount } = splitDeposit(
+    totalRetail,
     tourRetail,
-    extrasRetail,
     paymentModel,
     depositPct,
   );
   const source = splitDeposit(
+    sourceTotalRetail,
     sourceTourRetail,
-    sourceExtrasRetail,
     paymentModel,
     depositPct,
   );
@@ -323,9 +335,17 @@ function computeUnitLines(unit: UnitPricingInput): ParticipantExpansion {
   };
 }
 
+/**
+ * Split an ALREADY-ROUNDED total into deposit + balance.
+ *
+ * `totalRetail` is the whole-unit total; `tourRetail` is the unrounded tour
+ * portion, which is the base the deposit percentage applies to (extras are
+ * excluded - see below). The balance is always `total - deposit`, so the two
+ * lines add up to the total exactly, whatever the rounding did.
+ */
 function splitDeposit(
+  totalRetail: Prisma.Decimal,
   tourRetail: Prisma.Decimal,
-  extrasRetail: Prisma.Decimal,
   paymentModel: PaymentModel,
   depositPct: Prisma.Decimal,
 ): { depositAmount: Prisma.Decimal; balanceAmount: Prisma.Decimal } {
@@ -333,7 +353,7 @@ function splitDeposit(
     case PaymentModel.PAID_IN_FULL:
       // Platform collects the whole amount (tour + extras) up front.
       return {
-        depositAmount: money(tourRetail.plus(extrasRetail)),
+        depositAmount: totalRetail,
         balanceAmount: money(D(0)),
       };
     case PaymentModel.OPERATOR_LINK:
@@ -343,10 +363,13 @@ function splitDeposit(
       // price only, and extras (add-ons + priced pickup) ride ON THE BALANCE in
       // full - the traveler pays only the tour deposit today (founder decision
       // 2026-07-25, superseding the LD18 "purchaseable in advance" reading).
-      const pctPart = money(tourRetail.times(depositPct).dividedBy(100));
+      // Deposit rounds UP like every other retail figure, then the balance is
+      // whatever is left of the total - never computed independently, or the
+      // two would stop summing to the total.
+      const pctPart = retail(tourRetail.times(depositPct).dividedBy(100));
       return {
         depositAmount: pctPart,
-        balanceAmount: money(tourRetail.minus(pctPart).plus(extrasRetail)),
+        balanceAmount: totalRetail.minus(pctPart),
       };
     }
     case PaymentModel.OPERATOR_FULL:
@@ -355,7 +378,7 @@ function splitDeposit(
       // dropped for v1 and rejected at reserve - kept here only for exhaustiveness.)
       return {
         depositAmount: money(D(0)),
-        balanceAmount: money(tourRetail.plus(extrasRetail)),
+        balanceAmount: totalRetail,
       };
   }
 }
