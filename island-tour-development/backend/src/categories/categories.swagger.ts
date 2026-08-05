@@ -94,10 +94,11 @@ export function ApiGetCategoriesByDestinationDocs() {
   return applyDecorators(
     ApiOperation({
       summary:
-        'List categories that have ≥1 published tour in a destination (public)',
+        'List categories whose page is live in a destination (≥3 published tours, public)',
       description:
-        'V2 §3 tour-gating: only categories with at least one LIVE tour in the destination are returned, ' +
-        'each with publishedTourCount, ordered by sortOrder. Used for destination-page nav/listing and sitemaps.',
+        'Master §2.4 tour-gating: only categories with at least 3 LIVE tours in the destination are returned - ' +
+        'below that the category page is draft and must not be linked from navigation. Each carries ' +
+        'publishedTourCount, ordered by sortOrder. Used for destination-page nav/listing and sitemaps.',
     }),
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
     localeParam,
@@ -116,8 +117,9 @@ export function ApiGetCategoryByDestinationSlugDocs() {
     ApiOperation({
       summary: 'Get a category page for a destination (public, tour-gated)',
       description:
-        'V2 §3: returns 404 when the (category, destination) pair has zero published tours - empty category ' +
-        'pages must not render. The slug stays reserved in slug_registry; only the page is gated.',
+        'Master §2.4: returns 404 when the (category, destination) pair has fewer than 3 published tours - ' +
+        'a thin category page is draft and must not render. The slug stays reserved in slug_registry; only ' +
+        'the page is gated.',
     }),
     ApiParam({ name: 'destinationSlug', example: 'curacao' }),
     ApiParam({ name: 'categorySlug', example: 'boat-tours' }),
@@ -125,7 +127,8 @@ export function ApiGetCategoryByDestinationSlugDocs() {
     ApiResponse({ status: 200, type: CategoryDetailByDestinationResponseDto }),
     ApiResponse({
       status: 404,
-      description: 'Destination/category not found or no published tours',
+      description:
+        'Destination/category not found, or below the 3-published-tour bar',
       type: NotFoundErrorDto,
     }),
     ...publicErrors,

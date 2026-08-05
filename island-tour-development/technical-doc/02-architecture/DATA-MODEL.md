@@ -38,7 +38,7 @@
 | `meta_title_template`, `meta_description_template` | string | e.g. `"{category} in {destination}"`; resolved per destination |
 | `status` (per destination combination) | enum | Driven by the **≥3 published tours** threshold automation (§2.4), never hand-set |
 
-**Current code** (`categories.prisma`): aligned — `icon`, `sortOrder`, `metaTitleTemplate`, `metaDescriptionTemplate`, `parentCategoryId` present. Differences: per-destination `status` automation is not the ≥3-published-tours gate yet (likely ≥1; tracked in the alignment plan); category-create currently also seeds 3 `FeaturedSlot` rows — **that rule is removed under the tier model** (see [§E.3 commercial tier](#commercial-tier)).
+**Current code** (`categories.prisma`): aligned — `icon`, `sortOrder`, `metaTitleTemplate`, `metaDescriptionTemplate`, `parentCategoryId` present. Differences: category-create currently also seeds 3 `FeaturedSlot` rows — **that rule is removed under the tier model** (see [§E.3 commercial tier](#commercial-tier)).
 
 ---
 

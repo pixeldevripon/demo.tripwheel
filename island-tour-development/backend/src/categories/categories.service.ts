@@ -1,3 +1,4 @@
+import { CATEGORY_PAGE_MIN_TOURS } from '@/common/constants/category-visibility';
 import { FAQ_PAGE_TYPE } from '@/common/constants/faq-page-type';
 import { Locale } from '@/common/constants/locales';
 import { FaqGroupService } from '@/common/faq/faq-group.service';
@@ -197,8 +198,11 @@ export class CategoryService {
   }
 
   /**
-   * V2 §3: list categories for a destination that have ≥1 published tour.
-   * Empty-category pages must not exist, so zero-count categories are excluded.
+   * Master §2.4: list the categories whose page is publicly LIVE at this
+   * destination - at least {@link CATEGORY_PAGE_MIN_TOURS} published tours in the
+   * (category, destination) pair. A thinner category is draft, so it must not be
+   * linked from navigation anywhere; returning it here would put a link to a 404
+   * in the hero's "Popular" row, the "Explore by type" grid and the footer.
    * Returns localized categories ordered by sortOrder, each with publishedTourCount.
    */
   async getActiveByDestinationSlug(
@@ -227,7 +231,11 @@ export class CategoryService {
     const countByCategory = new Map(
       grouped.map((g) => [g.categoryId, g._count._all]),
     );
-    const categoryIds = [...countByCategory.keys()];
+    // The visibility bar is applied to the COUNT, not merely to "has a link row" -
+    // a category with one or two tours has a groupBy row but no live page.
+    const categoryIds = [...countByCategory.entries()]
+      .filter(([, count]) => count >= CATEGORY_PAGE_MIN_TOURS)
+      .map(([categoryId]) => categoryId);
     if (categoryIds.length === 0) return [];
 
     const categories = await this.prisma.category.findMany({
@@ -256,9 +264,10 @@ export class CategoryService {
   }
 
   /**
-   * V2 §3: category detail for a specific destination. Returns 404 when the
-   * (category, destination) pair has zero published tours - the slug_registry row
-   * stays active so the slug remains reserved, but the page must not render.
+   * Master §2.4: category detail for a specific destination. Returns 404 when the
+   * (category, destination) pair is below {@link CATEGORY_PAGE_MIN_TOURS} published
+   * tours - the slug_registry row stays active so the slug remains reserved, but
+   * the page must not render.
    */
   async getBySlugForDestination(
     destinationSlug: string,
@@ -296,9 +305,10 @@ export class CategoryService {
       category.id,
       destination.id,
     );
-    if (publishedTourCount === 0) {
+    if (publishedTourCount < CATEGORY_PAGE_MIN_TOURS) {
       throw new NotFoundException(
-        `Category "${categorySlug}" has no published tours in "${destinationSlug}"`,
+        `Category "${categorySlug}" has ${publishedTourCount} published tour(s) in ` +
+          `"${destinationSlug}", below the ${CATEGORY_PAGE_MIN_TOURS} a category page needs`,
       );
     }
 
@@ -406,6 +416,22 @@ export class CategoryService {
     const slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
 
     return this.prisma.$transaction(async (tx) => {
+      // A category created without an explicit position goes to the END of its
+      // row, not the front. This defaulted to 0, which put every admin-created
+      // category ahead of all 19 seeded ones (sortOrder 0-18) on every island the
+      // moment it was saved - leading the destination hero's "Popular" links, the
+      // "Explore by type" grid, the footer and the All-Tours pills, all without
+      // anyone choosing that.
+      const parentCategoryId = dto.parentCategoryId ?? null;
+      const sortOrder =
+        dto.sortOrder ??
+        ((
+          await tx.category.aggregate({
+            where: { parentCategoryId },
+            _max: { sortOrder: true },
+          })
+        )._max.sortOrder ?? -1) + 1;
+
       const category = await tx.category
         .create({
           data: {
@@ -415,8 +441,8 @@ export class CategoryService {
             ogImage: dto.ogImage ?? null,
             description: dto.description ?? null,
             icon: dto.icon ?? null,
-            sortOrder: dto.sortOrder ?? 0,
-            parentCategoryId: dto.parentCategoryId ?? null,
+            sortOrder,
+            parentCategoryId,
             createdBy: adminId,
           },
           select: this.categorySelect,

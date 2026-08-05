@@ -6,6 +6,7 @@ import {
   TourStatus,
 } from '@prisma/client';
 
+import { CATEGORY_PAGE_MIN_TOURS } from '@/common/constants/category-visibility';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { SitemapEntryDto } from './dto/sitemap.dto';
 
@@ -16,8 +17,9 @@ import type { SitemapEntryDto } from './dto/sitemap.dto';
  *
  *  - Destination  : `isActive` (destinations.service).
  *  - Tour         : `LIVE` + `isActive` + active destination (tours.service).
- *  - Category     : top-level, `isActive`, and ≥1 LIVE tour in that destination
- *                   (categories.service.getBySlugForDestination 404s at 0).
+ *  - Category     : top-level, `isActive`, and ≥ CATEGORY_PAGE_MIN_TOURS LIVE tours
+ *                   in that destination (master §2.4; the same constant
+ *                   categories.service.getBySlugForDestination 404s below).
  *  - Hub          : `PUBLISHED` + `isActive` + ≥1 LIVE tour (hubs.service).
  *  - Collection   : `PUBLISHED` + `isActive` + active destination (collections.service).
  *  - Page         : `PUBLISHED` (pages.service.getPublicBySlug 404s otherwise).
@@ -51,8 +53,8 @@ export class SitemapService {
           },
         }),
         // Category pages are per (destination, category). Iterate the LIVE-tour
-        // ↔ category links and dedupe into pairs; a pair existing means ≥1 LIVE
-        // tour, which is the render gate.
+        // ↔ category links and fold them into pairs, COUNTING the tours behind
+        // each - the render gate is a threshold, not mere existence.
         this.prisma.tourCategory.findMany({
           where: {
             tour: {
@@ -125,10 +127,12 @@ export class SitemapService {
     }
 
     // Collapse the tour↔category links into one URL per (destination, category),
-    // keeping the freshest timestamp across the category and its LIVE tours.
+    // keeping the freshest timestamp across the category and its LIVE tours and
+    // tallying how many tours sit behind the pair. `tour_categories` is unique on
+    // (tourId, categoryId), so the row count IS the tour count.
     const categoryPairs = new Map<
       string,
-      { path: string; lastModified: Date }
+      { path: string; lastModified: Date; tours: number }
     >();
     for (const tc of tourCategories) {
       const path = `/${tc.tour.destination.slug}/${tc.category.slug}`;
@@ -137,11 +141,16 @@ export class SitemapService {
           ? tc.tour.updatedAt
           : tc.category.updatedAt;
       const existing = categoryPairs.get(path);
-      if (!existing || freshest > existing.lastModified) {
-        categoryPairs.set(path, { path, lastModified: freshest });
+      if (!existing) {
+        categoryPairs.set(path, { path, lastModified: freshest, tours: 1 });
+        continue;
       }
+      existing.tours += 1;
+      if (freshest > existing.lastModified) existing.lastModified = freshest;
     }
     for (const c of categoryPairs.values()) {
+      // Below the bar the page 404s, so listing it would advertise a soft-404.
+      if (c.tours < CATEGORY_PAGE_MIN_TOURS) continue;
       entries.push({
         path: c.path,
         lastModified: c.lastModified.toISOString(),
