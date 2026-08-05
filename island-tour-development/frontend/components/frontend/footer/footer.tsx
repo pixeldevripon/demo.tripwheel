@@ -178,10 +178,31 @@ function LinkColumn({
     );
 }
 
-/** One payment-mark row (space-between on both breakpoints). */
+/**
+ * One payment-mark row - four marks, 4x2 overall.
+ *
+ * MOBILE packs them left as a single payment group, starting flush with the
+ * left edge of the language pill above. They used to be `justify-between` at
+ * every width, which stretched four marks across the whole column and read as
+ * scattered logos rather than one block (client, 2026-08-05).
+ *
+ * The gap is 12px, not the mockup's 6px. `.ftpay` sets `gap:6px` between GRID
+ * TRACKS of `1fr`, so the space you actually see between two marks there is
+ * 6px plus whatever the track leaves over - much wider than 6px. Reproducing
+ * the number literally as a flex gap put the marks visibly too close
+ * (founder, 2026-08-05); 12px is what matches the mockup's apparent spacing.
+ *
+ * DESKTOP keeps the spread: that footer column is only ~221px, the mockup
+ * fills it (`repeat(4,1fr)`), and the marks land under the pills with no
+ * ragged gap on the right.
+ *
+ * Flex, not a grid: the marks are different widths, so grid columns sized to
+ * the widest mark in each column gave uneven visual gaps (measured 6/24/15px).
+ * A flex gap is the one you can actually measure between two marks.
+ */
 function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
     return (
-        <div className='flex items-center justify-between gap-4'>
+        <div className='flex items-center justify-start gap-3 lg:justify-between lg:gap-4'>
             {items.map(p => (
                 <Image
                     key={p.alt}
@@ -415,7 +436,9 @@ export async function Footer({
                             </div>
 
                             <div className='flex flex-col gap-8 lg:gap-6'>
-                                <div className='flex flex-col gap-4 lg:gap-2.5'>
+                                {/* Same gap down as across, so the eight marks
+                                    read as one block rather than two bands. */}
+                                <div className='flex flex-col gap-3 lg:gap-2.5'>
                                     <PaymentRow items={paymentsRow1} />
                                     <PaymentRow items={paymentsRow2} />
                                 </div>
