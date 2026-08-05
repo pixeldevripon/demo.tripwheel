@@ -95,7 +95,7 @@ export function CancelRequestCard({
                         animate={{ opacity: 1, y: 0 }}
                         transition={crossFade}
                         className='flex flex-col'>
-                        <span className='font-normal text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
+                        <span className='font-bold text-[18px] leading-[1.4] tracking-[-0.012em] text-it-heading'>
                             {title}
                         </span>
                         {displayRef && (
