@@ -97,12 +97,27 @@ function SelectorMenu({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Interactive currency selector - opens upward. Its initial value matches the
- * locale's default currency (what the server uses when it has neither a cookie
- * nor a geo signal), so the pill and the server-rendered prices agree on first
- * paint; the stored cookie overrides it once mounted. On a first visit that
- * cookie is written by `CurrencyAutoDetect`, which mounts above this one - so
- * the geo-picked currency is already in place by the time this effect reads it.
+ * Interactive currency selector - opens upward, and the ONLY thing in the app
+ * that writes the currency cookie.
+ *
+ * Master 1.3 (locked June 10, 2026): "The locale sets the default; a currency
+ * selector in the global footer lets the user override it" - EN/ZH default to
+ * USD, the five European locales to EUR - and "IP-based currency localization
+ * is roadmap". So there are exactly two inputs, in this order:
+ *
+ *   1. the cookie, which now means ONE thing: this user picked that currency;
+ *   2. otherwise the locale default.
+ *
+ * Nothing infers currency from the device or the IP. That inference used to run
+ * (edge country header in the proxy, browser time zone on mount) and was the
+ * bug behind /en showing EUR: it wrote the cookie before the visitor chose
+ * anything, so the locale default never got a turn.
+ *
+ * The initial state is the locale default, matching what the server rendered,
+ * so the pill and the prices agree on first paint; a stored pick overrides it
+ * on mount. Switching locale therefore moves the currency with it - until the
+ * visitor picks one here, which then outranks the locale everywhere.
+ *
  * Selecting a currency writes the cookie and calls `router.refresh()` so every
  * server component refetches currency-aware prices (guide §21.2).
  */
@@ -121,9 +136,9 @@ export function CurrencySelector({
     );
     const ref = useRef<HTMLDivElement>(null);
 
-    // Adopt the stored currency once mounted - an explicit earlier choice, or the
-    // geo pick written by CurrencyAutoDetect. The initial state mirrors the
-    // server's locale default, so this only moves the pill when a cookie exists.
+    // Adopt the visitor's own earlier choice once mounted. The initial state
+    // mirrors the server's locale default, so this only moves the pill when
+    // that person actually picked a currency before.
     useEffect(() => {
         const stored = storedCurrency(document.cookie);
         if (stored) setCurrency(stored);

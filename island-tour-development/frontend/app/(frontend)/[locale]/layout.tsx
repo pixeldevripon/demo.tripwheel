@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 
-import { CurrencyAutoDetect } from '@/components/frontend/currency-auto-detect';
 import { Footer } from '@/components/frontend/footer/footer';
 import { HtmlLangSync } from '@/components/frontend/html-lang-sync';
 import { Navbar } from '@/components/frontend/navbar/navbar';
@@ -43,11 +42,6 @@ export default async function LocaleLayout({
             {/* Corrects <html lang> to this locale at runtime (root renders a
                 static lang="en"; see the component for the SSR constraint). */}
             <HtmlLangSync locale={locale as Locale} />
-            {/* Renders nothing, and must stay the FIRST child: it writes the
-                currency cookie on a first visit, and every other reader of that
-                cookie (nav search, wishlist, footer pill) resolves in its own
-                mount effect, which React runs after this one. */}
-            <CurrencyAutoDetect locale={locale as Locale} />
             {/* Viewport-filling column: short pages (wishlist, status screens)
                 stretch `main` so the footer always closes the viewport with no
                 dead space below it. */}

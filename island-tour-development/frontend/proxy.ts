@@ -1,12 +1,9 @@
 import {
     ALL_LOCALES,
-    CURRENCY_COOKIE,
     DEFAULT_LOCALE,
     LOCALE_COOKIE,
-    isCurrency,
     isLocale,
 } from '@/lib/constants/locales';
-import { countryFromHeaders, currencyFromCountry } from '@/lib/currency/geo';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -131,31 +128,13 @@ export async function proxy(request: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
     });
 
-    // Currency is geo-picked on the SAME redirect that picks the locale, so the
-    // page that follows already renders in the visitor's currency - no first
-    // paint in euros that flips to dollars a beat later. The edge country header
-    // is the best signal we get, and here it costs nothing.
-    //
-    // An existing cookie is never touched: it is either an explicit choice from
-    // the footer selector or an earlier geo pick, and both outrank a fresh guess.
-    //
-    // This only covers visitors who arrive without a locale prefix (`/`, `/curacao`),
-    // because the matcher below deliberately excludes already-localized paths.
-    // Deep landings straight onto `/en/curacao` are picked up by
-    // `CurrencyAutoDetect` in the browser instead.
-    if (!isCurrency(request.cookies.get(CURRENCY_COOKIE)?.value)) {
-        const currency = currencyFromCountry(
-            countryFromHeaders(request.headers),
-        );
-        if (currency) {
-            response.cookies.set(CURRENCY_COOKIE, currency, {
-                path: '/',
-                maxAge: 60 * 60 * 24 * 365, // 1 year
-                sameSite: 'lax',
-                secure: process.env.NODE_ENV === 'production',
-            });
-        }
-    }
+    // NO currency cookie is written here. Master 1.3 (locked June 10, 2026):
+    // "The locale sets the default; a currency selector in the global footer
+    // lets the user override it" - and "IP-based currency localization is
+    // roadmap". Geo-picking the currency here wrote the cookie on the very
+    // first request, after which the locale default could never apply again,
+    // so /en rendered EUR for anyone whose device or IP looked European.
+    // The cookie now carries EXACTLY ONE meaning: an explicit footer pick.
 
     return response;
 }

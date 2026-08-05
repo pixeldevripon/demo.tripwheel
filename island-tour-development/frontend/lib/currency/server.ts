@@ -16,10 +16,10 @@ import {
  * this in a server component / page, then thread the result into the currency-aware
  * public API clients and into the booking widget.
  *
- * The cookie is the ONLY signal here. Geo never enters this function: it only ever
- * writes that cookie (in `proxy.ts` from the edge country header, or in
- * `CurrencyAutoDetect` from the browser time zone), so prices keep resolving
- * through exactly one input.
+ * The cookie is the ONLY signal here, and it now carries exactly one meaning:
+ * this visitor picked that currency in the footer. Nothing infers currency from
+ * the device or the IP - master 1.3 locks the default to the LOCALE and files
+ * IP-based localization under roadmap.
  *
  * Reading `cookies()` opts the caller into dynamic rendering - do it inside a
  * Suspense-streamed section so the static shell still prerenders (see the PPR
