@@ -176,22 +176,38 @@ export class HomePageService {
       editorialDestination,
     );
 
-    // Which of these categories actually has something bookable on that island.
-    const bookable = await this.categoriesWithLiveTours(
-      editorialCards
-        .filter((c) => c.isLink && c.category?.isActive)
-        .map((c) => c.categoryId)
-        .filter((id): id is string => !!id),
-      island?.id ?? null,
-    );
-
-    // The "from" price each card advertises: its target's cheapest live tour on
-    // the banner's island, converted to the shopper's currency.
-    const startingPrices = await this.cardStartingPrices(
-      editorialCards,
-      island?.id ?? null,
-      currency,
-    );
+    // Independent of each other - both derive only from the island and the
+    // cards - so they go out together rather than one after the other.
+    const [bookable, startingPrices] = await Promise.all([
+      // Which of these categories actually has something bookable on that island.
+      this.categoriesWithLiveTours(
+        editorialCards
+          .filter((c) => c.isLink && c.category?.isActive)
+          .map((c) => c.categoryId)
+          .filter((id): id is string => !!id),
+        island?.id ?? null,
+      ),
+      /*
+       * The "from" price each card advertises: its target's cheapest live tour
+       * on the banner's island, converted to the shopper's currency.
+       *
+       * Gated by the SAME liveness test that decides whether the card may show
+       * its name and link at all (below). Without the filter, archiving a
+       * category or unpublishing a hub that still has live tours left the card
+       * correctly anonymous and unlinked but still quoting a real price - a
+       * page we had just decided must not be advertised, advertised by its
+       * price.
+       */
+      this.cardStartingPrices(
+        editorialCards.filter((c) =>
+          c.hubId
+            ? !!c.hub?.isActive && c.hub.status === HubStatus.PUBLISHED
+            : !!c.category?.isActive,
+        ),
+        island?.id ?? null,
+        currency,
+      ),
+    ]);
 
     return {
       locale,
@@ -495,6 +511,11 @@ export class HomePageService {
    * omits the price line rather than printing a zero.
    */
   private async cardStartingPrices(
+    /**
+     * Already filtered to cards whose target may be advertised - see the call
+     * site. This method does not re-check liveness; it only prices what it is
+     * given.
+     */
     cards: {
       id: string;
       categoryId: string | null;
@@ -562,28 +583,87 @@ export class HomePageService {
     for (const row of hubRows)
       note(row.hubId, row.tour?.priceFrom, row.tour?.defaultCurrency);
 
+    /*
+     * ONE target for every card, even when the shopper's currency is unknown.
+     *
+     * `currency ?? source` looks like the right fallback - it is what
+     * `FxRatesService.attachMoney` does - but that helper shows each item its
+     * own price and never compares two items. Here we are picking a single
+     * cheapest, and making every source its own target converts nothing at all,
+     * so the comparison below would run on raw mixed-currency amounts: exactly
+     * the "100 USD is cheaper than 95 EUR" bug this method exists to avoid.
+     * EUR is the platform's base currency.
+     */
+    const target = currency ?? Currency.EUR;
+
+    /*
+     * Resolve each DISTINCT source currency's display rate once, the way
+     * `attachMoney` does, so the per-card loop below is synchronous rather than
+     * awaiting inside a nested loop.
+     *
+     * A source with no available rate keeps its own currency at rate 1 - the
+     * sitewide "never block a page on FX" fallback.
+     */
+    const sources = new Set<Currency>();
+    for (const perCurrency of byTarget.values())
+      for (const source of perCurrency.keys()) sources.add(source);
+
+    const rateBySource = new Map<
+      Currency,
+      { currency: Currency; rate: Prisma.Decimal }
+    >();
+    await Promise.all(
+      [...sources].map(async (source) => {
+        const display =
+          source === target
+            ? null
+            : await this.fx.getDisplayRate(source, target);
+        rateBySource.set(
+          source,
+          source === target || display
+            ? {
+                currency: target,
+                rate: display ? display.rate : new Prisma.Decimal(1),
+              }
+            : { currency: source, rate: new Prisma.Decimal(1) },
+        );
+      }),
+    );
+
     for (const card of cards) {
       const key = card.categoryId ?? card.hubId;
       const perCurrency = key ? byTarget.get(key) : undefined;
       if (!perCurrency?.size) continue;
 
-      // Convert every currency's minimum, then take the cheapest of those -
-      // comparison has to happen AFTER conversion to be meaningful.
-      const converted = await Promise.all(
-        [...perCurrency.entries()].map(async ([source, amount]) => {
-          const money = await this.fx.buildMoney(source, currency ?? source, {
-            priceFrom: amount,
-          });
-          return money;
-        }),
-      );
-      const cheapest = converted
-        .filter((m) => m.priceFrom != null)
-        .sort((a, b) => Number(a.priceFrom) - Number(b.priceFrom))[0];
+      const converted = [...perCurrency.entries()].map(([source, amount]) => {
+        const { currency: resolved, rate } = rateBySource.get(source)!;
+        return {
+          currency: resolved,
+          // Decimal throughout - money math never goes via JS float.
+          amount: amount
+            .mul(rate)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP),
+        };
+      });
+
+      /*
+       * Compare within ONE currency - the whole point of converting first.
+       * Anything that could not be converted (an FX outage) is set aside. If
+       * nothing converted at all, fall back to the unconverted set only when it
+       * is unambiguous, i.e. every tour behind the card was priced in the same
+       * currency. Otherwise the card shows no price rather than a wrong one.
+       */
+      const comparable = converted.filter((c) => c.currency === target);
+      const pool = comparable.length
+        ? comparable
+        : new Set(converted.map((c) => c.currency)).size === 1
+          ? converted
+          : [];
+      const cheapest = pool.sort((a, b) => a.amount.comparedTo(b.amount))[0];
       if (!cheapest) continue;
 
       result.set(card.id, {
-        priceFrom: cheapest.priceFrom,
+        priceFrom: cheapest.amount.toString(),
         priceCurrency: cheapest.currency,
       });
     }
