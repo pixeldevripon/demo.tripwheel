@@ -40,8 +40,12 @@ export function EditorialBanner({
 
                     {/* Mobile/tablet: stacked column · Desktop: full-height positioning context for the absolute copy + fan */}
                     <div className='relative flex flex-col gap-6 px-6 py-10 sm:px-10 sm:py-12 lg:block lg:min-h-[372px] lg:p-0'>
-                        {/* Editorial copy (mockup .edfig .txt) */}
-                        <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:-translate-y-1/2 lg:max-w-[432px]'>
+                        {/* Editorial copy (mockup .edfig .txt, z-3 - it sits
+                            ABOVE the card stack, which the mockup keeps at z-1.
+                            The deck spans 58% of the band, so at the narrow end
+                            of desktop its leftmost card reaches under this
+                            column and must pass behind the words). */}
+                        <div className='flex flex-col lg:absolute lg:left-[60px] lg:top-1/2 lg:z-[3] lg:-translate-y-1/2 lg:max-w-[432px]'>
                             <h2 className='m-0 font-it-display font-bold text-[clamp(26px,3.3vw,40px)] leading-[1.05] tracking-[-0.02em] text-it-white'>
                                 <span className='block'>{dict.titleLine1}</span>
                                 <span className='block text-it-editorial-accent'>
