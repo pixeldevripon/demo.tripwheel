@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { fetchDestinationCategoriesClient } from '@/lib/api/categories-public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 
@@ -48,6 +49,9 @@ export function Navbar({
 
     const [mobileOpen, setMobileOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    // Drives the hamburger's saved-count badge (the mobile bar has no Saved
+    // slot of its own - it lives in the drawer).
+    const { count: wishlistCount } = useWishlist();
 
     // Any navigation dismisses the mobile drawer/search - the menu links call
     // onClose themselves, but this also covers the logo, search results, and
@@ -176,6 +180,7 @@ export function Navbar({
                             dict={dict}
                             islands={islands}
                             currentIsland={currentIsland}
+                            onOpen={() => setMobileOpen(false)}
                         />
                     </div>
                 </div>
@@ -230,13 +235,35 @@ export function Navbar({
 
                     {/* flex, not the default inline button: without it the
                         icon sits on the TEXT BASELINE, ~3px above the other
-                        icons' centers - the reported nav misalignment. */}
+                        icons' centers - the reported nav misalignment.
+                        `relative` anchors the saved-count badge below. */}
                     <motion.button
-                        className='flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'
+                        className='relative flex items-center bg-transparent border-none cursor-pointer p-0 text-it-ink'
                         whileTap={{ scale: 0.9 }}
                         transition={pressSpring}
                         aria-label={mobileOpen ? dict.close : dict.menu}
                         onClick={() => setMobileOpen(v => !v)}>
+                        {/* The saved count rides the hamburger on mobile, where
+                            the Saved slot itself lives inside the drawer. The
+                            badge's whole purpose is PASSIVE visibility, so it
+                            has to stay on the bar even when the link it counts
+                            does not (client, 2026-08-05). Hidden while the
+                            drawer is open - the Saved row is on screen then,
+                            and the icon has become a close button. */}
+                        <AnimatePresence>
+                            {wishlistCount > 0 && !mobileOpen && (
+                                <motion.span
+                                    key={wishlistCount}
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    exit={{ scale: 0 }}
+                                    transition={pressSpring}
+                                    aria-hidden
+                                    className='absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-it-full bg-it-primary px-1 text-[10px] font-bold leading-none text-it-white tabular-nums'>
+                                    {wishlistCount}
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
                         <AnimatePresence mode='wait' initial={false}>
                             <motion.span
                                 key={mobileOpen ? 'close' : 'open'}
@@ -264,7 +291,6 @@ export function Navbar({
                 onClose={() => setMobileOpen(false)}
                 locale={locale}
                 dict={dict}
-                islands={islands}
                 categories={categories ?? []}
                 currentIsland={currentIsland}
                 isHome={isHome}

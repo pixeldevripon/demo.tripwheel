@@ -10,16 +10,18 @@ import { localizeHref, type Locale } from '@/lib/constants/locales';
 import type { Category, Island, NavDict } from './lib/navbar.types';
 
 /**
- * Mobile drawer below the bar: islands + (inner pages) categories + a wishlist
- * link with a live saved-count. Pure presentation - open state is owned by the
- * navbar (the toggle lives in the action cluster).
+ * Mobile drawer below the bar: (inner pages) categories + a wishlist link with
+ * a live saved-count. Pure presentation - open state is owned by the navbar
+ * (the toggle lives in the action cluster).
+ *
+ * Islands deliberately do NOT appear here: the bar's own island pill opens the
+ * same list a couple of inches away (client, 2026-08-05).
  */
 export function MobileMenu({
     open,
     onClose,
     locale,
     dict,
-    islands,
     categories,
     currentIsland,
     isHome,
@@ -28,7 +30,6 @@ export function MobileMenu({
     onClose: () => void;
     locale: Locale;
     dict: NavDict;
-    islands: Island[];
     categories: Category[];
     currentIsland: Island | null;
     isHome: boolean;
@@ -54,36 +55,12 @@ export function MobileMenu({
                     }}
                     className='absolute top-18 left-0 right-0 overflow-hidden bg-it-white border-b border-it-border z-50 md:hidden'>
                     <div className='border-t border-it-border px-4 py-6 flex flex-col gap-1'>
-                        <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
-                            {dict.selectIsland}
-                        </span>
-                        {islands.map((island, i) => (
-                            <motion.div
-                                key={island.slug}
-                                initial={{ opacity: 0, x: -12 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{
-                                    delay: 0.06 + i * 0.05,
-                                    duration: 0.25,
-                                }}>
-                                <Link
-                                    href={localizeHref(
-                                        locale,
-                                        `/${island.slug}`
-                                    )}
-                                    onClick={onClose}
-                                    aria-current={
-                                        island.slug === currentIsland?.slug
-                                    }
-                                    className={`block text-base no-underline py-2 ${island.slug === currentIsland?.slug ? 'text-it-primary font-normal' : 'text-it-ink'}`}>
-                                    {island.name}
-                                </Link>
-                            </motion.div>
-                        ))}
-
+                        {/* No island list here: the bar's own island pill sits
+                            two inches away and opens the same choice, so
+                            repeating it inside the drawer was redundant
+                            (client, 2026-08-05). */}
                         {!isHome && categories.length > 0 && (
                             <>
-                                <div className='my-3 h-px bg-it-border' />
                                 <span className='px-1 pb-1 text-xs font-normal text-it-ink-muted'>
                                     {dict.categories}
                                 </span>
@@ -104,10 +81,13 @@ export function MobileMenu({
                                         </Link>
                                     </motion.div>
                                 ))}
+                                {/* Divider only when something precedes it -
+                                    on the homepage the drawer is the Saved row
+                                    alone, and a rule above it would point at
+                                    nothing. */}
+                                <div className='my-3 h-px bg-it-border' />
                             </>
                         )}
-
-                        <div className='my-3 h-px bg-it-border' />
 
                         <Link
                             href={localizeHref(locale, '/wishlist')}
