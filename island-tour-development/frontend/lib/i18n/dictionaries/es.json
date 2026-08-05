@@ -248,7 +248,7 @@
         "hero": {
             "toursActivities": "tours y actividades",
             "subtitle": "Tours elegidos por locales que conocen cada arrecife, ruta y rincón al atardecer",
-            "searchPlaceholder": "Buscar tours o actividades",
+            "searchPlaceholder": "¿Qué quieres hacer?",
             "selectDate": "Seleccionar fecha",
             "clearDate": "Borrar fecha",
             "popularLabel": "Popular"

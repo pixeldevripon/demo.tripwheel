@@ -248,7 +248,7 @@
         "hero": {
             "toursActivities": "Touren & Aktivitäten",
             "subtitle": "Touren ausgewählt von Einheimischen, die jedes Riff, jede Route und jeden Sonnenuntergang kennen",
-            "searchPlaceholder": "Touren oder Aktivitäten suchen",
+            "searchPlaceholder": "Was möchtest du unternehmen?",
             "selectDate": "Datum wählen",
             "clearDate": "Datum löschen",
             "popularLabel": "Beliebt"
