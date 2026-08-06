@@ -181,28 +181,48 @@ function LinkColumn({
 /**
  * One payment-mark row - four marks, 4x2 overall.
  *
- * MOBILE packs them left as a single payment group, starting flush with the
- * left edge of the language pill above. They used to be `justify-between` at
- * every width, which stretched four marks across the whole column and read as
- * scattered logos rather than one block (client, 2026-08-05).
+ * FOUR EQUAL COLUMNS at every width, which is what makes the mobile block read
+ * like the desktop one. Both rows use the same track count and the same
+ * container width, so the eight marks line up in four columns rather than two
+ * independently-packed rows.
  *
- * The gap is 12px, not the mockup's 6px. `.ftpay` sets `gap:6px` between GRID
- * TRACKS of `1fr`, so the space you actually see between two marks there is
- * 6px plus whatever the track leaves over - much wider than 6px. Reproducing
- * the number literally as a flex gap put the marks visibly too close
- * (founder, 2026-08-05); 12px is what matches the mockup's apparent spacing.
+ * This has now been through both failure modes, so read before changing:
  *
- * DESKTOP keeps the spread: that footer column is only ~221px, the mockup
- * fills it (`repeat(4,1fr)`), and the marks land under the pills with no
- * ragged gap on the right.
+ * - `justify-between` at every width stretched four marks edge to edge of a
+ *   phone-wide column and read as scattered logos, not one payment group
+ *   (client, 2026-08-05).
+ * - Packing them left with a fixed 12px flex gap fixed the spread but bunched
+ *   them into the left edge, where they read as cropped (client, 2026-08-06).
  *
- * Flex, not a grid: the marks are different widths, so grid columns sized to
- * the widest mark in each column gave uneven visual gaps (measured 6/24/15px).
- * A flex gap is the one you can actually measure between two marks.
+ * A capped-width grid is the thing that is neither: `max-w-64` (256px) keeps
+ * the block off the full phone width, and equal `1fr` tracks give even spacing
+ * inside it. Marks are LEFT-aligned in their track, not centred, so the first
+ * one stays flush with the language pill and the Stripe badge - centring
+ * indented it away from that edge.
+ *
+ * ## Why 256px and not less
+ *
+ * The tracks are sized by the container, not the content, so the visible gap
+ * between two marks is `track - glyph` and therefore varies: the WIDEST glyph
+ * gets the TIGHTEST gap. Google Pay is 53px, so a 64px track leaves it 11px
+ * while Mastercard (30px) gets 34px.
+ *
+ * That makes 53px a hard floor on the track. 240px was tried and rejected -
+ * 60px tracks left Google Pay and Klarna 7px apart, close enough to read as
+ * touching. Anything below ~64px tracks trades the "gaps are too wide"
+ * complaint for a collision.
+ *
+ * Do NOT "even out" the gaps by sizing tracks to content: that is the flex
+ * behaviour that produced the left-bunching above, and it also breaks the
+ * column alignment between the two rows.
+ *
+ * DESKTOP is unchanged: the column is only ~221px, so the same four tracks
+ * fill it exactly as `justify-between` did, under the pills with no ragged
+ * right edge.
  */
 function PaymentRow({ items }: { items: typeof paymentsRow1 }) {
     return (
-        <div className='flex items-center justify-start gap-3 lg:justify-between lg:gap-4'>
+        <div className='grid w-full max-w-64 grid-cols-4 items-center justify-items-start lg:max-w-none'>
             {items.map(p => (
                 <Image
                     key={p.alt}
