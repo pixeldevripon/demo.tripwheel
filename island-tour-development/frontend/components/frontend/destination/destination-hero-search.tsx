@@ -224,7 +224,13 @@ export function DestinationHeroSearch({
                 role='search'
                 className='flex w-full gap-2 rounded-it-lg bg-it-white p-2 shadow-[0_18px_44px_rgba(0,0,0,0.3)] max-md:flex-col max-md:gap-1.5'>
                 {/* Search field (design v2 .hs-field): icon + text, the whole
-                    region focuses the input. */}
+                    region focuses the input. Text is 16px below `md`: iOS
+                    Safari force-zooms the entire viewport when a focused input
+                    computes under 16px, and never zooms back out - which is
+                    the Pastel #29 report against this exact field. The date
+                    control beside it is a button, so it never triggered the
+                    zoom; it is bumped only to keep the pill's two halves
+                    type-matched. */}
                 <label className='flex min-w-0 flex-1 cursor-text items-center gap-2.5 rounded-it-sm py-2.5 pl-3.5 pr-2 transition-colors hover:bg-it-bg'>
                     <Image
                         src='/icons/search-soft.svg'
@@ -240,7 +246,7 @@ export function DestinationHeroSearch({
                         onFocus={() => setFocused(true)}
                         placeholder={dict.searchPlaceholder}
                         aria-label={dict.searchPlaceholder}
-                        className='min-w-0 w-full bg-transparent border-none outline-none text-[15px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
+                        className='min-w-0 w-full bg-transparent border-none outline-none text-[16px] md:text-[15.5px] font-semibold leading-[1.6] text-it-ink placeholder:font-bold placeholder:text-it-ink-muted [&::-webkit-search-cancel-button]:appearance-none'
                     />
                 </label>
 
@@ -263,7 +269,7 @@ export function DestinationHeroSearch({
                                 type='button'
                                 aria-label={dict.selectDate}
                                 transition={springPop}
-                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[15px] md:text-[15.5px] leading-[1.6] transition-colors duration-300 ${date ? 'font-semibold text-it-ink' : 'font-bold text-it-ink-muted'}`}>
+                                className={`flex flex-1 cursor-pointer items-center gap-2.5 whitespace-nowrap border-none bg-transparent py-2.5 pl-3.5 pr-2 text-left text-[16px] md:text-[15.5px] leading-[1.6] transition-colors duration-300 ${date ? 'font-semibold text-it-ink' : 'font-bold text-it-ink-muted'}`}>
                                 <Image
                                     src='/icons/calendar-soft.svg'
                                     alt=''

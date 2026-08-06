@@ -109,7 +109,7 @@ export function TravellerDateChange({
                                     value={selected}
                                     onChange={e => setSelected(e.target.value)}
                                     aria-label={dict.dateChangeTitle}
-                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'>
+                                    className='mt-3 w-full cursor-pointer rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'>
                                     {options.map(o => (
                                         <option
                                             key={o.departureId}

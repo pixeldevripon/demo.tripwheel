@@ -120,7 +120,7 @@ export function CancelRequestCard({
                             onChange={e => setReason(e.target.value)}
                             maxLength={500}
                             placeholder={dict.reasonPlaceholder}
-                            className='mt-4 w-full resize-y rounded-[10px] border-[1.5px] border-it-heading/20 bg-it-white px-3 py-2.75 text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none transition-colors duration-300 placeholder:text-it-heading/40 focus:border-it-heading/50'
+                            className='mt-4 w-full resize-y rounded-[10px] border-[1.5px] border-it-heading/20 bg-it-white px-3 py-2.75 text-[16px] md:text-[14px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none transition-colors duration-300 placeholder:text-it-heading/40 focus:border-it-heading/50'
                         />
 
                         <AnimatePresence>

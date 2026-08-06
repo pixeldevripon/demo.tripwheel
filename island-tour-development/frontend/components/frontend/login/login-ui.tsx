@@ -10,8 +10,12 @@ import Link from 'next/link';
  * until a feedback token is added.
  */
 
+// 16px below `md`: iOS Safari force-zooms the whole viewport when a focused
+// input computes under 16px, and it never zooms back out. Desktop keeps the
+// 15px design size. Covers all three login doors, operator apply, forgot,
+// reset and the 2FA backup-code field, since they all share this class.
 export const inputClass =
-    'w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.75 text-[15px] text-it-ink placeholder:text-it-ink-placeholder focus:border-transparent focus:outline-2 focus:outline-it-primary';
+    'w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.75 text-[16px] md:text-[15px] text-it-ink placeholder:text-it-ink-placeholder focus:border-transparent focus:outline-2 focus:outline-it-primary';
 
 /**
  * Append to `inputClass` when a field has failed validation, so the field itself
