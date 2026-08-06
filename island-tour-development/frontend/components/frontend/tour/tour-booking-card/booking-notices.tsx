@@ -2,6 +2,7 @@
 
 import { useBooking } from '@/hooks/tours/use-booking';
 import type { BookingNoticeKind } from '@/lib/tours/booking';
+import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 /**
@@ -37,6 +38,14 @@ const NOTICE_ICON: Record<BookingNoticeKind, { src: string; size: number }> = {
 function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
     const { dict } = useBooking();
     const icon = NOTICE_ICON[kind];
+    // Paid-placement disclosure, desktop only (Pastel #35): phone screen height
+    // is scarce and this card pushed the real content down. Hidden with CSS
+    // rather than a `useIsMobile()` branch, which would render it server-side
+    // and then blink it away on hydration - and the card carries no impression
+    // call, so the only thing worth not fetching is its glyph. That is what the
+    // `loading` swap below is for: inside `display: none` a lazy image never
+    // intersects, so on a phone it is never requested at all.
+    const sponsored = kind === 'sponsored';
     const copy = {
         likelyToSellOut: {
             title: dict.sellOutTitle,
@@ -60,7 +69,14 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
         // `shrink-0`: the strip below scrolls as a whole when the rail is
         // squeezed, so an individual notice must keep its own height rather
         // than squashing its two lines of text.
-        <div className='flex shrink-0 items-start gap-[11px] rounded-it-md border border-it-primary/30 bg-it-white px-4 py-3.5'>
+        <div
+            className={cn(
+                'shrink-0 items-start gap-[11px] rounded-it-md border border-it-primary/30 bg-it-white px-4 py-3.5',
+                // `hidden md:flex` rather than `flex max-md:hidden`: one
+                // display utility per breakpoint, so which wins never depends
+                // on the order Tailwind emits them in.
+                sponsored ? 'hidden md:flex' : 'flex'
+            )}>
             <Image
                 src={icon.src}
                 alt=''
@@ -73,7 +89,12 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
                 // rendering as text with a blank gap where the glyph belongs.
                 // `eager`, not `priority` - no preload link, so nothing
                 // competes with the gallery LCP.
-                loading='eager'
+                //
+                // The sponsored card is the exception: eager would fetch its
+                // glyph on a phone, where the card is not rendered at all.
+                // Lazy still loads it promptly on desktop (the rail is in the
+                // first viewport), and never on mobile.
+                loading={sponsored ? 'lazy' : 'eager'}
             />
             <div className='flex flex-col gap-0.5'>
                 <span className='text-[14px] font-bold leading-[1.5] text-it-ink'>
@@ -91,6 +112,9 @@ function BookingNotice({ kind }: { kind: BookingNoticeKind }) {
 export function BookingNotices() {
     const { data } = useBooking();
     if (data.notices.length === 0) return null;
+    // A sponsored-ONLY tour has nothing to show on a phone, and an empty stack
+    // still collects the parent's `gap-3.5` - a dead band under the card.
+    const hasMobileNotice = data.notices.some(kind => kind !== 'sponsored');
     return (
         // `shrink-0`, and deliberately NOT a scroll container. Inside the
         // capped sticky rail the card is the only thing that scrolls: it holds
@@ -99,11 +123,14 @@ export function BookingNotices() {
         // second scrollbar to reach the last line reads as broken, and clipping
         // them mid-sentence reads worse. They keep their full height and simply
         // sit where they land.
-        <div className='flex shrink-0 flex-col gap-3.5'>
+        <div
+            className={cn(
+                'shrink-0 flex-col gap-3.5',
+                hasMobileNotice ? 'flex' : 'hidden md:flex'
+            )}>
             {data.notices.map(kind => (
                 <BookingNotice key={kind} kind={kind} />
             ))}
         </div>
     );
 }
-

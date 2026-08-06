@@ -49,9 +49,13 @@ export async function TourRelatedTours({
     // Localized primary-category name for the same-category grid's heading.
     let primaryCategoryName: string | null = null;
     if (detail.primaryCategoryId) {
-        const categories = await getDestinationCategories(destinationSlug, locale);
+        const categories = await getDestinationCategories(
+            destinationSlug,
+            locale
+        );
         primaryCategoryName =
-            categories.find(c => c.id === detail.primaryCategoryId)?.name ?? null;
+            categories.find(c => c.id === detail.primaryCategoryId)?.name ??
+            null;
     }
 
     // Fetch a few extra per grid to absorb the self-exclusion, then slice.
@@ -93,21 +97,26 @@ export async function TourRelatedTours({
         .replace('{destination}', destinationName);
     const moreTitle = tourDict.related.moreToExplore.replace(
         '{destination}',
-        destinationName,
+        destinationName
     );
 
+    // `max-md:gap-[42px]` matches the seam every other section pair gets on
+    // mobile (the stack's 34px plus the 8px `TourSection` adds). At the plain
+    // 32px this pair was the tightest join on the phone page, and a row of
+    // cards running straight into the next heading reads as one list
+    // (Pastel #34). Desktop keeps 32px.
     return (
-        <div className='flex flex-col gap-8 pt-2.5'>
-                <TourRelatedSection
-                    title={similarTitle}
-                    tours={similarTours}
-                    dict={dict.destination.listings}
-                />
-                <TourRelatedSection
-                    title={moreTitle}
-                    tours={moreTours}
-                    dict={dict.destination.listings}
-                />
+        <div className='flex flex-col gap-8 pt-2.5 max-md:gap-12.5'>
+            <TourRelatedSection
+                title={similarTitle}
+                tours={similarTours}
+                dict={dict.destination.listings}
+            />
+            <TourRelatedSection
+                title={moreTitle}
+                tours={moreTours}
+                dict={dict.destination.listings}
+            />
         </div>
     );
 }
