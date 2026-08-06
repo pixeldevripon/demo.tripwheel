@@ -8,6 +8,7 @@ import type {
   DestinationsQueryParams,
   Locale,
   PopularLinkInput,
+  PopularLinkPlacement,
   UpdateDestinationPayload,
   UpdateFaqPayload,
   UpsertPageContentPayload,
@@ -25,7 +26,8 @@ export const destinationKeys = {
   translationByLocale: (id: string, locale: Locale) => [...destinationKeys.translations(id), locale] as const,
   pageContent: (id: string, locale?: Locale) => [...destinationKeys.all, 'page-content', id, locale] as const,
   faqs: (id: string, locale?: Locale) => [...destinationKeys.all, 'faqs', id, locale] as const,
-  popularLinks: (id: string) => [...destinationKeys.all, 'popular-links', id] as const,
+  popularLinks: (id: string, placement: PopularLinkPlacement) =>
+    [...destinationKeys.all, 'popular-links', id, placement] as const,
 };
 
 export function useDestinations(params: DestinationsQueryParams = {}, enabled = true) {
@@ -215,17 +217,24 @@ export function useDeleteFaq() {
   });
 }
 
-/** The island's curated hero "Popular" slots, raw and ungated (admin view). */
-export function useDestinationPopularLinks(id: string) {
+/**
+ * One of the island's curated lists, raw and ungated (admin view). The
+ * placement is part of the query key: the two lists are separate data and must
+ * not share a cache entry.
+ */
+export function useDestinationPopularLinks(
+  id: string,
+  placement: PopularLinkPlacement = 'HERO_POPULAR',
+) {
   return useQuery({
-    queryKey: destinationKeys.popularLinks(id),
-    queryFn: () => destinationsApi.getPopularLinks(id),
+    queryKey: destinationKeys.popularLinks(id, placement),
+    queryFn: () => destinationsApi.getPopularLinks(id, placement),
     enabled: !!id,
   });
 }
 
 /**
- * Replace the whole curated row in one save.
+ * Replace one whole curated list in a single save.
  *
  * Seeds the query cache from the response instead of only invalidating, so the
  * section shows what the server actually stored (slot order is assigned there
@@ -234,10 +243,20 @@ export function useDestinationPopularLinks(id: string) {
 export function useReplaceDestinationPopularLinks() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, links }: { id: string; links: PopularLinkInput[] }) =>
-      destinationsApi.replacePopularLinks(id, links),
+    mutationFn: ({
+      id,
+      links,
+      placement = 'HERO_POPULAR',
+    }: {
+      id: string;
+      links: PopularLinkInput[];
+      placement?: PopularLinkPlacement;
+    }) => destinationsApi.replacePopularLinks(id, links, placement),
     onSuccess: (data, variables) => {
-      queryClient.setQueryData(destinationKeys.popularLinks(variables.id), data);
+      queryClient.setQueryData(
+        destinationKeys.popularLinks(variables.id, variables.placement ?? 'HERO_POPULAR'),
+        data,
+      );
     },
   });
 }
