@@ -421,6 +421,7 @@
                 "capacityNote": "Solo quedan {count} plazas para esta salida",
                 "maxPerBooking": "Hasta {count} viajeros por reserva",
                 "policyClose": "Cerrar",
+                "policyLinkHint": "ver política",
                 "cancellationModal": {
                     "title": "Cancelación gratuita hasta {hours}h",
                     "introTitle": "Los planes cambian. Sin problema.",
@@ -528,7 +529,7 @@
                 "suppliedBy": "Ofrecido por"
             },
             "related": {
-                "moreInCategory": "Más tours de {category} en {destination}",
+                "moreInCategory": "Más {category} en {destination}",
                 "moreToExplore": "Más para explorar en {destination}"
             }
         },

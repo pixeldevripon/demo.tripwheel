@@ -217,6 +217,88 @@ export class FxRatesService {
   }
 
   /**
+   * Attach the public display `money` object to a tour DETAIL, IN PLACE -
+   * including every child retail amount the booking widget prices from: age
+   * bands, add-ons, priced pickup zones and the per-extra-guest surcharge.
+   *
+   * `attachMoney` above converts only the two headline figures, which is all a
+   * CARD renders. A detail feeds the booking widget, and the widget used to
+   * convert the rest itself by multiplying each source price by `fxRate`. That
+   * produced numbers this service would never have produced: a $139 tour showed
+   * the card's whole "128" beside the widget's own "127,88", and a $39 add-on
+   * rendered as "35,88 EUR" - cents on a platform whose every other
+   * traveller-facing amount is a whole unit (Pastel #41).
+   *
+   * So the conversion happens once, here, at the same `retailWhole` the quote
+   * and the booking totals use, and the frontend renders what it is given.
+   *
+   * Ceiling each child rather than the sum can put the widget's optimistic total
+   * a unit above the quote's on a party that mixes several fractional bands. The
+   * quote is authoritative and replaces the estimate the moment it lands; the
+   * alternative is showing cents on the rows, which is the thing being fixed.
+   *
+   * Falls back to source currency at rate 1 when no display rate is available,
+   * exactly like `attachMoney` - a page never blocks on FX.
+   */
+  async attachDetailMoney(
+    detail: Record<string, unknown> & {
+      defaultCurrency?: unknown;
+      priceFrom?: unknown;
+      basePrice?: unknown;
+      extraPersonPrice?: unknown;
+      ageBands?: Array<{ id: string; price?: unknown }>;
+      addOns?: Array<{ id: string; price?: unknown }>;
+      pickupLocations?: Array<{ id: string; price?: unknown }>;
+      money?: unknown;
+    },
+    target?: Currency,
+  ): Promise<void> {
+    const source = String(detail.defaultCurrency) as Currency;
+    const tgt = target ?? source;
+
+    let currency: Currency = source;
+    let rate = new Prisma.Decimal(1);
+    if (source !== tgt) {
+      const display = await this.getDisplayRate(source, tgt);
+      if (display) {
+        currency = tgt;
+        rate = display.rate;
+      }
+    }
+
+    const conv = (v: unknown): string | null =>
+      v == null
+        ? null
+        : retailWhole(
+            new Prisma.Decimal(v as Prisma.Decimal.Value).mul(rate),
+          ).toString();
+
+    /** id -> converted price, skipping children with no price of their own. */
+    const byId = (
+      rows: Array<{ id: string; price?: unknown }> | undefined,
+    ): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const row of rows ?? []) {
+        const value = conv(row.price);
+        if (value != null) out[row.id] = value;
+      }
+      return out;
+    };
+
+    detail.money = {
+      currency,
+      sourceCurrency: source,
+      fxRate: rate.toString(),
+      priceFrom: conv(detail.priceFrom),
+      basePrice: conv(detail.basePrice),
+      extraPersonPrice: conv(detail.extraPersonPrice),
+      ageBands: byId(detail.ageBands),
+      addOns: byId(detail.addOns),
+      pickupLocations: byId(detail.pickupLocations),
+    };
+  }
+
+  /**
    * Fetch the required pairs from the provider, validate they are positive, write a new
    * active row per pair, and deactivate the prior active row for that pair (immutable
    * history). Safe to call repeatedly (the scheduler and on-demand path both use it).

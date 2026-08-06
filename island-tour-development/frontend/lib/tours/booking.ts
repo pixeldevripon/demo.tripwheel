@@ -147,6 +147,11 @@ export type TourBookingDict = {
     instantConfirmationSubtitle: string;
     /** Aria-label for the policy-modal close button. */
     policyClose: string;
+    /**
+     * "view policy" - appended to a trust link's accessible name so it reads as
+     * an action ("Free cancellation, view policy") rather than a statement.
+     */
+    policyLinkHint: string;
     /** Free-cancellation policy modal (opened from the trust line). */
     cancellationModal: PolicyModalDict;
     /** Deposit / pay-later policy modal (opened from the trust line). */
@@ -444,13 +449,13 @@ function toNumber(value: string | number | null | undefined): number {
 
 function mapBand(
     band: PublicTourAgeBand,
-    conv: (v: string | number | null | undefined) => number
+    priceOf: (band: PublicTourAgeBand) => number
 ): BookingBand {
     return {
         id: band.id,
         kind: band.participation === 'SPECTATOR' ? 'spectator' : 'participant',
         label: band.label,
-        price: conv(band.price),
+        price: priceOf(band),
         isDefault: band.isDefault,
     };
 }
@@ -483,18 +488,55 @@ export function buildTourBookingData(
     const conv = (v: string | number | null | undefined) =>
         Math.round(toNumber(v) * fxRate * 100) / 100;
 
+    /**
+     * A retail amount the BACKEND has already converted, in the backend's own
+     * rounding (`retailWhole` - ceil to a whole currency unit, guide §20.9).
+     *
+     * Every traveller-facing price in this widget comes through here. Doing the
+     * multiply locally instead produced numbers the backend would never produce,
+     * in two visible ways: the headline disagreed with the tour card that linked
+     * here (the card's served "128" against the widget's own 139 x 0.92 =
+     * 127.88, on one page), and the add-on and band rows carried cents on a
+     * platform where every other traveller-facing amount is a whole unit - a $39
+     * add-on rendering as "35,88 EUR" (Pastel #41; founder 2026-08-06: the
+     * rounded converted price on the tour card "also should show in booking
+     * card", "this will serve from backend", and "addons and extras still
+     * showing floated converted price, it should show ceiled price").
+     *
+     * `conv` survives only as the fallback for a payload with no `money` object:
+     * a same-currency shopper, an FX outage where the backend serves source
+     * prices at rate 1, or a `'use cache'` entry written before this field
+     * existed. In those cases there is nothing served to prefer.
+     */
+    const served = (
+        backendValue: string | null | undefined,
+        sourceValue: string | number | null | undefined
+    ) => (backendValue != null ? toNumber(backendValue) : conv(sourceValue));
+
+    /** Age-band price, served where the backend converted it. */
+    const bandPrice = (b: PublicTourAgeBand) =>
+        served(detail.money?.ageBands?.[b.id], b.price);
+
     const pricingModel = detail.pricingModel;
     const isUnit = pricingModel === 'UNIT';
     // The included-guests + extra-person surcharge applies ONLY to GROUP unit
     // pricing; boat/vehicle/aircraft/package charters are a flat whole-unit price.
     // Guarding here keeps the card correct even against stale data.
     const isGroupUnit = isUnit && detail.wholeUnitType === 'GROUP';
-    const basePrice = conv(detail.basePrice ?? detail.priceFrom);
-    const extraPersonPrice = isGroupUnit ? conv(detail.extraPersonPrice) : 0;
+    const basePrice = served(
+        detail.money?.basePrice ?? detail.money?.priceFrom,
+        detail.basePrice ?? detail.priceFrom
+    );
+    const extraPersonPrice = isGroupUnit
+        ? served(detail.money?.extraPersonPrice, detail.extraPersonPrice)
+        : 0;
     // Headline: group base for UNIT, per-person "from" for PER_PERSON.
     const priceFrom = isUnit
         ? basePrice
-        : conv(detail.priceFrom ?? detail.basePrice);
+        : served(
+              detail.money?.priceFrom ?? detail.money?.basePrice,
+              detail.priceFrom ?? detail.basePrice
+          );
 
     const ordered = [...detail.ageBands].sort(
         (a, b) => a.displayOrder - b.displayOrder
@@ -525,10 +567,12 @@ export function buildTourBookingData(
                 price: priceFrom,
                 isDefault: true,
             },
-            ...spectators.map(b => mapBand(b, conv)),
+            ...spectators.map(b => mapBand(b, bandPrice)),
         ];
     } else {
-        bands = [...participants, ...spectators].map(b => mapBand(b, conv));
+        bands = [...participants, ...spectators].map(b =>
+            mapBand(b, bandPrice)
+        );
     }
 
     // NOT rounded. Tier rates run 20-30 in steps of 2.5 (master LD24), so
@@ -557,7 +601,7 @@ export function buildTourBookingData(
             id: a.id,
             name: a.name,
             description: a.description,
-            price: conv(a.price),
+            price: served(detail.money?.addOns?.[a.id], a.price),
             unit: a.unit,
             maxQuantity: a.maxQuantity,
         }));
@@ -572,7 +616,7 @@ export function buildTourBookingData(
             label: p.title || p.name,
             price:
                 isPaidPickup && p.price != null && Number(p.price) > 0
-                    ? conv(p.price)
+                    ? served(detail.money?.pickupLocations?.[p.id], p.price)
                     : null,
         }));
 

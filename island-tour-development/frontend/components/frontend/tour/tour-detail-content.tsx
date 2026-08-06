@@ -12,6 +12,10 @@ import { type Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import {
+    countHighlightEligible,
+    HIGHLIGHT_REVIEW_COUNT,
+} from '@/lib/reviews/highlight';
+import {
     buildBreadcrumbJsonLd,
     buildTouristTripJsonLd,
 } from '@/lib/seo/jsonld';
@@ -598,19 +602,32 @@ export async function TourDetailContent({
                                 rating: hidden under 3 reviews, and under a 4.0
                                 aggregate. A borrowed operator rating never opens
                                 this - the cards would have to come from reviews of
-                                a different tour. */}
-                            {ownReviewCount >= 3 && (rating ?? 0) >= 4 && (
-                                <Suspense
-                                    fallback={<TourReviewsPreviewSkeleton />}>
-                                    <TourReviewsPreview
-                                        tourId={detail.id}
-                                        rating={rating}
-                                        reviewCount={reviewCount}
-                                        locale={locale}
-                                        dict={tourDict.reviews}
-                                    />
-                                </Suspense>
-                            )}
+                                a different tour.
+
+                                The last clause is the highlight rule (Pastel #38)
+                                read off the star distribution we already have.
+                                The block enforces it again on the reviews it
+                                actually renders - that is the authority - but
+                                asking here means a tour with nothing to highlight
+                                never streams a skeleton for a block that is about
+                                to hide itself. */}
+                            {ownReviewCount >= 3 &&
+                                (rating ?? 0) >= 4 &&
+                                countHighlightEligible(reviewHistogram) >=
+                                    HIGHLIGHT_REVIEW_COUNT && (
+                                    <Suspense
+                                        fallback={
+                                            <TourReviewsPreviewSkeleton />
+                                        }>
+                                        <TourReviewsPreview
+                                            tourId={detail.id}
+                                            rating={rating}
+                                            reviewCount={reviewCount}
+                                            locale={locale}
+                                            dict={tourDict.reviews}
+                                        />
+                                    </Suspense>
+                                )}
                             <TourDetailTabs tabs={sectionTabs} />
 
                             {/* Content sections - left-aligned readable measure. */}

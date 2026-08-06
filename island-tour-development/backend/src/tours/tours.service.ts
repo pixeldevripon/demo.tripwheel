@@ -2329,7 +2329,12 @@ export class ToursService {
       languages: languages.map((l) => l.language),
     };
     this.neutralizeForPublic(detail);
-    await this.attachMoney([detail], query.currency);
+    // The DETAIL variant, not the card one: it also converts the age bands,
+    // add-ons, priced pickup zones and the extra-guest surcharge, so the booking
+    // widget can price its estimate off served numbers instead of running its
+    // own FX multiply and landing on figures this service never produced
+    // (Pastel #41).
+    await this.fx.attachDetailMoney(detail, query.currency);
     return detail;
   }
 

@@ -117,7 +117,9 @@ export function BookingCta() {
                 {/* Free cancellation (always). */}
                 <TrustRow>
                     {cancelBefore}
-                    <TrustLink onClick={() => setPolicyModal('cancellation')}>
+                    <TrustLink
+                        onClick={() => setPolicyModal('cancellation')}
+                        hint={dict.policyLinkHint}>
                         {cancelLink}
                     </TrustLink>
                     {cancelAfter}
@@ -130,7 +132,9 @@ export function BookingCta() {
                 {paymentTrust && (
                     <TrustRow>
                         {paymentTrust.before}
-                        <TrustLink onClick={() => setPolicyModal('deposit')}>
+                        <TrustLink
+                            onClick={() => setPolicyModal('deposit')}
+                            hint={dict.policyLinkHint}>
                             {paymentTrust.link}
                         </TrustLink>
                         {paymentTrust.after}
@@ -141,10 +145,18 @@ export function BookingCta() {
     );
 }
 
-/** A trust line: the check icon + its (partly clickable) copy. */
+/**
+ * A trust line: the check icon + its (partly clickable) copy.
+ *
+ * The sentence is `font-normal` so the clickable phrase inside it can be a
+ * weight heavier and actually look like something. Both were `font-semibold`,
+ * which left the underline doing the whole job of saying "this opens something"
+ * - and that underline was `decoration-it-border` (#e5e7eb) on white, at 13px.
+ * The client read the lines as static text (Pastel #42).
+ */
 function TrustRow({ children }: { children: React.ReactNode }) {
     return (
-        <span className='flex items-center gap-2 text-[13px] font-semibold leading-[1.6] text-it-ink'>
+        <span className='flex items-center gap-2 text-[13px] font-normal leading-[1.6] text-it-ink'>
             <Image
                 src='/icons/trust-check-green.svg'
                 alt=''
@@ -157,21 +169,39 @@ function TrustRow({ children }: { children: React.ReactNode }) {
     );
 }
 
-/** The underlined, clickable phrase inside a trust line (opens a policy modal). */
+/**
+ * The clickable phrase inside a trust line - opens a policy modal.
+ *
+ * Carries three separate signals, because any one of them fails somebody:
+ * weight (a step above the sentence around it), a underline dark enough to see,
+ * and colour on hover. Colour alone is not a signal - it is invisible to a
+ * red-green colour-blind reader, which is why the weight and the underline both
+ * stay in place rather than one replacing the other.
+ *
+ * `hint` is appended to the accessible name so a screen reader hears "Free
+ * cancellation, view policy" instead of a bare fragment that sounds like a
+ * statement. It is appended AFTER the visible text, never instead of it: voice
+ * control matches on what a user can read on screen.
+ */
 function TrustLink({
     onClick,
+    hint,
     children,
 }: {
     onClick: () => void;
-    children: React.ReactNode;
+    /** Localized "view policy" - what this button opens. */
+    hint: string;
+    children: string;
 }) {
     return (
         <motion.button
             type='button'
             onClick={onClick}
+            aria-haspopup='dialog'
+            aria-label={`${children}, ${hint}`}
             whileTap={{ scale: 0.98 }}
             transition={springPop}
-            className='cursor-pointer border-none bg-transparent p-0 text-left text-[13px] font-semibold leading-[1.6] text-it-ink underline decoration-it-border underline-offset-[3px] transition-colors duration-300 hover:text-it-primary'>
+            className='cursor-pointer rounded-[2px] border-none bg-transparent p-0 text-left text-[13px] font-bold leading-[1.6] text-it-ink underline decoration-it-ink-muted underline-offset-[3px] transition-colors duration-300 hover:text-it-primary hover:decoration-it-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary'>
             {children}
         </motion.button>
     );

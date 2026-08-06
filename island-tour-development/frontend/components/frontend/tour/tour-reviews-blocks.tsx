@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { type Locale } from '@/lib/constants/locales';
 import { getTourReviews } from '@/lib/api/public/reviews';
 import { PHOTO_STRIP_LIMIT, REVIEWS_PAGE_SIZE } from '@/lib/api/reviews';
+import { pickHighlightReviews } from '@/lib/reviews/highlight';
 import { toFullReview, toTourReview } from '@/lib/reviews/review-view';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
 import type { ReviewFacet, ThemeFacet } from '@/types/review';
@@ -30,7 +31,16 @@ interface TourReviewsPreviewProps {
     dict: Dictionary['destination']['tour']['reviews'];
 }
 
-/** Two-newest review preview strip (gallery column). */
+/**
+ * "What our guests say" highlight strip (gallery column) - the two newest
+ * reviews that clear `HIGHLIGHT_MIN_RATING`.
+ *
+ * The filter is the block's own, not the caller's: this is the only component
+ * that renders the strip, so every page that mounts it inherits the rule and no
+ * call site can opt out of it (Pastel #38). Under two qualifying reviews it
+ * renders nothing at all - heading included - and because it returns `null`
+ * rather than an empty section, the page's flex column closes the gap for free.
+ */
 export async function TourReviewsPreview({
     tourId,
     rating,
@@ -44,11 +54,11 @@ export async function TourReviewsPreview({
         locale,
         limit: REVIEWS_PAGE_SIZE,
     });
-    if (reviewList.total === 0) return null;
 
-    const previewReviews = reviewList.data
-        .slice(0, 2)
-        .map(r => toTourReview(r, locale));
+    const previewReviews = pickHighlightReviews(reviewList.data).map(r =>
+        toTourReview(r, locale)
+    );
+    if (previewReviews.length === 0) return null;
 
     return <TourReviews reviews={previewReviews} dict={dict} />;
 }
@@ -122,7 +132,7 @@ export async function TourReviewsBlock({
     const stripPhotos =
         photoReviewList?.data.flatMap(r => r.photos ?? []) ?? [];
     const fullReviews = reviewList.data.map(r =>
-        toFullReview(r, locale, hostLabel, dict.responseByPlatform),
+        toFullReview(r, locale, hostLabel, dict.responseByPlatform)
     );
 
     // FE-2. Built from the SAME page of reviews that renders below, so the markup

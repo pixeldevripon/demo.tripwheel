@@ -421,6 +421,7 @@
                 "capacityNote": "该出发时段仅剩 {count} 个名额",
                 "maxPerBooking": "每次预订最多 {count} 位旅客",
                 "policyClose": "关闭",
+                "policyLinkHint": "查看政策",
                 "cancellationModal": {
                     "title": "{hours} 小时前免费取消",
                     "introTitle": "计划有变？没问题。",
@@ -528,7 +529,7 @@
                 "suppliedBy": "提供方"
             },
             "related": {
-                "moreInCategory": "{destination}的更多{category}行程",
+                "moreInCategory": "{destination}的更多{category}",
                 "moreToExplore": "在{destination}发现更多"
             }
         },

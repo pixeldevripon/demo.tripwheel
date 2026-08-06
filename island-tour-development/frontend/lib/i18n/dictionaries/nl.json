@@ -421,6 +421,7 @@
                 "capacityNote": "Nog maar {count} plekken voor dit vertrek",
                 "maxPerBooking": "Tot {count} reizigers per boeking",
                 "policyClose": "Sluiten",
+                "policyLinkHint": "beleid bekijken",
                 "cancellationModal": {
                     "title": "Gratis annuleren tot {hours}u",
                     "introTitle": "Plannen veranderen. Geen probleem.",
@@ -528,7 +529,7 @@
                 "suppliedBy": "Aangeboden door"
             },
             "related": {
-                "moreInCategory": "Meer {category}-tours in {destination}",
+                "moreInCategory": "Meer {category} in {destination}",
                 "moreToExplore": "Meer te ontdekken in {destination}"
             }
         },

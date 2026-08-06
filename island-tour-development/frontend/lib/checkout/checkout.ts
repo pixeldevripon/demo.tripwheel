@@ -275,7 +275,7 @@ export function computeCheckoutTotals(
             : [];
         // Deposit % on the TOUR price only; extras ride the balance in full.
         const payToday = data.requiresDeposit
-            ? Math.round(charterTotal * data.depositPct) / 100
+            ? depositToday(charterTotal, data.depositPct)
             : isOperatorFull
               ? 0
               : total;
@@ -300,7 +300,7 @@ export function computeCheckoutTotals(
     const total = tourTotal + extrasValue;
     // Deposit % on the TOUR price only; extras ride the balance in full.
     const payToday = data.requiresDeposit
-        ? Math.round(tourTotal * data.depositPct) / 100
+        ? depositToday(tourTotal, data.depositPct)
         : isOperatorFull
           ? 0
           : total;
@@ -313,6 +313,28 @@ export function computeCheckoutTotals(
         balanceLater: total - payToday,
         requiresDeposit: data.requiresDeposit,
     };
+}
+
+/**
+ * The deposit taken today, mirroring the backend's `splitDeposit` exactly.
+ *
+ * A whole currency unit, always UP (`retailWhole` server-side): the platform
+ * shows travellers whole amounts everywhere, and this is the one figure on the
+ * checkout summary they are about to be charged. At 2dp a EUR 615 booking at 30%
+ * read "Pay today EUR 184.50 / Balance later EUR 430.50" under a whole "Total
+ * EUR 615" and whole line items - the only two numbers on the panel with cents
+ * (Pastel #41, founder 2026-08-06: "ceil here also").
+ *
+ * The percentage applies to the TOUR price only; extras ride the balance in full
+ * (founder 2026-07-25). The balance is the REMAINDER, never its own percentage,
+ * so deposit + balance always equals the total no matter how the ceil lands.
+ *
+ * This is the optimistic pre-quote estimate. The server quote replaces both
+ * amounts the moment it lands, and computing them the same way here is what
+ * stops the panel visibly correcting itself when it does.
+ */
+export function depositToday(tourTotal: number, depositPct: number): number {
+    return Math.ceil((tourTotal * depositPct) / 100);
 }
 
 /** Short band label without the age qualifier, e.g. "Adult (age 13+)" -> "Adult". */

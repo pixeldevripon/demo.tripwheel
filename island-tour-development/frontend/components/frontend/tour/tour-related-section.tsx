@@ -3,7 +3,7 @@ import { TourCard, type TourCardDict, type TourListing } from '../tour-card';
 
 /**
  * Related-tours block on the tour detail page (Figma node 47936:3964) - used for
- * both "More {category} tours in {destination}" and "More to explore in
+ * both "More {category} in {destination}" and "More to explore in
  * {destination}". A heading over a grid of the shared <TourCard>, with the same
  * responsive grid as the All Tours listing (2-col mobile, 3-col from lg).
  */
@@ -36,4 +36,3 @@ export function TourRelatedSection({
         </div>
     );
 }
-

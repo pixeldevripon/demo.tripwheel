@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Locale } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
-import { formatCheckoutMoney } from './checkout';
+import { depositToday, formatCheckoutMoney } from './checkout';
 
 /**
  * Money on the payment surface. The whole funnel - booking widget, checkout
@@ -109,6 +109,40 @@ describe('formatCheckoutMoney', () => {
                         formatPriceFrom(amount, currency, locale),
                     );
                 }
+            }
+        }
+    });
+});
+
+describe('depositToday', () => {
+    it('rounds the deposit UP to a whole unit', () => {
+        // The reported case: a EUR 615 booking at 30% read "Pay today EUR
+        // 184.50 / Balance later EUR 430.50" under a whole "Total EUR 615".
+        expect(depositToday(615, 30)).toBe(185);
+    });
+
+    it('leaves an already-whole deposit alone', () => {
+        expect(depositToday(500, 20)).toBe(100);
+        expect(depositToday(128, 25)).toBe(32);
+    });
+
+    it('never rounds down, however small the fraction', () => {
+        expect(depositToday(100.04, 30)).toBe(31);
+    });
+
+    it('is zero for a zero tour total', () => {
+        expect(depositToday(0, 30)).toBe(0);
+    });
+
+    it('leaves deposit + balance summing to the total, at every tier rate', () => {
+        // The balance is the REMAINDER, never its own percentage - so the ceil
+        // can never make the two halves disagree with the whole.
+        for (const total of [128, 205, 615, 1450, 3864]) {
+            for (const pct of [20, 22.5, 25, 27.5, 30, 35]) {
+                const today = depositToday(total, pct);
+                expect(Number.isInteger(today)).toBe(true);
+                expect(today + (total - today)).toBe(total);
+                expect(today).toBeGreaterThanOrEqual((total * pct) / 100);
             }
         }
     });

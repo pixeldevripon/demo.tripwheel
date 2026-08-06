@@ -159,8 +159,29 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
 
   // Convert a SOURCE-currency amount into BOOKING currency, rounded HALF_UP to 2dp at the
   // line boundary (guide §20.5 rounding policy). Same-currency uses rate 1 → identity.
+  // Operator cost (`priceNet`) only - see `toRetail` for anything a traveller reads.
   const toBooking = (v: Prisma.Decimal) =>
     money(v.times(sourceFxRateToBooking));
+
+  /**
+   * A traveller-facing seat / add-on / pickup price: converted, then taken to a
+   * WHOLE currency unit, always up.
+   *
+   * This is applied PER UNIT PRICE and the total is the sum of them, which is a
+   * change of order from "sum at 2dp, then ceil the total". The old order was
+   * right while the breakdown displayed cents - it stopped a fraction-of-a-unit
+   * gain stacking per seat. It stopped being right the moment the unit prices
+   * themselves became whole (Pastel #41): the card offered "Adult EUR 128" and
+   * "Child EUR 77" for three each and then totalled them at EUR 614, because 614
+   * is `ceil(3 x 127.88 + 3 x 76.728)` while the rows a traveller can add up say
+   * 615. The checkout summary, which sums the rows, said 615 - the same booking
+   * priced two ways one navigation apart (founder, 2026-08-06).
+   *
+   * Sum-of-wholes is the only order that agrees with a whole-unit breakdown, so
+   * the quote now prices exactly what the rows say. It can only ever round in
+   * the traveller-safe direction (never below the operator's own price).
+   */
+  const toRetail = (v: Prisma.Decimal) => retailWhole(toBooking(v));
 
   // ── Participant expansion in SOURCE currency: one unit item per seat ──
   const src = unit
@@ -169,10 +190,15 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   const pax = src.pax;
 
   // ── Convert each participant seat to booking currency; sum for retail ──
+  // The SOURCE sum is re-accumulated from the same whole-unit rule rather than
+  // taken from `src.unitsRetail` (raw), so a same-currency booking still has
+  // `sourceTotalRetail === totalRetail` at rate 1.
   let unitsRetail = D(0);
+  let sourceUnitsRetail = D(0);
   const unitItems: ExpandedUnitItem[] = src.unitItems.map((u) => {
-    const priceRetail = toBooking(u.priceRetail);
+    const priceRetail = toRetail(u.priceRetail);
     unitsRetail = unitsRetail.plus(priceRetail);
+    sourceUnitsRetail = sourceUnitsRetail.plus(retailWhole(u.priceRetail));
     return {
       ageBandId: u.ageBandId,
       priceRetail,
@@ -188,9 +214,11 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   for (const a of addOns) {
     const multiplier =
       a.unit === AddOnUnit.PER_PERSON ? a.quantity * pax : a.quantity;
-    sourceAddOnsRetail = sourceAddOnsRetail.plus(a.unitPrice.times(multiplier));
-    const unitPrice = toBooking(a.unitPrice);
-    const totalPrice = money(unitPrice.times(multiplier));
+    sourceAddOnsRetail = sourceAddOnsRetail.plus(
+      retailWhole(a.unitPrice).times(multiplier),
+    );
+    const unitPrice = toRetail(a.unitPrice);
+    const totalPrice = unitPrice.times(multiplier);
     addOnsRetail = addOnsRetail.plus(totalPrice);
     expandedAddOns.push({ ...a, unitPrice, totalPrice });
   }
@@ -200,9 +228,9 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   let pickupRetail = D(0);
   let sourcePickupRetail = D(0);
   if (pickup && pickup.unitPrice.greaterThan(0)) {
-    sourcePickupRetail = pickup.unitPrice.times(pax);
-    const unitPrice = toBooking(pickup.unitPrice);
-    const totalPrice = money(unitPrice.times(pax));
+    sourcePickupRetail = retailWhole(pickup.unitPrice).times(pax);
+    const unitPrice = toRetail(pickup.unitPrice);
+    const totalPrice = unitPrice.times(pax);
     pickupRetail = totalPrice;
     expandedPickup = { unitPrice, totalPrice };
   }
@@ -222,7 +250,7 @@ export function computeBookingPricing(input: ComputeInput): BookingPricing {
   // sum to the whole.
   const totalRetail = retail(tourRetail.plus(extrasRetail));
   const totalNet = src.anyNetMissing ? null : money(unitsNet);
-  const sourceTourRetail = money(src.unitsRetail);
+  const sourceTourRetail = money(sourceUnitsRetail);
   const sourceTotalRetail = retail(sourceTourRetail.plus(sourceExtrasRetail));
 
   // ── Deposit / balance split (master rule #21), computed in each currency.

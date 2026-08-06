@@ -42,13 +42,15 @@ commission never drift.
 | Method | Used by | Freshness | On failure |
 |---|---|---|---|
 | `getRate()` / `convert()` | booking **quote + reserve** (authoritative money) | fresh only; lazy-refreshes once if stale | **fails closed -> 503** (`Payments temporarily unavailable`) |
-| `getDisplayRate()` / `buildMoney()` | **public cards/detail** (display only) | fresh preferred, stale allowed within a window | falls back to source currency (rate `1`), never blocks the page |
+| `getDisplayRate()` / `buildMoney()` / `attachMoney()` | **public cards** (display only) | fresh preferred, stale allowed within a window | falls back to source currency (rate `1`), never blocks the page |
+| `attachDetailMoney()` | **public tour detail** - adds the child retail amounts the booking widget prices from (bands, add-ons, pickup zones, extra-guest surcharge) | same as above | same as above |
 | `refreshRates()` | scheduler (M4) + the lazy on-demand path | writes new active rows, deactivates old | logs + skips a non-positive rate |
 
 - **Same-currency short-circuits** to rate `1` with no DB or provider call (`identityRate`).
 - **Immutable history**: `refreshRates()` never mutates a rate row in place.
 - All rate/money math uses `Decimal` (never JS float); conversions round HALF_UP to 2dp at
-  the line boundary (guide 20.5).
+  the line boundary, and every **traveller-facing** retail amount is then taken to a whole
+  currency unit, always UP (`retailWhole`). See "Rounding policy" below.
 
 ---
 
@@ -81,9 +83,63 @@ payment / TYP / email / tracking  ->  READ the snapshot, NEVER refetch FX.
   (never the tour currency - guide 20.7).
 
 ### Rounding policy (guide 20.5)
-Each participant seat and add-on line is converted to booking currency and rounded to 2dp,
-then summed for `totalRetail`. `source*` figures preserve the original tour-currency quote.
-Deposit/balance are computed in each currency independently.
+
+Two different roundings, and the difference matters.
+
+**Line maths - 2dp, HALF_UP.** Each participant seat and add-on line is converted to booking
+currency at 2dp and summed. `source*` figures preserve the original tour-currency quote.
+Operator cost (`priceNet`) and the EUR commission snapshot stay at 2dp for good: neither is
+shown to a traveller, and inflating them would distort payout and revenue figures.
+
+**Traveller-facing retail - a whole currency unit, always UP** (`retailWhole`, ceil).
+Conversion used to leave cents behind: a $139 tour rendered to a euro shopper as
+"from EUR 120.71", a precision the price does not have (founder, 2026-08-05). CEIL rather than
+HALF_UP is a commercial rule, not a formatting preference - rounding a converted price DOWN
+would advertise less than the operator's own price once FX moved.
+
+**Order: round each unit price, then sum.** `totalRetail` is the sum of whole seat, add-on and
+pickup prices - not a ceil of a 2dp sum.
+
+This order was reversed on 2026-08-05 ("round the total first, then derive the deposit and
+balance from it, so the lines add up") and reversed back on 2026-08-06. Both calls follow from
+one principle - **the rows a traveller can add up must equal the total they are charged** - and
+the correct order depends only on whether those rows show cents. While the breakdown displayed
+2dp, ceiling the total alone was right. Once the unit prices themselves became whole (Pastel
+#41) it stopped being: the card offered "Adult EUR 128" and "Child EUR 77" for three each and
+totalled them at EUR 614, because 614 is `ceil(3 x 127.88 + 3 x 76.728)` while the visible rows
+say 615. The checkout summary, which sums the rows, said 615 - the same booking priced two ways
+one navigation apart.
+
+The **deposit/balance split is still derived from the total**, and the balance is always the
+REMAINDER rather than its own percentage, so the two halves can never disagree with the whole.
+
+> Consequence to accept: summing whole units can exceed a strict FX conversion by up to a unit
+> per distinct line, and the commission base moves with it. It only ever rounds in the
+> traveller-safe direction (never below the operator's own price), and it buys a breakdown that
+> adds up on screen.
+
+**Where `retailWhole` is applied:**
+
+| Surface | Field | Note |
+|---|---|---|
+| Card / listing / search | `money.priceFrom`, `money.basePrice` | `attachMoney` / `buildMoney` |
+| Tour **detail** | the above **plus** `money.extraPersonPrice`, `money.ageBands`, `money.addOns`, `money.pickupLocations` | `attachDetailMoney` - keyed by child id |
+| Booking quote | each seat / add-on / pickup **unit price** (`toRetail`) | `totalRetail` is their sum |
+| Booking quote | `depositAmount`, `balanceAmount` | deposit ceiled from the tour base, balance = remainder |
+| Booking quote | breakdown `lines[].unitPrice` / `lineTotal` | the same whole values, so the rows sum to the total |
+
+**The frontend does no FX and no rounding of its own.** It renders the served numbers. The
+booking widget used to multiply each source price by `fxRate` itself, which produced figures
+this service never produced - a tour card showing "From EUR 128" beside a booking box showing
+"From EUR 127,88", and a $39 add-on rendering as "EUR 35,88" (Pastel #41). Its client-side
+`conv` survives only as a fallback for a payload with no `money` object: a same-currency
+shopper, an FX outage serving source prices at rate 1, or a `'use cache'` entry written before
+these fields existed.
+
+> Ceiling each child rather than the sum can put the widget's optimistic estimate a unit above
+> the quote on a party mixing several fractional bands. The quote is authoritative and replaces
+> the estimate the moment it lands. The alternative - cents on the rows - is the thing being
+> fixed.
 
 ---
 

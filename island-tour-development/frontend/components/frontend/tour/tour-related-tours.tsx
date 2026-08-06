@@ -17,9 +17,17 @@ interface TourRelatedToursProps {
 
 /**
  * Related tours (Figma node 47936:3964). Two grids scoped to this destination,
- * both excluding the current tour: same primary category ("More {category} tours
- * in {destination}") and destination-wide ("More to explore in {destination}"),
- * the latter also dropping any tour already shown in the first.
+ * both excluding the current tour: same primary category ("More {category} in
+ * {destination}") and destination-wide ("More to explore in {destination}"), the
+ * latter also dropping any tour already shown in the first.
+ *
+ * The category heading interpolates the name and nothing else. Every category on
+ * the platform is already a complete noun phrase in every locale - "Boat Tours &
+ * Cruises", "Bootstouren & Kreuzfahrten", "Water Sports" - so a template that
+ * appended its own noun produced "More Boat Tours & Cruises tours in Curacao"
+ * (Pastel #40). Do not reintroduce one, and do not try to decide per-category by
+ * looking for the word "tours" in the name: it is the English word, and the name
+ * arriving here is translated.
  *
  * `await connection()` marks it dynamic so its `<Suspense>` skeleton streams under
  * Cache Components (the data loaders stay cached). Reuses the cached
@@ -79,10 +87,18 @@ export async function TourRelatedTours({
             limit: RELATED_COUNT + 8,
         }),
     ]);
-    const similarTours = (similarRes?.data ?? [])
-        .filter(hit => hit.id !== detail.id)
-        .slice(0, RELATED_COUNT)
-        .map(hit => searchHitToListing(hit, locale, dict.search));
+    // A category we cannot name cannot head a grid - the heading would render
+    // with a hole where the name belongs. This is reachable: the category list
+    // only carries categories gated in at >= 3 published tours, so a tour whose
+    // primary category has one or two is simply absent from it. Nothing is lost
+    // by dropping the grid; those tours fall through to the destination-wide one
+    // below, which no longer excludes them.
+    const similarTours = primaryCategoryName
+        ? (similarRes?.data ?? [])
+              .filter(hit => hit.id !== detail.id)
+              .slice(0, RELATED_COUNT)
+              .map(hit => searchHitToListing(hit, locale, dict.search))
+        : [];
     const shownSimilarIds = new Set(similarTours.map(t => t.id));
     const moreTours = moreRes.data
         .filter(hit => hit.id !== detail.id && !shownSimilarIds.has(hit.id))

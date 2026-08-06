@@ -14,7 +14,7 @@
  */
 
 import type { BookingQuote } from '@/lib/api/bookings';
-import { formatCheckoutMoney } from '@/lib/checkout/checkout';
+import { depositToday, formatCheckoutMoney } from '@/lib/checkout/checkout';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import {
     DUMMY_BOOKING_DATA,
@@ -424,11 +424,14 @@ export function deriveBooking(s: BookingStore) {
     // this was a second copy of the same expression, and the copy is what the
     // trust line has to agree with.
     const usesDeposit = s.data.requiresDeposit;
-    // Deposit estimate rounds to cents, not whole units (the quote's 2dp amounts
-    // replace it below; the optimistic value must not visibly jump). The % applies
-    // to the TOUR price only; extras ride the balance in full (founder 2026-07-25).
+    // Shared with the checkout summary (`depositToday`) so the widget and the
+    // page one navigation later cannot round the same split two ways. Whole
+    // units, always up - matching the backend's `splitDeposit`, so the quote's
+    // amounts replace this estimate without the figure visibly jumping. The %
+    // applies to the TOUR price only; extras ride the balance in full (founder
+    // 2026-07-25).
     let payToday = usesDeposit
-        ? Math.round(tourTotal * s.data.depositPct) / 100
+        ? depositToday(tourTotal, s.data.depositPct)
         : isOperatorFull
           ? 0
           : total;

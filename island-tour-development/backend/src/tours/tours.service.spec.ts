@@ -202,6 +202,10 @@ describe('ToursService', () => {
           useValue: {
             getDisplayRate: jest.fn().mockResolvedValue(null),
             attachMoney: jest.fn().mockResolvedValue(undefined),
+            // The detail path uses this one - it also converts the child retail
+            // amounts (bands, add-ons, pickup zones) the booking widget prices
+            // from.
+            attachDetailMoney: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

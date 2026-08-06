@@ -49,7 +49,7 @@ describe('computeBookingPricing', () => {
       paymentModel: PaymentModel.OPERATOR_LINK,
       depositPct: D('20'),
     });
-    expect(p.depositAmount.toString()).toBe('42'); // ceil(209.97 * 0.20)
+    expect(p.depositAmount.toString()).toBe('42'); // ceil(210 * 0.20)
     expect(p.balanceAmount.toString()).toBe('168');
   });
 
@@ -64,7 +64,7 @@ describe('computeBookingPricing', () => {
       paymentModel: PaymentModel.ON_ARRIVAL,
       depositPct: D('20'),
     });
-    expect(p.depositAmount.toString()).toBe('42'); // ceil(209.97 * 0.20)
+    expect(p.depositAmount.toString()).toBe('42'); // ceil(210 * 0.20)
     expect(p.balanceAmount.toString()).toBe('168');
   });
 
@@ -79,7 +79,10 @@ describe('computeBookingPricing', () => {
     expect(p.commissionRate.toString()).toBe('0.275');
     expect(p.fxRateToEur?.toString()).toBe('1');
     expect(p.totalEur?.toString()).toBe('210');
-    expect(p.commissionAmount?.toString()).toBe('57.74'); // 209.97 * 0.275 = 57.74175
+    // The base is the WHOLE-unit tour retail (2 x 80 + 50 = 210), not the raw
+    // 209.97: seats are rounded up per unit price so the breakdown a traveller
+    // reads is what they are charged. 210 * 0.275 = 57.75.
+    expect(p.commissionAmount?.toString()).toBe('57.75');
   });
 
   it('leaves commissionAmount null when the EUR rate is unresolved', () => {
@@ -105,12 +108,20 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('0.9'),
       fxRateToEur: D('1'),
     });
-    // Per-line conversion (guide §20.5): 79.99*0.9=71.99 (x2) + 49.99*0.9=44.99 = 188.97 -> ceil 189
+    // Per-unit conversion then ceil (guide §20.5): 79.99*0.9=71.99 -> 72 (x2),
+    // 49.99*0.9=44.99 -> 45. Sum = 189.
     expect(p.totalRetail.toString()).toBe('189');
     expect(p.sourceTotalRetail.toString()).toBe('210'); // original USD preserved
     expect(p.sourceFxRateToBooking.toString()).toBe('0.9');
-    expect(p.commissionAmount?.toString()).toBe('37.79'); // 188.97 * 0.20
-    expect(p.unitItems[0].priceRetail.toString()).toBe('71.99'); // booking currency
+    expect(p.commissionAmount?.toString()).toBe('37.8'); // 189 * 0.20
+    // Whole booking-currency unit, so the seat price a traveller reads on the
+    // card is the one that rides in the total.
+    expect(p.unitItems[0].priceRetail.toString()).toBe('72');
+    expect(
+      p.unitItems
+        .reduce((sum, u) => sum.plus(u.priceRetail), D('0'))
+        .toString(),
+    ).toBe(p.totalRetail.toString());
   });
 
   it('converts an EUR tour to a USD booking, EUR commission via booking->EUR rate', () => {
@@ -121,13 +132,12 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('1.1'),
       fxRateToEur: D('0.9'),
     });
-    // 79.99*1.1=87.99 (x2) + 49.99*1.1=54.99 = 230.97 -> ceil 231
+    // 79.99*1.1=87.99 -> 88 (x2), 49.99*1.1=54.99 -> 55. Sum = 231.
     expect(p.totalRetail.toString()).toBe('231');
     expect(p.sourceTotalRetail.toString()).toBe('210');
-    // EUR commission is taken on the UNROUNDED tour base, so it is unchanged
-    // by the rounding: 230.97 * 0.9 = 207.873 -> 207.87; *0.2 = 41.57
+    // The EUR commission converts the CHARGED total: 231 * 0.9 = 207.9; *0.2.
     expect(p.totalEur?.toString()).toBe('207.9');
-    expect(p.commissionAmount?.toString()).toBe('41.57');
+    expect(p.commissionAmount?.toString()).toBe('41.58');
   });
 
   it('multiplies PER_PERSON add-ons by pax; FLAT add-ons once', () => {
@@ -149,7 +159,7 @@ describe('computeBookingPricing', () => {
         },
       ],
     });
-    // base 209.97 + lunch 10*3 + transfer 25 = 264.97 -> ceil 265
+    // base 210 + lunch 10*3 + transfer 25 = 265
     expect(p.totalRetail.toString()).toBe('265');
     expect(p.addOns[0].totalPrice.toString()).toBe('30');
     expect(p.addOns[1].totalPrice.toString()).toBe('25');
@@ -157,13 +167,13 @@ describe('computeBookingPricing', () => {
 
   it('charges a priced pickup per person (unitPrice × pax) into the totals', () => {
     const p = compute({ pickup: { unitPrice: D('17') } });
-    // base 209.97 + pickup 17*3 = 260.97 -> ceil 261
+    // base 210 + pickup 17*3 = 261
     expect(p.totalRetail.toString()).toBe('261');
     expect(p.sourceTotalRetail.toString()).toBe('261');
     expect(p.pickup?.unitPrice.toString()).toBe('17');
     expect(p.pickup?.totalPrice.toString()).toBe('51');
     // Deposit % applies to the TOUR only and extras ride the operator balance
-    // in full (founder 2026-07-25): deposit = ceil(209.97 * 0.20) = 42. The
+    // in full (founder 2026-07-25): deposit = ceil(210 * 0.20) = 42. The
     // balance is the REMAINDER of the rounded total (261 - 42 = 219), never
     // computed on its own - that is what keeps the two summing to the total.
     expect(p.depositAmount.toString()).toBe('42');
@@ -183,11 +193,11 @@ describe('computeBookingPricing', () => {
         },
       ],
     });
-    // Full booking total (master booking_total_eur): 209.97 + 51 + 30 = 290.97 -> ceil 291.
+    // Full booking total (master booking_total_eur): 210 + 51 + 30 = 291.
     expect(p.totalRetail.toString()).toBe('291');
     expect(p.totalEur?.toString()).toBe('291');
-    // Commission = 20% of the TOUR price only (209.97 -> 41.99), never of extras.
-    expect(p.commissionAmount?.toString()).toBe('41.99');
+    // Commission = 20% of the TOUR price only (210 -> 42), never of extras.
+    expect(p.commissionAmount?.toString()).toBe('42');
   });
 
   it('PAID_IN_FULL still charges tour + extras entirely up front', () => {
@@ -206,12 +216,13 @@ describe('computeBookingPricing', () => {
       sourceFxRateToBooking: D('0.9'),
       pickup: { unitPrice: D('17') },
     });
-    // pickup unit 17*0.9=15.30; total 15.30*3=45.90; base (converted) 188.97;
-    // total 234.87 -> ceil 235
-    expect(p.pickup?.unitPrice.toString()).toBe('15.3');
-    expect(p.pickup?.totalPrice.toString()).toBe('45.9');
-    expect(p.totalRetail.toString()).toBe('235');
-    expect(p.sourceTotalRetail.toString()).toBe('261'); // 209.97 + 17*3 in USD
+    // Pickup is a traveller-facing retail line like any other, so its UNIT price
+    // is whole: 17*0.9=15.30 -> 16, and the line is 16*3=48. Converted seat base
+    // 189; total 237.
+    expect(p.pickup?.unitPrice.toString()).toBe('16');
+    expect(p.pickup?.totalPrice.toString()).toBe('48');
+    expect(p.totalRetail.toString()).toBe('237');
+    expect(p.sourceTotalRetail.toString()).toBe('261'); // 210 + 17*3 in USD
   });
 
   it('ignores a zero/free pickup (no line, no charge)', () => {
@@ -401,9 +412,9 @@ describe('computeBookingPricing', () => {
           expect(isWhole(p.sourceTotalRetail)).toBe(true);
 
           // The whole point of rounding the total FIRST.
-          expect(
-            p.depositAmount.plus(p.balanceAmount).toString(),
-          ).toBe(p.totalRetail.toString());
+          expect(p.depositAmount.plus(p.balanceAmount).toString()).toBe(
+            p.totalRetail.toString(),
+          );
 
           // Never down: the rounded total is at least the raw total, and less
           // than a whole unit above it.

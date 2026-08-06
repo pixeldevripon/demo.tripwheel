@@ -863,16 +863,22 @@ describe('BookingsService', () => {
       // computed and stored on the booking at reserve).
       expect(res.commissionRate).toBeNull();
       expect(res.commissionAmount).toBeNull();
+      // Whole units, like every other traveller-facing amount (`retailWhole`).
+      // These lines are the human-readable explanation of the price, so they
+      // have to agree with the total sitting above them: 2 x 80 = 160, which is
+      // `totalRetail`. At 2dp they read "2 x 79.99 = 159.98" under a "160"
+      // total - the price contradicting itself inside one card (Pastel #41).
       expect(res.lines).toEqual([
         {
           kind: 'participant',
           ageBandId: 'adult',
           label: 'Adult',
           quantity: 2,
-          unitPrice: '79.99',
-          lineTotal: '159.98',
+          unitPrice: '80',
+          lineTotal: '160',
         },
       ]);
+      expect(res.lines[0].lineTotal).toBe(res.totalRetail);
       expect(res.quoteId).toEqual(expect.any(String));
       expect(res.expiresAt).toEqual(expect.any(String));
       // A quote is a preview: it never claims seats or writes a booking.
@@ -1029,10 +1035,13 @@ describe('BookingsService', () => {
       expect(res.tourCurrency).toBe('USD');
       expect(res.sourceFxRateToBooking).toBe('0.9');
       // 79.99*0.9=71.99 (x2) = 143.98 -> ceil 144 EUR; source 159.98 -> 160 USD.
-      // The LINE price keeps its cents - only the totals are whole.
+      // The breakdown line is whole too, and reconciles with the total it
+      // explains: 2 x 72 = 144. The charged figures are computed from the 2dp
+      // maths in `pricing` and are unaffected by how the line is displayed.
       expect(res.totalRetail).toBe('144');
       expect(res.sourceTotalRetail).toBe('160');
-      expect(res.lines[0].unitPrice).toBe('71.99');
+      expect(res.lines[0].unitPrice).toBe('72');
+      expect(res.lines[0].lineTotal).toBe('144');
     });
 
     it('reserve: USD tour + EUR shopper charges EUR and snapshots the source/rate', async () => {

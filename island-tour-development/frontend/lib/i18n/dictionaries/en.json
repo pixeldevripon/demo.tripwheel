@@ -421,6 +421,7 @@
                 "capacityNote": "Only {count} spots left for this departure",
                 "maxPerBooking": "Up to {count} travellers per booking",
                 "policyClose": "Close",
+                "policyLinkHint": "view policy",
                 "cancellationModal": {
                     "title": "Free cancellation up to {hours}h",
                     "introTitle": "Plans change. No problem.",
@@ -528,7 +529,7 @@
                 "suppliedBy": "Supplied by"
             },
             "related": {
-                "moreInCategory": "More {category} tours in {destination}",
+                "moreInCategory": "More {category} in {destination}",
                 "moreToExplore": "More to explore in {destination}"
             }
         },

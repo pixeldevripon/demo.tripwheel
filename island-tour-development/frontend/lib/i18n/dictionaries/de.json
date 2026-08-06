@@ -421,6 +421,7 @@
                 "capacityNote": "Nur noch {count} Plätze für diese Abfahrt",
                 "maxPerBooking": "Bis zu {count} Reisende pro Buchung",
                 "policyClose": "Schließen",
+                "policyLinkHint": "Richtlinie ansehen",
                 "cancellationModal": {
                     "title": "Kostenlose Stornierung bis {hours}h",
                     "introTitle": "Pläne ändern sich. Kein Problem.",
@@ -528,7 +529,7 @@
                 "suppliedBy": "Angeboten von"
             },
             "related": {
-                "moreInCategory": "Weitere {category}-Touren in {destination}",
+                "moreInCategory": "Mehr {category} in {destination}",
                 "moreToExplore": "Mehr entdecken in {destination}"
             }
         },

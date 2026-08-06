@@ -421,6 +421,7 @@
                 "capacityNote": "Plus que {count} places pour ce départ",
                 "maxPerBooking": "Jusqu'à {count} voyageurs par réservation",
                 "policyClose": "Fermer",
+                "policyLinkHint": "voir la politique",
                 "cancellationModal": {
                     "title": "Annulation gratuite jusqu'à {hours}h",
                     "introTitle": "Les plans changent. Pas de souci.",
@@ -528,7 +529,7 @@
                 "suppliedBy": "Fourni par"
             },
             "related": {
-                "moreInCategory": "Plus d'excursions {category} à {destination}",
+                "moreInCategory": "Autres {category} à {destination}",
                 "moreToExplore": "Plus à découvrir à {destination}"
             }
         },

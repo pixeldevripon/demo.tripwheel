@@ -87,7 +87,7 @@ import { assertDateRangeOrder } from '@/common/utils/date-range.util';
 import { cutoffReached } from '@/availability/availability-status.util';
 import { storedStatusForFill } from '@/availability/availability-status.util';
 import { TiersService } from '@/tiers/tiers.service';
-import { FxRatesService } from '@/fx/fx-rates.service';
+import { FxRatesService, retailWhole } from '@/fx/fx-rates.service';
 import type { FxQuote } from '@/fx/fx-provider.interface';
 import {
   computeBookingPricing,
@@ -811,6 +811,23 @@ export class BookingsService {
     const toBooking = (v: Prisma.Decimal) =>
       v.times(sourceRate.rate).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
 
+    /**
+     * The same conversion, rounded the way a traveller sees money everywhere else
+     * on the platform: a whole currency unit, always up (`retailWhole`).
+     *
+     * Used for the BREAKDOWN below and nothing else. These lines are the
+     * human-readable explanation of the price - the charged figures
+     * (`totalRetail`, `depositAmount`, `balanceAmount`, the commission) come from
+     * `pricing` and are untouched by this. Left at 2dp, the widget rendered
+     * "Adult x 1 x 127,88 EUR" directly beneath its own "128 EUR" total, which is
+     * the same price contradicting itself twice in one card (Pastel #41).
+     *
+     * A line total is ceiled from the true amount rather than as
+     * `ceil(unit) x quantity`, so what the rows add up to still reconciles with
+     * the total the traveller is charged.
+     */
+    const toBookingWhole = (v: Prisma.Decimal) => retailWhole(toBooking(v));
+
     // ── Human-readable breakdown in BOOKING currency (participants, then add-ons) ──
     const addOnsTotal = pricing.addOns.reduce(
       (sum, a) => sum.plus(a.totalPrice),
@@ -826,24 +843,23 @@ export class BookingsService {
         label: unitCharterLabel(ctx.tour.wholeUnitType),
         quantity: ctx.guests,
         unitPrice: (ctx.tour.basePrice != null
-          ? toBooking(ctx.tour.basePrice)
-          : charterSubtotal
+          ? toBookingWhole(ctx.tour.basePrice)
+          : retailWhole(charterSubtotal)
         ).toString(),
-        lineTotal: charterSubtotal.toString(),
+        lineTotal: retailWhole(charterSubtotal).toString(),
       });
     } else {
       for (const l of ctx.lines) {
-        const unitPrice = toBooking(l.priceRetail);
         lines.push({
           kind: 'participant',
           ageBandId: l.ageBandId,
           label: l.label ?? 'Participant',
           quantity: l.quantity,
-          unitPrice: unitPrice.toString(),
-          lineTotal: unitPrice
-            .times(l.quantity)
-            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
-            .toString(),
+          unitPrice: toBookingWhole(l.priceRetail).toString(),
+          // unit x quantity, NOT a ceil of the true line total: the money math
+          // now sums whole unit prices too, so this is what actually rides in
+          // `totalRetail` and the rows add up to the total on screen.
+          lineTotal: toBookingWhole(l.priceRetail).times(l.quantity).toString(),
         });
       }
     }
@@ -853,8 +869,8 @@ export class BookingsService {
         ageBandId: null,
         label: a.name,
         quantity: a.quantity,
-        unitPrice: a.unitPrice.toString(),
-        lineTotal: a.totalPrice.toString(),
+        unitPrice: retailWhole(a.unitPrice).toString(),
+        lineTotal: retailWhole(a.totalPrice).toString(),
       });
     }
     // Priced pickup zone (master 5.8): per-person price × pax, PAID_ADDON model only.
@@ -864,8 +880,8 @@ export class BookingsService {
         ageBandId: null,
         label: ctx.pickupSnapshot.name ?? 'Pickup',
         quantity: pricing.pax,
-        unitPrice: pricing.pickup.unitPrice.toString(),
-        lineTotal: pricing.pickup.totalPrice.toString(),
+        unitPrice: retailWhole(pricing.pickup.unitPrice).toString(),
+        lineTotal: retailWhole(pricing.pickup.totalPrice).toString(),
       });
     }
 
