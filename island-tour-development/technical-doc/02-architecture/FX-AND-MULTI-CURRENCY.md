@@ -276,6 +276,35 @@ money: { currency, sourceCurrency, fxRate, priceFrom, basePrice }   // amounts a
   aggregate numbers (hub hero `priceFrom`, collection `fastStats.fromPrice`). The frontend can
   derive a display "from" price from the card `money` objects.
 
+### Which currency a visitor sees first
+
+The backend converts to whatever `?currency` it is asked for. **Choosing that value is entirely
+the frontend's job**, and it has exactly two inputs, in this order:
+
+1. **The `NEXT_CURRENCY` cookie** - and it carries exactly one meaning: *this visitor picked that
+   currency in the footer selector*. `lib/currency/current.ts` `persistCurrency` is its only
+   writer.
+2. **The locale default**, when there is no cookie:
+
+   | Locale | Default |
+   | --- | --- |
+   | `en`, `zh`, `es`, `pt` | **USD** |
+   | `nl`, `de`, `fr` | **EUR** |
+
+   `LOCALE_CURRENCY` in `frontend/lib/constants/locales.ts`. Mirrored in the dashboard repo -
+   **keep the two in sync**.
+
+`es`/`pt` were EUR until 2026-08-06 (Pastel #30, founder): those locales are served mostly from
+South America, where shoppers think in dollars. The split is by who speaks the language, not by
+where the language is from.
+
+**There is no third input.** Nothing reads the IP or the device: master 1.3 puts the default on
+the LOCALE and files IP-based localization under roadmap, and the geo pick `proxy.ts` once had was
+deliberately removed - it wrote the cookie on the very first request, after which the locale
+default could never apply again (so `/en` rendered EUR for anyone behind a European-looking edge
+node). A second writer also lets the footer pill and the server-rendered prices disagree on the
+same screen. `proxy.test.ts` guards this.
+
 ## Tests
 
 - `src/fx/fx-rates.service.spec.ts` - identity rate, fresh cache hit, lazy refresh, fail-closed

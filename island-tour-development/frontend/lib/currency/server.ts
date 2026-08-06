@@ -12,8 +12,8 @@ import {
 
 /**
  * The shopper's display currency, read server-side from the `NEXT_CURRENCY` cookie
- * (guide §21.1/§21.5). Falls back to the locale's default currency, then EUR. Call
- * this in a server component / page, then thread the result into the currency-aware
+ * (guide §21.1/§21.5). Falls back to the locale's default currency. Call this in a
+ * server component / page, then thread the result into the currency-aware
  * public API clients and into the booking widget.
  *
  * The cookie is the ONLY signal here, and it now carries exactly one meaning:

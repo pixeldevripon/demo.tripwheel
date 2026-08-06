@@ -196,48 +196,40 @@ describe('proxy', () => {
         });
     });
 
-    describe('geo currency pick (rides the same redirect)', () => {
-        it('sets EUR for a European edge country', async () => {
+    /*
+     * The proxy MUST NOT pick a currency. Master 1.3 (locked 2026-06-10) puts
+     * the default on the LOCALE and files IP-based localization under roadmap;
+     * `NEXT_CURRENCY` carries exactly one meaning, "the visitor chose this in
+     * the footer", which is what lets it outrank the locale default without
+     * ambiguity.
+     *
+     * This block used to assert the OPPOSITE - it was written for a geo pick
+     * that has since been deliberately removed, and had been failing ever
+     * since. Kept (inverted) rather than deleted, because a second currency
+     * writer is exactly the regression worth catching: it would set the cookie
+     * on the very first request, after which the locale default could never
+     * apply again - so /es would stop being USD the moment a Spanish visitor
+     * hit a European-looking edge node.
+     */
+    describe('currency is never picked here (locale owns the default)', () => {
+        it.each([
+            ['x-vercel-ip-country', 'NL'],
+            ['x-vercel-ip-country', 'US'],
+            ['cf-ipcountry', 'BR'],
+            ['cf-ipcountry', 'XX'],
+        ])('writes no currency cookie for %s: %s', async (header, country) => {
             const res = await proxy(
-                req('/curacao', { headers: { 'x-vercel-ip-country': 'NL' } }),
+                req('/curacao', { headers: { [header]: country } }),
             );
-            expect(res.cookies.get(CURRENCY_COOKIE)?.value).toBe('EUR');
+            expect(res.cookies.get(CURRENCY_COOKIE)).toBeUndefined();
         });
 
-        it('sets USD for everywhere else', async () => {
-            const res = await proxy(
-                req('/curacao', { headers: { 'x-vercel-ip-country': 'US' } }),
-            );
-            expect(res.cookies.get(CURRENCY_COOKIE)?.value).toBe('USD');
-        });
-
-        it('never overrides a currency the visitor already has', async () => {
-            // The existing value is either an explicit footer choice or an
-            // earlier geo pick. Both outrank a fresh guess.
+        it('leaves an existing currency cookie untouched', async () => {
             const res = await proxy(
                 req('/curacao', {
                     headers: { 'x-vercel-ip-country': 'NL' },
                     cookies: { [CURRENCY_COOKIE]: 'USD' },
                 }),
-            );
-            expect(res.cookies.get(CURRENCY_COOKIE)).toBeUndefined();
-        });
-
-        it('replaces a corrupt currency cookie rather than trusting it', async () => {
-            const res = await proxy(
-                req('/curacao', {
-                    headers: { 'x-vercel-ip-country': 'NL' },
-                    cookies: { [CURRENCY_COOKIE]: 'GBP' },
-                }),
-            );
-            expect(res.cookies.get(CURRENCY_COOKIE)?.value).toBe('EUR');
-        });
-
-        it('leaves the cookie unset when the edge reports nothing usable', async () => {
-            // `XX` is Cloudflare's "unknown". Guessing here would quote a
-            // shopper in the wrong currency on no evidence at all.
-            const res = await proxy(
-                req('/curacao', { headers: { 'cf-ipcountry': 'XX' } }),
             );
             expect(res.cookies.get(CURRENCY_COOKIE)).toBeUndefined();
         });

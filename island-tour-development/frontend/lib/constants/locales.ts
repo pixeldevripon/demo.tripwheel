@@ -35,19 +35,27 @@ export type Currency = 'EUR' | 'USD';
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 
 /**
- * Currency per locale (master §D.2, LOCKED 2026-06-10): English and Chinese
- * default to USD, the five European locales to EUR.
+ * Currency per locale. EN, ZH, ES and PT default to USD; NL, DE and FR to EUR.
  *
- * This is only the DEFAULT - the last resort when the visitor has neither a
- * stored `NEXT_CURRENCY` nor a readable location. Geo (proxy country header /
- * browser time zone) is what normally picks the opening currency, and the
- * footer selector overrides both. Mirrored in the dashboard repo; keep in sync.
+ * ES and PT moved off EUR on 2026-08-06 (Pastel #30, founder): the first
+ * Spanish- and Portuguese-speaking visitors are arriving from South America and
+ * think in dollars, so quoting them euros was quoting them a foreign currency.
+ * The split is by WHO SPEAKS the language, not by where the language is from -
+ * which is why it no longer reads as "the European locales".
+ *
+ * This is only the DEFAULT. It applies when the visitor has no stored
+ * `NEXT_CURRENCY`, and the footer selector overrides it. NOTHING infers
+ * currency from the device or the IP: master 1.3 locks the default to the
+ * LOCALE and files IP-based localization under roadmap, and `proxy.ts` was
+ * deliberately stripped of its geo pick (see the note there).
+ *
+ * Mirrored in the dashboard repo (`lib/constants/locales.ts`); keep in sync.
  */
 export const LOCALE_CURRENCY: Record<Locale, Currency> = {
   en: 'USD',
-  es: 'EUR',
+  es: 'USD',
   nl: 'EUR',
-  pt: 'EUR',
+  pt: 'USD',
   fr: 'EUR',
   de: 'EUR',
   zh: 'USD',

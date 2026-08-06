@@ -37,7 +37,7 @@ export function storedCurrency(
 
 /**
  * Resolve the shopper's display currency from a raw `Cookie` header string. Falls
- * back to the locale's default currency (EN/ZH -> USD, the rest EUR), then EUR.
+ * back to the locale's default currency (EN/ZH/ES/PT -> USD, NL/DE/FR -> EUR).
  * Pure + testable: pass `document.cookie` on the client or the request cookie header
  * on the server (or use `getServerCurrency` which reads `cookies()` for you).
  */
