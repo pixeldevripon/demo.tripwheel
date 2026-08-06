@@ -93,15 +93,22 @@ export type BookingLineItem = { band: BookingBand; count: number };
 export type PriceRow = { id: string; text: string; amount: number };
 
 /**
- * The payment trust line rendered under free-cancellation. `modal` (deposit
- * models) carries a clickable `{link}` phrase that opens the deposit modal;
- * `plain` (paid_in_full) is a static statement; `null` (operator_full) renders
- * no payment line.
+ * The payment trust line rendered under free-cancellation - LD5 line 2, and the
+ * ONLY thing that may sit there. It carries a clickable `{link}` phrase that
+ * opens the deposit modal, and it exists **only on a tour that actually takes a
+ * deposit online** (`requiresDeposit`).
+ *
+ * `null` everywhere else: master conflict log 81 / B.81 locks the strip to the
+ * single cancellation line on `paid_in_full` and `operator_full`. It used to
+ * carry a second `plain` variant here - a static "Pay in full now" on
+ * `paid_in_full` - which is exactly the promise the client asked us to stop
+ * making on tours that do not take a deposit.
  */
-export type PaymentTrust =
-    | { kind: 'modal'; before: string; link: string; after: string }
-    | { kind: 'plain'; text: string }
-    | null;
+export type PaymentTrust = {
+    before: string;
+    link: string;
+    after: string;
+} | null;
 
 /** Static, per-tour configuration derived once when the store is created. */
 export interface BookingConfig {
@@ -405,17 +412,18 @@ export function deriveBooking(s: BookingStore) {
     // The card's money rows, CTA label, and trust lines are all driven by the
     // tour's real `paymentModel` + `depositPct`.
     const paymentModel = s.data.paymentModel;
-    const isDepositModel =
-        paymentModel === 'OPERATOR_LINK' || paymentModel === 'ON_ARRIVAL';
-    const isFullModel = paymentModel === 'PAID_IN_FULL';
     const isOperatorFull = paymentModel === 'OPERATOR_FULL';
     // operator_full is dropped in v1 (founder decision, SETTLEMENT-AND-PAYOUTS):
     // the widget must never offer a payment-free reserve. A tour still carrying
     // it is not bookable here.
     const bookingBlocked = isOperatorFull;
 
-    const usesDeposit =
-        isDepositModel && s.data.depositPct > 0 && s.data.depositPct < 100;
+    // "Does this tour actually take a deposit online" - a deposit model AND a
+    // percentage that leaves something for later (0 < pct < 100). Read the
+    // canonical flag from `lib/tours/booking.ts` rather than recomputing it:
+    // this was a second copy of the same expression, and the copy is what the
+    // trust line has to agree with.
+    const usesDeposit = s.data.requiresDeposit;
     // Deposit estimate rounds to cents, not whole units (the quote's 2dp amounts
     // replace it below; the optimistic value must not visibly jump). The % applies
     // to the TOUR price only; extras ride the balance in full (founder 2026-07-25).
@@ -459,28 +467,32 @@ export function deriveBooking(s: BookingStore) {
             .replace(/\{hours\}/g, String(s.data.cancellationHours))
             .replace(/\{pct\}/g, String(s.data.depositPct));
 
-    // Payment trust line (below free-cancellation), model-specific:
-    //  - deposit models: clickable "{link}, the rest via the operator's secure
-    //    link" / "... on arrival" opening the deposit modal;
-    //  - paid_in_full: a plain "Pay in full now" statement (no modal);
-    //  - operator_full: none.
-    const paymentTrust: PaymentTrust = isDepositModel
+    // Payment trust line (LD5 line 2, below free-cancellation). It promises a
+    // payment term - "Pay only {pct}% today, the rest later" - so it renders
+    // ONLY where that term is real: a deposit model with a percentage that
+    // leaves a balance. `paid_in_full`, `operator_full`, a 0% or 100% deposit,
+    // and any payment model we do not recognise all fall through to `null`,
+    // leaving the strip as the single cancellation line (master conflict log 81
+    // / B.81). Fail closed: never promise a term we cannot honour.
+    //
+    // The tail is the LOCKED neutral "the rest later" (LD5 / B.2), one string
+    // for both deposit models. It carried model-specific tails - "the rest via
+    // the operator's secure link" and "the rest on arrival" - which is exactly
+    // the wording the client rejected: the rest is not always paid through a
+    // link. How the balance is actually collected belongs in the deposit modal
+    // (B.88 gives it the on_arrival variant), not on the commit-moment line.
+    const paymentTrust: PaymentTrust = usesDeposit
         ? (() => {
-              const template =
-                  paymentModel === 'ON_ARRIVAL'
-                      ? s.dict.payOnArrival
-                      : s.dict.payLater;
-              const [before, after] = fillPolicy(template).split('{link}');
+              const [before, after] = fillPolicy(s.dict.payLater).split(
+                  '{link}'
+              );
               return {
-                  kind: 'modal',
                   before,
                   link: fillPolicy(s.dict.payLaterLink),
                   after,
               };
           })()
-        : isFullModel
-          ? { kind: 'plain', text: fillPolicy(s.dict.payInFull) }
-          : null;
+        : null;
 
     const bandPriceLabel = (band: BookingBand): string =>
         band.price > 0
@@ -549,7 +561,9 @@ export function deriveBooking(s: BookingStore) {
  * previous day everywhere west of Greenwich, so the widget would open on a
  * different date than the one the traveller searched.
  */
-export function parseLocalDateParam(value: string | null | undefined): Date | null {
+export function parseLocalDateParam(
+    value: string | null | undefined
+): Date | null {
     if (typeof value !== 'string') return null;
     const [y, m, d] = value.split('-').map(Number);
     if (!y || !m || !d) return null;
