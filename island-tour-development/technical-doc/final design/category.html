@@ -260,13 +260,36 @@ body.loading .catskl{display:flex}
 .fchip .fbadge{background:var(--cta);color:#fff;font-size:10.5px;font-weight:800;border-radius:var(--r-pill);min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .fwrap{position:relative;flex:none;display:inline-flex}
 .fdiv{width:1px;align-self:stretch;background:var(--border);margin:0 4px;flex:none}
-.catchips{display:flex;gap:6px;flex-wrap:wrap;min-width:0;flex:1}
+.fcontrols{display:contents}
+/* Category chips: ONE line, always - scroll on overflow, never wrap (3.12). */
+.cattrack{position:relative;display:flex;align-items:center;min-width:0;flex:1}
+.catchips{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;min-width:0;flex:1;margin:-4px;padding:4px;scroll-padding-inline:4px;scrollbar-width:none}
 .catchips::-webkit-scrollbar{display:none}
 .catchips a{white-space:nowrap;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;border:1px solid transparent;border-radius:var(--r-pill);padding:9px 13px;transition:background var(--t-fast) var(--ease)}
 .catchips a:hover{background:var(--paper)}
 .catchips a.active{background:var(--cta-tint);color:var(--cta-deep)}
+.catchips a:focus-visible{outline:2px solid var(--cta);outline-offset:2px}
+/* Edge fades - `pointer-events:none` so the chip underneath still takes the
+   click. Right while more chips wait to the right, left once scrolled away. */
+.cattrack::before,.cattrack::after{content:"";position:absolute;top:-4px;bottom:-4px;width:40px;pointer-events:none;opacity:0;transition:opacity var(--t-std) var(--ease);z-index:1}
+.cattrack::before{left:-4px;background:linear-gradient(to right,rgba(255,255,255,.96),rgba(255,255,255,0))}
+.cattrack::after{right:-4px;background:linear-gradient(to left,rgba(255,255,255,.96),rgba(255,255,255,0))}
+.cattrack[data-l]::before,.cattrack[data-r]::after{opacity:1}
+/* Chevrons only where there is no swipe gesture - you cannot swipe with a
+   mouse. Pointer CAPABILITY, not screen width: a touch laptop behaves like
+   touch, a narrow desktop window still gets them. */
+.catnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:28px;height:28px;display:none;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--white);cursor:pointer;padding:0}
+.catnav.prev{left:0}
+.catnav.next{right:0}
+.catnav .icon{width:14px;height:14px}
+@media (hover:hover) and (pointer:fine){
+  .cattrack[data-l] .catnav.prev,.cattrack[data-r] .catnav.next{display:inline-flex}
+}
+@media (any-pointer:coarse){
+  .catnav{display:none!important}
+}
 /* category chips are navigation links, not facets (conflict log 60) */
-.sortwrap{margin-left:auto;flex:none;position:relative}
+.sortwrap{margin-left:auto;flex:none;position:relative;order:1}
 .sortbtn{display:inline-flex;align-items:center;gap:7px;border:none;background:transparent;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;padding:9px 6px}
 .sortbtn .icon{width:14px;height:14px}
 .sortbtn .lbl{color:var(--soft);font-weight:600}
@@ -278,7 +301,11 @@ body.loading .catskl{display:flex}
 .sortpanel .icon{width:15px;height:15px;stroke:var(--cta-deep)}
 
 /* ==== grid header: dual count + applied pills + tooltip ==== */
-.gridhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 0 14px}
+.gridhead{display:flex;align-items:center;gap:12px;row-gap:10px;flex-wrap:wrap;padding:14px 0 0}
+/* Applied pills take the line ABOVE the counter + sort row: alongside them they
+   crowd the row and the last pill clips on the way out. */
+#pillzone{order:-1;flex:1 1 100%;min-width:0}
+.clearall{order:-1}
 .gcount{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:6px;position:relative}
 .gcount .info{width:17px;height:17px;border-radius:50%;border:1px solid var(--border);background:var(--white);color:var(--soft);font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .gtip{position:absolute;top:calc(100% + 8px);left:0;width:300px;background:var(--dark);color:var(--ink-on-dark);font-size:12px;font-weight:500;line-height:1.5;border-radius:var(--r-md);padding:12px 14px;display:none;z-index:40;box-shadow:var(--e3)}
@@ -375,9 +402,6 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
 @media (max-width:1199px) and (min-width:768px){
   .tcgrid,.tcskl{grid-template-columns:repeat(3,1fr)}
 }
-@media (max-width:1023px){
-  .sortwrap{margin-left:0}
-}
 @media (max-width:767px){
   .nav .inner{gap:6px}
   .logo{font-size:15px}
@@ -390,9 +414,15 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
   .navbtn .cats-ic{display:block}
   .navbtn{padding:8px 8px}
   .navsearch{display:none}
-  .frow .inner{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-  .frow .inner::-webkit-scrollbar{display:none}
-  .sortwrap{position:static}
+  /* Controls keep line 1, the category track takes line 2: four controls plus
+     the chips cannot share 390px, and the chips are the half that must not wrap. */
+  .frow .inner{flex-wrap:wrap;row-gap:10px}
+  .fcontrols{display:flex;align-items:center;gap:10px;min-width:0;flex:1;overflow-x:auto;scrollbar-width:none}
+  .fcontrols::-webkit-scrollbar{display:none}
+  .cattrack{flex:1 0 100%}
+  .fdiv{display:none}
+  .sortwrap{position:static;order:0}
+  .catchips a{padding:7px 11px;font-size:12.5px}
   .sortpanel{right:24px}
   /* mobile: locked horizontal card, image 40 / content 60 (3.5), 12 per page */
   .tcgrid,.tcskl{grid-template-columns:1fr;gap:12px}
@@ -457,6 +487,7 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
 <!-- ===== FILTER ROW (3.12): two zones with divider, sticky on mobile ===== -->
 <div class="frow">
   <div class="container inner">
+    <div class="fcontrols">
     <div class="fwrap">
     <button class="fchip" id="datechip"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span id="datechiplbl">Date</span></button>
       <div class="datepop" id="datepop">
@@ -475,11 +506,25 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
       </div>
     </div>
     <button class="fchip" id="filtersbtn"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="fbadge" id="fbadge" style="display:none">0</span></button>
+    </div>
     <div class="fdiv"></div>
     <!-- category chips restored per the Figma (DIT-14, supersedes the 5.4 removal); current category marked active -->
-    <div class="catchips">
+    <div class="cattrack" id="cattrack">
+      <div class="catchips">
       <a href="#">Klein Curaçao</a><a class="active" href="#">Boat Tours &amp; Cruises</a><a href="#">Day Trips</a><a href="#">Sunset Cruises</a><a href="#">Luxury Experiences</a><a href="#">Nature &amp; Wildlife Tours</a>
+      </div>
+      <button class="catnav prev" type="button" aria-label="Scroll categories left"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button class="catnav next" type="button" aria-label="Scroll categories right"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
     </div>
+  </div>
+  <!-- ===== GRID HEADER: dynamic count + applied pills + Clear all + Sort;
+       inside the sticky band so it rides under the navbar too ===== -->
+  <div class="container">
+  <div class="gridhead">
+    <span class="gcount"><span id="dyncount">15 of 15 tours</span>
+      <button class="info" id="infobtn" aria-label="How tours are ordered">i</button>
+      <span class="gtip" id="gtip">Tours are ordered by our platform ranking: local editorial quality first. Paid placements are always labeled Sponsored, and the label never moves a tour above the ranking its quality earns. <span style="color:var(--soft-on-dark)">(demo copy, final microtext in phase 5)</span></span>
+    </span>
     <div class="sortwrap">
       <button class="sortbtn" id="sortbtn"><span class="lbl">Sort by:</span><span id="sortval">Locals' favorites</span><svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
       <div class="sortpanel" id="sortpanel">
@@ -488,19 +533,13 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
         <button data-sort="desc">Price: high to low</button>
       </div>
     </div>
+    <span id="pillzone" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+    <button class="clearall" id="clearall">Clear all</button>
+  </div>
   </div>
 </div>
 
 <div class="container">
-  <!-- ===== GRID HEADER: dynamic count + tooltip + applied pills + Clear all ===== -->
-  <div class="gridhead">
-    <span class="gcount"><span id="dyncount">15 of 15 tours</span>
-      <button class="info" id="infobtn" aria-label="How tours are ordered">i</button>
-      <span class="gtip" id="gtip">Tours are ordered by our platform ranking: local editorial quality first. Paid placements are always labeled Sponsored, and the label never moves a tour above the ranking its quality earns. <span style="color:var(--soft-on-dark)">(demo copy, final microtext in phase 5)</span></span>
-    </span>
-    <span id="pillzone" style="display:flex;gap:8px;flex-wrap:wrap"></span>
-    <button class="clearall" id="clearall">Clear all</button>
-  </div>
 
   <!-- ===== GRID: DIT-13 4-up; 15 live boat tours, register-honest (unpriced tours render the Price on request fallback); no peach on category pages (3.5); diversity pass on the demo order ===== -->
   <div class="tcgrid" id="tcgrid">
@@ -729,6 +768,34 @@ body.launch .fsec.ratings{display:none} /* ratings section hidden until 3-review
 
   // sort control: Locals' favorites default; peach drops under price sorts (3.5)
   var sortbtn=document.getElementById('sortbtn'), sortpanel=document.getElementById('sortpanel'), grid=document.getElementById('tcgrid');
+
+  /* Category track (3.12): fades and chevrons reflect real scroll state. */
+  (function(){
+    var track=document.getElementById('cattrack'); if(!track) return;
+    var strip=track.querySelector('.catchips');
+    function sync(){
+      var max=strip.scrollWidth-strip.clientWidth;
+      track.toggleAttribute('data-l', strip.scrollLeft>1);
+      track.toggleAttribute('data-r', strip.scrollLeft<max-1);
+    }
+    strip.addEventListener('scroll', sync, {passive:true});
+    /* The track resizes with the viewport and its chips resize when the webfont
+       lands - both move the right edge without ever firing `scroll`. */
+    var ro = new ResizeObserver(sync);
+    ro.observe(strip);
+    Array.prototype.forEach.call(strip.children, function(c){ ro.observe(c); });
+    Array.prototype.forEach.call(track.querySelectorAll('.catnav'), function(b){
+      b.addEventListener('click', function(){
+        strip.scrollBy({left:(b.classList.contains('prev')?-1:1)*strip.clientWidth*0.8, behavior:'smooth'});
+      });
+    });
+    /* Tabbing to a chip that sits off screen must scroll it into view. */
+    Array.prototype.forEach.call(strip.querySelectorAll('a'), function(a){
+      a.addEventListener('focus', function(){ a.scrollIntoView({block:'nearest', inline:'nearest'}); });
+    });
+    sync();
+  })();
+
   sortbtn.addEventListener('click', function(e){ e.stopPropagation(); var open=sortpanel.classList.contains('open'); closepops(); if(!open) sortpanel.classList.add('open'); });
   sortpanel.querySelectorAll('button').forEach(function(b){
     b.addEventListener('click', function(){
