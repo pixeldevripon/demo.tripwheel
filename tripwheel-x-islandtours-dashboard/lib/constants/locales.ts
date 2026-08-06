@@ -35,15 +35,21 @@ export const LOCALE_NATIVE_LABELS: Record<Locale, string> = {
 export const ALL_CURRENCIES: Currency[] = ['EUR', 'USD'];
 
 /**
- * Currency per locale (master §D.2, LOCKED 2026-06-10): English and Chinese
- * default to USD, the five European locales to EUR. Mirrored from the public
- * frontend's copy; keep the two in sync.
+ * Currency per locale. EN, ZH, ES and PT default to USD; NL, DE and FR to EUR.
+ *
+ * ES and PT moved off EUR on 2026-08-06 (Pastel #30, founder): the first
+ * Spanish- and Portuguese-speaking visitors are arriving from South America and
+ * think in dollars. The split is by WHO SPEAKS the language, not by where the
+ * language is from - which is why it no longer reads as "the European locales".
+ *
+ * Mirrored from the public frontend's copy (`frontend/lib/constants/locales.ts`
+ * in `island-tour-development`); keep the two in sync.
  */
 export const LOCALE_CURRENCY: Record<Locale, Currency> = {
   en: 'USD',
-  es: 'EUR',
+  es: 'USD',
   nl: 'EUR',
-  pt: 'EUR',
+  pt: 'USD',
   fr: 'EUR',
   de: 'EUR',
   zh: 'USD',
