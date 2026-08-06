@@ -43,6 +43,7 @@ import { tripToUpdatePayload } from '@/lib/trips/update-payload';
 import { tourUrl } from '@/lib/public-site';
 import { toSlug } from '@/lib/utils';
 import type { TripListItem } from '@/types/trip';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
 import { focusFirstInvalid, WizardStepBody, WizardStepHeader } from '../wizard-step';
@@ -139,6 +140,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
         watch,
         setValue,
         control,
+        reset,
         formState: { errors, isDirty },
     } = useForm<BasicsValues>({
         resolver: zodResolver(basicsSchema),
@@ -151,6 +153,30 @@ export function StepBasics({ trip }: StepBasicsProps) {
                 trip?.primaryCategoryId ?? trip?.categoryIds[0] ?? '',
         },
     });
+
+    /*
+     * This step had NO re-sync at all: `defaultValues` were read once at mount
+     * and never revisited, so once any other step saved and the trip refetched,
+     * Basics went on showing whatever it had loaded with - a title or category
+     * set the server no longer had. Same guarded sync as every other step, so a
+     * refetch updates it only while the operator has nothing unsaved in it.
+     *
+     * In create mode `trip` is null and stays null, so the key never changes and
+     * this runs exactly once against the empty defaults, as before.
+     */
+    useSyncFormWhenPristine(
+        reset,
+        isDirty,
+        () => ({
+            name: trip?.name ?? '',
+            slug: trip?.slug ?? '',
+            destinationId: trip?.destinationId ?? '',
+            categoryIds: trip?.categoryIds ?? [],
+            primaryCategoryId:
+                trip?.primaryCategoryId ?? trip?.categoryIds[0] ?? '',
+        }),
+        trip,
+    );
 
     const nameValue = watch('name');
     const slugValue = watch('slug');
@@ -218,6 +244,14 @@ export function StepBasics({ trip }: StepBasicsProps) {
                             primaryCategoryId: primary,
                         },
                     });
+                    // Pristine at the values just persisted. Without this the
+                    // step keeps saying "Unsaved changes" over work that is
+                    // already saved, and the leave-this-step guard fires on
+                    // every move away from a step the operator HAS saved.
+                    // `primary` rather than `values.primaryCategoryId`: that is
+                    // what was sent, and resetting to anything else would leave
+                    // the form dirty against the server on the very next tick.
+                    reset({ ...values, primaryCategoryId: primary });
                     ok = true;
                 } catch (err) {
                     const message =
@@ -237,7 +271,7 @@ export function StepBasics({ trip }: StepBasicsProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, isCreate, createTrip, updateTrip, router, trip, setStepError]);
+    }, [handleSubmit, isCreate, createTrip, updateTrip, router, trip, setStepError, reset]);
 
     useStepCommit('basics', {
         submit,

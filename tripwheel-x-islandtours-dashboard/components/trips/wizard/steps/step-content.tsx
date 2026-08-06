@@ -60,6 +60,7 @@ import { TripHighlightsTab } from '../../trip-highlights-tab';
 import { TripInclusionsTab } from '../../trip-inclusions-tab';
 import { LanguagesCard } from '../../trip-languages-card';
 import { TripAdvancedSection } from '../trip-advanced-section';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
 import { WizardSection } from '../wizard-section';
@@ -345,9 +346,11 @@ function TourCopySections({ tripId }: { tripId: string }) {
         formState: { isDirty, errors },
     } = useForm<Record<string, string>>({ defaultValues: defaults });
 
-    useEffect(() => {
-        reset(defaults);
-    }, [defaults, reset]);
+    // Guarded, not a bare `[defaults]` effect: this app refetches on window
+    // focus (30s stale) and every sibling save invalidates this translation, so
+    // an unconditional reset lands on top of whatever the operator is typing
+    // AND clears isDirty, leaving the step reporting "clean" over unsaved work.
+    useSyncFormWhenPristine(reset, isDirty, () => defaults, defaults);
 
     // One subscription for every field, so each group can report how much of
     // itself is filled in without a watch() per field.
@@ -364,6 +367,9 @@ function TourCopySections({ tripId }: { tripId: string }) {
                         locale: 'en',
                         payload: buildTourCopyPayload(values),
                     } as never);
+                    // Pristine at the values just persisted, so the
+                    // guarded sync above can take over from here.
+                    reset(values);
                     ok = true;
                 } catch (err) {
                     setStepError(
@@ -385,7 +391,7 @@ function TourCopySections({ tripId }: { tripId: string }) {
             },
         )();
         return ok;
-    }, [handleSubmit, upsert, tripId, setStepError]);
+    }, [handleSubmit, upsert, tripId, setStepError, reset]);
 
     useStepCommit('content', { submit, isPending, isDirty });
 

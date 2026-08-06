@@ -203,6 +203,12 @@ export function StepSchedule({ trip }: StepScheduleProps) {
                             ),
                         },
                     });
+                    // Pristine at the values just persisted. Without
+                    // this the step keeps saying "Unsaved changes" over work
+                    // that is already saved, and `useSyncFormWhenPristine`
+                    // will not re-sync the refetch either, because it
+                    // (correctly) refuses to clobber a dirty form.
+                    reset(values);
                     ok = true;
                 } catch (err) {
                     setStepError(
@@ -219,7 +225,7 @@ export function StepSchedule({ trip }: StepScheduleProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, updateTrip, trip, setStepError]);
+    }, [handleSubmit, updateTrip, trip, setStepError, reset]);
 
     useStepCommit('schedule', { submit, isPending, isDirty });
 

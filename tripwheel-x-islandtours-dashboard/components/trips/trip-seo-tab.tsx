@@ -190,6 +190,12 @@ function MetaLocalePanel({
                         metaDescription: values.metaDescription || null,
                     },
                 } as never);
+                // Pristine at the values just persisted. Without this the step
+                // keeps saying "Unsaved changes" over work that is already
+                // saved, and `useSyncFormWhenPristine` will not re-sync the
+                // refetch either, because it (correctly) refuses to clobber a
+                // dirty form.
+                reset(values);
                 ok = true;
             } catch (err) {
                 toast.error(
@@ -199,7 +205,7 @@ function MetaLocalePanel({
             }
         })();
         return ok;
-    }, [handleSubmit, upsertAsync, tripId, locale]);
+    }, [handleSubmit, upsertAsync, tripId, locale, reset]);
 
     useStepCommit(step, { submit, isPending, isDirty });
 

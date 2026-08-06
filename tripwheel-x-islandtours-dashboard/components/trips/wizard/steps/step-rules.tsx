@@ -22,7 +22,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -37,6 +37,7 @@ import {
     tripToUpdatePayload,
 } from '@/lib/trips/update-payload';
 import type { TripListItem } from '@/types/trip';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
 import {
@@ -230,9 +231,11 @@ export function StepRules({ trip }: StepRulesProps) {
         defaultValues: toDefaults(trip),
     });
 
-    useEffect(() => {
-        reset(toDefaults(trip));
-    }, [trip, reset]);
+    // Guarded, not a bare `[trip]` effect: this app refetches on window focus
+    // (30s stale) and every sibling save invalidates the trip detail, so an
+    // unconditional reset lands on top of whatever the operator is typing AND
+    // clears isDirty, leaving the step reporting "clean" over unsaved work.
+    useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
 
     const v = watch();
 
@@ -270,6 +273,9 @@ export function StepRules({ trip }: StepRulesProps) {
                             suitableForBeginners: values.suitableForBeginners,
                         },
                     });
+                    // Pristine at the values just persisted, so the
+                    // guarded sync above can take over from here.
+                    reset(values);
                     ok = true;
                 } catch (err) {
                     setStepError(
@@ -286,7 +292,7 @@ export function StepRules({ trip }: StepRulesProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, updateTrip, trip, setStepError]);
+    }, [handleSubmit, updateTrip, trip, setStepError, reset]);
 
     useStepCommit('rules', { submit, isPending, isDirty });
 

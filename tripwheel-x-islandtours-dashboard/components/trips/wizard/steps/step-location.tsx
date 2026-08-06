@@ -26,7 +26,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { findEnglish } from '@/lib/trips/forms';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -56,6 +56,7 @@ import {
     TripLocationsTab,
 } from '../../trip-locations-tab';
 import { TripPickupLocationsTab } from '../../trip-pickup-locations-tab';
+import { useSyncFormWhenPristine } from '@/hooks/use-sync-form-when-pristine';
 import { useStepCommit } from '../use-step-commit';
 import { useWizard } from '../wizard-context';
 import { FieldGrid, SelectField, ToggleRow } from '../wizard-fields';
@@ -262,9 +263,11 @@ export function StepLocation({ trip }: StepLocationProps) {
         defaultValues: toDefaults(trip),
     });
 
-    useEffect(() => {
-        reset(toDefaults(trip));
-    }, [trip, reset]);
+    // Guarded, not a bare `[trip]` effect: this app refetches on window focus
+    // (30s stale) and every sibling save invalidates the trip detail, so an
+    // unconditional reset lands on top of whatever the operator is typing AND
+    // clears isDirty, leaving the step reporting "clean" over unsaved work.
+    useSyncFormWhenPristine(reset, isDirty, () => toDefaults(trip), trip);
 
     const v = watch();
 
@@ -291,6 +294,9 @@ export function StepLocation({ trip }: StepLocationProps) {
                             pickupRequired: values.pickupRequired,
                         },
                     });
+                    // Pristine at the values just persisted, so the
+                    // guarded sync above can take over from here.
+                    reset(values);
                     ok = true;
                 } catch (err) {
                     setStepError(
@@ -307,7 +313,7 @@ export function StepLocation({ trip }: StepLocationProps) {
             },
         )();
         return ok;
-    }, [handleSubmit, updateTrip, trip, setStepError]);
+    }, [handleSubmit, updateTrip, trip, setStepError, reset]);
 
     useStepCommit('location', { submit, isPending, isDirty });
 
