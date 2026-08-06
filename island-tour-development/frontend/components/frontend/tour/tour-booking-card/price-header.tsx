@@ -1,7 +1,7 @@
 'use client';
 
 import { useBooking } from '@/hooks/tours/use-booking';
-import { priceUnitLabel } from '@/lib/tours/pricing-label';
+import { bookingUnitLabel } from '@/lib/tours/booking';
 
 /**
  * Price headline at the top of the card. PER_PERSON tours show "From {price} per
@@ -13,18 +13,9 @@ export function PriceHeader() {
     const { dict, data, money } = useBooking();
     const isUnit = data.pricingModel === 'UNIT';
 
-    // Unit-type-aware suffix ("per person" / "per boat" / ...).
-    const unitLabel = priceUnitLabel(
-        { pricingModel: data.pricingModel, wholeUnitType: data.wholeUnitType },
-        {
-            per: dict.perPerson,
-            perGroup: dict.perGroup,
-            perBoat: dict.perBoat,
-            perVehicle: dict.perVehicle,
-            perAircraft: dict.perAircraft,
-            perPackage: dict.perPackage,
-        }
-    );
+    // Unit-type-aware suffix ("per person" / "per boat" / ...). Shared with the
+    // mobile sticky bar, which repeats this headline once the card scrolls away.
+    const unitLabel = bookingUnitLabel(data, dict);
 
     // UNIT sub-line: "Up to N guests" + "+{price} per extra guest" when a
     // surcharge applies.
@@ -67,4 +58,3 @@ export function PriceHeader() {
         </div>
     );
 }
-

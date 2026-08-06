@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef } from 'react';
+
 import { BookingStoreProvider } from '@/contexts/booking-context';
 import { useAvailabilitySync } from '@/hooks/tours/use-availability-sync';
 import { useBooking } from '@/hooks/tours/use-booking';
@@ -11,6 +13,7 @@ import { AvailabilityDeadEnd } from './availability-dead-end';
 import { BookingAddOns } from './booking-add-ons';
 import { BookingCalendar } from './booking-calendar';
 import { BookingCta } from './booking-cta';
+import { BookingStickyBar } from './booking-sticky-bar';
 import { DepartureTimes } from './departure-times';
 import { PartySelector } from './party-selector';
 import { PolicyModal } from './policy-modal';
@@ -33,6 +36,9 @@ function TourBookingCardLayout() {
         fillPolicy,
         availabilityDeadEnd,
     } = useBooking();
+    // The card's own box - what the mobile sticky bar watches, and what its CTA
+    // scrolls back to (Pastel #37).
+    const cardRef = useRef<HTMLDivElement>(null);
     // Loads the month calendar + per-date slots from the backend (no-op in demo).
     useAvailabilitySync();
     // Fetches the server-authoritative quote for the live selection (no-op in demo).
@@ -60,8 +66,14 @@ function TourBookingCardLayout() {
                 the CTA spilled out and printed over them. Capping the card
                 alone means the card is always whole and the notices simply
                 take whatever is left, coming back into view when the rail
-                releases at the end of the page. */}
-            <div className='flex flex-col rounded-it-lg border border-it-border bg-it-white shadow-it-md lg:max-h-[calc(100vh-7rem)]'>
+                releases at the end of the page.
+
+                `scroll-mt-20` is for the sticky bar's return trip: without it
+                `scrollIntoView` parks the card's top edge under the fixed
+                navbar and the price header is the part that goes missing. */}
+            <div
+                ref={cardRef}
+                className='flex scroll-mt-20 flex-col rounded-it-lg border border-it-border bg-it-white shadow-it-md lg:max-h-[calc(100vh-7rem)]'>
                 {/* Price header — never scrolls */}
                 <div className='shrink-0'>
                     <PriceHeader />
@@ -135,6 +147,11 @@ function TourBookingCardLayout() {
             {/* Earned notices (sell-out / most popular / sponsored) — flow
                 below the capped card. Renders nothing when the tour has none. */}
             <BookingNotices />
+
+            {/* Phone-only stand-in for the card once it has scrolled away
+                (Pastel #37). Portals itself to the body, so where it sits in
+                this tree costs nothing - it lives here to share the store. */}
+            <BookingStickyBar cardRef={cardRef} />
 
             {/* Policy detail modals (opened from the trust lines) */}
             <PolicyModal

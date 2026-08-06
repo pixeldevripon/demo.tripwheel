@@ -9,6 +9,7 @@
  */
 import { isCurrency, type Currency } from '@/lib/constants/locales';
 import type { PluralForms } from '@/lib/i18n/plural';
+import { priceUnitLabel } from '@/lib/tours/pricing-label';
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
 import type {
     AddOnUnit,
@@ -151,6 +152,28 @@ export type TourBookingDict = {
     /** Deposit / pay-later policy modal (opened from the trust line). */
     depositModal: PolicyModalDict;
 };
+
+/**
+ * The localized price-unit suffix for a booking card ("per person" / "per
+ * boat" / ...). Both the card's price header and the mobile sticky bar print
+ * the same headline price, so they resolve its unit the same way.
+ */
+export function bookingUnitLabel(
+    data: TourBookingData,
+    dict: TourBookingDict
+): string {
+    return priceUnitLabel(
+        { pricingModel: data.pricingModel, wholeUnitType: data.wholeUnitType },
+        {
+            per: dict.perPerson,
+            perGroup: dict.perGroup,
+            perBoat: dict.perBoat,
+            perVehicle: dict.perVehicle,
+            perAircraft: dict.perAircraft,
+            perPackage: dict.perPackage,
+        }
+    );
+}
 
 /** A single priced row in the party selector (participant age band or spectator). */
 export interface BookingBand {

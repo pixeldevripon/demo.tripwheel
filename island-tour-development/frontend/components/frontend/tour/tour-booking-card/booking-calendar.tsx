@@ -150,6 +150,9 @@ export function BookingCalendar() {
                 onClick={() => toggleCalendar()}
                 aria-expanded={calendarOpen}
                 aria-invalid={ctaError === 'date' || undefined}
+                // What the mobile sticky bar focuses after scrolling the card
+                // back into view: the first thing still to answer.
+                data-booking-date-trigger=''
                 transition={springPop}
                 // Blocked CTA click with no date: ring the field so the note
                 // above the button points somewhere concrete.
