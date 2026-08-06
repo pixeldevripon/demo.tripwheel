@@ -19,7 +19,7 @@ import { useFinePointer } from '@/hooks/use-fine-pointer';
 import { useScrollOverflow } from '@/hooks/use-scroll-overflow';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPlural, type PluralForms } from '@/lib/i18n/plural';
-import { springPop } from '@/lib/motion';
+import { springPop, swapFade } from '@/lib/motion';
 import {
     buildToursHref,
     DEFAULT_GUESTS,
@@ -137,20 +137,90 @@ const TRACK_FADE =
     'pointer-events-none absolute -inset-y-1 w-10 to-transparent transition-opacity duration-(--it-duration-sm) ease-(--it-ease)';
 
 /**
- * Category quick-filter chips - ONE line, always (master 3.12: "horizontal
- * scroll on overflow"). Wrapping onto a second line pushes the rest of the
- * toolbar down and breaks the single-row band.
+ * One horizontally-scrolling row of chips that NEVER wraps (master 3.12:
+ * "horizontal scroll on overflow"). Wrapping pushes the rest of the toolbar
+ * down and breaks the single-row band.
  *
- * ONLY this track scrolls: Date / Travelers / Filters / Sort live outside it and
- * never move when the chips do. Trackpad, touch and mouse-drag all come from
- * `useDragScroll`; tab-focusing a chip that sits off screen scrolls it back into
- * view, and the track carries 4px of padding (cancelled by `-m-1`) so the focus
- * ring is never clipped by its own overflow.
+ * ONLY the track scrolls - whatever sits beside it stays put. Trackpad, touch
+ * and mouse-drag all come from `useDragScroll`; tab-focusing a chip that sits
+ * off screen scrolls it back into view, and the track carries 4px of padding
+ * (cancelled by `-m-1`) so the focus ring is never clipped by its own overflow.
  *
  * The chevrons are gated on POINTER CAPABILITY, not width: a narrow desktop
  * window is still mouse-only and needs them, a touch laptop already swipes and
  * must not get them.
  */
+function ScrollTrack({
+    /** Names the row in the chevrons' accessible labels ("Scroll {label} left"). */
+    label,
+    className,
+    trackClassName,
+    children,
+}: {
+    label: string;
+    /** Layout of the wrapper inside the toolbar row. */
+    className?: string;
+    /** Gap (and any md+ wrap override) for the track itself. */
+    trackClassName?: string;
+    children: React.ReactNode;
+}) {
+    const trackRef = useDragScroll<HTMLDivElement>();
+    const { left, right, scrollByPage } = useScrollOverflow(trackRef);
+    const finePointer = useFinePointer();
+
+    return (
+        <div
+            className={cn(
+                'group relative flex min-w-0 items-center',
+                className
+            )}>
+            <div
+                ref={trackRef}
+                className={cn(
+                    '-m-1 flex items-center overflow-x-auto scroll-px-1 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                    trackClassName
+                )}>
+                {children}
+            </div>
+
+            {/* Fades: right while more waits to the right, left once you have
+                scrolled away from the start. */}
+            <span
+                aria-hidden='true'
+                className={cn(
+                    TRACK_FADE,
+                    '-left-1 bg-linear-to-r from-it-white',
+                    left ? 'opacity-100' : 'opacity-0'
+                )}
+            />
+            <span
+                aria-hidden='true'
+                className={cn(
+                    TRACK_FADE,
+                    '-right-1 bg-linear-to-l from-it-white',
+                    right ? 'opacity-100' : 'opacity-0'
+                )}
+            />
+
+            {finePointer && left && (
+                <TrackScrollButton
+                    direction={-1}
+                    label={`Scroll ${label} left`}
+                    onScroll={scrollByPage}
+                />
+            )}
+            {finePointer && right && (
+                <TrackScrollButton
+                    direction={1}
+                    label={`Scroll ${label} right`}
+                    onScroll={scrollByPage}
+                />
+            )}
+        </div>
+    );
+}
+
+/** Category quick-filter chips, in a track that never wraps. */
 function CategoryChipTrack({
     categories,
     selected,
@@ -163,86 +233,52 @@ function CategoryChipTrack({
     onToggle: (cat: FilterCategory) => void;
     onPrefetch: (cat: FilterCategory) => void;
 }) {
-    const trackRef = useDragScroll<HTMLDivElement>();
-    const { left, right, scrollByPage } = useScrollOverflow(trackRef);
-    const finePointer = useFinePointer();
-
     return (
-        <div className='relative flex min-w-0 items-center max-md:w-full md:flex-1'>
-            <div
-                ref={trackRef}
-                className='-m-1 flex items-center gap-1.5 overflow-x-auto scroll-px-1 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                {categories.map(cat => {
-                    const active = selected.includes(cat.slug);
-                    return (
-                        <motion.button
-                            key={cat.slug}
-                            type='button'
-                            aria-pressed={active}
-                            onClick={() => onToggle(cat)}
-                            onPointerEnter={() => onPrefetch(cat)}
-                            onFocus={event => {
-                                onPrefetch(cat);
-                                // Keyboard users must never focus something they
-                                // cannot see. `nearest` on both axes moves the
-                                // track the minimum needed and leaves the page
-                                // scroll alone.
-                                event.currentTarget.scrollIntoView({
-                                    block: 'nearest',
-                                    inline: 'nearest',
-                                });
-                            }}
-                            whileTap={{ scale: 0.99 }}
-                            transition={springPop}
-                            className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[12.5px] font-semibold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[13px] ${
-                                active
-                                    ? 'bg-it-primary-subtle text-it-primary-hover'
-                                    : 'bg-transparent text-it-ink hover:bg-it-bg'
-                            }`}>
-                            {cat.label}
-                        </motion.button>
-                    );
-                })}
-            </div>
-
-            {/* Fades: right while more chips wait to the right, left once you
-                have scrolled away from the start. */}
-            <span
-                aria-hidden='true'
-                className={cn(
-                    TRACK_FADE,
-                    '-left-1 bg-linear-to-r from-(--it-frow-bg)',
-                    left ? 'opacity-100' : 'opacity-0'
-                )}
-            />
-            <span
-                aria-hidden='true'
-                className={cn(
-                    TRACK_FADE,
-                    '-right-1 bg-linear-to-l from-(--it-frow-bg)',
-                    right ? 'opacity-100' : 'opacity-0'
-                )}
-            />
-
-            {finePointer && left && (
-                <TrackScrollButton
-                    direction={-1}
-                    label='Scroll categories left'
-                    onScroll={scrollByPage}
-                />
-            )}
-            {finePointer && right && (
-                <TrackScrollButton
-                    direction={1}
-                    label='Scroll categories right'
-                    onScroll={scrollByPage}
-                />
-            )}
-        </div>
+        <ScrollTrack
+            label='categories'
+            className='max-md:w-full md:flex-1'
+            trackClassName='gap-1.5'>
+            {categories.map(cat => {
+                const active = selected.includes(cat.slug);
+                return (
+                    <motion.button
+                        key={cat.slug}
+                        type='button'
+                        aria-pressed={active}
+                        onClick={() => onToggle(cat)}
+                        onPointerEnter={() => onPrefetch(cat)}
+                        onFocus={event => {
+                            onPrefetch(cat);
+                            // Keyboard users must never focus something they
+                            // cannot see. `nearest` on both axes moves the
+                            // track the minimum needed and leaves the page
+                            // scroll alone.
+                            event.currentTarget.scrollIntoView({
+                                block: 'nearest',
+                                inline: 'nearest',
+                            });
+                        }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={springPop}
+                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[12.5px] font-semibold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[13px] ${
+                            active
+                                ? 'bg-it-primary-subtle text-it-primary-hover'
+                                : 'bg-transparent text-it-ink hover:bg-it-bg'
+                        }`}>
+                        {cat.label}
+                    </motion.button>
+                );
+            })}
+        </ScrollTrack>
     );
 }
 
-/** Prev/next disc over the chip track's edge fade (mouse-only devices). */
+/**
+ * Prev/next disc over a track's edge fade. Rendered only on mouse-only devices
+ * and only on the side that still hides content, then revealed on hovering the
+ * track (or tabbing into it) - a control that is always on top of the first and
+ * last chip is in the way the rest of the time.
+ */
 function TrackScrollButton({
     direction,
     label,
@@ -259,7 +295,7 @@ function TrackScrollButton({
             onClick={() => onScroll(direction)}
             whileTap={{ scale: 0.9 }}
             transition={springPop}
-            className={`absolute top-1/2 z-1 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white shadow-it-sm ${
+            className={`pointer-events-none absolute top-1/2 z-1 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white opacity-0 shadow-it-sm transition-opacity duration-(--it-duration-sm) ease-(--it-ease) group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 ${
                 direction === -1 ? 'left-0' : 'right-0'
             }`}>
             <Image
@@ -309,12 +345,11 @@ export function ToursFilterBar({
     const pathname = usePathname();
     const { startNav } = useToursNav();
 
-    // Grab-to-slide the horizontally-overflowing strips with a plain mouse
-    // (same affordance as the tab bars); no-ops on touch and when the content
-    // fits. Mobile only: the control strip and the grid head each scroll as one
-    // strip. The category chips have their own track (`CategoryChipTrack`).
+    // Grab-to-slide the control strip with a plain mouse (same affordance as the
+    // tab bars); no-ops on touch and when the content fits, so it only bites
+    // below md, where the four controls can outrun the viewport. The two chip
+    // rows carry their own (`ScrollTrack`).
     const controlsRef = useDragScroll<HTMLDivElement>();
-    const metaRowRef = useDragScroll<HTMLDivElement>();
 
     // Categories render optimistically: a chip toggle flips its own state on
     // click (inside the nav transition) and only settles back to the server truth
@@ -478,8 +513,13 @@ export function ToursFilterBar({
             {/* ── Sticky toolbar (.frow + .gridhead) - the filter row AND the
                 grid head ride under the navbar as ONE surface, so the applied
                 filters, the count and Sort stay reachable down a long grid.
-                One band, therefore one hairline, at its bottom edge. ── */}
-            <div className='sticky top-16 z-35 mt-3.5 border-b border-it-divider bg-(--it-frow-bg) py-3 backdrop-blur-[8px]'>
+                One band, therefore one hairline, at its bottom edge.
+
+                OPAQUE, not the frosted `--it-frow-bg` (96% white + blur) the
+                shorter bars use: at 120-205px tall the 4% that shows through
+                turned every card title scrolling behind it into a ghost line in
+                the padding strip under the navbar, which reads as a gap. ── */}
+            <div className='sticky top-16 z-35 mt-3.5 border-b border-it-divider bg-it-white py-3'>
                 {/* Filter row: one line on desktop; below md the controls keep
                     line 1 and the category track drops to line 2 (four controls
                     plus the chips cannot share 390px, and the chips are the
@@ -804,67 +844,60 @@ export function ToursFilterBar({
                         </Popover>
                     </div>
 
-                    {/* Applied chips + clear all - their own line ABOVE the counter
-                    at every width (`order-first`): four pills alongside the
-                    counter and Sort crowd the row and clip on the way out. One
-                    scrolling strip on mobile so a long selection stays
-                    reachable; wraps at md+. `empty:hidden` because with no
-                    filters applied this renders no children at all, and the row
-                    gap alone would leave a dead 10px band. */}
-                    <div
-                        ref={metaRowRef}
-                        className='order-first flex w-full min-w-0 items-center gap-3 overflow-x-auto empty:hidden [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden'>
-                        <AnimatePresence initial={false}>
-                            {chips.map(chip => (
-                                <motion.button
-                                    key={chip.slug}
-                                    type='button'
-                                    onClick={() => removeChip(chip.slug)}
-                                    layout
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{
-                                        opacity: 0,
-                                        scale: 0.9,
-                                        transition: { duration: 0.1 },
-                                    }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
-                                    {chip.label}
-                                    <Image
-                                        src='/icons/filters/close-deep.svg'
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className='size-3 shrink-0'
-                                    />
-                                </motion.button>
-                            ))}
-                        </AnimatePresence>
+                    {/* Applied chips + clear all - their own line ABOVE the
+                    counter at every width (`order-first`): four pills alongside
+                    the counter and Sort crowd the row and clip on the way out.
+                    Same track as the categories, so a long selection scrolls
+                    with the same fades and chevrons instead of clipping "Clear
+                    all" off the edge. Rendered only when something is applied -
+                    an empty row would still eat a `gap-y` band. */}
+                    {(chips.length > 0 || activeFilterCount > 0) && (
+                        <ScrollTrack
+                            label='applied filters'
+                            className='order-first w-full'
+                            trackClassName='gap-3'>
+                            {/* A plain fade, deliberately NOT `layout`: the pills
+                            scroll, so a FLIP animation made a new pill fly in
+                            from wherever the previous layout put it - a long
+                            diagonal from below on a two-line row. */}
+                            <AnimatePresence initial={false}>
+                                {chips.map(chip => (
+                                    <motion.button
+                                        key={chip.slug}
+                                        type='button'
+                                        onClick={() => removeChip(chip.slug)}
+                                        initial={{ opacity: 0, scale: 0.96 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.96 }}
+                                        transition={swapFade}
+                                        whileTap={{ scale: 0.95 }}
+                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
+                                        {chip.label}
+                                        <Image
+                                            src='/icons/filters/close-deep.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-3 shrink-0'
+                                        />
+                                    </motion.button>
+                                ))}
+                            </AnimatePresence>
 
-                        <AnimatePresence initial={false}>
-                            {(chips.length > 0 || activeFilterCount > 0) && (
-                                <motion.button
-                                    key='clear-all'
-                                    type='button'
-                                    onClick={clearAll}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    whileTap={{ scale: 0.97 }}
-                                    transition={springPop}
-                                    className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
-                                    {dict.clearAll}
-                                </motion.button>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                            <button
+                                type='button'
+                                onClick={clearAll}
+                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
+                                {dict.clearAll}
+                            </button>
+                        </ScrollTrack>
+                    )}
                 </div>
             </div>
 
-            {/* Filters modal - rendered OUTSIDE the sticky band: the band's
-                backdrop-filter creates a containing block, which would trap
-                the modal's `position: fixed` inside it. */}
+            {/* Filters modal - rendered OUTSIDE the sticky band, which is its
+                own stacking context; a `position: fixed` overlay nested in it
+                would be positioned against the band, not the viewport. */}
             <ToursFilterModal
                 open={filterOpen}
                 onClose={() => setFilterOpen(false)}
