@@ -288,6 +288,7 @@ async function DestinationContent({
                 destination={destination}
                 locale={locale as Locale}
                 dict={dict}
+                islandId={island.id}
                 destinationName={destinationName}
                 heroImage={island.heroImage ?? undefined}
             />

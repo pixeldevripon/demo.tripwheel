@@ -350,9 +350,11 @@ model FeaturedExperience {
   @@map("featured_experiences")
 }
 
-// Admin-curated "Popular" quick links under the destination hero search (mck-02:
-// "Popular: Klein Curaçao · Best Things to Do in Curaçao · Off-Road Tours ·
-// Boat Tours & Cruises"). Capped in the service (POPULAR_LINK_MAX).
+// Admin-curated quick links into an island's own pages, in two placements
+// (`placement`): the "Popular" line under the hero search (mck-02: "Popular:
+// Klein Curaçao · Best Things to Do in Curaçao · Off-Road Tours · Boat Tours &
+// Cruises"), and the search field's zero-state panel (master 5.10). Each list is
+// capped in the service (POPULAR_LINK_MAX) and ordered independently.
 //
 // Each link is a page in THIS island's flat `/{destination}/{slug}` namespace -
 // a hub, a collection or a category - so one row shape covers all three, the
@@ -381,6 +383,12 @@ model DestinationPopularLink {
   destinationId String
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
 
+  // Which surface this row belongs to. Two independent ordered lists over one
+  // table: the hero's "Popular" line and the search field's zero-state panel
+  // both curate the same three page types, so they share the resolver, the
+  // re-gating and the replace-all save rather than each growing its own.
+  placement PopularLinkPlacement @default(HERO_POPULAR)
+
   // Exactly one of the three is set - the service rejects none and rejects more
   // than one, so a row always names exactly one page.
   categoryId   String?
@@ -396,10 +404,11 @@ model DestinationPopularLink {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // One target per slot. NOT unique on the target: nothing stops an admin
+  // One target per slot, PER PLACEMENT - the two lists number their slots from
+  // zero independently. NOT unique on the target: nothing stops an admin
   // pointing two slots at one page, and the resolver dedupes rather than the
   // database rejecting a save mid-edit.
-  @@unique([destinationId, displayOrder])
-  @@index([destinationId])
+  @@unique([destinationId, placement, displayOrder])
+  @@index([destinationId, placement])
   @@map("destination_popular_links")
 }

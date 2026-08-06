@@ -5,6 +5,7 @@ import {
   FilterDisplayType,
   HubType,
   Locale,
+  PopularLinkPlacement,
   Prisma,
   PrismaClient,
   RecommendationCategory,
@@ -526,10 +527,12 @@ const SEED_HUBS = [
 // its page exists.
 const SEED_POPULAR_LINKS: {
   destinationSlug: string;
+  placement: PopularLinkPlacement;
   links: { type: 'hub' | 'collection' | 'category'; slug: string }[];
 }[] = [
   {
     destinationSlug: 'curacao',
+    placement: PopularLinkPlacement.HERO_POPULAR,
     links: [
       { type: 'hub', slug: 'klein-curacao' },
       { type: 'collection', slug: 'best-things-to-do-in-curacao' },
@@ -537,17 +540,36 @@ const SEED_POPULAR_LINKS: {
       { type: 'category', slug: 'boat-tours' },
     ],
   },
+  // The search field's zero state (master 5.10) - what the visitor who does not
+  // yet know what they want is offered on focus. Rows are grouped for render by
+  // what they open, so the order here is "categories and hubs first, then
+  // collections", exactly as the panel draws them.
+  {
+    destinationSlug: 'curacao',
+    placement: PopularLinkPlacement.SEARCH_PANEL,
+    links: [
+      { type: 'hub', slug: 'klein-curacao' },
+      { type: 'category', slug: 'boat-tours' },
+      { type: 'category', slug: 'off-road-tours' },
+      { type: 'category', slug: 'day-trips' },
+      { type: 'collection', slug: 'best-things-to-do-in-curacao' },
+      { type: 'collection', slug: 'family-favourites-curacao' },
+      { type: 'collection', slug: 'local-legends-curacao' },
+    ],
+  },
 ];
 
 /**
- * Seed the curated hero row, ONCE per island.
+ * Seed the curated lists, ONCE per island PER PLACEMENT.
  *
- * Skips any island that already has links, so an admin's curation is never
- * overwritten by a redeploy - the seed exists to give the launch island a
- * correct row on first boot, not to own it forever.
+ * Skips any list that already has rows, so an admin's curation is never
+ * overwritten by a redeploy - the seed exists to give the launch island correct
+ * content on first boot, not to own it forever. Per placement, so adding the
+ * search panel to an island whose hero row an admin has already edited seeds the
+ * panel and leaves the row alone.
  */
 async function seedPopularLinks() {
-  console.log('Seeding hero popular links...');
+  console.log('Seeding curated island links...');
 
   for (const entry of SEED_POPULAR_LINKS) {
     const destination = await prisma.destination.findUnique({
@@ -562,17 +584,18 @@ async function seedPopularLinks() {
     }
 
     const existing = await prisma.destinationPopularLink.count({
-      where: { destinationId: destination.id },
+      where: { destinationId: destination.id, placement: entry.placement },
     });
     if (existing > 0) {
       console.log(
-        `  "${entry.destinationSlug}" already has ${existing} popular link(s). Skipping.`,
+        `  "${entry.destinationSlug}" already has ${existing} ${entry.placement} link(s). Skipping.`,
       );
       continue;
     }
 
     const rows: {
       destinationId: string;
+      placement: PopularLinkPlacement;
       categoryId?: string;
       hubId?: string;
       collectionId?: string;
@@ -619,6 +642,7 @@ async function seedPopularLinks() {
 
       rows.push({
         destinationId: destination.id,
+        placement: entry.placement,
         ...(link.type === 'hub' && { hubId: target.id }),
         ...(link.type === 'collection' && { collectionId: target.id }),
         ...(link.type === 'category' && { categoryId: target.id }),
@@ -630,14 +654,14 @@ async function seedPopularLinks() {
 
     if (rows.length === 0) {
       console.warn(
-        `  No resolvable popular links for "${entry.destinationSlug}".`,
+        `  No resolvable ${entry.placement} links for "${entry.destinationSlug}".`,
       );
       continue;
     }
 
     await prisma.destinationPopularLink.createMany({ data: rows });
     console.log(
-      `  Seeded ${rows.length} popular link(s) for "${entry.destinationSlug}".`,
+      `  Seeded ${rows.length} ${entry.placement} link(s) for "${entry.destinationSlug}".`,
     );
   }
 }

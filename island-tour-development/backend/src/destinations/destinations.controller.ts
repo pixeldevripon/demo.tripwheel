@@ -67,6 +67,8 @@ import {
   DestinationQueryDto,
   FaqLocaleQueryDto,
   LocaleQueryDto,
+  PopularLinkPlacementQueryDto,
+  PopularLinksQueryDto,
   ReplacePopularLinksDto,
   UpdateDestinationDto,
   UpdateDestinationFaqDto,
@@ -122,8 +124,15 @@ export class DestinationController {
   @Get('slug/:slug/popular-links')
   @Public()
   @ApiGetPopularLinksDocs()
-  getPopularLinks(@Param('slug') slug: string, @Query() query: LocaleQueryDto) {
-    return this.destinationService.getPopularLinks(slug, query.locale);
+  getPopularLinks(
+    @Param('slug') slug: string,
+    @Query() query: PopularLinksQueryDto,
+  ) {
+    return this.destinationService.getPopularLinks(
+      slug,
+      query.locale,
+      query.placement,
+    );
   }
 
   @Get(':id')
@@ -173,13 +182,16 @@ export class DestinationController {
     return this.destinationService.remove(id, user.id);
   }
 
-  // ── Hero "Popular" links (Admin) ──────────────────────────────────────────────
+  // ── Curated island links, both placements (Admin) ─────────────────────────────
 
   @Get(':id/popular-links')
   @RequirePermissions(Permission.EDIT_DESTINATION)
   @ApiGetPopularLinksAdminDocs()
-  getPopularLinksAdmin(@Param('id') id: string) {
-    return this.destinationService.getPopularLinksAdmin(id);
+  getPopularLinksAdmin(
+    @Param('id') id: string,
+    @Query() query: PopularLinkPlacementQueryDto,
+  ) {
+    return this.destinationService.getPopularLinksAdmin(id, query.placement);
   }
 
   @Put(':id/popular-links')
@@ -187,10 +199,16 @@ export class DestinationController {
   @ApiReplacePopularLinksDocs()
   replacePopularLinks(
     @Param('id') id: string,
+    @Query() query: PopularLinkPlacementQueryDto,
     @Body() dto: ReplacePopularLinksDto,
     @AuthenticatedUser() user: TypedAuthUser,
   ) {
-    return this.destinationService.replacePopularLinks(id, dto.links, user.id);
+    return this.destinationService.replacePopularLinks(
+      id,
+      dto.links,
+      user.id,
+      query.placement,
+    );
   }
 
   // ── Translation management (Admin) ────────────────────────────────────────────

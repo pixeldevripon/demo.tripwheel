@@ -51,6 +51,7 @@ export type SearchDict = {
     /** Zero-state group headings (master 5.10). */
     categoriesAndHubs: string;
     collections: string;
+    topTours: string;
     beyond: string;
     tourCount: string;
     tourCountOne: string;

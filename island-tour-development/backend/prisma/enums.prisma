@@ -550,6 +550,22 @@ enum HubType {
   AREA
 }
 
+// Where one curated DestinationPopularLink row is rendered. The two placements are
+// separate ordered lists over the same table, because they answer different
+// questions with the same three page types:
+//
+//   HERO_POPULAR — the one-line "Popular: …" row under the hero search (mck-02).
+//   SEARCH_PANEL — what the search field offers on focus, before anything is
+//                  typed (master 5.10), grouped for render by target type:
+//                  categories + hubs first, then collections.
+//
+// Default HERO_POPULAR: it is the placement that existed first, so every row
+// written before this column keeps meaning exactly what it meant.
+enum PopularLinkPlacement {
+  HERO_POPULAR
+  SEARCH_PANEL
+}
+
 // Publish lifecycle for editorial pages (hubs/collections). DRAFT is the unpublished
 // working state; PUBLISHED is live; ARCHIVED is retired (slug protected).
 enum HubStatus {

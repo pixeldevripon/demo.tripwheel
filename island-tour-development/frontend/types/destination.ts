@@ -162,10 +162,11 @@ export interface UpdateFaqPayload {
 }
 
 /**
- * One resolved hero "Popular" quick link. The backend has already localized the
- * name and dropped any curated target whose page would not open, so nothing here
- * needs re-checking - and the label is always the TARGET PAGE'S own name, never
- * an admin-typed string, so a link can never disagree with the page it opens.
+ * One resolved curated quick link into an island's own pages. The backend has
+ * already localized the name and dropped any curated target whose page would not
+ * open, so nothing here needs re-checking - and the label is always the TARGET
+ * PAGE'S own name, never an admin-typed string, so a link can never disagree
+ * with the page it opens.
  *
  * Slug only: hubs, collections and categories share the flat
  * `/{destination}/{slug}` namespace, so the caller joins it to the island it has
@@ -174,4 +175,16 @@ export interface UpdateFaqPayload {
 export interface DestinationPopularLink {
   name: string;
   slug: string;
+  /** What the link opens. The hero row ignores it; the search panel groups by it. */
+  kind: 'category' | 'hub' | 'collection';
+  /** Live tours behind the page here. Null for collections (editorial, not a count). */
+  tours: number | null;
+  /** The target page's own hero image, so a row can show the place. */
+  image: string | null;
 }
+
+/**
+ * Which curated list to read. One table, two surfaces: the hero's "Popular:"
+ * line and the starting points the search field offers on focus (master 5.10).
+ */
+export type PopularLinkPlacement = 'HERO_POPULAR' | 'SEARCH_PANEL';
