@@ -317,11 +317,17 @@ function DefaultTourCard({
                         /* Smaller on a narrow image so the badge gets the room
                            instead - the founder chose a spread-out badge over a
                            larger heart here (2026-08-05). It stays 34px in a
-                           normal card, where nothing is competing for width. */
-                        className='ml-auto flex size-[27px] @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08]'>
+                           normal card, where nothing is competing for width.
+                           24px on the mobile row card, where the photo is only
+                           ~145px wide and a 27px disc read as a paste-on.
+                           `before:` keeps a 40px invisible tap target centred on
+                           it, so the control shrinks visually without becoming
+                           harder to hit - the disc is decoration, the hit area
+                           is what a thumb aims at. */
+                        className='relative ml-auto flex size-6 @[220px]:size-[34px] shrink-0 items-center justify-center rounded-full bg-it-white/92 shadow-it-sm border-none cursor-pointer transition-transform duration-(--it-duration-xs) ease-(--it-ease) hover:scale-[1.08] before:absolute before:left-1/2 before:top-1/2 before:size-10 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[""] @[220px]:before:hidden'>
                         {isRemove ? (
                             <X
-                                className='size-[15px] @[220px]:size-4 text-it-ink'
+                                className='size-[13px] @[220px]:size-4 text-it-ink'
                                 strokeWidth={1.5}
                                 aria-hidden='true'
                             />
@@ -335,7 +341,7 @@ function DefaultTourCard({
                                 alt=''
                                 width={24}
                                 height={24}
-                                className='size-[15px] @[220px]:size-[17px]'
+                                className='size-[13px] @[220px]:size-[17px]'
                                 aria-hidden='true'
                             />
                         )}

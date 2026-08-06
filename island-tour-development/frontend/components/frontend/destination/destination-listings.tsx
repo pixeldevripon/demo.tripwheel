@@ -29,6 +29,7 @@
  */
 
 import { localizeHref, type Locale } from '@/lib/constants/locales';
+import { TOUR_CARD_GRID } from '@/lib/tours/listing';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Reveal } from '../reveal';
@@ -111,7 +112,7 @@ export function DestinationListings({
                         Mobile (<640): stacked horizontal row cards (mockup 3.5
                         locked mobile card, image 40 / content 60).
                         sm: 3-col grid · lg: 4-col grid (DIT-13). */}
-                    <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
+                    <div className={TOUR_CARD_GRID}>
                         {tours.map((tour, i) => (
                             <Reveal key={tour.id} width='auto' listItem>
                                 <TourCard

@@ -1,4 +1,4 @@
-import { SEARCH_GRID } from './skeleton-bar';
+import { TOUR_CARD_GRID } from './skeleton-bar';
 import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
@@ -8,9 +8,9 @@ import { TourCardSkeleton } from './tour-card-skeleton';
  */
 export function WishlistSkeleton() {
     return (
-        <div className={SEARCH_GRID}>
+        <div className={TOUR_CARD_GRID}>
             {Array.from({ length: 6 }).map((_, i) => (
-                <TourCardSkeleton key={i} />
+                <TourCardSkeleton key={i} mobileRow />
             ))}
         </div>
     );

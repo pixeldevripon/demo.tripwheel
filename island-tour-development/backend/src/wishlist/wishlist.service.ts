@@ -1,5 +1,11 @@
 import { FxRatesService } from '@/fx/fx-rates.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import {
+  applyMostPopularCap,
+  badgeSelect,
+  deriveTourBadge,
+  type BadgeInput,
+} from '@/tours/tour-badge';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Currency, Locale, TourStatus } from '@prisma/client';
 
@@ -25,8 +31,6 @@ export class WishlistService {
     durationMinutesTo: true,
     pickupModel: true,
     cancellationHours: true,
-    aggregateRating: true,
-    aggregateReviewCount: true,
     isLocalsFavourite: true,
     destination: { select: { slug: true } },
     images: {
@@ -34,7 +38,63 @@ export class WishlistService {
       select: { url: true, altText: true },
       take: 1,
     },
+    // Badge inputs (§3.6/§3.7). `aggregateRating`/`aggregateReviewCount` are
+    // card fields in their own right and come in via this fragment too.
+    ...badgeSelect,
+    // The §3.6 "max 1 per category" cap needs each card's primary category.
+    categories: {
+      where: { isPrimary: true },
+      select: { categoryId: true },
+      take: 1,
+    },
   } as const;
+
+  /**
+   * Resolve one row's badge and flatten the fields the card needs, dropping the
+   * demand-signal inputs that were only ever fetched to compute it.
+   *
+   * `tierRank` deliberately SURVIVES this step: `applyMostPopularCap` reads it
+   * to pick the fallback badge, so it can only be stripped once the cap has run
+   * across the whole list - `stripRankingInternals` does that. This is the same
+   * derive-then-strip order `ToursService.neutralizeForPublic` documents.
+   */
+  private toCardWithBadge<
+    T extends {
+      categories: { categoryId: string }[];
+      likelyToSellOut: boolean;
+      likelyToSellOutOverride: boolean | null;
+      publishedAt: Date | null;
+    } & BadgeInput,
+  >(tour: T) {
+    const {
+      categories,
+      likelyToSellOut: _lsto,
+      likelyToSellOutOverride: _lstoOverride,
+      publishedAt: _publishedAt,
+      ...rest
+    } = tour;
+    return {
+      ...rest,
+      badge: deriveTourBadge(tour),
+      primaryCategoryId: categories[0]?.categoryId ?? null,
+    };
+  }
+
+  /**
+   * Drop the ranking internals once every badge is final. `tierRank` is how
+   * much an operator pays us for placement, expressed as a number - it has no
+   * business in a traveler payload. `isSponsored` stays: a boolean, not a rate,
+   * and the card renders the spotlight treatment from it.
+   *
+   * Removed outright rather than nulled: `tierRank` has never been part of this
+   * endpoint's response, so there is no existing shape to keep valid - unlike
+   * `neutralizeForPublic`, which nulls because `TourResponseDto` declares them.
+   */
+  private stripRankingInternals<T extends { tierRank: number }>(
+    cards: T[],
+  ): Omit<T, 'tierRank'>[] {
+    return cards.map(({ tierRank: _tierRank, ...card }) => card);
+  }
 
   /** The current user's saved tours, newest first, shaped for card rendering. When
    *  `currency` is passed, each card gets the converted display `money` (guide §20.9). */
@@ -53,17 +113,21 @@ export class WishlistService {
       },
     });
 
-    const cards = rows
+    const withBadges = rows
       .filter((row) => row.tour)
       .map(({ savedAt, tour }) => {
         const { destination, translations, ...rest } = tour;
         return {
-          ...rest,
+          ...this.toCardWithBadge(rest),
           destinationSlug: destination?.slug ?? null,
           title: translations?.[0]?.title?.trim() || tour.name,
           savedAt,
         };
       });
+
+    // §3.6: the "Most popular" cap is per RENDERED list, and a wishlist is one
+    // - five saved boat tours all flagged "Most popular" says nothing.
+    const cards = this.stripRankingInternals(applyMostPopularCap(withBadges));
 
     // Same reusable converter as the public tour/hub cards.
     await this.fx.attachMoney(cards, currency, 'defaultCurrency');
@@ -95,17 +159,21 @@ export class WishlistService {
     });
 
     const byId = new Map(rows.map((t) => [t.id, t]));
-    const cards = unique
+    const withBadges = unique
       .map((id) => byId.get(id))
       .filter((t): t is NonNullable<typeof t> => Boolean(t))
       .map((tour) => {
         const { destination, translations, ...rest } = tour;
         return {
-          ...rest,
+          ...this.toCardWithBadge(rest),
           destinationSlug: destination?.slug ?? null,
           title: translations?.[0]?.title?.trim() || tour.name,
         };
       });
+
+    // Capped across the resolved list, in the cookie's own order - the order
+    // the traveller will actually see them in.
+    const cards = this.stripRankingInternals(applyMostPopularCap(withBadges));
 
     await this.fx.attachMoney(cards, currency, 'defaultCurrency');
     return cards;

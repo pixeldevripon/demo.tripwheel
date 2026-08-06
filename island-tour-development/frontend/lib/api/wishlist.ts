@@ -10,9 +10,16 @@ import type { Currency, Locale } from '@/lib/constants/locales';
 import type { SearchHit } from '@/types/search';
 import { BACKEND_API_BASE } from '@/lib/api/backend-url';
 
-/** A saved tour: the search-hit card shape (badge/isSponsored absent here). */
-export type WishlistTour = Omit<SearchHit, 'badge' | 'isSponsored'> &
-  Partial<Pick<SearchHit, 'badge' | 'isSponsored'>>;
+/**
+ * A saved tour: the full search-hit card shape.
+ *
+ * `badge`/`isSponsored` used to be absent - the resolve endpoint never fetched
+ * the inputs, so saved cards rendered an empty badge slot while the same tour
+ * showed "Most popular" everywhere else. The backend now derives them (and
+ * applies the §3.6 per-category cap across the resolved list), so this is a
+ * plain `SearchHit`.
+ */
+export type WishlistTour = SearchHit;
 
 export const wishlistApi = {
   /**

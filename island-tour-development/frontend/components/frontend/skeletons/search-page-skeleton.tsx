@@ -1,4 +1,9 @@
-import { Bar, GRID_PAGE_SIZE, PaginationSkeleton, SEARCH_GRID } from './skeleton-bar';
+import {
+    Bar,
+    GRID_PAGE_SIZE,
+    PaginationSkeleton,
+    TOUR_CARD_GRID,
+} from './skeleton-bar';
 import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
@@ -12,9 +17,9 @@ export function SearchResultsSkeleton() {
     return (
         <>
             <Bar className='h-5 w-48 md:h-6' />
-            <div className={SEARCH_GRID}>
+            <div className={TOUR_CARD_GRID}>
                 {Array.from({ length: GRID_PAGE_SIZE }).map((_, i) => (
-                    <TourCardSkeleton key={i} />
+                    <TourCardSkeleton key={i} mobileRow />
                 ))}
             </div>
             <PaginationSkeleton />

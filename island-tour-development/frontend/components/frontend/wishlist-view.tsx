@@ -8,7 +8,11 @@ import { useWishlist } from '@/components/frontend/wishlist-provider';
 import { wishlistApi, type WishlistTour } from '@/lib/api/wishlist';
 import type { Locale } from '@/lib/constants/locales';
 import { currencyFromCookie } from '@/lib/currency/current';
-import { searchHitToListing, type DurationDict } from '@/lib/tours/listing';
+import {
+    searchHitToListing,
+    TOUR_CARD_GRID,
+    type DurationDict,
+} from '@/lib/tours/listing';
 import type { SearchHit } from '@/types/search';
 
 export type WishlistViewDict = {
@@ -83,21 +87,20 @@ export function WishlistView({
                 ) : visible.length === 0 ? (
                     <Prompt title={dict.empty} hint={dict.emptyHint} />
                 ) : (
-                    <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
+                    <div className={TOUR_CARD_GRID}>
                         {visible.map(hit => (
                             <TourCard
                                 key={hit.id}
                                 tour={searchHitToListing(
-                                    {
-                                        ...hit,
-                                        badge: hit.badge ?? null,
-                                        isSponsored: hit.isSponsored ?? false,
-                                    } as SearchHit,
+                                    hit,
                                     locale,
                                     durationDict
                                 )}
                                 dict={cardDict}
                                 wishlistVariant='remove'
+                                // Pairs with TOUR_CARD_GRID's single mobile
+                                // column - the two are one decision.
+                                mobileRow
                             />
                         ))}
                     </div>
