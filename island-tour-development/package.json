@@ -26,6 +26,8 @@
     "prisma:seed": "cd backend && pnpm prisma:seed",
     "prisma:seed:demo": "cd backend && pnpm prisma:seed:demo",
     "prisma:seed:demo:clean": "cd backend && pnpm prisma:seed:demo:clean",
+    "prisma:seed:demo:tour-titles": "cd backend && pnpm prisma:seed:demo:tour-titles",
+    "prisma:seed:demo:tour-titles:dry": "cd backend && pnpm prisma:seed:demo:tour-titles:dry",
     "home:media:seed": "cd backend && pnpm home:media:seed",
     "prisma:format": "cd backend && pnpm prisma:format",
     "prepare": "husky"

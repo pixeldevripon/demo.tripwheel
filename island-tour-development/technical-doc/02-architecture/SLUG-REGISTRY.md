@@ -362,15 +362,15 @@ A `CATEGORY` resolve succeeding is **necessary but not sufficient**. Category pa
 - [ ] Destination create → one `RESERVED 'tours'` row (+ one row per existing active category). 20 protected slugs per destination once all 19 categories exist.
 - [ ] Tour create → **always** one `TOUR` row; archive/restore toggle `isActive`; hard remove deletes it.
 - [ ] No code path writes a registry row on a *translation* or a page-content edit.
-- [ ] Rename → 301 entry written + registry `slug` updated, same transaction.
-- [ ] Hard delete → slug held in a 90-day cooldown before reuse; `resolveUniqueSlug` treats in-cooldown slugs as taken.
+- [x] Rename → 301 entry written + registry `slug` updated, same transaction.
+- [x] Hard delete → slug held in a 90-day cooldown before reuse; `resolveUniqueSlug` treats in-cooldown slugs as taken.
 - [ ] Deactivate → `isActive:false` (row kept); force-delete → row removed.
 - [ ] `entityId` is `null` **iff** `entityType === RESERVED`.
-- [ ] Public `resolve()` treats `isActive:false` as 404 (after checking the 301 redirect table).
+- [x] Public `resolve()` treats `isActive:false` as 404 (after checking the 301 redirect table), and the public site acts on the redirect (§10.1).
 
 ---
 
-## 10. Implementation status (as of 2026-06-20)
+## 10. Implementation status (as of 2026-08-06)
 
 | Piece | Status |
 |---|---|
@@ -379,8 +379,28 @@ A `CATEGORY` resolve succeeding is **necessary but not sufficient**. Category pa
 | `resolveUniqueSlug()` (operator-name suffix, no numerics) | Built |
 | Flat `TOUR` rows / no hub-nesting | Built |
 | Category-create FeaturedSlot seeding | **Exists in code — must be REMOVED** (slots gone) |
-| `SlugRedirect` table + 301-on-rename | **Not built** — target (master §2.3) |
-| 90-day reuse cooldown | **Not built** — target (master §2.3) |
+| `SlugRedirect` table + 301-on-rename | Built — `renameEntitySlug()` in `backend/src/common/utils/slug-registry.util.ts` re-points every registry row, writes the 301, and collapses chains to one hop |
+| 90-day reuse cooldown | Built — `clearCooledDownSlugs()` in the same util; `renameEntitySlug` clears a cooled-down ghost sitting on the target before claiming it |
+| Public site **consumes** the 301 | Built 2026-08-06 — see §10.1 |
+
+### 10.1 The frontend half, and what it does not give you
+
+The resolver has always answered a renamed slug with `200 { redirect: true, statusCode: 301, toSlug }`
+rather than a `404`, but the public site's `SlugResolution` type had no such variant. The
+resolution was therefore truthy with an `undefined` `entityType`, slid past every dispatch
+case, and rendered the generic shell **with an HTTP 200** — a soft 404, which is worse than a
+real one: a crawler keeps the dead URL indexed and the traveller sees no way forward.
+
+`types/slug-registry.ts` now models the two responses as a discriminated union with an
+`isSlugRedirect()` guard, so an unnarrowed `.entityId` read is a compile error rather than a
+silent fall-through, and `[locale]/[destination]/[slug]/page.tsx` calls `permanentRedirect()`
+on the redirect variant.
+
+**Caveat worth knowing before relying on this for SEO:** the dispatch runs inside a streamed
+`<Suspense>` boundary, so the static shell — and its `200` — is already on the wire when the
+redirect is issued. Browsers follow it and land on the canonical URL; `curl -I` on the old URL
+still reports `200`, not `301`. Moving the check ahead of the shell would make it a true HTTP
+301 at the cost of the PPR static shell on every entity page. Not done, deliberately.
 | Category gating threshold | **Canonical ≥3, shipped 2026-08-05** (master §2.4). The slug_registry row is untouched by the gate — it protects the slug whether or not the page renders |
 
 ---

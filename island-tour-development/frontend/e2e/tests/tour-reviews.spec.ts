@@ -21,8 +21,8 @@
  *
  * ## Fixture coverage, stated honestly
  * The seeded dataset now has tours in four of the five threshold buckets:
- *   0    - LD11 operator fallback (klein-curacao-luxury-yacht-charter)
- *   3-9  - chart, no sort control (klein-curacao-sailing-catamaran-breakfast)
+ *   0    - LD11 operator fallback (luxury-yacht-charter)
+ *   3-9  - chart, no sort control (sailing-catamaran-breakfast)
  *   20+  - chart + sort + theme chips (westpoint-snorkel-and-beach-hop, 36)
  * Only the **1-2** bucket has no fixture, so the "early reviews" copy is covered
  * by unit tests alone. That gap is real and is recorded rather than papered over
@@ -64,9 +64,9 @@ async function gotoTour(page: Page, path: string) {
 
 const TOURS = {
   /** 0 own reviews, operator qualifies -> LD11 borrowed rating. */
-  fallback: '/en/curacao/klein-curacao-luxury-yacht-charter',
+  fallback: '/en/curacao/luxury-yacht-charter',
   /** 4 own reviews across 3 distinct star values -> chart, no sort. */
-  small: '/en/curacao/klein-curacao-sailing-catamaran-breakfast',
+  small: '/en/curacao/sailing-catamaran-breakfast',
   /** 36 own reviews -> chart + sort + theme chips + JSON-LD. */
   large: '/en/curacao/westpoint-snorkel-and-beach-hop',
 };

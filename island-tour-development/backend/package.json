@@ -34,6 +34,8 @@
     "pages:seed": "ts-node -r tsconfig-paths/register scripts/seed-pages.ts",
     "prisma:seed:demo": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts",
     "prisma:seed:demo:clean": "ts-node -r tsconfig-paths/register prisma/demo-seed.ts --clean",
+    "prisma:seed:demo:tour-titles": "ts-node -r tsconfig-paths/register prisma/seed-tour-titles.ts",
+    "prisma:seed:demo:tour-titles:dry": "ts-node -r tsconfig-paths/register prisma/seed-tour-titles.ts --dry-run",
     "prisma:seed:recommendations": "ts-node -r tsconfig-paths/register prisma/seed-recommendations.ts",
     "prisma:seed:recommendations:clean": "ts-node -r tsconfig-paths/register prisma/seed-recommendations.ts --clean",
     "prisma:seed:designations": "ts-node -r tsconfig-paths/register prisma/seed-designations.ts",

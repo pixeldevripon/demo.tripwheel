@@ -23,7 +23,7 @@ import { getDestinationTours } from '@/lib/api/public/tours';
  * Must stay a real published tour on a real active destination.
  */
 const FALLBACK_PARAMS = [
-    { destination: 'curacao', slug: 'klein-curacao-super-yacht-beach-house' },
+    { destination: 'curacao', slug: 'super-yacht-beach-house' },
 ];
 
 export async function checkoutShellParams(): Promise<

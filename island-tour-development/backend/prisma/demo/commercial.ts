@@ -43,7 +43,7 @@ export async function seedCommercial(): Promise<void> {
   // -> the "Sponsored" badge (master §3.6 "paid placements"). REQUESTED/REJECTED go
   // on other top tours to populate the admin queue.
   const SPOTLIGHT_ACTIVE_SLUG: Record<string, string> = {
-    curacao: 'klein-curacao-full-day-catamaran',
+    curacao: 'full-day-catamaran',
     aruba: 'utv-off-road-desert-and-beach-adventure',
     'sint-maarten': 'sunset-catamaran-cruise-with-drinks',
   };

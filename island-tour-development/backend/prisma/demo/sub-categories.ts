@@ -62,10 +62,10 @@ export async function seedSubCategories() {
 // blueprint's extraCategories).
 const TOUR_SUB_LINKS: { tourSlug: string; subSlug: string }[] = [
   {
-    tourSlug: 'klein-curacao-full-day-catamaran',
+    tourSlug: 'full-day-catamaran',
     subSlug: 'catamaran-cruises',
   },
-  { tourSlug: 'klein-curacao-luxury-yacht-charter', subSlug: 'yacht-charters' },
+  { tourSlug: 'luxury-yacht-charter', subSlug: 'yacht-charters' },
   { tourSlug: 'sunset-sail-with-open-bar', subSlug: 'sailing-trips' },
 ];
 
