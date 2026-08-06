@@ -8,6 +8,7 @@
  * are derived from the tour's `startTimes` and every slot is selectable for now.
  */
 import { isCurrency, type Currency } from '@/lib/constants/locales';
+import type { PluralForms } from '@/lib/i18n/plural';
 import type { PublicTourAgeBand, PublicTourDetail } from '@/types/tour-detail';
 import type {
     AddOnUnit,
@@ -61,10 +62,10 @@ export type TourBookingDict = {
     deadEndNoAlternatives: string;
     /** "Only {count} left" */
     onlyLeft: string;
-    /** "{count} Travelers" */
-    travelers: string;
-    /** "{count} Guests" - party header for a UNIT (whole-unit / charter) tour. */
-    guests: string;
+    /** "1 traveler" / "{count} travelers" - ICU plural categories, resolved via `formatPlural`. */
+    travelers: PluralForms;
+    /** "1 guest" / "{count} guests" - party header for a UNIT (whole-unit / charter) tour. */
+    guests: PluralForms;
     /** Headline suffix per unit type (in place of "per person"): group/boat/vehicle/aircraft/package. */
     perGroup: string;
     perBoat: string;

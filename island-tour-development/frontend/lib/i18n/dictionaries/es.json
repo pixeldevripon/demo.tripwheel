@@ -178,17 +178,17 @@
                     "adults": {
                         "label": "Adultos",
                         "hint": "12 años o más",
-                        "word": "Adultos"
+                        "word": { "one": "Adulto", "other": "Adultos" }
                     },
                     "children": {
                         "label": "Niños",
                         "hint": "4 a 11 años",
-                        "word": "Niños"
+                        "word": { "one": "Niño", "other": "Niños" }
                     },
                     "infants": {
                         "label": "Bebés",
                         "hint": "Menores de 4 · Gratis en la mayoría de los tours",
-                        "word": "Bebés"
+                        "word": { "one": "Bebé", "other": "Bebés" }
                     }
                 },
                 "applyGuests": "Aplicar",
@@ -371,8 +371,8 @@
                 "deadEndNext": "Próxima salida: {date}",
                 "deadEndNoAlternatives": "Nada más en esta isla tiene plazas esta semana. Prueba con otras fechas u otra isla.",
                 "onlyLeft": "Solo quedan {count}",
-                "travelers": "{count} viajeros",
-                "guests": "{count} huéspedes",
+                "travelers": { "one": "{count} viajero", "other": "{count} viajeros" },
+                "guests": { "one": "{count} huésped", "other": "{count} huéspedes" },
                 "perGroup": "por grupo",
                 "perBoat": "por barco",
                 "perVehicle": "por vehículo",

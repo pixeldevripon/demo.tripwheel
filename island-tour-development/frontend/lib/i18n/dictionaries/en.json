@@ -178,17 +178,17 @@
                     "adults": {
                         "label": "Adults",
                         "hint": "12 or older",
-                        "word": "Adults"
+                        "word": { "one": "Adult", "other": "Adults" }
                     },
                     "children": {
                         "label": "Children",
                         "hint": "4 to 11",
-                        "word": "Children"
+                        "word": { "one": "Child", "other": "Children" }
                     },
                     "infants": {
                         "label": "Infants",
                         "hint": "Under 4 · Free on most tours",
-                        "word": "Infants"
+                        "word": { "one": "Infant", "other": "Infants" }
                     }
                 },
                 "applyGuests": "Apply",
@@ -371,8 +371,8 @@
                 "deadEndNext": "Next: {date}",
                 "deadEndNoAlternatives": "Nothing else on this island has room this week. Try another date range or another island.",
                 "onlyLeft": "Only {count} left",
-                "travelers": "{count} travelers",
-                "guests": "{count} guests",
+                "travelers": { "one": "{count} traveler", "other": "{count} travelers" },
+                "guests": { "one": "{count} guest", "other": "{count} guests" },
                 "perGroup": "per group",
                 "perBoat": "per boat",
                 "perVehicle": "per vehicle",

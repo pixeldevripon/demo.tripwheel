@@ -178,17 +178,17 @@
                     "adults": {
                         "label": "Volwassenen",
                         "hint": "12 jaar of ouder",
-                        "word": "Volwassenen"
+                        "word": { "one": "Volwassene", "other": "Volwassenen" }
                     },
                     "children": {
                         "label": "Kinderen",
                         "hint": "4 tot 11 jaar",
-                        "word": "Kinderen"
+                        "word": { "one": "Kind", "other": "Kinderen" }
                     },
                     "infants": {
                         "label": "Baby's",
                         "hint": "Onder de 4 · Gratis op de meeste tours",
-                        "word": "Baby's"
+                        "word": { "one": "Baby", "other": "Baby's" }
                     }
                 },
                 "applyGuests": "Toepassen",
@@ -371,8 +371,8 @@
                 "deadEndNext": "Volgende: {date}",
                 "deadEndNoAlternatives": "Niets anders op dit eiland heeft deze week nog plek. Probeer een andere periode of een ander eiland.",
                 "onlyLeft": "Nog {count} beschikbaar",
-                "travelers": "{count} reizigers",
-                "guests": "{count} gasten",
+                "travelers": { "one": "{count} reiziger", "other": "{count} reizigers" },
+                "guests": { "one": "{count} gast", "other": "{count} gasten" },
                 "perGroup": "per groep",
                 "perBoat": "per boot",
                 "perVehicle": "per voertuig",
