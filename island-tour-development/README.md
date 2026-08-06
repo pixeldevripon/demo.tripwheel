@@ -49,7 +49,7 @@ Roles are set server-side only. EDITOR / STAFF / GUIDE are designed but not laun
 | Jobs | BullMQ · Redis (nightly ranking / quality-score / departure materialization) |
 | Uploads | Cloudinary |
 
-Display currency is locale-default (EN/ZH → USD; NL/DE/FR/ES/PT → EUR) with a footer selector override.
+Display currency is locale-default (EN/ZH/ES/PT → USD; NL/DE/FR → EUR) with a footer selector override. Nothing infers currency from IP or device.
 
 ---
 
