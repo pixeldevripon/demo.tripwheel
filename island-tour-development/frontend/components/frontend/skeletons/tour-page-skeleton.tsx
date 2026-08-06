@@ -33,10 +33,12 @@ export function TourDetailSkeleton() {
                 <div className='h-px w-full bg-it-heading/10' />
             </section>
 
-            {/* Header: title + meta (left) and action buttons (right on md). */}
+            {/* Header: title + meta (left), Save/Share level with the meta line
+                (right, lg+ only - below that they sit in the booking rail, so
+                showing them here would settle into a jump). */}
             <section className='bg-it-white'>
                 <div className='it-container'>
-                    <div className='flex flex-col gap-5 py-5 md:flex-row md:items-start md:justify-between md:gap-8'>
+                    <div className='flex flex-col gap-5 py-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8'>
                         <div className='flex flex-col gap-2'>
                             <Bar className='h-8 w-3/4 max-w-2xl md:h-14' />
                             <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
@@ -44,7 +46,7 @@ export function TourDetailSkeleton() {
                                 <Bar className='h-4 w-40' />
                             </div>
                         </div>
-                        <div className='flex shrink-0 items-center gap-6'>
+                        <div className='hidden shrink-0 items-center gap-6 lg:flex'>
                             <div className='flex items-center gap-2'>
                                 <Bar className='size-6 rounded-md' />
                                 <Bar className='h-5 w-12' />
@@ -68,8 +70,12 @@ export function TourDetailSkeleton() {
                             <TourGallerySkeleton />
                             <TourReviewsPreviewSkeleton />
                         </div>
-                        {/* Right rail = booking card. */}
+                        {/* Right rail = Save/Share (mobile placement) + card. */}
                         <div className='lg:sticky lg:top-24'>
+                            <div className='mb-2.5 flex items-center justify-end gap-2 lg:hidden'>
+                                <Bar className='h-[34px] w-[86px] rounded-it-full' />
+                                <Bar className='h-[34px] w-[86px] rounded-it-full' />
+                            </div>
                             <TourBookingCardSkeleton />
                         </div>
                     </div>
