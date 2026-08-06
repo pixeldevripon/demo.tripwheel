@@ -20,6 +20,13 @@ import type { FieldValues, UseFormReset } from 'react-hook-form'
  * - only new case: a refetch that arrives while the form is dirty is ignored,
  *   so in-progress input survives.
  *
+ * THE SECOND BULLET IS A CONTRACT, NOT AN OBSERVATION. Every caller must call
+ * `reset(values)` itself on a successful save. Without that the form is still
+ * dirty when the post-save refetch lands, this hook correctly declines to
+ * clobber it, and the step is stuck reading "Unsaved changes" over work that is
+ * already on the server - which is exactly what it did on every step until
+ * 2026-08-06. A caller that saves and never resets is a bug in the caller.
+ *
  * Keyed on `key` alone (like the original `[trip]`); the dirty flag is read at
  * run time, never a dependency — depending on it would re-run reset on the
  * post-save `true→false` transition with a possibly-stale record.
