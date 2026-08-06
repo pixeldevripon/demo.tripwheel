@@ -24,6 +24,7 @@ import {
     getTourBySlug,
 } from '@/lib/api/public';
 import { resolveSlug } from '@/lib/api/slug-registry';
+import { isSlugRedirect } from '@/types/slug-registry';
 import {
     DEFAULT_LOCALE,
     isLocale,
@@ -173,6 +174,10 @@ export async function generateMetadata({
     if (!isLocale(locale)) return {};
 
     const resolution = await resolveSlug(destination, slug);
+    // A renamed slug carries no entity to describe, and the render path below
+    // 301s before this metadata is ever shown. Returning empty keeps the old URL
+    // from advertising itself as a canonical page of its own.
+    if (resolution && isSlugRedirect(resolution)) return {};
     const alternates = buildAlternates(locale, `/${destination}/${slug}`);
 
     if (!resolution) {
@@ -417,6 +422,18 @@ async function EntityDispatch({
         getDictionary(locale),
         resolveDestinationName(destination, locale),
     ]);
+
+    // A RENAMED slug. The registry answers 200 with the new slug rather than
+    // 404, because the URL is not unknown - it moved. Without this branch the
+    // resolution is truthy but has no `entityType`, so it slid past every
+    // dispatch case into the not-found tail and served the generic shell with
+    // an HTTP 200: a soft 404, which is worse than a real one - a crawler keeps
+    // the dead URL indexed and the traveller sees no way on.
+    if (resolution && isSlugRedirect(resolution)) {
+        permanentRedirect(
+            localizeHref(locale, `/${destination}/${resolution.toSlug}`)
+        );
+    }
 
     // NESTED Pages fall-through: when the registry misses AND the first
     // segment is not an active island, this is not entity territory at all -

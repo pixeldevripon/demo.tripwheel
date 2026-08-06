@@ -741,7 +741,7 @@ function demoPickupZones(city: string, paid: boolean): DemoPickupZone[] {
 // in bookings-payments.ts, NEW tours get ZERO bookings (so review_count stays 0),
 // and LIKELY_TO_SELL_OUT tours get the §3.7 sellout setup in demand-showcase.ts.
 // The Spotlight ACTIVE tours in commercial.ts are these same per-destination leads:
-// klein-curacao-full-day-catamaran / utv-off-road-desert-and-beach-adventure /
+// full-day-catamaran / utv-off-road-desert-and-beach-adventure /
 // sunset-catamaran-cruise-with-drinks.
 export const SHOWCASE_MOST_POPULAR = new Set<string>([
   'westpoint-snorkel-and-beach-hop', // curacao
@@ -759,13 +759,31 @@ export const SHOWCASE_LIKELY_TO_SELL_OUT = new Set<string>([
   'pinel-island-snorkel-and-sail', // sint-maarten
 ]);
 
+// A tour title must NOT repeat the name of a hub it already sits under: the
+// Klein Curaçao boats are titled "Full-Day Catamaran", not "Klein Curaçao
+// Full-Day Catamaran", because every surface that shows the title (the hub
+// page, its Our Picks and comparison groups, the card grids) has already said
+// where you are. The slug follows the title - `/curacao/full-day-catamaran/`,
+// not `/curacao/klein-curacao-full-day-catamaran/` - so the URL does not repeat
+// it either. Prose (overview / shortDescription) still names the island, as it
+// should: a sentence about sailing there has to say where.
+//
+// Renaming a slug is the expensive half. Every old URL now costs a 301 hop that
+// depends on its `slug_redirects` row, and the platform puts a 90-day cooldown
+// on reusing a released slug. Cheap here because nothing has linked to these
+// yet; do not treat it as free on a live tour.
+//
+// This blueprint only governs a FRESH seed. To take the hub name out of the
+// titles of tours that already exist, run `pnpm prisma:seed:demo:tour-titles`
+// (prisma/demo/tour-titles.ts) - a re-seed refreshes tours.name but leaves the
+// translation rows the site actually renders untouched.
 export const TOUR_BLUEPRINTS: Blueprint[] = [
   // ── Miss Ann Boat Trips (Curaçao) ──
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-full-day-catamaran',
-    name: 'Klein Curaçao Full-Day Catamaran',
+    slug: 'full-day-catamaran',
+    name: 'Full-Day Catamaran',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips', 'catamaran-cruises'],
     hubSlugs: ['klein-curacao'],
@@ -801,8 +819,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-luxury-yacht-charter',
-    name: 'Klein Curaçao Luxury Yacht Charter',
+    slug: 'luxury-yacht-charter',
+    name: 'Luxury Yacht Charter',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters'],
     hubSlugs: ['klein-curacao'],
@@ -838,8 +856,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-catamaran-open-bar',
-    name: 'Klein Curaçao Catamaran with Open Bar',
+    slug: 'catamaran-open-bar',
+    name: 'Catamaran with Open Bar',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips', 'catamaran-cruises'],
     hubSlugs: ['klein-curacao'],
@@ -877,8 +895,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-super-yacht-beach-house',
-    name: 'Klein Curaçao Super Yacht with Beach House',
+    slug: 'super-yacht-beach-house',
+    name: 'Super Yacht with Beach House',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -913,8 +931,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-family-boat-beach-house',
-    name: 'Klein Curaçao Family Boat with Beach House',
+    slug: 'family-boat-beach-house',
+    name: 'Family Boat with Beach House',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -953,8 +971,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-powerboat-adventure',
-    name: 'Klein Curaçao Powerboat Adventure',
+    slug: 'powerboat-adventure',
+    name: 'Powerboat Adventure',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -987,8 +1005,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-sailing-catamaran-breakfast',
-    name: 'Klein Curaçao Sailing Catamaran with Breakfast',
+    slug: 'sailing-catamaran-breakfast',
+    name: 'Sailing Catamaran with Breakfast',
     primaryCategory: 'boat-tours',
     extraCategories: ['snorkeling', 'day-trips', 'catamaran-cruises'],
     hubSlugs: ['klein-curacao'],
@@ -1026,8 +1044,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-private-catamaran-charter',
-    name: 'Klein Curaçao Private Catamaran Charter',
+    slug: 'private-catamaran-charter',
+    name: 'Private Catamaran Charter',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -1066,8 +1084,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-private-speedboat-charter',
-    name: 'Klein Curaçao Private Speedboat Charter',
+    slug: 'private-speedboat-charter',
+    name: 'Private Speedboat Charter',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -1101,8 +1119,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-sailing-yacht-day-charter',
-    name: 'Klein Curaçao Sailing Yacht Day Charter',
+    slug: 'sailing-yacht-day-charter',
+    name: 'Sailing Yacht Day Charter',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters', 'day-trips'],
     hubSlugs: ['klein-curacao'],
@@ -1131,8 +1149,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-overnight-yacht-charter',
-    name: 'Klein Curaçao Overnight Yacht Charter',
+    slug: 'overnight-yacht-charter',
+    name: 'Overnight Yacht Charter',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters'],
     hubSlugs: ['klein-curacao'],
@@ -1167,8 +1185,8 @@ export const TOUR_BLUEPRINTS: Blueprint[] = [
   {
     operatorKey: 'miss-ann-boat-trips',
     destinationSlug: 'curacao',
-    slug: 'klein-curacao-luxury-overnight-catamaran',
-    name: 'Klein Curaçao Luxury Overnight Catamaran',
+    slug: 'luxury-overnight-catamaran',
+    name: 'Luxury Overnight Catamaran',
     primaryCategory: 'boat-tours',
     extraCategories: ['yacht-charters', 'catamaran-cruises'],
     hubSlugs: ['klein-curacao'],

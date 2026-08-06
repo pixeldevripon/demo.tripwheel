@@ -518,19 +518,19 @@ const KLEIN = {
   // Our Picks (Best overall / Most popular / Best for families) - bound by slug.
   picks: [
     {
-      tourSlug: 'klein-curacao-super-yacht-beach-house',
+      tourSlug: 'super-yacht-beach-house',
       pickType: HubPickType.BEST_OVERALL,
       description:
         "The island's only dive school, a massage with a million-dollar view, and a fully equipped beach house all on a quieter stretch, set apart from the other boats.",
     },
     {
-      tourSlug: 'klein-curacao-catamaran-open-bar',
+      tourSlug: 'catamaran-open-bar',
       pickType: HubPickType.MOST_POPULAR,
       description:
         'The biggest catamarans on the island and the best open bar of any Klein Curaçao trip. Most-booked year after year for the ultimate Caribbean sailing vibe.',
     },
     {
-      tourSlug: 'klein-curacao-family-boat-beach-house',
+      tourSlug: 'family-boat-beach-house',
       pickType: HubPickType.BEST_FOR_FAMILIES,
       description:
         'A beach house with its own watch-tower and a 360° view over the whole island. A calm, steady boat. Easy and relaxed for families and friends.',
@@ -542,15 +542,15 @@ const KLEIN = {
       groupName: 'Comfort trips',
       tours: [
         {
-          tourSlug: 'klein-curacao-super-yacht-beach-house',
+          tourSlug: 'super-yacht-beach-house',
           note: 'Dive school, massage with a view',
         },
         {
-          tourSlug: 'klein-curacao-family-boat-beach-house',
+          tourSlug: 'family-boat-beach-house',
           note: '360° watch tower',
         },
         {
-          tourSlug: 'klein-curacao-catamaran-open-bar',
+          tourSlug: 'catamaran-open-bar',
           note: 'Spacious catamaran, luxury on board',
         },
       ],
@@ -559,15 +559,15 @@ const KLEIN = {
       groupName: 'Adventure trips',
       tours: [
         {
-          tourSlug: 'klein-curacao-powerboat-adventure',
+          tourSlug: 'powerboat-adventure',
           note: 'Fastest crossing, no seasickness',
         },
         {
-          tourSlug: 'klein-curacao-sailing-catamaran-breakfast',
+          tourSlug: 'sailing-catamaran-breakfast',
           note: 'Lowest price',
         },
         {
-          tourSlug: 'klein-curacao-full-day-catamaran',
+          tourSlug: 'full-day-catamaran',
           note: 'Biggest catamarans, premium bar',
         },
       ],
