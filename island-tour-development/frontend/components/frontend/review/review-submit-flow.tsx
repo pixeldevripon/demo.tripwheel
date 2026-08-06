@@ -246,7 +246,7 @@ export function ReviewSubmitFlow({
                             }
                             rows={5}
                             placeholder={dict.step2Placeholder}
-                            className='w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                            className='w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[16px] md:text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
                         />
                     </Step>
 
@@ -326,7 +326,7 @@ export function ReviewSubmitFlow({
                                 onChange={e => setFeedback(e.target.value)}
                                 rows={3}
                                 placeholder={dict.recoveryPlaceholder}
-                                className='mt-3 w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
+                                className='mt-3 w-full resize-y rounded-[10px] border border-it-border bg-it-white p-3 text-[16px] md:text-[15px] leading-[1.6] tracking-[-0.012em] text-it-heading outline-none focus:border-it-primary'
                             />
                             <MotionButton
                                 type='button'

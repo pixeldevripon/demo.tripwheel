@@ -574,7 +574,7 @@ export function TourReviewsSection({
                                         guest: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
                                 <option value=''>{dict.filterAny}</option>
                                 {guestTypes.map(g => (
                                     <option key={g.value} value={g.value}>
@@ -600,7 +600,7 @@ export function TourReviewsSection({
                                         language: e.target.value || null,
                                     })
                                 }
-                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
+                                className='cursor-pointer rounded-it-full border border-it-border bg-it-white px-4 py-1.5 text-[16px] md:text-[14px] text-it-heading disabled:cursor-default disabled:opacity-60'>
                                 <option value=''>{dict.filterAny}</option>
                                 {languages.map(l => (
                                     <option key={l.value} value={l.value}>

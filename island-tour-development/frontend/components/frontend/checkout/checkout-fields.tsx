@@ -18,8 +18,10 @@ import { useId, type ReactNode } from 'react';
 
 export const labelClass = 'text-[13px] font-bold leading-[1.5] text-it-ink';
 export const helperClass = 'text-[12px] leading-[1.6] text-it-text-muted';
+// 16px below `md` - iOS Safari force-zooms the viewport on a focused input
+// under 16px. Zooming mid-checkout is the worst place on the site for it.
 export const inputBase =
-    'w-full rounded-it-sm border bg-it-white px-[13px] text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
+    'w-full rounded-it-sm border bg-it-white px-[13px] text-[16px] md:text-[14px] leading-[1.6] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary';
 export const titleClass =
     'font-it-display text-[17px] font-bold leading-[1.3] tracking-[-0.01em] text-it-ink';
 

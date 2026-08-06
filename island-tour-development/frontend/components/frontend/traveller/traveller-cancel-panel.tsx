@@ -217,7 +217,7 @@ export function TravellerCancelPanel({
                             maxLength={500}
                             value={reason}
                             onChange={e => setReason(e.target.value)}
-                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'
+                            className='w-full rounded-[10px] border border-it-border bg-it-white px-3.5 py-2.5 text-[16px] md:text-[14px] text-it-ink focus:border-transparent focus:outline-2 focus:outline-it-primary'
                         />
                         {failed && (
                             <p

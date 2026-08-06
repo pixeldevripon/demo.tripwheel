@@ -770,7 +770,7 @@ export function CheckoutForm({
                                 maxLength={500}
                                 onChange={e => set('special', e.target.value)}
                                 placeholder={dict.specialRequestsPlaceholder}
-                                className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[14px] leading-[1.5] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary'
+                                className='h-[70px] w-full resize-none rounded-it-sm border border-it-border bg-it-white px-[13px] py-[11px] text-[16px] md:text-[14px] leading-[1.5] text-it-ink placeholder:text-it-ink-muted outline-none transition-colors focus:border-it-primary'
                             />
                             <span className={helperClass}>{dict.maxChars}</span>
                         </div>
