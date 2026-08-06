@@ -1,7 +1,7 @@
 import { Locale } from '@/common/constants/locales';
 import { IsIanaTimeZone } from '@/common/validators/is-iana-timezone.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Currency, Region } from '@prisma/client';
+import { Currency, PopularLinkPlacement, Region } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -599,9 +599,9 @@ export class UpdateDestinationDto {
   isActive?: boolean;
 }
 
-// ── Hero "Popular" links (admin-curated) ─────────────────────────────────────
+// ── Curated island links (admin-curated, two placements) ─────────────────────
 
-/** One resolved, renderable link as the public hero prints it. */
+/** One resolved, renderable link as the public surface prints it. */
 export class PopularLinkResponseDto {
   @ApiProperty({
     example: 'Off-Road Tours',
@@ -619,6 +619,35 @@ export class PopularLinkResponseDto {
       'the caller joins it to the island it already resolved.',
   })
   slug!: string;
+
+  @ApiProperty({
+    example: 'category',
+    enum: ['category', 'hub', 'collection'],
+    description:
+      'What kind of page this opens. The hero row ignores it (every link is one ' +
+      'line of text); the search panel groups by it - categories and hubs in the ' +
+      'first group, collections in the second.',
+  })
+  kind!: 'category' | 'hub' | 'collection';
+
+  @ApiPropertyOptional({
+    example: 4,
+    nullable: true,
+    description:
+      'LIVE tours behind this page on THIS island, printed as the row subtitle. ' +
+      'Null for collections, whose membership is editorial rather than a count ' +
+      'of what is bookable.',
+  })
+  tours!: number | null;
+
+  @ApiPropertyOptional({
+    example: 'https://cdn.example.com/off-road.jpg',
+    nullable: true,
+    description:
+      "The target page's own hero image, so a row can show the place rather " +
+      'than a generic glyph. Null when the target has no image set.',
+  })
+  image!: string | null;
 }
 
 /** One curated slot as the admin editor sees it - unresolved and ungated. */
@@ -627,8 +656,15 @@ export class PopularLinkAdminResponseDto {
   id!: string;
 
   @ApiProperty({
+    enum: PopularLinkPlacement,
+    example: PopularLinkPlacement.HERO_POPULAR,
+    description: 'Which surface this slot belongs to.',
+  })
+  placement!: PopularLinkPlacement;
+
+  @ApiProperty({
     example: 0,
-    description: 'Zero-based, left to right as rendered.',
+    description: 'Zero-based, in render order. Restarts at 0 per placement.',
   })
   displayOrder!: number;
 
@@ -684,4 +720,36 @@ export class ReplacePopularLinksDto {
   @ValidateNested({ each: true })
   @Type(() => PopularLinkInputDto)
   links!: PopularLinkInputDto[];
+}
+
+/**
+ * Which of the two curated lists a request is about.
+ *
+ * Optional and defaulting to the hero row on every route: the hero was the only
+ * placement before the search panel existed, so an older client that never sends
+ * the parameter keeps reading and writing exactly the list it always did.
+ */
+export class PopularLinkPlacementQueryDto {
+  @ApiPropertyOptional({
+    enum: PopularLinkPlacement,
+    default: PopularLinkPlacement.HERO_POPULAR,
+    description:
+      'HERO_POPULAR = the "Popular:" line under the hero search. SEARCH_PANEL = ' +
+      'the starting points the search field offers on focus (master 5.10).',
+  })
+  @IsOptional()
+  @IsEnum(PopularLinkPlacement)
+  placement?: PopularLinkPlacement = PopularLinkPlacement.HERO_POPULAR;
+}
+
+/** Public read: the resolved list for one placement, in one locale. */
+export class PopularLinksQueryDto extends PopularLinkPlacementQueryDto {
+  @ApiPropertyOptional({
+    description: 'Content locale',
+    enum: Locale,
+    default: Locale.en,
+  })
+  @IsOptional()
+  @IsEnum(Locale)
+  locale?: Locale = Locale.en;
 }

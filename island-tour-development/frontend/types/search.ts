@@ -53,6 +53,12 @@ export interface SearchHit {
   /** Localized primary-category name - context label on typeahead rows. */
   categoryName?: string | null;
   categorySlug?: string | null;
+  /**
+   * Primary category ID (listing endpoint only - the search endpoint resolves
+   * the NAME instead). Lets a caller that already holds the island's categories
+   * print the same context label without a second request.
+   */
+  primaryCategoryId?: string | null;
   /** Destination display name (suggest endpoint only - "Beyond X" rows). */
   destinationName?: string | null;
 }

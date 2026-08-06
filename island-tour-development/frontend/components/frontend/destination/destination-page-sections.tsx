@@ -27,10 +27,15 @@ import { searchHitToListing } from '@/lib/tours/listing';
  * paint on client navigation / cold on-demand renders.
  */
 
+/** Tours the search panel offers before anything is typed (master 5.10). */
+const ZERO_STATE_TOP_TOURS = 3;
+
 interface HeroSectionProps {
     destination: string;
     locale: Locale;
     dict: Dictionary;
+    /** Needed for the search panel's "Top tours" group, which lists by island id. */
+    islandId: string;
     destinationName: string;
     heroImage?: string;
 }
@@ -43,23 +48,63 @@ export async function DestinationHeroSection({
     destination,
     locale,
     dict,
+    islandId,
     destinationName,
     heroImage,
 }: HeroSectionProps) {
-    const [categories, hubs, collections, curatedPopular, heroSeo] =
-        await Promise.all([
-            getDestinationCategories(destination, locale),
-            getDestinationHubs(destination, locale),
-            // Collections feed the hero's "Popular" links only - the cards below
-            // stay hubs + categories, and collections keep their own section.
-            getActiveCollectionsForDestination(destination, locale),
-            // The admin's curation, already resolved + gated. Empty when this
-            // island has none, which falls through to the automatic row below.
-            getDestinationPopularLinks(destination, locale),
-            // Independent of the others - joins the same Promise.all rather than
-            // adding another round-trip to the hero's critical path.
-            getMediaSeo([heroImage], locale),
-        ]);
+    /*
+     * The shopper's currency, so the zero state's tour rows carry the same
+     * converted prices as every other card on the page. This reads the cookie,
+     * which is a dynamic input - it costs nothing here because this section and
+     * `DestinationLocalFavourites` (which has always read it) share one Suspense
+     * boundary, so that boundary is already the page's dynamic hole.
+     */
+    const currency = await getServerCurrency(locale);
+
+    const [
+        categories,
+        hubs,
+        collections,
+        curatedPopular,
+        curatedSearchPanel,
+        topTours,
+        heroSeo,
+    ] = await Promise.all([
+        getDestinationCategories(destination, locale),
+        getDestinationHubs(destination, locale),
+        // Collections feed the hero's "Popular" links only - the cards below
+        // stay hubs + categories, and collections keep their own section.
+        getActiveCollectionsForDestination(destination, locale),
+        // The admin's curation, already resolved + gated. Empty when this
+        // island has none, which falls through to the automatic row below.
+        getDestinationPopularLinks(destination, locale),
+        getDestinationPopularLinks(destination, locale, 'SEARCH_PANEL'),
+        /*
+         * The zero state's "Top tours" group, in the platform's own recommended
+         * order (spotlight placement, then tier rank, then quality score) - the
+         * same ranking every listing on the site uses, so the panel cannot
+         * become a side door around the tier economy operators pay into.
+         * `total` doubles as the island's live tour count for the closing link,
+         * which is why this is one call and not two.
+         *
+         * Not de-duplicated by category on purpose. The §3.8 diversity pass runs
+         * server-side and page-locally, and on an island whose whole head is one
+         * category (Curacao: the top six are all Boat Tours & Cruises) there is
+         * nothing to pull up - over-fetching to give it room was tried and
+         * changed nothing. Showing something other than the true top three would
+         * mean the panel disagreeing with the listing it links to.
+         */
+        getDestinationTours({
+            destinationId: islandId,
+            locale,
+            currency,
+            sort: 'recommended',
+            limit: ZERO_STATE_TOP_TOURS,
+        }),
+        // Independent of the others - joins the same Promise.all rather than
+        // adding another round-trip to the hero's critical path.
+        getMediaSeo([heroImage], locale),
+    ]);
 
     const exploreTypes: ExploreType[] = [
         ...hubs.map(hub => ({
@@ -125,34 +170,97 @@ export async function DestinationHeroSection({
     /*
      * Zero-state panel for the hero search (master 5.10): what the field offers
      * the moment it is focused, for "the visitor who does not yet know what they
-     * want to do". Two groups, Categories & Hubs then Collections.
+     * want to do". Four parts, in this order - Categories & Hubs, Collections,
+     * Top tours, and a closing link to everything.
      *
-     * Built from the SAME three gated lists the rest of this section renders -
-     * no extra fetch, and every row therefore opens a page that exists (a
-     * category has cleared the 3-tour bar, a collection is published). Hubs lead
-     * their group: an island's landmark is a better starting point than an
-     * activity type, and it is what the "Explore by type" row leads with too.
+     * The first two are CURATED, same table and same rules as the hero's Popular
+     * row, just a different `placement`. Curation is needed for the same reason
+     * it was there: the client's own Curacao panel (Klein Curacao, Boat Tours &
+     * Cruises, Off-Road Tours, Day Trips) is not any ordering of the automatic
+     * list, because Off-Road is fifth by sortOrder.
+     *
+     * With nothing curated it falls back to the island's own gated lists, so a
+     * new island opens a full panel on the day it goes live and an admin curates
+     * only when they want something other than the obvious. Either way every row
+     * opens a page that renders: the curated endpoint re-gates each target, and
+     * these three lists only ever contain live pages.
+     *
+     * Hubs lead their group on the automatic path: an island's landmark is a
+     * better starting point than an activity type, and it is what "Explore by
+     * type" leads with too.
      */
-    const searchZeroState = {
-        categoriesAndHubs: [
-            ...hubs.map(hub => ({
-                name: hub.name,
-                href: localizeHref(locale, `/${destination}/${hub.slug}`),
-                kind: 'hub' as const,
-                tours: hub.publishedTourCount,
-            })),
-            ...categories.map(category => ({
-                name: category.name,
-                href: localizeHref(locale, `/${destination}/${category.slug}`),
-                kind: 'category' as const,
-                tours: category.publishedTourCount,
-            })),
-        ],
-        collections: collections.map(collection => ({
-            name: collection.name,
-            href: localizeHref(locale, `/${destination}/${collection.slug}`),
-            kind: 'collection' as const,
+    const zeroHref = (slug: string) =>
+        localizeHref(locale, `/${destination}/${slug}`);
+
+    const categoryNameById = new Map(categories.map(c => [c.id, c.name]));
+
+    const curatedZeroEntries = curatedSearchPanel.map(link => ({
+        name: link.name,
+        href: zeroHref(link.slug),
+        kind: link.kind,
+        // A curated collection carries no count (membership is editorial), and
+        // `undefined` is what the row reads as "print no subtitle".
+        tours: link.tours ?? undefined,
+        image: link.image,
+    }));
+
+    const automaticZeroEntries = [
+        ...hubs.map(hub => ({
+            name: hub.name,
+            href: zeroHref(hub.slug),
+            kind: 'hub' as const,
+            tours: hub.publishedTourCount,
+            image: hub.heroImage,
         })),
+        ...categories.map(category => ({
+            name: category.name,
+            href: zeroHref(category.slug),
+            kind: 'category' as const,
+            tours: category.publishedTourCount,
+            image: category.heroImage,
+        })),
+        ...collections.map(collection => ({
+            name: collection.name,
+            href: zeroHref(collection.slug),
+            kind: 'collection' as const,
+            tours: undefined,
+            image: collection.heroImage,
+        })),
+    ];
+
+    const zeroEntries =
+        curatedZeroEntries.length > 0 ? curatedZeroEntries : automaticZeroEntries;
+
+    const searchZeroState = {
+        // Grouped by what the row OPENS rather than by two curated lists: the
+        // admin orders one list and the panel decides which heading each row
+        // belongs under, so a slot can never end up under the wrong heading.
+        categoriesAndHubs: zeroEntries.filter(entry => entry.kind !== 'collection'),
+        collections: zeroEntries.filter(entry => entry.kind === 'collection'),
+        /*
+         * The rows print their tour's primary category above the title, exactly
+         * as the typed results do. The listing endpoint carries the category ID
+         * but not its localized name, and this component has already fetched the
+         * island's categories - so it is a lookup, not another request. A tour
+         * whose primary category is not in that list (a sub-category, or one
+         * under the 3-tour bar) simply gets no context line, which is what the
+         * row already does with a null label.
+         */
+        topTours: topTours.data.map(hit => ({
+            ...hit,
+            categoryName:
+                categoryNameById.get(hit.primaryCategoryId ?? '') ?? null,
+        })),
+        // Dropped entirely at zero: "See all 0 tours" is a link to an empty page.
+        allTours:
+            topTours.total > 0
+                ? {
+                      label: dict.destination.listings.seeAllCount
+                          .replace('{count}', String(topTours.total))
+                          .replace('{destination}', destinationName),
+                      href: localizeHref(locale, `/${destination}/tours`),
+                  }
+                : null,
     };
 
     // Card labels for the hero typeahead live in the shared listings dictionary.

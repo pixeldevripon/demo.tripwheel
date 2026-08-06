@@ -66,6 +66,7 @@
         "toursIn": "Tours à {name}",
         "categoriesAndHubs": "Catégories et hubs",
         "collections": "Collections",
+        "topTours": "Tours populaires",
         "beyond": "Au-delà de {name}",
         "tourCount": "{count} tours",
         "tourCountOne": "1 tour",

@@ -45,6 +45,7 @@ import {
 import {
   CollectionStatus,
   HubStatus,
+  PopularLinkPlacement,
   Prisma,
   SlugEntityType,
   TourStatus,
@@ -77,6 +78,13 @@ import type { PopularLinkInputDto } from './dto/destination.dto';
  * cap cannot overflow this one.
  */
 export const POPULAR_LINK_MAX = 8;
+
+/**
+ * What a resolved link opens. The hero row does not care - every link is one
+ * word of a sentence - but the search panel groups by it, and each kind draws a
+ * different fallback glyph when its target has no photo.
+ */
+export type PopularLinkKind = 'category' | 'hub' | 'collection';
 
 @Injectable()
 export class DestinationService {
@@ -462,6 +470,7 @@ export class DestinationService {
    */
   private readonly popularTargetSelect = {
     id: true,
+    placement: true,
     displayOrder: true,
     categoryId: true,
     hubId: true,
@@ -471,6 +480,7 @@ export class DestinationService {
         id: true,
         slug: true,
         name: true,
+        heroImage: true,
         isActive: true,
         parentCategoryId: true,
       },
@@ -480,6 +490,7 @@ export class DestinationService {
         id: true,
         slug: true,
         name: true,
+        heroImage: true,
         isActive: true,
         status: true,
         destinationId: true,
@@ -490,6 +501,7 @@ export class DestinationService {
         id: true,
         slug: true,
         name: true,
+        heroImage: true,
         isActive: true,
         status: true,
         destinationId: true,
@@ -498,7 +510,12 @@ export class DestinationService {
   } as const;
 
   /**
-   * The island hero's curated "Popular" quick links, resolved and localized.
+   * One island's curated quick links for a placement, resolved and localized.
+   *
+   * Two surfaces read this: the hero's "Popular:" line, and the starting points
+   * the search field offers on focus (master 5.10). They curate the same three
+   * page types out of the island's flat namespace, so they share this resolver
+   * and differ only in `placement` and in what the caller does with a row.
    *
    * Curation decides WHICH pages are offered; it never asserts one exists. Every
    * link is re-checked here against its target's own visibility rule and dropped
@@ -514,7 +531,11 @@ export class DestinationService {
    * Returns `[]` when nothing is curated, which the frontend reads as "compose
    * the automatic row instead" - an island nobody has curated still gets links.
    */
-  async getPopularLinks(destinationSlug: string, locale: Locale = Locale.en) {
+  async getPopularLinks(
+    destinationSlug: string,
+    locale: Locale = Locale.en,
+    placement: PopularLinkPlacement = PopularLinkPlacement.HERO_POPULAR,
+  ) {
     const destination = await this.prisma.destination.findUnique({
       where: { slug: destinationSlug },
       select: { id: true, isActive: true },
@@ -524,7 +545,7 @@ export class DestinationService {
     }
 
     const links = await this.prisma.destinationPopularLink.findMany({
-      where: { destinationId: destination.id },
+      where: { destinationId: destination.id, placement },
       select: this.popularTargetSelect,
       orderBy: { displayOrder: 'asc' },
     });
@@ -574,7 +595,13 @@ export class DestinationService {
     );
     const hubTours = new Map(hubCounts.map((g) => [g.hubId, g._count._all]));
 
-    const resolved: { name: string; slug: string }[] = [];
+    const resolved: {
+      name: string;
+      slug: string;
+      kind: PopularLinkKind;
+      tours: number | null;
+      image: string | null;
+    }[] = [];
     const seen = new Set<string>();
 
     for (const link of links) {
@@ -589,6 +616,9 @@ export class DestinationService {
       resolved.push({
         name: names.get(target.id) ?? target.name,
         slug: target.slug,
+        kind: target.kind,
+        tours: target.tours,
+        image: target.heroImage,
       });
       if (resolved.length === POPULAR_LINK_MAX) break;
     }
@@ -606,6 +636,7 @@ export class DestinationService {
         id: string;
         slug: string;
         name: string;
+        heroImage: string | null;
         isActive: boolean;
         parentCategoryId: string | null;
       } | null;
@@ -613,6 +644,7 @@ export class DestinationService {
         id: string;
         slug: string;
         name: string;
+        heroImage: string | null;
         isActive: boolean;
         status: HubStatus;
         destinationId: string;
@@ -621,6 +653,7 @@ export class DestinationService {
         id: string;
         slug: string;
         name: string;
+        heroImage: string | null;
         isActive: boolean;
         status: CollectionStatus;
         destinationId: string;
@@ -631,7 +664,15 @@ export class DestinationService {
       categoryTours: Map<string, number>;
       hubTours: Map<string, number>;
     },
-  ): { id: string; slug: string; name: string } | null {
+  ): {
+    id: string;
+    slug: string;
+    name: string;
+    heroImage: string | null;
+    kind: PopularLinkKind;
+    /** Null where a count would mislead - see PopularLinkResponseDto.tours. */
+    tours: number | null;
+  } | null {
     const { category, hub, collection } = link;
 
     if (category) {
@@ -639,7 +680,7 @@ export class DestinationService {
       return category.isActive &&
         category.parentCategoryId === null &&
         live >= CATEGORY_PAGE_MIN_TOURS
-        ? category
+        ? { ...category, kind: 'category', tours: live }
         : null;
     }
     if (hub) {
@@ -648,14 +689,14 @@ export class DestinationService {
         hub.status === HubStatus.PUBLISHED &&
         hub.destinationId === destinationId &&
         live > 0
-        ? hub
+        ? { ...hub, kind: 'hub', tours: live }
         : null;
     }
     if (collection) {
       return collection.isActive &&
         collection.status === CollectionStatus.PUBLISHED &&
         collection.destinationId === destinationId
-        ? collection
+        ? { ...collection, kind: 'collection', tours: null }
         : null;
     }
     return null;
@@ -713,11 +754,14 @@ export class DestinationService {
     return byId;
   }
 
-  /** Admin read: the raw curation, unresolved and ungated, in slot order. */
-  async getPopularLinksAdmin(id: string) {
+  /** Admin read: the raw curation for one placement, unresolved and ungated. */
+  async getPopularLinksAdmin(
+    id: string,
+    placement: PopularLinkPlacement = PopularLinkPlacement.HERO_POPULAR,
+  ) {
     await this.findDestinationOrThrow(id);
     return this.prisma.destinationPopularLink.findMany({
-      where: { destinationId: id },
+      where: { destinationId: id, placement },
       select: this.popularTargetSelect,
       orderBy: { displayOrder: 'asc' },
     });
@@ -736,6 +780,7 @@ export class DestinationService {
     id: string,
     links: PopularLinkInputDto[],
     adminId: string,
+    placement: PopularLinkPlacement = PopularLinkPlacement.HERO_POPULAR,
   ) {
     await this.findDestinationOrThrow(id);
 
@@ -759,14 +804,17 @@ export class DestinationService {
 
     await this.assertPopularTargetsExist(id, links);
 
+    // Scoped to the placement on both halves: replacing the search panel must
+    // not delete the hero row, and vice versa.
     await this.prisma.$transaction(async (tx) => {
       await tx.destinationPopularLink.deleteMany({
-        where: { destinationId: id },
+        where: { destinationId: id, placement },
       });
       if (links.length > 0) {
         await tx.destinationPopularLink.createMany({
           data: links.map((link, index) => ({
             destinationId: id,
+            placement,
             categoryId: link.categoryId ?? null,
             hubId: link.hubId ?? null,
             collectionId: link.collectionId ?? null,
@@ -777,9 +825,9 @@ export class DestinationService {
     });
 
     this.logger.log(
-      `Admin ${adminId} set ${links.length} popular link(s) on destination ${id}`,
+      `Admin ${adminId} set ${links.length} ${placement} link(s) on destination ${id}`,
     );
-    return this.getPopularLinksAdmin(id);
+    return this.getPopularLinksAdmin(id, placement);
   }
 
   /**

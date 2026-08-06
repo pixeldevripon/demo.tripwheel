@@ -26,12 +26,27 @@ function EntityRow({
     href,
     onSelect,
     icon,
+    image,
     label,
     subtitle,
 }: {
     href: string;
     onSelect: () => void;
-    icon: React.ReactNode;
+    /**
+     * Glyph rows (the typed panel). Omit it and the square becomes a PHOTO slot
+     * instead - see `image`.
+     */
+    icon?: React.ReactNode;
+    /**
+     * The target page's own photo (the zero state). Passing the prop at all -
+     * even as null - makes the square a photo slot: a real photo when there is
+     * one, and otherwise the same flat `bg-it-bg` surface every image container
+     * on the site falls back to, which is exactly what the navbar Categories
+     * dropdown does for a category with no picture. Deliberately NOT a stand-in
+     * glyph: a panel of identical grey icons tells the visitor nothing about
+     * where each row goes, which is the whole job of the zero state.
+     */
+    image?: string | null;
     label: React.ReactNode;
     subtitle?: string;
 }) {
@@ -41,7 +56,17 @@ function EntityRow({
                 href={href}
                 onClick={onSelect}
                 className='flex items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-it-surface'>
-                <span className='flex size-11 shrink-0 items-center justify-center rounded-it-md bg-it-surface text-it-heading'>
+                <span
+                    className={`relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-it-md text-it-heading ${icon ? 'bg-it-surface' : 'bg-it-bg'}`}>
+                    {image && (
+                        <Image
+                            src={image}
+                            alt=''
+                            fill
+                            sizes='44px'
+                            className='object-cover'
+                        />
+                    )}
                     {icon}
                 </span>
                 <span className='min-w-0 flex-1'>
@@ -214,23 +239,34 @@ function TourRow({
 export interface SearchZeroStateEntry {
     name: string;
     href: string;
-    /** Picks the icon; collections are always `collection`. */
+    /** Picks the fallback icon; collections are always `collection`. */
     kind: 'category' | 'hub' | 'collection';
     /** Live tour count, printed as the subtitle. Omitted = no subtitle. */
     tours?: number;
+    /** The target page's own photo; falls back to the kind glyph when absent. */
+    image?: string | null;
 }
 
 /** Grouped starting points shown BEFORE the visitor types anything (master 5.10). */
 export interface SearchZeroState {
     categoriesAndHubs: SearchZeroStateEntry[];
     collections: SearchZeroStateEntry[];
+    /**
+     * The island's top-ranked live tours, rendered through the SAME `TourRow` the
+     * typed results use - a visitor who has not typed yet should still be able to
+     * recognise a tour by its photo, rating and from-price, and two row designs
+     * for one thing is how they drift apart.
+     */
+    topTours: SearchHit[];
+    /**
+     * The closing "See all N tours in {island}" link, already worded by the
+     * caller: it is the island's OWN see-all sentence (the same string the page
+     * prints further down), and only the caller knows the island name. Null when
+     * the island has no live tours, which drops the row rather than offering a
+     * link to nothing.
+     */
+    allTours: { label: string; href: string } | null;
 }
-
-const ZERO_STATE_ICON: Record<SearchZeroStateEntry['kind'], React.ReactNode> = {
-    category: <LayoutGrid size={18} strokeWidth={1.5} />,
-    hub: <MapPin size={18} strokeWidth={1.5} />,
-    collection: <Folder size={18} strokeWidth={1.5} />,
-};
 
 /**
  * Fever-style typeahead panel: entity shortcuts up top (see-all row, matched
@@ -308,53 +344,92 @@ export function SearchTypeahead({
     const zeroEntries = zeroState
         ? [...zeroState.categoriesAndHubs, ...zeroState.collections]
         : [];
-    if (query.trim().length < 2 && zeroEntries.length > 0) {
+    if (
+        query.trim().length < 2 &&
+        (zeroEntries.length > 0 || (zeroState?.topTours.length ?? 0) > 0)
+    ) {
+        // Groups render in master 5.10's order and each one is skipped when
+        // empty, so the FIRST group present owns the panel's top edge - it must
+        // not draw the divider SectionHeader puts between groups.
+        const groups: { heading: string; entries: SearchZeroStateEntry[] }[] = [
+            {
+                heading: dict.categoriesAndHubs,
+                entries: zeroState!.categoriesAndHubs,
+            },
+            { heading: dict.collections, entries: zeroState!.collections },
+        ].filter(group => group.entries.length > 0);
+
         return (
             <motion.div
                 {...dropdownMotion}
                 className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
                 <div className='max-h-[70vh] overflow-y-auto overscroll-contain'>
-                    {(
-                        [
-                            [dict.categoriesAndHubs, zeroState!.categoriesAndHubs],
-                            [dict.collections, zeroState!.collections],
-                        ] as const
-                    ).map(([heading, entries], groupIndex) =>
-                        entries.length === 0 ? null : (
-                            <div key={heading}>
-                                {/* The first header owns the panel's top edge,
-                                    so it drops the divider SectionHeader draws
-                                    between groups. */}
-                                {groupIndex === 0 ? (
-                                    <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-semibold text-it-heading'>
-                                        {heading}
-                                    </p>
-                                ) : (
-                                    <SectionHeader>{heading}</SectionHeader>
-                                )}
-                                <ul className='m-0 list-none p-0 pb-1.5'>
-                                    {entries.map(entry => (
-                                        <EntityRow
-                                            key={`${entry.kind}-${entry.href}`}
-                                            href={entry.href}
-                                            onSelect={onSelect}
-                                            icon={ZERO_STATE_ICON[entry.kind]}
-                                            label={entry.name}
-                                            subtitle={
-                                                entry.tours == null
-                                                    ? undefined
-                                                    : entry.tours === 1
-                                                      ? dict.tourCountOne
-                                                      : dict.tourCount.replace(
-                                                            '{count}',
-                                                            String(entry.tours)
-                                                        )
-                                            }
-                                        />
-                                    ))}
-                                </ul>
-                            </div>
-                        )
+                    {groups.map(({ heading, entries }, groupIndex) => (
+                        <div key={heading}>
+                            {groupIndex === 0 ? (
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-semibold text-it-heading'>
+                                    {heading}
+                                </p>
+                            ) : (
+                                <SectionHeader>{heading}</SectionHeader>
+                            )}
+                            <ul className='m-0 list-none p-0 pb-1.5'>
+                                {entries.map(entry => (
+                                    <EntityRow
+                                        key={`${entry.kind}-${entry.href}`}
+                                        href={entry.href}
+                                        onSelect={onSelect}
+                                        image={entry.image ?? null}
+                                        label={entry.name}
+                                        subtitle={
+                                            entry.tours == null
+                                                ? undefined
+                                                : entry.tours === 1
+                                                  ? dict.tourCountOne
+                                                  : dict.tourCount.replace(
+                                                        '{count}',
+                                                        String(entry.tours)
+                                                    )
+                                        }
+                                    />
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+
+                    {zeroState!.topTours.length > 0 && (
+                        <>
+                            {groups.length === 0 ? (
+                                <p className='m-0 px-4 pt-3.5 pb-1.5 text-sm font-semibold text-it-heading'>
+                                    {dict.topTours}
+                                </p>
+                            ) : (
+                                <SectionHeader>{dict.topTours}</SectionHeader>
+                            )}
+                            <ul className='m-0 list-none p-0 pb-1.5'>
+                                {zeroState!.topTours.map(hit => (
+                                    <TourRow
+                                        key={hit.id}
+                                        hit={hit}
+                                        contextLabel={hit.categoryName ?? null}
+                                        locale={locale}
+                                        currency={currency}
+                                        dict={dict}
+                                        href={tourHref(hit)}
+                                        onSelect={onSelect}
+                                    />
+                                ))}
+                            </ul>
+                        </>
+                    )}
+
+                    {zeroState!.allTours && (
+                        <Link
+                            href={zeroState!.allTours.href}
+                            onClick={onSelect}
+                            className='block border-t border-it-border px-5 py-3 text-center text-sm font-normal text-it-primary no-underline transition-colors hover:bg-it-surface'>
+                            {zeroState!.allTours.label}
+                        </Link>
                     )}
                 </div>
             </motion.div>

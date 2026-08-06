@@ -27,6 +27,7 @@ import {
   CollectionStatus,
   HubStatus,
   Locale,
+  PopularLinkPlacement,
   Region,
   SlugEntityType,
 } from '@prisma/client';
@@ -1470,6 +1471,9 @@ describe('DestinationService', () => {
           id,
           slug,
           name,
+          // Prisma returns every SELECTED column, so an unset image is null and
+          // never absent - the fixture has to say so or the row shape drifts.
+          heroImage: null,
           isActive: true,
           parentCategoryId: null,
           ...overrides,
@@ -1508,7 +1512,13 @@ describe('DestinationService', () => {
       await expect(
         service.getPopularLinks('curacao', Locale.en),
       ).resolves.toEqual([
-        { name: 'Boat Tours & Cruises', slug: 'boat-tours' },
+        {
+          name: 'Boat Tours & Cruises',
+          slug: 'boat-tours',
+          kind: 'category',
+          tours: 13,
+          image: null,
+        },
       ]);
     });
 
@@ -1713,7 +1723,10 @@ describe('DestinationService', () => {
       );
 
       expect(prisma.destinationPopularLink.deleteMany).toHaveBeenCalledWith({
-        where: { destinationId: 'dest-1' },
+        where: {
+          destinationId: 'dest-1',
+          placement: PopularLinkPlacement.HERO_POPULAR,
+        },
       });
       expect(prisma.destinationPopularLink.createMany).toHaveBeenCalledWith({
         data: [
@@ -1728,6 +1741,151 @@ describe('DestinationService', () => {
 
       expect(prisma.destinationPopularLink.deleteMany).toHaveBeenCalled();
       expect(prisma.destinationPopularLink.createMany).not.toHaveBeenCalled();
+    });
+
+    // The whole point of the placement column: two lists over one table. A
+    // delete that forgot to scope would silently wipe the hero row every time
+    // an admin saved the search panel.
+    it('replaces ONLY the named placement, leaving the other list alone', async () => {
+      prisma.category.findMany.mockResolvedValue([{ id: 'c1' }]);
+
+      await service.replacePopularLinks(
+        'dest-1',
+        [{ categoryId: 'c1' }],
+        'admin-1',
+        PopularLinkPlacement.SEARCH_PANEL,
+      );
+
+      expect(prisma.destinationPopularLink.deleteMany).toHaveBeenCalledWith({
+        where: {
+          destinationId: 'dest-1',
+          placement: PopularLinkPlacement.SEARCH_PANEL,
+        },
+      });
+      expect(prisma.destinationPopularLink.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            categoryId: 'c1',
+            placement: PopularLinkPlacement.SEARCH_PANEL,
+            displayOrder: 0,
+          }),
+        ],
+      });
+    });
+  });
+
+  // ── Search-panel placement (master 5.10) ───────────────────────────────────
+
+  describe('getPopularLinks - search panel placement', () => {
+    const DEST = { id: 'dest-1', isActive: true };
+
+    beforeEach(() => {
+      prisma.destination.findUnique.mockResolvedValue(DEST);
+    });
+
+    it('reads only the requested placement', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([]);
+
+      await service.getPopularLinks(
+        'curacao',
+        Locale.en,
+        PopularLinkPlacement.SEARCH_PANEL,
+      );
+
+      expect(prisma.destinationPopularLink.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            destinationId: 'dest-1',
+            placement: PopularLinkPlacement.SEARCH_PANEL,
+          },
+        }),
+      );
+    });
+
+    it('defaults to the hero row when no placement is named', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([]);
+
+      await service.getPopularLinks('curacao', Locale.en);
+
+      expect(prisma.destinationPopularLink.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            destinationId: 'dest-1',
+            placement: PopularLinkPlacement.HERO_POPULAR,
+          },
+        }),
+      );
+    });
+
+    // The panel groups by `kind` and prints `tours` as the row subtitle, so a
+    // row that resolved without them would render under the wrong heading.
+    it('carries kind, live tour count and the page photo on every row', async () => {
+      prisma.destinationPopularLink.findMany.mockResolvedValue([
+        {
+          id: 'link-hub',
+          displayOrder: 0,
+          categoryId: null,
+          hubId: 'hub-1',
+          collectionId: null,
+          category: null,
+          hub: {
+            id: 'hub-1',
+            slug: 'klein-curacao',
+            name: 'Klein Curaçao',
+            heroImage: 'https://cdn.example.com/klein.jpg',
+            isActive: true,
+            status: HubStatus.PUBLISHED,
+            destinationId: 'dest-1',
+          },
+          collection: null,
+        },
+        {
+          id: 'link-col',
+          displayOrder: 1,
+          categoryId: null,
+          hubId: null,
+          collectionId: 'col-1',
+          category: null,
+          hub: null,
+          collection: {
+            id: 'col-1',
+            slug: 'best-things-to-do-in-curacao',
+            name: 'Best Things to Do in Curaçao',
+            heroImage: null,
+            isActive: true,
+            status: CollectionStatus.PUBLISHED,
+            destinationId: 'dest-1',
+          },
+        },
+      ]);
+      prisma.tourHub.groupBy.mockResolvedValue([
+        { hubId: 'hub-1', _count: { _all: 13 } },
+      ]);
+
+      await expect(
+        service.getPopularLinks(
+          'curacao',
+          Locale.en,
+          PopularLinkPlacement.SEARCH_PANEL,
+        ),
+      ).resolves.toEqual([
+        {
+          name: 'Klein Curaçao',
+          slug: 'klein-curacao',
+          kind: 'hub',
+          tours: 13,
+          image: 'https://cdn.example.com/klein.jpg',
+        },
+        {
+          // Null, not zero: a collection's membership is editorial, and "0
+          // tours" under a live collection would read as broken.
+          name: 'Best Things to Do in Curaçao',
+          slug: 'best-things-to-do-in-curacao',
+          kind: 'collection',
+          tours: null,
+          image: null,
+        },
+      ]);
     });
   });
 });

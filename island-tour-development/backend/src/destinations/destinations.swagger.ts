@@ -7,6 +7,7 @@ import {
   UnauthorizedErrorDto,
 } from '@/common/dto/error-responses.dto';
 import { Locale } from '@/common/constants/locales';
+import { PopularLinkPlacement } from '@prisma/client';
 import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import {
@@ -492,17 +493,19 @@ export function ApiUpsertContentSectionTranslationDocs() {
 export function ApiGetPopularLinksDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'The island hero\'s curated "Popular" quick links (public)',
+      summary: "One island's curated quick links for a placement (public)",
       description:
         'Returns the admin-curated links, localized and RE-GATED against each ' +
         "target's own visibility rule - a category needs 3 live tours here, a hub " +
         'must be published with a live tour, a collection must be published. A ' +
         'target whose page would not open is dropped, never linked. Max 8. An ' +
-        'empty array means "not curated": the caller composes the automatic row ' +
-        '(hub, lead collection, then categories) instead.',
+        'empty array means "not curated": the caller composes the automatic list ' +
+        'instead (hub, lead collection, then categories). `placement` picks the ' +
+        'list: the hero\'s "Popular:" line or the search field\'s zero-state panel.',
     }),
     ApiParam({ name: 'slug', example: 'curacao' }),
     ApiQuery({ name: 'locale', enum: Locale, required: false }),
+    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
     ApiResponse({ status: 200, type: [PopularLinkResponseDto] }),
     ApiResponse({
       status: 404,
@@ -516,9 +519,10 @@ export function ApiGetPopularLinksDocs() {
 export function ApiGetPopularLinksAdminDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: 'The raw curated Popular slots, unresolved and ungated (Admin)',
+      summary: 'The raw curated slots for one placement, ungated (Admin)',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
     ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
     ApiResponse({ status: 404, type: NotFoundErrorDto }),
     ...adminErrors,
@@ -528,14 +532,16 @@ export function ApiGetPopularLinksAdminDocs() {
 export function ApiReplacePopularLinksDocs() {
   return applyDecorators(
     ApiOperation({
-      summary: "Replace the island's whole curated Popular row (Admin)",
+      summary: "Replace one of the island's curated lists (Admin)",
       description:
-        'Replace-all: the body is the entire row, and array position is the ' +
-        'render order. Each slot must name exactly ONE of categoryId / hubId / ' +
-        'collectionId, and hubs/collections must belong to this island. An empty ' +
-        'array clears the curation and restores the automatic row.',
+        'Replace-all WITHIN the placement: the body is that entire list, and ' +
+        'array position is the render order. The other placement is untouched. ' +
+        'Each slot must name exactly ONE of categoryId / hubId / collectionId, ' +
+        'and hubs/collections must belong to this island. An empty array clears ' +
+        'the curation and restores the automatic list.',
     }),
     ApiParam({ name: 'id', description: 'Destination UUID' }),
+    ApiQuery({ name: 'placement', enum: PopularLinkPlacement, required: false }),
     ApiResponse({ status: 200, type: [PopularLinkAdminResponseDto] }),
     ApiResponse({
       status: 400,
