@@ -30,7 +30,10 @@ import {
     useReplaceDestinationPopularLinks,
 } from '@/hooks/destinations/use-destinations';
 import { useActiveHubs } from '@/hooks/hubs/use-hubs';
-import type { PopularLinkInput } from '@/types/destination';
+import type {
+    PopularLinkInput,
+    PopularLinkPlacement,
+} from '@/types/destination';
 
 /**
  * Ceiling, not a target. mck-02 draws FOUR and four is still the shape to aim
@@ -69,33 +72,61 @@ function toPayload(value: SlotValue): PopularLinkInput | null {
 }
 
 /**
- * The island hero's curated "Popular" quick links.
+ * What each placement is called and how it behaves when nobody curates it. Kept
+ * as data rather than branching in the JSX: the two lists are the same editor
+ * over the same three page types, and only the words differ.
+ */
+const PLACEMENT_COPY: Record<
+    PopularLinkPlacement,
+    { title: string; description: (max: number) => string }
+> = {
+    HERO_POPULAR: {
+        title: 'Hero "Popular" links',
+        description: max =>
+            `Quick links under this island's hero search, in order. Four is the shape the design uses; up to ${max} are allowed, though each extra one takes attention from the rest. Empty falls back to the automatic row, and a link whose page is not live is skipped on the site.`,
+    },
+    SEARCH_PANEL: {
+        title: 'Search panel starting points',
+        description: max =>
+            `What the search field offers the moment a visitor clicks it, before they type. Categories and hubs are grouped first, then collections - the order here decides the order inside each group. Up to ${max}. The island's top tours and a "See all" link are added automatically below them. Empty falls back to the island's own live pages.`,
+    },
+};
+
+/**
+ * One island's curated quick links, for either placement.
  *
- * Curation rather than an automatic ranking because "Popular" is an editorial
- * claim: no order over live data produced the row the founder wanted for
- * Curacao, since Off-Road Tours is fifth by sort order and joint-fourth by tour
- * count and so fell outside a row of four however it was sorted.
+ * Curation rather than an automatic ranking because both surfaces make an
+ * editorial claim: no order over live data produced the row the founder wanted
+ * for Curacao, since Off-Road Tours is fifth by sort order and joint-fourth by
+ * tour count and so fell outside a row of four however it was sorted.
  *
- * Leave every slot empty and the island falls back to the automatic row (its
+ * Leave every slot empty and the island falls back to its automatic list (its
  * hub, its lead collection, then its categories), which is what an uncurated
  * island gets.
  *
  * One Save for the whole section: the endpoint is replace-all, and slot order is
  * assigned from position there, so a per-slot save would let two open editors
- * interleave into an order neither of them chose.
+ * interleave into an order neither of them chose. The two placements save
+ * independently, so editing one never disturbs the other.
  */
 export function DestinationPopularLinksForm({
     destinationId,
     destinationSlug,
+    placement = 'HERO_POPULAR',
 }: {
     destinationId: string;
     destinationSlug: string;
+    placement?: PopularLinkPlacement;
 }) {
-    const { data: links, isLoading } = useDestinationPopularLinks(destinationId);
+    const { data: links, isLoading } = useDestinationPopularLinks(
+        destinationId,
+        placement
+    );
     const { data: hubs } = useActiveHubs(destinationId);
     const { data: collections } = useCollectionsByDestination(destinationSlug);
     const { data: categories } = useActiveCategories();
     const { mutate: save, isPending } = useReplaceDestinationPopularLinks();
+    const copy = PLACEMENT_COPY[placement];
 
     /*
      * The rows are the links themselves, not a fixed grid of slots. A blank row
@@ -126,13 +157,13 @@ export function DestinationPopularLinksForm({
             .filter((entry): entry is PopularLinkInput => entry !== null);
 
         save(
-            { id: destinationId, links: payload },
+            { id: destinationId, links: payload, placement },
             {
                 onSuccess: () =>
                     toast.success(
                         payload.length === 0
-                            ? 'Cleared - this island is back on the automatic row'
-                            : `Saved ${payload.length} popular link${payload.length === 1 ? '' : 's'}`
+                            ? 'Cleared - this island is back on the automatic list'
+                            : `Saved ${payload.length} link${payload.length === 1 ? '' : 's'}`
                     ),
                 onError: (error: Error) => toast.error(error.message),
             }
@@ -143,14 +174,10 @@ export function DestinationPopularLinksForm({
         <Card>
             <CardHeader className='border-b pb-4'>
                 <CardTitle className='text-lg font-medium'>
-                    Hero &ldquo;Popular&rdquo; links
+                    {copy.title}
                 </CardTitle>
                 <FieldDescription>
-                    Quick links under this island&rsquo;s hero search, in order.
-                    Four is the shape the design uses; up to {MAX_LINKS} are
-                    allowed, though each extra one takes attention from the
-                    rest. Empty falls back to the automatic row, and a link
-                    whose page is not live is skipped on the site.
+                    {copy.description(MAX_LINKS)}
                 </FieldDescription>
             </CardHeader>
             <CardContent className='pt-6'>

@@ -11,6 +11,7 @@ import type {
   Locale,
   PaginatedDestinations,
   PopularLinkInput,
+  PopularLinkPlacement,
   UpdateDestinationPayload,
   UpdateFaqPayload,
   UpsertPageContentPayload,
@@ -129,19 +130,31 @@ export const destinationsApi = {
     });
   },
 
-  getPopularLinks(id: string): Promise<DestinationPopularLink[]> {
-    return apiFetch<DestinationPopularLink[]>(`/destinations/${id}/popular-links`);
+  getPopularLinks(
+    id: string,
+    placement: PopularLinkPlacement = 'HERO_POPULAR',
+  ): Promise<DestinationPopularLink[]> {
+    return apiFetch<DestinationPopularLink[]>(
+      `/destinations/${id}/popular-links?placement=${placement}`,
+    );
   },
 
-  /** Replace-all: the payload is the WHOLE row, in render order. */
+  /**
+   * Replace-all WITHIN one placement: the payload is that whole list, in render
+   * order. The island's other list is untouched.
+   */
   replacePopularLinks(
     id: string,
     links: PopularLinkInput[],
+    placement: PopularLinkPlacement = 'HERO_POPULAR',
   ): Promise<DestinationPopularLink[]> {
-    return apiFetch<DestinationPopularLink[]>(`/destinations/${id}/popular-links`, {
-      method: 'PUT',
-      body: JSON.stringify({ links }),
-    });
+    return apiFetch<DestinationPopularLink[]>(
+      `/destinations/${id}/popular-links?placement=${placement}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ links }),
+      },
+    );
   },
 
   forceDelete(id: string): Promise<{ message: string }> {

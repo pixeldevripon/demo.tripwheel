@@ -57,20 +57,40 @@ export function DestinationEditView({
                         value: 'details',
                         label: 'Details',
                         content: (
-                            <DestinationForm
-                                destination={destination}
-                                /* Its own card + save: the hero row is a
-                                   separate replace-all resource, not a field on
-                                   the destination, so one button must not write
-                                   two endpoints. Passed as a slot so it lands
-                                   ABOVE the Danger Zone, which stays last. */
-                                afterForm={
-                                    <DestinationPopularLinksForm
-                                        destinationId={id}
-                                        destinationSlug={destination.slug}
-                                    />
-                                }
-                            />
+                            <DestinationForm destination={destination} />
+                        ),
+                    },
+                    {
+                        /*
+                         * Its own tab rather than a slot under Details.
+                         *
+                         * Neither list is a field on the destination - each is a
+                         * separate replace-all resource with its own Save, and
+                         * two of them stacked under a form that has its own Save
+                         * put three buttons on one screen. They are also the
+                         * only place an admin curates what the island offers
+                         * before a visitor has typed anything, which is a job,
+                         * not a detail of the record.
+                         *
+                         * The two stay TOGETHER on this tab: they curate the
+                         * same three page types, and reading them side by side
+                         * is how you notice the hero and the search panel have
+                         * drifted apart.
+                         */
+                        value: 'curation',
+                        label: 'Curation',
+                        content: (
+                            <div className='space-y-6'>
+                                <DestinationPopularLinksForm
+                                    destinationId={id}
+                                    destinationSlug={destination.slug}
+                                />
+                                <DestinationPopularLinksForm
+                                    destinationId={id}
+                                    destinationSlug={destination.slug}
+                                    placement='SEARCH_PANEL'
+                                />
+                            </div>
                         ),
                     },
                     {

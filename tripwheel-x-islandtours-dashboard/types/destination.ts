@@ -144,8 +144,15 @@ export interface UpdateFaqPayload {
 }
 
 /**
- * One curated hero "Popular" slot, as the admin editor sees it - the raw target
- * ids, NOT the resolved row. Exactly one of the three is set.
+ * Which of an island's two curated lists a slot belongs to. One table, two
+ * surfaces on the public site: the "Popular:" line under the hero search, and
+ * the starting points the search field offers on focus (master 5.10).
+ */
+export type PopularLinkPlacement = 'HERO_POPULAR' | 'SEARCH_PANEL';
+
+/**
+ * One curated slot, as the admin editor sees it - the raw target ids, NOT the
+ * resolved row. Exactly one of the three is set.
  *
  * Ungated on purpose: the editor must show what an admin actually chose, even
  * when that page is currently below its visibility bar. The public resolver
@@ -153,6 +160,7 @@ export interface UpdateFaqPayload {
  */
 export interface DestinationPopularLink {
   id: string;
+  placement: PopularLinkPlacement;
   displayOrder: number;
   categoryId: string | null;
   hubId: string | null;

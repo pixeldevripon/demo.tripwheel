@@ -80,19 +80,11 @@ type DestinationFormValues = z.infer<typeof destinationSchema>;
 interface DestinationFormProps {
     destination?: DestinationDetail;
     onSuccess?: (destination: DestinationDetail) => void;
-    /**
-     * Extra sections for this tab, rendered between the form card and the Danger
-     * Zone. A slot rather than a sibling in the parent, because the Danger Zone
-     * lives in here and must stay LAST on the screen - anything appended after
-     * <DestinationForm /> lands below it.
-     */
-    afterForm?: React.ReactNode;
 }
 
 export function DestinationForm({
     destination,
     onSuccess,
-    afterForm,
 }: DestinationFormProps) {
     const router = useRouter();
     const isEditMode = !!destination;
@@ -465,8 +457,6 @@ export function DestinationForm({
                     </form>
                 </CardContent>
             </Card>
-
-            {afterForm}
 
             {isEditMode && destination && can('DELETE_DESTINATION') && (
                 <Card className='border-destructive/30 ring-destructive/10'>
