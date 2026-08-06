@@ -410,7 +410,11 @@ export function TourReviewsSection({
         <section
             id='tour-reviews'
             data-hydrated={hydrated ? 'true' : undefined}
-            className='flex scroll-mt-36 flex-col gap-8'>
+            // `max-md:not-first:mt-2` mirrors `TourSection`: this is the last
+            // block in the same stack but builds its own <section>, so without
+            // it the reviews seam stayed 34px on mobile while every seam above
+            // opened to 42 (Pastel #34).
+            className='flex scroll-mt-36 flex-col gap-8 max-md:not-first:mt-2'>
             {/* Header + rating summary */}
             <div className='flex flex-col gap-4'>
                 <div className='flex flex-col gap-2'>
@@ -1083,4 +1087,3 @@ function PhotoLightbox({
         </div>
     );
 }
-

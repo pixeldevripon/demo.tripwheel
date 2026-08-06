@@ -507,6 +507,23 @@ export async function TourDetailContent({
                                 images={galleryImages}
                                 title={title}
                                 showAllPhotosLabel={tourDict.showAllPhotos}
+                                // Mobile placement of Save/Share: on the photo,
+                                // top-right. The gallery renders this inside
+                                // its own `lg:hidden` slider, so it disappears
+                                // with it at lg+ where the header pair takes
+                                // over (Pastel #33/#36).
+                                actions={
+                                    <TourHeaderActions
+                                        tourId={detail.id}
+                                        title={title}
+                                        variant='overlay'
+                                        dict={{
+                                            save: tourDict.save,
+                                            share: tourDict.share,
+                                            linkCopied: tourDict.linkCopied,
+                                        }}
+                                    />
+                                }
                             />
                             {quickInfo.length > 0 && (
                                 <div className='mt-[18px] flex flex-wrap gap-2 md:gap-3'>
@@ -555,26 +572,11 @@ export async function TourDetailContent({
                                 Real availability (remaining spots, sold-out) still
                                 lands with the availability wiring (checklist §4). */}
                             <MountReveal delay={0.15}>
-                                {/* Save/Share, mobile placement only. At lg+
-                                    they render in the header instead, level
-                                    with the meta line - which is what lets the
-                                    booking card start at the gallery's top edge
-                                    rather than a row below it (Pastel #33).
-                                    A second instance, not a moved one: the two
-                                    live in different grid containers, and both
-                                    read the same wishlist provider, so their
-                                    saved state cannot diverge. */}
-                                <div className='mb-2.5 lg:hidden'>
-                                    <TourHeaderActions
-                                        tourId={detail.id}
-                                        title={title}
-                                        dict={{
-                                            save: tourDict.save,
-                                            share: tourDict.share,
-                                            linkCopied: tourDict.linkCopied,
-                                        }}
-                                    />
-                                </div>
+                                {/* No Save/Share row here any more: at lg+ the
+                                    pair sits in the header (Pastel #33), below
+                                    lg it is overlaid on the photo (#36), and a
+                                    row of its own was costing a whole line of
+                                    phone screen for two small buttons. */}
                                 <TourBookingCard
                                     dict={tourDict.booking}
                                     data={buildTourBookingData(detail)}

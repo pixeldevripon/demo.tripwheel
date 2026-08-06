@@ -70,12 +70,10 @@ export function TourDetailSkeleton() {
                             <TourGallerySkeleton />
                             <TourReviewsPreviewSkeleton />
                         </div>
-                        {/* Right rail = Save/Share (mobile placement) + card. */}
+                        {/* Right rail = the booking card, at every width. Save/
+                            Share have no row of their own any more: header at
+                            lg+, overlaid on the photo below it. */}
                         <div className='lg:sticky lg:top-24'>
-                            <div className='mb-2.5 flex items-center justify-end gap-2 lg:hidden'>
-                                <Bar className='h-[34px] w-[86px] rounded-it-full' />
-                                <Bar className='h-[34px] w-[86px] rounded-it-full' />
-                            </div>
                             <TourBookingCardSkeleton />
                         </div>
                     </div>

@@ -14,23 +14,29 @@ export type TourHeaderActionsDict = {
 };
 
 /**
- * The tour header's Save / Share pair - the header's only interactive portion,
- * isolated as the client leaf (the header itself stays a server component).
+ * The tour's Save / Share pair, in one of two placements:
+ *
+ * - `pill` (desktop): labelled white pills at the right end of the header row.
+ * - `overlay` (mobile): small icon-only discs over the top-right of the hero
+ *   photo, where they cost no vertical space of their own (Pastel #36).
  *
  * Save toggles the wishlist (guests are routed to /login by the provider) and
  * fills the heart while saved. Share opens the native share sheet where the
- * browser has one; otherwise it copies the URL and swaps the label to a brief
- * "Link copied" confirmation.
+ * browser has one; otherwise it copies the URL and confirms briefly - as a
+ * label swap on the pills, and as a check glyph on the discs, which have no
+ * label to swap.
  */
 export function TourHeaderActions({
     tourId,
     title,
     dict,
+    variant = 'pill',
 }: {
     tourId: string;
     /** Tour title - the share sheet's headline. */
     title: string;
     dict: TourHeaderActionsDict;
+    variant?: 'pill' | 'overlay';
 }) {
     const { isSaved, toggle } = useWishlist();
     const saved = isSaved(tourId);
@@ -57,17 +63,27 @@ export function TourHeaderActions({
         }
     }
 
-    // Design v2 .wtool pills: bordered white pills above the booking widget
-    // (GAP-18), 13px bold, paper hover.
-    const actionClass =
-        'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-bold leading-[1.2] text-it-ink transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg';
-    const actionLabel = '';
+    const overlay = variant === 'overlay';
+
+    // Design v2 .wtool pills: bordered white pills, 13px bold, paper hover.
+    //
+    // The overlay discs are 34px of visible white on the photo, with the touch
+    // target taken back out to 44px by an invisible `before:` box (-5px on each
+    // side). Sizing the disc itself at 44px to satisfy the target floor made
+    // two chrome-heavy circles sit on the hero; the tap area is not the thing
+    // that has to be seen. They carry no border - white on a photo is contrast
+    // enough.
+    const actionClass = overlay
+        ? 'relative grid size-[34px] cursor-pointer place-items-center rounded-it-full border-none bg-it-white/94 shadow-it-sm backdrop-blur-[2px] before:absolute before:-inset-[5px] before:content-[""]'
+        : 'inline-flex cursor-pointer items-center gap-[7px] rounded-it-full border border-it-border bg-it-white px-3.5 py-2 text-[13px] font-bold leading-[1.2] text-it-ink transition-colors duration-(--it-duration-xs) ease-(--it-ease) hover:bg-it-bg';
+    const iconClass = overlay ? 'size-[15px] shrink-0' : 'size-4 shrink-0';
 
     return (
         <div className='flex shrink-0 items-center justify-end gap-2'>
             <motion.button
                 type='button'
                 aria-pressed={saved}
+                aria-label={overlay ? dict.save : undefined}
                 onClick={() => toggle(tourId)}
                 whileTap={{ scale: 0.97 }}
                 transition={springPop}
@@ -81,36 +97,63 @@ export function TourHeaderActions({
                     alt=''
                     width={24}
                     height={24}
-                    className='size-4 shrink-0'
+                    className={iconClass}
                 />
-                <span className={actionLabel}>{dict.save}</span>
+                {!overlay && <span>{dict.save}</span>}
             </motion.button>
             <motion.button
                 type='button'
                 onClick={share}
+                aria-label={overlay ? dict.share : undefined}
                 whileTap={{ scale: 0.97 }}
                 transition={springPop}
                 className={actionClass}>
-                <Image
-                    src='/icons/share-outline.svg'
-                    alt=''
-                    width={24}
-                    height={24}
-                    className='size-4 shrink-0'
-                />
-                <AnimatePresence mode='wait' initial={false}>
-                    <motion.span
-                        key={copied ? 'copied' : 'share'}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={swapFade}
-                        className={actionLabel}>
-                        {copied ? dict.linkCopied : dict.share}
-                    </motion.span>
-                </AnimatePresence>
+                {overlay ? (
+                    // No label to swap, so the confirmation is the glyph: the
+                    // share arrow becomes a check for the same 2s.
+                    <AnimatePresence mode='wait' initial={false}>
+                        <motion.span
+                            key={copied ? 'copied' : 'share'}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={swapFade}
+                            className='grid place-items-center'>
+                            <Image
+                                src={
+                                    copied
+                                        ? '/icons/filters/check-deep.svg'
+                                        : '/icons/share-outline.svg'
+                                }
+                                alt=''
+                                width={24}
+                                height={24}
+                                className={iconClass}
+                            />
+                        </motion.span>
+                    </AnimatePresence>
+                ) : (
+                    <>
+                        <Image
+                            src='/icons/share-outline.svg'
+                            alt=''
+                            width={24}
+                            height={24}
+                            className={iconClass}
+                        />
+                        <AnimatePresence mode='wait' initial={false}>
+                            <motion.span
+                                key={copied ? 'copied' : 'share'}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={swapFade}>
+                                {copied ? dict.linkCopied : dict.share}
+                            </motion.span>
+                        </AnimatePresence>
+                    </>
+                )}
             </motion.button>
         </div>
     );
 }
-

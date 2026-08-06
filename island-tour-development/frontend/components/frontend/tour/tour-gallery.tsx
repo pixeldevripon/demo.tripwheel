@@ -32,10 +32,18 @@ export function TourGallery({
     images,
     title,
     showAllPhotosLabel,
+    actions,
 }: {
     images: TourGalleryImage[];
     title: string;
     showAllPhotosLabel: string;
+    /**
+     * Save/Share, overlaid on the top-right of the MOBILE slider only - the
+     * desktop collage keeps them outside, in the header row (Pastel #33/#36).
+     * Rendered above the tap-to-open layer, and clear of the arrows (centred),
+     * the indicator (bottom-centre) and "Show all photos" (bottom-right).
+     */
+    actions?: React.ReactNode;
 }) {
     const [hero, ...rest] = images.slice(0, 5);
     const [open, setOpen] = useState(false);
@@ -115,6 +123,9 @@ export function TourGallery({
                         />
                     </motion.div>
                 </button>
+                {actions && (
+                    <div className='absolute top-3 right-3 z-20'>{actions}</div>
+                )}
                 {images.length > 1 && (
                     <>
                         <motion.button
@@ -350,4 +361,3 @@ export function TourGallery({
         </div>
     );
 }
-
