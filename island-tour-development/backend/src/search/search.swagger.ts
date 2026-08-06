@@ -28,15 +28,18 @@ export function ApiSearchSuggestDocs() {
       summary: 'Typeahead suggestions across entity types (public)',
       description:
         'Feeds the navbar search dropdown: matched categories (with a ' +
-        'destination-scoped LIVE-tour count), matched published hubs, tours ' +
-        'inside the active destination, and a "beyond" strip of tours from ' +
-        'other destinations when `destinationSlug` is set. Same matching ' +
-        'rules as GET /search, small fixed page sizes.',
+        'destination-scoped LIVE-tour count), matched published hubs, matched ' +
+        'published collections, tours inside the active destination, and a ' +
+        '"beyond" strip of tours from other destinations when ' +
+        '`destinationSlug` is set. Same matching rules as GET /search, small ' +
+        'fixed page sizes. Every category/hub/collection carries `image` - ' +
+        "that page's own hero photo, nullable - so the dropdown row can show " +
+        'where it leads instead of a generic glyph.',
     }),
     ApiResponse({
       status: 200,
       description:
-        'Suggestion buckets: { query, total, categories, hubs, tours, beyondTours }',
+        'Suggestion buckets: { query, total, categories, hubs, collections, tours, beyondTours }',
     }),
     ApiResponse({ status: 400, type: BadRequestErrorDto }),
     ApiResponse({ status: 500, type: InternalServerErrorDto }),

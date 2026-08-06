@@ -1020,6 +1020,7 @@ export class ToursService {
             id: true,
             slug: true,
             name: true,
+            heroImage: true,
             translations: { where: { locale }, select: { name: true } },
             _count: {
               select: { tourCategories: { where: { tour: liveTourWhere } } },
@@ -1045,6 +1046,7 @@ export class ToursService {
             id: true,
             slug: true,
             name: true,
+            heroImage: true,
             translations: { where: { locale }, select: { name: true } },
             destination: { select: { slug: true, name: true } },
           },
@@ -1064,6 +1066,7 @@ export class ToursService {
             id: true,
             slug: true,
             name: true,
+            heroImage: true,
             translations: { where: { locale }, select: { name: true } },
             destination: { select: { slug: true, name: true } },
           },
@@ -1116,6 +1119,15 @@ export class ToursService {
     return {
       query: term,
       total,
+      /*
+       * `image` is the target page's OWN hero photo, on every entity bucket.
+       * The panel renders one row shape whether the visitor has typed or not,
+       * so the typed state cannot fall back to generic glyphs while the zero
+       * state shows photos - three identical grey squares tell a shopper
+       * nothing about where each row leads. Null is fine and expected: the row
+       * then draws the same flat surface every image container on the site
+       * falls back to.
+       */
       // Master §2.4: a category page only exists at >= CATEGORY_PAGE_MIN_TOURS,
       // so suggesting a thinner one offers a 404 as an autocomplete result.
       categories: categories
@@ -1125,12 +1137,14 @@ export class ToursService {
           id: c.id,
           slug: c.slug,
           name: c.translations[0]?.name?.trim() || c.name,
+          image: c.heroImage,
           tourCount: c._count.tourCategories,
         })),
       hubs: hubs.map((h) => ({
         id: h.id,
         slug: h.slug,
         name: h.translations[0]?.name?.trim() || h.name,
+        image: h.heroImage,
         destinationSlug: h.destination.slug,
         destinationName: h.destination.name,
       })),
@@ -1138,6 +1152,7 @@ export class ToursService {
         id: c.id,
         slug: c.slug,
         name: c.translations[0]?.name?.trim() || c.name,
+        image: c.heroImage,
         destinationSlug: c.destination.slug,
         destinationName: c.destination.name,
       })),
