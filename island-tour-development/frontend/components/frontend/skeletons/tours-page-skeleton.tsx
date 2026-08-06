@@ -39,37 +39,44 @@ export function ToursHeaderSkeleton() {
 }
 
 /**
- * Filter row + grid head (mirrors the v2 ToursFilterBar): the full-width
- * hairline band of chip bars, then the counter line in the container.
+ * Filter row + grid head (mirrors the v2 ToursFilterBar): ONE hairline band -
+ * chip bars, then the counter line - because the real toolbar sticks as one
+ * surface and the skeleton has to settle into it without a jump.
  */
 export function ToursToolbarSkeleton() {
     return (
-        <>
-            <div className='mt-3.5 border-b border-it-divider py-3'>
-                <div className='it-container flex items-center gap-2.5 overflow-hidden'>
+        <div className='mt-3.5 border-b border-it-divider py-3'>
+            <div className='it-container flex items-center gap-2.5 overflow-hidden max-md:flex-wrap max-md:gap-y-2.5'>
+                {/* Control strip - one line at every width. */}
+                <div className='flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden md:contents'>
                     {Array.from({ length: 3 }).map((_, i) => (
                         <Bar
                             key={i}
                             className='h-[39px] w-24 shrink-0 rounded-it-full'
                         />
                     ))}
-                    <span
-                        className='mx-1 h-[38px] w-px shrink-0 bg-it-border'
-                        aria-hidden='true'
-                    />
+                </div>
+                <span
+                    className='mx-1 h-[38px] w-px shrink-0 bg-it-border max-md:hidden'
+                    aria-hidden='true'
+                />
+                {/* Category track - its own line below md, so the skeleton
+                    is the same two lines the real toolbar settles into. */}
+                <div className='flex min-w-0 items-center gap-1.5 overflow-hidden max-md:w-full md:flex-1'>
                     {Array.from({ length: 4 }).map((_, i) => (
                         <Bar
                             key={i}
-                            className='h-[39px] w-28 shrink-0 rounded-it-full max-sm:hidden'
+                            className='h-[34px] w-28 shrink-0 rounded-it-full md:h-[39px]'
                         />
                     ))}
-                    <Bar className='ml-auto hidden h-[21px] w-40 shrink-0 rounded-it-xs lg:block' />
                 </div>
             </div>
-            <div className='it-container pt-[18px] pb-3.5'>
+            {/* Grid head - counter left, Sort pinned right. */}
+            <div className='it-container flex items-center gap-3 pt-3.5'>
                 <Bar className='h-[22px] w-28 rounded-it-xs' />
+                <Bar className='ml-auto h-[21px] w-40 shrink-0 rounded-it-xs' />
             </div>
-        </>
+        </div>
     );
 }
 

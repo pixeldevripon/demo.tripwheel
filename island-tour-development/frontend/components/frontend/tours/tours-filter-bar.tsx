@@ -15,9 +15,11 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useFinePointer } from '@/hooks/use-fine-pointer';
+import { useScrollOverflow } from '@/hooks/use-scroll-overflow';
 import type { Currency, Locale } from '@/lib/constants/locales';
 import { formatPlural, type PluralForms } from '@/lib/i18n/plural';
-import { springPop } from '@/lib/motion';
+import { springPop, swapFade } from '@/lib/motion';
 import {
     buildToursHref,
     DEFAULT_GUESTS,
@@ -127,16 +129,198 @@ const CHIP_ACTIVE =
 const CHIP_BASE =
     'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-it-full border text-[13.5px] font-bold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease)';
 
+// Edge fade over the category track. `pointer-events-none` is load-bearing: the
+// fade sits ON TOP of the first/last chip, and without it that chip stops taking
+// clicks. `-inset-y-1`/`-left-1` cover the track's focus-ring padding (see the
+// `-m-1 p-1` pair below) so no unfaded sliver shows at either end.
+const TRACK_FADE =
+    'pointer-events-none absolute -inset-y-1 w-10 to-transparent transition-opacity duration-(--it-duration-sm) ease-(--it-ease)';
+
+/**
+ * One horizontally-scrolling row of chips that NEVER wraps (master 3.12:
+ * "horizontal scroll on overflow"). Wrapping pushes the rest of the toolbar
+ * down and breaks the single-row band.
+ *
+ * ONLY the track scrolls - whatever sits beside it stays put. Trackpad, touch
+ * and mouse-drag all come from `useDragScroll`; tab-focusing a chip that sits
+ * off screen scrolls it back into view, and the track carries 4px of padding
+ * (cancelled by `-m-1`) so the focus ring is never clipped by its own overflow.
+ *
+ * The chevrons are gated on POINTER CAPABILITY, not width: a narrow desktop
+ * window is still mouse-only and needs them, a touch laptop already swipes and
+ * must not get them.
+ */
+function ScrollTrack({
+    /** Names the row in the chevrons' accessible labels ("Scroll {label} left"). */
+    label,
+    className,
+    trackClassName,
+    children,
+}: {
+    label: string;
+    /** Layout of the wrapper inside the toolbar row. */
+    className?: string;
+    /** Gap (and any md+ wrap override) for the track itself. */
+    trackClassName?: string;
+    children: React.ReactNode;
+}) {
+    const trackRef = useDragScroll<HTMLDivElement>();
+    const { left, right, scrollByPage } = useScrollOverflow(trackRef);
+    const finePointer = useFinePointer();
+
+    return (
+        <div
+            className={cn(
+                'group relative flex min-w-0 items-center',
+                className
+            )}>
+            <div
+                ref={trackRef}
+                className={cn(
+                    '-m-1 flex items-center overflow-x-auto scroll-px-1 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                    trackClassName
+                )}>
+                {children}
+            </div>
+
+            {/* Fades: right while more waits to the right, left once you have
+                scrolled away from the start. */}
+            <span
+                aria-hidden='true'
+                className={cn(
+                    TRACK_FADE,
+                    '-left-1 bg-linear-to-r from-it-white',
+                    left ? 'opacity-100' : 'opacity-0'
+                )}
+            />
+            <span
+                aria-hidden='true'
+                className={cn(
+                    TRACK_FADE,
+                    '-right-1 bg-linear-to-l from-it-white',
+                    right ? 'opacity-100' : 'opacity-0'
+                )}
+            />
+
+            {finePointer && left && (
+                <TrackScrollButton
+                    direction={-1}
+                    label={`Scroll ${label} left`}
+                    onScroll={scrollByPage}
+                />
+            )}
+            {finePointer && right && (
+                <TrackScrollButton
+                    direction={1}
+                    label={`Scroll ${label} right`}
+                    onScroll={scrollByPage}
+                />
+            )}
+        </div>
+    );
+}
+
+/** Category quick-filter chips, in a track that never wraps. */
+function CategoryChipTrack({
+    categories,
+    selected,
+    onToggle,
+    onPrefetch,
+}: {
+    categories: FilterCategory[];
+    /** Optimistic selection - the chips settle to server truth after the nav. */
+    selected: string[];
+    onToggle: (cat: FilterCategory) => void;
+    onPrefetch: (cat: FilterCategory) => void;
+}) {
+    return (
+        <ScrollTrack
+            label='categories'
+            className='max-md:w-full md:flex-1'
+            trackClassName='gap-1.5'>
+            {categories.map(cat => {
+                const active = selected.includes(cat.slug);
+                return (
+                    <motion.button
+                        key={cat.slug}
+                        type='button'
+                        aria-pressed={active}
+                        onClick={() => onToggle(cat)}
+                        onPointerEnter={() => onPrefetch(cat)}
+                        onFocus={event => {
+                            onPrefetch(cat);
+                            // Keyboard users must never focus something they
+                            // cannot see. `nearest` on both axes moves the
+                            // track the minimum needed and leaves the page
+                            // scroll alone.
+                            event.currentTarget.scrollIntoView({
+                                block: 'nearest',
+                                inline: 'nearest',
+                            });
+                        }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={springPop}
+                        className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[11px] py-[7px] text-[12.5px] font-semibold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-it-primary md:px-[13px] md:py-[9px] md:text-[13px] ${
+                            active
+                                ? 'bg-it-primary-subtle text-it-primary-hover'
+                                : 'bg-transparent text-it-ink hover:bg-it-bg'
+                        }`}>
+                        {cat.label}
+                    </motion.button>
+                );
+            })}
+        </ScrollTrack>
+    );
+}
+
+/**
+ * Prev/next disc over a track's edge fade. Rendered only on mouse-only devices
+ * and only on the side that still hides content, then revealed on hovering the
+ * track (or tabbing into it) - a control that is always on top of the first and
+ * last chip is in the way the rest of the time.
+ */
+function TrackScrollButton({
+    direction,
+    label,
+    onScroll,
+}: {
+    direction: 1 | -1;
+    label: string;
+    onScroll: (direction: 1 | -1) => void;
+}) {
+    return (
+        <motion.button
+            type='button'
+            aria-label={label}
+            onClick={() => onScroll(direction)}
+            whileTap={{ scale: 0.9 }}
+            transition={springPop}
+            className={`pointer-events-none absolute top-1/2 z-1 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-it-full border border-it-border bg-it-white opacity-0 shadow-it-sm transition-opacity duration-(--it-duration-sm) ease-(--it-ease) group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 ${
+                direction === -1 ? 'left-0' : 'right-0'
+            }`}>
+            <Image
+                src='/icons/filters/pager-arrow-ink.svg'
+                alt=''
+                width={24}
+                height={24}
+                className={`size-3.5 shrink-0 ${direction === -1 ? 'rotate-180' : ''}`}
+            />
+        </motion.button>
+    );
+}
+
 /**
  * Tours filter & sort toolbar - design v2 `.frow` + `.gridhead`.
  *
  * The filter row is a full-width band, sticky under the navbar (backdrop blur +
- * hairline): Date / Travelers / Filters control chips, a vertical divider, the
- * category quick-filter chips, and the sort control pinned right on desktop.
- * On mobile the whole row scrolls horizontally as one strip.
+ * hairline): Date / Travelers / Filters control chips, a vertical divider, then
+ * the category quick-filter chips. Below md the controls keep line 1 and the
+ * category track takes line 2; each scrolls on its own, so the controls never
+ * move when the chips do.
  *
  * The grid head below it (inside the container) carries the result counter,
- * the applied category chips (removable pills) and "Clear all".
+ * the applied category chips (removable pills), "Clear all" - and Sort, pinned
+ * to its right edge.
  */
 export function ToursFilterBar({
     dict,
@@ -161,11 +345,11 @@ export function ToursFilterBar({
     const pathname = usePathname();
     const { startNav } = useToursNav();
 
-    // Grab-to-slide the horizontally-overflowing strips with a plain mouse
-    // (same affordance as the tab bars); no-ops on touch and when the content
-    // fits. Mobile: row 1 and the grid head each scroll as one strip.
-    const row1Ref = useDragScroll<HTMLDivElement>();
-    const metaRowRef = useDragScroll<HTMLDivElement>();
+    // Grab-to-slide the control strip with a plain mouse (same affordance as the
+    // tab bars); no-ops on touch and when the content fits, so it only bites
+    // below md, where the four controls can outrun the viewport. The two chip
+    // rows carry their own (`ScrollTrack`).
+    const controlsRef = useDragScroll<HTMLDivElement>();
 
     // Categories render optimistically: a chip toggle flips its own state on
     // click (inside the nav transition) and only settles back to the server truth
@@ -326,260 +510,282 @@ export function ToursFilterBar({
 
     return (
         <>
-            {/* ── Filter row (.frow) - sticky under the navbar, full-width
-                band with backdrop blur + hairline. Mobile: one horizontally
-                scrolling strip. ── */}
-            <div className='sticky top-16 z-35 mt-3.5 border-b border-it-divider bg-(--it-frow-bg) py-3 backdrop-blur-[8px]'>
-                <div
-                    ref={row1Ref}
-                    className='it-container flex items-center gap-2.5 max-md:flex-nowrap max-md:overflow-x-auto max-md:pb-0.5 [scrollbar-width:none] md:overflow-visible [&::-webkit-scrollbar]:hidden'>
-                    {/* Date - calendar popover. The clear control is a SIBLING
+            {/* ── Sticky toolbar (.frow + .gridhead) - the filter row AND the
+                grid head ride under the navbar as ONE surface, so the applied
+                filters, the count and Sort stay reachable down a long grid.
+                One band, therefore one hairline, at its bottom edge.
+
+                OPAQUE, not the frosted `--it-frow-bg` (96% white + blur) the
+                shorter bars use: at 120-205px tall the 4% that shows through
+                turned every card title scrolling behind it into a ghost line in
+                the padding strip under the navbar, which reads as a gap. ── */}
+            <div className='sticky top-16 z-35 mt-3.5 border-b border-it-divider bg-it-white py-3'>
+                {/* Filter row: one line on desktop; below md the controls keep
+                    line 1 and the category track drops to line 2 (four controls
+                    plus the chips cannot share 390px, and the chips are the
+                    half that must never wrap). */}
+                <div className='it-container flex items-center gap-2.5 max-md:flex-wrap max-md:gap-y-2.5'>
+                    {/* Control strip - Date / Travelers / Filters / Sort. Its
+                        own scrolling line below md; at md+ `display: contents`
+                        dissolves the wrapper so all four sit directly in the
+                        row and the toolbar is a single line. */}
+                    <div
+                        ref={controlsRef}
+                        className='flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto [scrollbar-width:none] md:contents [&::-webkit-scrollbar]:hidden'>
+                        {/* Date - calendar popover. The clear control is a SIBLING
                         of the trigger (a button's descendants are
                         presentational to the accessibility tree, so a nested
                         control would be unreachable). */}
-                    <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                        <div
-                            className={cn(
-                                CHIP_BASE,
-                                date ? CHIP_ACTIVE : CHIP_INACTIVE
-                            )}>
+                        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                            <div
+                                className={cn(
+                                    CHIP_BASE,
+                                    date ? CHIP_ACTIVE : CHIP_INACTIVE
+                                )}>
+                                <PopoverTrigger asChild>
+                                    <motion.button
+                                        type='button'
+                                        transition={springPop}
+                                        className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent py-[9px] pl-[15px] text-inherit ${date ? 'pr-1' : 'pr-[15px]'}`}>
+                                        <Image
+                                            src='/icons/calendar-soft.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-[15px] shrink-0'
+                                        />
+                                        {date
+                                            ? format(date, 'd MMM')
+                                            : dict.selectDate}
+                                    </motion.button>
+                                </PopoverTrigger>
+                                {date && (
+                                    <motion.button
+                                        type='button'
+                                        aria-label={dict.clearDate}
+                                        whileTap={{ scale: 0.9 }}
+                                        transition={springPop}
+                                        onClick={() =>
+                                            applyState({ date: null })
+                                        }
+                                        className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent pl-0.5 pr-2.5'>
+                                        <Image
+                                            src='/icons/filters/close-deep.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-3 shrink-0'
+                                        />
+                                    </motion.button>
+                                )}
+                            </div>
+                            <PopoverContent
+                                align='start'
+                                sideOffset={10}
+                                className='w-auto rounded-it-lg border-none bg-it-white p-0 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
+                                <Calendar
+                                    mode='single'
+                                    selected={date}
+                                    onSelect={selected => {
+                                        applyState({
+                                            date: selected
+                                                ? format(selected, 'yyyy-MM-dd')
+                                                : null,
+                                        });
+                                        setDateOpen(false);
+                                    }}
+                                    disabled={{ before: new Date() }}
+                                    autoFocus
+                                    className='bg-it-white [--cell-radius:8px]'
+                                />
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Travelers - stepper popover (locked Adults Selector) */}
+                        <Popover
+                            open={guestsOpen}
+                            onOpenChange={onGuestsOpenChange}>
                             <PopoverTrigger asChild>
                                 <motion.button
                                     type='button'
                                     transition={springPop}
-                                    className={`flex h-full cursor-pointer items-center gap-2 whitespace-nowrap border-none bg-transparent py-[9px] pl-[15px] text-inherit ${date ? 'pr-1' : 'pr-[15px]'}`}>
+                                    className={cn(
+                                        CHIP_BASE,
+                                        'cursor-pointer px-[15px] py-[9px]',
+                                        CHIP_INACTIVE
+                                    )}>
                                     <Image
-                                        src='/icons/calendar-soft.svg'
+                                        src='/icons/filters/person-soft.svg'
                                         alt=''
                                         width={24}
                                         height={24}
                                         className='size-[15px] shrink-0'
                                     />
-                                    {date
-                                        ? format(date, 'd MMM')
-                                        : dict.selectDate}
+                                    {guestsLabel}
                                 </motion.button>
                             </PopoverTrigger>
-                            {date && (
-                                <motion.button
-                                    type='button'
-                                    aria-label={dict.clearDate}
-                                    whileTap={{ scale: 0.9 }}
-                                    transition={springPop}
-                                    onClick={() => applyState({ date: null })}
-                                    className='grid h-full shrink-0 cursor-pointer place-items-center border-none bg-transparent pl-0.5 pr-2.5'>
-                                    <Image
-                                        src='/icons/filters/close-deep.svg'
-                                        alt=''
-                                        width={24}
-                                        height={24}
-                                        className='size-3 shrink-0'
-                                    />
-                                </motion.button>
-                            )}
-                        </div>
-                        <PopoverContent
-                            align='start'
-                            sideOffset={10}
-                            className='w-auto rounded-it-lg border-none bg-it-white p-0 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
-                            <Calendar
-                                mode='single'
-                                selected={date}
-                                onSelect={selected => {
-                                    applyState({
-                                        date: selected
-                                            ? format(selected, 'yyyy-MM-dd')
-                                            : null,
-                                    });
-                                    setDateOpen(false);
-                                }}
-                                disabled={{ before: new Date() }}
-                                autoFocus
-                                className='bg-it-white [--cell-radius:8px]'
+                            <PopoverContent
+                                align='start'
+                                sideOffset={10}
+                                className='w-[300px] rounded-it-lg border-none bg-it-white p-4 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
+                                <div className='flex flex-col'>
+                                    {(
+                                        [
+                                            'adults',
+                                            'children',
+                                            'infants',
+                                        ] as const
+                                    ).map((type, i, arr) => {
+                                        const t = dict.guestTypes[type];
+                                        const min = type === 'adults' ? 1 : 0;
+                                        return (
+                                            <div
+                                                key={type}
+                                                className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
+                                                <div>
+                                                    <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
+                                                        {t.label}
+                                                    </b>
+                                                    <span className='text-[12px] leading-[1.6] text-it-text-muted'>
+                                                        {t.hint}
+                                                    </span>
+                                                </div>
+                                                <div className='flex items-center gap-3'>
+                                                    <motion.button
+                                                        type='button'
+                                                        aria-label={`Decrease ${type}`}
+                                                        disabled={
+                                                            guestDraft[type] <=
+                                                            min
+                                                        }
+                                                        onClick={() =>
+                                                            stepGuest(type, -1)
+                                                        }
+                                                        whileTap={
+                                                            guestDraft[type] >
+                                                            min
+                                                                ? { scale: 0.9 }
+                                                                : undefined
+                                                        }
+                                                        transition={springPop}
+                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                        −
+                                                    </motion.button>
+                                                    <i className='min-w-[18px] text-center text-[15px] not-italic font-bold text-it-ink tabular-nums'>
+                                                        {guestDraft[type]}
+                                                    </i>
+                                                    <motion.button
+                                                        type='button'
+                                                        aria-label={`Increase ${type}`}
+                                                        disabled={
+                                                            guestDraft[type] >=
+                                                            20
+                                                        }
+                                                        onClick={() =>
+                                                            stepGuest(type, 1)
+                                                        }
+                                                        whileTap={
+                                                            guestDraft[type] <
+                                                            20
+                                                                ? { scale: 0.9 }
+                                                                : undefined
+                                                        }
+                                                        transition={springPop}
+                                                        className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
+                                                        +
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <motion.button
+                                        type='button'
+                                        onClick={() =>
+                                            onGuestsOpenChange(false)
+                                        }
+                                        whileTap={{ scale: 0.98 }}
+                                        transition={springPop}
+                                        className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-bold text-it-white'>
+                                        {dict.applyGuests}
+                                    </motion.button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Filters - opens the Filters modal */}
+                        <motion.button
+                            type='button'
+                            onClick={() => setFilterOpen(true)}
+                            transition={springPop}
+                            className={cn(
+                                CHIP_BASE,
+                                'cursor-pointer px-[15px] py-[9px]',
+                                activeFilterCount > 0
+                                    ? CHIP_ACTIVE
+                                    : CHIP_INACTIVE
+                            )}>
+                            <Image
+                                src='/icons/filters/filter-lines-soft.svg'
+                                alt=''
+                                width={24}
+                                height={24}
+                                className='size-[15px] shrink-0'
                             />
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* Travelers - stepper popover (locked Adults Selector) */}
-                    <Popover
-                        open={guestsOpen}
-                        onOpenChange={onGuestsOpenChange}>
-                        <PopoverTrigger asChild>
-                            <motion.button
-                                type='button'
-                                transition={springPop}
-                                className={cn(
-                                    CHIP_BASE,
-                                    'cursor-pointer px-[15px] py-[9px]',
-                                    CHIP_INACTIVE
-                                )}>
-                                <Image
-                                    src='/icons/filters/person-soft.svg'
-                                    alt=''
-                                    width={24}
-                                    height={24}
-                                    className='size-[15px] shrink-0'
-                                />
-                                {guestsLabel}
-                            </motion.button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                            align='start'
-                            sideOffset={10}
-                            className='w-[300px] rounded-it-lg border-none bg-it-white p-4 text-it-ink shadow-it-lg duration-300 ease-(--it-ease)'>
-                            <div className='flex flex-col'>
-                                {(
-                                    ['adults', 'children', 'infants'] as const
-                                ).map((type, i, arr) => {
-                                    const t = dict.guestTypes[type];
-                                    const min = type === 'adults' ? 1 : 0;
-                                    return (
-                                        <div
-                                            key={type}
-                                            className={`flex items-center justify-between py-[9px] ${i < arr.length - 1 ? 'border-b border-it-divider' : ''}`}>
-                                            <div>
-                                                <b className='block text-[14px] font-bold leading-[1.6] text-it-ink'>
-                                                    {t.label}
-                                                </b>
-                                                <span className='text-[12px] leading-[1.6] text-it-text-muted'>
-                                                    {t.hint}
-                                                </span>
-                                            </div>
-                                            <div className='flex items-center gap-3'>
-                                                <motion.button
-                                                    type='button'
-                                                    aria-label={`Decrease ${type}`}
-                                                    disabled={
-                                                        guestDraft[type] <= min
-                                                    }
-                                                    onClick={() =>
-                                                        stepGuest(type, -1)
-                                                    }
-                                                    whileTap={
-                                                        guestDraft[type] > min
-                                                            ? { scale: 0.9 }
-                                                            : undefined
-                                                    }
-                                                    transition={springPop}
-                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
-                                                    −
-                                                </motion.button>
-                                                <i className='min-w-[18px] text-center text-[15px] not-italic font-bold text-it-ink tabular-nums'>
-                                                    {guestDraft[type]}
-                                                </i>
-                                                <motion.button
-                                                    type='button'
-                                                    aria-label={`Increase ${type}`}
-                                                    disabled={
-                                                        guestDraft[type] >= 20
-                                                    }
-                                                    onClick={() =>
-                                                        stepGuest(type, 1)
-                                                    }
-                                                    whileTap={
-                                                        guestDraft[type] < 20
-                                                            ? { scale: 0.9 }
-                                                            : undefined
-                                                    }
-                                                    transition={springPop}
-                                                    className='grid size-[30px] cursor-pointer place-items-center rounded-full border border-it-border bg-it-white text-[16px] font-bold text-it-ink disabled:cursor-default disabled:opacity-30'>
-                                                    +
-                                                </motion.button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                <motion.button
-                                    type='button'
-                                    onClick={() => onGuestsOpenChange(false)}
-                                    whileTap={{ scale: 0.98 }}
-                                    transition={springPop}
-                                    className='mt-3 w-full cursor-pointer rounded-it-sm border-none bg-it-dark py-[11px] text-[14px] font-bold text-it-white'>
-                                    {dict.applyGuests}
-                                </motion.button>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* Filters - opens the Filters modal */}
-                    <motion.button
-                        type='button'
-                        onClick={() => setFilterOpen(true)}
-                        transition={springPop}
-                        className={cn(
-                            CHIP_BASE,
-                            'cursor-pointer px-[15px] py-[9px]',
-                            activeFilterCount > 0 ? CHIP_ACTIVE : CHIP_INACTIVE
-                        )}>
-                        <Image
-                            src='/icons/filters/filter-lines-soft.svg'
-                            alt=''
-                            width={24}
-                            height={24}
-                            className='size-[15px] shrink-0'
-                        />
-                        {dict.filters}
-                        {activeFilterCount > 0 && (
-                            <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-bold leading-none text-it-white tabular-nums'>
-                                {activeFilterCount}
-                            </span>
-                        )}
-                    </motion.button>
+                            {dict.filters}
+                            {activeFilterCount > 0 && (
+                                <span className='inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-it-full bg-it-primary px-1 text-[10.5px] font-bold leading-none text-it-white tabular-nums'>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </motion.button>
+                    </div>
 
                     {!lockCategory && categories.length > 0 && (
                         <>
-                            {/* Vertical divider between controls and chips */}
+                            {/* Vertical divider between controls and chips -
+                                desktop only; below md the two sit on their own
+                                lines and a rule between them means nothing. */}
                             <span
-                                className='mx-1 w-px shrink-0 self-stretch bg-it-border'
+                                className='mx-1 w-px shrink-0 self-stretch bg-it-border max-md:hidden'
                                 aria-hidden='true'
                             />
 
-                            {/* Category quick-filter chips: navigation-styled
-                                pills (borderless, paper hover, tint when
-                                active). Wrap on desktop, ride the row scroll
-                                on mobile. */}
-                            {/* Mobile: flex-none + w-max so the chips size to
-                                their content and ride the row scroll (flex-1's
-                                zero basis would squeeze them over the sort
-                                control). Desktop: grow + wrap. */}
-                            <div className='flex items-center gap-1.5 max-md:w-max max-md:flex-none max-md:flex-nowrap md:min-w-0 md:flex-1 md:flex-wrap'>
-                                {categories.map(cat => {
-                                    const active =
-                                        optimisticCategories.includes(cat.slug);
-                                    // Prefetch the toggled-on result (the common intent).
-                                    const prefetch = () =>
-                                        !active &&
-                                        prefetchState({
-                                            categories: [
-                                                ...optimisticCategories,
-                                                cat.slug,
-                                            ],
-                                        });
-                                    return (
-                                        <motion.button
-                                            key={cat.slug}
-                                            type='button'
-                                            aria-pressed={active}
-                                            onClick={() => toggleCategory(cat)}
-                                            onPointerEnter={prefetch}
-                                            onFocus={prefetch}
-                                            whileTap={{ scale: 0.99 }}
-                                            transition={springPop}
-                                            className={`shrink-0 cursor-pointer whitespace-nowrap rounded-it-full border border-transparent px-[13px] py-[9px] text-[13px] font-semibold leading-[1.6] transition-colors duration-(--it-duration-xs) ease-(--it-ease) ${
-                                                active
-                                                    ? 'bg-it-primary-subtle text-it-primary-hover'
-                                                    : 'bg-transparent text-it-ink hover:bg-it-bg'
-                                            }`}>
-                                            {cat.label}
-                                        </motion.button>
-                                    );
-                                })}
-                            </div>
+                            {/* Category quick-filter chips - one scrolling line,
+                                never wrapping. */}
+                            <CategoryChipTrack
+                                categories={categories}
+                                selected={optimisticCategories}
+                                onToggle={toggleCategory}
+                                onPrefetch={cat => {
+                                    // Prefetch the toggled-on result (the common
+                                    // intent); an active chip's click removes it,
+                                    // which is not worth a warm fetch.
+                                    if (optimisticCategories.includes(cat.slug))
+                                        return;
+                                    prefetchState({
+                                        categories: [
+                                            ...optimisticCategories,
+                                            cat.slug,
+                                        ],
+                                    });
+                                }}
+                            />
                         </>
                     )}
+                </div>
 
-                    {/* Sort - pinned right on desktop, flows inline below lg */}
-                    <div className='flex shrink-0 items-center lg:ml-auto'>
+                {/* Grid head (.gridhead) - counter + applied chips + clear all,
+                    with Sort pinned right. Sort sits HERE rather than in the
+                    filter row (master 3.12 draws it in the row) so the band
+                    above is the category track's alone and the chips get the
+                    full width. */}
+                <div className='it-container flex flex-wrap items-center gap-3 gap-y-2.5 pt-3.5'>
+                    <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
+                        {counterLabel} {dict.toursWord}
+                    </p>
+
+                    {/* Sort - right edge of the counter row. */}
+                    <div className='ml-auto flex shrink-0 items-center'>
                         <Popover open={sortOpen} onOpenChange={setSortOpen}>
                             <PopoverTrigger asChild>
                                 <motion.button
@@ -637,67 +843,61 @@ export function ToursFilterBar({
                             </PopoverContent>
                         </Popover>
                     </div>
+
+                    {/* Applied chips + clear all - their own line ABOVE the
+                    counter at every width (`order-first`): four pills alongside
+                    the counter and Sort crowd the row and clip on the way out.
+                    Same track as the categories, so a long selection scrolls
+                    with the same fades and chevrons instead of clipping "Clear
+                    all" off the edge. Rendered only when something is applied -
+                    an empty row would still eat a `gap-y` band. */}
+                    {(chips.length > 0 || activeFilterCount > 0) && (
+                        <ScrollTrack
+                            label='applied filters'
+                            className='order-first w-full'
+                            trackClassName='gap-3'>
+                            {/* A plain fade, deliberately NOT `layout`: the pills
+                            scroll, so a FLIP animation made a new pill fly in
+                            from wherever the previous layout put it - a long
+                            diagonal from below on a two-line row. */}
+                            <AnimatePresence initial={false}>
+                                {chips.map(chip => (
+                                    <motion.button
+                                        key={chip.slug}
+                                        type='button'
+                                        onClick={() => removeChip(chip.slug)}
+                                        initial={{ opacity: 0, scale: 0.96 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.96 }}
+                                        transition={swapFade}
+                                        whileTap={{ scale: 0.95 }}
+                                        className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
+                                        {chip.label}
+                                        <Image
+                                            src='/icons/filters/close-deep.svg'
+                                            alt=''
+                                            width={24}
+                                            height={24}
+                                            className='size-3 shrink-0'
+                                        />
+                                    </motion.button>
+                                ))}
+                            </AnimatePresence>
+
+                            <button
+                                type='button'
+                                onClick={clearAll}
+                                className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
+                                {dict.clearAll}
+                            </button>
+                        </ScrollTrack>
+                    )}
                 </div>
             </div>
 
-            {/* ── Grid head (.gridhead) - counter + applied chips + clear all.
-                Mobile: one scrolling strip (clear-all reachable by scroll). ── */}
-            <div
-                ref={metaRowRef}
-                className='it-container flex items-center gap-3 overflow-x-auto pt-[18px] pb-3.5 [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden'>
-                <p className='m-0 shrink-0 whitespace-nowrap text-[14px] font-bold leading-[1.6] text-it-ink tabular-nums'>
-                    {counterLabel} {dict.toursWord}
-                </p>
-
-                <AnimatePresence initial={false}>
-                    {chips.map(chip => (
-                        <motion.button
-                            key={chip.slug}
-                            type='button'
-                            onClick={() => removeChip(chip.slug)}
-                            layout
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.9,
-                                transition: { duration: 0.1 },
-                            }}
-                            whileTap={{ scale: 0.95 }}
-                            className='inline-flex shrink-0 cursor-pointer items-center gap-[7px] whitespace-nowrap rounded-it-full border border-it-primary/25 bg-it-primary-subtle px-[11px] py-1.5 text-[12.5px] font-bold leading-[1.2] text-it-primary-hover'>
-                            {chip.label}
-                            <Image
-                                src='/icons/filters/close-deep.svg'
-                                alt=''
-                                width={24}
-                                height={24}
-                                className='size-3 shrink-0'
-                            />
-                        </motion.button>
-                    ))}
-                </AnimatePresence>
-
-                <AnimatePresence initial={false}>
-                    {(chips.length > 0 || activeFilterCount > 0) && (
-                        <motion.button
-                            key='clear-all'
-                            type='button'
-                            onClick={clearAll}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            whileTap={{ scale: 0.97 }}
-                            transition={springPop}
-                            className='shrink-0 cursor-pointer whitespace-nowrap border-none bg-transparent p-0 text-[12.5px] font-bold leading-[1.6] text-it-text-muted underline underline-offset-2'>
-                            {dict.clearAll}
-                        </motion.button>
-                    )}
-                </AnimatePresence>
-            </div>
-
-            {/* Filters modal - rendered OUTSIDE the sticky band: the band's
-                backdrop-filter creates a containing block, which would trap
-                the modal's `position: fixed` inside it. */}
+            {/* Filters modal - rendered OUTSIDE the sticky band, which is its
+                own stacking context; a `position: fixed` overlay nested in it
+                would be positioned against the band, not the viewport. */}
             <ToursFilterModal
                 open={filterOpen}
                 onClose={() => setFilterOpen(false)}
@@ -722,4 +922,3 @@ export function ToursFilterBar({
         </>
     );
 }
-

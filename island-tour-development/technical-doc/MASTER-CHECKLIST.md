@@ -628,6 +628,21 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] Filter bar + Filters modal (locked Filters-button pattern, not facet pills — 🔴 Must Fix satisfied)
 - [x] Sort control locked to exactly 3 options (Locals' favourites default, Price low→high, Price high→low) — 🔴 Must Fix satisfied
 - [x] Category chips in the filter row as navigation links to `/{locale}/{destination}/{category-slug}/` — 🔴 Must Fix satisfied
+- [x] Category chips **never wrap** (§3.12 "horizontal scroll on overflow", Pastel #31): one
+  scrolling track (`CategoryChipTrack` in `tours-filter-bar.tsx`) carrying trackpad/touch/drag
+  scroll, `scrollIntoView` on focus, `pointer-events:none` edge fades and prev/next chevrons gated
+  on `matchMedia('(hover:hover) and (pointer:fine)')` + `(any-pointer:coarse)` — pointer
+  CAPABILITY, never a breakpoint, so a narrow desktop window keeps them and a touch laptop does
+  not. Below md the controls keep line 1 and the track takes line 2. Mirrored in the mockups
+  (`final design/all-tours.html`, `category.html`)
+- [~] **Deviation from §3.12, founder-approved (Pastel #31 follow-up, 2026-08-06):** Sort no longer
+  sits in the filter row - it moved down into the grid head, right-aligned on the counter row, so
+  the band above belongs to the category track alone. The applied-filter pills + "Clear all" also
+  take their own line above the counter at every width (four pills alongside the counter and Sort
+  crowded the row and clipped the last one). Master still draws Sort in the filter row
+- [x] Filter row **and grid head** are ONE sticky surface under the navbar (founder, 2026-08-06):
+  the applied filters, the count and Sort stay reachable down a long grid. One band, so one
+  hairline, at its bottom edge. Sticky height ~159px desktop / ~205px mobile with a filter applied
 - [x] No "Explore by type" category-card section on All Tours — 🔴 Must Fix satisfied
 - [~] Date pill (`tours-date-pill`) exists in the filter row, but `date` is not part of the tours URL filter model (Phase 3), so it does not actually filter availability
 - [~] Trust strip below the grid: `ToursTrustStrip` renders, but the four locked checkmarks + "Questions? Chat on WhatsApp →" inline link and mobile vertical stacking are unverified (🟠 Important)
