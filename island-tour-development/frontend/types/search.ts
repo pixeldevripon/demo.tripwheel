@@ -65,10 +65,15 @@ export interface SearchHit {
 
 // ── Typeahead suggestions (GET /search/suggest) ─────────────────────────────
 
+/**
+ * The target page's own hero photo, on every entity bucket. Nullable - a page
+ * with no photo renders the flat fallback surface, never a stand-in glyph.
+ */
 export interface SuggestCategory {
   id: string;
   slug: string;
   name: string;
+  image: string | null;
   tourCount: number;
 }
 
@@ -76,6 +81,7 @@ export interface SuggestHub {
   id: string;
   slug: string;
   name: string;
+  image: string | null;
   destinationSlug: string;
   destinationName: string;
 }
@@ -89,6 +95,7 @@ export interface SuggestCollection {
   id: string;
   slug: string;
   name: string;
+  image: string | null;
   destinationSlug: string;
   destinationName: string;
 }

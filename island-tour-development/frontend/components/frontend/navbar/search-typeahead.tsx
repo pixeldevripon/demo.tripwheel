@@ -1,9 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronRight, Folder, LayoutGrid, MapPin, Search } from 'lucide-react';
+import { ChevronRight, Folder, MapPin, Search } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     isCurrency,
@@ -11,6 +12,7 @@ import {
     type Locale,
 } from '@/lib/constants/locales';
 import { formatPriceFrom } from '@/lib/currency/current';
+import { safeRemoteImage } from '@/lib/images/remote-hosts';
 import { dropdownMotion } from '@/lib/motion';
 import { formatDuration } from '@/lib/tours/listing';
 import type { SearchHit, SearchSuggest } from '@/types/search';
@@ -33,23 +35,30 @@ function EntityRow({
     href: string;
     onSelect: () => void;
     /**
-     * Glyph rows (the typed panel). Omit it and the square becomes a PHOTO slot
+     * Glyph rows. Reserved for rows that are not a PLACE - the "see all results
+     * for <query>" shortcut. Omit it and the square becomes a PHOTO slot
      * instead - see `image`.
      */
     icon?: React.ReactNode;
     /**
-     * The target page's own photo (the zero state). Passing the prop at all -
-     * even as null - makes the square a photo slot: a real photo when there is
-     * one, and otherwise the same flat `bg-it-bg` surface every image container
-     * on the site falls back to, which is exactly what the navbar Categories
-     * dropdown does for a category with no picture. Deliberately NOT a stand-in
-     * glyph: a panel of identical grey icons tells the visitor nothing about
-     * where each row goes, which is the whole job of the zero state.
+     * The target page's own photo. Passing the prop at all - even as null -
+     * makes the square a photo slot: a real photo when there is one, and
+     * otherwise the same flat `bg-it-bg` surface every image container on the
+     * site falls back to, which is exactly what the navbar Categories dropdown
+     * does for a category with no picture. Deliberately NOT a stand-in glyph: a
+     * panel of identical grey icons tells the visitor nothing about where each
+     * row goes, which is the whole job of the panel. Every destination,
+     * category, hub and collection row uses this, typed or not.
      */
     image?: string | null;
     label: React.ReactNode;
     subtitle?: string;
 }) {
+    // These URLs are admin-entered and arrive from the API, and `next/image`
+    // THROWS mid-render on a host it was not configured for. Guarding here
+    // covers every caller at once, so one bad row degrades to the flat square
+    // instead of taking down the panel.
+    const src = safeRemoteImage(image);
     return (
         <li>
             <Link
@@ -57,13 +66,13 @@ function EntityRow({
                 onClick={onSelect}
                 className='flex items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-it-surface'>
                 <span
-                    className={`relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-it-md text-it-heading ${icon ? 'bg-it-surface' : 'bg-it-bg'}`}>
-                    {image && (
+                    className={`relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-it-md text-it-heading ${icon ? 'bg-it-surface' : 'bg-it-bg'}`}>
+                    {src && (
                         <Image
-                            src={image}
+                            src={src}
                             alt=''
                             fill
-                            sizes='44px'
+                            sizes='56px'
                             className='object-cover'
                         />
                     )}
@@ -98,6 +107,89 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
     );
 }
 
+/** Breathing room between the panel's bottom edge and the viewport's. */
+const PANEL_BOTTOM_GUTTER = 16;
+
+/**
+ * The dropdown shell: chrome, entrance motion, and a scroll area bounded by the
+ * space actually left below the panel.
+ *
+ * A fixed `70vh` was wrong because the panel is anchored under the search bar,
+ * not to the viewport - and that bar sits ~40% down the hero. 70vh of panel
+ * starting there runs well past the fold, so the last rows and the "see all"
+ * link were unreachable without scrolling the PAGE behind an open dropdown.
+ * Measuring instead makes the same component behave in the navbar (top of the
+ * screen, lots of room) and in a hero (little room) without either being tuned
+ * by hand.
+ *
+ * `visualViewport` over `innerHeight`: when the mobile keyboard opens it is the
+ * only one that reports the shrunken area, which is exactly the moment this
+ * panel is on screen.
+ *
+ * There is deliberately NO minimum height. A floor is self-defeating - the one
+ * case it triggers in is the one case there is no room, so it re-creates the
+ * overflow it was meant to soften. A short panel is honest and still scrolls,
+ * and because `scroll` is one of the measured events, scrolling the page to
+ * lift the input grows the panel on the way up.
+ */
+function Panel({ children }: { children: React.ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [maxHeight, setMaxHeight] = useState<number | null>(null);
+
+    useEffect(() => {
+        const measure = () => {
+            const el = ref.current;
+            if (!el) return;
+            const viewport = window.visualViewport?.height ?? window.innerHeight;
+            /*
+             * The panel's OWN rect is unusable here: it is mid-entrance-animation
+             * on the first measure, and getBoundingClientRect bakes the
+             * transform in, so the gutter came out ~10px short. `offsetTop` is
+             * layout position and ignores transforms; the offset parent is the
+             * search wrapper, which never animates - so this pair is the
+             * settled top no matter when it runs.
+             */
+            const parent = el.offsetParent;
+            const top = parent
+                ? parent.getBoundingClientRect().top + el.offsetTop
+                : el.getBoundingClientRect().top;
+            // Never negative: an input scrolled past the fold would otherwise
+            // ask for a negative max-height, which browsers ignore - putting
+            // the unbounded panel back.
+            setMaxHeight(Math.max(0, viewport - top - PANEL_BOTTOM_GUTTER));
+        };
+        measure();
+
+        // Page scroll moves the panel through the viewport; resize and the
+        // visual-viewport events cover rotation and the mobile keyboard.
+        window.addEventListener('resize', measure);
+        window.addEventListener('scroll', measure, { passive: true });
+        window.visualViewport?.addEventListener('resize', measure);
+        window.visualViewport?.addEventListener('scroll', measure);
+        return () => {
+            window.removeEventListener('resize', measure);
+            window.removeEventListener('scroll', measure);
+            window.visualViewport?.removeEventListener('resize', measure);
+            window.visualViewport?.removeEventListener('scroll', measure);
+        };
+    }, []);
+
+    return (
+        <motion.div
+            ref={ref}
+            {...dropdownMotion}
+            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
+            {/* The class is the pre-measurement fallback (first paint, and any
+                browser without visualViewport); the measured value overrides it. */}
+            <div
+                className='max-h-[70vh] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                style={maxHeight === null ? undefined : { maxHeight }}>
+                {children}
+            </div>
+        </motion.div>
+    );
+}
+
 /** A tour hit row - image, context line, title, price line. */
 function TourRow({
     hit,
@@ -125,6 +217,9 @@ function TourRow({
         hit.durationMinutesTo,
         dict
     );
+    // Same guard as EntityRow - an operator-entered image URL on an unexpected
+    // host would otherwise throw inside `next/image` and take the panel down.
+    const tourImage = safeRemoteImage(hit.images[0]?.url);
     const meta: React.ReactNode[] = [];
     if (hit.aggregateReviewCount > 0) {
         meta.push(
@@ -150,10 +245,15 @@ function TourRow({
                 href={href}
                 onClick={onSelect}
                 className='flex items-center gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-it-surface'>
+                {/* 56px, the same square EntityRow uses. ONE thumbnail size for
+                    every row in the panel: two sizes put the text column at two
+                    different x positions, so the left edge staggered as you
+                    scanned down - the squares themselves were never the
+                    problem. Unified UP, so no photo got smaller. */}
                 <span className='relative size-14 shrink-0 overflow-hidden rounded-it-md bg-it-surface'>
-                    {hit.images[0]?.url && (
+                    {tourImage && (
                         <Image
-                            src={hit.images[0].url}
+                            src={tourImage}
                             alt=''
                             fill
                             sizes='56px'
@@ -317,9 +417,15 @@ export function SearchTypeahead({
     hubHref: (destinationSlug: string, slug: string) => string;
     /**
      * Matched destinations - rendered before every other bucket (homepage hero).
-     * `tours` is the island's live tour count, shown as the row's subtitle.
+     * `tours` is the island's live tour count, shown as the row's subtitle;
+     * `image` is the island's hero photo, same as every other entity row.
      */
-    destinations?: { name: string; slug: string; tours?: number }[];
+    destinations?: {
+        name: string;
+        slug: string;
+        tours?: number;
+        image?: string | null;
+    }[];
     destinationHref?: (slug: string) => string;
     /**
      * Starting points for an empty query. Omit it and a short query simply
@@ -360,10 +466,8 @@ export function SearchTypeahead({
         ].filter(group => group.entries.length > 0);
 
         return (
-            <motion.div
-                {...dropdownMotion}
-                className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
-                <div className='max-h-[70vh] overflow-y-auto overscroll-contain'>
+            <Panel>
+                <>
                     {groups.map(({ heading, entries }, groupIndex) => (
                         <div key={heading}>
                             {groupIndex === 0 ? (
@@ -431,15 +535,13 @@ export function SearchTypeahead({
                             {zeroState!.allTours.label}
                         </Link>
                     )}
-                </div>
-            </motion.div>
+                </>
+            </Panel>
         );
     }
 
     return (
-        <motion.div
-            {...dropdownMotion}
-            className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 origin-top overflow-hidden rounded-it-sm border border-it-border-subtle bg-it-white shadow-it-lg'>
+        <Panel>
             {loading && !hasAnything ? (
                 <p className='m-0 px-5 py-4 text-sm text-it-ink-muted'>
                     {dict.searching}
@@ -449,7 +551,7 @@ export function SearchTypeahead({
                     {dict.noResults.replace('{query}', query)}
                 </p>
             ) : (
-                <div className='max-h-[70vh] overflow-y-auto overscroll-contain'>
+                <>
                     {/* ── Entity shortcuts ── */}
                     <ul className='m-0 list-none p-0 py-1.5'>
                         {/* Destinations always outrank every other bucket. */}
@@ -459,9 +561,7 @@ export function SearchTypeahead({
                                     key={d.slug}
                                     href={destinationHref(d.slug)}
                                     onSelect={onSelect}
-                                    icon={
-                                        <MapPin size={18} strokeWidth={1.5} />
-                                    }
+                                    image={d.image ?? null}
                                     label={d.name}
                                     subtitle={
                                         d.tours == null
@@ -490,12 +590,7 @@ export function SearchTypeahead({
                                     key={cat.id}
                                     href={categoryHref(cat.slug)}
                                     onSelect={onSelect}
-                                    icon={
-                                        <LayoutGrid
-                                            size={18}
-                                            strokeWidth={1.5}
-                                        />
-                                    }
+                                    image={cat.image}
                                     label={cat.name}
                                     subtitle={
                                         cat.tourCount === 1
@@ -512,7 +607,7 @@ export function SearchTypeahead({
                                 key={hub.id}
                                 href={hubHref(hub.destinationSlug, hub.slug)}
                                 onSelect={onSelect}
-                                icon={<MapPin size={18} strokeWidth={1.5} />}
+                                image={hub.image}
                                 label={hub.name}
                                 subtitle={hub.destinationName}
                             />
@@ -527,7 +622,7 @@ export function SearchTypeahead({
                                     collection.slug
                                 )}
                                 onSelect={onSelect}
-                                icon={<Folder size={18} strokeWidth={1.5} />}
+                                image={collection.image}
                                 label={collection.name}
                                 subtitle={collection.destinationName}
                             />
@@ -598,9 +693,9 @@ export function SearchTypeahead({
                             )}
                         </Link>
                     )}
-                </div>
+                </>
             )}
-        </motion.div>
+        </Panel>
     );
 }
 
