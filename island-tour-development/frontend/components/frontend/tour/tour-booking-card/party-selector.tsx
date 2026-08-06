@@ -1,6 +1,7 @@
 'use client';
 
 import { useBooking } from '@/hooks/tours/use-booking';
+import { formatPlural } from '@/lib/i18n/plural';
 import { springPop } from '@/lib/motion';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
@@ -34,12 +35,14 @@ export function PartySelector() {
         effectiveMax,
         partyMin,
         setBandCount,
+        locale,
     } = useBooking();
 
     // UNIT (charter) tours count "guests"; everything else counts "travelers".
-    const travelersLabel = (isUnit ? dict.guests : dict.travelers).replace(
-        '{count}',
-        String(travelerCount)
+    const travelersLabel = formatPlural(
+        isUnit ? dict.guests : dict.travelers,
+        travelerCount,
+        locale
     );
 
     const headerLabel = (

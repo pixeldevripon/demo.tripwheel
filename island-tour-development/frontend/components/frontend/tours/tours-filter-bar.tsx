@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/popover';
 import { useDragScroll } from '@/hooks/use-drag-scroll';
 import type { Currency, Locale } from '@/lib/constants/locales';
+import { formatPlural, type PluralForms } from '@/lib/i18n/plural';
 import { springPop } from '@/lib/motion';
 import {
     buildToursHref,
@@ -44,12 +45,13 @@ export type ToursToolbarDict = {
     clearDate: string;
     /**
      * Guest types: `label` + `hint` shown in the stepper rows, `word` used in the
-     * chip summary (e.g. "2 Adults & 3 Children").
+     * chip summary (e.g. "2 Adults & 3 Children") - ICU plural categories,
+     * resolved via `formatPlural` so "1 Adult" reads singular.
      */
     guestTypes: {
-        adults: { label: string; hint: string; word: string };
-        children: { label: string; hint: string; word: string };
-        infants: { label: string; hint: string; word: string };
+        adults: { label: string; hint: string; word: PluralForms };
+        children: { label: string; hint: string; word: PluralForms };
+        infants: { label: string; hint: string; word: PluralForms };
     };
     /** Apply action in the travelers popover - e.g. "Apply" */
     applyGuests: string;
@@ -260,10 +262,14 @@ export function ToursFilterBar({
         }
     };
 
-    // Chip summary - only non-zero types, e.g. "2 Adults & 3 Children".
+    // Chip summary - only non-zero types, e.g. "2 Adults & 3 Children" ("1 Adult"
+    // singular at one, via ICU plural categories).
     const guestParts = (['adults', 'children', 'infants'] as const)
         .filter(type => guests[type] > 0)
-        .map(type => `${guests[type]} ${dict.guestTypes[type].word}`);
+        .map(
+            type =>
+                `${guests[type]} ${formatPlural(dict.guestTypes[type].word, guests[type], locale)}`
+        );
     const guestsLabel =
         guestParts.length <= 1
             ? guestParts[0]
