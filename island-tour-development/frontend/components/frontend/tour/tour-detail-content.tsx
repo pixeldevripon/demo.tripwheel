@@ -469,6 +469,17 @@ export async function TourDetailContent({
                     locationLabel={locationLabel}
                     locale={locale}
                     dict={{ localsFavorite: tourDict.localsFavorite }}
+                    actions={
+                        <TourHeaderActions
+                            tourId={detail.id}
+                            title={title}
+                            dict={{
+                                save: tourDict.save,
+                                share: tourDict.share,
+                                linkCopied: tourDict.linkCopied,
+                            }}
+                        />
+                    }
                 />
             </MountReveal>
 
@@ -544,9 +555,16 @@ export async function TourDetailContent({
                                 Real availability (remaining spots, sold-out) still
                                 lands with the availability wiring (checklist §4). */}
                             <MountReveal delay={0.15}>
-                                {/* Save/Share (.wtools) live above the widget
-                                    in the rail (GAP-18), not in the header. */}
-                                <div className='mb-2.5'>
+                                {/* Save/Share, mobile placement only. At lg+
+                                    they render in the header instead, level
+                                    with the meta line - which is what lets the
+                                    booking card start at the gallery's top edge
+                                    rather than a row below it (Pastel #33).
+                                    A second instance, not a moved one: the two
+                                    live in different grid containers, and both
+                                    read the same wishlist provider, so their
+                                    saved state cannot diverge. */}
+                                <div className='mb-2.5 lg:hidden'>
                                     <TourHeaderActions
                                         tourId={detail.id}
                                         title={title}
@@ -911,4 +929,3 @@ export async function TourDetailContent({
         </>
     );
 }
-
