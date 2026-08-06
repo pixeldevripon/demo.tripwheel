@@ -8,6 +8,7 @@ import { Pagination } from '../pagination';
 import { Reveal } from '../reveal';
 import type { TourCardDict, TourListing } from '../tour-card';
 import { TourCard } from '../tour-card';
+import { TOUR_CARD_GRID } from '@/lib/tours/listing';
 import { ToursEmptyState, type ToursEmptyStateDict } from './tours-empty-state';
 
 /**
@@ -103,7 +104,7 @@ export function ToursListing({
                 Design v2 catalog grid (.tcgrid, DIT-13): stacked row cards on
                 mobile, 3-col from sm, 4-col from lg (20px row / 16px column
                 gaps). */}
-            <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
+            <div className={TOUR_CARD_GRID}>
                 {tours.map((tour, i) => (
                     <MountReveal key={tour.id} listItem>
                         <TourCard

@@ -9,6 +9,27 @@ import type { CollectionRenderTour } from '@/types/collection';
 import type { SearchHit } from '@/types/search';
 import { priceUnitKey } from '@/lib/tours/pricing-label';
 
+/**
+ * The sitewide tour-card grid: ONE card per row on mobile, 3 from `sm`, 4 from
+ * `lg`.
+ *
+ * Every full-page listing of tour cards uses this exact string - All Tours,
+ * destination listings, global search, the wishlist, and the skeletons that
+ * stand in for them. It lives here, next to the mappers that build the cards,
+ * because it was previously copy-pasted into each list AND into three separate
+ * constants in `skeletons/skeleton-bar.ts`. Design v2 moved the listings to a
+ * single mobile column and the copies did not follow, so search and the
+ * wishlist sat on two cramped columns while every other listing showed one.
+ *
+ * Add a listing, import this. Do NOT re-type the classes.
+ *
+ * Deliberately NOT covered: the mobile horizontal snap-carousels (destination
+ * "explore" rows, hub also-worth, category you-might-like). Those are a
+ * different pattern on purpose and only their desktop grid is comparable.
+ */
+export const TOUR_CARD_GRID =
+  'grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4';
+
 /** Duration label strings (from the `search` dictionary section). */
 export type DurationDict = {
   hours: string;

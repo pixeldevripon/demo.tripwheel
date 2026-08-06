@@ -17,20 +17,17 @@ export function Bar({ className }: { className?: string }) {
 }
 
 /**
- * Canonical card-grid class strings - copied verbatim from the live list
- * components so a skeleton grid always matches the real grid (columns + gaps).
- * Sitewide tour grid: 2-col mobile / 3-col sm / 4-col lg.
+ * The listing grid, re-exported so skeleton files have one import for the whole
+ * kit. It is NOT a copy: `TOUR_CARD_GRID` is the single string the real
+ * listings use, which is the point.
  *
- * - `CARD_GRID`   → `tours-listing`, related tours (tour page + thank-you)
- * - `SEARCH_GRID` → `search/search-results-section` + wishlist
- * - `HUB_GRID`    → `hub-trips-panel`
+ * There used to be three constants here (`CARD_GRID`/`SEARCH_GRID`/`HUB_GRID`),
+ * identical to each other and described as "copied verbatim from the live list
+ * components". Copied strings do not stay verbatim - design v2 moved the
+ * listings to one mobile column and every copy here kept the old two, so the
+ * skeletons promised a layout the real grids no longer rendered.
  */
-export const CARD_GRID =
-    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
-export const SEARCH_GRID =
-    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
-export const HUB_GRID =
-    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4';
+export { TOUR_CARD_GRID } from '@/lib/tours/listing';
 
 /**
  * Cards a full paginated page renders - kept equal to `PAGE_SIZE` in
@@ -74,12 +71,6 @@ export const DESTINATION_RAIL =
 export const COLLECTION_RAIL =
     'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-5';
 
-/**
- * The collection page's tour grid, mirroring `collection-tours-section`:
- * 2-col mobile, 3-col from sm - max 3 columns (no lg 4-col).
- */
-export const COLLECTION_TOURS_GRID =
-    'grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10';
 export const DESTINATION_CARD_CELL =
     'w-[82vw] min-[480px]:w-[64vw] shrink-0 snap-start sm:w-auto';
 

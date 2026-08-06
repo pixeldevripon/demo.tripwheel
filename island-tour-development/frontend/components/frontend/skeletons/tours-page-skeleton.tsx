@@ -1,4 +1,4 @@
-import { Bar, PaginationSkeleton } from './skeleton-bar';
+import { Bar, PaginationSkeleton, TOUR_CARD_GRID } from './skeleton-bar';
 import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
@@ -83,12 +83,9 @@ export function ToursGridSkeleton() {
     return (
         <div className='it-container'>
             <div className='flex flex-col gap-7.5'>
-                <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-5 lg:grid-cols-4'>
+                <div className={TOUR_CARD_GRID}>
                     {Array.from({ length: 8 }).map((_, i) => (
-                        <TourCardSkeleton
-                            key={i}
-                            className='max-sm:aspect-auto max-sm:h-[170px]'
-                        />
+                        <TourCardSkeleton key={i} mobileRow />
                     ))}
                 </div>
                 <PaginationSkeleton />

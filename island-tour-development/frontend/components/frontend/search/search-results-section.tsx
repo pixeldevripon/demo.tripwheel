@@ -9,7 +9,7 @@ import { getActiveDestinations, searchTours } from '@/lib/api/public';
 import { localizeHref, type Locale } from '@/lib/constants/locales';
 import { getServerCurrency } from '@/lib/currency/server';
 import type { Dictionary } from '@/lib/i18n/dictionaries';
-import { searchHitToListing } from '@/lib/tours/listing';
+import { searchHitToListing, TOUR_CARD_GRID } from '@/lib/tours/listing';
 
 const PAGE_SIZE = 12;
 
@@ -161,12 +161,15 @@ export async function SearchResultsSection({
                     />
                 ) : (
                     <Reveal className='flex flex-col gap-12 sm:gap-18'>
-                        <div className='grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4'>
+                        <div className={TOUR_CARD_GRID}>
                             {listings.map((tour, i) => (
                                 <TourCard
                                     key={tour.id}
                                     tour={tour}
                                     dict={cardDict}
+                                    // Pairs with TOUR_CARD_GRID's single mobile
+                                    // column - the two are one decision.
+                                    mobileRow
                                     // First ROW only (4 at lg) - see TourCardProps.
                                     priority={i < 4}
                                 />

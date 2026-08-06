@@ -28,6 +28,12 @@ import { PAID_TIER_MAX_RANK } from '@/tiers/tiers.service';
 import { evaluateLikelyToSellOut } from './demand-signal';
 import { computeQualityScore, listingCompleteness } from './quality-score';
 import {
+  applyMostPopularCap,
+  deriveTourBadge,
+  type BadgeInput,
+  type TourBadge,
+} from './tour-badge';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -350,42 +356,8 @@ export class ToursService {
    * exclusive (>= 10 reviews vs 0). RANKING is untouched by any of this:
    * `is_sponsored DESC, tier_rank ASC, quality_score DESC, id ASC`.
    */
-  private deriveTourBadge(
-    tour: {
-      isSponsored: boolean;
-      tierRank: number;
-      likelyToSellOut: boolean;
-      likelyToSellOutOverride: boolean | null;
-      publishedAt: Date | null;
-      aggregateRating: number | null;
-      aggregateReviewCount: number;
-    },
-    now: Date = new Date(),
-  ): 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null {
-    // 1. Likely to sell out (§3.7) - the daily-evaluated demand signal stored on
-    //    `likelyToSellOut` (worker output, see src/tours/demand-signal.ts), with the
-    //    manual CMS launch override taking precedence (`override ?? computed`).
-    if (tour.likelyToSellOutOverride ?? tour.likelyToSellOut)
-      return 'likelyToSellOut';
-
-    // 2. Most popular - earned by organic reviews (never on commission-tier grounds).
-    if (tour.aggregateReviewCount >= 10 && (tour.aggregateRating ?? 0) >= 4.5) {
-      return 'mostPopular';
-    }
-
-    // 3. New - recently published with no reviews yet.
-    if (tour.aggregateReviewCount === 0 && tour.publishedAt) {
-      const ageDays = (now.getTime() - tour.publishedAt.getTime()) / 86_400_000;
-      if (ageDays < 30) return 'new';
-    }
-
-    // 4. Sponsored - fallback label for a paid placement (spotlight or paid
-    //    tier P1-P3) with no earned badge: explains an otherwise unexplained
-    //    top position.
-    if (tour.isSponsored || tour.tierRank <= PAID_TIER_MAX_RANK)
-      return 'sponsored';
-
-    return null;
+  private deriveTourBadge(tour: BadgeInput, now: Date = new Date()): TourBadge {
+    return deriveTourBadge(tour, now);
   }
 
   private readonly heroImageSelect = {
@@ -1734,25 +1706,13 @@ export class ToursService {
    */
   private applyMostPopularCap<
     T extends {
-      badge: 'sponsored' | 'likelyToSellOut' | 'mostPopular' | 'new' | null;
+      badge: TourBadge;
       primaryCategoryId: string | null;
       isSponsored: boolean;
       tierRank: number;
     },
   >(items: T[]): T[] {
-    const seen = new Set<string | null>();
-    for (const item of items) {
-      if (item.badge !== 'mostPopular') continue;
-      if (seen.has(item.primaryCategoryId)) {
-        item.badge =
-          item.isSponsored || item.tierRank <= PAID_TIER_MAX_RANK
-            ? 'sponsored'
-            : null;
-      } else {
-        seen.add(item.primaryCategoryId);
-      }
-    }
-    return items;
+    return applyMostPopularCap(items);
   }
 
   /**

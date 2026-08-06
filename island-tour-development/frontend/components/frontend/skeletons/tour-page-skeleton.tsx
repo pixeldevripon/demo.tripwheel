@@ -1,4 +1,4 @@
-import { Bar, CARD_GRID } from './skeleton-bar';
+import { Bar } from './skeleton-bar';
 import { TourCardSkeleton } from './tour-card-skeleton';
 
 /**
