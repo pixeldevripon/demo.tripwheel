@@ -627,6 +627,13 @@ Pages/CMS module, observability (Sentry/backups/deep health), and founder-gated 
 - [x] `ToursEmptyState`
 - [x] Filter bar + Filters modal (locked Filters-button pattern, not facet pills — 🔴 Must Fix satisfied)
 - [x] Sort control locked to exactly 3 options (Locals' favourites default, Price low→high, Price high→low) — 🔴 Must Fix satisfied
+- [x] Widget trust strip line 2 is the LOCKED neutral `Pay only {X}% today, the rest later`, shown
+  **only** where the tour really takes a deposit online — a deposit model AND `0 < deposit_pct <
+  100` (`requiresDeposit`). `paid_in_full`, `operator_full`, a 0/100% deposit and any unrecognised
+  payment model all fall back to the single cancellation line (LD5 / conflict log 81 / B.81).
+  Fixed 2026-08-06 (Pastel #32): the line had grown model-specific tails ("the rest via the
+  operator's secure link" / "the rest on arrival"), `paid_in_full` rendered a second "Pay in full
+  now" row, and `deposit_pct` was rounded — so a 27.5% tour promised 28%
 - [x] Category chips in the filter row as navigation links to `/{locale}/{destination}/{category-slug}/` — 🔴 Must Fix satisfied
 - [x] Category chips **never wrap** (§3.12 "horizontal scroll on overflow", Pastel #31): one
   scrolling track (`CategoryChipTrack` in `tours-filter-bar.tsx`) carrying trackpad/touch/drag

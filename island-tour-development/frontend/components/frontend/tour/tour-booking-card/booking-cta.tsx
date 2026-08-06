@@ -14,9 +14,10 @@ import { Collapse } from './collapse';
  * The primary action block: an optional over-capacity note, the CTA ("Continue"
  * once a selection is ready - the actual reserve + pay happens on the checkout
  * page this navigates to), and the trust lines. The free-cancellation line
- * always shows; the payment line is model-specific (deposit link / "Pay in full
- * now" / none). A tour whose payment model is not bookable in v1 (operator_full)
- * shows a disabled state instead.
+ * always shows; the payment line only where the tour really takes a deposit
+ * online, so paid-in-full and operator-settled tours are left with the single
+ * cancellation line (LD5 / conflict log 81). A tour whose payment model is not
+ * bookable in v1 (operator_full) shows a disabled state instead.
  */
 export function BookingCta() {
     const {
@@ -179,8 +180,11 @@ export function BookingCta() {
                     {cancelAfter}
                 </TrustRow>
 
-                {/* Payment line (model-specific). */}
-                {paymentTrust?.kind === 'modal' && (
+                {/* Payment line - present only on a tour that really takes a
+                    deposit online. Everything else (paid in full, settled with
+                    the operator, an unrecognised model) leaves the strip as the
+                    single cancellation line. */}
+                {paymentTrust && (
                     <TrustRow>
                         {paymentTrust.before}
                         <TrustLink onClick={() => setPolicyModal('deposit')}>
@@ -188,9 +192,6 @@ export function BookingCta() {
                         </TrustLink>
                         {paymentTrust.after}
                     </TrustRow>
-                )}
-                {paymentTrust?.kind === 'plain' && (
-                    <TrustRow>{paymentTrust.text}</TrustRow>
                 )}
             </div>
         </div>
@@ -232,4 +233,3 @@ function TrustLink({
         </motion.button>
     );
 }
-

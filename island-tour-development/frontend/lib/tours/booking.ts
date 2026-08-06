@@ -93,12 +93,12 @@ export type TourBookingDict = {
     freeCancellation: string;
     /** Clickable/underlined phrase inside `freeCancellation` (opens the modal). */
     freeCancellationLink: string;
-    /** Deposit trust line (`operator_link`): `{link}` marker, "the rest via the operator's secure link". */
+    /**
+     * Deposit trust line, LOCKED and model-neutral: `{link}` marker + ", the
+     * rest later". Both deposit models share it - the balance is not always
+     * collected through a link, so the line must not say it is.
+     */
     payLater: string;
-    /** Deposit trust line (`on_arrival`): `{link}` marker, "the rest on arrival". */
-    payOnArrival: string;
-    /** Full-payment trust line (`paid_in_full`): plain statement, no modal link. */
-    payInFull: string;
     /** Clickable/underlined phrase inside the deposit trust line (opens the modal). */
     payLaterLink: string;
     sellOutTitle: string;
@@ -212,10 +212,7 @@ export interface BookingSlot {
  * this yet".
  */
 export type BookingNoticeKind =
-    | 'likelyToSellOut'
-    | 'mostPopular'
-    | 'instantConfirmation'
-    | 'sponsored';
+    'likelyToSellOut' | 'mostPopular' | 'instantConfirmation' | 'sponsored';
 
 /** Master §3.6: `mostPopular` is earned at >=10 reviews AND >=4.5 rating. */
 const MOST_POPULAR_MIN_REVIEWS = 10;
@@ -257,14 +254,14 @@ function deriveBookingNotices(detail: PublicTourDetail): BookingNoticeKind[] {
 
 export interface TourBookingData {
     /**
-      * Display currency CODE, not a glyph.
-      *
-      * It used to be the glyph, which forced every price through a hand-rolled
-      * `${symbol}${number}` concatenation - and `Intl` puts the euro sign AFTER
-      * the number in de/nl/fr/es/pt. So a German shopper saw "€1.750" in the
-      * booking card's price header and "1.750,00 €" in the alternatives row
-      * directly beneath it. The code lets every surface use `Intl`.
-      */
+     * Display currency CODE, not a glyph.
+     *
+     * It used to be the glyph, which forced every price through a hand-rolled
+     * `${symbol}${number}` concatenation - and `Intl` puts the euro sign AFTER
+     * the number in de/nl/fr/es/pt. So a German shopper saw "€1.750" in the
+     * booking card's price header and "1.750,00 €" in the alternatives row
+     * directly beneath it. The code lets every surface use `Intl`.
+     */
     currency: Currency;
     /** Headline "From" price (per person for PER_PERSON, group base for UNIT). */
     priceFrom: number;
@@ -511,7 +508,12 @@ export function buildTourBookingData(
         bands = [...participants, ...spectators].map(b => mapBand(b, conv));
     }
 
-    const depositPct = Math.round(toNumber(detail.depositPct));
+    // NOT rounded. Tier rates run 20-30 in steps of 2.5 (master LD24), so
+    // `Math.round` turned a real 27.5% tour into "Pay only 28% today" and made
+    // the widget's own deposit estimate disagree with the server quote by half
+    // a percent. `String(27.5)` is "27.5" and `String(30)` is "30", so the copy
+    // still reads clean on whole rates.
+    const depositPct = toNumber(detail.depositPct);
     const model = detail.paymentModel;
     const splitsPayment = model === 'OPERATOR_LINK' || model === 'ON_ARRIVAL';
     const requiresDeposit = splitsPayment && depositPct > 0 && depositPct < 100;
