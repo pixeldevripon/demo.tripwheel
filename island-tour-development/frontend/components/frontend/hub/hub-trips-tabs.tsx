@@ -1,8 +1,11 @@
 'use client';
 
 import { useDragScroll } from '@/hooks/use-drag-scroll';
+import { useScrollOverflow } from '@/hooks/use-scroll-overflow';
+import { useTabAutoScroll } from '@/hooks/use-tab-autoscroll';
+import { edgeFadeMask } from '@/lib/edge-fade';
 import { springPop } from '@/lib/motion';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Reveal } from '../reveal';
 
 export type HubTripsTab = { key: string; label: string };
@@ -13,6 +16,12 @@ export type HubTripsTab = { key: string; label: string };
  * tab carries the orange underline (a shared-layoutId span that slides between
  * tabs) + dark medium text. 16px mobile / 20px desktop. Controlled by the
  * parent (`active` index + `onChange`).
+ *
+ * Carries the same follow-the-active-tab scrolling and right-edge fade as the
+ * tour page's section tabs (Pastel #56 asks for the two to stay consistent).
+ * Here the active tab changes by TAP rather than by page scroll, so the row
+ * rarely has to move itself - but a hub with more tabs than fit behaves the
+ * same way when it does, and the fade tells you they are there either way.
  */
 export function HubTripsTabs({
     tabs,
@@ -24,11 +33,18 @@ export function HubTripsTabs({
     onChange: (index: number) => void;
 }) {
     const scrollRef = useDragScroll<HTMLDivElement>();
+    const { left, right } = useScrollOverflow(scrollRef);
+    const reduce = useReducedMotion();
+    useTabAutoScroll(scrollRef, tabs[active]?.key ?? '', !!reduce);
+
     return (
         <Reveal>
+            {/* The hairline belongs to the wrapper, not the scroller: the mask
+                would otherwise fade the rule away along with the tabs. */}
+            <div className='border-b border-it-divider'>
             <div
                 ref={scrollRef}
-                className='flex gap-[26px] overflow-x-auto border-b border-it-divider [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                className={`flex gap-[26px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${edgeFadeMask(left, right)}`}>
                 {tabs.map((tab, i) => {
                     const isActive = i === active;
                     return (
@@ -36,6 +52,7 @@ export function HubTripsTabs({
                             key={tab.key}
                             type='button'
                             onClick={() => onChange(i)}
+                            data-tab-key={tab.key}
                             aria-current={isActive ? 'true' : undefined}
                             whileTap={{ scale: 0.98 }}
                             transition={springPop}
@@ -56,6 +73,7 @@ export function HubTripsTabs({
                         </motion.button>
                     );
                 })}
+            </div>
             </div>
         </Reveal>
     );
